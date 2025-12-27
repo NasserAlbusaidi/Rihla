@@ -42,7 +42,7 @@ class CommandCenter extends ConsumerWidget {
               ? _buildEmptyState(context)
               : _buildTripView(context, ref, currentTrip ?? trips.first, trips),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => _buildErrorState(context, e.toString()),
+          error: (e, _) => _buildErrorState(context, ref, e.toString()),
         ),
       ),
     );
@@ -953,18 +953,24 @@ class CommandCenter extends ConsumerWidget {
     ).push(MaterialPageRoute(builder: (context) => VaultScreen(trip: trip)));
   }
 
-  Widget _buildErrorState(BuildContext context, String error) {
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
+    final isTimeout = error.contains('timedOut') || error.contains('timeout');
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Iconsax.warning_2, size: 64, color: AppColors.rose),
+            Icon(
+              isTimeout ? Iconsax.wifi_square : Iconsax.warning_2,
+              size: 64,
+              color: isTimeout ? AppColors.textMuted : AppColors.rose,
+            ),
             const SizedBox(height: 16),
-            const Text(
-              'Oops!',
-              style: TextStyle(
+            Text(
+              isTimeout ? 'Connection Timeout' : 'Oops!',
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w900,
                 color: AppColors.textPrimary,
@@ -972,9 +978,30 @@ class CommandCenter extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              error,
+              isTimeout
+                  ? 'Unable to connect to the server. Please check your internet connection.'
+                  : error,
               style: const TextStyle(color: AppColors.textMuted),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                ref.invalidate(userTripsProvider);
+              },
+              icon: const Icon(Iconsax.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ],
         ),

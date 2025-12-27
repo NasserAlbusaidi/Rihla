@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/cache_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/trip_model.dart';
 
@@ -17,7 +18,7 @@ final tripErrorProvider = StateProvider<String?>((ref) => null);
 /// Current selected trip
 final currentTripProvider = StateProvider<Trip?>((ref) => null);
 
-/// User's trips stream
+/// User's trips stream with offline caching
 final userTripsProvider = StreamProvider<List<Trip>>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value([]);
@@ -27,7 +28,10 @@ final userTripsProvider = StreamProvider<List<Trip>>((ref) {
       .stream(primaryKey: ['id'])
       .eq('user_id', user.id)
       .asyncMap((participations) async {
-        if (participations.isEmpty) return <Trip>[];
+        if (participations.isEmpty) {
+          // Try to get cached trips if no online data
+          return await CacheService.getCachedTrips();
+        }
 
         final tripIds = participations
             .map((p) => p['trip_id'] as String)
@@ -39,9 +43,21 @@ final userTripsProvider = StreamProvider<List<Trip>>((ref) {
             .inFilter('id', tripIds)
             .order('created_at', ascending: false);
 
-        return (tripsData as List)
+        final trips = (tripsData as List)
             .map((json) => Trip.fromJson(json as Map<String, dynamic>))
             .toList();
+
+        // Cache trips for offline access
+        for (final trip in trips) {
+          await CacheService.cacheTrip(trip);
+        }
+
+        return trips;
+      })
+      .handleError((error) async {
+        // On error (offline), return cached trips
+        debugPrint('📡 Network error, using cached trips: $error');
+        return await CacheService.getCachedTrips();
       });
 });
 

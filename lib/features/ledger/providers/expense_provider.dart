@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/cache_service.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -17,7 +18,7 @@ final expenseLoadingProvider = StateProvider<bool>((ref) => false);
 /// Error state for expense operations
 final expenseErrorProvider = StateProvider<String?>((ref) => null);
 
-/// Stream of expenses for the current trip
+/// Stream of expenses for the current trip with offline caching
 final tripExpensesProvider = StreamProvider.family<List<Expense>, String>((
   ref,
   tripId,
@@ -37,9 +38,19 @@ final tripExpensesProvider = StreamProvider.family<List<Expense>, String>((
             .eq('is_deleted', false)
             .order('created_at', ascending: false);
 
-        return (result as List)
+        final expenses = (result as List)
             .map((json) => Expense.fromJson(json as Map<String, dynamic>))
             .toList();
+
+        // Cache expenses for offline access
+        await CacheService.cacheExpenses(tripId, expenses);
+
+        return expenses;
+      })
+      .handleError((error) async {
+        // On error (offline), return cached expenses
+        debugPrint('📡 Network error, using cached expenses: $error');
+        return await CacheService.getCachedExpenses(tripId);
       });
 });
 

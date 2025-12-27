@@ -37,7 +37,66 @@ class HomeScreen extends ConsumerWidget {
               child: tripsAsync.when(
                 data: (trips) => _buildContent(context, ref, trips),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e')),
+                error: (e, _) => _buildErrorWidget(context, ref, e),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Error widget with retry button for realtime timeout and other errors
+  Widget _buildErrorWidget(BuildContext context, WidgetRef ref, Object error) {
+    final isTimeout =
+        error.toString().contains('timedOut') ||
+        error.toString().contains('timeout');
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isTimeout ? Iconsax.wifi_square : Iconsax.warning_2,
+              size: 64,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isTimeout ? 'Connection Timeout' : 'Something went wrong',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isTimeout
+                  ? 'Unable to connect to the server. Please check your internet connection.'
+                  : 'An error occurred while loading your trips.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                ref.invalidate(userTripsProvider);
+              },
+              icon: const Icon(Iconsax.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
