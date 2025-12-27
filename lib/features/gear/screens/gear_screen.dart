@@ -63,6 +63,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Back',
             icon: const Icon(
               Iconsax.arrow_left,
               color: AppColors.textSecondary,
@@ -505,6 +506,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'High Priority',
             icon: Icon(
               Iconsax.flash,
               color: _isHighPriority ? AppColors.rose : AppColors.textMuted,
@@ -520,6 +522,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
               controller: _itemController,
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               decoration: const InputDecoration(
+                labelText: 'Gear Item Name',
                 hintText: 'ADD GEAR ITEM...',
                 hintStyle: TextStyle(
                   fontSize: 12,
@@ -534,6 +537,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             ),
           ),
           IconButton(
+            tooltip: 'Add Item',
             icon: const Icon(
               Iconsax.add_circle,
               color: AppColors.mint,

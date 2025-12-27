@@ -403,6 +403,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
               Row(
                 children: [
                   IconButton(
+                    tooltip: 'Back',
                     icon: const Icon(Iconsax.arrow_left, color: Colors.white),
                     onPressed: () => context.pop(),
                   ),

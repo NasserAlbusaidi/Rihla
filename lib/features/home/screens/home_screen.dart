@@ -102,6 +102,7 @@ class HomeScreen extends ConsumerWidget {
 
           // Settings
           IconButton(
+            tooltip: 'Settings',
             icon: const Icon(Iconsax.setting_2),
             onPressed: () => context.push('/settings'),
           ),

@@ -101,6 +101,7 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Back',
             icon: const Icon(Iconsax.arrow_left),
             onPressed: () => context.pop(),
           ),
@@ -177,6 +178,7 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
               UpperCaseTextFormatter(),
             ],
             decoration: InputDecoration(
+              labelText: 'Invite Code',
               hintText: '------',
               hintStyle: TextStyle(
                 fontSize: 32,

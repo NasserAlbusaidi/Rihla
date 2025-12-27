@@ -68,6 +68,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Back',
             icon: const Icon(
               Iconsax.arrow_left,
               color: AppColors.textSecondary,
@@ -100,6 +101,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             ),
           ),
           IconButton(
+            tooltip: 'Add Unit',
             icon: const Icon(
               Iconsax.add_circle,
               color: AppColors.mint,
@@ -787,6 +789,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                 color: AppColors.textPrimary,
               ),
               decoration: InputDecoration(
+                labelText: type == SubGroupType.car ? 'Car Name' : 'Room Name',
                 hintText: type == SubGroupType.car
                     ? 'CAR NAME (e.g. DEFENDER 1)'
                     : 'ROOM NAME (e.g. TENT 01)',
@@ -806,6 +809,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                 color: AppColors.textPrimary,
               ),
               decoration: const InputDecoration(
+                labelText: 'Capacity',
                 hintText: 'CAPACITY',
                 prefixIcon: Icon(Iconsax.people, color: AppColors.textMuted),
               ),

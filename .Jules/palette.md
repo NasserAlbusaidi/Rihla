@@ -1,3 +1,3 @@
-## 2024-05-23 - [Form Accessibility Improvements]
-**Learning:** `TextFormField` benefits significantly from explicit `labelText` alongside `hintText` for screen reader context and persistence during typing. `IconButton` requires `tooltip` for semantic meaning.
-**Action:** Always add `labelText` to form fields and `tooltip` to icon-only buttons in Flutter.
+## 2024-05-23 - [Form & Navigation Accessibility]
+**Learning:** Consistent application of `labelText` across all forms ensures context retention for users during data entry. Tooltips on navigation buttons (Back, Settings, Add) are critical for screen reader users and desktop hover states.
+**Action:** Enforce a check for `labelText` on all `TextFormField`s and `tooltip` on all `IconButton`s during code reviews.

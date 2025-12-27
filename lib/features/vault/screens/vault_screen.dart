@@ -65,6 +65,7 @@ class VaultScreen extends ConsumerWidget {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Back',
             icon: const Icon(Iconsax.arrow_left),
             onPressed: () => context.pop(),
           ),
@@ -303,6 +304,7 @@ class VaultScreen extends ConsumerWidget {
 
               // Download button
               IconButton(
+                tooltip: 'Download',
                 icon: const Icon(Iconsax.document_download, size: 20),
                 color: AppColors.primary,
                 onPressed: () => _openDocument(context, ref, doc),

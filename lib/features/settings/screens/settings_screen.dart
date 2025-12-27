@@ -226,6 +226,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Back',
             icon: const Icon(Iconsax.arrow_left),
             onPressed: () => context.pop(),
           ),
@@ -314,6 +315,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           // Edit Button
           IconButton(
+            tooltip: 'Edit Profile',
             icon: const Icon(Iconsax.edit_2, color: Colors.white),
             onPressed: () => _showEditProfileDialog(context),
           ),

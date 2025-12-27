@@ -214,6 +214,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Back',
             icon: const Icon(Iconsax.arrow_left),
             onPressed: () => context.pop(),
           ),
@@ -298,6 +299,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
+              labelText: 'Trip Name',
               hintText: 'e.g. Patagonia Basecamp',
             ),
             validator: (value) {
