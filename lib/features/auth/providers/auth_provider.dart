@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/local_database.dart';
 
 /// Auth state provider - listens to Supabase auth changes
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -101,6 +102,8 @@ class AuthService {
     _ref.read(authLoadingProvider.notifier).state = true;
 
     try {
+      // Clear local cache to ensure next user doesn't see this user's data
+      await LocalDatabase.clearAll();
       await _client.auth.signOut();
     } finally {
       _ref.read(authLoadingProvider.notifier).state = false;
