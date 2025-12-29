@@ -52,8 +52,8 @@ final tripGearProvider = StreamProvider.family<List<GearItem>, String>((
             'tripGearProvider: FAILED to fetch with profiles',
             error: e,
           );
-          // Fallback: return items without profile info
-          return data
+          // Fallback: return active items without profile info (filtered for deleted)
+          return activeItems
               .map((json) => GearItem.fromJson(json as Map<String, dynamic>))
               .toList();
         }
