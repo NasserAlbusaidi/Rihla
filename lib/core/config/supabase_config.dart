@@ -1,5 +1,6 @@
 import 'dart:developer' as dev;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -18,7 +19,7 @@ class SupabaseConfig {
       realtimeClientOptions: const RealtimeClientOptions(
         logLevel: RealtimeLogLevel.info,
       ),
-      debug: true, // Enable debug logging
+      debug: kDebugMode, // Only enable debug logging in debug builds
     );
     log('Supabase initialized');
   }
@@ -33,8 +34,10 @@ class SupabaseConfig {
   static Stream<AuthState> get authStateChanges =>
       client.auth.onAuthStateChange;
 
-  /// Log helper for database operations
+  /// Log helper for database operations (only logs in debug mode)
   static void log(String message, {Object? error, StackTrace? stackTrace}) {
+    if (!kDebugMode) return;
+
     final timestamp = DateTime.now().toIso8601String().substring(11, 23);
     dev.log('[$timestamp] 🗄️ $message', name: 'Supabase');
     if (error != null) {

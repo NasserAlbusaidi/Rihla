@@ -188,6 +188,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.email],
                   decoration: InputDecoration(
+                    labelText: 'Email',
                     hintText: 'your@email.com',
                     prefixIcon: Icon(
                       Iconsax.sms,
@@ -221,6 +222,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         : AutofillHints.password,
                   ],
                   decoration: InputDecoration(
+                    labelText: 'Password',
                     hintText: 'Password',
                     prefixIcon: Icon(
                       Iconsax.lock,
@@ -228,6 +230,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       size: 20,
                     ),
                     suffixIcon: IconButton(
+                      tooltip: _obscurePassword
+                          ? 'Show password'
+                          : 'Hide password',
                       icon: Icon(
                         _obscurePassword ? Iconsax.eye_slash : Iconsax.eye,
                         color: AppColors.textMuted,
