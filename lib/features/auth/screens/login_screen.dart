@@ -254,6 +254,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onFieldSubmitted: (_) => _submit(),
                 ),
 
+                if (!isSignUp)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: isLoading
+                          ? null
+                          : () => context.push('/forgot-password'),
+                      child: Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+
                 // Error Message
                 if (error != null) ...[
                   const SizedBox(height: 16),

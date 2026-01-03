@@ -110,6 +110,51 @@ class AuthService {
     }
   }
 
+  /// Send password reset email
+  Future<bool> sendPasswordResetEmail(String email) async {
+    _ref.read(authLoadingProvider.notifier).state = true;
+    _ref.read(authErrorProvider.notifier).state = null;
+
+    try {
+      await _client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'io.supabase.rihla://reset-password',
+      );
+      _ref.read(authLoadingProvider.notifier).state = false;
+      return true;
+    } on AuthException catch (e) {
+      _ref.read(authErrorProvider.notifier).state = e.message;
+      _ref.read(authLoadingProvider.notifier).state = false;
+      return false;
+    } catch (e) {
+      _ref.read(authErrorProvider.notifier).state =
+          'An unexpected error occurred';
+      _ref.read(authLoadingProvider.notifier).state = false;
+      return false;
+    }
+  }
+
+  /// Update password for the current user (used after reset link or from settings)
+  Future<bool> updatePassword(String newPassword) async {
+    _ref.read(authLoadingProvider.notifier).state = true;
+    _ref.read(authErrorProvider.notifier).state = null;
+
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+      _ref.read(authLoadingProvider.notifier).state = false;
+      return true;
+    } on AuthException catch (e) {
+      _ref.read(authErrorProvider.notifier).state = e.message;
+      _ref.read(authLoadingProvider.notifier).state = false;
+      return false;
+    } catch (e) {
+      _ref.read(authErrorProvider.notifier).state =
+          'An unexpected error occurred';
+      _ref.read(authLoadingProvider.notifier).state = false;
+      return false;
+    }
+  }
+
   /// Get current session
   Session? get currentSession => _client.auth.currentSession;
 

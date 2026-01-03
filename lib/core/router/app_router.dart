@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/forgot_password_screen.dart';
+import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/trip/screens/create_trip_screen.dart';
@@ -13,6 +15,8 @@ import '../../features/trip/screens/join_trip_screen.dart';
 class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
+  static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
   static const String home = '/home';
   static const String createTrip = '/create-trip';
   static const String joinTrip = '/join-trip';
@@ -30,6 +34,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = authState.valueOrNull != null;
       final isLoggingIn = state.matchedLocation == AppRoutes.login;
+      final isForgotPw = state.matchedLocation == AppRoutes.forgotPassword;
+      final isResetPw = state.matchedLocation == AppRoutes.resetPassword;
       final isSplash = state.matchedLocation == AppRoutes.splash;
 
       // If on splash, redirect based on auth state
@@ -37,8 +43,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isLoggedIn ? AppRoutes.home : AppRoutes.login;
       }
 
-      // If not logged in and not on login page, redirect to login
-      if (!isLoggedIn && !isLoggingIn) {
+      // If not logged in and not on an auth page, redirect to login
+      if (!isLoggedIn && !isLoggingIn && !isForgotPw && !isResetPw) {
         return AppRoutes.login;
       }
 
@@ -66,6 +72,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             return FadeTransition(opacity: animation, child: child);
           },
         ),
+      ),
+
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        builder: (context, state) => const ResetPasswordScreen(),
       ),
 
       // Home / Trip List
