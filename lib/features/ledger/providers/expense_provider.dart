@@ -74,9 +74,19 @@ final tripSettlementsProvider = StreamProvider.family<List<Settlement>, String>(
             .eq('is_deleted', false)
             .order('settled_at', ascending: false);
 
-        return (result as List)
+        final settlements = (result as List)
             .map((json) => Settlement.fromJson(json as Map<String, dynamic>))
             .toList();
+
+        // Cache settlements for offline access
+        await CacheService.cacheSettlements(tripId, settlements);
+
+        return settlements;
+      })
+      .handleError((error) async {
+        // On error (offline), return cached settlements
+        debugPrint('📡 Network error, using cached settlements: $error');
+        return await CacheService.getCachedSettlements(tripId);
       });
 });
 

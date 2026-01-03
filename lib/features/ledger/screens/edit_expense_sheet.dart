@@ -235,7 +235,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
         if (_scope == ExpenseScope.subGroup)
           subGroupsAsync.when(
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (error, stack) => const SizedBox.shrink(),
             data: (subGroups) {
               final cars = subGroups
                   .where((s) => s.type == SubGroupType.car)
@@ -305,7 +305,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   ) {
     return participantsAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
       data: (participants) => Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -350,7 +350,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
 
     return participantsAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
       data: (participants) {
         if (participants.isEmpty) return const SizedBox.shrink();
         return Column(
@@ -590,7 +590,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             const SizedBox(height: 8),
             categoriesAsync.when(
               loading: () => const SizedBox(height: 50),
-              error: (_, __) => const Text('Error loading categories'),
+              error: (error, stack) => const Text('Error loading categories'),
               data: (categories) {
                 if (categories.isEmpty) {
                   return const Text('No categories');

@@ -43,9 +43,7 @@ final userTripsProvider = StreamProvider<List<Trip>>((ref) {
             .inFilter('id', tripIds)
             .order('created_at', ascending: false);
 
-        final trips = (tripsData as List)
-            .map((json) => Trip.fromJson(json as Map<String, dynamic>))
-            .toList();
+        final trips = (tripsData).map((json) => Trip.fromJson(json)).toList();
 
         // Cache trips for offline access
         for (final trip in trips) {
@@ -76,11 +74,7 @@ final tripLogisticsParticipantsProvider =
                 .select('*, profiles!user_id(display_name, avatar_url)')
                 .eq('trip_id', tripId);
 
-            return (result as List)
-                .map(
-                  (json) => Participant.fromJson(json as Map<String, dynamic>),
-                )
-                .toList();
+            return (result).map((json) => Participant.fromJson(json)).toList();
           });
     });
 
@@ -98,7 +92,7 @@ final currentParticipantProvider = Provider.family<Participant?, String>((
       return participants.where((p) => p.userId == userId).firstOrNull;
     },
     loading: () => null,
-    error: (_, __) => null,
+    error: (error, stack) => null,
   );
 });
 
@@ -295,13 +289,13 @@ class TripService {
 
       if (updates.isEmpty) return true;
 
-      print('Updating trip $tripId with: $updates');
+      SupabaseConfig.log('Updating trip $tripId with: $updates');
 
       await _client.from('trips').update(updates).eq('id', tripId);
-      print('Trip update successful');
+      SupabaseConfig.log('Trip update successful');
       return true;
     } catch (e) {
-      print('Trip update error: $e');
+      SupabaseConfig.log('Trip update error', error: e);
       return false;
     }
   }
@@ -327,9 +321,7 @@ class TripService {
           .from('sub_groups')
           .select('id')
           .eq('trip_id', tripId);
-      final subGroupIds = (subGroups as List)
-          .map((e) => e['id'] as String)
-          .toList();
+      final subGroupIds = (subGroups).map((e) => e['id'] as String).toList();
 
       // 2. Delete sub_group_members
       if (subGroupIds.isNotEmpty) {
@@ -378,9 +370,7 @@ class TripService {
           .select('*, profiles!user_id(display_name, avatar_url)')
           .eq('trip_id', tripId);
 
-      return (data as List)
-          .map((json) => Participant.fromJson(json as Map<String, dynamic>))
-          .toList();
+      return (data).map((json) => Participant.fromJson(json)).toList();
     } catch (e) {
       return [];
     }

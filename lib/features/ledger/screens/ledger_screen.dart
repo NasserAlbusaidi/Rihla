@@ -438,7 +438,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                         Text(
                           'NET BALANCE',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 1,
@@ -474,7 +474,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                               ? 'You are owed by others'
                               : 'You owe others',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -492,7 +492,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                           child: CircularProgressIndicator(
                             value: progressPercent / 100,
                             strokeWidth: 6,
-                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.2,
+                            ),
                             valueColor: AlwaysStoppedAnimation(
                               isPositive
                                   ? AppColors.primary
@@ -522,7 +524,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Row(
@@ -688,13 +690,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isPositive
-                  ? AppColors.success.withOpacity(0.1)
-                  : AppColors.error.withOpacity(0.1),
+                  ? AppColors.success.withValues(alpha: 0.1)
+                  : AppColors.error.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isPositive
-                    ? AppColors.success.withOpacity(0.3)
-                    : AppColors.error.withOpacity(0.3),
+                    ? AppColors.success.withValues(alpha: 0.3)
+                    : AppColors.error.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
@@ -702,8 +704,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: isPositive
-                      ? AppColors.success.withOpacity(0.15)
-                      : AppColors.error.withOpacity(0.15),
+                      ? AppColors.success.withValues(alpha: 0.15)
+                      : AppColors.error.withValues(alpha: 0.15),
                   child: Icon(
                     isPositive ? Iconsax.arrow_up : Iconsax.arrow_down,
                     color: isPositive ? AppColors.success : AppColors.error,
@@ -927,7 +929,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                             width: 40,
                             height: 40,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(
+                            errorBuilder: (context, error, stackTrace) => Icon(
                               _getCategoryIcon(expense.categoryIcon),
                               size: 20,
                               color: AppColors.primary,
@@ -1026,7 +1028,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '${expense.amount.toStringAsFixed(3)}',
+                  expense.amount.toStringAsFixed(3),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Text(

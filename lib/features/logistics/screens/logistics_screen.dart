@@ -268,7 +268,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         );
       },
       loading: () => const SizedBox(height: 100),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
     );
   }
 
@@ -359,19 +359,10 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
     return DragTarget<Participant>(
       onWillAcceptWithDetails: (details) => !group.isFull,
       onAcceptWithDetails: (details) async {
-        print('=== DRAG DROP DEBUG ===');
-        print('Dropping participant: ${details.data.id}');
-        print('Participant name: ${details.data.displayName}');
-        print('Target group: ${group.id} (${group.name})');
-        print('Group is full: ${group.isFull}');
-
         HapticService.lightClick();
-        final result = await ref
+        await ref
             .read(subGroupServiceProvider)
             .addMember(subGroupId: group.id, participantId: details.data.id);
-
-        print('addMember result: $result');
-        print('=== END DRAG DROP ===');
       },
       builder: (context, candidateData, rejectedData) {
         return Container(
@@ -721,7 +712,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           TextButton(
             onPressed: () async {
               await ref.read(subGroupServiceProvider).deleteSubGroup(group.id);
-              if (mounted) Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text(
               'DELETE',

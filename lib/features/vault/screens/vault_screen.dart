@@ -386,8 +386,13 @@ class VaultScreen extends ConsumerWidget {
 
   void _openDocument(BuildContext context, WidgetRef ref, Document doc) async {
     try {
-      // Try to open the URL
-      final uri = Uri.parse(doc.fileUrl);
+      // Get signed URL from service (cached if possible)
+      final url = await ref
+          .read(documentServiceProvider)
+          .getSignedUrl(doc.fileUrl);
+      if (url == null) throw Exception('Could not generate access link');
+
+      final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {

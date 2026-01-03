@@ -215,9 +215,7 @@ class SubGroupService {
           .eq('sub_group_id', subGroupId);
 
       SupabaseConfig.log('getMembers: Got ${data.length} members');
-      return data
-          .map((m) => SubGroupMember.fromJson(m as Map<String, dynamic>))
-          .toList();
+      return data.map((m) => SubGroupMember.fromJson(m)).toList();
     } catch (e) {
       SupabaseConfig.log('getMembers: FAILED', error: e);
       return [];
@@ -251,12 +249,8 @@ class SubGroupService {
           .eq('trip_id', tripId)
           .inFilter('id', subGroupIds);
 
-      SupabaseConfig.log(
-        'getUserSubGroups: Found ${(data as List).length} sub-groups',
-      );
-      return data
-          .map((sg) => SubGroup.fromJson(sg as Map<String, dynamic>))
-          .toList();
+      SupabaseConfig.log('getUserSubGroups: Found ${data.length} sub-groups');
+      return data.map((sg) => SubGroup.fromJson(sg)).toList();
     } catch (e) {
       SupabaseConfig.log('getUserSubGroups: FAILED', error: e);
       return [];

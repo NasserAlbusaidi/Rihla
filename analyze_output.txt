@@ -1,0 +1,66 @@
+Analyzing Rihla...                                              
+
+warning • Unused import: '../../../core/theme/app_theme.dart' • lib/features/activity/screens/activity_feed_screen.dart:5:8 • unused_import
+warning • Unnecessary cast • lib/features/gear/providers/gear_provider.dart:48:48 • unnecessary_cast
+warning • Unnecessary cast • lib/features/gear/providers/gear_provider.dart:57:48 • unnecessary_cast
+   info • Unnecessary use of multiple underscores • lib/features/home/screens/command_center.dart:192:30 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/home/screens/command_center.dart:263:30 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/home/screens/command_center.dart:455:18 • unnecessary_underscores
+warning • Unnecessary cast • lib/features/ledger/providers/category_provider.dart:32:48 • unnecessary_cast
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/add_expense_screen.dart:459:59 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/add_expense_screen.dart:657:53 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/add_expense_screen.dart:846:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/add_expense_screen.dart:964:59 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/add_expense_screen.dart:1022:31 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/add_expense_screen.dart:1066:32 • deprecated_member_use
+   info • Unnecessary use of multiple underscores • lib/features/ledger/screens/edit_expense_sheet.dart:238:24 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/ledger/screens/edit_expense_sheet.dart:308:18 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/ledger/screens/edit_expense_sheet.dart:353:18 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/ledger/screens/edit_expense_sheet.dart:593:26 • unnecessary_underscores
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:441:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:477:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:495:59 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:525:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:691:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:692:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:696:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:697:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:705:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/ledger_screen.dart:706:41 • deprecated_member_use
+   info • Unnecessary use of multiple underscores • lib/features/ledger/screens/ledger_screen.dart:930:47 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/ledger/screens/ledger_screen.dart:930:51 • unnecessary_underscores
+   info • Unnecessary use of string interpolation • lib/features/ledger/screens/ledger_screen.dart:1029:19 • unnecessary_string_interpolations
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/settle_up_screen.dart:209:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/settle_up_screen.dart:216:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/settle_up_screen.dart:239:35 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/ledger/screens/settle_up_screen.dart:421:22 • deprecated_member_use
+warning • Unnecessary cast • lib/features/logistics/providers/sub_group_provider.dart:219:47 • unnecessary_cast
+warning • Unnecessary cast • lib/features/logistics/providers/sub_group_provider.dart:258:42 • unnecessary_cast
+   info • Unnecessary use of multiple underscores • lib/features/logistics/screens/logistics_screen.dart:271:18 • unnecessary_underscores
+   info • Don't invoke 'print' in production code • lib/features/logistics/screens/logistics_screen.dart:362:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/logistics/screens/logistics_screen.dart:363:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/logistics/screens/logistics_screen.dart:364:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/logistics/screens/logistics_screen.dart:365:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/logistics/screens/logistics_screen.dart:366:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/logistics/screens/logistics_screen.dart:373:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/logistics/screens/logistics_screen.dart:374:9 • avoid_print
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/logistics/screens/logistics_screen.dart:724:42 • use_build_context_synchronously
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/features/settings/screens/settings_screen.dart:904:11 • deprecated_member_use
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/shadow_provider.dart:57:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/shadow_provider.dart:74:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/shadow_provider.dart:88:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/shadow_provider.dart:106:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/shadow_provider.dart:123:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/shadow_provider.dart:139:7 • avoid_print
+   info • Unnecessary use of multiple underscores • lib/features/trip/providers/trip_provider.dart:101:16 • unnecessary_underscores
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/trip_provider.dart:298:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/trip_provider.dart:301:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/trip/providers/trip_provider.dart:304:7 • avoid_print
+warning • The declaration '_getIconData' isn't referenced • lib/features/trip/screens/edit_trip_screen.dart:54:12 • unused_element
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/features/trip/screens/manage_members_screen.dart:501:19 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/features/trip/screens/manage_members_screen.dart:502:19 • deprecated_member_use
+   info • Unnecessary use of string interpolation • lib/features/trip/services/trip_export_service.dart:242:30 • unnecessary_string_interpolations
+   info • Unnecessary use of string interpolation • lib/features/trip/services/trip_export_service.dart:243:30 • unnecessary_string_interpolations
+   info • Unnecessary use of string interpolation • lib/features/trip/services/trip_export_service.dart:369:30 • unnecessary_string_interpolations
+warning • Unnecessary cast • lib/features/vault/providers/document_provider.dart:53:48 • unnecessary_cast
+

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../trip/models/trip_model.dart';
 import '../services/activity_service.dart';
 import '../widgets/timeline_card.dart';

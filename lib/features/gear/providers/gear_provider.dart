@@ -42,20 +42,16 @@ final tripGearProvider = StreamProvider.family<List<GearItem>, String>((
               .order('sequence_id', ascending: true);
 
           SupabaseConfig.log(
-            'tripGearProvider: SUCCESS - ${(items as List).length} items',
+            'tripGearProvider: SUCCESS - ${items.length} items',
           );
-          return items
-              .map((json) => GearItem.fromJson(json as Map<String, dynamic>))
-              .toList();
+          return items.map((json) => GearItem.fromJson(json)).toList();
         } catch (e) {
           SupabaseConfig.log(
             'tripGearProvider: FAILED to fetch with profiles',
             error: e,
           );
           // Fallback: return active items without profile info (filtered for deleted)
-          return activeItems
-              .map((json) => GearItem.fromJson(json as Map<String, dynamic>))
-              .toList();
+          return activeItems.map((json) => GearItem.fromJson(json)).toList();
         }
       });
 });
@@ -251,9 +247,7 @@ class GearService {
           .eq('trip_id', tripId)
           .eq('is_deleted', false);
 
-      final items = (data as List)
-          .map((json) => GearItem.fromJson(json as Map<String, dynamic>))
-          .toList();
+      final items = (data).map((json) => GearItem.fromJson(json)).toList();
 
       SupabaseConfig.log('getStats: ${items.length} total items');
       return GearStats(

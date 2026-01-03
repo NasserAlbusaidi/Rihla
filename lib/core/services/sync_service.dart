@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/trip/models/trip_model.dart';
 import '../../features/ledger/models/expense_model.dart';
+import '../../features/ledger/models/settlement_model.dart';
 import '../config/supabase_config.dart';
 import 'cache_service.dart';
 
@@ -119,10 +120,10 @@ class SyncService {
           .order('created_at', ascending: false);
 
       debugPrint('Downloaded ${data.length} settlements');
-      // final settlements = data
-      //     .map((json) => Settlement.fromJson(json))
-      //     .toList();
-      // TODO: Add CacheService.cacheSettlements
+      final settlements = data
+          .map((json) => Settlement.fromJson(json))
+          .toList();
+      await CacheService.cacheSettlements(tripId, settlements);
     } catch (e) {
       debugPrint('Error downloading settlements: $e');
     }

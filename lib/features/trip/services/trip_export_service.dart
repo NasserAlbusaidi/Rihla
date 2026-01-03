@@ -239,8 +239,8 @@ class TripExportService {
               return pw.TableRow(
                 children: [
                   _tableCell(b.displayName ?? 'Unknown'),
-                  _tableCell('${b.totalPaid.toStringAsFixed(3)}'),
-                  _tableCell('${b.totalOwed.toStringAsFixed(3)}'),
+                  _tableCell(b.totalPaid.toStringAsFixed(3)),
+                  _tableCell(b.totalOwed.toStringAsFixed(3)),
                   _tableCell(
                     '$balancePrefix${b.netBalance.toStringAsFixed(3)}',
                     textColor: balanceColor,
@@ -366,7 +366,7 @@ class TripExportService {
                 children: [
                   _tableCell(DateFormat('MMM d').format(e.createdAt)),
                   _tableCell(e.description ?? e.categoryName ?? 'Expense'),
-                  _tableCell('${e.amount.toStringAsFixed(3)}'),
+                  _tableCell(e.amount.toStringAsFixed(3)),
                   _tableCell(userNames[e.payerParticipantId] ?? 'Unknown'),
                 ],
               );

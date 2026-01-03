@@ -189,7 +189,7 @@ class CommandCenter extends ConsumerWidget {
                     backgroundColor: AppColors.surfaceLight,
                     valueColor: AlwaysStoppedAnimation<Color>(AppColors.mint),
                   ),
-                  error: (_, __) => const CircularProgressIndicator(
+                  error: (error, stack) => const CircularProgressIndicator(
                     value: 0,
                     strokeWidth: 10,
                     backgroundColor: AppColors.surfaceLight,
@@ -260,7 +260,7 @@ class CommandCenter extends ConsumerWidget {
                     );
                   },
                   loading: () => const Text('Loading...'),
-                  error: (_, __) => const Text('Error loading status'),
+                  error: (error, stack) => const Text('Error loading status'),
                 ),
               ],
             ),
@@ -452,7 +452,7 @@ class CommandCenter extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
     );
   }
 

@@ -54,7 +54,7 @@ class ShadowService {
 
       return Participant.fromJson(data);
     } catch (e) {
-      print('Error creating shadow: $e');
+      SupabaseConfig.log('Error creating shadow', error: e);
       return null;
     }
   }
@@ -71,7 +71,7 @@ class ShadowService {
       );
       return true;
     } catch (e) {
-      print('Error merging shadow: $e');
+      SupabaseConfig.log('Error merging shadow', error: e);
       return false;
     }
   }
@@ -85,7 +85,7 @@ class ShadowService {
       );
       return true;
     } catch (e) {
-      print('Error vanishing shadow: $e');
+      SupabaseConfig.log('Error vanishing shadow', error: e);
       return false;
     }
   }
@@ -103,7 +103,7 @@ class ShadowService {
           .eq('is_shadow', true);
       return true;
     } catch (e) {
-      print('Error updating shadow name: $e');
+      SupabaseConfig.log('Error updating shadow name', error: e);
       return false;
     }
   }
@@ -120,7 +120,7 @@ class ShadowService {
 
       return data.map((json) => Participant.fromJson(json)).toList();
     } catch (e) {
-      print('Error getting mergeable shadows: $e');
+      SupabaseConfig.log('Error getting mergeable shadows', error: e);
       return [];
     }
   }
@@ -136,7 +136,7 @@ class ShadowService {
 
       return data.map((json) => Participant.fromJson(json)).toList();
     } catch (e) {
-      print('Error getting new participants: $e');
+      SupabaseConfig.log('Error getting new participants', error: e);
       return [];
     }
   }

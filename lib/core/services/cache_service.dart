@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../features/trip/models/trip_model.dart';
 import '../../features/ledger/models/expense_model.dart';
+import '../../features/ledger/models/settlement_model.dart';
 import 'local_database.dart';
 
 /// Cache service for offline data management
@@ -112,6 +113,59 @@ class CacheService {
         ),
         subGroupId: map['sub_group_id'] as String?,
         createdAt: DateTime.parse(map['created_at'] as String),
+        isDeleted: (map['is_deleted'] as int?) == 1,
+        deletedAt: map['deleted_at'] != null
+            ? DateTime.parse(map['deleted_at'] as String)
+            : null,
+      );
+    }).toList();
+  }
+
+  /// Cache settlements for a trip
+  static Future<void> cacheSettlements(
+    String tripId,
+    List<Settlement> settlements,
+  ) async {
+    final db = await LocalDatabase.database;
+    final batch = db.batch();
+
+    for (final s in settlements) {
+      batch.insert('settlements', {
+        'id': s.id,
+        'trip_id': s.tripId,
+        'payer_participant_id': s.payerParticipantId,
+        'recipient_participant_id': s.recipientParticipantId,
+        'amount': s.amount.toString(),
+        'note': s.note,
+        'created_at': s.settledAt.toIso8601String(),
+        'synced_at': DateTime.now().toIso8601String(),
+        'is_deleted': s.isDeleted ? 1 : 0,
+        'deleted_at': s.deletedAt?.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  /// Get cached settlements for a trip
+  static Future<List<Settlement>> getCachedSettlements(String tripId) async {
+    final db = await LocalDatabase.database;
+    final maps = await db.query(
+      'settlements',
+      where: 'trip_id = ? AND is_deleted = 0',
+      whereArgs: [tripId],
+      orderBy: 'created_at DESC',
+    );
+
+    return maps.map((map) {
+      return Settlement(
+        id: map['id'] as String,
+        tripId: map['trip_id'] as String,
+        payerParticipantId: map['payer_participant_id'] as String?,
+        recipientParticipantId: map['recipient_participant_id'] as String?,
+        amount: double.parse(map['amount'] as String),
+        note: map['note'] as String?,
+        settledAt: DateTime.parse(map['created_at'] as String),
         isDeleted: (map['is_deleted'] as int?) == 1,
         deletedAt: map['deleted_at'] != null
             ? DateTime.parse(map['deleted_at'] as String)

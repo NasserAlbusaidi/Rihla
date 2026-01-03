@@ -41,17 +41,13 @@ final tripDocumentsProvider = StreamProvider.family<List<Document>, String>((
               .eq('trip_id', tripId)
               .order('created_at', ascending: false);
 
-          return (docs as List)
-              .map((json) => Document.fromJson(json as Map<String, dynamic>))
-              .toList();
+          return (docs).map((json) => Document.fromJson(json)).toList();
         } catch (e) {
           SupabaseConfig.log(
             'tripDocumentsProvider: FAILED to fetch',
             error: e,
           );
-          return data
-              .map((json) => Document.fromJson(json as Map<String, dynamic>))
-              .toList();
+          return data.map((json) => Document.fromJson(json)).toList();
         }
       });
 });
@@ -65,6 +61,9 @@ final documentServiceProvider = Provider<DocumentService>((ref) {
 class DocumentService {
   final Ref _ref;
   static const String _bucketName = 'trip-documents';
+
+  // Cache for signed URLs: {fileUrl: (signedUrl, expiresAt)}
+  final Map<String, (String, DateTime)> _signedUrlCache = {};
 
   DocumentService(this._ref);
 
@@ -210,17 +209,40 @@ class DocumentService {
     }
   }
 
-  /// Get signed URL for private file access
+  /// Get signed URL for private file access with caching
   Future<String?> getSignedUrl(String fileUrl) async {
+    // Check cache first (with 5-minute buffer)
+    if (_signedUrlCache.containsKey(fileUrl)) {
+      final (signedUrl, expiresAt) = _signedUrlCache[fileUrl]!;
+      if (DateTime.now().isBefore(
+        expiresAt.subtract(const Duration(minutes: 5)),
+      )) {
+        SupabaseConfig.log('getSignedUrl: Using cached URL');
+        return signedUrl;
+      }
+    }
+
     try {
       final uri = Uri.parse(fileUrl);
       final pathSegments = uri.pathSegments;
       final bucketIndex = pathSegments.indexOf(_bucketName);
+
       if (bucketIndex >= 0 && bucketIndex < pathSegments.length - 1) {
         final storagePath = pathSegments.sublist(bucketIndex + 1).join('/');
+        SupabaseConfig.log(
+          'getSignedUrl: Fetching fresh signed URL for $storagePath',
+        );
+
         final signedUrl = await _client.storage
             .from(_bucketName)
             .createSignedUrl(storagePath, 3600); // 1 hour expiry
+
+        // Cache it
+        _signedUrlCache[fileUrl] = (
+          signedUrl,
+          DateTime.now().add(const Duration(seconds: 3600)),
+        );
+
         return signedUrl;
       }
       return fileUrl; // Return original if can't parse

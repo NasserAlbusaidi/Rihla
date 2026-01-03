@@ -26,12 +26,7 @@ final tripCategoriesProvider =
             SupabaseConfig.log(
               'tripCategoriesProvider: Got ${data.length} categories',
             );
-            return data
-                .map(
-                  (json) =>
-                      ExpenseCategory.fromJson(json as Map<String, dynamic>),
-                )
-                .toList();
+            return data.map((json) => ExpenseCategory.fromJson(json)).toList();
           });
     });
 

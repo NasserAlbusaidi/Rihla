@@ -456,7 +456,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: AppColors.mint.withOpacity(0.3),
+                                    color: AppColors.mint.withValues(alpha: 0.3),
                                     blurRadius: 12,
                                     offset: const Offset(0, 4),
                                   ),
@@ -654,7 +654,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.rose.withOpacity(0.1),
+                              color: AppColors.rose.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
@@ -843,7 +843,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       height: 36,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.mint.withOpacity(0.2)
+                            ? AppColors.mint.withValues(alpha: 0.2)
                             : AppColors.surface,
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -961,7 +961,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           decoration: BoxDecoration(
             color: AppColors.surfaceLight,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.textMuted.withOpacity(0.3)),
+            border: Border.all(color: AppColors.textMuted.withValues(alpha: 0.3)),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -1019,7 +1019,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       margin: const EdgeInsets.only(top: 24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.rose.withOpacity(0.1),
+        color: AppColors.rose.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -1063,7 +1063,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           (isLastStep
                                   ? AppColors.primary
                                   : AppColors.textPrimary)
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

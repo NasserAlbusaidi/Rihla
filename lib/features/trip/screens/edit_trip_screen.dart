@@ -51,14 +51,6 @@ class _EditTripScreenState extends ConsumerState<EditTripScreen> {
     super.dispose();
   }
 
-  IconData _getIconData(String iconName) {
-    return _tripIcons.firstWhere(
-          (i) => i['name'] == iconName,
-          orElse: () => _tripIcons.first,
-        )['icon']
-        as IconData;
-  }
-
   Future<void> _saveTrip() async {
     if (_nameController.text.trim().isEmpty) return;
 
