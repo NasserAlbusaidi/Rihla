@@ -260,7 +260,7 @@ class CommandCenter extends ConsumerWidget {
                     );
                   },
                   loading: () => const Text('Loading...'),
-                  error: (error, stack) => const Text('Error loading status'),
+                  error: (_, __) => const Text('Error loading status'),
                 ),
               ],
             ),
@@ -452,7 +452,7 @@ class CommandCenter extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (error, stack) => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 

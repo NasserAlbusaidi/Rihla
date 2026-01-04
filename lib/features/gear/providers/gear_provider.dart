@@ -247,7 +247,7 @@ class GearService {
           .eq('trip_id', tripId)
           .eq('is_deleted', false);
 
-      final items = (data).map((json) => GearItem.fromJson(json)).toList();
+      final items = data.map((json) => GearItem.fromJson(json)).toList();
 
       SupabaseConfig.log('getStats: ${items.length} total items');
       return GearStats(

@@ -330,9 +330,10 @@ class BalanceCalculator {
           // Sub-Group: only members of the specified sub-group
           if (expense.subGroupId != null &&
               subGroupMembers.containsKey(expense.subGroupId)) {
-            splitRecipients = subGroupMembers[expense.subGroupId]!;
-            // Ensure payer is included (they might not be in the sub-group data)
-            splitRecipients.add(payerId);
+            splitRecipients = Set.from(subGroupMembers[expense.subGroupId]!);
+            // Note: Payer is NOT forced to be included.
+            // If they paid for a group they are not in (e.g. parents treating kids),
+            // they shouldn't bear a cost share.
           } else {
             // Fallback to global if sub-group not found
             splitRecipients = participants.map((p) => p.id).toSet();
@@ -344,8 +345,7 @@ class BalanceCalculator {
           if (expense.customSplitParticipants != null &&
               expense.customSplitParticipants!.isNotEmpty) {
             splitRecipients = expense.customSplitParticipants!.toSet();
-            // Ensure payer is always included
-            splitRecipients.add(payerId);
+            // Note: Payer is NOT forced to be included.
           } else {
             // Fallback to global if no participants specified
             splitRecipients = participants.map((p) => p.id).toSet();

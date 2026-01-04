@@ -34,11 +34,11 @@ A Flutter mobile app for group trip planning with expense splitting, gear tracki
 
 1. Go to your Supabase project's **SQL Editor**.
 2. Open the `supabase/migrations` folder in this repository.
-3. **Important:** You must run the migration files **in order** (from `001` to `020` and any future ones).
+3. **Important:** You must run the migration files **in order** (from `001` to `023` and any future ones).
    - `001_initial_schema.sql`
    - `002_redesign_schema.sql`
    - ...
-   - `020_fix_expense_rls.sql`
+   - `023_fix_critical_expense_security.sql`
 
    Copy the content of each file and run it in the SQL Editor.
 
