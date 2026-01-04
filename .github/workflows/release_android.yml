@@ -1,0 +1,54 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers only when you push a tag like v1.0.1
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17' # Matches your build.gradle (Java 17)
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.1' # Matches your pubspec.yaml environment
+          channel: 'stable'
+
+      - name: 🔐 Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: 📝 Create key.properties
+        run: |
+          echo "${{ secrets.KEY_PROPERTIES }}" > android/key.properties
+
+      - name: ⚙️ Create config.json
+        run: |
+          echo "${{ secrets.CONFIG_JSON }}" > config.json
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: 🏗️ Build App Bundle (Obfuscated)
+        run: |
+          flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json
+
+      - name: 🚀 Upload to Play Store (Closed Alpha)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+          packageName: com.safar.safar
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: alpha # 'alpha' usually maps to Closed Testing
+          status: completed
