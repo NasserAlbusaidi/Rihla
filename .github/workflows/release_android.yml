@@ -35,7 +35,9 @@ jobs:
 
       - name: ⚙️ Create config.json
         run: |
-          echo "${{ secrets.CONFIG_JSON }}" > config.json
+          cat << 'EOF' > config.json
+          ${{ secrets.CONFIG_JSON }}
+          EOF
 
       - name: 📦 Install Dependencies
         run: flutter pub get
