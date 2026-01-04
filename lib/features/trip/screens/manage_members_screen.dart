@@ -398,66 +398,9 @@ class _ManageMembersScreenState extends ConsumerState<ManageMembersScreen> {
   }
 
   void _showCreateShadowDialog(BuildContext context) {
-    final controller = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(Iconsax.ghost, color: AppColors.warning),
-            const SizedBox(width: 12),
-            const Text('Create Shadow'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Create a placeholder for someone who hasn\'t joined yet. You can assign expenses and car seats to them.',
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Dad, Ahmed',
-                prefixIcon: Icon(Iconsax.user),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              textCapitalization: TextCapitalization.words,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (controller.text.trim().isEmpty) return;
-              Navigator.pop(context);
-
-              final service = ref.read(shadowServiceProvider);
-              await service.createShadow(
-                tripId: widget.trip.id,
-                displayName: controller.text.trim(),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.warning,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Create Shadow'),
-          ),
-        ],
-      ),
+      builder: (context) => _CreateShadowDialog(tripId: widget.trip.id),
     );
   }
 
@@ -572,6 +515,85 @@ class _ManageMembersScreenState extends ConsumerState<ManageMembersScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CreateShadowDialog extends ConsumerStatefulWidget {
+  final String tripId;
+
+  const _CreateShadowDialog({required this.tripId});
+
+  @override
+  ConsumerState<_CreateShadowDialog> createState() => _CreateShadowDialogState();
+}
+
+class _CreateShadowDialogState extends ConsumerState<_CreateShadowDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Icon(Iconsax.ghost, color: AppColors.warning),
+          const SizedBox(width: 12),
+          const Text('Create Shadow'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Create a placeholder for someone who hasn\'t joined yet. You can assign expenses and car seats to them.',
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _controller,
+            decoration: InputDecoration(
+              labelText: 'Name',
+              hintText: 'e.g. Dad, Ahmed',
+              prefixIcon: Icon(Iconsax.user),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            textCapitalization: TextCapitalization.words,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            if (_controller.text.trim().isEmpty) return;
+            Navigator.pop(context);
+
+            final service = ref.read(shadowServiceProvider);
+            await service.createShadow(
+              tripId: widget.tripId,
+              displayName: _controller.text.trim(),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.warning,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text('Create Shadow'),
+        ),
+      ],
     );
   }
 }

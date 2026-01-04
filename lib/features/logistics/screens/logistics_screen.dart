@@ -268,7 +268,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         );
       },
       loading: () => const SizedBox(height: 100),
-      error: (error, stack) => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 

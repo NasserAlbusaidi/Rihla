@@ -316,48 +316,15 @@ class TripService {
   /// Delete a trip (leader only)
   Future<bool> deleteTrip(String tripId) async {
     try {
-      // 1. Get sub_group IDs for this trip
-      final subGroups = await _client
-          .from('sub_groups')
-          .select('id')
-          .eq('trip_id', tripId);
-      final subGroupIds = (subGroups).map((e) => e['id'] as String).toList();
-
-      // 2. Delete sub_group_members
-      if (subGroupIds.isNotEmpty) {
-        await _client
-            .from('sub_group_members')
-            .delete()
-            .inFilter('sub_group_id', subGroupIds);
-      }
-
-      // 2. Delete sub_groups
-      await _client.from('sub_groups').delete().eq('trip_id', tripId);
-
-      // 3. Delete expenses
-      await _client.from('expenses').delete().eq('trip_id', tripId);
-
-      // 4. Delete settlements
-      await _client.from('settlements').delete().eq('trip_id', tripId);
-
-      // 5. Delete gear_items
-      await _client.from('gear_items').delete().eq('trip_id', tripId);
-
-      // 6. Delete documents
-      await _client.from('documents').delete().eq('trip_id', tripId);
-
-      // 7. Delete activity logs
-      await _client.from('trip_activity_logs').delete().eq('trip_id', tripId);
-
-      // 8. Delete participants
-      await _client.from('participants').delete().eq('trip_id', tripId);
-
-      // 9. Finally delete the trip
+      SupabaseConfig.log('deleteTrip: $tripId');
+      // Trip deletion cascades to all related tables (participants, expenses, etc.)
+      // based on ON DELETE CASCADE in schema.
       await _client.from('trips').delete().eq('id', tripId);
 
+      SupabaseConfig.log('deleteTrip: SUCCESS');
       return true;
     } catch (e) {
-      debugPrint('Delete trip failed: $e');
+      SupabaseConfig.log('deleteTrip: FAILED', error: e);
       return false;
     }
   }

@@ -62,10 +62,12 @@ class AuthService {
         return false;
       }
     } on AuthException catch (e) {
+      SupabaseConfig.log('SignUp Error', error: e);
       _ref.read(authErrorProvider.notifier).state = e.message;
       _ref.read(authLoadingProvider.notifier).state = false;
       return false;
     } catch (e) {
+      SupabaseConfig.log('SignUp Unexpected Error', error: e);
       _ref.read(authErrorProvider.notifier).state =
           'An unexpected error occurred';
       _ref.read(authLoadingProvider.notifier).state = false;
@@ -87,10 +89,12 @@ class AuthService {
       _ref.read(authLoadingProvider.notifier).state = false;
       return response.session != null;
     } on AuthException catch (e) {
+      SupabaseConfig.log('SignIn Error', error: e);
       _ref.read(authErrorProvider.notifier).state = e.message;
       _ref.read(authLoadingProvider.notifier).state = false;
       return false;
     } catch (e) {
+      SupabaseConfig.log('SignIn Unexpected Error', error: e);
       _ref.read(authErrorProvider.notifier).state = 'Invalid email or password';
       _ref.read(authLoadingProvider.notifier).state = false;
       return false;
