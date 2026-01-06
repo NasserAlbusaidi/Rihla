@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/error_widgets.dart';
 import '../../trip/models/trip_model.dart';
 import '../services/activity_service.dart';
 import '../widgets/timeline_card.dart';
@@ -29,7 +30,9 @@ class ActivityFeedScreen extends ConsumerWidget {
       ),
       body: activityAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => NetworkErrorWidget(
+          onRetry: () => ref.invalidate(tripActivityProvider(trip.id)),
+        ),
         data: (logs) {
           if (logs.isEmpty) {
             return Center(

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/error_widgets.dart';
 import '../../activity/services/activity_service.dart';
 import '../../activity/widgets/timeline_card.dart';
 import '../../logistics/models/sub_group_model.dart';
@@ -216,10 +217,16 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => NetworkErrorWidget(
+            onRetry: () => ref.invalidate(
+              tripLogisticsParticipantsProvider(widget.trip.id),
+            ),
+          ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => NetworkErrorWidget(
+          onRetry: () => ref.invalidate(tripExpensesProvider(widget.trip.id)),
+        ),
       ),
     );
   }

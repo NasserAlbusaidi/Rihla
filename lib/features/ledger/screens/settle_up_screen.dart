@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/supabase_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/error_widgets.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -75,10 +76,16 @@ class SettleUpScreen extends ConsumerWidget {
                   },
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+                  error: (e, _) => NetworkErrorWidget(
+                    onRetry: () => ref.invalidate(
+                      tripLogisticsParticipantsProvider(trip.id),
+                    ),
+                  ),
                 ),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e')),
+                error: (e, _) => NetworkErrorWidget(
+                  onRetry: () => ref.invalidate(tripExpensesProvider(trip.id)),
+                ),
               ),
             ),
           ],

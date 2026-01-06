@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -53,7 +54,10 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
               child: subGroupsAsync.when(
                 data: (groups) => _buildTabContent(groups),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e')),
+                error: (e, _) => NetworkErrorWidget(
+                  onRetry: () =>
+                      ref.invalidate(tripSubGroupsProvider(widget.trip.id)),
+                ),
               ),
             ),
           ],
@@ -684,12 +688,14 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                       },
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
-                      error: (e, _) => Center(child: Text('Error: $e')),
+                      error: (e, _) =>
+                          const InlineErrorWidget(message: 'Unable to load'),
                     );
                   },
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+                  error: (e, _) =>
+                      const InlineErrorWidget(message: 'Unable to load'),
                 ),
               ],
             ),

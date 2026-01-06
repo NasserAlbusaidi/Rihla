@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
@@ -456,7 +457,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: AppColors.mint.withValues(alpha: 0.3),
+                                    color: AppColors.mint.withValues(
+                                      alpha: 0.3,
+                                    ),
                                     blurRadius: 12,
                                     offset: const Offset(0, 4),
                                   ),
@@ -493,7 +496,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         ],
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => const NetworkErrorWidget(),
     );
   }
 
@@ -813,7 +816,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           constraints: const BoxConstraints(maxHeight: 200),
           child: participantsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Error: $e'),
+            error: (e, _) =>
+                const InlineErrorWidget(message: 'Unable to load participants'),
             data: (participants) {
               // Exclude current user from selection (they're auto-included)
               final otherParticipants = participants
@@ -961,7 +965,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           decoration: BoxDecoration(
             color: AppColors.surfaceLight,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.textMuted.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: AppColors.textMuted.withValues(alpha: 0.3),
+            ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(

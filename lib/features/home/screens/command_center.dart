@@ -125,6 +125,15 @@ class CommandCenter extends ConsumerWidget {
                   trip,
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
 
+                const SizedBox(height: 20),
+
+                // Expense Summary Hero - Most Important Feature
+                _buildExpenseSummaryHero(
+                  context,
+                  ref,
+                  trip,
+                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+
                 const SizedBox(height: 24),
 
                 // Module Cards
@@ -266,6 +275,164 @@ class CommandCenter extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Expense Summary Hero - Shows total expenses prominently (core feature)
+  Widget _buildExpenseSummaryHero(
+    BuildContext context,
+    WidgetRef ref,
+    Trip trip,
+  ) {
+    final expensesAsync = ref.watch(tripExpensesProvider(trip.id));
+    final balancesAsync = ref.watch(tripBalancesProvider(trip.id));
+    final currentParticipant = ref.watch(currentParticipantProvider(trip.id));
+
+    return GestureDetector(
+      onTap: () => _openLedger(context, trip),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary,
+              AppColors.primary.withValues(alpha: 0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: expensesAsync.when(
+          data: (expenses) {
+            // Calculate total expenses
+            Decimal totalExpenses = Decimal.zero;
+            for (final e in expenses) {
+              totalExpenses = totalExpenses + e.amount;
+            }
+
+            // Get user balance
+            final userBalance = balancesAsync.maybeWhen(
+              data: (balances) => balances.cast<UserBalance?>().firstWhere(
+                (b) => b?.participantId == currentParticipant?.id,
+                orElse: () => null,
+              ),
+              orElse: () => null,
+            );
+            final net = userBalance?.netBalance ?? Decimal.zero;
+            final isOwed = net > Decimal.zero;
+            final owes = net < Decimal.zero;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Iconsax.wallet_3,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Trip Expenses',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          'Tap to view ledger',
+                          style: TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Iconsax.arrow_right_3,
+                      color: Colors.white54,
+                      size: 20,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Total Expenses - Big Number
+                Text(
+                  '${totalExpenses.toStringAsFixed(2)} OMR',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // User balance status
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isOwed
+                            ? Iconsax.arrow_down
+                            : (owes ? Iconsax.arrow_up : Iconsax.tick_circle),
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        net == Decimal.zero
+                            ? 'All settled up!'
+                            : isOwed
+                            ? 'You are owed ${net.toStringAsFixed(2)} OMR'
+                            : 'You owe ${net.abs().toStringAsFixed(2)} OMR',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+          error: (_, __) => const Text(
+            'Unable to load expenses',
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
       ),
     );
   }

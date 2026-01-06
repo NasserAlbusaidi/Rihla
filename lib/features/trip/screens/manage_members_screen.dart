@@ -40,7 +40,7 @@ class _ManageMembersScreenState extends ConsumerState<ManageMembersScreen> {
                 data: (participants) =>
                     _buildParticipantsList(context, participants, isLeader),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e')),
+                error: (e, _) => _buildErrorState(context),
               ),
             ),
           ],
@@ -86,6 +86,68 @@ class _ManageMembersScreenState extends ConsumerState<ManageMembersScreen> {
           ),
           const SizedBox(width: 48),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.amber.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Iconsax.wifi_square,
+                size: 40,
+                color: AppColors.amber,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Connection Issue',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Unable to load members. Please check your internet connection and try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                ref.invalidate(
+                  tripLogisticsParticipantsProvider(widget.trip.id),
+                );
+              },
+              icon: const Icon(Iconsax.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -525,7 +587,8 @@ class _CreateShadowDialog extends ConsumerStatefulWidget {
   const _CreateShadowDialog({required this.tripId});
 
   @override
-  ConsumerState<_CreateShadowDialog> createState() => _CreateShadowDialogState();
+  ConsumerState<_CreateShadowDialog> createState() =>
+      _CreateShadowDialogState();
 }
 
 class _CreateShadowDialogState extends ConsumerState<_CreateShadowDialog> {
