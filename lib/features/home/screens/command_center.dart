@@ -36,6 +36,23 @@ class CommandCenter extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: tripsAsync.when(
+        data: (trips) {
+          if (trips.isEmpty) return null;
+          final trip = currentTrip ?? trips.first;
+          return FloatingActionButton(
+            onPressed: () {
+              HapticService.medium();
+              _openAddExpense(context, trip);
+            },
+            backgroundColor: AppColors.primary,
+            shape: const CircleBorder(),
+            child: const Icon(Iconsax.add, color: Colors.white),
+          );
+        },
+        loading: () => null,
+        error: (_, __) => null,
+      ),
       body: SafeArea(
         child: tripsAsync.when(
           data: (trips) => trips.isEmpty
@@ -139,15 +156,7 @@ class CommandCenter extends ConsumerWidget {
                 // Module Cards
                 _buildModuleGrid(context, trip),
 
-                const SizedBox(height: 24),
-
-                // Quick Actions
-                _buildQuickActions(
-                  context,
-                  trip,
-                ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
-
-                const SizedBox(height: 20),
+                const SizedBox(height: 100), // Space for FAB
               ],
             ),
           ),
@@ -161,11 +170,11 @@ class CommandCenter extends ConsumerWidget {
     final daysLeft = trip.daysUntilStart;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: AppColors.cardShadowLarge,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Row(
         children: [
@@ -174,8 +183,8 @@ class CommandCenter extends ConsumerWidget {
             alignment: Alignment.center,
             children: [
               SizedBox(
-                width: 120,
-                height: 120,
+                width: 70,
+                height: 70,
                 child: gearAsync.when(
                   data: (items) {
                     final total = items.length;
@@ -185,7 +194,7 @@ class CommandCenter extends ConsumerWidget {
                     final percent = total > 0 ? claimed / total : 0.0;
                     return CircularProgressIndicator(
                       value: percent,
-                      strokeWidth: 10,
+                      strokeWidth: 8,
                       backgroundColor: AppColors.surfaceLight,
                       valueColor: const AlwaysStoppedAnimation<Color>(
                         AppColors.mint,
@@ -194,13 +203,13 @@ class CommandCenter extends ConsumerWidget {
                     );
                   },
                   loading: () => const CircularProgressIndicator(
-                    strokeWidth: 10,
+                    strokeWidth: 8,
                     backgroundColor: AppColors.surfaceLight,
                     valueColor: AlwaysStoppedAnimation<Color>(AppColors.mint),
                   ),
                   error: (error, stack) => const CircularProgressIndicator(
                     value: 0,
-                    strokeWidth: 10,
+                    strokeWidth: 8,
                     backgroundColor: AppColors.surfaceLight,
                   ),
                 ),
@@ -211,7 +220,7 @@ class CommandCenter extends ConsumerWidget {
                   Text(
                     daysLeft != null && daysLeft > 0 ? '$daysLeft' : '–',
                     style: const TextStyle(
-                      fontSize: 32,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary,
                     ),
@@ -219,17 +228,17 @@ class CommandCenter extends ConsumerWidget {
                   Text(
                     'DAYS',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 8,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textMuted,
-                      letterSpacing: 1,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 16),
           // Preparation Stats
           Expanded(
             child: Column(
@@ -238,12 +247,12 @@ class CommandCenter extends ConsumerWidget {
                 const Text(
                   'Preparation Status',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 gearAsync.when(
                   data: (items) {
                     final total = items.length;
@@ -259,7 +268,7 @@ class CommandCenter extends ConsumerWidget {
                           'Gear Claimed',
                           AppColors.mint,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         _prepStatusRow(
                           '$packed/$total',
                           'Items Packed',
@@ -292,24 +301,12 @@ class CommandCenter extends ConsumerWidget {
     return GestureDetector(
       onTap: () => _openLedger(context, trip),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary,
-              AppColors.primary.withValues(alpha: 0.8),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          border: Border.all(color: AppColors.surfaceLight, width: 1),
+          boxShadow: AppColors.cardShadow,
         ),
         child: expensesAsync.when(
           data: (expenses) {
@@ -337,100 +334,70 @@ class CommandCenter extends ConsumerWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: AppColors.primaryLight.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Iconsax.wallet_3,
-                        color: Colors.white,
-                        size: 24,
+                        color: AppColors.primary,
+                        size: 20,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Trip Expenses',
+                        const Text(
+                          'Total Expenses',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: AppColors.textSecondary,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Text(
-                          'Tap to view ledger',
-                          style: TextStyle(color: Colors.white54, fontSize: 11),
-                        ),
+                        if (net != Decimal.zero)
+                          Text(
+                            isOwed
+                                ? 'You are owed ${net.toStringAsFixed(2)}'
+                                : 'You owe ${net.abs().toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: isOwed ? AppColors.emerald : AppColors.rose,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                       ],
                     ),
                     const Spacer(),
                     const Icon(
                       Iconsax.arrow_right_3,
-                      color: Colors.white54,
-                      size: 20,
+                      color: AppColors.textMuted,
+                      size: 18,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 // Total Expenses - Big Number
                 Text(
                   '${totalExpenses.toStringAsFixed(2)} OMR',
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
+                    color: AppColors.primary,
+                    fontSize: 28,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // User balance status
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isOwed
-                            ? Iconsax.arrow_down
-                            : (owes ? Iconsax.arrow_up : Iconsax.tick_circle),
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        net == Decimal.zero
-                            ? 'All settled up!'
-                            : isOwed
-                            ? 'You are owed ${net.toStringAsFixed(2)} OMR'
-                            : 'You owe ${net.abs().toStringAsFixed(2)} OMR',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ],
             );
           },
           loading: () => const Center(
-            child: CircularProgressIndicator(color: Colors.white),
+            child: CircularProgressIndicator(),
           ),
           error: (_, __) => const Text(
             'Unable to load expenses',
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(color: AppColors.textMuted),
           ),
         ),
       ),
@@ -941,9 +908,9 @@ class CommandCenter extends ConsumerWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      childAspectRatio: 1,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.5,
       children: [
         // Vault (Docs module)
         if (trip.modules.docs)
@@ -1032,69 +999,6 @@ class CommandCenter extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context, Trip trip) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            // Add Expense - Primary FAB-like in thumb zone
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  HapticService.medium();
-                  _openAddExpense(context, trip);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Iconsax.add_circle,
-                        color: AppColors.textOnPrimary,
-                        size: 24,
-                      ),
-                      SizedBox(width: 10),
-                      Text(
-                        'QUICK LOG',
-                        style: TextStyle(
-                          color: AppColors.textOnPrimary,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   void _openLedger(BuildContext context, Trip trip) {
     Navigator.of(
