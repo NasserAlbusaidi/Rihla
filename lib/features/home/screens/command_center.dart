@@ -363,7 +363,9 @@ class CommandCenter extends ConsumerWidget {
                                 ? 'You are owed ${net.toStringAsFixed(2)}'
                                 : 'You owe ${net.abs().toStringAsFixed(2)}',
                             style: TextStyle(
-                              color: isOwed ? AppColors.emerald : AppColors.rose,
+                              color: isOwed
+                                  ? AppColors.emerald
+                                  : AppColors.rose,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
@@ -392,9 +394,7 @@ class CommandCenter extends ConsumerWidget {
               ],
             );
           },
-          loading: () => const Center(
-            child: CircularProgressIndicator(),
-          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, __) => const Text(
             'Unable to load expenses',
             style: TextStyle(color: AppColors.textMuted),
@@ -999,7 +999,6 @@ class CommandCenter extends ConsumerWidget {
     );
   }
 
-
   void _openLedger(BuildContext context, Trip trip) {
     Navigator.of(
       context,
@@ -1193,53 +1192,63 @@ class _ModuleTile extends StatelessWidget {
     Widget card = GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: color.withValues(alpha: isPulsing ? 0.8 : 0.15),
-            width: isPulsing ? 2.5 : 1.5,
+            width: isPulsing ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: color.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const Spacer(),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isPulsing ? color : AppColors.textMuted,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    maxLines: 1,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: isPulsing ? color : AppColors.textMuted,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            if (isPulsing) Icon(Iconsax.info_circle, color: color, size: 16),
           ],
         ),
       ),
