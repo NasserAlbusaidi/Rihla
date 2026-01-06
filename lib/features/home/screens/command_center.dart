@@ -326,7 +326,6 @@ class CommandCenter extends ConsumerWidget {
             );
             final net = userBalance?.netBalance ?? Decimal.zero;
             final isOwed = net > Decimal.zero;
-            final owes = net < Decimal.zero;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
