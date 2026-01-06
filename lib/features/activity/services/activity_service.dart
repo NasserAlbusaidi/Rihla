@@ -50,6 +50,52 @@ final tripActivityProvider = StreamProvider.family<List<ActivityLog>, String>((
       });
 });
 
+/// Stream of transaction-only activity logs for a trip (expenses & settlements)
+final tripTransactionActivityProvider =
+    StreamProvider.family<List<ActivityLog>, String>((ref, tripId) {
+      return SupabaseConfig.client
+          .from('trip_activity_logs')
+          .stream(primaryKey: ['id'])
+          .eq('trip_id', tripId)
+          .order('created_at', ascending: false)
+          .limit(50)
+          .asyncMap((data) async {
+            // Filter to only MONEY category (expenses & settlements)
+            final filteredData = data
+                .where((e) => e['category'] == 'MONEY')
+                .toList();
+
+            if (filteredData.isEmpty) return <ActivityLog>[];
+
+            final actorIds = filteredData
+                .map((e) => e['actor_id'] as String?)
+                .where((id) => id != null)
+                .toSet()
+                .toList();
+
+            if (actorIds.isEmpty) {
+              return filteredData
+                  .map((json) => ActivityLog.fromJson(json))
+                  .toList();
+            }
+
+            final profiles = await SupabaseConfig.client
+                .from('profiles')
+                .select('id, display_name, avatar_url')
+                .inFilter('id', actorIds);
+
+            final profileMap = {for (var p in (profiles as List)) p['id']: p};
+
+            return filteredData.map((json) {
+              final actorId = json['actor_id'];
+              if (actorId != null && profileMap.containsKey(actorId)) {
+                json['actor'] = profileMap[actorId];
+              }
+              return ActivityLog.fromJson(json);
+            }).toList();
+          });
+    });
+
 class ActivityService {
   SupabaseClient get _client => SupabaseConfig.client;
 

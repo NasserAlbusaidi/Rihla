@@ -286,7 +286,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
   /// Collapsible Recent Activity section showing transaction timeline
   Widget _buildRecentActivity(BuildContext context) {
-    final activityAsync = ref.watch(tripActivityProvider(widget.trip.id));
+    final activityAsync = ref.watch(
+      tripTransactionActivityProvider(widget.trip.id),
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

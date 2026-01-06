@@ -406,10 +406,14 @@ class CommandCenter extends ConsumerWidget {
                         child: CircleAvatar(
                           radius: 14,
                           backgroundColor: AppColors.surfaceLight,
-                          backgroundImage: topMembers[i].avatarUrl != null
+                          backgroundImage:
+                              topMembers[i].avatarUrl != null &&
+                                  topMembers[i].avatarUrl!.startsWith('http')
                               ? NetworkImage(topMembers[i].avatarUrl!)
                               : null,
-                          child: topMembers[i].avatarUrl == null
+                          child:
+                              topMembers[i].avatarUrl == null ||
+                                  !topMembers[i].avatarUrl!.startsWith('http')
                               ? Text(
                                   topMembers[i].displayName?[0].toUpperCase() ??
                                       '?',
@@ -774,34 +778,37 @@ class CommandCenter extends ConsumerWidget {
       crossAxisSpacing: 16,
       childAspectRatio: 1,
       children: [
-        // Vault
-        _ModuleTile(
-          icon: Iconsax.document_text,
-          title: 'Vault',
-          subtitle: 'Docs & Tickets',
-          color: AppColors.indigo,
-          onTap: () => _openVault(context, trip),
-        ),
+        // Vault (Docs module)
+        if (trip.modules.docs)
+          _ModuleTile(
+            icon: Iconsax.document_text,
+            title: 'Vault',
+            subtitle: 'Docs & Tickets',
+            color: AppColors.indigo,
+            onTap: () => _openVault(context, trip),
+          ),
 
         // Gear
-        Consumer(
-          builder: (context, ref, child) {
-            final gearAsync = ref.watch(tripGearProvider(trip.id));
-            final hasMissing = gearAsync.maybeWhen(
-              data: (items) => items.any((i) => i.assignedTo == null),
-              orElse: () => false,
-            );
-            return _ModuleTile(
-              icon: Iconsax.bag_2,
-              title: 'Gear',
-              subtitle: hasMissing ? 'Items Missing' : 'All Ready',
-              color: hasMissing ? AppColors.amber : AppColors.accentSecondary,
-              isPulsing: hasMissing,
-              onTap: () => _openGear(context, trip),
-            );
-          },
-        ),
+        if (trip.modules.gear)
+          Consumer(
+            builder: (context, ref, child) {
+              final gearAsync = ref.watch(tripGearProvider(trip.id));
+              final hasMissing = gearAsync.maybeWhen(
+                data: (items) => items.any((i) => i.assignedTo == null),
+                orElse: () => false,
+              );
+              return _ModuleTile(
+                icon: Iconsax.bag_2,
+                title: 'Gear',
+                subtitle: hasMissing ? 'Items Missing' : 'All Ready',
+                color: hasMissing ? AppColors.amber : AppColors.accentSecondary,
+                isPulsing: hasMissing,
+                onTap: () => _openGear(context, trip),
+              );
+            },
+          ),
 
+        // Ledger - always shown (expenses are core functionality)
         Consumer(
           builder: (context, ref, child) {
             final balancesAsync = ref.watch(tripBalancesProvider(trip.id));
@@ -846,13 +853,14 @@ class CommandCenter extends ConsumerWidget {
         ),
 
         // Logistics
-        _ModuleTile(
-          icon: Iconsax.car,
-          title: 'Logistics',
-          subtitle: 'Convoy & Rooms',
-          color: AppColors.sky,
-          onTap: () => _openLogistics(context, trip),
-        ),
+        if (trip.modules.logistics)
+          _ModuleTile(
+            icon: Iconsax.car,
+            title: 'Logistics',
+            subtitle: 'Convoy & Rooms',
+            color: AppColors.sky,
+            onTap: () => _openLogistics(context, trip),
+          ),
       ],
     );
   }

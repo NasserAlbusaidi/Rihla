@@ -4,10 +4,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/config/supabase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
+import '../models/expense_model.dart';
+import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
 import '../services/settlement_service.dart';
 
@@ -64,6 +67,10 @@ class SettleUpScreen extends ConsumerWidget {
                       ref,
                       optimalSettlements,
                       userNames,
+                      balances,
+                      expenses,
+                      settlementsRec,
+                      participants,
                     );
                   },
                   loading: () =>
@@ -113,12 +120,48 @@ class SettleUpScreen extends ConsumerWidget {
   Widget _buildContent(
     BuildContext context,
     WidgetRef ref,
-    List<Map<String, dynamic>> settlements,
+    List<Map<String, dynamic>> pendingSettlements,
     Map<String, String> userNames,
+    List<UserBalance> balances,
+    List<Expense> expenses,
+    List<Settlement> recordedSettlements,
+    List<Participant> participants,
   ) {
-    if (settlements.isEmpty) {
+    if (pendingSettlements.isEmpty && recordedSettlements.isEmpty) {
       return _buildAllSettled(context);
     }
+
+    // Get current user's balance
+    final currentUserId = SupabaseConfig.client.auth.currentUser?.id;
+    final myBalance = balances.firstWhere(
+      (b) {
+        return participants.any(
+          (p) => p.id == b.participantId && p.userId == currentUserId,
+        );
+      },
+      orElse: () => balances.isNotEmpty
+          ? balances.first
+          : UserBalance(
+              participantId: '',
+              totalPaid: Decimal.zero,
+              totalOwed: Decimal.zero,
+              netBalance: Decimal.zero,
+            ),
+    );
+
+    // Calculate total expenses and fair share
+    Decimal totalExpenses = Decimal.zero;
+    for (final e in expenses) {
+      totalExpenses = totalExpenses + e.amount;
+    }
+    final fairShare = balances.isNotEmpty
+        ? (totalExpenses / Decimal.fromInt(balances.length)).toDecimal()
+        : Decimal.zero;
+
+    // Build participant name map for settlements display
+    final participantNames = <String, String>{
+      for (var p in participants) p.id: p.displayName ?? 'Unknown',
+    };
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -127,9 +170,34 @@ class SettleUpScreen extends ConsumerWidget {
         children: [
           _buildSummaryCard(
             context,
-            settlements,
+            pendingSettlements,
           ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+          const SizedBox(height: 16),
+
+          // Balance Breakdown Card
+          _buildBalanceBreakdown(
+            context,
+            totalExpenses,
+            fairShare,
+            myBalance,
+          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
+          const SizedBox(height: 16),
+
+          // Recorded Settlements Section (always visible)
+          _buildRecordedSettlements(
+            context,
+            recordedSettlements,
+            participantNames,
+          ).animate().fadeIn(delay: 175.ms).slideY(begin: 0.1),
+          const SizedBox(height: 16),
+
+          // Recent Expenses Section
+          _buildRecentExpenses(
+            context,
+            expenses,
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
           const SizedBox(height: 24),
+
           const Text(
             'Payments Needed',
             style: TextStyle(
@@ -137,23 +205,416 @@ class SettleUpScreen extends ConsumerWidget {
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
-          ).animate().fadeIn(delay: 200.ms),
+          ).animate().fadeIn(delay: 250.ms),
           const SizedBox(height: 16),
-          ...settlements.asMap().entries.map((entry) {
+          ...pendingSettlements.asMap().entries.map((entry) {
             final index = entry.key;
             final settlement = entry.value;
             return _buildSettlementCard(context, ref, settlement)
                 .animate()
-                .fadeIn(delay: Duration(milliseconds: 250 + (index * 100)))
+                .fadeIn(
+                  delay: Duration(milliseconds: 300 + (index.toInt() * 100)),
+                )
                 .slideX(begin: 0.1);
           }),
-          const SizedBox(height: 24),
-          _buildPaymentMethods(
-            context,
-          ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
         ],
       ),
     );
+  }
+
+  /// Balance breakdown showing Total Paid, Fair Share, Net Balance
+  Widget _buildBalanceBreakdown(
+    BuildContext context,
+    Decimal totalExpenses,
+    Decimal fairShare,
+    UserBalance myBalance,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Iconsax.chart_2, size: 18, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text(
+                'Your Balance Breakdown',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatItem(
+                  'Total Expenses',
+                  '${totalExpenses.toStringAsFixed(2)} OMR',
+                  Iconsax.receipt_2,
+                  AppColors.textSecondary,
+                ),
+              ),
+              Container(width: 1, height: 40, color: AppColors.border),
+              Expanded(
+                child: _buildStatItem(
+                  'Fair Share',
+                  '${fairShare.toStringAsFixed(2)} OMR',
+                  Iconsax.people,
+                  AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatItem(
+                  'You Paid',
+                  '${myBalance.totalPaid.toStringAsFixed(2)} OMR',
+                  Iconsax.wallet_money,
+                  AppColors.success,
+                ),
+              ),
+              Container(width: 1, height: 40, color: AppColors.border),
+              Expanded(
+                child: _buildStatItem(
+                  'Net Balance',
+                  '${myBalance.netBalance.abs().toStringAsFixed(2)} OMR',
+                  myBalance.netBalance >= Decimal.zero
+                      ? Iconsax.arrow_down
+                      : Iconsax.arrow_up,
+                  myBalance.netBalance >= Decimal.zero
+                      ? AppColors.success
+                      : AppColors.error,
+                  subtitle: myBalance.netBalance >= Decimal.zero
+                      ? 'You are owed'
+                      : 'You owe',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color, {
+    String? subtitle,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          if (subtitle != null)
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 10,
+                color: color.withValues(alpha: 0.8),
+              ),
+            ),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Recent expenses collapsible section
+  Widget _buildRecentExpenses(BuildContext context, List<Expense> expenses) {
+    final recentExpenses = expenses.take(5).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          leading: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Iconsax.receipt_1,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          title: const Text(
+            'Recent Expenses',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          subtitle: Text(
+            '${expenses.length} total expenses',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          children: [
+            if (recentExpenses.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'No expenses yet',
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
+              )
+            else
+              ...recentExpenses.map((expense) => _buildExpenseItem(expense)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpenseItem(Expense expense) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                expense.categoryIcon ?? '💰',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  expense.description ?? 'Expense',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  expense.categoryName ?? 'Expense',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${expense.amount.toStringAsFixed(2)} OMR',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Recorded settlements section showing payments already logged
+  Widget _buildRecordedSettlements(
+    BuildContext context,
+    List<Settlement> settlements,
+    Map<String, String> participantNames,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: settlements.isNotEmpty,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          leading: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Iconsax.tick_circle,
+              size: 18,
+              color: AppColors.success,
+            ),
+          ),
+          title: const Text(
+            'Recorded Payments',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          subtitle: Text(
+            settlements.isEmpty
+                ? 'No payments recorded yet'
+                : '${settlements.length} payment${settlements.length > 1 ? 's' : ''} recorded',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          children: [
+            if (settlements.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'No settlements recorded yet',
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
+              )
+            else
+              ...settlements.map(
+                (s) => _buildRecordedSettlementItem(s, participantNames),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordedSettlementItem(
+    Settlement settlement,
+    Map<String, String> participantNames,
+  ) {
+    final payerName =
+        participantNames[settlement.payerParticipantId] ?? 'Unknown';
+    final recipientName =
+        participantNames[settlement.recipientParticipantId] ?? 'Unknown';
+    final amountStr = settlement.amount.toStringAsFixed(2);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Icon(
+                Iconsax.arrow_swap,
+                size: 14,
+                color: AppColors.success,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$payerName → $recipientName',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  _formatDate(settlement.settledAt),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$amountStr OMR',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.success,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inDays == 0) {
+      return 'Today';
+    } else if (diff.inDays == 1) {
+      return 'Yesterday';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
   }
 
   Widget _buildAllSettled(BuildContext context) {
@@ -430,78 +891,6 @@ class SettleUpScreen extends ConsumerWidget {
             color: color,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentMethods(BuildContext context) {
-    final methods = [
-      {'name': 'STC Pay', 'icon': Iconsax.mobile},
-      {'name': 'Bank Transfer', 'icon': Iconsax.bank},
-      {'name': 'Cash', 'icon': Iconsax.money},
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Iconsax.wallet_1, size: 20, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text(
-                'Payment Methods',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: methods.map((m) {
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      m['icon'] as IconData,
-                      size: 18,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      m['name'] as String,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ],
       ),
     );
   }

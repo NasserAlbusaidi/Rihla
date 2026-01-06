@@ -122,11 +122,13 @@ class TripModules {
   final bool docs;
   final bool gear;
   final bool itinerary;
+  final bool logistics;
 
   const TripModules({
     this.docs = true,
     this.gear = true,
     this.itinerary = false,
+    this.logistics = true,
   });
 
   factory TripModules.fromJson(Map<String, dynamic> json) {
@@ -134,18 +136,30 @@ class TripModules {
       docs: json['docs'] as bool? ?? true,
       gear: json['gear'] as bool? ?? true,
       itinerary: json['itinerary'] as bool? ?? false,
+      logistics: json['logistics'] as bool? ?? true,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'docs': docs, 'gear': gear, 'itinerary': itinerary};
+    return {
+      'docs': docs,
+      'gear': gear,
+      'itinerary': itinerary,
+      'logistics': logistics,
+    };
   }
 
-  TripModules copyWith({bool? docs, bool? gear, bool? itinerary}) {
+  TripModules copyWith({
+    bool? docs,
+    bool? gear,
+    bool? itinerary,
+    bool? logistics,
+  }) {
     return TripModules(
       docs: docs ?? this.docs,
       gear: gear ?? this.gear,
       itinerary: itinerary ?? this.itinerary,
+      logistics: logistics ?? this.logistics,
     );
   }
 }

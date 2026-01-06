@@ -114,6 +114,13 @@ lib/
 - [x] **Offline Mode**: Local caching and sync queue using Sqflite.
 - [x] **Activity Log**: Audit trail for trip changes.
 
+
+## Run Command
+
+```bash
+flutter run --dart-define-from-file=config.json
+```
+
 ## 📄 License
 
 MIT License - See LICENSE file for details.

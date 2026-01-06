@@ -369,10 +369,14 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                         CircleAvatar(
                           radius: 10,
                           backgroundColor: AppColors.surfaceLight,
-                          backgroundImage: item.assignedToAvatar != null
+                          backgroundImage:
+                              item.assignedToAvatar != null &&
+                                  item.assignedToAvatar!.startsWith('http')
                               ? NetworkImage(item.assignedToAvatar!)
                               : null,
-                          child: item.assignedToAvatar == null
+                          child:
+                              item.assignedToAvatar == null ||
+                                  !item.assignedToAvatar!.startsWith('http')
                               ? Text(
                                   item.assigneeInitials,
                                   style: const TextStyle(

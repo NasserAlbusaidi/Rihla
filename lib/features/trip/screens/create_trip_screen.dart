@@ -23,6 +23,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
   bool _enableDocs = true;
   bool _enableGear = true;
   bool _enableItinerary = false;
+  bool _enableLogistics = true;
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -42,6 +43,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
         docs: _enableDocs,
         gear: _enableGear,
         itinerary: _enableItinerary,
+        logistics: _enableLogistics,
       ),
       startDate: _startDate,
       endDate: _endDate,
@@ -379,6 +381,14 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
             subtitle: 'Day by day schedule',
             value: _enableItinerary,
             onChanged: (v) => setState(() => _enableItinerary = v),
+          ),
+          const Divider(height: 1),
+          _buildModuleToggle(
+            icon: Iconsax.people,
+            title: 'Logistics',
+            subtitle: 'Members, vehicles, sub-groups',
+            value: _enableLogistics,
+            onChanged: (v) => setState(() => _enableLogistics = v),
           ),
         ],
       ),

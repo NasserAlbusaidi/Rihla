@@ -643,10 +643,14 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                                 leading: CircleAvatar(
                                   radius: 18,
                                   backgroundColor: AppColors.background,
-                                  backgroundImage: p.avatarUrl != null
+                                  backgroundImage:
+                                      p.avatarUrl != null &&
+                                          p.avatarUrl!.startsWith('http')
                                       ? NetworkImage(p.avatarUrl!)
                                       : null,
-                                  child: p.avatarUrl == null
+                                  child:
+                                      p.avatarUrl == null ||
+                                          !p.avatarUrl!.startsWith('http')
                                       ? Text(
                                           p.displayName?[0] ?? 'U',
                                           style: const TextStyle(
