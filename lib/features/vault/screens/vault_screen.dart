@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -397,7 +397,7 @@ class VaultScreen extends ConsumerWidget {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         // Fallback to open_file
-        await OpenFile.open(doc.fileUrl);
+        await OpenFilex.open(doc.fileUrl);
       }
     } catch (e) {
       if (context.mounted) {
