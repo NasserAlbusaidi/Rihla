@@ -44,7 +44,7 @@ jobs:
 
       - name: 🏗️ Build App Bundle (Obfuscated)
         run: |
-          flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json
+          flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation
 
       - name: 🚀 Upload to Play Store (Closed Alpha)
         uses: r0adkll/upload-google-play@v1
