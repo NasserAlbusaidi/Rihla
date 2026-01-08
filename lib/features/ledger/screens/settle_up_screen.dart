@@ -95,30 +95,24 @@ class SettleUpScreen extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: AppColors.cardShadow,
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Iconsax.arrow_left),
+            icon: const Icon(Iconsax.arrow_left, color: AppColors.textPrimary),
             onPressed: () => Navigator.pop(context),
           ),
-          const Expanded(
-            child: Text(
-              'Settle Up',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
+          const SizedBox(width: 8),
+          const Text(
+            'Settle Up',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(width: 48),
         ],
       ),
     );
@@ -134,10 +128,6 @@ class SettleUpScreen extends ConsumerWidget {
     List<Settlement> recordedSettlements,
     List<Participant> participants,
   ) {
-    if (pendingSettlements.isEmpty && recordedSettlements.isEmpty) {
-      return _buildAllSettled(context);
-    }
-
     // Get current user's balance
     final currentUserId = SupabaseConfig.client.auth.currentUser?.id;
     final myBalance = balances.firstWhere(
@@ -156,14 +146,11 @@ class SettleUpScreen extends ConsumerWidget {
             ),
     );
 
-    // Calculate total expenses and fair share
-    Decimal totalExpenses = Decimal.zero;
-    for (final e in expenses) {
-      totalExpenses = totalExpenses + e.amount;
+    // Calculate total pending
+    Decimal totalPending = Decimal.zero;
+    for (final s in pendingSettlements) {
+      totalPending += (s['amount'] as Decimal);
     }
-    final fairShare = balances.isNotEmpty
-        ? (totalExpenses / Decimal.fromInt(balances.length)).toDecimal()
-        : Decimal.zero;
 
     // Build participant name map for settlements display
     final participantNames = <String, String>{
@@ -171,374 +158,286 @@ class SettleUpScreen extends ConsumerWidget {
     };
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSummaryCard(
-            context,
-            pendingSettlements,
-          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
-          const SizedBox(height: 16),
+          // 1. Minimal Summary Section
+          _buildMinimalSummary(totalPending, myBalance)
+              .animate()
+              .fadeIn(delay: 100.ms)
+              .slideY(begin: 0.1),
 
-          // Balance Breakdown Card
-          _buildBalanceBreakdown(
-            context,
-            totalExpenses,
-            fairShare,
-            myBalance,
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
-          const SizedBox(height: 16),
-
-          // Recorded Settlements Section (always visible)
-          _buildRecordedSettlements(
-            context,
-            recordedSettlements,
-            participantNames,
-          ).animate().fadeIn(delay: 175.ms).slideY(begin: 0.1),
-          const SizedBox(height: 16),
-
-          // Recent Expenses Section
-          _buildRecentExpenses(
-            context,
-            expenses,
-          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
           const SizedBox(height: 24),
 
-          const Text(
-            'Payments Needed',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ).animate().fadeIn(delay: 250.ms),
+          // 2. Pending Settlements (Main Actionable Items)
+          if (pendingSettlements.isNotEmpty) ...[
+            const Text(
+              'SUGGESTED SETTLEMENTS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+                letterSpacing: 1.0,
+              ),
+            ).animate().fadeIn(delay: 200.ms),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+              ),
+              child: Column(
+                children: pendingSettlements.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final settlement = entry.value;
+                  final isLast = index == pendingSettlements.length - 1;
+                  return _buildSettlementTile(
+                    context,
+                    ref,
+                    settlement,
+                    showDivider: !isLast
+                  );
+                }).toList(),
+              ),
+            ).animate().fadeIn(delay: 250.ms),
+          ] else if (recordedSettlements.isEmpty) ...[
+             _buildAllSettled(context),
+          ],
+
+          const SizedBox(height: 24),
+
+          // 3. History (Collapsible)
+          if (recordedSettlements.isNotEmpty)
+            _buildRecordedSettlements(
+              context,
+              recordedSettlements,
+              participantNames,
+            ).animate().fadeIn(delay: 300.ms),
+
           const SizedBox(height: 16),
-          ...pendingSettlements.asMap().entries.map((entry) {
-            final index = entry.key;
-            final settlement = entry.value;
-            return _buildSettlementCard(context, ref, settlement)
-                .animate()
-                .fadeIn(
-                  delay: Duration(milliseconds: 300 + (index.toInt() * 100)),
-                )
-                .slideX(begin: 0.1);
-          }),
+
+          // 4. Recent Expenses (Collapsible)
+          if (expenses.isNotEmpty)
+            _buildRecentExpenses(
+              context,
+              expenses,
+            ).animate().fadeIn(delay: 350.ms),
+
+          // Add extra padding at bottom for safe scrolling
+          const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  /// Balance breakdown showing Total Paid, Fair Share, Net Balance
-  Widget _buildBalanceBreakdown(
-    BuildContext context,
-    Decimal totalExpenses,
-    Decimal fairShare,
-    UserBalance myBalance,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
+  Widget _buildMinimalSummary(Decimal totalPending, UserBalance myBalance) {
+    final isPositive = myBalance.netBalance >= Decimal.zero;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Iconsax.chart_2, size: 18, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text(
-                'Your Balance Breakdown',
+              const Text(
+                'Total Pending',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${totalPending.toStringAsFixed(3)} OMR',
+                style: const TextStyle(
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  'Total Expenses',
-                  '${totalExpenses.toStringAsFixed(2)} OMR',
-                  Iconsax.receipt_2,
-                  AppColors.textSecondary,
-                ),
-              ),
-              Container(width: 1, height: 40, color: AppColors.border),
-              Expanded(
-                child: _buildStatItem(
-                  'Fair Share',
-                  '${fairShare.toStringAsFixed(2)} OMR',
-                  Iconsax.people,
-                  AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  'You Paid',
-                  '${myBalance.totalPaid.toStringAsFixed(2)} OMR',
-                  Iconsax.wallet_money,
-                  AppColors.success,
-                ),
-              ),
-              Container(width: 1, height: 40, color: AppColors.border),
-              Expanded(
-                child: _buildStatItem(
-                  'Net Balance',
-                  '${myBalance.netBalance.abs().toStringAsFixed(2)} OMR',
-                  myBalance.netBalance >= Decimal.zero
-                      ? Iconsax.arrow_down
-                      : Iconsax.arrow_up,
-                  myBalance.netBalance >= Decimal.zero
-                      ? AppColors.success
-                      : AppColors.error,
-                  subtitle: myBalance.netBalance >= Decimal.zero
-                      ? 'You are owed'
-                      : 'You owe',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color, {
-    String? subtitle,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          if (subtitle != null)
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 10,
-                color: color.withValues(alpha: 0.8),
-              ),
-            ),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Recent expenses collapsible section
-  Widget _buildRecentExpenses(BuildContext context, List<Expense> expenses) {
-    final recentExpenses = expenses.take(5).toList();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: false,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          leading: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Iconsax.receipt_1,
-              size: 18,
-              color: AppColors.primary,
-            ),
-          ),
-          title: const Text(
-            'Recent Expenses',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          subtitle: Text(
-            '${expenses.length} total expenses',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-          children: [
-            if (recentExpenses.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'No expenses yet',
-                  style: TextStyle(color: AppColors.textMuted),
-                ),
-              )
-            else
-              ...recentExpenses.map((expense) => _buildExpenseItem(expense)),
-          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildExpenseItem(Expense expense) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                expense.categoryIcon ?? '💰',
-                style: const TextStyle(fontSize: 14),
+        Container(
+          width: 1,
+          height: 32,
+          color: AppColors.border,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isPositive ? 'You are owed' : 'You owe',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  expense.description ?? 'Expense',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              const SizedBox(height: 4),
+              Text(
+                '${myBalance.netBalance.abs().toStringAsFixed(3)} OMR',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isPositive ? AppColors.success : AppColors.error,
                 ),
-                Text(
-                  expense.categoryName ?? 'Expense',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Text(
-            '${expense.amount.toStringAsFixed(2)} OMR',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// Recorded settlements section showing payments already logged
+  Widget _buildSettlementTile(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> settlement, {
+    bool showDivider = true,
+  }) {
+    final fromName = settlement['fromUserName'] as String;
+    final toName = settlement['toUserName'] as String;
+    final amount = (settlement['amount'] as Decimal);
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // Avatar Circle
+              _buildSmallAvatar(fromName),
+              const SizedBox(width: 8),
+
+              const Icon(
+                Iconsax.arrow_right_1,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(width: 8),
+
+              // Recipient Avatar
+              _buildSmallAvatar(toName),
+
+              const SizedBox(width: 12),
+
+              // Text Description
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: fromName,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const TextSpan(text: ' owes '),
+                          TextSpan(
+                            text: toName,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${amount.toStringAsFixed(3)} OMR',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Settle Button
+              TextButton(
+                onPressed: () => _confirmPayment(context, ref, settlement),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  foregroundColor: AppColors.primary,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Settle',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+      ],
+    );
+  }
+
+  /// Recorded settlements section - Collapsible History
   Widget _buildRecordedSettlements(
     BuildContext context,
     List<Settlement> settlements,
     Map<String, String> participantNames,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: settlements.isNotEmpty,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          leading: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Iconsax.tick_circle,
-              size: 18,
-              color: AppColors.success,
-            ),
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: const Text(
+          'RECORDED HISTORY',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+            letterSpacing: 1.0,
           ),
-          title: const Text(
-            'Recorded Payments',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          subtitle: Text(
-            settlements.isEmpty
-                ? 'No payments recorded yet'
-                : '${settlements.length} payment${settlements.length > 1 ? 's' : ''} recorded',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-          children: [
-            if (settlements.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'No settlements recorded yet',
-                  style: TextStyle(color: AppColors.textMuted),
-                ),
-              )
-            else
-              ...settlements.map(
-                (s) => _buildRecordedSettlementItem(s, participantNames),
-              ),
-          ],
         ),
+        trailing: const Icon(Iconsax.arrow_down_1, size: 16, color: AppColors.textMuted),
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+            ),
+            child: Column(
+              children: settlements.asMap().entries.map((entry) {
+                final index = entry.key;
+                final s = entry.value;
+                final isLast = index == settlements.length - 1;
+                return _buildHistoryItem(s, participantNames, !isLast);
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildRecordedSettlementItem(
+  Widget _buildHistoryItem(
     Settlement settlement,
     Map<String, String> participantNames,
+    bool showDivider,
   ) {
     final payerName =
         participantNames[settlement.payerParticipantId] ?? 'Unknown';
@@ -546,67 +445,169 @@ class SettleUpScreen extends ConsumerWidget {
         participantNames[settlement.recipientParticipantId] ?? 'Unknown';
     final amountStr = settlement.amount.toStringAsFixed(2);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(
+                Iconsax.tick_circle,
+                size: 18,
+                color: AppColors.success,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: payerName,
+                        style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+                      ),
+                      const TextSpan(text: ' paid '),
+                      TextSpan(
+                        text: recipientName,
+                        style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$amountStr OMR',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.success,
+                    ),
+                  ),
+                  Text(
+                    _formatDate(settlement.settledAt),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+      ],
+    );
+  }
+
+  /// Recent expenses - Collapsible
+  Widget _buildRecentExpenses(BuildContext context, List<Expense> expenses) {
+    final recentExpenses = expenses.take(5).toList();
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: const Text(
+          'RECENT EXPENSES',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+            letterSpacing: 1.0,
+          ),
+        ),
+        trailing: const Icon(Iconsax.arrow_down_1, size: 16, color: AppColors.textMuted),
         children: [
           Container(
-            width: 32,
-            height: 32,
             decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
             ),
-            child: const Center(
-              child: Icon(
-                Iconsax.arrow_swap,
-                size: 14,
-                color: AppColors.success,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$payerName → $recipientName',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  _formatDate(settlement.settledAt),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '$amountStr OMR',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.success,
-              ),
+              children: recentExpenses.asMap().entries.map((entry) {
+                 final index = entry.key;
+                 final expense = entry.value;
+                 final isLast = index == recentExpenses.length - 1;
+                 return _buildExpenseItem(expense, !isLast);
+              }).toList(),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExpenseItem(Expense expense, bool showDivider) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    expense.categoryIcon ?? '💰',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      expense.description ?? 'Expense',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      expense.categoryName ?? 'General',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${expense.amount.toStringAsFixed(2)} OMR',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+      ],
     );
   }
 
@@ -620,7 +621,7 @@ class SettleUpScreen extends ConsumerWidget {
     } else if (diff.inDays < 7) {
       return '${diff.inDays} days ago';
     } else {
-      return '${date.day}/${date.month}/${date.year}';
+      return '${date.day}/${date.month}';
     }
   }
 
@@ -630,190 +631,33 @@ class SettleUpScreen extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 100,
-            height: 100,
-            decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Iconsax.tick_circle,
-              color: Colors.white,
-              size: 48,
+              color: AppColors.success,
+              size: 32,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           const Text(
             'All Settled! 🎉',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
           const Text(
             'No payments needed',
-            style: TextStyle(fontSize: 16, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 14, color: AppColors.textMuted),
           ),
         ],
       ),
     ).animate().fadeIn().scale();
-  }
-
-  Widget _buildSummaryCard(
-    BuildContext context,
-    List<Map<String, dynamic>> settlements,
-  ) {
-    Decimal totalToSettle = Decimal.zero;
-    for (final s in settlements) {
-      totalToSettle = totalToSettle + (s['amount'] as Decimal);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const Icon(Iconsax.wallet_2, color: Colors.white, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            '${totalToSettle.toStringAsFixed(3)} OMR',
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${settlements.length} payment${settlements.length > 1 ? 's' : ''} to settle',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettlementCard(
-    BuildContext context,
-    WidgetRef ref,
-    Map<String, dynamic> settlement,
-  ) {
-    final fromName = settlement['fromUserName'] as String;
-    final toName = settlement['toUserName'] as String;
-    final amount = (settlement['amount'] as Decimal);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _buildAvatar(fromName, AppColors.error),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            fromName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const Icon(
-                          Iconsax.arrow_right_1,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        Expanded(
-                          child: Text(
-                            toName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                            textAlign: TextAlign.right,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${amount.toStringAsFixed(3)} OMR',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              _buildAvatar(toName, AppColors.success),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _confirmPayment(context, ref, settlement),
-              icon: const Icon(Iconsax.tick_circle, size: 18),
-              label: const Text('Mark as Paid'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _confirmPayment(
@@ -830,7 +674,7 @@ class SettleUpScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('Confirm Payment'),
         content: Text(
-          'Mark that $fromName paid $amount OMR to $toName?\n\nThis will record a settlement and update balances.',
+          'Mark that $fromName paid $amount OMR to $toName?',
         ),
         actions: [
           TextButton(
@@ -881,21 +725,22 @@ class SettleUpScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildAvatar(String name, Color color) {
+  Widget _buildSmallAvatar(String name) {
     return Container(
-      width: 44,
-      height: 44,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.background,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.border),
       ),
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: TextStyle(
-            fontSize: 18,
+          style: const TextStyle(
+            fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: color,
+            color: AppColors.textSecondary,
           ),
         ),
       ),
