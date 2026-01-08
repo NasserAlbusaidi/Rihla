@@ -42,6 +42,9 @@ jobs:
       - name: 📦 Install Dependencies
         run: flutter pub get
 
+      - name: 🧪 Run Automated Tests
+        run: flutter test
+
       - name: 🏗️ Build App Bundle (Obfuscated)
         run: |
           flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation

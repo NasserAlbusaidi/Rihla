@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
+import '../../../core/utils/formatters.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -163,10 +164,10 @@ class SettleUpScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Minimal Summary Section
-          _buildMinimalSummary(totalPending, myBalance)
-              .animate()
-              .fadeIn(delay: 100.ms)
-              .slideY(begin: 0.1),
+          _buildMinimalSummary(
+            totalPending,
+            myBalance,
+          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
 
           const SizedBox(height: 24),
 
@@ -186,7 +187,9 @@ class SettleUpScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
               ),
               child: Column(
                 children: pendingSettlements.asMap().entries.map((entry) {
@@ -197,13 +200,13 @@ class SettleUpScreen extends ConsumerWidget {
                     context,
                     ref,
                     settlement,
-                    showDivider: !isLast
+                    showDivider: !isLast,
                   );
                 }).toList(),
               ),
             ).animate().fadeIn(delay: 250.ms),
           ] else if (recordedSettlements.isEmpty) ...[
-             _buildAllSettled(context),
+            _buildAllSettled(context),
           ],
 
           const SizedBox(height: 24),
@@ -368,7 +371,10 @@ class SettleUpScreen extends ConsumerWidget {
               TextButton(
                 onPressed: () => _confirmPayment(context, ref, settlement),
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   foregroundColor: AppColors.primary,
                   minimumSize: Size.zero,
@@ -412,13 +418,19 @@ class SettleUpScreen extends ConsumerWidget {
             letterSpacing: 1.0,
           ),
         ),
-        trailing: const Icon(Iconsax.arrow_down_1, size: 16, color: AppColors.textMuted),
+        trailing: const Icon(
+          Iconsax.arrow_down_1,
+          size: 16,
+          color: AppColors.textMuted,
+        ),
         children: [
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.5),
+              ),
             ),
             child: Column(
               children: settlements.asMap().entries.map((entry) {
@@ -467,12 +479,18 @@ class SettleUpScreen extends ConsumerWidget {
                     children: [
                       TextSpan(
                         text: payerName,
-                        style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const TextSpan(text: ' paid '),
                       TextSpan(
                         text: recipientName,
-                        style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ],
                   ),
@@ -490,7 +508,7 @@ class SettleUpScreen extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    _formatDate(settlement.settledAt),
+                    AppFormatters.formatRelativeDate(settlement.settledAt),
                     style: const TextStyle(
                       fontSize: 10,
                       color: AppColors.textMuted,
@@ -526,20 +544,26 @@ class SettleUpScreen extends ConsumerWidget {
             letterSpacing: 1.0,
           ),
         ),
-        trailing: const Icon(Iconsax.arrow_down_1, size: 16, color: AppColors.textMuted),
+        trailing: const Icon(
+          Iconsax.arrow_down_1,
+          size: 16,
+          color: AppColors.textMuted,
+        ),
         children: [
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.5),
+              ),
             ),
             child: Column(
               children: recentExpenses.asMap().entries.map((entry) {
-                 final index = entry.key;
-                 final expense = entry.value;
-                 final isLast = index == recentExpenses.length - 1;
-                 return _buildExpenseItem(expense, !isLast);
+                final index = entry.key;
+                final expense = entry.value;
+                final isLast = index == recentExpenses.length - 1;
+                return _buildExpenseItem(expense, !isLast);
               }).toList(),
             ),
           ),
@@ -611,20 +635,6 @@ class SettleUpScreen extends ConsumerWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) {
-      return 'Today';
-    } else if (diff.inDays == 1) {
-      return 'Yesterday';
-    } else if (diff.inDays < 7) {
-      return '${diff.inDays} days ago';
-    } else {
-      return '${date.day}/${date.month}';
-    }
-  }
-
   Widget _buildAllSettled(BuildContext context) {
     return Center(
       child: Column(
@@ -673,9 +683,7 @@ class SettleUpScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Payment'),
-        content: Text(
-          'Mark that $fromName paid $amount OMR to $toName?',
-        ),
+        content: Text('Mark that $fromName paid $amount OMR to $toName?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

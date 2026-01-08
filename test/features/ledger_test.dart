@@ -2,14 +2,13 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rihla/features/ledger/models/expense_model.dart';
-import 'package:rihla/features/ledger/providers/expense_provider.dart';
-import 'package:rihla/features/ledger/screens/ledger_screen.dart';
-import 'package:rihla/features/trip/models/trip_model.dart';
-import 'package:rihla/features/trip/providers/trip_provider.dart';
-import 'package:rihla/features/logistics/models/sub_group_model.dart';
-import 'package:rihla/features/logistics/providers/sub_group_provider.dart';
-import 'package:rihla/features/activity/services/activity_service.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/providers/expense_provider.dart';
+import 'package:safar/features/ledger/screens/ledger_screen.dart';
+import 'package:safar/features/trip/models/trip_model.dart';
+import 'package:safar/features/trip/providers/trip_provider.dart';
+import 'package:safar/features/logistics/providers/sub_group_provider.dart';
+import 'package:safar/features/activity/services/activity_service.dart';
 
 void main() {
   final mockTrip = Trip(
@@ -17,7 +16,8 @@ void main() {
     name: 'Test Trip',
     inviteCode: 'ABCDEF',
     leaderId: 'user-1',
-    createdAt: DateTime.now(),
+    modules: const TripModules(),
+    createdAt: DateTime(2023),
   );
 
   final mockParticipant = Participant(
@@ -42,20 +42,32 @@ void main() {
     categoryIcon: 'food',
   );
 
-  testWidgets('LedgerScreen renders expenses and balances', (WidgetTester tester) async {
+  testWidgets('LedgerScreen renders expenses and balances', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          tripExpensesProvider(mockTrip.id).overrideWith((ref) => Stream.value([mockExpense])),
-          tripSettlementsProvider(mockTrip.id).overrideWith((ref) => Stream.value([])),
-          tripLogisticsParticipantsProvider(mockTrip.id).overrideWith((ref) => Stream.value([mockParticipant])),
-          tripSubGroupsProvider(mockTrip.id).overrideWith((ref) => Stream.value([])),
-          currentParticipantProvider(mockTrip.id).overrideWith((ref) => mockParticipant),
-          tripActivityProvider(mockTrip.id).overrideWith((ref) => Stream.value([])),
+          tripExpensesProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([mockExpense])),
+          tripSettlementsProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
+          tripLogisticsParticipantsProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([mockParticipant])),
+          tripSubGroupsProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
+          currentParticipantProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => mockParticipant),
+          tripActivityProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
         ],
-        child: MaterialApp(
-          home: LedgerScreen(trip: mockTrip),
-        ),
+        child: MaterialApp(home: LedgerScreen(trip: mockTrip)),
       ),
     );
 
@@ -76,7 +88,9 @@ void main() {
     // Let's add another participant to make it interesting
   });
 
-  testWidgets('LedgerScreen calculates split correctly', (WidgetTester tester) async {
+  testWidgets('LedgerScreen calculates split correctly', (
+    WidgetTester tester,
+  ) async {
     final mockParticipant2 = Participant(
       id: 'p-2',
       tripId: 'trip-123',
@@ -89,16 +103,26 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          tripExpensesProvider(mockTrip.id).overrideWith((ref) => Stream.value([mockExpense])),
-          tripSettlementsProvider(mockTrip.id).overrideWith((ref) => Stream.value([])),
-          tripLogisticsParticipantsProvider(mockTrip.id).overrideWith((ref) => Stream.value([mockParticipant, mockParticipant2])),
-          tripSubGroupsProvider(mockTrip.id).overrideWith((ref) => Stream.value([])),
-          currentParticipantProvider(mockTrip.id).overrideWith((ref) => mockParticipant),
-           tripActivityProvider(mockTrip.id).overrideWith((ref) => Stream.value([])),
+          tripExpensesProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([mockExpense])),
+          tripSettlementsProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
+          tripLogisticsParticipantsProvider(mockTrip.id).overrideWith(
+            (ref) => Stream.value([mockParticipant, mockParticipant2]),
+          ),
+          tripSubGroupsProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
+          currentParticipantProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => mockParticipant),
+          tripActivityProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
         ],
-        child: MaterialApp(
-          home: LedgerScreen(trip: mockTrip),
-        ),
+        child: MaterialApp(home: LedgerScreen(trip: mockTrip)),
       ),
     );
 
@@ -109,6 +133,9 @@ void main() {
     // Should show positive balance.
 
     expect(find.text('Pizza'), findsOneWidget);
-    expect(find.textContaining('5.000'), findsWidgets); // Should find 5.000 in balance header or tooltip
+    expect(
+      find.textContaining('5.000'),
+      findsWidgets,
+    ); // Should find 5.000 in balance header or tooltip
   });
 }

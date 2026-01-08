@@ -248,7 +248,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               child: IndexedStack(
                 index: _currentStep,
                 children: [
-                  _buildAmountStep(),
+                  SingleChildScrollView(child: _buildAmountStep()),
                   _buildCategoryStep(categoriesAsync),
                   _buildConfirmStep(error),
                 ],
@@ -349,7 +349,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
           ],
         ),
-        const Spacer(),
+        const SizedBox(height: 40),
         // Numpad
         _buildNumpad(),
         const SizedBox(height: 40),

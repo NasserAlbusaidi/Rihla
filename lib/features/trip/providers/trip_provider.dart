@@ -83,16 +83,17 @@ final currentParticipantProvider = Provider.family<Participant?, String>((
   ref,
   tripId,
 ) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+
   final participantsAsync = ref.watch(
     tripLogisticsParticipantsProvider(tripId),
   );
-  return participantsAsync.when(
+  return participantsAsync.maybeWhen(
     data: (participants) {
-      final userId = SupabaseConfig.client.auth.currentUser?.id;
-      return participants.where((p) => p.userId == userId).firstOrNull;
+      return participants.where((p) => p.userId == user.id).firstOrNull;
     },
-    loading: () => null,
-    error: (error, stack) => null,
+    orElse: () => null,
   );
 });
 
