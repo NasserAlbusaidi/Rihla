@@ -42,7 +42,7 @@ dependencies:
   go_router: ^13.2.0
 
   # Environment Config
-  sentry_flutter: ^8.13.0
+  sentry_flutter: ^9.0.0
 
   # Utilities
   uuid: ^4.3.3
