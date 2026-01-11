@@ -166,8 +166,88 @@ class CommandCenter extends ConsumerWidget {
   }
 
   Widget _buildPreparationHero(BuildContext context, WidgetRef ref, Trip trip) {
-    final gearAsync = ref.watch(tripGearProvider(trip.id));
     final daysLeft = trip.daysUntilStart;
+    final hasGear = trip.modules.gear;
+
+    // If gear module is disabled, show a simpler countdown card
+    if (!hasGear) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Row(
+          children: [
+            // Countdown Circle
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.primaryGradient,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    daysLeft != null && daysLeft > 0 ? '$daysLeft' : '–',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const Text(
+                    'DAYS',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white70,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Trip status text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    daysLeft != null && daysLeft > 0
+                        ? 'Trip Starting Soon'
+                        : trip.isOngoing
+                        ? 'Trip in Progress'
+                        : 'Trip Upcoming',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    daysLeft != null && daysLeft > 0
+                        ? 'Get ready for your adventure!'
+                        : trip.isOngoing
+                        ? 'Enjoy your trip!'
+                        : 'Plan your next adventure',
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Full preparation hero with gear stats
+    final gearAsync = ref.watch(tripGearProvider(trip.id));
 
     return Container(
       padding: const EdgeInsets.all(16),

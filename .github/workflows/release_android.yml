@@ -55,5 +55,5 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
           packageName: com.safar.safar
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: alpha # 'alpha' usually maps to Closed Testing
+          track: first # 'alpha' usually maps to Closed Testing
           status: completed
