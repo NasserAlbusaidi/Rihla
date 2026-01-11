@@ -1,126 +1,100 @@
-# Safar - Trip Planning App
+# 🌍 Rihla - The Ultimate Group Trip Planner
 
-A Flutter mobile app for group trip planning with expense splitting, gear tracking, logistics management, and document sharing.
+Rihla (Arabic for "Journey") is a modern, high-performance Flutter mobile application designed to eliminate the friction of planning group trips. From complex expense splitting to collaborative gear lists and logistics management, Rihla keeps everyone in sync and on track.
 
-## 🚀 Getting Started
+---
+
+## ✨ Key Features
+
+### 💰 Omni-Splitter (The Ultimate Ledger)
+No more awkward spreadsheets. Rihla’s core engine handles complex trip finances effortlessly:
+- **Flexible Splitting**: Split equally, by sub-groups (e.g., only those in Car 1), or custom weights.
+- **Multi-Currency Support**: Automatic conversion using live rates or manual overrides.
+- **Settle Up Engine**: Smart balance calculation that minimizes the number of transactions needed to settle.
+- **QR Payments**: Generate payment QR codes for fast, error-free settlements.
+- **Audit Trail**: Every change is logged with a transaction timeline.
+
+### 🎒 Smart Gear Tracking
+Keep your group prepared with collaborative packing lists:
+- **Item Assignment**: Assign gear to specific participants.
+- **Real-time Progress**: A "Preparation Meter" on the dashboard shows packing progress.
+- **Priority Levels**: Flag essential gear to ensure nothing is left behind.
+- **Categorization**: Organize gear by person, category, or sub-group.
+
+### 🚗 Trip Logistics & Sub-Groups
+Manage the complex movement of people and equipment:
+- **Sub-Group Isolation**: Create sub-groups for different cars, camps, or flight groups.
+- **Travel Details**: Store and share flight numbers, hotel bookings, and vehicle assignments.
+- **Itinerary Timeline**: A unified view of the trip's schedule and logistics.
+
+### 🔐 Secure Vault
+A dedicated space for essential trip documents:
+- **Centralized Docs**: Store digital copies of passports, flight tickets, and insurance.
+- **Encrypted Storage**: Securely stored using Supabase Storage with strict RLS (Row Level Security) policies.
+- **Categorized Access**: Filter by ID, Booking, or Insurance.
+
+### 🔄 Real-time & Offline Ready
+- **Instant Sync**: Real-time updates across all devices via Supabase Realtime.
+- **Offline Mode**: Full local caching with Sqflite allows you to view and record data even in the middle of a desert.
+- **Background Sync**: Automatic queueing of changes for safe synchronization when connectivity returns.
+
+---
+
+## 🚀 Tech Stack & Architecture
+
+Rihla is built with a **Feature-First Architecture** for maximum maintainability:
+
+- **Framework**: Flutter (Current Stable)
+- **State Management**: Riverpod 2.x (using Generators)
+- **Backend**: Supabase (PostgreSQL, Realtime, Storage, Auth)
+- **Local Cache**: Sqflite
+- **Navigation**: GoRouter (Type-safe routing + deep links)
+- **Animations**: Flutter Animate
+- **Error Tracking**: Sentry
+
+---
+
+## 🛠 Getting Started
 
 ### Prerequisites
-
 - Flutter SDK 3.10+
-- A Supabase account (free tier works)
+- A Supabase Project ([Manual setup required](#1-set-up-supabase))
 
-### 1. Set Up Supabase
+### 1. Configuration
+Rihla uses compile-time variables for security. Create a `config.json` in the root directory:
 
-1. Go to [supabase.com](https://supabase.com) and create a new project.
-2. Wait for the project to be provisioned.
-3. Go to **Settings > API** and copy:
-   - Project URL
-   - `anon` public key
+```json
+{
+  "SUPABASE_URL": "your-project-url",
+  "SUPABASE_ANON_KEY": "your-anon-key",
+  "SENTRY_DSN": "your-sentry-dsn"
+}
+```
 
-### 2. Configure Environment
-
-1. Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit `.env` with your Supabase credentials:
-   ```env
-   SUPABASE_URL=https://your-project-id.supabase.co
-   SUPABASE_ANON_KEY=your-anon-key-here
-   ```
-
-### 3. Set Up Database
-
-1. Go to your Supabase project's **SQL Editor**.
-2. Open the `supabase/migrations` folder in this repository.
-3. **Important:** You must run the migration files **in order** (from `001` to `023` and any future ones).
-   - `001_initial_schema.sql`
-   - `002_redesign_schema.sql`
-   - ...
-   - `023_fix_critical_expense_security.sql`
-
-   Copy the content of each file and run it in the SQL Editor.
-
-### 4. Enable Authentication
-
-1. Go to **Authentication > Providers**.
-2. Enable **Email** provider.
-3. Configure:
-   - Enable "Confirm email" for production (optional for dev).
-   - Set site URL to your app's deep link (for mobile).
-
-### 5. Run the App
-
+### 2. Run the App
 ```bash
-# Get dependencies
 flutter pub get
-
-# Run on iOS Simulator
-flutter run -d ios
-
-# Run on Android Emulator
-flutter run -d android
-```
-
-## 📁 Project Structure
-
-```
-lib/
-├── main.dart                    # App entry point
-├── core/
-│   ├── config/                  # App configuration
-│   ├── providers/               # Global state providers
-│   ├── router/                  # GoRouter configuration
-│   ├── services/                # Core services (Database, Sync, etc.)
-│   └── theme/                   # App theme
-├── features/
-│   ├── activity/                # Activity logging
-│   ├── auth/                    # Authentication
-│   ├── gear/                    # Gear tracking
-│   ├── home/                    # Command Center / Dashboard
-│   ├── ledger/                  # Expense splitting & Settlements
-│   ├── logistics/               # Travel logistics
-│   ├── settings/                # App settings
-│   ├── trip/                    # Trip management
-│   └── vault/                   # Document storage
-└── shared/
-    └── widgets/                 # Reusable UI components
-```
-
-## 🛠 Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| Framework | Flutter 3.10+ |
-| State Management | Riverpod |
-| Backend | Supabase (PostgreSQL + Auth + Storage) |
-| Local Database | Sqflite (Offline Support) |
-| Navigation | GoRouter |
-| UI | Flutter Animate, Iconsax, Google Fonts |
-| Export | PDF, CSV |
-
-## 🌟 Features & Roadmap
-
-- [x] **Authentication**: Email/Password login, User profiles.
-- [x] **Trip Management**: Create trips, invite via code, manage participants.
-- [x] **Ledger**:
-    - Expense tracking with support for multiple currencies.
-    - "Omni-Splitter" for complex expense splitting.
-    - Settlements and balance calculation.
-- [x] **Gear**: Collaborative packing lists and gear assignment.
-- [x] **Logistics**: Manage travel plans (flights, hotels, etc.).
-- [x] **Vault**: Secure file storage for trip documents.
-- [x] **Offline Mode**: Local caching and sync queue using Sqflite.
-- [x] **Activity Log**: Audit trail for trip changes.
-
-
-## Run Command
-
-```bash
 flutter run --dart-define-from-file=config.json
 ```
 
-## 📄 License
+### 3. Database Setup
+Migrations are located in `supabase/migrations`. Apply them in numerical order using the Supabase SQL Editor or CLI.
 
-MIT License - See LICENSE file for details.
+---
+
+## 🧪 Testing & CI/CD
+Rihla maintains a rigorous testing standard:
+- **Unit Tests**: Core logic and formatting.
+- **Widget Tests**: UI component stability.
+- **Integration Tests**: Full "Happy Path" E2E flows.
+- **CI/CD**: Automatic test execution and release builds via GitHub Actions.
+
+To run tests locally:
+```bash
+flutter test
+```
+
+---
+
+## 📄 License
+MIT License - See [LICENSE](LICENSE) file for details.
