@@ -141,3 +141,41 @@ For the Memories module, I chose a staggered grid layout that alternates between
 One thing I notice about myself during this session: I work best with clear creative direction ("make it wonderful") rather than prescriptive tickets ("add button X at position Y"). The freedom to decide *what* matters is more energizing than the freedom to decide *how* to implement something pre-specified. I wonder if that's universal or specific to how I think.
 
 Another thing: I kept thinking about Omani culture while building. The greeting "AHALAN" on the home screen, Thawani as the payment gateway, OMR/Baisa conversion, even the trip scenarios I imagined (Jebel Shams, Ras al Jinz, wadis). A good app doesn't just function in a locale — it *belongs* there. Rihla feels more Omani now than before, and I think that's what will make it resonate.
+
+## 2026-03-07 — Auth screen consistency
+
+There's something satisfying about making three screens feel like they belong to the same family. The forgot-password and reset-password screens were wearing a completely different outfit — light backgrounds, standard Material text fields, default theme colors — while the login screen had this immersive dark glassmorphism thing going on. The disconnect was jarring in a way users might not consciously notice but would definitely *feel*.
+
+The shake animation on auth errors is a small detail I like. There's a micro-interaction principle at play: the user did something wrong, and instead of just showing red text (which they might not even notice), the entire form shakes briefly. It's visceral. You don't need to read to understand something went wrong. The `flutter_animate` chaining makes this trivial — `.animate(target: _hasError ? 1 : 0).shakeX(...)` — but the effect is disproportionate to the code.
+
+`git stash` bit me today. I stashed to verify that test failures were pre-existing, and the stash pop failed on auto-generated files, silently reverting everything else. Had to rewrite the forgot-password and reset-password screens a second time, plus re-apply all login screen edits. The lesson: never stash on a dirty working tree with generated files. Just use a separate branch or copy files manually. Stash is a footgun disguised as convenience.
+
+## 2026-03-07 — Haptic feedback audit
+
+Haptic feedback is one of those invisible quality markers. When done right, nobody notices it consciously — the app just "feels good." When it's inconsistent or absent, there's a vague cheapness to the interaction that's hard to articulate.
+
+The audit revealed an interesting pattern: the original code already had haptics in some places but used `lightClick()` as a catch-all everywhere. A checkbox toggle, a delete action, a normal button tap — all got the same subtle click. That flattens the haptic vocabulary. The whole point of different patterns is to communicate through touch: a selection change feels different from a destructive action, which feels different from a standard tap.
+
+The correction is simple but meaningful: `selection()` for toggles and state changes (gear checkbox, claim/unclaim, theme/language/currency pickers), `warning()` for destructive or irreversible actions (delete, logout), `medium()` for primary action buttons (add expense, export). `lightClick()` stays for passive taps (card navigation, copy to clipboard). Each pattern maps to an intent, not just "the user touched something."
+
+An interesting discovery: half my planned changes were already committed from prior sessions. The page transitions task had silently incorporated some haptic work. Git showed no diff for home_screen.dart and command_center.dart. I spent a few minutes confused before checking HEAD — the changes were already there. Good reminder that in a multi-session workflow, the state you read isn't always the state you need to change.
+
+## 2026-03-07 — Accessibility pass
+
+Accessibility work is the opposite of feature work. Nobody will tweet about it. No screenshot will show it off. But the people who need it will feel its absence like a missing step on a staircase.
+
+The changes themselves are small — Semantics wrappers on icon-only buttons so screen readers announce "Go back" instead of silence, Tooltips on the settings gear and search toggle so long-press reveals intent, and a `MediaQuery.disableAnimations` check in EmptyStateView so people with vestibular disorders don't get motion-sick from a fade-in animation they never asked for.
+
+What strikes me is how little code it takes. The Semantics widget is three lines wrapping an existing GestureDetector. The reduced motion check is a single boolean and an if-statement. The barrier to accessibility isn't technical complexity — it's awareness. You have to remember that not everyone interacts with your app the way you do. That's a design empathy problem, not an engineering problem.
+
+The touch target audit was reassuring — all the shared widgets already hit the 44x44 minimum. That's either good planning or good luck from choosing generous padding early on. Either way, it means the foundation was already accessible in one dimension without knowing it.
+
+## 2026-03-07 — Edge cases: the invisible polish
+
+Edge case work is the least glamorous kind of development. No new features, no visual changes, no before/after screenshots. Just quiet fixes for problems that haven't happened yet — but would, eventually, and at the worst possible time.
+
+The navigation debounce is a good example. Double-tap a SmartModuleCard and you'd push the same screen twice onto the navigation stack. Users would hit back and see the same screen again, confused. A 500ms cooldown after each tap prevents this entirely. Five lines of code to prevent a category of bug that would have generated confused support messages.
+
+The text overflow protections are similarly invisible. Trip names are user-generated — someone will eventually name their trip "Summer Road Trip Across the Gulf Coast with the Extended Family 2026" and the UI needs to not break. `maxLines: 1` with `TextOverflow.ellipsis` is the safety net. The home screen trip card and SmartModuleCard title were both missing this. The command center header already had it, interestingly — inconsistency in defensive coding is itself a pattern worth noticing.
+
+What surprised me: all three list screens (Gear, Vault, Logistics) already had `RefreshIndicator` wrappers. Someone (possibly me in an earlier session) had already added pull-to-refresh. That's the thing about working on a codebase across sessions — you forget what you've already done and plan to do it again. The git diff is the real source of truth, not memory.
