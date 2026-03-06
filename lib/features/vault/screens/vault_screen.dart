@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/document_model.dart';
 import '../providers/document_provider.dart';
@@ -24,21 +25,39 @@ class VaultScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: documentsAsync.when(
-                data: (docs) => docs.isEmpty
-                    ? _buildEmptyState(context, ref)
-                    : _buildDocumentList(context, ref, docs),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _buildErrorState(context, e.toString()),
+      body: Column(
+        children: [
+          ModuleHeader(
+            title: 'Vault',
+            subtitle: trip.name.toUpperCase(),
+            actions: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: const IconButton(
+                  icon: Icon(
+                    Iconsax.lock,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  onPressed: null,
+                ),
               ),
+            ],
+          ),
+          Expanded(
+            child: documentsAsync.when(
+              data: (docs) => docs.isEmpty
+                  ? _buildEmptyState(context, ref)
+                  : _buildDocumentList(context, ref, docs),
+              loading: () => SkeletonLoader.documentList(),
+              error: (e, _) => _buildErrorState(context, e.toString()),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: isLoading ? null : () => _uploadDocument(context, ref),
@@ -59,87 +78,91 @@ class VaultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Iconsax.arrow_left),
-            onPressed: () => context.pop(),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Vault',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                Text(
-                  '${trip.name} • Documents & Files',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: -0.2);
-  }
-
   Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(48),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const Icon(
-                Iconsax.folder_open,
-                size: 48,
-                color: AppColors.primary,
-              ),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.05),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Iconsax.folder_open,
+                    size: 36,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
             ).animate().fadeIn().scale(delay: 100.ms),
-
-            const SizedBox(height: 24),
-
-            Text(
-              'No Documents Yet',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ).animate().fadeIn(delay: 200.ms),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'Upload tickets, reservations, permits\nand other important files',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ).animate().fadeIn(delay: 300.ms),
-
             const SizedBox(height: 32),
-
-            ElevatedButton.icon(
-              onPressed: () => _uploadDocument(context, ref),
-              icon: const Icon(Iconsax.add),
-              label: const Text('Upload First File'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+            Text(
+              'NO DOCUMENTS YET',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textMuted,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Safe Keep Your Essentials',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Upload and share trip-critical documents like tickets, permits, and reservations.',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () => _uploadDocument(context, ref),
+                icon: const Icon(Iconsax.document_upload, size: 18),
+                label: const Text('Upload Document'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                 ),
               ),
-            ).animate().fadeIn(delay: 400.ms),
+            ).animate().fadeIn(delay: 200.ms),
           ],
         ),
       ),
@@ -193,121 +216,151 @@ class VaultScreen extends ConsumerWidget {
     Document doc,
     int index,
   ) {
-    return Dismissible(
-      key: Key(doc.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Iconsax.trash, color: AppColors.error),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.borderLight, width: 1.5),
+        boxShadow: AppColors.cardShadow,
       ),
-      confirmDismiss: (direction) async {
-        return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Delete Document'),
-            content: Text('Delete "${doc.fileName}"?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                child: const Text('Delete'),
-              ),
-            ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Dismissible(
+          key: Key(doc.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 24),
+            color: AppColors.rose.withValues(alpha: 0.1),
+            child: const Icon(Iconsax.trash, color: AppColors.rose),
           ),
-        );
-      },
-      onDismissed: (_) => ref.read(documentServiceProvider).deleteDocument(doc),
-      child: GestureDetector(
-        onTap: () => _openDocument(context, ref, doc),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: AppColors.cardShadow,
-          ),
-          child: Row(
-            children: [
-              // File type icon
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _getTypeColor(doc.type).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+          confirmDismiss: (direction) async {
+            return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: AppColors.surface,
+                title: const Text(
+                  'DELETE FILE',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
                 ),
-                child: Icon(
-                  _getTypeIcon(doc.type),
-                  color: _getTypeColor(doc.type),
-                  size: 24,
+                content: Text(
+                  'Permanently remove "${doc.fileName.toUpperCase()}"?',
                 ),
-              ),
-
-              const SizedBox(width: 16),
-
-              // File info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      doc.fileName,
-                      style: Theme.of(context).textTheme.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('KEEP'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text(
+                      'DELETE',
+                      style: TextStyle(
+                        color: AppColors.rose,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
+                  ),
+                ],
+              ),
+            );
+          },
+          onDismissed: (_) =>
+              ref.read(documentServiceProvider).deleteDocument(doc),
+          child: InkWell(
+            onTap: () => _openDocument(context, ref, doc),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: _getTypeColor(doc.type).withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _getTypeColor(doc.type).withValues(alpha: 0.1),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      _getTypeIcon(doc.type),
+                      color: _getTypeColor(doc.type),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          doc.formattedSize,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        if (doc.uploaderName != null) ...[
-                          const Text(' • '),
-                          Text(
-                            doc.uploaderName!,
-                            style: Theme.of(context).textTheme.bodySmall,
+                          doc.fileName.toUpperCase(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            letterSpacing: -0.2,
                           ),
-                        ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              doc.formattedSize,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (doc.uploaderName != null) ...[
+                              Text(
+                                ' • ',
+                                style: TextStyle(color: AppColors.textMuted),
+                              ),
+                              Flexible(
+                                child: Text(
+                                  doc.uploaderName!.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-
-              // Extension badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  doc.extension,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      doc.extension.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-
-              const SizedBox(width: 8),
-
-              // Download button
-              IconButton(
-                icon: const Icon(Iconsax.document_download, size: 20),
-                color: AppColors.primary,
-                onPressed: () => _openDocument(context, ref, doc),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -403,7 +456,12 @@ class VaultScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Could not open file: $e')));
+        ).showSnackBar(SnackBar(
+          content: Text('Could not open file: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
       }
     }
   }

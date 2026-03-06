@@ -3,18 +3,22 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/module_header.dart';
 import '../../activity/services/activity_service.dart';
 import '../../activity/widgets/timeline_card.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
+import '../models/settlement_model.dart';
+import '../models/transaction_model.dart';
 import '../providers/expense_provider.dart';
+import '../providers/ledger_provider.dart';
 import '../../trip/providers/trip_provider.dart';
 import 'add_expense_screen.dart';
 import 'edit_expense_sheet.dart';
@@ -39,11 +43,6 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {}); // Rebuild when tab changes
-      }
-    });
   }
 
   @override
@@ -178,7 +177,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
           ),
         ),
         Text(
-          '${amount.toStringAsFixed(3)} OMR',
+          AppFormatters.formatCurrency(amount, widget.trip.currency),
           style: TextStyle(
             fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
             color: color,
@@ -190,7 +189,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Watch raw streams for Balance Calculation
     final expensesAsync = ref.watch(tripExpensesProvider(widget.trip.id));
+    final settlementsAsync = ref.watch(tripSettlementsProvider(widget.trip.id));
+    
+    // Watch Unified Ledger for Transaction List
+    final ledgerAsync = ref.watch(tripUnifiedLedgerProvider(widget.trip.id));
+    
     final participantsAsync = ref.watch(
       tripLogisticsParticipantsProvider(widget.trip.id),
     );
@@ -202,25 +207,37 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: expensesAsync.when(
-        data: (expenses) => participantsAsync.when(
-          data: (participants) {
-            final subGroupsAsync = ref.watch(
-              tripSubGroupsProvider(widget.trip.id),
-            );
-            final subGroups = subGroupsAsync.valueOrNull ?? [];
-            return _buildContent(
-              context,
-              expenses,
-              participants,
-              currentParticipantId,
-              subGroups,
-            );
-          },
+        data: (expenses) => settlementsAsync.when(
+          data: (settlements) => participantsAsync.when(
+            data: (participants) {
+              final subGroupsAsync = ref.watch(
+                tripSubGroupsProvider(widget.trip.id),
+              );
+              final subGroups = subGroupsAsync.valueOrNull ?? [];
+              
+              // Use unified ledger if available, else empty
+              final transactions = ledgerAsync.valueOrNull ?? [];
+
+              return _buildContent(
+                context,
+                expenses,
+                settlements,
+                transactions,
+                participants,
+                currentParticipantId,
+                subGroups,
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => NetworkErrorWidget(
+              onRetry: () => ref.invalidate(
+                tripLogisticsParticipantsProvider(widget.trip.id),
+              ),
+            ),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => NetworkErrorWidget(
-            onRetry: () => ref.invalidate(
-              tripLogisticsParticipantsProvider(widget.trip.id),
-            ),
+            onRetry: () => ref.invalidate(tripSettlementsProvider(widget.trip.id)),
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -234,13 +251,12 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   Widget _buildContent(
     BuildContext context,
     List<Expense> expenses,
+    List<Settlement> settlements,
+    List<Transaction> transactions,
     List<Participant> participants,
     String? currentParticipantId,
     List<SubGroup> subGroups,
   ) {
-    final settlements =
-        ref.watch(tripSettlementsProvider(widget.trip.id)).value ?? [];
-
     final balances = BalanceCalculator.calculateBalances(
       expenses: expenses,
       settlements: settlements,
@@ -271,6 +287,11 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             participantCount,
           ).animate().fadeIn().slideY(begin: -0.2),
         ),
+        // Combined Activity Section
+        // We can either keep the Activity Log (audit trail) OR replace it with the Ledger List.
+        // The user asked for "transaction logging", implying the Ledger List IS the log.
+        // However, Activity Log has "creates/updates" which might be useful.
+        // Let's keep the Activity Log for "Audit" but rename it, and use the Ledger for "Financial History".
         SliverToBoxAdapter(
           child: _buildRecentActivity(context).animate().fadeIn(delay: 150.ms),
         ),
@@ -280,10 +301,11 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
         SliverToBoxAdapter(
           child: _buildTabContent(
             context,
-            expenses,
+            transactions,
             balances,
             currentParticipantId,
             netBalance,
+            settlements.length,
           ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -298,86 +320,87 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     );
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.fromLTRB(24, 24, 24, 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.borderLight, width: 1.5),
         boxShadow: AppColors.cardShadow,
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: false,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          leading: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Iconsax.clock,
-              size: 18,
-              color: AppColors.primary,
-            ),
-          ),
-          title: const Text(
-            'Recent Activity',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          subtitle: Text(
-            'Transaction timeline & audit trail',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-          children: [
-            activityAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(20),
-                child: Center(child: CircularProgressIndicator()),
+      child: Column(
+        children: [
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              initiallyExpanded: false,
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 8,
               ),
-              error: (e, _) => Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text('Error loading activity: $e'),
+              childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Iconsax.activity,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
               ),
-              data: (logs) {
-                if (logs.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Icon(Iconsax.clock, size: 32, color: Colors.grey[300]),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No activity yet',
-                          style: TextStyle(color: Colors.grey[500]),
+              title: const Text(
+                'Activity',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              subtitle: Text(
+                'Track changes & updates',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              children: [
+                activityAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Text('Error: $e'),
+                  data: (logs) {
+                    if (logs.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Text(
+                          'No recent activity',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 13,
+                          ),
                         ),
-                      ],
-                    ),
-                  );
-                }
-
-                // Show last 5 activities
-                final recentLogs = logs.take(5).toList();
-                return Column(
-                  children: recentLogs.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final log = entry.value;
-                    return TimelineCard(
-                      log: log,
-                      isLast: index == recentLogs.length - 1,
+                      );
+                    }
+                    return Column(
+                      children: logs.take(5).toList().asMap().entries.map((
+                        entry,
+                      ) {
+                        return TimelineCard(
+                          log: entry.value,
+                          isLast: entry.key == min(logs.length, 5) - 1,
+                        );
+                      }).toList(),
                     );
-                  }).toList(),
-                );
-              },
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -389,204 +412,182 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   ) {
     final isPositive = netBalance >= Decimal.zero;
     final absBalance = netBalance.abs();
-    final progressPercent = min(
-      100,
-      (absBalance.toDouble() / 100 * 100).round(),
-    );
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1A2A3A), Color(0xFF0D1B2A)],
+    return ModuleHeader(
+      title: 'Ledger',
+      subtitle: widget.trip.name.toUpperCase(),
+      actions: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Iconsax.money_send,
+              color: AppColors.primary,
+              size: 20,
+            ),
+            onPressed: () => _openSettleUp(context),
+          ),
         ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Iconsax.arrow_left, color: Colors.white),
-                    onPressed: () => context.pop(),
-                  ),
-                  const Expanded(
-                    child: Center(
-                      child: Text(
-                        'Trip Settlement',
+      ],
+      bottom: Column(
+        children: [
+          // Glass Balance Card
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CURRENT BALANCE',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
                         ),
                       ),
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => _openSettleUp(context),
-                    icon: const Icon(Iconsax.money_send, size: 18),
-                    label: const Text('SETTLE UP'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'NET BALANCE',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isPositive ? '+' : '-',
-                              style: TextStyle(
-                                color: isPositive
-                                    ? AppColors.primary
-                                    : AppColors.error,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'OMR ${absBalance.toStringAsFixed(3)}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          isPositive
-                              ? 'You are owed by others'
-                              : 'You owe others',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    width: 80,
-                    height: 80,
-                    child: Stack(
-                      children: [
-                        SizedBox(
-                          width: 80,
-                          height: 80,
-                          child: CircularProgressIndicator(
-                            value: progressPercent / 100,
-                            strokeWidth: 6,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.2,
-                            ),
-                            valueColor: AlwaysStoppedAnimation(
-                              isPositive
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            isPositive ? '+' : '-',
+                            style: TextStyle(
+                              color: isPositive
                                   ? AppColors.primary
-                                  : AppColors.warning,
+                                  : AppColors.error,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
-                        ),
-                        Center(
-                          child: Text(
-                            '$progressPercent%',
+                          const SizedBox(width: 4),
+                          Text(
+                            absBalance.toStringAsFixed(
+                              AppFormatters.currencyConfig[widget.trip.currency]?.decimals ?? 3,
+                            ),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 36,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Iconsax.scan_barcode,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(
-                            'My QR Code',
+                            widget.trip.currency,
                             style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => _addExpense(context),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Iconsax.add, color: Colors.white, size: 18),
-                            SizedBox(width: 8),
-                            Text(
-                              'Add Expense',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: 4),
+                      Text(
+                        isPositive
+                            ? 'You are currently owed'
+                            : 'You currently owe others',
+                        style: TextStyle(
+                          color: isPositive
+                              ? AppColors.primary.withValues(alpha: 0.8)
+                              : AppColors.error.withValues(alpha: 0.8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          Row(
+            children: [
+              Expanded(
+                child: _buildHeaderAction(
+                  'ADD EXPENSE',
+                  Iconsax.add,
+                  AppColors.primary,
+                  () => _addExpense(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHeaderAction(
+                  'SETTLE UP',
+                  Iconsax.arrange_circle_2,
+                  Colors.white.withValues(alpha: 0.1),
+                  () => _openSettleUp(context),
+                ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderAction(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    final isPrimary = color == AppColors.primary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 52,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isPrimary
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : null,
+          border: isPrimary
+              ? null
+              : Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -645,14 +646,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
   Widget _buildTabContent(
     BuildContext context,
-    List<Expense> expenses,
+    List<Transaction> transactions,
     List<UserBalance> balances,
     String? currentParticipantId,
     Decimal netBalance,
+    int settlementsCount,
   ) {
     final isPositive = netBalance >= Decimal.zero;
-    final settlements =
-        ref.watch(tripSettlementsProvider(widget.trip.id)).value ?? [];
 
     // Filter balances based on selected tab
     List<UserBalance> filteredBalances;
@@ -660,7 +660,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     switch (_tabController.index) {
       case 0: // All Debts - show everyone
         filteredBalances = balances;
-        tabTitle = 'All Team Balances';
+        tabTitle = 'All Balances';
         break;
       case 1: // My Debts - only current user
         filteredBalances = balances
@@ -678,11 +678,11 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
         filteredBalances = balances
             .where((b) => b.netBalance == Decimal.zero)
             .toList();
-        tabTitle = 'Settled Up (${settlements.length} payments)';
+        tabTitle = 'Settled Up ($settlementsCount payments)';
         break;
       default:
         filteredBalances = balances;
-        tabTitle = 'Team Balances';
+        tabTitle = 'All Balances';
     }
 
     return Padding(
@@ -696,28 +696,41 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isPositive
-                  ? AppColors.success.withValues(alpha: 0.1)
-                  : AppColors.error.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
+                  ? AppColors.success.withValues(alpha: 0.05)
+                  : AppColors.error.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(28),
               border: Border.all(
                 color: isPositive
-                    ? AppColors.success.withValues(alpha: 0.3)
-                    : AppColors.error.withValues(alpha: 0.3),
+                    ? AppColors.success.withValues(alpha: 0.2)
+                    : AppColors.error.withValues(alpha: 0.2),
+                width: 1.5,
               ),
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: isPositive
-                      ? AppColors.success.withValues(alpha: 0.15)
-                      : AppColors.error.withValues(alpha: 0.15),
-                  child: Icon(
-                    isPositive ? Iconsax.arrow_up : Iconsax.arrow_down,
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
                     color: isPositive ? AppColors.success : AppColors.error,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            (isPositive ? AppColors.success : AppColors.error)
+                                .withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    isPositive ? Iconsax.arrow_up_1 : Iconsax.arrow_down_1,
+                    color: Colors.white,
+                    size: 24,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -726,29 +739,35 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isPositive ? 'Others owe you' : 'You owe others',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                        isPositive ? 'YOU ARE OWED' : 'YOU OWE',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                          color: isPositive
+                              ? AppColors.success
+                              : AppColors.error,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         isPositive
-                            ? 'You paid more than your share'
-                            : 'You paid less than your share',
-                        style: const TextStyle(
+                            ? 'Clean sheet, plus some.'
+                            : 'Time to settle up, maybe?',
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
                 Text(
-                  '${netBalance.abs().toStringAsFixed(3)} OMR',
+                  AppFormatters.formatCurrency(netBalance.abs(), widget.trip.currency),
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
                     color: isPositive ? AppColors.success : AppColors.error,
                   ),
                 ),
@@ -756,7 +775,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             ),
           ),
           const SizedBox(height: 24),
-          // Team Balances with tappable avatars
+          // Balances with tappable avatars
           Text(
             tabTitle,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -866,7 +885,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Recent Expenses',
+                'Transactions History',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               TextButton(
@@ -876,178 +895,198 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             ],
           ),
           const SizedBox(height: 12),
-          if (expenses.isEmpty)
+          if (transactions.isEmpty)
             Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Text(
-                  'No expenses yet',
-                  style: TextStyle(color: AppColors.textMuted),
-                ),
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+              child: Column(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: const Icon(
+                      Iconsax.wallet_3,
+                      size: 32,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'No Expenses Yet',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Add your first expense to start tracking\ncosts and splitting them with your group.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => AddExpenseScreen(tripId: widget.trip.id),
+                      ),
+                    ),
+                    icon: const Icon(Iconsax.add, size: 18),
+                    label: const Text('Add Expense'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             )
           else
-            ...expenses
-                .take(5)
+            ...transactions
+                .take(10) // Show last 10 mixed transactions
                 .map(
-                  (expense) =>
-                      _buildExpenseCard(context, expense, currentParticipantId),
+                  (transaction) =>
+                      _buildTransactionCard(context, transaction, currentParticipantId),
                 ),
         ],
       ),
     );
   }
 
-  Widget _buildExpenseCard(
+  Widget _buildTransactionCard(
     BuildContext context,
-    Expense expense,
+    Transaction transaction,
     String? currentParticipantId,
   ) {
-    final isPayer = expense.payerParticipantId == currentParticipantId;
+    final isExpense = transaction.type == TransactionType.expense;
+    final isSettlement = transaction.type == TransactionType.settlement;
+    
+    // For settlements: payer is "from", recipient is "to"
+    // For expenses: payer is "paid by"
+    final isPayer = transaction.payerId == currentParticipantId;
+    
+    Color iconColor;
+    IconData iconData;
+    String title;
+    String subtitle;
+    
+    if (isSettlement) {
+      iconColor = AppColors.success;
+      iconData = Iconsax.money_send;
+      title = 'Payment to ${transaction.settlement?.recipientName ?? "Member"}';
+      subtitle = isPayer 
+        ? 'You paid' 
+        : 'Paid by ${transaction.settlement?.payerName ?? "Member"}';
+    } else {
+      // Expense
+      iconColor = AppColors.primary;
+      iconData = _getCategoryIcon(transaction.expense?.categoryIcon);
+      title = transaction.expense?.description ?? transaction.expense?.categoryName ?? 'Expense';
+      subtitle = isPayer
+          ? 'You paid full'
+          : 'Paid by ${transaction.expense?.payerName ?? 'Member'}';
+    }
+
     return GestureDetector(
-      onTap: () => _editExpense(context, expense),
+      onTap: isExpense && transaction.expense != null
+          ? () => _editExpense(context, transaction.expense!)
+          : null, // Settlements aren't editable here yet
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSettlement 
+              ? AppColors.success.withValues(alpha: 0.3) 
+              : AppColors.borderLight, 
+            width: isSettlement ? 1.5 : 1.5
+          ),
           boxShadow: AppColors.cardShadow,
         ),
         child: Row(
           children: [
-            // Category icon or receipt thumbnail
             Container(
-              width: 40,
-              height: 40,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(10),
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: expense.receiptUrl != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Stack(
-                        children: [
-                          Image.network(
-                            expense.receiptUrl!,
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                              _getCategoryIcon(expense.categoryIcon),
-                              size: 20,
-                              color: AppColors.primary,
+              child: isExpense && (transaction.expense?.receiptUrl != null || transaction.expense?.receiptPath != null)
+                  ? Stack(
+                      children: [
+                        Icon(
+                          iconData,
+                          size: 24,
+                          color: iconColor,
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: AppColors.mint,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
                             ),
+                            child: const Icon(Iconsax.camera, size: 9, color: Colors.white),
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                color: AppColors.mint,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(
-                                Iconsax.receipt_1,
-                                size: 8,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     )
                   : Icon(
-                      _getCategoryIcon(expense.categoryIcon),
-                      size: 20,
-                      color: AppColors.primary,
+                      iconData,
+                      size: 24,
+                      color: iconColor,
                     ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          expense.description ??
-                              expense.categoryName ??
-                              'Expense',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Scope indicator
-                      if (expense.scope != ExpenseScope.global)
-                        Container(
-                          margin: const EdgeInsets.only(left: 6),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: expense.scope == ExpenseScope.subGroup
-                                ? AppColors.primary.withValues(alpha: 0.1)
-                                : expense.scope == ExpenseScope.custom
-                                ? AppColors.mint.withValues(alpha: 0.1)
-                                : AppColors.textMuted.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            expense.scope == ExpenseScope.subGroup
-                                ? 'Car'
-                                : expense.scope == ExpenseScope.custom
-                                ? 'Custom'
-                                : 'Personal',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: expense.scope == ExpenseScope.subGroup
-                                  ? AppColors.primary
-                                  : expense.scope == ExpenseScope.custom
-                                  ? AppColors.mint
-                                  : AppColors.textMuted,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
                   Text(
-                    isPayer
-                        ? 'You paid'
-                        : 'Paid by ${expense.payerName ?? 'member'}',
+                    title,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
                       color: AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  expense.amount.toStringAsFixed(3),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'OMR',
-                  style: TextStyle(fontSize: 10, color: AppColors.textMuted),
-                ),
-              ],
+            Text(
+              AppFormatters.formatCurrency(transaction.amount, widget.trip.currency),
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                color: isSettlement ? AppColors.success : AppColors.textPrimary,
+              ),
             ),
-            const SizedBox(width: 8),
-            Icon(Iconsax.arrow_right_3, size: 16, color: AppColors.textMuted),
           ],
         ),
       ),

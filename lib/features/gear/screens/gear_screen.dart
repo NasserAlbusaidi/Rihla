@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../trip/models/trip_model.dart';
@@ -39,71 +42,22 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: gearAsync.when(
-                data: (items) => _buildContent(items, currentUserId),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: _buildErrorState(e.toString())),
-              ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: _buildFloatingAction(),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      body: Column(
         children: [
-          IconButton(
-            icon: const Icon(
-              Iconsax.arrow_left,
-              color: AppColors.textSecondary,
-            ),
-            onPressed: () => context.pop(),
+          ModuleHeader(
+            title: 'Gear',
+            subtitle: widget.trip.name.toUpperCase(),
           ),
-          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'LOADOUT / GEAR',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                Text(
-                  widget.trip.name,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
+            child: gearAsync.when(
+              data: (items) => _buildContent(items, currentUserId),
+              loading: () => SkeletonLoader.cardList(),
+              error: (e, _) => Center(child: _buildErrorState(e.toString())),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Iconsax.radar, color: AppColors.mint, size: 20),
           ),
         ],
       ),
+      floatingActionButton: _buildFloatingAction(),
     );
   }
 
@@ -125,16 +79,21 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       children: [
         _buildProgressCard(stats),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            itemCount: filteredItems.length + 1, // +1 for AddItemInput
-            itemBuilder: (context, index) {
-              if (index == 0) return _buildAddItemInput();
-              return _buildGearItemCard(
-                filteredItems[index - 1],
-                currentUserId,
-              );
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(tripGearProvider(widget.trip.id));
             },
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              itemCount: filteredItems.length + 1, // +1 for AddItemInput
+              itemBuilder: (context, index) {
+                if (index == 0) return _buildAddItemInput();
+                return _buildGearItemCard(
+                  filteredItems[index - 1],
+                  currentUserId,
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -177,7 +136,17 @@ class _GearScreenState extends ConsumerState<GearScreen> {
               textAlign: TextAlign.center,
             ).animate().fadeIn(delay: 300.ms),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
+            Text(
+              'ADD YOUR FIRST ITEM',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textSecondary,
+                letterSpacing: 1.2,
+              ),
+            ).animate().fadeIn(delay: 350.ms),
+            const SizedBox(height: 16),
 
             // Add item input
             _buildAddItemInput().animate().fadeIn(delay: 400.ms),
@@ -205,7 +174,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TEAM READINESS',
+                    'PACKING PROGRESS',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
@@ -215,7 +184,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Prepare for departure',
+                    'Getting ready',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -288,158 +257,155 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: item.isHighPriority
+              ? AppColors.warning.withValues(alpha: 0.3)
+              : AppColors.borderLight,
+          width: item.isHighPriority ? 2 : 1.5,
+        ),
         boxShadow: AppColors.cardShadow,
-        border: item.isHighPriority
-            ? Border.all(
-                color: AppColors.warning.withValues(alpha: 0.3),
-                width: 1.5,
-              )
-            : null,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Custom Mint Checkbox
-            GestureDetector(
-              onTap: () {
-                HapticService.lightClick();
-                _togglePacked(item, isMine);
-              },
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: item.isPacked ? AppColors.mint : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: item.isPacked ? AppColors.mint : AppColors.border,
-                    width: 2,
-                  ),
-                  boxShadow: item.isPacked
-                      ? [
-                          BoxShadow(
-                            color: AppColors.mint.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () {
+              HapticService.lightClick();
+              _togglePacked(item, isMine);
+            },
+            child: AnimatedContainer(
+              duration: 200.ms,
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: item.isPacked ? AppColors.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: item.isPacked ? AppColors.primary : AppColors.border,
+                  width: 2,
                 ),
-                child: item.isPacked
-                    ? const Icon(Icons.check, color: Colors.white, size: 18)
+                boxShadow: item.isPacked
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
                     : null,
               ),
+              child: item.isPacked
+                  ? const Icon(Icons.check, color: Colors.white, size: 18)
+                  : null,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.itemName.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                            color: item.isPacked
-                                ? AppColors.textMuted
-                                : AppColors.textPrimary,
-                            decoration: item.isPacked
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.itemName.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.3,
+                          color: item.isPacked
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
+                          decoration: item.isPacked
+                              ? TextDecoration.lineThrough
+                              : null,
                         ),
                       ),
-                      if (item.isHighPriority) _buildPriorityBadge(true),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildStatusChip(item.status),
-                      const SizedBox(width: 8),
-                      if (item.assignedTo != null) ...[
-                        CircleAvatar(
-                          radius: 10,
-                          backgroundColor: AppColors.surfaceLight,
-                          backgroundImage:
-                              item.assignedToAvatar != null &&
-                                  item.assignedToAvatar!.startsWith('http')
-                              ? NetworkImage(item.assignedToAvatar!)
-                              : null,
-                          child:
-                              item.assignedToAvatar == null ||
-                                  !item.assignedToAvatar!.startsWith('http')
-                              ? Text(
-                                  item.assigneeInitials,
-                                  style: const TextStyle(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isMine
-                              ? 'YOU'
-                              : (item.assignedToName
-                                        ?.split(' ')[0]
-                                        .toUpperCase() ??
-                                    'NONE'),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Context Menu Button
-            PopupMenuButton<String>(
-              icon: const Icon(
-                Icons.more_vert,
-                color: AppColors.textMuted,
-                size: 20,
-              ),
-              onSelected: (value) => _handleMenuAction(value, item),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'priority',
-                  child: Text('Toggle Priority'),
+                    ),
+                    if (item.isHighPriority) _buildPriorityBadge(true),
+                  ],
                 ),
-                if (item.assignedTo != null)
-                  const PopupMenuItem(
-                    value: 'unclaim',
-                    child: Text('Unclaim Item'),
-                  ),
-                if (item.assignedTo == null)
-                  const PopupMenuItem(
-                    value: 'claim',
-                    child: Text('Claim Item'),
-                  ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Text(
-                    'Delete Item',
-                    style: TextStyle(color: AppColors.rose),
-                  ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    _buildStatusChip(item.status),
+                    if (item.assignedTo != null) ...[
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 8,
+                              backgroundColor: AppColors.textMuted,
+                              child: Text(
+                                item.assigneeInitials,
+                                style: const TextStyle(
+                                  fontSize: 6,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isMine
+                                  ? 'YOU'
+                                  : (item.assignedToName
+                                            ?.split(' ')[0]
+                                            .toUpperCase() ??
+                                        'NONE'),
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(
+              Iconsax.more,
+              color: AppColors.textMuted,
+              size: 20,
+            ),
+            onSelected: (value) => _handleMenuAction(value, item),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'priority',
+                child: Text('Toggle Priority'),
+              ),
+              if (item.assignedTo != null)
+                const PopupMenuItem(
+                  value: 'unclaim',
+                  child: Text('Unclaim Item'),
+                ),
+              if (item.assignedTo == null)
+                const PopupMenuItem(value: 'claim', child: Text('Claim Item')),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete', style: TextStyle(color: AppColors.rose)),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -522,6 +488,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           Expanded(
             child: TextField(
               controller: _itemController,
+              inputFormatters: [LengthLimitingTextInputFormatter(100)],
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               decoration: const InputDecoration(
                 hintText: 'ADD GEAR ITEM...',
@@ -554,25 +521,19 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   }
 
   Widget _buildFloatingAction() {
-    return FloatingActionButton.extended(
+    return FloatingActionButton(
       onPressed: () {
         HapticService.lightClick();
         setState(() => _hideClaimed = !_hideClaimed);
       },
       backgroundColor: AppColors.textPrimary,
-      label: Text(
-        _hideClaimed ? 'SHOW ALL' : 'HIDE CLAIMED',
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1,
-          color: Colors.white,
-        ),
-      ),
-      icon: Icon(
+      elevation: 4,
+      shape: const CircleBorder(),
+      tooltip: _hideClaimed ? 'Show All' : 'Hide Claimed',
+      child: Icon(
         _hideClaimed ? Iconsax.eye : Iconsax.eye_slash,
         color: Colors.white,
-        size: 18,
+        size: 24,
       ),
     );
   }
@@ -584,7 +545,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         const Icon(Iconsax.warning_2, color: AppColors.rose, size: 48),
         const SizedBox(height: 16),
         Text(
-          'GEAR FETCH FAILED',
+          'Could not load gear',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
@@ -628,7 +589,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           'DELETE ITEM',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
-        content: Text('Remove ${item.itemName.toUpperCase()} from loadout?'),
+        content: Text('Remove ${item.itemName} from the gear list?'),
         actions: [
           TextButton(
             onPressed: () => context.pop(false),
