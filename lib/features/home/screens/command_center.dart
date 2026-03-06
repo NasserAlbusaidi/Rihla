@@ -26,6 +26,7 @@ import '../../trip/screens/manage_members_screen.dart';
 import '../../trip/services/trip_export_service.dart';
 import '../../vault/screens/vault_screen.dart';
 import '../../vault/providers/document_provider.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 
 /// Command Center - Main navigation hub for trips (Light theme)
@@ -132,6 +133,7 @@ class CommandCenter extends ConsumerWidget {
     return Column(
       children: [
         _buildHeader(context, ref, trip, allTrips),
+        const OfflineBanner(),
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),

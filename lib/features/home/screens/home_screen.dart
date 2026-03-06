@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import 'command_center.dart';
 
 /// Home Screen - Shows all trips with Join/Create buttons (Modern Bento Layout)
@@ -53,6 +56,9 @@ class HomeScreen extends ConsumerWidget {
                     .animate()
                     .fadeIn(duration: 600.ms)
                     .slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
+
+                // Offline indicator
+                const OfflineBanner(),
 
                 // Content
                 Expanded(
@@ -140,6 +146,13 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
   Widget _buildHeader(BuildContext context, WidgetRef ref, dynamic user) {
     final email = user?.email ?? 'Traveler';
     final displayName = email.split('@').first;
@@ -189,7 +202,7 @@ class HomeScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AHALAN,',
+                  '${_getGreeting()},',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.5,
@@ -225,7 +238,31 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  /// Sort trips: ongoing first, then upcoming (by start date), then planning, then completed
+  List<Trip> _sortTrips(List<Trip> trips) {
+    int priority(Trip t) {
+      if (t.isOngoing) return 0;
+      if (t.daysUntilStart != null && t.daysUntilStart! > 0) return 1;
+      if (!t.isPast) return 2; // planning
+      return 3; // completed
+    }
+
+    final sorted = List<Trip>.from(trips);
+    sorted.sort((a, b) {
+      final pa = priority(a);
+      final pb = priority(b);
+      if (pa != pb) return pa.compareTo(pb);
+      // Within same priority, sort by start date (nearest first)
+      if (a.startDate != null && b.startDate != null) {
+        return a.startDate!.compareTo(b.startDate!);
+      }
+      return a.createdAt.compareTo(b.createdAt);
+    });
+    return sorted;
+  }
+
   Widget _buildContent(BuildContext context, WidgetRef ref, List<Trip> trips) {
+    final sortedTrips = _sortTrips(trips);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
@@ -246,7 +283,9 @@ class HomeScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'MY ADVENTURES',
+                sortedTrips.length == 1
+                    ? 'YOUR TRIP'
+                    : 'YOUR TRIPS',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.5,
@@ -263,7 +302,7 @@ class HomeScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  '${trips.length}',
+                  '${sortedTrips.length}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
@@ -277,15 +316,15 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // Trip Cards or Empty State
-          if (trips.isEmpty)
+          if (sortedTrips.isEmpty)
             _buildEmptyTrips(context).animate().fadeIn(delay: 500.ms)
           else
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: trips.length,
+              itemCount: sortedTrips.length,
               itemBuilder: (context, index) {
-                return _buildTripCard(context, ref, trips[index])
+                return _buildTripCard(context, ref, sortedTrips[index])
                     .animate()
                     .fadeIn(delay: Duration(milliseconds: 500 + (index * 100)))
                     .slideY(begin: 0.1, end: 0, curve: Curves.easeOutBack);
@@ -303,7 +342,7 @@ class HomeScreen extends ConsumerWidget {
       children: [
         // Create Trip
         Expanded(
-          child: GestureDetector(
+          child: _PressableCard(
             onTap: () => context.push('/create-trip'),
             child: Container(
               height: 140, // Height for a "bento top" box
@@ -328,7 +367,7 @@ class HomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'PLAN NEW',
+                        'NEW TRIP',
                         style: TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.w800,
@@ -356,7 +395,7 @@ class HomeScreen extends ConsumerWidget {
 
         // Join Trip
         Expanded(
-          child: GestureDetector(
+          child: _PressableCard(
             onTap: () => context.push('/join-trip'),
             child: Container(
               height: 140,
@@ -376,7 +415,7 @@ class HomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'ENTRY CODE',
+                        'HAVE A CODE?',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w800,
@@ -406,28 +445,59 @@ class HomeScreen extends ConsumerWidget {
   Widget _buildEmptyTrips(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(40),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.borderLight),
-        boxShadow: AppColors.cardShadow,
+        border: Border.all(color: AppColors.borderLight, width: 1.5),
+        boxShadow: AppColors.cardShadowLarge,
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Iconsax.map, size: 48, color: AppColors.textMuted),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: const Icon(Iconsax.map_1, size: 36, color: Colors.black),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
           const Text(
-            'No expeditions yet',
+            'READY TO EXPLORE?',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'No trips yet',
+            style: TextStyle(
+              fontSize: 22,
               fontWeight: FontWeight.w900,
               color: AppColors.textPrimary,
               letterSpacing: -0.5,
@@ -435,11 +505,12 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'The world is waiting. Create your first journey to start tracking.',
+            'Your next adventure starts here.\nCreate a trip or join one with a code.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w600,
+              height: 1.5,
             ),
             textAlign: TextAlign.center,
           ),
@@ -451,6 +522,7 @@ class HomeScreen extends ConsumerWidget {
   Widget _buildTripCard(BuildContext context, WidgetRef ref, Trip trip) {
     final daysLeft = trip.daysUntilStart;
     final isOngoing = trip.isOngoing;
+    final isPast = trip.isPast;
 
     IconData getIconData(String iconName) {
       switch (iconName) {
@@ -475,20 +547,22 @@ class HomeScreen extends ConsumerWidget {
       }
     }
 
-    return GestureDetector(
+    return _PressableCard(
       onTap: () {
         ref.read(currentTripProvider.notifier).state = trip;
         Navigator.of(
           context,
         ).push(MaterialPageRoute(builder: (context) => const CommandCenter()));
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: AppColors.cardShadow,
-        ),
+      child: Opacity(
+        opacity: isPast ? 0.7 : 1.0,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: AppColors.cardShadow,
+          ),
         child: Column(
           children: [
             // Immersive Header Area
@@ -540,22 +614,36 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            trip.inviteCode,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.primaryDark,
-                              letterSpacing: 1,
+                        GestureDetector(
+                          onLongPress: () {
+                            Clipboard.setData(
+                              ClipboardData(text: trip.inviteCode),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Code "${trip.inviteCode}" copied!'),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              trip.inviteCode,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.primaryDark,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ),
                         ),
@@ -564,16 +652,79 @@ class HomeScreen extends ConsumerWidget {
                   ),
 
                   // Status Badge
-                  _buildStatusBadge(daysLeft, isOngoing),
+                  _buildStatusBadge(daysLeft, isOngoing, isPast),
                 ],
               ),
             ),
+
+            // Trip progress bar for ongoing trips
+            if (isOngoing && trip.totalDays != null && trip.daysIntoTrip != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Day ${trip.daysIntoTrip} of ${trip.totalDays}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        Text(
+                          '${((trip.daysIntoTrip! / trip.totalDays!) * 100).round()}%',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (trip.daysIntoTrip! / trip.totalDays!).clamp(0.0, 1.0),
+                        backgroundColor: AppColors.surfaceLight,
+                        valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                        minHeight: 4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Details Row
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
+                  // Currency Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      trip.currency,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
                   // Dates Badge
                   if (trip.startDate != null)
                     Container(
@@ -629,14 +780,18 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       ),
+      ),
     );
   }
 
-  Widget _buildStatusBadge(int? daysLeft, bool isOngoing) {
+  Widget _buildStatusBadge(int? daysLeft, bool isOngoing, bool isPast) {
     Color color;
     String text;
 
-    if (isOngoing) {
+    if (isPast) {
+      color = AppColors.textMuted;
+      text = 'COMPLETED';
+    } else if (isOngoing) {
       color = AppColors.success;
       text = 'LIVE';
     } else if (daysLeft != null && daysLeft > 0) {
@@ -657,15 +812,132 @@ class HomeScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-          color: color,
-          letterSpacing: 0.5,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isOngoing) ...[
+            _PulsingDot(color: color),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+/// A card that scales down slightly when pressed for tactile feedback
+class _PressableCard extends StatefulWidget {
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _PressableCard({required this.onTap, required this.child});
+
+  @override
+  State<_PressableCard> createState() => _PressableCardState();
+}
+
+class _PressableCardState extends State<_PressableCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        HapticService.lightClick();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scale,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// A small dot that pulses to indicate an active/live state
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+  const _PulsingDot({required this.color});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: widget.color.withValues(alpha: _animation.value),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withValues(alpha: _animation.value * 0.5),
+                blurRadius: 4,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

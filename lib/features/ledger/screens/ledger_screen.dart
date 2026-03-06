@@ -10,6 +10,7 @@ import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/app_tab_bar.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../activity/services/activity_service.dart';
 import '../../activity/widgets/timeline_card.dart';
 import '../../logistics/models/sub_group_model.dart';
@@ -287,6 +288,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             netBalance,
             participantCount,
           ).animate().fadeIn().slideY(begin: -0.2),
+        ),
+        // Offline indicator
+        const SliverToBoxAdapter(
+          child: OfflineBanner(),
         ),
         // Combined Activity Section
         // We can either keep the Activity Log (audit trail) OR replace it with the Ledger List.
