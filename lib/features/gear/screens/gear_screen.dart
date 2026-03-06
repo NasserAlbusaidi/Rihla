@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../core/services/haptic_service.dart';
@@ -101,58 +102,16 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const Icon(
-                Iconsax.bag_2,
-                size: 48,
-                color: AppColors.primary,
-              ),
-            ).animate().fadeIn().scale(delay: 100.ms),
-
-            const SizedBox(height: 24),
-
-            Text(
-              'No Gear Yet',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ).animate().fadeIn(delay: 200.ms),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'Add items your group needs to bring\nand claim what you\'re responsible for',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ).animate().fadeIn(delay: 300.ms),
-
-            const SizedBox(height: 12),
-            Text(
-              'ADD YOUR FIRST ITEM',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textSecondary,
-                letterSpacing: 1.2,
-              ),
-            ).animate().fadeIn(delay: 350.ms),
-            const SizedBox(height: 16),
-
-            // Add item input
-            _buildAddItemInput().animate().fadeIn(delay: 400.ms),
-          ],
-        ),
-      ),
+    return EmptyStateView(
+      icon: Iconsax.bag_2,
+      title: 'No gear yet',
+      message: 'Add items your group needs to bring',
+      actionLabel: 'Add Item',
+      onAction: () {
+        _itemController.clear();
+        FocusScope.of(context).requestFocus(FocusNode());
+      },
+      iconColor: AppColors.amber,
     );
   }
 

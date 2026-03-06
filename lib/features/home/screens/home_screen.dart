@@ -8,10 +8,11 @@ import 'package:intl/intl.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
-import '../../../shared/widgets/offline_banner.dart';
 import 'command_center.dart';
 
 /// Home Screen - Shows all trips with Join/Create buttons (Modern Bento Layout)
@@ -443,79 +444,13 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyTrips(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
-        boxShadow: AppColors.cardShadowLarge,
-      ),
-      child: Column(
-        children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.05),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(Iconsax.map_1, size: 36, color: Colors.black),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          const Text(
-            'READY TO EXPLORE?',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'No trips yet',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Your next adventure starts here.\nCreate a trip or join one with a code.',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return EmptyStateView(
+      icon: Iconsax.map,
+      title: 'No trips yet',
+      message: 'Create a trip or join one with an invite code',
+      actionLabel: 'Create Trip',
+      onAction: () => context.go('/create-trip'),
+      iconColor: AppColors.primary,
     );
   }
 

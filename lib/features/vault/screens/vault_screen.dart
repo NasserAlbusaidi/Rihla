@@ -6,6 +6,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../trip/models/trip_model.dart';
@@ -79,93 +80,13 @@ class VaultScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(48),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.05),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Iconsax.folder_open,
-                    size: 36,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ).animate().fadeIn().scale(delay: 100.ms),
-            const SizedBox(height: 32),
-            Text(
-              'NO DOCUMENTS YET',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textMuted,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Safe Keep Your Essentials',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Upload and share trip-critical documents like tickets, permits, and reservations.',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            SizedBox(
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: () => _uploadDocument(context, ref),
-                icon: const Icon(Iconsax.document_upload, size: 18),
-                label: const Text('Upload Document'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                ),
-              ),
-            ).animate().fadeIn(delay: 200.ms),
-          ],
-        ),
-      ),
+    return EmptyStateView(
+      icon: Iconsax.document,
+      title: 'No documents yet',
+      message: 'Upload tickets, bookings, or any trip files',
+      actionLabel: 'Upload',
+      onAction: () => _uploadDocument(context, ref),
+      iconColor: AppColors.indigo,
     );
   }
 

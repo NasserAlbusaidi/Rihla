@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../trip/models/trip_model.dart';
 import '../services/activity_service.dart';
@@ -59,48 +60,11 @@ class ActivityFeedScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Icon(
-                Iconsax.timer_1,
-                size: 32,
-                color: AppColors.textMuted,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'NO ACTIVITY YET',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Updates will appear here as your group adds expenses, claims gear, and makes changes.',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return EmptyStateView(
+      icon: Iconsax.activity,
+      title: 'No activity yet',
+      message: 'Actions from your trip will appear here',
+      iconColor: AppColors.sky,
     );
   }
 }
