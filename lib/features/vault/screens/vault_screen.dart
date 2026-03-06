@@ -8,20 +8,28 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/search_filter_bar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/document_model.dart';
 import '../providers/document_provider.dart';
 
 /// Vault Screen - Document management with upload/download
-class VaultScreen extends ConsumerWidget {
+class VaultScreen extends ConsumerStatefulWidget {
   final Trip trip;
 
   const VaultScreen({super.key, required this.trip});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final documentsAsync = ref.watch(tripDocumentsProvider(trip.id));
+  ConsumerState<VaultScreen> createState() => _VaultScreenState();
+}
+
+class _VaultScreenState extends ConsumerState<VaultScreen> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final documentsAsync = ref.watch(tripDocumentsProvider(widget.trip.id));
     final isLoading = ref.watch(documentLoadingProvider);
 
     return Scaffold(
@@ -30,7 +38,7 @@ class VaultScreen extends ConsumerWidget {
         children: [
           ModuleHeader(
             title: 'Vault',
-            subtitle: trip.name.toUpperCase(),
+            subtitle: widget.trip.name.toUpperCase(),
             actions: [
               Container(
                 decoration: BoxDecoration(
@@ -49,6 +57,11 @@ class VaultScreen extends ConsumerWidget {
               ),
             ],
           ),
+          SearchFilterBar(
+            onSearchChanged: (q) => setState(() => _searchQuery = q),
+            hintText: 'Search documents...',
+          ),
+          const SizedBox(height: 12),
           Expanded(
             child: documentsAsync.when(
               data: (docs) => docs.isEmpty
@@ -113,15 +126,22 @@ class VaultScreen extends ConsumerWidget {
     WidgetRef ref,
     List<Document> docs,
   ) {
+    final filteredDocs = docs.where((doc) {
+      if (_searchQuery.isNotEmpty) {
+        return doc.fileName.toLowerCase().contains(_searchQuery.toLowerCase());
+      }
+      return true;
+    }).toList();
+
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(tripDocumentsProvider(trip.id));
+        ref.invalidate(tripDocumentsProvider(widget.trip.id));
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(20),
-        itemCount: docs.length,
+        itemCount: filteredDocs.length,
         itemBuilder: (context, index) {
-          final doc = docs[index];
+          final doc = filteredDocs[index];
           return _buildDocumentItem(context, ref, doc, index)
               .animate()
               .fadeIn(delay: Duration(milliseconds: 100 + (index * 50)))
@@ -320,7 +340,7 @@ class VaultScreen extends ConsumerWidget {
 
   void _uploadDocument(BuildContext context, WidgetRef ref) async {
     final service = ref.read(documentServiceProvider);
-    final result = await service.pickAndUpload(tripId: trip.id);
+    final result = await service.pickAndUpload(tripId: widget.trip.id);
 
     if (!context.mounted) return;
 

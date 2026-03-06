@@ -8,6 +8,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/search_filter_bar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -29,6 +30,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   final _itemController = TextEditingController();
   bool _hideClaimed = false;
   bool _isHighPriority = false;
+  String _searchQuery = '';
+  String? _statusFilter;
 
   @override
   void dispose() {
@@ -49,6 +52,14 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             title: 'Gear',
             subtitle: widget.trip.name.toUpperCase(),
           ),
+          SearchFilterBar(
+            onSearchChanged: (q) => setState(() => _searchQuery = q),
+            hintText: 'Search gear...',
+            filters: const ['Unclaimed', 'Claimed', 'Packed'],
+            activeFilter: _statusFilter,
+            onFilterChanged: (f) => setState(() => _statusFilter = f),
+          ),
+          const SizedBox(height: 12),
           Expanded(
             child: gearAsync.when(
               data: (items) => _buildContent(items, currentUserId),
@@ -65,9 +76,25 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   Widget _buildContent(List<GearItem> items, String? currentUserId) {
     if (items.isEmpty) return _buildEmptyState();
 
-    final filteredItems = _hideClaimed
-        ? items.where((i) => i.status == GearStatus.unclaimed).toList()
-        : items;
+    var filteredItems = items.where((item) {
+      if (_searchQuery.isNotEmpty) {
+        if (!item.itemName.toLowerCase().contains(_searchQuery.toLowerCase())) {
+          return false;
+        }
+      }
+      if (_statusFilter != null) {
+        switch (_statusFilter) {
+          case 'Unclaimed':
+            if (item.assignedTo != null) return false;
+          case 'Claimed':
+            if (item.assignedTo == null || item.isPacked) return false;
+          case 'Packed':
+            if (!item.isPacked) return false;
+        }
+      }
+      if (_hideClaimed && item.status != GearStatus.unclaimed) return false;
+      return true;
+    }).toList();
 
     final stats = GearStats(
       total: items.length,
