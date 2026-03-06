@@ -21,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _hasError = false;
 
   @override
   void dispose() {
@@ -45,6 +46,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    // Reset error shake on new attempt
+    if (_hasError) setState(() => _hasError = false);
+
     if (!_formKey.currentState!.validate()) return;
 
     final email = _emailController.text.trim();
@@ -81,6 +85,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final error = ref.watch(authErrorProvider);
     final mode = ref.watch(authModeProvider);
     final isSignUp = mode == AuthMode.signUp;
+
+    // Trigger shake animation when a new error appears
+    ref.listen<String?>(authErrorProvider, (previous, next) {
+      if (next != null && mounted) {
+        setState(() => _hasError = true);
+      }
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -223,6 +234,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       child: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -332,7 +344,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
         ),
       ),
-    ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.05, end: 0);
+    )
+        .animate().fadeIn(delay: 800.ms).slideY(begin: 0.05, end: 0)
+        .animate(target: _hasError ? 1 : 0)
+        .shakeX(hz: 4, amount: 6, duration: 400.ms);
   }
 
   Widget _buildTextField({
@@ -386,6 +401,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: AppColors.primary),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: AppColors.rose.withValues(alpha: 0.5),
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.rose),
+            ),
+            errorStyle: const TextStyle(
+              color: AppColors.rose,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
           validator: validator,
