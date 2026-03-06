@@ -129,6 +129,9 @@ class Expense {
     return AppFormatters.formatOMR(amount);
   }
 
+  /// Alias for receiptUrl for backward compatibility
+  String? get receiptPath => receiptUrl;
+
   Expense copyWith({
     String? id,
     String? tripId,

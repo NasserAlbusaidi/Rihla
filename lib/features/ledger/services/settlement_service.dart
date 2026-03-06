@@ -27,6 +27,7 @@ class SettlementService {
     required String recipientId,
     required Decimal amount,
     String? note,
+    String currency = 'OMR',
   }) async {
     debugPrint(
       '💰 addSettlement called: tripId=$tripId, payer=$payerId, recipient=$recipientId, amount=$amount',
@@ -44,7 +45,7 @@ class SettlementService {
             'recipient_participant_id': recipientId,
             'amount': amount.toString(),
             'note': note,
-            'currency': 'OMR',
+            'currency': currency,
             'settled_at': DateTime.now().toIso8601String(),
           })
           .select(

@@ -34,6 +34,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await _service.saveCurrency(currencyCode);
     state = state.copyWith(currencyCode: currencyCode);
   }
+
+  Future<void> setPushNotificationsEnabled(bool enabled) async {
+    await _service.savePushNotificationsEnabled(enabled);
+    state = state.copyWith(pushNotificationsEnabled: enabled);
+  }
 }
 
 /// Provider for SettingsNotifier

@@ -9,7 +9,7 @@ import '../../../core/config/app_metadata.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/formatters.dart';
+// AppFormatters not needed for settings
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/app_settings_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -278,7 +278,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _showCurrencyDialog() {
     final currentCurrency = ref.read(settingsProvider).currencyCode;
-    final currencies = AppFormatters.currencyConfig.entries.toList();
+    final currencies = {
+      'OMR': 'ر.ع.',
+      'USD': '\$',
+      'EUR': '€',
+      'GBP': '£',
+      'AED': 'د.إ',
+      'SAR': 'ر.س',
+    };
+    final entries = currencies.entries.toList();
 
     showDialog(
       context: context,
@@ -286,18 +294,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Choose Currency'),
         content: SizedBox(
-          width: 300, // Fixed width instead of infinite
+          width: 300,
           child: ListView.builder(
             shrinkWrap: true,
-            itemCount: currencies.length,
+            itemCount: entries.length,
             itemBuilder: (context, index) {
-              final entry = currencies[index];
+              final entry = entries[index];
               final currency = entry.key;
-              final config = entry.value;
+              final symbol = entry.value;
               final isSelected = currency == currentCurrency;
               return ListTile(
                 title: Text(
-                  '${config.symbol} - $currency',
+                  '$symbol - $currency',
                   style: TextStyle(
                     color: isSelected ? AppColors.primary : null,
                   ),
@@ -686,6 +694,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     AppSettings settings,
     NotificationStatus notificationStatus,
   ) {
+    final isEnabled = notificationStatus == NotificationStatus.enabled;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       padding: const EdgeInsets.all(24),
@@ -722,14 +732,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             icon: Iconsax.notification,
             title: 'Push Notifications',
             subtitle: _notificationSubtitle(notificationStatus),
-            value: settings.pushNotificationsEnabled,
+            value: isEnabled,
             onChanged: (value) async {
               final notifService = ref.read(notificationServiceProvider);
               if (value) {
                 final enabled = await notifService.initialize();
-                await ref
-                    .read(settingsProvider.notifier)
-                    .setPushNotificationsEnabled(enabled);
                 if (!enabled && mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -742,32 +749,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 }
               } else {
                 await notifService.removeToken();
-                await ref
-                    .read(settingsProvider.notifier)
-                    .setPushNotificationsEnabled(false);
               }
-            },
-          ),
-          _buildSettingsToggle(
-            icon: Iconsax.wallet_3,
-            title: 'Expense Updates',
-            subtitle: 'Payment and debt reminders',
-            value: settings.expenseUpdatesEnabled,
-            onChanged: (value) {
-              ref.read(settingsProvider.notifier).setExpenseUpdatesEnabled(
-                    value,
-                  );
-            },
-          ),
-          _buildSettingsToggle(
-            icon: Iconsax.timer_1,
-            title: 'Departure Countdown',
-            subtitle: 'Reminders as your trip approaches',
-            value: settings.departureCountdownEnabled,
-            onChanged: (value) {
-              ref
-                  .read(settingsProvider.notifier)
-                  .setDepartureCountdownEnabled(value);
             },
           ),
         ],

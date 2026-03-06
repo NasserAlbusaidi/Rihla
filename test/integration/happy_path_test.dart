@@ -68,14 +68,14 @@ void main() {
             ),
           ),
           tripBalancesProvider(mockTrip.id).overrideWith(
-            (ref) => AsyncValue.data([
+            (ref) async => [
               UserBalance(
                 participantId: 'p-1',
                 totalPaid: Decimal.zero,
                 totalOwed: Decimal.zero,
                 netBalance: Decimal.zero,
               ),
-            ]),
+            ],
           ),
           tripGearProvider(mockTrip.id).overrideWith((ref) => Stream.value([])),
           tripSubGroupsProvider(

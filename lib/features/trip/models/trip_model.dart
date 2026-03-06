@@ -108,6 +108,29 @@ class Trip {
     return now.isAfter(startDate!) && now.isBefore(endDate!);
   }
 
+  /// Check if trip has ended
+  bool get isPast {
+    if (endDate == null) return false;
+    return DateTime.now().isAfter(endDate!);
+  }
+
+  /// Total number of days for the trip
+  int? get totalDays {
+    if (startDate == null || endDate == null) return null;
+    return endDate!.difference(startDate!).inDays + 1;
+  }
+
+  /// Number of days into the trip (1-indexed)
+  int? get daysIntoTrip {
+    if (startDate == null) return null;
+    final now = DateTime.now();
+    if (now.isBefore(startDate!)) return null;
+    return now.difference(startDate!).inDays + 1;
+  }
+
+  /// Default currency for the trip (OMR for Omani Rial)
+  String get currency => 'OMR';
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

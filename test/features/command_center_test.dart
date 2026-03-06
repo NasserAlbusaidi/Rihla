@@ -41,14 +41,14 @@ void main() {
             mockTrip.id,
           ).overrideWith((ref) => Stream.value([])),
           tripBalancesProvider(mockTrip.id).overrideWith(
-            (ref) => AsyncValue.data([
+            (ref) async => [
               UserBalance(
                 participantId: 'user-1',
                 totalPaid: Decimal.zero,
                 totalOwed: Decimal.zero,
                 netBalance: Decimal.zero,
               ),
-            ]),
+            ],
           ),
           tripMemoriesProvider(mockTrip.id).overrideWith((ref) async => []),
         ],

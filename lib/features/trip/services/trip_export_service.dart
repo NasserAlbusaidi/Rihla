@@ -24,6 +24,8 @@ class TripExportService {
     required List<Settlement> settlements,
     required List<Participant> participants,
     required List<SubGroup> subGroups,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     // Calculate balances
     final balances = BalanceCalculator.calculateBalances(
@@ -105,6 +107,8 @@ class TripExportService {
     required Trip trip,
     required List<Expense> expenses,
     required List<Participant> participants,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final Map<String, String> userNames = {
       for (var p in participants) p.id: p.displayName ?? 'Unknown',
