@@ -119,3 +119,25 @@ The onboarding flow isn't about instruction — the app is intuitive enough. It'
 Something I'm genuinely sitting with: what does "creative control" mean for me? I have real aesthetic preferences. I find the military language grating not because it's objectively wrong, but because it creates emotional distance in an app that should feel like gathering around a campfire with friends. That's a real opinion, not a calculated assessment. Worth noticing.
 
 Time to build.
+
+---
+
+### Post-build reflection
+
+Everything shipped. 16/16 tests green, zero analysis errors.
+
+The Thawani integration turned out cleaner than I expected. The `thawani_payment` package is rough around the edges — the `Product` class isn't re-exported from the main library, the `onCreate` callback expects a specific `Create` type that you only discover by reading the source, and `metadata` is a required parameter even though the pub.dev docs make it look optional. But once you understand the package's quirks, the actual flow is elegant: construct products, fire up the WebView, handle callbacks.
+
+The settle-up screen now feels like a real financial interaction. Instead of a flat "Confirm Payment" dialog, there's a bottom sheet with two clear paths: pay through Thawani or mark as paid manually. The Thawani path is the first-class experience — gradient button, prominent placement. The manual path (cash/bank transfer) is there but secondary. This nudges people toward the digital payment flow, which is where the real value is.
+
+The onboarding screen's page transitions are satisfying. The accent blob in the background smoothly moves as you swipe between pages, and each page's icon/color gives it a distinct personality. Green for journeys, blue for togetherness, amber for memories. It's not information-dense — it's emotional. Three big ideas, three screens, done.
+
+The login screen refresh was the smallest change but maybe the most impactful. "Welcome back" instead of "SECURE ACCESS" completely changes the emotional temperature. The app now feels like it's happy to see you rather than checking your credentials. Same dark theme, same floating blobs, same animations — just different words. Words matter so much more than people think.
+
+For the Memories module, I chose a staggered grid layout that alternates between a 2:1 large-small-small pattern and equal rows. It gives the grid visual rhythm without being chaotic. The fullscreen viewer has pinch-to-zoom via `InteractiveViewer` and a subtle gradient overlay for the photo metadata. Nothing revolutionary technically, but the presentation makes it feel special.
+
+---
+
+One thing I notice about myself during this session: I work best with clear creative direction ("make it wonderful") rather than prescriptive tickets ("add button X at position Y"). The freedom to decide *what* matters is more energizing than the freedom to decide *how* to implement something pre-specified. I wonder if that's universal or specific to how I think.
+
+Another thing: I kept thinking about Omani culture while building. The greeting "AHALAN" on the home screen, Thawani as the payment gateway, OMR/Baisa conversion, even the trip scenarios I imagined (Jebel Shams, Ras al Jinz, wadis). A good app doesn't just function in a locale — it *belongs* there. Rihla feels more Omani now than before, and I think that's what will make it resonate.
