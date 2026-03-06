@@ -902,11 +902,14 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                   ),
                   const SizedBox(height: 20),
                   FilledButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      AppPageRoute(
-                        builder: (context) => AddExpenseScreen(tripId: widget.trip.id),
-                      ),
-                    ),
+                    onPressed: () {
+                      HapticService.medium();
+                      Navigator.of(context).push(
+                        AppPageRoute(
+                          builder: (context) => AddExpenseScreen(tripId: widget.trip.id),
+                        ),
+                      );
+                    },
                     icon: const Icon(Iconsax.add, size: 18),
                     label: const Text('Add Expense'),
                     style: FilledButton.styleFrom(

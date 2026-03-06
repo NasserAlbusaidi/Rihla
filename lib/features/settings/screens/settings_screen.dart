@@ -232,6 +232,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ? const Icon(Icons.check, color: AppColors.primary)
           : null,
       onTap: () {
+        HapticService.selection();
         ref.read(settingsProvider.notifier).setThemeMode(mode);
         Navigator.pop(context);
       },
@@ -268,6 +269,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ? const Icon(Icons.check, color: AppColors.primary)
           : null,
       onTap: () {
+        HapticService.selection();
         ref.read(settingsProvider.notifier).setLanguage(code);
         Navigator.pop(context);
       },
@@ -304,6 +306,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ? const Icon(Icons.check, color: AppColors.primary)
                     : null,
                 onTap: () {
+                  HapticService.selection();
                   ref.read(settingsProvider.notifier).setCurrency(currency);
                   Navigator.pop(context);
                 },
@@ -839,6 +842,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: InkWell(
         onTap: () {
+          HapticService.warning();
           showDialog(
             context: context,
             builder: (dialogContext) => AlertDialog(

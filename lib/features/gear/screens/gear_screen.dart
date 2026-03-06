@@ -259,7 +259,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         children: [
           GestureDetector(
             onTap: () {
-              HapticService.lightClick();
+              HapticService.selection();
               _togglePacked(item, isMine);
             },
             child: AnimatedContainer(
@@ -548,19 +548,22 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   }
 
   void _handleMenuAction(String action, GearItem item) {
-    HapticService.lightClick();
     final service = ref.read(gearServiceProvider);
     switch (action) {
       case 'priority':
+        HapticService.selection();
         service.togglePriority(item.id, !item.isHighPriority);
         break;
       case 'claim':
+        HapticService.selection();
         service.claimItem(item.id);
         break;
       case 'unclaim':
+        HapticService.selection();
         service.unclaimItem(item.id);
         break;
       case 'delete':
+        HapticService.warning();
         _confirmDelete(item);
         break;
     }
