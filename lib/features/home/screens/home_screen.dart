@@ -100,10 +100,10 @@ class HomeScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(AppColors.space24),
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(32),
+                borderRadius: BorderRadius.circular(AppColors.space32),
               ),
               child: Icon(
                 isTimeout ? Iconsax.wifi_square : Iconsax.warning_2,
@@ -111,14 +111,14 @@ class HomeScreen extends ConsumerWidget {
                 color: AppColors.textMuted,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppColors.space24),
             Text(
               isTimeout ? 'Connection Lost' : 'Something went wrong',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppColors.space12),
             Text(
               isTimeout
                   ? 'Unable to reach the mountains. Check your connection.'
@@ -129,15 +129,15 @@ class HomeScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppColors.space32),
             ElevatedButton.icon(
               onPressed: () => ref.invalidate(userTripsProvider),
-              icon: const Icon(Iconsax.refresh, size: 20),
+              icon: const Icon(Iconsax.refresh, size: AppColors.space20),
               label: const Text('Try Again'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
+                  horizontal: AppColors.space32,
+                  vertical: AppColors.space16,
                 ),
               ),
             ),
@@ -159,7 +159,7 @@ class HomeScreen extends ConsumerWidget {
     final displayName = email.split('@').first;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+      padding: const EdgeInsets.fromLTRB(AppColors.space24, AppColors.space20, AppColors.space24, AppColors.space20),
       child: Row(
         children: [
           // Avatar with shadow and gradient
@@ -195,7 +195,7 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppColors.space16),
 
           // Greeting
           Expanded(
@@ -268,7 +268,7 @@ class HomeScreen extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: AppColors.space24, vertical: AppColors.space8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -314,7 +314,7 @@ class HomeScreen extends ConsumerWidget {
             ],
           ).animate().fadeIn(delay: 400.ms),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: AppColors.space20),
 
           // Trip Cards or Empty State
           if (sortedTrips.isEmpty)
@@ -346,11 +346,11 @@ class HomeScreen extends ConsumerWidget {
           child: _PressableCard(
             onTap: () => context.push('/create-trip'),
             child: Container(
-              height: 140, // Height for a "bento top" box
-              padding: const EdgeInsets.all(20),
+              height: AppColors.buttonHeight,
+              padding: const EdgeInsets.symmetric(horizontal: AppColors.space20),
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(AppColors.radiusMedium),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primary.withValues(alpha: 0.3),
@@ -359,32 +359,17 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: const Row(
                 children: [
-                  Icon(Iconsax.add_circle, color: Colors.black, size: 36),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'NEW TRIP',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 10,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      Text(
-                        'Create Trip',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
+                  Icon(Iconsax.add_circle, color: Colors.black, size: 24),
+                  SizedBox(width: AppColors.space12),
+                  Text(
+                    'Create Trip',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
                   ),
                 ],
               ),
@@ -392,47 +377,32 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
 
-        const SizedBox(width: 16),
+        const SizedBox(width: AppColors.space16),
 
         // Join Trip
         Expanded(
           child: _PressableCard(
             onTap: () => context.push('/join-trip'),
             child: Container(
-              height: 140,
-              padding: const EdgeInsets.all(20),
+              height: AppColors.buttonHeight,
+              padding: const EdgeInsets.symmetric(horizontal: AppColors.space20),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(AppColors.radiusMedium),
                 border: Border.all(color: AppColors.borderLight, width: 2),
                 boxShadow: AppColors.cardShadow,
               ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: const Row(
                 children: [
-                  Icon(Iconsax.login, color: AppColors.primary, size: 36),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'HAVE A CODE?',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 10,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      Text(
-                        'Join Trip',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
+                  Icon(Iconsax.login, color: AppColors.primary, size: 24),
+                  SizedBox(width: AppColors.space12),
+                  Text(
+                    'Join Trip',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
                   ),
                 ],
               ),
@@ -490,19 +460,21 @@ class HomeScreen extends ConsumerWidget {
         ).push(MaterialPageRoute(builder: (context) => const CommandCenter()));
       },
       child: Opacity(
-        opacity: isPast ? 0.7 : 1.0,
+        opacity: isPast ? 0.85 : 1.0,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 20),
+          margin: const EdgeInsets.only(bottom: AppColors.space20),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(28),
             boxShadow: AppColors.cardShadow,
           ),
-        child: Column(
+        child: Stack(
+          children: [
+          Column(
           children: [
             // Immersive Header Area
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppColors.space20),
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight.withValues(alpha: 0.5),
                 borderRadius: const BorderRadius.vertical(
@@ -517,7 +489,7 @@ class HomeScreen extends ConsumerWidget {
                     height: 64,
                     decoration: BoxDecoration(
                       gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppColors.radiusLarge),
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primary.withValues(alpha: 0.2),
@@ -529,10 +501,10 @@ class HomeScreen extends ConsumerWidget {
                     child: Icon(
                       getIconData(trip.icon),
                       color: Colors.black,
-                      size: 32,
+                      size: AppColors.space32,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppColors.space16),
 
                   // Info Column
                   Expanded(
@@ -564,21 +536,32 @@ class HomeScreen extends ConsumerWidget {
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
+                              horizontal: AppColors.space8,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.primaryLight,
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Text(
-                              trip.inviteCode,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.primaryDark,
-                                letterSpacing: 1,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  trip.inviteCode,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.primaryDark,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Iconsax.copy,
+                                  size: 12,
+                                  color: AppColors.primaryDark,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -595,7 +578,7 @@ class HomeScreen extends ConsumerWidget {
             // Trip progress bar for ongoing trips
             if (isOngoing && trip.totalDays != null && trip.daysIntoTrip != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                padding: const EdgeInsets.fromLTRB(AppColors.space20, 0, AppColors.space20, 0),
                 child: Column(
                   children: [
                     Row(
@@ -619,7 +602,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppColors.space8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
@@ -635,18 +618,18 @@ class HomeScreen extends ConsumerWidget {
 
             // Details Row
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppColors.space20),
               child: Row(
                 children: [
                   // Currency Badge
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
-                      vertical: 8,
+                      vertical: AppColors.space8,
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppColors.space12),
                     ),
                     child: Text(
                       trip.currency,
@@ -658,27 +641,27 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppColors.space8),
 
                   // Dates Badge
                   if (trip.startDate != null)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                        horizontal: AppColors.space12,
+                        vertical: AppColors.space8,
                       ),
                       decoration: BoxDecoration(
                         border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppColors.space12),
                       ),
                       child: Row(
                         children: [
                           const Icon(
                             Iconsax.calendar_1,
-                            size: 16,
+                            size: AppColors.space16,
                             color: AppColors.textMuted,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppColors.space8),
                           Text(
                             '${DateFormat('MMM d').format(trip.startDate!)}${trip.endDate != null ? ' - ${DateFormat('MMM d').format(trip.endDate!)}' : ''}',
                             style: const TextStyle(
@@ -706,10 +689,48 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(width: 4),
                   const Icon(
                     Iconsax.arrow_right_3,
-                    size: 16,
+                    size: AppColors.space16,
                     color: AppColors.primaryDark,
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+          // Completed badge overlay
+          if (isPast)
+            Positioned(
+              top: AppColors.space12,
+              right: AppColors.space12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppColors.space8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.textMuted.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppColors.space8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Iconsax.tick_circle,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'COMPLETED',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textMuted,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -741,10 +762,10 @@ class HomeScreen extends ConsumerWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: AppColors.space12, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.space12),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
