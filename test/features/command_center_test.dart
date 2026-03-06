@@ -8,6 +8,7 @@ import 'package:safar/features/trip/providers/trip_provider.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/memories/providers/memory_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -40,7 +41,7 @@ void main() {
             mockTrip.id,
           ).overrideWith((ref) => Stream.value([])),
           tripBalancesProvider(mockTrip.id).overrideWith(
-            (ref) => Future.value([
+            (ref) => AsyncValue.data([
               UserBalance(
                 participantId: 'user-1',
                 totalPaid: Decimal.zero,
@@ -49,6 +50,7 @@ void main() {
               ),
             ]),
           ),
+          tripMemoriesProvider(mockTrip.id).overrideWith((ref) async => []),
         ],
         child: const MaterialApp(home: CommandCenter()),
       ),
@@ -56,11 +58,11 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // Verify trip name is visible
-    expect(find.text('Test Adventure'), findsWidgets);
+    // Verify trip name is visible (Upper case in UI)
+    expect(find.text('TEST ADVENTURE'), findsWidgets);
 
     // Verify Expense Summary card is visible
-    expect(find.text('Total Expenses'), findsOneWidget);
+    expect(find.text('TREASURY'), findsOneWidget);
 
     // Verify Navigation Modules are visible
     expect(find.text('Ledger'), findsOneWidget);

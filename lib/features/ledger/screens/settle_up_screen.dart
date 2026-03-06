@@ -15,6 +15,7 @@ import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
 import '../services/settlement_service.dart';
+import '../services/thawani_service.dart';
 
 /// Settle Up Screen - Shows optimized settlements with payment actions
 class SettleUpScreen extends ConsumerWidget {
@@ -147,154 +148,313 @@ class SettleUpScreen extends ConsumerWidget {
             ),
     );
 
+    // Group settlements: "Action Required" (by me) vs "Waiting for Others"
+    final myDebts = pendingSettlements
+        .where((s) => s['fromUserId'] == myBalance.participantId)
+        .toList();
+    final debtToMe = pendingSettlements
+        .where((s) => s['toUserId'] == myBalance.participantId)
+        .toList();
+    final others = pendingSettlements
+        .where(
+          (s) =>
+              s['fromUserId'] != myBalance.participantId &&
+              s['toUserId'] != myBalance.participantId,
+        )
+        .toList();
+
     // Calculate total pending
     Decimal totalPending = Decimal.zero;
     for (final s in pendingSettlements) {
       totalPending += (s['amount'] as Decimal);
     }
 
-    // Build participant name map for settlements display
     final participantNames = <String, String>{
       for (var p in participants) p.id: p.displayName ?? 'Unknown',
     };
 
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Minimal Summary Section
-          _buildMinimalSummary(
-            totalPending,
-            myBalance,
-          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+          // 1. Premium Bento-style Summary
+          _buildPremiumSummary(context, totalPending, myBalance)
+              .animate()
+              .fadeIn(duration: 600.ms)
+              .slideX(begin: -0.1, curve: Curves.easeOutCubic),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
-          // 2. Pending Settlements (Main Actionable Items)
+          // 2. Suggestions Sections
           if (pendingSettlements.isNotEmpty) ...[
-            const Text(
-              'SUGGESTED SETTLEMENTS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
-                letterSpacing: 1.0,
-              ),
-            ).animate().fadeIn(delay: 200.ms),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.border.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Column(
-                children: pendingSettlements.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final settlement = entry.value;
-                  final isLast = index == pendingSettlements.length - 1;
-                  return _buildSettlementTile(
-                    context,
-                    ref,
-                    settlement,
-                    showDivider: !isLast,
-                  );
-                }).toList(),
-              ),
-            ).animate().fadeIn(delay: 250.ms),
+            if (myDebts.isNotEmpty) ...[
+              _buildSectionHeader('YOUR ACTIONS', Iconsax.wallet_3),
+              const SizedBox(height: 12),
+              _buildSettlementGroup(context, ref, myDebts, isUrgent: true),
+              const SizedBox(height: 24),
+            ],
+
+            if (debtToMe.isNotEmpty) ...[
+              _buildSectionHeader('WAITING FOR OTHERS', Iconsax.timer_1),
+              const SizedBox(height: 12),
+              _buildSettlementGroup(context, ref, debtToMe),
+              const SizedBox(height: 24),
+            ],
+
+            if (others.isNotEmpty) ...[
+              _buildSectionHeader('OTHERS SETTLING', Iconsax.people),
+              const SizedBox(height: 12),
+              _buildSettlementGroup(context, ref, others),
+              const SizedBox(height: 24),
+            ],
           ] else if (recordedSettlements.isEmpty) ...[
-            _buildAllSettled(context),
+            Padding(
+              padding: const EdgeInsets.only(top: 40),
+              child: _buildAllSettled(context),
+            ),
           ],
 
-          const SizedBox(height: 24),
-
-          // 3. History (Collapsible)
+          // 3. History
           if (recordedSettlements.isNotEmpty)
             _buildRecordedSettlements(
               context,
               recordedSettlements,
               participantNames,
-            ).animate().fadeIn(delay: 300.ms),
+            ).animate().fadeIn(delay: 200.ms),
 
           const SizedBox(height: 16),
 
-          // 4. Recent Expenses (Collapsible)
+          // 4. Recent Expenses
           if (expenses.isNotEmpty)
             _buildRecentExpenses(
               context,
               expenses,
-            ).animate().fadeIn(delay: 350.ms),
+            ).animate().fadeIn(delay: 300.ms),
 
-          // Add extra padding at bottom for safe scrolling
           const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  Widget _buildMinimalSummary(Decimal totalPending, UserBalance myBalance) {
+  Widget _buildPremiumSummary(
+    BuildContext context,
+    Decimal totalPending,
+    UserBalance myBalance,
+  ) {
     final isPositive = myBalance.netBalance >= Decimal.zero;
+    final accentColor = isPositive ? AppColors.success : AppColors.error;
 
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accentColor.withValues(alpha: 0.15),
+            AppColors.surface.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1),
+        boxShadow: AppColors.cardShadowLarge,
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Total Pending',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isPositive ? 'YOU ARE OWED' : 'YOU OWE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.5,
+                      color: accentColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        AppFormatters.formatCurrency(myBalance.netBalance.abs(), trip.currency),
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${totalPending.toStringAsFixed(3)} OMR',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isPositive ? Iconsax.receipt_add : Iconsax.receipt_minus,
+                  color: accentColor,
+                  size: 28,
                 ),
               ),
             ],
           ),
-        ),
-        Container(
-          width: 1,
-          height: 32,
-          color: AppColors.border,
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-        ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 24),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 16),
+          Row(
             children: [
-              Text(
-                isPositive ? 'You are owed' : 'You owe',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
+              _buildSummaryMiniItem(
+                'Trip Total Pending',
+                AppFormatters.formatCurrency(totalPending, trip.currency),
+                Iconsax.status_up,
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${myBalance.netBalance.abs().toStringAsFixed(3)} OMR',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: isPositive ? AppColors.success : AppColors.error,
-                ),
+              const SizedBox(width: 32),
+              _buildSummaryMiniItem(
+                'Total Paid by You',
+                AppFormatters.formatCurrency(myBalance.totalPaid, trip.currency),
+                Iconsax.wallet_check,
               ),
             ],
+          ),
+          if (!isPositive && myBalance.netBalance.abs() > Decimal.zero) ...[
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // Scroll hint - the action buttons are per-settlement below
+                  },
+                  icon: const Icon(Iconsax.card_pos, size: 18),
+                  label: const Text('PAY WITH THAWANI'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.black,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryMiniItem(String label, String value, IconData icon) {
+    return Expanded(
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: AppColors.textMuted),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.textMuted),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textMuted,
+            letterSpacing: 1.2,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSettlementGroup(
+    BuildContext context,
+    WidgetRef ref,
+    List<Map<String, dynamic>> settlements, {
+    bool isUrgent = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isUrgent
+              ? AppColors.rose.withValues(alpha: 0.2)
+              : AppColors.border.withValues(alpha: 0.5),
+        ),
+        boxShadow: isUrgent ? AppColors.cardShadow : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: settlements.asMap().entries.map((entry) {
+          final index = entry.key;
+          final settlement = entry.value;
+          final isLast = index == settlements.length - 1;
+          return _buildSettlementTile(
+            context,
+            ref,
+            settlement,
+            showDivider: !isLast,
+            isUrgent: isUrgent,
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -303,97 +463,126 @@ class SettleUpScreen extends ConsumerWidget {
     WidgetRef ref,
     Map<String, dynamic> settlement, {
     bool showDivider = true,
+    bool isUrgent = false,
   }) {
     final fromName = settlement['fromUserName'] as String;
     final toName = settlement['toUserName'] as String;
     final amount = (settlement['amount'] as Decimal);
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Avatar Circle
-              _buildSmallAvatar(fromName),
-              const SizedBox(width: 8),
+    return InkWell(
+      onTap: () => _confirmPayment(context, ref, settlement),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Avatar Visual Stack
+                SizedBox(
+                  width: 52,
+                  height: 32,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: 0,
+                        child: _buildSmallAvatar(fromName, isPayer: true),
+                      ),
+                      Positioned(left: 20, child: _buildSmallAvatar(toName)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
 
-              const Icon(
-                Iconsax.arrow_right_1,
-                size: 16,
-                color: AppColors.textMuted,
-              ),
-              const SizedBox(width: 8),
-
-              // Recipient Avatar
-              _buildSmallAvatar(toName),
-
-              const SizedBox(width: 12),
-
-              // Text Description
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 14,
+                // Text Description
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: fromName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const TextSpan(
+                              text: ' → ',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text: toName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
                         children: [
-                          TextSpan(
-                            text: fromName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          Text(
+                            AppFormatters.formatCurrency(amount, trip.currency),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: isUrgent ? AppColors.rose : AppColors.mint,
+                            ),
                           ),
-                          const TextSpan(text: ' owes '),
-                          TextSpan(
-                            text: toName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
+                          const SizedBox(width: 6),
+                          if (isUrgent)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.rose.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'PAYMENT DUE',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.rose,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${amount.toStringAsFixed(3)} OMR',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              // Settle Button
-              TextButton(
-                onPressed: () => _confirmPayment(context, ref, settlement),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  foregroundColor: AppColors.primary,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                // Settle Button
+                const Icon(
+                  Iconsax.arrow_right_3,
+                  size: 16,
+                  color: AppColors.textMuted,
                 ),
-                child: const Text(
-                  'Settle',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        if (showDivider)
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-      ],
+          if (showDivider)
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColors.border.withValues(alpha: 0.5),
+              indent: 16,
+              endIndent: 16,
+            ),
+        ],
+      ),
     );
   }
 
@@ -455,8 +644,6 @@ class SettleUpScreen extends ConsumerWidget {
         participantNames[settlement.payerParticipantId] ?? 'Unknown';
     final recipientName =
         participantNames[settlement.recipientParticipantId] ?? 'Unknown';
-    final amountStr = settlement.amount.toStringAsFixed(2);
-
     return Column(
       children: [
         Padding(
@@ -500,7 +687,7 @@ class SettleUpScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '$amountStr OMR',
+                    AppFormatters.formatCurrency(Decimal.parse(settlement.amount.toString()), trip.currency),
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -619,7 +806,7 @@ class SettleUpScreen extends ConsumerWidget {
                 ),
               ),
               Text(
-                '${expense.amount.toStringAsFixed(2)} OMR',
+                AppFormatters.formatCurrency(expense.amount, trip.currency),
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -670,85 +857,231 @@ class SettleUpScreen extends ConsumerWidget {
     ).animate().fadeIn().scale();
   }
 
+  Future<void> _recordSettlement(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> settlement,
+  ) async {
+    try {
+      final result = await ref
+          .read(settlementServiceProvider)
+          .addSettlement(
+            tripId: trip.id,
+            payerId: settlement['fromUserId'],
+            recipientId: settlement['toUserId'],
+            amount: settlement['amount'],
+            currency: trip.currency,
+          );
+
+      if (result != null && context.mounted) {
+        ref.invalidate(tripSettlementsProvider(trip.id));
+        ref.invalidate(tripBalancesProvider(trip.id));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment recorded successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error recording payment: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _confirmPayment(
     BuildContext context,
     WidgetRef ref,
     Map<String, dynamic> settlement,
   ) async {
-    final fromName = settlement['fromUserName'];
-    final toName = settlement['toUserName'];
-    final amount = (settlement['amount'] as Decimal).toStringAsFixed(3);
+    final fromName = settlement['fromUserName'] as String;
+    final toName = settlement['toUserName'] as String;
+    final amount = settlement['amount'] as Decimal;
+    final amountFormatted = AppFormatters.formatCurrency(amount, trip.currency);
 
-    final confirmed = await showDialog<bool>(
+    final result = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Payment'),
-        content: Text('Mark that $fromName paid $amount OMR to $toName?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Confirm'),
-          ),
-        ],
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Settle Payment',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$fromName owes $amountFormatted to $toName',
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+
+            // Pay with Thawani button
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, 'thawani'),
+                  icon: const Icon(Iconsax.card_pos, size: 20),
+                  label: const Text('Pay with Thawani'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.black,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Mark as paid manually
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context, 'manual'),
+                icon: const Icon(Iconsax.tick_circle, size: 20),
+                label: const Text('Mark as Paid (Cash/Transfer)'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: AppColors.border, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Cancel
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
 
-    if (confirmed == true && context.mounted) {
-      try {
-        final result = await ref
-            .read(settlementServiceProvider)
-            .addSettlement(
-              tripId: trip.id,
-              payerId: settlement['fromUserId'],
-              recipientId: settlement['toUserId'],
-              amount: settlement['amount'],
+    if (!context.mounted || result == null) return;
+
+    if (result == 'thawani') {
+      ThawaniService.paySettlement(
+        context: context,
+        fromName: fromName,
+        toName: toName,
+        amount: amount,
+        onSuccess: () {
+          if (context.mounted) {
+            _recordSettlement(context, ref, settlement);
+          }
+        },
+        onCancel: () {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Payment cancelled'),
+                backgroundColor: AppColors.textSecondary,
+              ),
             );
-
-        if (result != null && context.mounted) {
-          // Invalidate providers to refresh UI
-          ref.invalidate(tripSettlementsProvider(trip.id));
-          ref.invalidate(tripBalancesProvider(trip.id));
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Payment recorded successfully!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error recording payment: $e'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      }
+          }
+        },
+        onError: (error) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Payment error: $error'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+        },
+      );
+    } else if (result == 'manual') {
+      _recordSettlement(context, ref, settlement);
     }
   }
 
-  Widget _buildSmallAvatar(String name) {
+  Widget _buildSmallAvatar(String name, {bool isPayer = false}) {
     return Container(
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: isPayer ? AppColors.surface : AppColors.surfaceLight,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isPayer ? AppColors.mint : AppColors.border,
+          width: isPayer ? 2 : 1,
+        ),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: AppColors.textSecondary,
+            color: isPayer ? AppColors.textPrimary : AppColors.textSecondary,
           ),
         ),
       ),

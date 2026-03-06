@@ -11,7 +11,7 @@ import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import 'command_center.dart';
 
-/// Home Screen - Shows all trips with Join/Create buttons
+/// Home Screen - Shows all trips with Join/Create buttons (Modern Bento Layout)
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -22,31 +22,65 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(
-              context,
-              ref,
-              user,
-            ).animate().fadeIn().slideY(begin: -0.2),
+      body: Stack(
+        children: [
+          // Background subtle pattern or gradient
+          Positioned(
+            top: -150,
+            right: -150,
+            child:
+                Container(
+                      width: 400,
+                      height: 400,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(duration: 1.seconds)
+                    .scale(
+                      begin: const Offset(0.8, 0.8),
+                      end: const Offset(1, 1),
+                    ),
+          ),
 
-            // Content
-            Expanded(
-              child: tripsAsync.when(
-                data: (trips) => _buildContent(context, ref, trips),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _buildErrorWidget(context, ref, e),
-              ),
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                _buildHeader(context, ref, user)
+                    .animate()
+                    .fadeIn(duration: 600.ms)
+                    .slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
+
+                // Content
+                Expanded(
+                  child: tripsAsync.when(
+                    data: (trips) => RefreshIndicator(
+                      onRefresh: () async {
+                        ref.invalidate(userTripsProvider);
+                      },
+                      color: AppColors.primary,
+                      child: _buildContent(context, ref, trips),
+                    ),
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    error: (e, _) => _buildErrorWidget(context, ref, e),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  /// Error widget with retry button for realtime timeout and other errors
   Widget _buildErrorWidget(BuildContext context, WidgetRef ref, Object error) {
     final isTimeout =
         error.toString().contains('timedOut') ||
@@ -54,48 +88,49 @@ class HomeScreen extends ConsumerWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(horizontal: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isTimeout ? Iconsax.wifi_square : Iconsax.warning_2,
-              size: 64,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isTimeout ? 'Connection Timeout' : 'Something went wrong',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: Icon(
+                isTimeout ? Iconsax.wifi_square : Iconsax.warning_2,
+                size: 48,
+                color: AppColors.textMuted,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 24),
+            Text(
+              isTimeout ? 'Connection Lost' : 'Something went wrong',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
             Text(
               isTimeout
-                  ? 'Unable to connect to the server. Please check your internet connection.'
-                  : 'An error occurred while loading your trips.',
+                  ? 'Unable to reach the mountains. Check your connection.'
+                  : 'We hit a bump in the road. Let\'s try again.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textMuted),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () {
-                ref.invalidate(userTripsProvider);
-              },
-              icon: const Icon(Iconsax.refresh),
-              label: const Text('Retry'),
+              onPressed: () => ref.invalidate(userTripsProvider),
+              icon: const Icon(Iconsax.refresh, size: 20),
+              label: const Text('Try Again'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  horizontal: 32,
+                  vertical: 16,
                 ),
               ),
             ),
@@ -110,33 +145,43 @@ class HomeScreen extends ConsumerWidget {
     final displayName = email.split('@').first;
 
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: AppColors.cardShadow,
-      ),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       child: Row(
         children: [
-          // Avatar
+          // Avatar with shadow and gradient
           Container(
-            width: 48,
-            height: 48,
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
               shape: BoxShape.circle,
+              gradient: AppColors.primaryGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: Center(
-              child: Text(
-                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'T',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  displayName.isNotEmpty ? displayName[0].toUpperCase() : 'T',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
 
           // Greeting
           Expanded(
@@ -144,25 +189,36 @@ class HomeScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome back,',
-                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  'AHALAN,',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                  ),
                 ),
                 Text(
                   displayName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
                   ),
                 ),
               ],
             ),
           ),
 
-          // Settings
-          IconButton(
-            icon: const Icon(Iconsax.setting_2),
-            onPressed: () => context.push('/settings'),
+          // Settings Icon
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: IconButton(
+              icon: const Icon(Iconsax.setting_2, size: 22),
+              color: AppColors.textPrimary,
+              onPressed: () => context.push('/settings'),
+            ),
           ),
         ],
       ),
@@ -171,50 +227,72 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildContent(BuildContext context, WidgetRef ref, List<Trip> trips) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Action Buttons
           _buildActionButtons(
             context,
-          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
 
-          // Active Trips Section
+          // Section Title
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Your Trips',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              Text(
+                'MY ADVENTURES',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                  color: AppColors.textSecondary,
                 ),
               ),
-              Text(
-                '${trips.length} ${trips.length == 1 ? 'trip' : 'trips'}',
-                style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${trips.length}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
               ),
             ],
-          ).animate().fadeIn(delay: 200.ms),
+          ).animate().fadeIn(delay: 400.ms),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           // Trip Cards or Empty State
           if (trips.isEmpty)
-            _buildEmptyTrips(context).animate().fadeIn(delay: 300.ms)
+            _buildEmptyTrips(context).animate().fadeIn(delay: 500.ms)
           else
-            ...trips.asMap().entries.map((entry) {
-              final index = entry.key;
-              final trip = entry.value;
-              return _buildTripCard(context, ref, trip)
-                  .animate()
-                  .fadeIn(delay: Duration(milliseconds: 300 + (index * 100)))
-                  .slideX(begin: 0.1);
-            }),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: trips.length,
+              itemBuilder: (context, index) {
+                return _buildTripCard(context, ref, trips[index])
+                    .animate()
+                    .fadeIn(delay: Duration(milliseconds: 500 + (index * 100)))
+                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOutBack);
+              },
+            ),
+
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -228,29 +306,45 @@ class HomeScreen extends ConsumerWidget {
           child: GestureDetector(
             onTap: () => context.push('/create-trip'),
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              height: 140, // Height for a "bento top" box
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
               child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Iconsax.add_circle, color: Colors.white, size: 32),
-                  SizedBox(height: 8),
-                  Text(
-                    'Create Trip',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
+                  Icon(Iconsax.add_circle, color: Colors.black, size: 36),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PLAN NEW',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      Text(
+                        'Create Trip',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -265,24 +359,40 @@ class HomeScreen extends ConsumerWidget {
           child: GestureDetector(
             onTap: () => context.push('/join-trip'),
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              height: 140,
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.borderLight, width: 2),
                 boxShadow: AppColors.cardShadow,
               ),
-              child: Column(
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Iconsax.login, color: AppColors.primary, size: 32),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Join Trip',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
+                  Icon(Iconsax.login, color: AppColors.primary, size: 36),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ENTRY CODE',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      Text(
+                        'Join Trip',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -295,28 +405,42 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildEmptyTrips(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         children: [
-          Icon(Iconsax.map, size: 64, color: AppColors.textMuted),
-          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Iconsax.map, size: 48, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 24),
           const Text(
-            'No trips yet',
+            'No expeditions yet',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
               color: AppColors.textPrimary,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'Create a new trip or join an existing one\nto start your adventure',
-            style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+            'The world is waiting. Create your first journey to start tracking.',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -328,7 +452,6 @@ class HomeScreen extends ConsumerWidget {
     final daysLeft = trip.daysUntilStart;
     final isOngoing = trip.isOngoing;
 
-    // Helper to get icon from name
     IconData getIconData(String iconName) {
       switch (iconName) {
         case 'airplane':
@@ -354,56 +477,55 @@ class HomeScreen extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        // Set as current trip and navigate to command center
         ref.read(currentTripProvider.notifier).state = trip;
         Navigator.of(
           context,
         ).push(MaterialPageRoute(builder: (context) => const CommandCenter()));
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 20),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: AppColors.cardShadow,
         ),
         child: Column(
           children: [
-            // Header with gradient
+            // Immersive Header Area
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.1),
-                    AppColors.primaryLight,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppColors.surfaceLight.withValues(alpha: 0.5),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
+                  top: Radius.circular(28),
                 ),
               ),
               child: Row(
                 children: [
-                  // Trip Icon
+                  // Icon container with specialized color
                   Container(
-                    width: 56,
-                    height: 56,
+                    width: 64,
+                    height: 64,
                     decoration: BoxDecoration(
                       gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Icon(
                       getIconData(trip.icon),
-                      color: Colors.white,
-                      size: 28,
+                      color: Colors.black,
+                      size: 32,
                     ),
                   ),
                   const SizedBox(width: 16),
 
-                  // Trip Info
+                  // Info Column
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,75 +533,95 @@ class HomeScreen extends ConsumerWidget {
                         Text(
                           trip.name,
                           style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
                             color: AppColors.textPrimary,
+                            letterSpacing: -0.5,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Iconsax.ticket,
-                              size: 14,
-                              color: AppColors.textMuted,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            trip.inviteCode,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.primaryDark,
+                              letterSpacing: 1,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              trip.inviteCode,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textMuted,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
                   ),
 
                   // Status Badge
-                  if (daysLeft != null && daysLeft > 0)
-                    _buildBadge('$daysLeft days', AppColors.primary)
-                  else if (isOngoing)
-                    _buildBadge('Ongoing', AppColors.success)
-                  else
-                    _buildBadge('Upcoming', AppColors.warning),
+                  _buildStatusBadge(daysLeft, isOngoing),
                 ],
               ),
             ),
 
             // Details Row
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  // Dates
-                  if (trip.startDate != null) ...[
-                    Icon(
-                      Iconsax.calendar_1,
-                      size: 16,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${DateFormat('MMM d').format(trip.startDate!)}${trip.endDate != null ? ' - ${DateFormat('MMM d').format(trip.endDate!)}' : ''}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                  // Dates Badge
+                  if (trip.startDate != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Iconsax.calendar_1,
+                            size: 16,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${DateFormat('MMM d').format(trip.startDate!)}${trip.endDate != null ? ' - ${DateFormat('MMM d').format(trip.endDate!)}' : ''}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                  ],
 
                   const Spacer(),
 
-                  // Arrow
-                  Icon(
+                  // Action Link
+                  const Text(
+                    'OPEN',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primaryDark,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
                     Iconsax.arrow_right_3,
-                    size: 20,
-                    color: AppColors.primary,
+                    size: 16,
+                    color: AppColors.primaryDark,
                   ),
                 ],
               ),
@@ -490,19 +632,38 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBadge(String text, Color color) {
+  Widget _buildStatusBadge(int? daysLeft, bool isOngoing) {
+    Color color;
+    String text;
+
+    if (isOngoing) {
+      color = AppColors.success;
+      text = 'LIVE';
+    } else if (daysLeft != null && daysLeft > 0) {
+      color = AppColors.primary;
+      text = '$daysLeft ${daysLeft == 1 ? 'DAY' : 'DAYS'}';
+    } else if (daysLeft != null && daysLeft == 0) {
+      color = AppColors.amber;
+      text = 'TODAY';
+    } else {
+      color = AppColors.textMuted;
+      text = 'PLANNING';
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
           color: color,
+          letterSpacing: 0.5,
         ),
       ),
     );

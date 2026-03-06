@@ -5,15 +5,15 @@ import 'package:decimal/decimal.dart';
 import '../../../core/services/haptic_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../auth/providers/auth_provider.dart';
+import '../../../core/utils/formatters.dart';
 import '../../gear/screens/gear_screen.dart';
 import '../../ledger/screens/add_expense_screen.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/screens/ledger_screen.dart';
 import '../../logistics/screens/logistics_screen.dart';
+import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../gear/providers/gear_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
@@ -23,7 +23,10 @@ import '../../trip/screens/edit_trip_screen.dart';
 import '../../trip/screens/manage_members_screen.dart';
 import '../../trip/services/trip_export_service.dart';
 import '../../vault/screens/vault_screen.dart';
-import '../../activity/screens/activity_feed_screen.dart';
+import '../../vault/providers/document_provider.dart';
+import '../../memories/screens/memories_screen.dart';
+import '../../memories/providers/memory_provider.dart';
+import '../../../shared/widgets/smart_module_card.dart';
 
 /// Command Center - Main navigation hub for trips (Light theme)
 class CommandCenter extends ConsumerWidget {
@@ -131,30 +134,53 @@ class CommandCenter extends ConsumerWidget {
         _buildHeader(context, ref, trip, allTrips),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 8),
+
                 // Hero Section (Preparation Meter)
-                _buildPreparationHero(
-                  context,
-                  ref,
-                  trip,
-                ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+                _buildPreparationHero(context, ref, trip)
+                    .animate()
+                    .fadeIn(duration: 600.ms)
+                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // Expense Summary Hero - Most Important Feature
-                _buildExpenseSummaryHero(
-                  context,
-                  ref,
-                  trip,
-                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                // Expense Summary Hero
+                _buildExpenseSummaryHero(context, ref, trip)
+                    .animate()
+                    .fadeIn(delay: 200.ms, duration: 600.ms)
+                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
+
+                // Action Section Header
+                Row(
+                  children: [
+                    Text(
+                      'MODULES',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Iconsax.element_3,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 400.ms),
+
+                const SizedBox(height: 16),
 
                 // Module Cards
-                _buildModuleGrid(context, trip),
+                _buildModuleList(context, ref, trip).animate().fadeIn(delay: 500.ms),
 
                 const SizedBox(height: 100), // Space for FAB
               ],
@@ -172,21 +198,29 @@ class CommandCenter extends ConsumerWidget {
     // If gear module is disabled, show a simpler countdown card
     if (!hasGear) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: AppColors.cardShadow,
+          border: Border.all(color: AppColors.borderLight),
         ),
         child: Row(
           children: [
             // Countdown Circle
             Container(
-              width: 70,
-              height: 70,
+              width: 76,
+              height: 76,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: AppColors.primaryGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -194,24 +228,25 @@ class CommandCenter extends ConsumerWidget {
                   Text(
                     daysLeft != null && daysLeft > 0 ? '$daysLeft' : '–',
                     style: const TextStyle(
-                      fontSize: 22,
+                      fontSize: 26,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: Colors.black,
+                      letterSpacing: -1,
                     ),
                   ),
                   const Text(
                     'DAYS',
                     style: TextStyle(
                       fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white70,
-                      letterSpacing: 0.5,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black87,
+                      letterSpacing: 1,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 20),
             // Trip status text
             Expanded(
               child: Column(
@@ -219,24 +254,29 @@ class CommandCenter extends ConsumerWidget {
                 children: [
                   Text(
                     daysLeft != null && daysLeft > 0
-                        ? 'Trip Starting Soon'
+                        ? 'ADVENTURE AWAITS'
                         : trip.isOngoing
-                        ? 'Trip in Progress'
-                        : 'Trip Upcoming',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                        ? 'NOW EXPLORING'
+                        : 'NEXT MISSION',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primaryDark,
+                      letterSpacing: 1.5,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     daysLeft != null && daysLeft > 0
-                        ? 'Get ready for your adventure!'
+                        ? 'Get ready for departure!'
                         : trip.isOngoing
-                        ? 'Enjoy your trip!'
-                        : 'Plan your next adventure',
-                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                        ? 'Making memories together'
+                        : 'Planning the next escape',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -250,89 +290,96 @@ class CommandCenter extends ConsumerWidget {
     final gearAsync = ref.watch(tripGearProvider(trip.id));
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: AppColors.cardShadow,
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Row(
         children: [
-          // Circular Progress Ring
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 70,
-                height: 70,
-                child: gearAsync.when(
-                  data: (items) {
-                    final total = items.length;
-                    final claimed = items
-                        .where((i) => i.assignedTo != null)
-                        .length;
-                    final percent = total > 0 ? claimed / total : 0.0;
-                    return CircularProgressIndicator(
-                      value: percent,
-                      strokeWidth: 8,
+          // Circular Progress Ring (Custom Gauge Look)
+          SizedBox(
+            width: 80,
+            height: 80,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: gearAsync.when(
+                    data: (items) {
+                      final total = items.length;
+                      final claimed = items
+                          .where((i) => i.assignedTo != null)
+                          .length;
+                      final percent = total > 0 ? claimed / total : 0.0;
+                      return CircularProgressIndicator(
+                        value: percent,
+                        strokeWidth: 10,
+                        backgroundColor: AppColors.surfaceLight,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.mint,
+                        ),
+                        strokeCap: StrokeCap.round,
+                      );
+                    },
+                    loading: () => const CircularProgressIndicator(
+                      strokeWidth: 10,
                       backgroundColor: AppColors.surfaceLight,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        AppColors.mint,
-                      ),
-                      strokeCap: StrokeCap.round,
-                    );
-                  },
-                  loading: () => const CircularProgressIndicator(
-                    strokeWidth: 8,
-                    backgroundColor: AppColors.surfaceLight,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.mint),
-                  ),
-                  error: (error, stack) => const CircularProgressIndicator(
-                    value: 0,
-                    strokeWidth: 8,
-                    backgroundColor: AppColors.surfaceLight,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.mint),
+                    ),
+                    error: (error, stack) => const CircularProgressIndicator(
+                      value: 0,
+                      strokeWidth: 10,
+                      backgroundColor: AppColors.surfaceLight,
+                    ),
                   ),
                 ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    daysLeft != null && daysLeft > 0 ? '$daysLeft' : '–',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      daysLeft != null && daysLeft > 0 ? '$daysLeft' : '–',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -1,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'DAYS',
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.5,
+                    const Text(
+                      'DAYS',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textMuted,
+                        letterSpacing: 1,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 24),
           // Preparation Stats
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Preparation Status',
+                Text(
+                  'MISSION PREP',
                   style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textSecondary,
+                    letterSpacing: 1.5,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 gearAsync.when(
                   data: (items) {
                     final total = items.length;
@@ -348,7 +395,7 @@ class CommandCenter extends ConsumerWidget {
                           'Gear Claimed',
                           AppColors.mint,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         _prepStatusRow(
                           '$packed/$total',
                           'Items Packed',
@@ -357,8 +404,8 @@ class CommandCenter extends ConsumerWidget {
                       ],
                     );
                   },
-                  loading: () => const Text('Loading...'),
-                  error: (_, __) => const Text('Error loading status'),
+                  loading: () => const Text('Recalculating...'),
+                  error: (_, __) => const Text('Status Error'),
                 ),
               ],
             ),
@@ -381,102 +428,201 @@ class CommandCenter extends ConsumerWidget {
     return GestureDetector(
       onTap: () => _openLedger(context, trip),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        height: 130, // Increased slightly for better fit
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.surfaceLight, width: 1),
-          boxShadow: AppColors.cardShadow,
+          borderRadius: BorderRadius.circular(32),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        child: expensesAsync.when(
-          data: (expenses) {
-            // Calculate total expenses
-            Decimal totalExpenses = Decimal.zero;
-            for (final e in expenses) {
-              totalExpenses = totalExpenses + e.amount;
-            }
-
-            // Get user balance
-            final userBalance = balancesAsync.maybeWhen(
-              data: (balances) => balances.cast<UserBalance?>().firstWhere(
-                (b) => b?.participantId == currentParticipant?.id,
-                orElse: () => null,
-              ),
-              orElse: () => null,
-            );
-            final net = userBalance?.netBalance ?? Decimal.zero;
-            final isOwed = net > Decimal.zero;
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: SizedBox.expand(
+            child: Stack(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Iconsax.wallet_3,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
+                // Abstract visual elements
+                Positioned(
+                  top: -30,
+                  right: -30,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Total Expenses',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (net != Decimal.zero)
-                          Text(
-                            isOwed
-                                ? 'You are owed ${net.toStringAsFixed(2)}'
-                                : 'You owe ${net.abs().toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: isOwed
-                                  ? AppColors.emerald
-                                  : AppColors.rose,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const Spacer(),
-                    const Icon(
-                      Iconsax.arrow_right_3,
-                      color: AppColors.textMuted,
-                      size: 18,
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                // Total Expenses - Big Number
-                Text(
-                  '${totalExpenses.toStringAsFixed(2)} OMR',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
+
+                expensesAsync.when(
+                  data: (expenses) {
+                    Decimal totalExpenses = Decimal.zero;
+                    for (final e in expenses) {
+                      totalExpenses = totalExpenses + e.amount;
+                    }
+
+                    final userBalance = balancesAsync.maybeWhen(
+                      data: (balances) =>
+                          balances.cast<UserBalance?>().firstWhere(
+                            (b) => b?.participantId == currentParticipant?.id,
+                            orElse: () => null,
+                          ),
+                      orElse: () => null,
+                    );
+                    final net = userBalance?.netBalance ?? Decimal.zero;
+                    final isOwed = net > Decimal.zero;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 20, // Reduced from 24 to prevent overflow
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Iconsax.wallet_3,
+                                      color: AppColors.mint,
+                                      size: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'TREASURY',
+                                    style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (net != Decimal.zero)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        (isOwed
+                                                ? AppColors.emerald
+                                                : AppColors.rose)
+                                            .withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    isOwed ? 'OWED' : 'OWE',
+                                    style: TextStyle(
+                                      color: isOwed
+                                          ? AppColors.mint
+                                          : AppColors.rose,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      AppFormatters.formatCurrency(totalExpenses, trip.currency),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -1,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    if (net != Decimal.zero)
+                                      Text(
+                                        isOwed
+                                            ? 'Settlements pending: +${AppFormatters.formatCurrency(net, trip.currency)}'
+                                            : 'Pending payment: -${AppFormatters.formatCurrency(net.abs(), trip.currency)}',
+                                        style: TextStyle(
+                                          color: isOwed
+                                              ? AppColors.mint.withValues(
+                                                  alpha: 0.8,
+                                                )
+                                              : AppColors.rose.withValues(
+                                                  alpha: 0.8,
+                                                ),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      )
+                                    else
+                                      const Text(
+                                        'All balances settled',
+                                        style: TextStyle(
+                                          color: Colors.white38,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Iconsax.arrow_right_3,
+                                color: Colors.white24,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.mint),
+                  ),
+                  error: (_, __) => const Center(
+                    child: Text(
+                      'Vault connection lost',
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Text(
-            'Unable to load expenses',
-            style: TextStyle(color: AppColors.textMuted),
+            ),
           ),
         ),
       ),
@@ -516,65 +662,61 @@ class CommandCenter extends ConsumerWidget {
     List<Trip> allTrips,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 20, 20),
-      color: Colors.transparent,
+      padding: const EdgeInsets.fromLTRB(24, 12, 12, 20),
       child: Row(
         children: [
-          // Back Button
-          IconButton(
-            icon: const Icon(Iconsax.arrow_left),
-            onPressed: () => Navigator.of(context).pop(),
-            tooltip: 'Back to trips',
+          // Back Button (Styled)
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: IconButton(
+              icon: const Icon(Iconsax.arrow_left_2, size: 20),
+              onPressed: () => context.pop(),
+            ),
           ),
 
-          // Trip Info + Copyable Code
+          const SizedBox(width: 16),
+
+          // Trip Info
           Expanded(
-            child: GestureDetector(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: trip.inviteCode));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Invite code copied to clipboard'),
-                    duration: Duration(seconds: 1),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  trip.name.toUpperCase(),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                    fontSize: 20,
                   ),
-                );
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          trip.name,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Iconsax.copy,
-                        size: 14,
-                        color: AppColors.textMuted,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'CODE: ${trip.inviteCode}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.mint,
-                      letterSpacing: 1.5,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(
+                      Iconsax.cloud,
+                      size: 14,
+                      color: AppColors.primaryDark,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Command Center',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
@@ -583,11 +725,102 @@ class CommandCenter extends ConsumerWidget {
 
           const SizedBox(width: 12),
 
-          // More Menu
-          _buildMoreMenu(context, ref, trip),
+          // Menu Button
+          PopupMenuButton<String>(
+            icon: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.borderLight),
+                boxShadow: AppColors.cardShadow,
+              ),
+              child: const Icon(Iconsax.more, size: 20),
+            ),
+            offset: const Offset(0, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            onSelected: (value) =>
+                _handleMoreSelection(context, ref, value, trip),
+            itemBuilder: (context) => [
+              _buildPopupMenuItem('Edit Trip', Iconsax.edit_2, 'edit'),
+              _buildPopupMenuItem('Members', Iconsax.user_tag, 'members'),
+              _buildPopupMenuItem(
+                'Export PDF',
+                Iconsax.document_download,
+                'export_pdf',
+              ),
+              _buildPopupMenuItem(
+                'Export CSV',
+                Iconsax.document_text,
+                'export_csv',
+              ),
+              const PopupMenuDivider(),
+              _buildPopupMenuItem(
+                'Delete Trip',
+                Iconsax.trash,
+                'delete',
+                isDestructive: true,
+              ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  PopupMenuItem<String> _buildPopupMenuItem(
+    String title,
+    IconData icon,
+    String value, {
+    bool isDestructive = false,
+  }) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: isDestructive ? AppColors.error : AppColors.textPrimary,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: TextStyle(
+              color: isDestructive ? AppColors.error : AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleMoreSelection(
+    BuildContext context,
+    WidgetRef ref,
+    String value,
+    Trip trip,
+  ) {
+    switch (value) {
+      case 'edit':
+        _openEditTrip(context, trip);
+        break;
+      case 'members':
+        _openManageMembers(context, trip);
+        break;
+      case 'export_pdf':
+        _exportPDF(context, ref, trip);
+        break;
+      case 'export_csv':
+        _exportCSV(context, ref, trip);
+        break;
+      case 'delete':
+        _showDeleteConfirmation(context, ref, trip);
+        break;
+    }
   }
 
   Widget _buildMemberStack(WidgetRef ref, Trip trip) {
@@ -673,140 +906,6 @@ class CommandCenter extends ConsumerWidget {
     );
   }
 
-  Widget _buildMoreMenu(BuildContext context, WidgetRef ref, Trip trip) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Iconsax.more, color: AppColors.textSecondary),
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(),
-      onSelected: (value) {
-        if (value == 'signout') {
-          ref.read(authServiceProvider).signOut();
-        } else if (value == 'create') {
-          context.push('/create-trip');
-        } else if (value == 'settings') {
-          context.push('/settings');
-        } else if (value == 'delete') {
-          _showDeleteConfirmation(context, ref, trip);
-        } else if (value == 'edit') {
-          _openEditTrip(context, trip);
-        } else if (value == 'members') {
-          _openManageMembers(context, trip);
-        } else if (value == 'timeline') {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ActivityFeedScreen(trip: trip),
-            ),
-          );
-        } else if (value == 'export_pdf') {
-          _exportPDF(context, ref, trip);
-        } else if (value == 'export_csv') {
-          _exportCSV(context, ref, trip);
-        }
-      },
-      itemBuilder: (context) => [
-        if (trip.leaderId == ref.read(currentUserProvider)?.id)
-          const PopupMenuItem(
-            value: 'edit',
-            child: Row(
-              children: [
-                Icon(Iconsax.edit_2, size: 20, color: AppColors.primary),
-                SizedBox(width: 12),
-                Text('Edit Trip'),
-              ],
-            ),
-          ),
-        if (trip.leaderId == ref.read(currentUserProvider)?.id)
-          const PopupMenuItem(
-            value: 'members',
-            child: Row(
-              children: [
-                Icon(Iconsax.people, size: 20, color: AppColors.primary),
-                SizedBox(width: 12),
-                Text('Manage Members'),
-              ],
-            ),
-          ),
-        const PopupMenuItem(
-          value: 'create',
-          child: Row(
-            children: [
-              Icon(Iconsax.add_circle, size: 20, color: AppColors.primary),
-              SizedBox(width: 12),
-              Text('Create Trip'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'settings',
-          child: Row(
-            children: [
-              Icon(Iconsax.setting_2, size: 20, color: AppColors.textSecondary),
-              SizedBox(width: 12),
-              Text('Settings'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'timeline',
-          child: Row(
-            children: [
-              Icon(Iconsax.clock, size: 20, color: AppColors.textSecondary),
-              SizedBox(width: 12),
-              Text('Activity Log'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'export_pdf',
-          child: Row(
-            children: [
-              Icon(
-                Iconsax.document_download,
-                size: 20,
-                color: AppColors.primary,
-              ),
-              SizedBox(width: 12),
-              Text('Export PDF'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'export_csv',
-          child: Row(
-            children: [
-              Icon(Iconsax.document_text, size: 20, color: AppColors.primary),
-              SizedBox(width: 12),
-              Text('Export CSV'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        if (trip.leaderId == ref.read(currentUserProvider)?.id)
-          const PopupMenuItem(
-            value: 'delete',
-            child: Row(
-              children: [
-                Icon(Iconsax.trash, size: 20, color: AppColors.error),
-                SizedBox(width: 12),
-                Text('Delete Trip', style: TextStyle(color: AppColors.error)),
-              ],
-            ),
-          ),
-        const PopupMenuItem(
-          value: 'signout',
-          child: Row(
-            children: [
-              Icon(Iconsax.logout, size: 20, color: AppColors.error),
-              SizedBox(width: 12),
-              Text('Sign Out', style: TextStyle(color: AppColors.error)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   void _showDeleteConfirmation(BuildContext context, WidgetRef ref, Trip trip) {
     showDialog(
       context: context,
@@ -870,11 +969,28 @@ class CommandCenter extends ConsumerWidget {
     );
   }
 
+  /// Show date range picker for exports. Returns null if cancelled.
+  Future<DateTimeRange?> _pickExportDateRange(BuildContext context, Trip trip) async {
+    return showDateRangePicker(
+      context: context,
+      firstDate: trip.startDate ?? DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: trip.startDate != null
+          ? DateTimeRange(start: trip.startDate!, end: DateTime.now())
+          : null,
+      helpText: 'Select date range for export',
+    );
+  }
+
   Future<void> _exportPDF(
     BuildContext context,
     WidgetRef ref,
     Trip trip,
   ) async {
+    // Optional date range filter
+    final dateRange = await _pickExportDateRange(context, trip);
+    // null means user cancelled the picker — proceed with all data
+    // If user selects a range, use it to filter
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Row(
@@ -911,6 +1027,8 @@ class CommandCenter extends ConsumerWidget {
         settlements: settlements,
         participants: participants,
         subGroups: subGroups,
+        startDate: dateRange?.start,
+        endDate: dateRange?.end,
       );
 
       if (context.mounted) {
@@ -934,6 +1052,7 @@ class CommandCenter extends ConsumerWidget {
     WidgetRef ref,
     Trip trip,
   ) async {
+    final dateRange = await _pickExportDateRange(context, trip);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Row(
@@ -964,6 +1083,8 @@ class CommandCenter extends ConsumerWidget {
         trip: trip,
         expenses: expenses,
         participants: participants,
+        startDate: dateRange?.start,
+        endDate: dateRange?.end,
       );
 
       if (context.mounted) {
@@ -982,99 +1103,202 @@ class CommandCenter extends ConsumerWidget {
     }
   }
 
-  Widget _buildModuleGrid(BuildContext context, Trip trip) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.5,
-      children: [
-        // Vault (Docs module)
-        if (trip.modules.docs)
-          _ModuleTile(
-            icon: Iconsax.document_text,
-            title: 'Vault',
-            subtitle: 'Docs & Tickets',
-            color: AppColors.indigo,
-            onTap: () => _openVault(context, trip),
-          ),
+  Widget _buildModuleList(BuildContext context, WidgetRef ref, Trip trip) {
+    return Consumer(
+      builder: (context, ref, child) {
+        // Gather data for all modules
+        final expensesAsync = ref.watch(tripExpensesProvider(trip.id));
+        final balancesAsync = ref.watch(tripBalancesProvider(trip.id));
+        final currentParticipant = ref.watch(currentParticipantProvider(trip.id));
+        final gearAsync = trip.modules.gear
+            ? ref.watch(tripGearProvider(trip.id))
+            : null;
+        final subGroupsAsync = trip.modules.logistics
+            ? ref.watch(tripSubGroupsProvider(trip.id))
+            : null;
+        final docsAsync = trip.modules.docs
+            ? ref.watch(tripDocumentsProvider(trip.id))
+            : null;
 
-        // Gear
-        if (trip.modules.gear)
-          Consumer(
-            builder: (context, ref, child) {
-              final gearAsync = ref.watch(tripGearProvider(trip.id));
-              final hasMissing = gearAsync.maybeWhen(
-                data: (items) => items.any((i) => i.assignedTo == null),
-                orElse: () => false,
-              );
-              return _ModuleTile(
-                icon: Iconsax.bag_2,
-                title: 'Gear',
-                subtitle: hasMissing ? 'Items Missing' : 'All Ready',
-                color: hasMissing ? AppColors.amber : AppColors.accentSecondary,
-                isPulsing: hasMissing,
-                onTap: () => _openGear(context, trip),
-              );
-            },
-          ),
+        // Build module card configs with priorities
+        final cards = <_ModuleCardConfig>[];
 
-        // Ledger - always shown (expenses are core functionality)
-        Consumer(
-          builder: (context, ref, child) {
-            final balancesAsync = ref.watch(tripBalancesProvider(trip.id));
-            final currentParticipant = ref.watch(
-              currentParticipantProvider(trip.id),
-            );
-            return balancesAsync.maybeWhen(
-              data: (balances) {
-                final userBalance = balances.cast<UserBalance?>().firstWhere(
-                  (b) => b?.participantId == currentParticipant?.id,
-                  orElse: () => null,
-                );
-                final net = userBalance?.netBalance ?? Decimal.zero;
-                final isDebt = net < Decimal.zero;
-                final isOwed = net > Decimal.zero;
+        // --- Ledger (always shown) ---
+        final expenses = expensesAsync.valueOrNull ?? [];
+        final balances = balancesAsync.valueOrNull;
+        final userBalance = balances?.cast<UserBalance?>().firstWhere(
+          (b) => b?.participantId == currentParticipant?.id,
+          orElse: () => null,
+        );
+        final net = userBalance?.netBalance ?? Decimal.zero;
+        final isDebt = net < Decimal.zero;
+        final isOwed = net > Decimal.zero;
 
-                return _ModuleTile(
-                  icon: Iconsax.wallet_3,
-                  title: 'Ledger',
-                  subtitle: net == Decimal.zero
-                      ? 'No Balance'
-                      : isDebt
-                      ? 'You owe ${net.abs().toStringAsFixed(2)}'
-                      : 'Owed ${net.toStringAsFixed(2)}',
-                  color: isDebt
-                      ? AppColors.rose
-                      : (isOwed
-                            ? AppColors.emerald
-                            : AppColors.accentSecondary),
-                  onTap: () => _openLedger(context, trip),
-                );
-              },
-              orElse: () => _ModuleTile(
-                icon: Iconsax.wallet_3,
-                title: 'Ledger',
-                subtitle: 'Split Expenses',
-                color: AppColors.accentSecondary,
-                onTap: () => _openLedger(context, trip),
-              ),
-            );
-          },
-        ),
+        String? ledgerSummary;
+        String? ledgerAction;
+        int ledgerPriority = 10;
+        bool ledgerEmpty = expenses.isEmpty;
 
-        // Logistics
-        if (trip.modules.logistics)
-          _ModuleTile(
+        if (expenses.isNotEmpty) {
+          final count = expenses.length;
+          if (net == Decimal.zero) {
+            ledgerSummary = '$count expense${count != 1 ? 's' : ''} · All settled';
+            ledgerPriority = 50;
+          } else if (isDebt) {
+            ledgerAction = 'You owe ${AppFormatters.formatCurrency(net.abs(), trip.currency)}';
+            ledgerPriority = 100;
+          } else {
+            ledgerAction = 'You are owed ${AppFormatters.formatCurrency(net, trip.currency)}';
+            ledgerPriority = 90;
+          }
+        }
+
+        cards.add(_ModuleCardConfig(
+          icon: Iconsax.wallet_3,
+          title: 'Ledger',
+          description: 'Track shared expenses and split costs fairly',
+          color: isDebt ? AppColors.rose : (isOwed ? AppColors.emerald : AppColors.accentSecondary),
+          onTap: () => _openLedger(context, trip),
+          summaryText: ledgerSummary,
+          actionText: ledgerAction,
+          priority: ledgerPriority,
+          isEmpty: ledgerEmpty,
+        ));
+
+        // --- Gear ---
+        if (trip.modules.gear) {
+          final gearItems = gearAsync?.valueOrNull ?? [];
+          final gearEmpty = gearItems.isEmpty;
+          String? gearSummary;
+          String? gearAction;
+          int gearPriority = 10;
+
+          if (gearItems.isNotEmpty) {
+            final total = gearItems.length;
+            final claimed = gearItems.where((i) => i.assignedTo != null).length;
+            final packed = gearItems.where((i) => i.isPacked).length;
+            final unclaimed = total - claimed;
+
+            if (unclaimed > 0) {
+              gearAction = '$unclaimed item${unclaimed != 1 ? 's' : ''} still need someone';
+              gearPriority = 80;
+            } else {
+              gearSummary = '$total items · $packed packed';
+              gearPriority = 50;
+            }
+          }
+
+          cards.add(_ModuleCardConfig(
+            icon: Iconsax.bag_2,
+            title: 'Gear',
+            description: 'Create a shared packing list and claim items',
+            color: (gearAction != null) ? AppColors.amber : AppColors.accentSecondary,
+            onTap: () => _openGear(context, trip),
+            summaryText: gearSummary,
+            actionText: gearAction,
+            priority: gearPriority,
+            isEmpty: gearEmpty,
+          ));
+        }
+
+        // --- Logistics ---
+        if (trip.modules.logistics) {
+          final subGroups = subGroupsAsync?.valueOrNull ?? [];
+          final logisticsEmpty = subGroups.isEmpty;
+          String? logisticsSummary;
+          int logisticsPriority = 10;
+
+          if (subGroups.isNotEmpty) {
+            final cars = subGroups.where((g) => g.type == SubGroupType.car).length;
+            final rooms = subGroups.where((g) => g.type == SubGroupType.room).length;
+            final parts = <String>[];
+            if (cars > 0) parts.add('$cars car${cars != 1 ? 's' : ''}');
+            if (rooms > 0) parts.add('$rooms room${rooms != 1 ? 's' : ''}');
+            logisticsSummary = parts.join(' · ');
+            logisticsPriority = 50;
+          }
+
+          cards.add(_ModuleCardConfig(
             icon: Iconsax.car,
             title: 'Logistics',
-            subtitle: 'Convoy & Rooms',
+            description: 'Organize cars, rooms, and teams for your group',
             color: AppColors.sky,
             onTap: () => _openLogistics(context, trip),
-          ),
-      ],
+            summaryText: logisticsSummary,
+            priority: logisticsPriority,
+            isEmpty: logisticsEmpty,
+          ));
+        }
+
+        // --- Vault ---
+        if (trip.modules.docs) {
+          final docs = docsAsync?.valueOrNull ?? [];
+          final vaultEmpty = docs.isEmpty;
+          String? vaultSummary;
+          int vaultPriority = 10;
+
+          if (docs.isNotEmpty) {
+            vaultSummary = '${docs.length} document${docs.length != 1 ? 's' : ''} uploaded';
+            vaultPriority = 50;
+          }
+
+          cards.add(_ModuleCardConfig(
+            icon: Iconsax.document_text,
+            title: 'Vault',
+            description: 'Store tickets, permits, and trip documents',
+            color: AppColors.indigo,
+            onTap: () => _openVault(context, trip),
+            summaryText: vaultSummary,
+            priority: vaultPriority,
+            isEmpty: vaultEmpty,
+          ));
+        }
+
+        // --- Memories (always shown) ---
+        final memoriesAsync = ref.watch(tripMemoriesProvider(trip.id));
+        final memories = memoriesAsync.valueOrNull ?? [];
+        final memoriesEmpty = memories.isEmpty;
+        String? memoriesSummary;
+        int memoriesPriority = 10;
+
+        if (memories.isNotEmpty) {
+          memoriesSummary = '${memories.length} photo${memories.length != 1 ? 's' : ''} captured';
+          memoriesPriority = 40;
+        }
+
+        cards.add(_ModuleCardConfig(
+          icon: Iconsax.camera,
+          title: 'Memories',
+          description: 'Capture and share photos from your journey',
+          color: AppColors.amber,
+          onTap: () => _openMemories(context, trip),
+          summaryText: memoriesSummary,
+          priority: memoriesPriority,
+          isEmpty: memoriesEmpty,
+        ));
+
+        // Sort by priority (highest first)
+        cards.sort((a, b) => b.priority.compareTo(a.priority));
+
+        return Column(
+          children: [
+            for (int i = 0; i < cards.length; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              SmartModuleCard(
+                icon: cards[i].icon,
+                title: cards[i].title,
+                description: cards[i].description,
+                color: cards[i].color,
+                onTap: cards[i].onTap,
+                summaryText: cards[i].summaryText,
+                actionText: cards[i].actionText,
+                priority: cards[i].priority,
+                isEmpty: cards[i].isEmpty,
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -1108,6 +1332,12 @@ class CommandCenter extends ConsumerWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => VaultScreen(trip: trip)));
+  }
+
+  void _openMemories(BuildContext context, Trip trip) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => MemoriesScreen(trip: trip)));
   }
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
@@ -1249,102 +1479,27 @@ class CommandCenter extends ConsumerWidget {
   }
 }
 
-class _ModuleTile extends StatelessWidget {
+/// Internal config for building module cards with priority sorting.
+class _ModuleCardConfig {
   final IconData icon;
   final String title;
-  final String subtitle;
+  final String description;
   final Color color;
   final VoidCallback onTap;
-  final bool isPulsing;
+  final String? summaryText;
+  final String? actionText;
+  final int priority;
+  final bool isEmpty;
 
-  const _ModuleTile({
+  const _ModuleCardConfig({
     required this.icon,
     required this.title,
-    required this.subtitle,
+    required this.description,
     required this.color,
     required this.onTap,
-    this.isPulsing = false,
+    this.summaryText,
+    this.actionText,
+    this.priority = 10,
+    this.isEmpty = true,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    Widget card = GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withValues(alpha: isPulsing ? 0.8 : 0.15),
-            width: isPulsing ? 2 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: isPulsing ? color : AppColors.textMuted,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    maxLines: 1,
-                  ),
-                ],
-              ),
-            ),
-            if (isPulsing) Icon(Iconsax.info_circle, color: color, size: 16),
-          ],
-        ),
-      ),
-    );
-
-    if (isPulsing) {
-      card = card
-          .animate(onPlay: (controller) => controller.repeat(reverse: true))
-          .shimmer(color: color.withValues(alpha: 0.2), duration: 1500.ms)
-          .scale(
-            begin: const Offset(1, 1),
-            end: const Offset(1.02, 1.02),
-            duration: 1000.ms,
-            curve: Curves.easeInOut,
-          );
-    }
-
-    return card;
-  }
 }

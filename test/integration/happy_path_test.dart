@@ -15,6 +15,7 @@ import 'package:safar/core/router/app_router.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 import 'package:safar/features/activity/services/activity_service.dart';
+import 'package:safar/features/memories/providers/memory_provider.dart';
 
 class MockUser extends Mock implements User {}
 
@@ -67,7 +68,7 @@ void main() {
             ),
           ),
           tripBalancesProvider(mockTrip.id).overrideWith(
-            (ref) => Future.value([
+            (ref) => AsyncValue.data([
               UserBalance(
                 participantId: 'p-1',
                 totalPaid: Decimal.zero,
@@ -92,6 +93,10 @@ void main() {
           tripSettlementsProvider(
             mockTrip.id,
           ).overrideWith((ref) => Stream.value([])),
+          tripMemoriesProvider(
+            mockTrip.id,
+          ).overrideWith((ref) async => []),
+          onboardingCompleteProvider.overrideWith((ref) => true),
         ],
         child: Consumer(
           builder: (context, ref, _) {
@@ -123,11 +128,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // 4. Verify Ledger Screen
-    expect(find.text('Recent Activity', skipOffstage: false), findsWidgets);
-    expect(find.text('Add Expense', skipOffstage: false), findsWidgets);
+    expect(find.text('Audit Log', skipOffstage: false), findsWidgets);
+    expect(find.text('ADD EXPENSE', skipOffstage: false), findsWidgets);
 
     // 5. Add Expense (verify New Expense sheet appears)
-    final addBtn = find.text('Add Expense', skipOffstage: false);
+    final addBtn = find.text('ADD EXPENSE', skipOffstage: false);
     await tester.tap(addBtn.first);
     await tester.pumpAndSettle();
 
