@@ -15,7 +15,6 @@ import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
 import '../services/settlement_service.dart';
-import '../services/thawani_service.dart';
 
 /// Settle Up Screen - Shows optimized settlements with payment actions
 class SettleUpScreen extends ConsumerWidget {
@@ -98,23 +97,31 @@ class SettleUpScreen extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(Iconsax.arrow_left, color: AppColors.textPrimary),
-            onPressed: () => Navigator.pop(context),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: IconButton(
+              icon: const Icon(Iconsax.arrow_left, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
           ),
-          const SizedBox(width: 8),
           const Text(
             'Settle Up',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
               letterSpacing: -0.5,
             ),
           ),
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -180,7 +187,7 @@ class SettleUpScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Premium Bento-style Summary
-          _buildPremiumSummary(context, totalPending, myBalance)
+          _buildPremiumSummary(context, totalPending, myBalance, myDebts: myDebts, ref: ref)
               .animate()
               .fadeIn(duration: 600.ms)
               .slideX(begin: -0.1, curve: Curves.easeOutCubic),
@@ -242,8 +249,10 @@ class SettleUpScreen extends ConsumerWidget {
   Widget _buildPremiumSummary(
     BuildContext context,
     Decimal totalPending,
-    UserBalance myBalance,
-  ) {
+    UserBalance myBalance, {
+    List<Map<String, dynamic>> myDebts = const [],
+    WidgetRef? ref,
+  }) {
     final isPositive = myBalance.netBalance >= Decimal.zero;
     final accentColor = isPositive ? AppColors.success : AppColors.error;
 
@@ -348,11 +357,11 @@ class SettleUpScreen extends ConsumerWidget {
                   ],
                 ),
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Scroll hint - the action buttons are per-settlement below
-                  },
-                  icon: const Icon(Iconsax.card_pos, size: 18),
-                  label: const Text('PAY WITH THAWANI'),
+                  onPressed: myDebts.isNotEmpty && ref != null
+                      ? () => _confirmPayment(context, ref, myDebts.first)
+                      : null,
+                  icon: const Icon(Iconsax.tick_circle, size: 18),
+                  label: const Text('SETTLE UP'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.black,
@@ -878,9 +887,17 @@ class SettleUpScreen extends ConsumerWidget {
         ref.invalidate(tripBalancesProvider(trip.id));
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment recorded successfully!'),
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Payment recorded!'),
+              ],
+            ),
             backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -890,6 +907,8 @@ class SettleUpScreen extends ConsumerWidget {
           SnackBar(
             content: Text('Error recording payment: $e'),
             backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -906,7 +925,7 @@ class SettleUpScreen extends ConsumerWidget {
     final amount = settlement['amount'] as Decimal;
     final amountFormatted = AppFormatters.formatCurrency(amount, trip.currency);
 
-    final result = await showModalBottomSheet<String>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
@@ -927,9 +946,9 @@ class SettleUpScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Settle Payment',
-              style: const TextStyle(
+            const Text(
+              'Confirm Payment',
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
@@ -937,16 +956,25 @@ class SettleUpScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '$fromName owes $amountFormatted to $toName',
+              '$fromName paid $amountFormatted to $toName',
               style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Record this as settled? (via cash, bank transfer, or other method)',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 28),
 
-            // Pay with Thawani button
+            // Confirm button
             SizedBox(
               width: double.infinity,
               child: Container(
@@ -962,9 +990,9 @@ class SettleUpScreen extends ConsumerWidget {
                   ],
                 ),
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context, 'thawani'),
-                  icon: const Icon(Iconsax.card_pos, size: 20),
-                  label: const Text('Pay with Thawani'),
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Iconsax.tick_circle, size: 20),
+                  label: const Text('Mark as Paid'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.black,
@@ -983,29 +1011,6 @@ class SettleUpScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
 
-            // Mark as paid manually
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => Navigator.pop(context, 'manual'),
-                icon: const Icon(Iconsax.tick_circle, size: 20),
-                label: const Text('Mark as Paid (Cash/Transfer)'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: const BorderSide(color: AppColors.border, width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
             // Cancel
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1023,43 +1028,9 @@ class SettleUpScreen extends ConsumerWidget {
       ),
     );
 
-    if (!context.mounted || result == null) return;
+    if (!context.mounted || confirmed != true) return;
 
-    if (result == 'thawani') {
-      ThawaniService.paySettlement(
-        context: context,
-        fromName: fromName,
-        toName: toName,
-        amount: amount,
-        onSuccess: () {
-          if (context.mounted) {
-            _recordSettlement(context, ref, settlement);
-          }
-        },
-        onCancel: () {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Payment cancelled'),
-                backgroundColor: AppColors.textSecondary,
-              ),
-            );
-          }
-        },
-        onError: (error) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Payment error: $error'),
-                backgroundColor: AppColors.error,
-              ),
-            );
-          }
-        },
-      );
-    } else if (result == 'manual') {
-      _recordSettlement(context, ref, settlement);
-    }
+    _recordSettlement(context, ref, settlement);
   }
 
   Widget _buildSmallAvatar(String name, {bool isPayer = false}) {

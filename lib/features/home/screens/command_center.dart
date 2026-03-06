@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:decimal/decimal.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/config/app_metadata.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -24,8 +26,6 @@ import '../../trip/screens/manage_members_screen.dart';
 import '../../trip/services/trip_export_service.dart';
 import '../../vault/screens/vault_screen.dart';
 import '../../vault/providers/document_provider.dart';
-import '../../memories/screens/memories_screen.dart';
-import '../../memories/providers/memory_provider.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 
 /// Command Center - Main navigation hub for trips (Light theme)
@@ -50,7 +50,7 @@ class CommandCenter extends ConsumerWidget {
             },
             backgroundColor: AppColors.primary,
             shape: const CircleBorder(),
-            child: const Icon(Iconsax.add, color: Colors.white),
+            child: const Icon(Iconsax.add, color: Colors.black),
           );
         },
         loading: () => null,
@@ -155,6 +155,15 @@ class CommandCenter extends ConsumerWidget {
                     .fadeIn(delay: 200.ms, duration: 600.ms)
                     .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
 
+                // Trip Recap for completed trips
+                if (trip.isPast) ...[
+                  const SizedBox(height: 16),
+                  _buildTripRecap(context, ref, trip)
+                      .animate()
+                      .fadeIn(delay: 300.ms, duration: 600.ms)
+                      .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
+                ],
+
                 const SizedBox(height: 32),
 
                 // Action Section Header
@@ -226,7 +235,13 @@ class CommandCenter extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    daysLeft != null && daysLeft > 0 ? '$daysLeft' : '–',
+                    trip.isPast
+                        ? '${trip.totalDays ?? '–'}'
+                        : daysLeft != null && daysLeft > 0
+                        ? '$daysLeft'
+                        : trip.isOngoing
+                            ? '${trip.daysIntoTrip ?? '–'}'
+                            : '–',
                     style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
@@ -234,9 +249,9 @@ class CommandCenter extends ConsumerWidget {
                       letterSpacing: -1,
                     ),
                   ),
-                  const Text(
-                    'DAYS',
-                    style: TextStyle(
+                  Text(
+                    trip.isPast ? 'DAYS' : trip.isOngoing ? 'DAY' : 'DAYS',
+                    style: const TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w900,
                       color: Colors.black87,
@@ -253,11 +268,13 @@ class CommandCenter extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    daysLeft != null && daysLeft > 0
+                    trip.isPast
+                        ? 'TRIP COMPLETE'
+                        : daysLeft != null && daysLeft > 0
                         ? 'ADVENTURE AWAITS'
                         : trip.isOngoing
                         ? 'NOW EXPLORING'
-                        : 'NEXT MISSION',
+                        : 'UP NEXT',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
@@ -267,11 +284,13 @@ class CommandCenter extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    daysLeft != null && daysLeft > 0
+                    trip.isPast
+                        ? 'What a journey!'
+                        : daysLeft != null && daysLeft > 0
                         ? 'Get ready for departure!'
                         : trip.isOngoing
-                        ? 'Making memories together'
-                        : 'Planning the next escape',
+                        ? 'Enjoying the journey'
+                        : 'Planning your next adventure',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -342,7 +361,13 @@ class CommandCenter extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      daysLeft != null && daysLeft > 0 ? '$daysLeft' : '–',
+                      trip.isPast
+                          ? '${trip.totalDays ?? '–'}'
+                          : daysLeft != null && daysLeft > 0
+                          ? '$daysLeft'
+                          : trip.isOngoing
+                              ? '${trip.daysIntoTrip ?? '–'}'
+                              : '–',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
@@ -350,9 +375,9 @@ class CommandCenter extends ConsumerWidget {
                         letterSpacing: -1,
                       ),
                     ),
-                    const Text(
-                      'DAYS',
-                      style: TextStyle(
+                    Text(
+                      trip.isPast ? 'DAYS' : trip.isOngoing ? 'DAY' : 'DAYS',
+                      style: const TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                         color: AppColors.textMuted,
@@ -371,7 +396,7 @@ class CommandCenter extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'MISSION PREP',
+                  'TRIP PREP',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -412,6 +437,118 @@ class CommandCenter extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Trip Recap card for completed trips
+  Widget _buildTripRecap(BuildContext context, WidgetRef ref, Trip trip) {
+    final expensesAsync = ref.watch(tripExpensesProvider(trip.id));
+    final participantsAsync = ref.watch(
+      tripLogisticsParticipantsProvider(trip.id),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppColors.cardShadow,
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Iconsax.cup,
+                  size: 18,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'TRIP RECAP',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              // Duration
+              Expanded(
+                child: _recapStat(
+                  '${trip.totalDays ?? '–'}',
+                  'days',
+                  Iconsax.calendar_1,
+                ),
+              ),
+              // Expenses count
+              Expanded(
+                child: expensesAsync.when(
+                  data: (expenses) => _recapStat(
+                    '${expenses.length}',
+                    'expenses',
+                    Iconsax.receipt_item,
+                  ),
+                  loading: () => _recapStat('–', 'expenses', Iconsax.receipt_item),
+                  error: (_, __) => _recapStat('–', 'expenses', Iconsax.receipt_item),
+                ),
+              ),
+              // Members
+              Expanded(
+                child: participantsAsync.when(
+                  data: (participants) => _recapStat(
+                    '${participants.length}',
+                    'travelers',
+                    Iconsax.people,
+                  ),
+                  loading: () => _recapStat('–', 'travelers', Iconsax.people),
+                  error: (_, __) => _recapStat('–', 'travelers', Iconsax.people),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _recapStat(String value, String label, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primaryDark),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
     );
   }
 
@@ -511,7 +648,7 @@ class CommandCenter extends ConsumerWidget {
                                   ),
                                   const SizedBox(width: 10),
                                   const Text(
-                                    'TREASURY',
+                                    'SPENDING',
                                     style: TextStyle(
                                       color: Colors.white54,
                                       fontSize: 10,
@@ -558,32 +695,49 @@ class CommandCenter extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      AppFormatters.formatCurrency(totalExpenses, trip.currency),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -1,
-                                      ),
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween<double>(begin: 0, end: totalExpenses.toDouble()),
+                                      duration: const Duration(milliseconds: 800),
+                                      curve: Curves.easeOutCubic,
+                                      builder: (context, value, child) {
+                                        return Text(
+                                          AppFormatters.formatCurrency(
+                                            Decimal.parse(value.toStringAsFixed(3)),
+                                            trip.currency,
+                                          ),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -1,
+                                          ),
+                                        );
+                                      },
                                     ),
                                     const SizedBox(height: 2),
                                     if (net != Decimal.zero)
-                                      Text(
-                                        isOwed
-                                            ? 'Settlements pending: +${AppFormatters.formatCurrency(net, trip.currency)}'
-                                            : 'Pending payment: -${AppFormatters.formatCurrency(net.abs(), trip.currency)}',
-                                        style: TextStyle(
-                                          color: isOwed
-                                              ? AppColors.mint.withValues(
-                                                  alpha: 0.8,
-                                                )
-                                              : AppColors.rose.withValues(
-                                                  alpha: 0.8,
-                                                ),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                      TweenAnimationBuilder<double>(
+                                        tween: Tween<double>(begin: 0, end: net.abs().toDouble()),
+                                        duration: const Duration(milliseconds: 800),
+                                        curve: Curves.easeOutCubic,
+                                        builder: (context, value, child) {
+                                          final formatted = AppFormatters.formatCurrency(
+                                            Decimal.parse(value.toStringAsFixed(3)),
+                                            trip.currency,
+                                          );
+                                          return Text(
+                                            isOwed
+                                                ? 'Settlements pending: +$formatted'
+                                                : 'Pending payment: -$formatted',
+                                            style: TextStyle(
+                                              color: isOwed
+                                                  ? AppColors.mint.withValues(alpha: 0.8)
+                                                  : AppColors.rose.withValues(alpha: 0.8),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          );
+                                        },
                                       )
                                     else
                                       const Text(
@@ -613,7 +767,7 @@ class CommandCenter extends ConsumerWidget {
                   ),
                   error: (_, __) => const Center(
                     child: Text(
-                      'Vault connection lost',
+                      'Could not load expenses',
                       style: TextStyle(
                         color: Colors.white38,
                         fontWeight: FontWeight.bold,
@@ -655,6 +809,34 @@ class CommandCenter extends ConsumerWidget {
     );
   }
 
+  IconData _getTripTypeIcon(String icon) {
+    switch (icon) {
+      case 'airplane': return Iconsax.airplane;
+      case 'car': return Iconsax.car;
+      case 'camping': return Iconsax.home_2;
+      case 'hiking': return Iconsax.routing_2;
+      case 'beach': return Iconsax.sun_1;
+      case 'mountain': return Iconsax.cloud;
+      case 'ship': return Iconsax.ship;
+      case 'train': return Iconsax.bus;
+      default: return Iconsax.airplane;
+    }
+  }
+
+  String _getTripTypeLabel(String icon) {
+    switch (icon) {
+      case 'airplane': return 'Flight Trip';
+      case 'car': return 'Road Trip';
+      case 'camping': return 'Camping Trip';
+      case 'hiking': return 'Hiking Adventure';
+      case 'beach': return 'Beach Getaway';
+      case 'mountain': return 'Mountain Escape';
+      case 'ship': return 'Cruise';
+      case 'train': return 'Train Journey';
+      default: return 'Trip Dashboard';
+    }
+  }
+
   Widget _buildHeader(
     BuildContext context,
     WidgetRef ref,
@@ -675,7 +857,7 @@ class CommandCenter extends ConsumerWidget {
             ),
             child: IconButton(
               icon: const Icon(Iconsax.arrow_left_2, size: 20),
-              onPressed: () => context.pop(),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
 
@@ -699,14 +881,14 @@ class CommandCenter extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    const Icon(
-                      Iconsax.cloud,
+                    Icon(
+                      _getTripTypeIcon(trip.icon),
                       size: 14,
                       color: AppColors.primaryDark,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Command Center',
+                      _getTripTypeLabel(trip.icon),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -744,6 +926,7 @@ class CommandCenter extends ConsumerWidget {
             onSelected: (value) =>
                 _handleMoreSelection(context, ref, value, trip),
             itemBuilder: (context) => [
+              _buildPopupMenuItem('Share Invite Code', Iconsax.share, 'share_code'),
               _buildPopupMenuItem('Edit Trip', Iconsax.edit_2, 'edit'),
               _buildPopupMenuItem('Members', Iconsax.user_tag, 'members'),
               _buildPopupMenuItem(
@@ -805,6 +988,9 @@ class CommandCenter extends ConsumerWidget {
     Trip trip,
   ) {
     switch (value) {
+      case 'share_code':
+        _shareInviteCode(context, trip);
+        break;
       case 'edit':
         _openEditTrip(context, trip);
         break;
@@ -987,11 +1173,12 @@ class CommandCenter extends ConsumerWidget {
     WidgetRef ref,
     Trip trip,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
     // Optional date range filter
     final dateRange = await _pickExportDateRange(context, trip);
     // null means user cancelled the picker — proceed with all data
     // If user selects a range, use it to filter
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       const SnackBar(
         content: Row(
           children: [
@@ -1031,19 +1218,15 @@ class CommandCenter extends ConsumerWidget {
         endDate: dateRange?.end,
       );
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      }
+      messenger.hideCurrentSnackBar();
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Export failed: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -1052,8 +1235,9 @@ class CommandCenter extends ConsumerWidget {
     WidgetRef ref,
     Trip trip,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
     final dateRange = await _pickExportDateRange(context, trip);
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       const SnackBar(
         content: Row(
           children: [
@@ -1087,19 +1271,15 @@ class CommandCenter extends ConsumerWidget {
         endDate: dateRange?.end,
       );
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      }
+      messenger.hideCurrentSnackBar();
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Export failed: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -1254,29 +1434,6 @@ class CommandCenter extends ConsumerWidget {
           ));
         }
 
-        // --- Memories (always shown) ---
-        final memoriesAsync = ref.watch(tripMemoriesProvider(trip.id));
-        final memories = memoriesAsync.valueOrNull ?? [];
-        final memoriesEmpty = memories.isEmpty;
-        String? memoriesSummary;
-        int memoriesPriority = 10;
-
-        if (memories.isNotEmpty) {
-          memoriesSummary = '${memories.length} photo${memories.length != 1 ? 's' : ''} captured';
-          memoriesPriority = 40;
-        }
-
-        cards.add(_ModuleCardConfig(
-          icon: Iconsax.camera,
-          title: 'Memories',
-          description: 'Capture and share photos from your journey',
-          color: AppColors.amber,
-          onTap: () => _openMemories(context, trip),
-          summaryText: memoriesSummary,
-          priority: memoriesPriority,
-          isEmpty: memoriesEmpty,
-        ));
-
         // Sort by priority (highest first)
         cards.sort((a, b) => b.priority.compareTo(a.priority));
 
@@ -1299,6 +1456,116 @@ class CommandCenter extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  void _shareInviteCode(BuildContext context, Trip trip) {
+    HapticService.lightClick();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(32, 24, 32, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'INVITE CODE',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+                color: AppColors.textMuted,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Invite Friends',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Share this code with anyone you want to join',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                trip.inviteCode,
+                style: const TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 8,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Clipboard.setData(
+                    ClipboardData(
+                      text:
+                          'Join my trip "${trip.name}" on ${AppMetadata.visibleAppName}! Code: ${trip.inviteCode}',
+                    ),
+                  );
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Row(
+                        children: [
+                          Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
+                          SizedBox(width: 8),
+                          Text('Invite copied to clipboard!'),
+                        ],
+                      ),
+                      backgroundColor: AppColors.primary,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: const Icon(Iconsax.copy),
+                label: const Text('Copy Invite'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1332,12 +1599,6 @@ class CommandCenter extends ConsumerWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => VaultScreen(trip: trip)));
-  }
-
-  void _openMemories(BuildContext context, Trip trip) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => MemoriesScreen(trip: trip)));
   }
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
