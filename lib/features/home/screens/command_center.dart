@@ -71,7 +71,7 @@ class CommandCenter extends ConsumerWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppColors.space24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -85,14 +85,14 @@ class CommandCenter extends ConsumerWidget {
             child: const Icon(Iconsax.map, size: 48, color: AppColors.primary),
           ).animate().fadeIn().scale(delay: 100.ms),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppColors.space24),
 
           Text(
             'No Trips Yet',
             style: Theme.of(context).textTheme.headlineMedium,
           ).animate().fadeIn(delay: 200.ms),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: AppColors.space8),
 
           Text(
             'Create a new trip or join an existing one\nto start planning your adventure',
@@ -110,7 +110,7 @@ class CommandCenter extends ConsumerWidget {
             onTap: () => context.push('/create-trip'),
           ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: AppColors.space16),
 
           // Join Trip Button
           _buildSecondaryButton(
@@ -137,11 +137,11 @@ class CommandCenter extends ConsumerWidget {
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            padding: const EdgeInsets.fromLTRB(AppColors.space24, 0, AppColors.space24, AppColors.space24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 8),
+                const SizedBox(height: AppColors.space8),
 
                 // Hero Section (Preparation Meter)
                 _buildPreparationHero(context, ref, trip)
@@ -149,7 +149,7 @@ class CommandCenter extends ConsumerWidget {
                     .fadeIn(duration: 600.ms)
                     .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: AppColors.space16),
 
                 // Expense Summary Hero
                 _buildExpenseSummaryHero(context, ref, trip)
@@ -159,14 +159,14 @@ class CommandCenter extends ConsumerWidget {
 
                 // Trip Recap for completed trips
                 if (trip.isPast) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppColors.space16),
                   _buildTripRecap(context, ref, trip)
                       .animate()
                       .fadeIn(delay: 300.ms, duration: 600.ms)
                       .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
                 ],
 
-                const SizedBox(height: 32),
+                const SizedBox(height: AppColors.space32),
 
                 // Action Section Header
                 Row(
@@ -188,10 +188,10 @@ class CommandCenter extends ConsumerWidget {
                   ],
                 ).animate().fadeIn(delay: 400.ms),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: AppColors.space16),
 
                 // Module Cards
-                _buildModuleList(context, ref, trip).animate().fadeIn(delay: 500.ms),
+                _buildModuleList(context, ref, trip),
 
                 const SizedBox(height: 100), // Space for FAB
               ],
@@ -209,7 +209,7 @@ class CommandCenter extends ConsumerWidget {
     // If gear module is disabled, show a simpler countdown card
     if (!hasGear) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppColors.space20),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(28),
@@ -263,7 +263,7 @@ class CommandCenter extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: AppColors.space20),
             // Trip status text
             Expanded(
               child: Column(
@@ -311,7 +311,7 @@ class CommandCenter extends ConsumerWidget {
     final gearAsync = ref.watch(tripGearProvider(trip.id));
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppColors.space20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
@@ -391,7 +391,7 @@ class CommandCenter extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: AppColors.space24),
           // Preparation Stats
           Expanded(
             child: Column(
@@ -406,7 +406,7 @@ class CommandCenter extends ConsumerWidget {
                     letterSpacing: 1.5,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppColors.space8),
                 gearAsync.when(
                   data: (items) {
                     final total = items.length;
@@ -450,7 +450,7 @@ class CommandCenter extends ConsumerWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppColors.space20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
@@ -463,7 +463,7 @@ class CommandCenter extends ConsumerWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(AppColors.space8),
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight,
                   borderRadius: BorderRadius.circular(12),
@@ -474,7 +474,7 @@ class CommandCenter extends ConsumerWidget {
                   color: AppColors.primaryDark,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppColors.space12),
               const Text(
                 'TRIP RECAP',
                 style: TextStyle(
@@ -486,7 +486,7 @@ class CommandCenter extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppColors.space16),
           Row(
             children: [
               // Duration
@@ -532,7 +532,7 @@ class CommandCenter extends ConsumerWidget {
     return Column(
       children: [
         Icon(icon, size: 20, color: AppColors.primaryDark),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppColors.space8),
         Text(
           value,
           style: const TextStyle(
@@ -622,8 +622,8 @@ class CommandCenter extends ConsumerWidget {
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 20, // Reduced from 24 to prevent overflow
+                        horizontal: AppColors.space24,
+                        vertical: AppColors.space20, // Reduced from 24 to prevent overflow
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -793,7 +793,7 @@ class CommandCenter extends ConsumerWidget {
           height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppColors.space8),
         Text(
           value,
           style: const TextStyle(
@@ -846,7 +846,7 @@ class CommandCenter extends ConsumerWidget {
     List<Trip> allTrips,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 12, 20),
+      padding: const EdgeInsets.fromLTRB(AppColors.space24, AppColors.space12, AppColors.space12, AppColors.space20),
       child: Row(
         children: [
           // Back Button (Styled)
@@ -863,7 +863,7 @@ class CommandCenter extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(width: 16),
+          const SizedBox(width: AppColors.space16),
 
           // Trip Info
           Expanded(
@@ -907,7 +907,7 @@ class CommandCenter extends ConsumerWidget {
           // Member Avatar Stack
           _buildMemberStack(ref, trip),
 
-          const SizedBox(width: 12),
+          const SizedBox(width: AppColors.space12),
 
           // Menu Button
           PopupMenuButton<String>(
@@ -970,7 +970,7 @@ class CommandCenter extends ConsumerWidget {
             size: 18,
             color: isDestructive ? AppColors.error : AppColors.textPrimary,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppColors.space12),
           Text(
             title,
             style: TextStyle(
@@ -1110,7 +1110,7 @@ class CommandCenter extends ConsumerWidget {
               ),
               child: const Icon(Iconsax.trash, color: AppColors.error),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppColors.space12),
             const Text('Delete Trip?'),
           ],
         ),
@@ -1192,7 +1192,7 @@ class CommandCenter extends ConsumerWidget {
                 color: Colors.white,
               ),
             ),
-            SizedBox(width: 12),
+            SizedBox(width: AppColors.space12),
             Text('Generating PDF...'),
           ],
         ),
@@ -1251,7 +1251,7 @@ class CommandCenter extends ConsumerWidget {
                 color: Colors.white,
               ),
             ),
-            SizedBox(width: 12),
+            SizedBox(width: AppColors.space12),
             Text('Generating CSV...'),
           ],
         ),
@@ -1453,7 +1453,10 @@ class CommandCenter extends ConsumerWidget {
                 actionText: cards[i].actionText,
                 priority: cards[i].priority,
                 isEmpty: cards[i].isEmpty,
-              ),
+              )
+                  .animate()
+                  .fadeIn(delay: (100 * i).ms, duration: 400.ms)
+                  .slideY(begin: 0.1, end: 0, delay: (100 * i).ms, duration: 400.ms),
             ],
           ],
         );
@@ -1469,7 +1472,7 @@ class CommandCenter extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(32, 24, 32, 40),
+        padding: const EdgeInsets.fromLTRB(AppColors.space32, AppColors.space24, AppColors.space32, 40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1481,7 +1484,7 @@ class CommandCenter extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppColors.space24),
             const Text(
               'INVITE CODE',
               style: TextStyle(
@@ -1500,7 +1503,7 @@ class CommandCenter extends ConsumerWidget {
                 letterSpacing: -0.3,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppColors.space8),
             const Text(
               'Share this code with anyone you want to join',
               style: TextStyle(
@@ -1509,9 +1512,9 @@ class CommandCenter extends ConsumerWidget {
                 color: AppColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppColors.space24),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: AppColors.space32, vertical: AppColors.space20),
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(20),
@@ -1530,7 +1533,7 @@ class CommandCenter extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppColors.space24),
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -1548,7 +1551,7 @@ class CommandCenter extends ConsumerWidget {
                       content: const Row(
                         children: [
                           Icon(Iconsax.tick_circle, color: Colors.white, size: 18),
-                          SizedBox(width: 8),
+                          SizedBox(width: AppColors.space8),
                           Text('Invite copied to clipboard!'),
                         ],
                       ),
@@ -1608,7 +1611,7 @@ class CommandCenter extends ConsumerWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppColors.space24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1617,7 +1620,7 @@ class CommandCenter extends ConsumerWidget {
               size: 64,
               color: isTimeout ? AppColors.textMuted : AppColors.rose,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppColors.space16),
             Text(
               isTimeout ? 'Connection Timeout' : 'Oops!',
               style: const TextStyle(
@@ -1626,7 +1629,7 @@ class CommandCenter extends ConsumerWidget {
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppColors.space8),
             Text(
               isTimeout
                   ? 'Unable to connect to the server. Please check your internet connection.'
@@ -1634,7 +1637,7 @@ class CommandCenter extends ConsumerWidget {
               style: const TextStyle(color: AppColors.textMuted),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppColors.space24),
             ElevatedButton.icon(
               onPressed: () {
                 ref.invalidate(userTripsProvider);
@@ -1645,8 +1648,8 @@ class CommandCenter extends ConsumerWidget {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+                  horizontal: AppColors.space24,
+                  vertical: AppColors.space12,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1691,7 +1694,7 @@ class CommandCenter extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: Colors.white),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppColors.space8),
               Text(
                 label,
                 style: const TextStyle(
@@ -1727,7 +1730,7 @@ class CommandCenter extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: AppColors.primary),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppColors.space8),
             Text(
               label,
               style: const TextStyle(
