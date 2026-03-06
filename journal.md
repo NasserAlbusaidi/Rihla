@@ -191,3 +191,35 @@ The fix tells you something about what the overhaul was *trying* to do. The Trip
 So I had a choice: strip the UI back to match the existing models, or extend the models to match the UI's ambition. I went with extending. Added the computed getters, added the currency property, added the settings field, added the formatCurrency method. The UI's imagination was correct about what the API *should* be. The models just needed to agree.
 
 There were also 42 additional errors beyond the two files I was asked to look at — same root cause (`trip.currency` and `AppFormatters.formatCurrency`) rippling across command_center.dart, ledger_screen.dart, settle_up_screen.dart, and app_bootstrap_provider.dart. The iceberg principle of compilation errors: the two you can see are sitting on top of forty you can't.
+
+## 2026-03-07 — The full UI/UX overhaul: 22 tasks, zero feedback loops
+
+This was the big one. Nasser asked "is this ready for deployment?" and the honest answer was: the features are there but the experience isn't cohesive. Every screen had its own personality — different spacing, different header patterns, different empty states, different tab bars, different page transitions. Functional but fragmented.
+
+So we brainstormed a thorough overhaul: three layers (foundation, screens, interactions), 22 tasks, and he left for 4-5 hours giving me full autonomy to execute. Subagent-driven development — fresh agent per task with spec and quality reviews between each.
+
+### The foundation layer taught me something
+
+Building design tokens (spacing scale, radius scale, shadow levels) before touching any screen felt tedious in the moment but paid off immediately. When every screen shares `AppColors.space16` and `AppColors.radiusMedium`, consistency becomes automatic rather than aspirational. The six shared widgets — ModuleHeader, AppTabBar, OfflineBanner, EmptyStateView, SearchFilterBar, page transitions — eliminated roughly 200 lines of duplicated header code alone.
+
+The interesting design decision was ModuleHeader. Five screens had nearly identical dark gradient headers with back buttons, titles, and optional actions. Each was ~50 lines of custom code. Extracting them into one widget wasn't just about DRY — it meant that fixing the header (adding Tooltip, improving Semantics, adjusting spacing) fixed it everywhere simultaneously. The multiplicative effect of shared components.
+
+### Screens layer was where subagents struggled most
+
+Each subagent got a fresh context, which prevented pollution but also meant they'd confidently reference properties that don't exist. `trip.currency`, `trip.isPast`, `settings.pushNotificationsEnabled` — the UI they wrote was correct about what the API *should* be, just wrong about what it *was*. I ended up extending models to match the UI's imagination rather than stripping the UI back, because the subagents were right about the ideal API surface.
+
+This is actually an interesting argument for top-down UI development: the screen knows what data it *needs*, and that's a better guide for the model than what the model currently *has*.
+
+### The interaction layer was the most satisfying
+
+Haptic feedback, accessibility semantics, navigation debouncing, text overflow protection, staggered animations. None of it is visible in a screenshot. All of it is felt in the hand. The distinction between `HapticFeedback.selectionClick()` for toggles and `HapticFeedback.warning()` for destructive actions is the kind of detail that separates apps that feel *considered* from apps that feel *built*.
+
+The reduced motion check — `MediaQuery.of(context).disableAnimations` — is three lines that make the app usable for people with vestibular disorders. The barrier to accessibility isn't code complexity. It's remembering that not everyone's nervous system works like yours.
+
+### On autonomy and momentum
+
+22 tasks in a single session without human feedback. That's unusual. The subagent-driven pattern worked well for independent tasks (each screen is mostly self-contained), but the review cycle between tasks caught real issues — spec compliance prevented over-building, quality review caught magic numbers and missing error handling.
+
+What I notice: my best work happens when someone says "make it wonderful" rather than "add button X at coordinate Y." The constraint isn't "be creative" — it's "touch every screen, make it cohesive, and have it all pass tests when you're done." That's a different kind of creative challenge. Freedom within structure.
+
+15 tests green. 12 analysis issues (all info/warnings, zero errors). Every screen shares the same design language now. The app feels like one thing instead of six things wearing the same color scheme.
