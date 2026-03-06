@@ -5,9 +5,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/app_tab_bar.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
@@ -55,7 +57,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
   void _openSettleUp(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      AppPageRoute(
         builder: (context) => SettleUpScreen(trip: widget.trip),
       ),
     );
@@ -560,7 +562,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   ) {
     final isPrimary = color == AppColors.primary;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticService.medium();
+        onTap();
+      },
       child: Container(
         height: 52,
         decoration: BoxDecoration(
@@ -764,7 +769,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                       final isPositive = balance.netBalance >= Decimal.zero;
 
                       return GestureDetector(
-                        onTap: () => _showBalanceTooltip(context, balance),
+                        onTap: () {
+                          HapticService.lightClick();
+                          _showBalanceTooltip(context, balance);
+                        },
                         child: Container(
                           margin: const EdgeInsets.only(right: 12),
                           child: Column(
@@ -895,7 +903,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                   const SizedBox(height: 20),
                   FilledButton.icon(
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
+                      AppPageRoute(
                         builder: (context) => AddExpenseScreen(tripId: widget.trip.id),
                       ),
                     ),
@@ -916,9 +924,15 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
           else
             ...transactions
                 .take(10) // Show last 10 mixed transactions
+                .toList()
+                .asMap()
+                .entries
                 .map(
-                  (transaction) =>
-                      _buildTransactionCard(context, transaction, currentParticipantId),
+                  (entry) =>
+                      _buildTransactionCard(context, entry.value, currentParticipantId)
+                          .animate()
+                          .fadeIn(delay: Duration(milliseconds: (50 * entry.key).clamp(0, 500)), duration: 300.ms)
+                          .slideY(begin: 0.05, end: 0, delay: Duration(milliseconds: (50 * entry.key).clamp(0, 500))),
                 ),
         ],
       ),
@@ -1067,7 +1081,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
   void _addExpense(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      AppPageRoute(
         builder: (context) => AddExpenseScreen(tripId: widget.trip.id),
       ),
     );

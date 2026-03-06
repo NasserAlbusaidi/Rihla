@@ -144,8 +144,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           final doc = filteredDocs[index];
           return _buildDocumentItem(context, ref, doc, index)
               .animate()
-              .fadeIn(delay: Duration(milliseconds: 100 + (index * 50)))
-              .slideX(begin: 0.1);
+              .fadeIn(delay: Duration(milliseconds: (50 * index).clamp(0, 500)), duration: 300.ms)
+              .slideY(begin: 0.05, end: 0, delay: Duration(milliseconds: (50 * index).clamp(0, 500)));
         },
       ),
     );

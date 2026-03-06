@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -47,7 +48,10 @@ class ActivityFeedScreen extends ConsumerWidget {
                       return TimelineCard(
                         log: log,
                         isLast: index == logs.length - 1,
-                      );
+                      )
+                          .animate()
+                          .fadeIn(delay: Duration(milliseconds: (50 * index).clamp(0, 500)), duration: 300.ms)
+                          .slideY(begin: 0.05, end: 0, delay: Duration(milliseconds: (50 * index).clamp(0, 500)));
                     },
                   ),
                 );
