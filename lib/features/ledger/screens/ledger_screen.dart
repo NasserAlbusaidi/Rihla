@@ -8,6 +8,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/app_tab_bar.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../activity/services/activity_service.dart';
 import '../../activity/widgets/timeline_card.dart';
@@ -594,53 +595,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   }
 
   Widget _buildDebtTabs(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Row(
-          children: _tabs.asMap().entries.map((entry) {
-            final index = entry.key;
-            final tab = entry.value;
-            final isSelected = _tabController.index == index;
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => setState(() => _tabController.index = index),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.textPrimary
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.textPrimary
-                          : AppColors.border,
-                    ),
-                  ),
-                  child: Text(
-                    tab,
-                    style: TextStyle(
-                      color: isSelected
-                          ? Colors.white
-                          : AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
+    return AppTabBar(
+      controller: _tabController,
+      tabs: _tabs,
     );
   }
 

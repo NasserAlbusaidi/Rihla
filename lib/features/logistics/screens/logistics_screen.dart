@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_tab_bar.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../core/theme/error_widgets.dart';
@@ -72,7 +73,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
               ),
             ],
           ),
-          _buildTabBar(),
+          AppTabBar(
+            controller: _tabController,
+            tabs: const ['Cars', 'Rooms'],
+            activeColor: AppColors.sky,
+          ),
           Expanded(
             child: subGroupsAsync.when(
               data: (groups) => _buildTabContent(groups),
@@ -81,66 +86,6 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                 onRetry: () =>
                     ref.invalidate(tripSubGroupsProvider(widget.trip.id)),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        onTap: (_) => setState(() {}),
-        indicator: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerHeight: 0,
-        labelColor: Colors.white,
-        unselectedLabelColor: AppColors.textMuted,
-        labelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1,
-        ),
-        tabs: [
-          Tab(
-            height: 44,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Iconsax.car, size: 18),
-                const SizedBox(width: 8),
-                const Text('CARS'),
-              ],
-            ),
-          ),
-          Tab(
-            height: 44,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Iconsax.house, size: 18),
-                const SizedBox(width: 8),
-                const Text('LODGING'),
-              ],
             ),
           ),
         ],
