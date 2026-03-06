@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "231518921973",
+    "project_id": "rihla-safar",
+    "storage_bucket": "rihla-safar.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:231518921973:android:40159a929d53b8a353d1bc",
+        "android_client_info": {
+          "package_name": "com.safar.safar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATf9KyZzWmuwu2yYtPIE6uN_0eKipB8Og"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

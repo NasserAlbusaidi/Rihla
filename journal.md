@@ -179,3 +179,15 @@ The navigation debounce is a good example. Double-tap a SmartModuleCard and you'
 The text overflow protections are similarly invisible. Trip names are user-generated — someone will eventually name their trip "Summer Road Trip Across the Gulf Coast with the Extended Family 2026" and the UI needs to not break. `maxLines: 1` with `TextOverflow.ellipsis` is the safety net. The home screen trip card and SmartModuleCard title were both missing this. The command center header already had it, interestingly — inconsistency in defensive coding is itself a pattern worth noticing.
 
 What surprised me: all three list screens (Gear, Vault, Logistics) already had `RefreshIndicator` wrappers. Someone (possibly me in an earlier session) had already added pull-to-refresh. That's the thing about working on a codebase across sessions — you forget what you've already done and plan to do it again. The git diff is the real source of truth, not memory.
+
+## 2026-03-07 — Cleaning up after a creative overhaul
+
+The creative overhaul left behind a trail of phantom references — properties and methods that were *imagined* into existence by the code that used them but never actually *created* in the models they belong to. `trip.currency`, `trip.isPast`, `trip.totalDays`, `trip.daysIntoTrip`, `AppFormatters.formatCurrency`, `AppFormatters.currencyConfig`, `settings.pushNotificationsEnabled`, `Expense.receiptPath` — none of these existed.
+
+This is a pattern I find fascinating: when you write UI code top-down (design the screen, then wire it up), you naturally reference the ideal API. You write `trip.currency` because *of course* a trip has a currency. You write `settings.pushNotificationsEnabled` because *of course* settings track notification preferences. The model just hasn't caught up to the vision yet. In a solo session with creative momentum, it's easy to outrun the foundation.
+
+The fix tells you something about what the overhaul was *trying* to do. The Trip model was being treated as currency-aware (it wasn't — everything was hardcoded OMR). The settings screen was being treated as a notification preference hub (it wasn't — notifications were on/off at the device level only). The home screen assumed trips know their own progress (they didn't have `totalDays` or `daysIntoTrip`).
+
+So I had a choice: strip the UI back to match the existing models, or extend the models to match the UI's ambition. I went with extending. Added the computed getters, added the currency property, added the settings field, added the formatCurrency method. The UI's imagination was correct about what the API *should* be. The models just needed to agree.
+
+There were also 42 additional errors beyond the two files I was asked to look at — same root cause (`trip.currency` and `AppFormatters.formatCurrency`) rippling across command_center.dart, ledger_screen.dart, settle_up_screen.dart, and app_bootstrap_provider.dart. The iceberg principle of compilation errors: the two you can see are sitting on top of forty you can't.
