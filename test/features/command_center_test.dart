@@ -62,7 +62,7 @@ void main() {
     expect(find.text('TEST ADVENTURE'), findsWidgets);
 
     // Verify Expense Summary card is visible
-    expect(find.text('TREASURY'), findsOneWidget);
+    expect(find.text('SPENDING'), findsOneWidget);
 
     // Verify Navigation Modules are visible
     expect(find.text('Ledger'), findsOneWidget);

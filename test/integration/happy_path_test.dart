@@ -128,7 +128,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 4. Verify Ledger Screen
-    expect(find.text('Audit Log', skipOffstage: false), findsWidgets);
+    expect(find.text('Ledger', skipOffstage: false), findsWidgets);
     expect(find.text('ADD EXPENSE', skipOffstage: false), findsWidgets);
 
     // 5. Add Expense (verify New Expense sheet appears)
