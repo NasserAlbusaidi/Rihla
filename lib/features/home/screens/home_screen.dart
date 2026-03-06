@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -457,7 +458,7 @@ class HomeScreen extends ConsumerWidget {
         ref.read(currentTripProvider.notifier).state = trip;
         Navigator.of(
           context,
-        ).push(MaterialPageRoute(builder: (context) => const CommandCenter()));
+        ).push(AppPageRoute(builder: (context) => const CommandCenter()));
       },
       child: Opacity(
         opacity: isPast ? 0.85 : 1.0,
@@ -523,6 +524,7 @@ class HomeScreen extends ConsumerWidget {
                         const SizedBox(height: 4),
                         GestureDetector(
                           onLongPress: () {
+                            HapticService.lightClick();
                             Clipboard.setData(
                               ClipboardData(text: trip.inviteCode),
                             );

@@ -975,7 +975,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
     return GestureDetector(
       onTap: isExpense && transaction.expense != null
-          ? () => _editExpense(context, transaction.expense!)
+          ? () {
+              HapticService.lightClick();
+              _editExpense(context, transaction.expense!);
+            }
           : null, // Settlements aren't editable here yet
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

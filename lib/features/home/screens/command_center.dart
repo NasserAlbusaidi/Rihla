@@ -10,6 +10,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/page_transitions.dart';
 import '../../gear/screens/gear_screen.dart';
 import '../../ledger/screens/add_expense_screen.dart';
 import '../../ledger/models/expense_model.dart';
@@ -994,18 +995,23 @@ class CommandCenter extends ConsumerWidget {
         _shareInviteCode(context, trip);
         break;
       case 'edit':
+        HapticService.lightClick();
         _openEditTrip(context, trip);
         break;
       case 'members':
+        HapticService.lightClick();
         _openManageMembers(context, trip);
         break;
       case 'export_pdf':
+        HapticService.medium();
         _exportPDF(context, ref, trip);
         break;
       case 'export_csv':
+        HapticService.medium();
         _exportCSV(context, ref, trip);
         break;
       case 'delete':
+        HapticService.warning();
         _showDeleteConfirmation(context, ref, trip);
         break;
     }
@@ -1148,12 +1154,12 @@ class CommandCenter extends ConsumerWidget {
   void _openEditTrip(BuildContext context, Trip trip) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (context) => EditTripScreen(trip: trip)));
+    ).push(AppPageRoute(builder: (context) => EditTripScreen(trip: trip)));
   }
 
   void _openManageMembers(BuildContext context, Trip trip) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => ManageMembersScreen(trip: trip)),
+      AppPageRoute(builder: (context) => ManageMembersScreen(trip: trip)),
     );
   }
 
@@ -1577,12 +1583,12 @@ class CommandCenter extends ConsumerWidget {
   void _openLedger(BuildContext context, Trip trip) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (context) => LedgerScreen(trip: trip)));
+    ).push(AppPageRoute(builder: (context) => LedgerScreen(trip: trip)));
   }
 
   void _openAddExpense(BuildContext context, Trip trip) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      AppPageRoute(
         builder: (context) => AddExpenseScreen(tripId: trip.id),
       ),
     );
@@ -1591,19 +1597,19 @@ class CommandCenter extends ConsumerWidget {
   void _openGear(BuildContext context, Trip trip) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (context) => GearScreen(trip: trip)));
+    ).push(AppPageRoute(builder: (context) => GearScreen(trip: trip)));
   }
 
   void _openLogistics(BuildContext context, Trip trip) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => LogisticsScreen(trip: trip)),
+      AppPageRoute(builder: (context) => LogisticsScreen(trip: trip)),
     );
   }
 
   void _openVault(BuildContext context, Trip trip) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (context) => VaultScreen(trip: trip)));
+    ).push(AppPageRoute(builder: (context) => VaultScreen(trip: trip)));
   }
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
