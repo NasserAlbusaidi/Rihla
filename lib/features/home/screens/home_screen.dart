@@ -229,10 +229,13 @@ class HomeScreen extends ConsumerWidget {
               border: Border.all(color: AppColors.borderLight),
               boxShadow: AppColors.cardShadow,
             ),
-            child: IconButton(
-              icon: const Icon(Iconsax.setting_2, size: 22),
-              color: AppColors.textPrimary,
-              onPressed: () => context.push('/settings'),
+            child: Tooltip(
+              message: 'Settings',
+              child: IconButton(
+                icon: const Icon(Iconsax.setting_2, size: 22),
+                color: AppColors.textPrimary,
+                onPressed: () => context.push('/settings'),
+              ),
             ),
           ),
         ],
@@ -520,6 +523,8 @@ class HomeScreen extends ConsumerWidget {
                             color: AppColors.textPrimary,
                             letterSpacing: -0.5,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         GestureDetector(

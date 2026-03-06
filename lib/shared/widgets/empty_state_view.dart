@@ -23,8 +23,9 @@ class EmptyStateView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = iconColor ?? AppColors.textMuted;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
 
-    return Center(
+    Widget result = Center(
       child: Padding(
         padding: const EdgeInsets.all(AppColors.space32),
         child: Column(
@@ -72,10 +73,16 @@ class EmptyStateView extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).scale(
-          begin: const Offset(0.95, 0.95),
-          end: const Offset(1, 1),
-          duration: 400.ms,
-        );
+    );
+
+    if (!reduceMotion) {
+      result = result.animate().fadeIn(duration: 400.ms).scale(
+            begin: const Offset(0.95, 0.95),
+            end: const Offset(1, 1),
+            duration: 400.ms,
+          );
+    }
+
+    return result;
   }
 }

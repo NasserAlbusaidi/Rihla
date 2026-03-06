@@ -78,35 +78,38 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 ),
               ),
               const SizedBox(width: AppColors.space8),
-              GestureDetector(
-                onTap: () {
-                  HapticService.lightClick();
-                  setState(() => _isExpanded = !_isExpanded);
-                  if (!_isExpanded) {
-                    _controller.clear();
-                    widget.onSearchChanged('');
-                  }
-                },
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _isExpanded
-                        ? AppColors.primary.withValues(alpha: 0.1)
-                        : AppColors.surfaceLight,
-                    borderRadius:
-                        BorderRadius.circular(AppColors.radiusSmall),
-                    border: Border.all(
+              Tooltip(
+                message: _isExpanded ? 'Close search' : 'Toggle search',
+                child: GestureDetector(
+                  onTap: () {
+                    HapticService.lightClick();
+                    setState(() => _isExpanded = !_isExpanded);
+                    if (!_isExpanded) {
+                      _controller.clear();
+                      widget.onSearchChanged('');
+                    }
+                  },
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
                       color: _isExpanded
-                          ? AppColors.primary.withValues(alpha: 0.3)
-                          : AppColors.borderLight,
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : AppColors.surfaceLight,
+                      borderRadius:
+                          BorderRadius.circular(AppColors.radiusSmall),
+                      border: Border.all(
+                        color: _isExpanded
+                            ? AppColors.primary.withValues(alpha: 0.3)
+                            : AppColors.borderLight,
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    _isExpanded ? Icons.close : Iconsax.search_normal,
-                    size: 18,
-                    color:
-                        _isExpanded ? AppColors.primary : AppColors.textMuted,
+                    child: Icon(
+                      _isExpanded ? Icons.close : Iconsax.search_normal,
+                      size: 18,
+                      color:
+                          _isExpanded ? AppColors.primary : AppColors.textMuted,
+                    ),
                   ),
                 ),
               ),

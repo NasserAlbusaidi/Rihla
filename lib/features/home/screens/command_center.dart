@@ -858,9 +858,12 @@ class CommandCenter extends ConsumerWidget {
               border: Border.all(color: AppColors.borderLight),
               boxShadow: AppColors.cardShadow,
             ),
-            child: IconButton(
-              icon: const Icon(Iconsax.arrow_left_2, size: 20),
-              onPressed: () => Navigator.pop(context),
+            child: Tooltip(
+              message: 'Go back',
+              child: IconButton(
+                icon: const Icon(Iconsax.arrow_left_2, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
             ),
           ),
 

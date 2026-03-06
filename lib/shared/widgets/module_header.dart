@@ -79,17 +79,21 @@ class _BackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+    return Semantics(
+      label: 'Go back',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: const Icon(Iconsax.arrow_left, color: Colors.white, size: 20),
         ),
-        child: const Icon(Iconsax.arrow_left, color: Colors.white, size: 20),
       ),
     );
   }
