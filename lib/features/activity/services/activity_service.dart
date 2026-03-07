@@ -42,11 +42,12 @@ final tripActivityProvider = StreamProvider.family<List<ActivityLog>, String>((
         final participantMap = {for (var p in (participants as List)) p['user_id']: p};
 
         return data.map((json) {
-          final actorId = json['actor_id'];
+          final enriched = Map<String, dynamic>.from(json);
+          final actorId = enriched['actor_id'];
           if (actorId != null && participantMap.containsKey(actorId)) {
-            json['actor'] = participantMap[actorId];
+            enriched['actor'] = participantMap[actorId];
           }
-          return ActivityLog.fromJson(json);
+          return ActivityLog.fromJson(enriched);
         }).toList();
       });
 });
@@ -89,11 +90,12 @@ final tripTransactionActivityProvider =
             final participantMap = {for (var p in (participants as List)) p['user_id']: p};
 
             return filteredData.map((json) {
-              final actorId = json['actor_id'];
+              final enriched = Map<String, dynamic>.from(json);
+              final actorId = enriched['actor_id'];
               if (actorId != null && participantMap.containsKey(actorId)) {
-                json['actor'] = participantMap[actorId];
+                enriched['actor'] = participantMap[actorId];
               }
-              return ActivityLog.fromJson(json);
+              return ActivityLog.fromJson(enriched);
             }).toList();
           });
     });

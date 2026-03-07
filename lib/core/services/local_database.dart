@@ -1,16 +1,23 @@
+import 'dart:async';
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Local database service for offline caching
 class LocalDatabase {
   static Database? _database;
+  static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
   static const int _databaseVersion =
       3; // Incremented for participant-based columns
 
-  /// Get database instance
+  /// Get database instance (safe for concurrent access)
   static Future<Database> get database async {
-    _database ??= await _initDatabase();
+    if (_database != null) return _database!;
+    if (_initCompleter != null) return _initCompleter!.future;
+    _initCompleter = Completer<Database>();
+    _database = await _initDatabase();
+    _initCompleter!.complete(_database!);
     return _database!;
   }
 

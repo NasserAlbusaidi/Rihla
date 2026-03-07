@@ -163,7 +163,7 @@ class CacheService {
         tripId: map['trip_id'] as String,
         payerParticipantId: map['payer_participant_id'] as String?,
         recipientParticipantId: map['recipient_participant_id'] as String?,
-        amount: double.parse(map['amount'] as String),
+        amount: Decimal.parse(map['amount'] as String),
         note: map['note'] as String?,
         settledAt: DateTime.parse(map['created_at'] as String),
         isDeleted: (map['is_deleted'] as int?) == 1,

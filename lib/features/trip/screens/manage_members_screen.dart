@@ -50,10 +50,14 @@ class _ManageMembersScreenState extends ConsumerState<ManageMembersScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => _showCreateShadowDialog(context),
               backgroundColor: AppColors.primary,
-              icon: const Icon(Iconsax.user_add, color: Colors.white),
+              icon: const Icon(Iconsax.user_add, color: Colors.white, size: 20),
               label: const Text(
-                'Add Shadow',
-                style: TextStyle(color: Colors.white),
+                'Add Member',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             )
           : null,

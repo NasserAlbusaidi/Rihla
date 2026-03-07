@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -42,9 +41,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             actions: [
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: const IconButton(
                   icon: Icon(
@@ -387,12 +386,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       if (url == null) throw Exception('Could not generate access link');
 
       final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        // Fallback to open_file
-        await OpenFilex.open(doc.fileUrl);
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(

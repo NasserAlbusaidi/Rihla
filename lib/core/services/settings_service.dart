@@ -15,7 +15,9 @@ class SettingsService {
   /// Load settings from SharedPreferences
   AppSettings loadSettings() {
     final themeIndex = _prefs.getInt(_themeKey) ?? AppThemeMode.system.index;
-    final themeMode = AppThemeMode.values[themeIndex];
+    final themeMode = themeIndex >= 0 && themeIndex < AppThemeMode.values.length
+        ? AppThemeMode.values[themeIndex]
+        : AppThemeMode.system;
 
     final languageCode = _prefs.getString(_languageKey) ?? 'en';
     final currencyCode = _prefs.getString(_currencyKey) ?? 'OMR';

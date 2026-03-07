@@ -33,6 +33,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
       source: source,
     );
 
+    if (!mounted) return;
     setState(() => _isUploading = false);
 
     if (memory != null) {

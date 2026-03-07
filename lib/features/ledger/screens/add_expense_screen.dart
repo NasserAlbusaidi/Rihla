@@ -118,7 +118,25 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   Future<void> _submit() async {
-    final amount = Decimal.parse(_amount);
+    Decimal amount;
+    try {
+      amount = Decimal.parse(_amount);
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid amount')),
+        );
+      }
+      return;
+    }
+    if (amount <= Decimal.zero) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Amount must be greater than zero')),
+        );
+      }
+      return;
+    }
     final note = _noteController.text.trim();
 
     final currentParticipant = ref.read(
@@ -135,6 +153,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (_receiptPath != null) {
       setState(() => _isUploadingReceipt = true);
       receiptUrl = await _uploadReceipt(_receiptPath!);
+      if (!mounted) return;
       setState(() => _isUploadingReceipt = false);
     }
 
@@ -429,13 +448,16 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
           ),
           const SizedBox(height: 44),
-          SizedBox(
-            height: 120,
-            child: ListView.separated(
+          Expanded(
+            child: GridView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              scrollDirection: Axis.horizontal,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.85,
+              ),
               itemCount: categories.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 16),
               itemBuilder: (context, index) {
                 final cat = categories[index];
                 final isSelected = _selectedCategoryId == cat.id;
@@ -445,10 +467,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     setState(() => _selectedCategoryId = cat.id);
                   },
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 64,
-                        height: 64,
+                        width: 60,
+                        height: 60,
                         decoration: BoxDecoration(
                           color: isSelected
                               ? AppColors.mint
@@ -471,14 +494,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           color: isSelected
                               ? Colors.white
                               : AppColors.textSecondary,
-                          size: 28,
+                          size: 26,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         cat.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: isSelected
                               ? FontWeight.bold
                               : FontWeight.w500,

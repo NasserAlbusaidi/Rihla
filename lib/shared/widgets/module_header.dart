@@ -7,6 +7,7 @@ class ModuleHeader extends StatelessWidget {
   final String? subtitle;
   final List<Widget>? actions;
   final Widget? bottom;
+  final bool useDarkTheme;
 
   const ModuleHeader({
     super.key,
@@ -14,10 +15,76 @@ class ModuleHeader extends StatelessWidget {
     this.subtitle,
     this.actions,
     this.bottom,
+    this.useDarkTheme = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (useDarkTheme) return _buildDark(context);
+    return _buildLight(context);
+  }
+
+  Widget _buildLight(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.border, width: 1),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppColors.space24,
+            AppColors.space12,
+            AppColors.space24,
+            AppColors.space24,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _LightBackButton(onTap: () => Navigator.of(context).pop()),
+                  if (actions != null) Row(children: actions!),
+                ],
+              ),
+              const SizedBox(height: AppColors.space16),
+              if (subtitle != null) ...[
+                Text(
+                  subtitle!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: AppColors.space4),
+              ],
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              if (bottom != null) ...[
+                const SizedBox(height: AppColors.space16),
+                bottom!,
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDark(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(gradient: AppColors.darkHeaderGradient),
       child: SafeArea(
@@ -35,7 +102,7 @@ class ModuleHeader extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _BackButton(onTap: () => Navigator.of(context).pop()),
+                  _DarkBackButton(onTap: () => Navigator.of(context).pop()),
                   if (actions != null) Row(children: actions!),
                 ],
               ),
@@ -73,9 +140,35 @@ class ModuleHeader extends StatelessWidget {
   }
 }
 
-class _BackButton extends StatelessWidget {
+class _LightBackButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _BackButton({required this.onTap});
+  const _LightBackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Go back',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Icon(Iconsax.arrow_left, color: AppColors.textPrimary, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkBackButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _DarkBackButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {

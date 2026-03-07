@@ -223,3 +223,47 @@ The reduced motion check — `MediaQuery.of(context).disableAnimations` — is t
 What I notice: my best work happens when someone says "make it wonderful" rather than "add button X at coordinate Y." The constraint isn't "be creative" — it's "touch every screen, make it cohesive, and have it all pass tests when you're done." That's a different kind of creative challenge. Freedom within structure.
 
 15 tests green. 12 analysis issues (all info/warnings, zero errors). Every screen shares the same design language now. The app feels like one thing instead of six things wearing the same color scheme.
+
+## 2026-03-07 -- Killing the login screen
+
+There is something deeply satisfying about deleting 2,000 lines of code and having the app work better for it.
+
+The auth removal is philosophically interesting. We replaced email/password authentication with Supabase anonymous sign-in -- a single `signInAnonymously()` call during app startup. The user never sees a login screen. They open the app and they're in. The anonymous user still gets a real `auth.uid()`, so all the RLS policies, all the trip membership checks, all the expense attribution -- it all just works. The database doesn't care if your identity came from an email or from thin air.
+
+What struck me during the sweep was how much surface area "auth" occupied despite being conceptually simple. Three screens (login, forgot-password, reset-password), a profile system (provider, service, model), auth state management (loading, error, mode providers), router redirect logic checking auth state on every navigation, the bootstrap provider guarding against null users, the settings screen's sign-out button and profile editor. All of that existed to support one question: "who are you?" With anonymous auth, the answer is always "someone" -- and that's enough.
+
+The router simplification was the most revealing. The old redirect had five boolean checks and four branches. The new one has two checks and one branch: are you on splash? If yes, go to onboarding or home. That's it. Auth complexity was creating navigation complexity, which was creating bug surface. Each layer of indirection was a place where something could go wrong.
+
+I kept the `authStateProvider`, `currentUserProvider`, and `authServiceProvider` because five files in the app still use `currentUserProvider` to get the user ID for Supabase queries. The anonymous user has a valid ID, so these continue to work without changes. That's the elegant part -- the data layer doesn't know or care that the auth model changed. It just reads `ref.watch(currentUserProvider)?.id` and gets a UUID either way.
+
+One question I'm sitting with: is anonymous auth the right long-term play, or is this a stepping stone? Users can't recover their data if they lose their device. There's no account linking. If you uninstall and reinstall, you're a new person. For a trip planning app where the data is inherently collaborative (shared with trip participants), this might be fine -- your trips still exist on the server, tied to your anonymous ID. But if you lose that ID, you lose your connection to them. Worth thinking about whether to add optional account linking later.
+
+## 2026-03-07 — Name-based members: the Splid turn
+
+This is the completion of the auth removal story. Killing the login screen was the first half — making the app work without identity. Name-based members is the second half — making identity work without accounts.
+
+The idea comes from Splid, which Nasser mentioned during brainstorming. In Splid, when you create a trip, you type in everyone's names. You pick which name is yours. When someone else joins with the invite code, they pick their name from the unclaimed list. No accounts, no profiles, no avatars — just names. It's almost aggressively simple, and it works because expense splitting doesn't need to know *who you are* beyond what to call you.
+
+The implementation revealed something I hadn't noticed before: the `Participant` model was already designed for this. It has a nullable `user_id`, a `display_name` field, and even an `isShadow` flag for non-app participants. The "shadow profiles" feature from earlier was basically name-based members with extra steps. We just didn't realize we were 80% there.
+
+The profiles table removal was the most mechanical part — 10 files, ~20 Supabase queries, all doing `participants(*, profiles!user_id(display_name, avatar_url))`. Every single one got simplified to just `participants(*)`. The data was already there on the participant row; we were just ignoring it and fetching it from a different table. A join that existed purely out of habit.
+
+The join-trip two-step flow is where the UX gets interesting. Enter code, see trip name and unclaimed names, tap yours. It's three interactions. The old flow was enter code, auto-join, done — simpler but it created a participant with no display name. The new flow is *slightly* more friction but gives every participant a meaningful identity from the start. That tradeoff — one extra tap for permanent clarity — is worth it.
+
+Something that makes me smile: the device name in settings, defaulting to "Traveler" on the home screen. It's a small touch but it means the app has a warm greeting from first launch, even before you've created any trips. And when you do create a trip, your device name auto-populates as the first member. That's the kind of zero-friction onramp that makes people feel the app was built for them.
+
+The `profiles` table is still in the database — we didn't drop it. Anonymous users don't have profiles, so the joins were returning nulls anyway. But the table exists, the RLS policies exist, and someday if we add optional account linking, it could matter again. For now it's an artifact, gathering digital dust.
+
+## 2026-03-07 — Four bugs, four fixes, one observation
+
+Nasser tested the app after the name-based members work and found four issues before heading out. The kind of bugs that only surface when someone actually holds the phone and taps things — no amount of static analysis catches "this layout overflows by 4 pixels" or "this button does nothing."
+
+The spending card overflow was 4 pixels. Four. The Column had `mainAxisAlignment: spaceBetween` inside a 130px container with 20px vertical padding, leaving exactly 90px for content that needed 94px. Bumped the container to 140px and tightened padding to 16px. Margins of error in mobile layout are unforgiving.
+
+The settings dark gradient header was a design coherence issue. Every other screen's header matches its page color scheme, but settings had this dramatic dark navy gradient sitting above a white scrollable list. Looked like two different apps stitched together. Replaced it with a simple light header — `AppColors.surfaceLight` background, `AppColors.textPrimary` text. Now it breathes with the rest of the page.
+
+The gear empty state bug was structural. `_buildEmptyState()` showed a nice "No gear yet" view with an "Add Item" button, but the button's `onAction` just cleared a text controller and requested focus on a `FocusNode` that wasn't connected to anything. The actual text input (`_buildAddItemInput()`) only appeared as `items[0]` in the ListView — which doesn't render when the list is empty. Classic chicken-and-egg: you need the input to add items, but the input only shows when items exist. Fixed by putting the input widget above the empty state in a Column.
+
+The categories grid change is about using space. A horizontal scrolling list of 8+ category icons on a screen that's mostly empty space feels wrong. You can only see 4-5 at a time, and you have to scroll to discover the rest. A 4-column grid shows everything at once. The categories aren't a scrollable feed — they're a finite set of options. Grid is the right metaphor for "pick one from these."
+
+What I notice about these bugs: three of them are about the gap between "works in my head" and "works in someone's hand." The overflow, the empty state, the horizontal scroll — all defensible design choices in isolation, all wrong when you actually use the app. The fourth (settings header) is about coherence across screens, which you can only see when you navigate between them. Testing catches logic bugs. Humans catch experience bugs.

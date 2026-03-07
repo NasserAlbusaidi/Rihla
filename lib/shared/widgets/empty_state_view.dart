@@ -26,7 +26,7 @@ class EmptyStateView extends StatelessWidget {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     Widget result = Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppColors.space32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

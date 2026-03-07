@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -129,16 +128,21 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   }
 
   Widget _buildEmptyState() {
-    return EmptyStateView(
-      icon: Iconsax.bag_2,
-      title: 'No gear yet',
-      message: 'Add items your group needs to bring',
-      actionLabel: 'Add Item',
-      onAction: () {
-        _itemController.clear();
-        FocusScope.of(context).requestFocus(FocusNode());
-      },
-      iconColor: AppColors.amber,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: _buildAddItemInput(),
+        ),
+        const Expanded(
+          child: EmptyStateView(
+            icon: Iconsax.bag_2,
+            title: 'No gear yet',
+            message: 'Add items your group needs to bring',
+            iconColor: AppColors.amber,
+          ),
+        ),
+      ],
     );
   }
 
@@ -581,11 +585,11 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         content: Text('Remove ${item.itemName} from the gear list?'),
         actions: [
           TextButton(
-            onPressed: () => context.pop(false),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('CANCEL'),
           ),
           TextButton(
-            onPressed: () => context.pop(true),
+            onPressed: () => Navigator.pop(context, true),
             child: const Text(
               'DELETE',
               style: TextStyle(color: AppColors.rose),
@@ -627,7 +631,14 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       service.packItem(item.id);
     } else {
       // Claim and pack in one go
-      service.claimItem(item.id).then((_) => service.packItem(item.id));
+      () async {
+        try {
+          await service.claimItem(item.id);
+          await service.packItem(item.id);
+        } catch (e) {
+          debugPrint('Failed to claim and pack: $e');
+        }
+      }();
     }
   }
 }

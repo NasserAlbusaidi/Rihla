@@ -385,13 +385,13 @@ class BalanceCalculator {
           settlementAdjustmentMap.containsKey(s.payerParticipantId)) {
         settlementAdjustmentMap[s.payerParticipantId!] =
             settlementAdjustmentMap[s.payerParticipantId!]! +
-            Decimal.parse(s.amount.toString());
+            s.amount;
       }
       if (s.recipientParticipantId != null &&
           settlementAdjustmentMap.containsKey(s.recipientParticipantId)) {
         settlementAdjustmentMap[s.recipientParticipantId!] =
             settlementAdjustmentMap[s.recipientParticipantId!]! -
-            Decimal.parse(s.amount.toString());
+            s.amount;
       }
     }
 

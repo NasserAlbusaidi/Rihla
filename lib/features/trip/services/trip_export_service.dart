@@ -429,7 +429,7 @@ class TripExportService {
                 pw.SizedBox(width: 10),
                 pw.Expanded(
                   child: pw.Text(
-                    '$from paid $to ${s.amount.toStringAsFixed(3)} OMR',
+                    '$from paid $to ${s.amount.toDouble().toStringAsFixed(3)} OMR',
                     style: const pw.TextStyle(fontSize: 12),
                   ),
                 ),

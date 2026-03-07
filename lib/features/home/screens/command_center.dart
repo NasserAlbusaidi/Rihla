@@ -568,7 +568,7 @@ class CommandCenter extends ConsumerWidget {
     return GestureDetector(
       onTap: () => _openLedger(context, trip),
       child: Container(
-        height: 130, // Increased slightly for better fit
+        height: 140,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
           gradient: const LinearGradient(
@@ -624,7 +624,7 @@ class CommandCenter extends ConsumerWidget {
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppColors.space24,
-                        vertical: AppColors.space20, // Reduced from 24 to prevent overflow
+                        vertical: AppColors.space16,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1166,29 +1166,12 @@ class CommandCenter extends ConsumerWidget {
     );
   }
 
-  /// Show date range picker for exports. Returns null if cancelled.
-  Future<DateTimeRange?> _pickExportDateRange(BuildContext context, Trip trip) async {
-    return showDateRangePicker(
-      context: context,
-      firstDate: trip.startDate ?? DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: trip.startDate != null
-          ? DateTimeRange(start: trip.startDate!, end: DateTime.now())
-          : null,
-      helpText: 'Select date range for export',
-    );
-  }
-
   Future<void> _exportPDF(
     BuildContext context,
     WidgetRef ref,
     Trip trip,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    // Optional date range filter
-    final dateRange = await _pickExportDateRange(context, trip);
-    // null means user cancelled the picker — proceed with all data
-    // If user selects a range, use it to filter
     messenger.showSnackBar(
       const SnackBar(
         content: Row(
@@ -1225,8 +1208,6 @@ class CommandCenter extends ConsumerWidget {
         settlements: settlements,
         participants: participants,
         subGroups: subGroups,
-        startDate: dateRange?.start,
-        endDate: dateRange?.end,
       );
 
       messenger.hideCurrentSnackBar();
@@ -1247,7 +1228,6 @@ class CommandCenter extends ConsumerWidget {
     Trip trip,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final dateRange = await _pickExportDateRange(context, trip);
     messenger.showSnackBar(
       const SnackBar(
         content: Row(
@@ -1278,8 +1258,6 @@ class CommandCenter extends ConsumerWidget {
         trip: trip,
         expenses: expenses,
         participants: participants,
-        startDate: dateRange?.start,
-        endDate: dateRange?.end,
       );
 
       messenger.hideCurrentSnackBar();

@@ -8,12 +8,18 @@ import '../../../core/config/supabase_config.dart';
 
 /// Thawani payment gateway integration for settling debts
 class ThawaniService {
-  // Test credentials - replace with production keys via config.json
-  static const String _testApiKey = 'rRQ26GcsZzoEhbrP2HZvLYDbn9C9et';
-  static const String _testPublishableKey = 'HGvTMLDssJghr9tlN9gr4DVYt0qyBy';
-
-  /// Whether to use test mode (should be false in production)
-  static const bool _testMode = true;
+  static const String _apiKey = String.fromEnvironment(
+    'THAWANI_API_KEY',
+    defaultValue: '',
+  );
+  static const String _publishableKey = String.fromEnvironment(
+    'THAWANI_PUBLISHABLE_KEY',
+    defaultValue: '',
+  );
+  static const bool _testMode = String.fromEnvironment(
+    'THAWANI_MODE',
+    defaultValue: 'test',
+  ) == 'test';
 
   /// Convert OMR amount to Baisa for Thawani
   /// Thawani expects amounts in the smallest currency unit (Baisa for OMR)
@@ -57,8 +63,8 @@ class ThawaniService {
     final payment = Thawani.pay(
       context,
       testMode: _testMode,
-      api: _testApiKey,
-      pKey: _testPublishableKey,
+      api: _apiKey,
+      pKey: _publishableKey,
       clintID: clientId,
       saveCard: true,
       products: [

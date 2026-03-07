@@ -25,7 +25,7 @@ class AppColors {
   static const Color success = emerald;
 
   // Backgrounds - Neo-Outdoor (Light & Dark compatible)
-  static const Color background = Color(0xFFF8FAFC); // Refined Slate 50
+  static const Color background = Color(0xFFEFF2F7); // Slate 100/200 blend
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceLight = Color(0xFFF1F5F9); // Slate 100
   static const Color surfaceCard = Color(0xFFFFFFFF);

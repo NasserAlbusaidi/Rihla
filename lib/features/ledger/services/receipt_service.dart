@@ -93,7 +93,7 @@ class ReceiptService {
     try {
       await _client
           .from('expenses')
-          .update({'receipt_path': receiptPath})
+          .update({'receipt_url': receiptPath})
           .eq('id', expenseId);
       return true;
     } catch (e) {

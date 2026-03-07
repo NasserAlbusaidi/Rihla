@@ -145,9 +145,7 @@ class SettleUpScreen extends ConsumerWidget {
           (p) => p.id == b.participantId && p.userId == currentUserId,
         );
       },
-      orElse: () => balances.isNotEmpty
-          ? balances.first
-          : UserBalance(
+      orElse: () => UserBalance(
               participantId: '',
               totalPaid: Decimal.zero,
               totalOwed: Decimal.zero,
@@ -696,7 +694,7 @@ class SettleUpScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    AppFormatters.formatCurrency(Decimal.parse(settlement.amount.toString()), trip.currency),
+                    AppFormatters.formatCurrency(settlement.amount, trip.currency),
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,

@@ -58,9 +58,9 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             actions: [
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: IconButton(
                   icon: const Icon(

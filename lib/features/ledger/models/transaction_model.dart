@@ -45,7 +45,7 @@ class Transaction {
       id: settlement.id,
       type: TransactionType.settlement,
       date: settlement.settledAt,
-      amount: Decimal.parse(settlement.amount.toString()),
+      amount: settlement.amount,
       description: 'Settlement to ${settlement.recipientName ?? "Recipient"}',
       payerId: settlement.payerParticipantId ?? '',
       settlement: settlement,

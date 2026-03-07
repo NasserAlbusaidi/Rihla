@@ -35,6 +35,7 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus> {
   /// Check current connectivity
   Future<void> checkConnectivity() async {
     final isOnline = await SyncService.isOnline();
+    if (!mounted) return;
     state = isOnline ? ConnectivityStatus.online : ConnectivityStatus.offline;
   }
 

@@ -26,6 +26,20 @@ class ActivityLog {
   });
 
   factory ActivityLog.fromJson(Map<String, dynamic> json) {
+    final actorDisplayName = json['actor']?['display_name'] as String?;
+    var logText = json['log_text'] as String;
+
+    // Replace generic placeholders with actual actor name when available
+    if (actorDisplayName != null && actorDisplayName.isNotEmpty) {
+      logText = logText
+          .replaceFirst('Someone paid', '$actorDisplayName paid')
+          .replaceFirst('Someone made', '$actorDisplayName made')
+          .replaceFirst('user paid', '$actorDisplayName paid')
+          .replaceFirst('User paid', '$actorDisplayName paid')
+          .replaceFirst('user made', '$actorDisplayName made')
+          .replaceFirst('User made', '$actorDisplayName made');
+    }
+
     return ActivityLog(
       id: json['id'] as String,
       tripId: json['trip_id'] as String,
@@ -33,10 +47,10 @@ class ActivityLog {
       targetParticipantId: json['target_participant_id'] as String?,
       category: json['category'] as String,
       eventType: json['event_type'] as String,
-      logText: json['log_text'] as String,
+      logText: logText,
       metadata: json['metadata'] as Map<String, dynamic>? ?? {},
       createdAt: DateTime.parse(json['created_at'] as String),
-      actorName: json['actor']?['display_name'] as String?,
+      actorName: actorDisplayName,
       actorAvatar: json['actor']?['avatar_url'] as String?,
     );
   }

@@ -76,7 +76,7 @@ class SyncService {
     try {
       // Get trips where user is a participant
       final data = await _client
-          .from('trip_participants')
+          .from('participants')
           .select('trip_id, trips(*)')
           .eq('user_id', userId);
 
@@ -130,8 +130,8 @@ class SyncService {
   /// Check if device is online
   static Future<bool> isOnline() async {
     try {
-      // Simple check - try to reach Supabase
-      await _client.from('trips').select('id').limit(1);
+      // Lightweight connectivity check using auth — no RLS/table dependency
+      await _client.auth.refreshSession();
       return true;
     } catch (e) {
       return false;
