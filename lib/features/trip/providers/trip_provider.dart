@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/cache_service.dart';
 import '../../../core/services/offline_repository.dart';
+import '../../../core/services/sync_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/trip_model.dart';
 
@@ -45,6 +47,18 @@ final currentParticipantProvider = Provider.family<Participant?, String>((
     },
     orElse: () => null,
   );
+});
+
+/// Provider that seeds SQLite on first load
+final tripSeedProvider = FutureProvider<void>((ref) async {
+  final cachedTrips = await CacheService.getCachedTrips();
+  if (cachedTrips.isEmpty) {
+    final user = ref.read(currentUserProvider);
+    if (user != null) {
+      final repo = ref.read(offlineRepositoryProvider);
+      await SyncService.fullSync(user.id, repo);
+    }
+  }
 });
 
 /// Trip service provider

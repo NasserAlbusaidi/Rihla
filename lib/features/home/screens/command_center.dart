@@ -8,6 +8,9 @@ import '../../../core/config/app_metadata.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/providers/connectivity_provider.dart';
+import '../../../core/services/offline_repository.dart';
+import '../../../core/services/sync_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/page_transitions.dart';
@@ -38,6 +41,17 @@ class CommandCenter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tripsAsync = ref.watch(userTripsProvider);
     final currentTrip = ref.watch(currentTripProvider);
+
+    // Trigger trip data download when online
+    ref.listen<ConnectivityStatus>(connectivityProvider, (prev, next) {
+      if (next == ConnectivityStatus.online) {
+        final trip = currentTrip ?? ref.read(userTripsProvider).valueOrNull?.firstOrNull;
+        if (trip != null) {
+          final repo = ref.read(offlineRepositoryProvider);
+          SyncService.downloadTripData(trip.id, repo);
+        }
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.background,
