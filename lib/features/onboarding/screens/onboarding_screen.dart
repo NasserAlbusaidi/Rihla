@@ -75,7 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _completeOnboarding() async {
     await OnboardingScreen.markCompleted();
     if (mounted) {
-      context.go('/login');
+      context.go('/home');
     }
   }
 

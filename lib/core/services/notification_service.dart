@@ -135,7 +135,7 @@ class NotificationService {
     debugPrint('FCM tap: ${message.data}');
   }
 
-  /// Remove token when notifications are disabled or the user signs out.
+  /// Remove token when notifications are disabled.
   Future<void> removeToken() async {
     try {
       _messaging ??= FirebaseMessaging.instance;
@@ -151,11 +151,6 @@ class NotificationService {
     }
   }
 
-  /// Reset device state after sign out.
-  void markSignedOut() {
-    _initialized = false;
-    _setStatus(NotificationStatus.off);
-  }
 
   bool get isInitialized => _initialized;
 
