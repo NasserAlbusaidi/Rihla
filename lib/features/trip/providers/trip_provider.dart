@@ -256,6 +256,86 @@ class TripService {
     }
   }
 
+  /// Find trip and return unclaimed participant names
+  Future<({Trip trip, List<Participant> unclaimed})?> findTripForJoin(String inviteCode) async {
+    _ref.read(tripLoadingProvider.notifier).state = true;
+    _ref.read(tripErrorProvider.notifier).state = null;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final tripData = await _client
+          .from('trips')
+          .select()
+          .eq('invite_code', inviteCode.toUpperCase())
+          .maybeSingle();
+
+      if (tripData == null) {
+        throw Exception('Trip not found. Please check the invite code.');
+      }
+
+      final trip = Trip.fromJson(tripData);
+
+      // Check if already a participant
+      final existing = await _client
+          .from('participants')
+          .select('id')
+          .eq('trip_id', trip.id)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (existing != null) {
+        _ref.read(tripLoadingProvider.notifier).state = false;
+        _ref.read(currentTripProvider.notifier).state = trip;
+        return null; // Already a member — caller should navigate directly
+      }
+
+      // Get unclaimed participants
+      final participantsData = await _client
+          .from('participants')
+          .select()
+          .eq('trip_id', trip.id)
+          .isFilter('user_id', null);
+
+      final unclaimed = participantsData
+          .map((json) => Participant.fromJson(json))
+          .toList();
+
+      _ref.read(tripLoadingProvider.notifier).state = false;
+      return (trip: trip, unclaimed: unclaimed);
+    } catch (e) {
+      _ref.read(tripErrorProvider.notifier).state = e.toString();
+      _ref.read(tripLoadingProvider.notifier).state = false;
+      return null;
+    }
+  }
+
+  /// Claim a participant name in a trip
+  Future<Trip?> claimParticipant(String tripId, String participantId) async {
+    _ref.read(tripLoadingProvider.notifier).state = true;
+    _ref.read(tripErrorProvider.notifier).state = null;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      await _client
+          .from('participants')
+          .update({'user_id': userId})
+          .eq('id', participantId);
+
+      final trip = await getTripById(tripId);
+      _ref.read(tripLoadingProvider.notifier).state = false;
+      _ref.read(currentTripProvider.notifier).state = trip;
+      return trip;
+    } catch (e) {
+      _ref.read(tripErrorProvider.notifier).state = e.toString();
+      _ref.read(tripLoadingProvider.notifier).state = false;
+      return null;
+    }
+  }
+
   /// Get trip by ID
   Future<Trip?> getTripById(String tripId) async {
     try {
