@@ -23,6 +23,19 @@ class SupabaseConfig {
     log('Supabase initialized');
   }
 
+  /// Ensure an anonymous session exists.
+  /// If no session is active, signs in anonymously so that
+  /// `auth.uid()` is always available for RLS policies.
+  static Future<void> ensureAnonymousSession() async {
+    if (client.auth.currentSession != null) {
+      log('Session already active');
+      return;
+    }
+    log('No session found — signing in anonymously');
+    await client.auth.signInAnonymously();
+    log('Anonymous session established');
+  }
+
   /// Get the current authenticated user
   static User? get currentUser => client.auth.currentUser;
 

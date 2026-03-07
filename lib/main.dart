@@ -25,6 +25,7 @@ void main() async {
     appRunner: () async {
       // Initialize Supabase
       await SupabaseConfig.initialize();
+      await SupabaseConfig.ensureAnonymousSession();
 
       // Initialize SharedPreferences
       final prefs = await SharedPreferences.getInstance();
