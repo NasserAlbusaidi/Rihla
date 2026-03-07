@@ -69,6 +69,7 @@ class CacheService {
   ) async {
     final db = await LocalDatabase.database;
     final batch = db.batch();
+    final syncedAt = DateTime.now().toIso8601String();
 
     for (final expense in expenses) {
       batch.insert('expenses', {
@@ -82,7 +83,7 @@ class CacheService {
         'scope': expense.scope.value,
         'sub_group_id': expense.subGroupId,
         'created_at': expense.createdAt.toIso8601String(),
-        'synced_at': DateTime.now().toIso8601String(),
+        'synced_at': syncedAt,
         'is_deleted': expense.isDeleted ? 1 : 0,
         'deleted_at': expense.deletedAt?.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -132,6 +133,7 @@ class CacheService {
   ) async {
     final db = await LocalDatabase.database;
     final batch = db.batch();
+    final syncedAt = DateTime.now().toIso8601String();
 
     for (final s in settlements) {
       batch.insert('settlements', {
@@ -142,7 +144,7 @@ class CacheService {
         'amount': s.amount.toString(),
         'note': s.note,
         'created_at': s.settledAt.toIso8601String(),
-        'synced_at': DateTime.now().toIso8601String(),
+        'synced_at': syncedAt,
         'is_deleted': s.isDeleted ? 1 : 0,
         'deleted_at': s.deletedAt?.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -188,7 +190,9 @@ class CacheService {
     List<GearItem> items,
   ) async {
     final db = await LocalDatabase.database;
+    await db.delete('gear_items', where: 'trip_id = ?', whereArgs: [tripId]);
     final batch = db.batch();
+    final syncedAt = DateTime.now().toIso8601String();
     for (final item in items) {
       batch.insert(
         'gear_items',
@@ -203,7 +207,7 @@ class CacheService {
           'assigned_to_name': item.assignedToName,
           'assigned_to_avatar': item.assignedToAvatar,
           'created_at': item.createdAt?.toIso8601String(),
-          'synced_at': DateTime.now().toIso8601String(),
+          'synced_at': syncedAt,
           'is_deleted': item.isDeleted ? 1 : 0,
           'deleted_at': item.deletedAt?.toIso8601String(),
         },
@@ -237,7 +241,10 @@ class CacheService {
             createdAt: map['created_at'] != null
                 ? DateTime.parse(map['created_at'] as String)
                 : null,
-            isDeleted: false,
+            isDeleted: (map['is_deleted'] as int?) == 1,
+            deletedAt: map['deleted_at'] != null
+                ? DateTime.parse(map['deleted_at'] as String)
+                : null,
           ),
         )
         .toList();
@@ -253,7 +260,9 @@ class CacheService {
     List<Participant> participants,
   ) async {
     final db = await LocalDatabase.database;
+    await db.delete('participants', where: 'trip_id = ?', whereArgs: [tripId]);
     final batch = db.batch();
+    final syncedAt = DateTime.now().toIso8601String();
     for (final p in participants) {
       batch.insert(
         'participants',
@@ -266,7 +275,7 @@ class CacheService {
           'avatar_url': p.avatarUrl,
           'is_shadow': p.isShadow ? 1 : 0,
           'joined_at': p.joinedAt.toIso8601String(),
-          'last_synced_at': DateTime.now().toIso8601String(),
+          'last_synced_at': syncedAt,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -314,7 +323,13 @@ class CacheService {
     List<SubGroup> subGroups,
   ) async {
     final db = await LocalDatabase.database;
+    await db.execute(
+      'DELETE FROM sub_group_members WHERE sub_group_id IN (SELECT id FROM sub_groups WHERE trip_id = ?)',
+      [tripId],
+    );
+    await db.delete('sub_groups', where: 'trip_id = ?', whereArgs: [tripId]);
     final batch = db.batch();
+    final syncedAt = DateTime.now().toIso8601String();
     for (final sg in subGroups) {
       batch.insert(
         'sub_groups',
@@ -325,7 +340,7 @@ class CacheService {
           'type': sg.type.value,
           'capacity': sg.capacity,
           'created_at': sg.createdAt?.toIso8601String(),
-          'last_synced_at': DateTime.now().toIso8601String(),
+          'last_synced_at': syncedAt,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -339,7 +354,7 @@ class CacheService {
             'display_name': m.displayName,
             'avatar_url': m.avatarUrl,
             'joined_at': m.joinedAt?.toIso8601String(),
-            'last_synced_at': DateTime.now().toIso8601String(),
+            'last_synced_at': syncedAt,
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
@@ -357,43 +372,47 @@ class CacheService {
       whereArgs: [tripId],
       orderBy: 'created_at ASC',
     );
-    final subGroups = <SubGroup>[];
-    for (final sgMap in sgMaps) {
-      final memberMaps = await db.query(
-        'sub_group_members',
-        where: 'sub_group_id = ?',
-        whereArgs: [sgMap['id']],
-      );
-      final members = memberMaps
-          .map(
-            (m) => SubGroupMember(
-              id: m['id'] as String,
-              subGroupId: m['sub_group_id'] as String,
-              participantId: m['participant_id'] as String,
-              displayName: m['display_name'] as String?,
-              avatarUrl: m['avatar_url'] as String?,
-              joinedAt: m['joined_at'] != null
-                  ? DateTime.parse(m['joined_at'] as String)
-                  : null,
-            ),
-          )
-          .toList();
 
-      subGroups.add(
-        SubGroup(
-          id: sgMap['id'] as String,
-          tripId: sgMap['trip_id'] as String,
-          name: sgMap['name'] as String,
-          type: SubGroupType.fromValue(sgMap['type'] as String? ?? 'CAR'),
-          capacity: sgMap['capacity'] as int? ?? 4,
-          createdAt: sgMap['created_at'] != null
-              ? DateTime.parse(sgMap['created_at'] as String)
-              : null,
-          members: members,
-        ),
-      );
+    if (sgMaps.isEmpty) return [];
+
+    // Fetch all members for all sub-groups in one query
+    final allMemberMaps = await db.rawQuery(
+      'SELECT sgm.* FROM sub_group_members sgm '
+      'INNER JOIN sub_groups sg ON sgm.sub_group_id = sg.id '
+      'WHERE sg.trip_id = ?',
+      [tripId],
+    );
+
+    // Group members by sub_group_id
+    final membersByGroup = <String, List<SubGroupMember>>{};
+    for (final m in allMemberMaps) {
+      final groupId = m['sub_group_id'] as String;
+      membersByGroup.putIfAbsent(groupId, () => []).add(SubGroupMember(
+        id: m['id'] as String,
+        subGroupId: groupId,
+        participantId: m['participant_id'] as String,
+        displayName: m['display_name'] as String?,
+        avatarUrl: m['avatar_url'] as String?,
+        joinedAt: m['joined_at'] != null
+            ? DateTime.parse(m['joined_at'] as String)
+            : null,
+      ));
     }
-    return subGroups;
+
+    return sgMaps.map((sgMap) {
+      final sgId = sgMap['id'] as String;
+      return SubGroup(
+        id: sgId,
+        tripId: sgMap['trip_id'] as String,
+        name: sgMap['name'] as String,
+        type: SubGroupType.fromValue(sgMap['type'] as String? ?? 'CAR'),
+        capacity: sgMap['capacity'] as int? ?? 4,
+        createdAt: sgMap['created_at'] != null
+            ? DateTime.parse(sgMap['created_at'] as String)
+            : null,
+        members: membersByGroup[sgId] ?? [],
+      );
+    }).toList();
   }
 
   // ---------------------------------------------------------------------------
@@ -406,7 +425,9 @@ class CacheService {
     List<ActivityLog> logs,
   ) async {
     final db = await LocalDatabase.database;
+    await db.delete('activity_logs', where: 'trip_id = ?', whereArgs: [tripId]);
     final batch = db.batch();
+    final syncedAt = DateTime.now().toIso8601String();
     for (final log in logs) {
       batch.insert(
         'activity_logs',
@@ -422,7 +443,7 @@ class CacheService {
           'actor_name': log.actorName,
           'actor_avatar': log.actorAvatar,
           'created_at': log.createdAt.toIso8601String(),
-          'last_synced_at': DateTime.now().toIso8601String(),
+          'last_synced_at': syncedAt,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -472,7 +493,9 @@ class CacheService {
     List<ExpenseCategory> categories,
   ) async {
     final db = await LocalDatabase.database;
+    await db.delete('categories', where: 'trip_id = ?', whereArgs: [tripId]);
     final batch = db.batch();
+    final syncedAt = DateTime.now().toIso8601String();
     for (final cat in categories) {
       batch.insert(
         'categories',
@@ -481,7 +504,7 @@ class CacheService {
           'trip_id': tripId,
           'name': cat.name,
           'icon': cat.icon,
-          'last_synced_at': DateTime.now().toIso8601String(),
+          'last_synced_at': syncedAt,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
