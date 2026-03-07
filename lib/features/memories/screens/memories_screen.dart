@@ -6,7 +6,9 @@ import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/memory_model.dart';
 import '../providers/memory_provider.dart';
@@ -161,6 +163,28 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
   @override
   Widget build(BuildContext context) {
     final memoriesAsync = ref.watch(tripMemoriesProvider(widget.trip.id));
+
+    final connectivity = ref.watch(connectivityProvider);
+    if (connectivity == ConnectivityStatus.offline) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(context),
+              const Expanded(
+                child: EmptyStateView(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'Unavailable Offline',
+                  message:
+                      'Memories require an internet connection.\nYour other trip data is available offline.',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,

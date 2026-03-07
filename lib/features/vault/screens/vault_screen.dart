@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -30,6 +31,29 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   Widget build(BuildContext context) {
     final documentsAsync = ref.watch(tripDocumentsProvider(widget.trip.id));
     final isLoading = ref.watch(documentLoadingProvider);
+    final connectivity = ref.watch(connectivityProvider);
+
+    if (connectivity == ConnectivityStatus.offline) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            ModuleHeader(
+              title: 'Vault',
+              subtitle: widget.trip.name.toUpperCase(),
+            ),
+            const Expanded(
+              child: EmptyStateView(
+                icon: Icons.cloud_off_rounded,
+                title: 'Unavailable Offline',
+                message:
+                    'Documents require an internet connection.\nYour other trip data is available offline.',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
