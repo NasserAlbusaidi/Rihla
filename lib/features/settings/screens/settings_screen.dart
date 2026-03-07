@@ -177,6 +177,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _showDeviceNameDialog() {
+    final controller = TextEditingController(
+      text: ref.read(settingsProvider).deviceName,
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Your Name'),
+        content: TextField(
+          controller: controller,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Ahmed',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(settingsProvider.notifier).setDeviceName(
+                controller.text.trim(),
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showPrivacyPolicy() {
     showDialog(
       context: context,
@@ -402,6 +437,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 24),
+          _buildSettingsItem(
+            icon: Iconsax.user,
+            title: 'Your Name',
+            subtitle: settings.deviceName.isEmpty ? 'Not set' : settings.deviceName,
+            onTap: () => _showDeviceNameDialog(),
+          ),
           _buildSettingsItem(
             icon: Iconsax.money,
             title: 'Currency',

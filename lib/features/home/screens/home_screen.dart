@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/page_transitions.dart';
@@ -154,7 +155,8 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
-    const displayName = 'Traveler';
+    final settings = ref.watch(settingsProvider);
+    final displayName = settings.deviceName.isEmpty ? 'Traveler' : settings.deviceName;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(AppColors.space24, AppColors.space20, AppColors.space24, AppColors.space20),

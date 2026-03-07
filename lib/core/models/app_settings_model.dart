@@ -7,12 +7,14 @@ class AppSettings {
   final String languageCode;
   final String currencyCode;
   final bool pushNotificationsEnabled;
+  final String deviceName;
 
   const AppSettings({
     this.themeMode = AppThemeMode.system,
     this.languageCode = 'en',
     this.currencyCode = 'OMR',
     this.pushNotificationsEnabled = false,
+    this.deviceName = '',
   });
 
   factory AppSettings.defaultSettings() => const AppSettings();
@@ -22,6 +24,7 @@ class AppSettings {
     String? languageCode,
     String? currencyCode,
     bool? pushNotificationsEnabled,
+    String? deviceName,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -29,6 +32,7 @@ class AppSettings {
       currencyCode: currencyCode ?? this.currencyCode,
       pushNotificationsEnabled:
           pushNotificationsEnabled ?? this.pushNotificationsEnabled,
+      deviceName: deviceName ?? this.deviceName,
     );
   }
 

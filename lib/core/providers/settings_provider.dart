@@ -39,6 +39,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await _service.savePushNotificationsEnabled(enabled);
     state = state.copyWith(pushNotificationsEnabled: enabled);
   }
+
+  Future<void> setDeviceName(String name) async {
+    await _service.saveDeviceName(name);
+    state = state.copyWith(deviceName: name);
+  }
 }
 
 /// Provider for SettingsNotifier

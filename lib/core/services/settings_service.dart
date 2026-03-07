@@ -6,6 +6,7 @@ class SettingsService {
   static const String _languageKey = 'settings_language';
   static const String _currencyKey = 'settings_currency';
   static const String _pushNotificationsKey = 'settings_push_notifications';
+  static const String _deviceNameKey = 'settings_device_name';
 
   final SharedPreferences _prefs;
 
@@ -20,12 +21,14 @@ class SettingsService {
     final currencyCode = _prefs.getString(_currencyKey) ?? 'OMR';
     final pushNotificationsEnabled =
         _prefs.getBool(_pushNotificationsKey) ?? false;
+    final deviceName = _prefs.getString(_deviceNameKey) ?? '';
 
     return AppSettings(
       themeMode: themeMode,
       languageCode: languageCode,
       currencyCode: currencyCode,
       pushNotificationsEnabled: pushNotificationsEnabled,
+      deviceName: deviceName,
     );
   }
 
@@ -44,5 +47,9 @@ class SettingsService {
 
   Future<void> savePushNotificationsEnabled(bool enabled) async {
     await _prefs.setBool(_pushNotificationsKey, enabled);
+  }
+
+  Future<void> saveDeviceName(String name) async {
+    await _prefs.setString(_deviceNameKey, name);
   }
 }
