@@ -110,22 +110,7 @@ class OfflineRepository {
     Map<String, dynamic> updates,
   ) async {
     final db = await LocalDatabase.database;
-    final localUpdates = <String, dynamic>{};
-    if (updates.containsKey('amount')) {
-      localUpdates['amount'] = updates['amount'];
-    }
-    if (updates.containsKey('description')) {
-      localUpdates['description'] = updates['description'];
-    }
-    if (updates.containsKey('scope')) {
-      localUpdates['scope'] = updates['scope'];
-    }
-    if (updates.containsKey('sub_group_id')) {
-      localUpdates['sub_group_id'] = updates['sub_group_id'];
-    }
-    if (updates.containsKey('category_id')) {
-      localUpdates['category_id'] = updates['category_id'];
-    }
+    final localUpdates = Map<String, dynamic>.from(updates);
     localUpdates['synced_at'] = null;
 
     await db.update(
@@ -139,7 +124,7 @@ class OfflineRepository {
       tableName: 'expenses',
       recordId: expense.id,
       action: SyncAction.update,
-      data: updates,
+      data: Map<String, dynamic>.from(updates),
     );
     notifyChange('expenses', expense.tripId);
   }
@@ -202,6 +187,28 @@ class OfflineRepository {
     notifyChange('settlements', settlement.tripId);
   }
 
+  Future<void> deleteSettlement(String settlementId, String tripId) async {
+    final db = await LocalDatabase.database;
+    await db.update(
+      'settlements',
+      {
+        'is_deleted': 1,
+        'deleted_at': DateTime.now().toIso8601String(),
+        'synced_at': null,
+      },
+      where: 'id = ?',
+      whereArgs: [settlementId],
+    );
+
+    await CacheService.addToSyncQueue(
+      tableName: 'settlements',
+      recordId: settlementId,
+      action: SyncAction.delete,
+      data: {'id': settlementId},
+    );
+    notifyChange('settlements', tripId);
+  }
+
   // -- GEAR ITEMS -----------------------------------------------------------
 
   Stream<List<GearItem>> watchGearItems(String tripId) async* {
@@ -246,11 +253,11 @@ class OfflineRepository {
     Map<String, dynamic> updates,
   ) async {
     final db = await LocalDatabase.database;
-    final localUpdates = Map<String, dynamic>.from(updates);
-    localUpdates['synced_at'] = null;
+    final safeCopy = Map<String, dynamic>.from(updates);
+    safeCopy['synced_at'] = null;
     await db.update(
       'gear_items',
-      localUpdates,
+      safeCopy,
       where: 'id = ?',
       whereArgs: [itemId],
     );
@@ -259,7 +266,7 @@ class OfflineRepository {
       tableName: 'gear_items',
       recordId: itemId,
       action: SyncAction.update,
-      data: updates,
+      data: Map<String, dynamic>.from(updates),
     );
     notifyChange('gear_items', tripId);
   }
