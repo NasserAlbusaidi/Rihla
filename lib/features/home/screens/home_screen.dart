@@ -11,7 +11,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import 'command_center.dart';
@@ -23,7 +22,6 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tripsAsync = ref.watch(userTripsProvider);
-    final user = ref.watch(currentUserProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -54,7 +52,7 @@ class HomeScreen extends ConsumerWidget {
             child: Column(
               children: [
                 // Header
-                _buildHeader(context, ref, user)
+                _buildHeader(context, ref)
                     .animate()
                     .fadeIn(duration: 600.ms)
                     .slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
@@ -155,9 +153,8 @@ class HomeScreen extends ConsumerWidget {
     return 'Good evening';
   }
 
-  Widget _buildHeader(BuildContext context, WidgetRef ref, dynamic user) {
-    final email = user?.email ?? 'Traveler';
-    final displayName = email.split('@').first;
+  Widget _buildHeader(BuildContext context, WidgetRef ref) {
+    const displayName = 'Traveler';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(AppColors.space24, AppColors.space20, AppColors.space24, AppColors.space20),
