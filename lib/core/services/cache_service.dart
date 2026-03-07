@@ -2,9 +2,13 @@ import 'dart:convert';
 import 'package:decimal/decimal.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../../features/trip/models/trip_model.dart';
+import '../../features/activity/models/activity_log_model.dart';
+import '../../features/gear/models/gear_item_model.dart';
+import '../../features/ledger/models/expense_category_model.dart';
 import '../../features/ledger/models/expense_model.dart';
 import '../../features/ledger/models/settlement_model.dart';
+import '../../features/logistics/models/sub_group_model.dart';
+import '../../features/trip/models/trip_model.dart';
 import 'local_database.dart';
 
 /// Cache service for offline data management
@@ -173,6 +177,343 @@ class CacheService {
       );
     }).toList();
   }
+
+  // ---------------------------------------------------------------------------
+  // Gear Items
+  // ---------------------------------------------------------------------------
+
+  /// Cache gear items for a trip
+  static Future<void> cacheGearItems(
+    String tripId,
+    List<GearItem> items,
+  ) async {
+    final db = await LocalDatabase.database;
+    final batch = db.batch();
+    for (final item in items) {
+      batch.insert(
+        'gear_items',
+        {
+          'id': item.id,
+          'trip_id': item.tripId,
+          'item_name': item.itemName,
+          'assigned_to': item.assignedTo,
+          'is_packed': item.isPacked ? 1 : 0,
+          'sequence_id': item.sequenceId,
+          'is_high_priority': item.isHighPriority ? 1 : 0,
+          'assigned_to_name': item.assignedToName,
+          'assigned_to_avatar': item.assignedToAvatar,
+          'created_at': item.createdAt?.toIso8601String(),
+          'synced_at': DateTime.now().toIso8601String(),
+          'is_deleted': item.isDeleted ? 1 : 0,
+          'deleted_at': item.deletedAt?.toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Get cached gear items for a trip
+  static Future<List<GearItem>> getCachedGearItems(String tripId) async {
+    final db = await LocalDatabase.database;
+    final maps = await db.query(
+      'gear_items',
+      where: 'trip_id = ? AND is_deleted = 0',
+      whereArgs: [tripId],
+      orderBy: 'sequence_id ASC',
+    );
+    return maps
+        .map(
+          (map) => GearItem(
+            id: map['id'] as String,
+            tripId: map['trip_id'] as String,
+            itemName: map['item_name'] as String,
+            assignedTo: map['assigned_to'] as String?,
+            isPacked: (map['is_packed'] as int?) == 1,
+            sequenceId: map['sequence_id'] as int? ?? 0,
+            isHighPriority: (map['is_high_priority'] as int?) == 1,
+            assignedToName: map['assigned_to_name'] as String?,
+            assignedToAvatar: map['assigned_to_avatar'] as String?,
+            createdAt: map['created_at'] != null
+                ? DateTime.parse(map['created_at'] as String)
+                : null,
+            isDeleted: false,
+          ),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Participants
+  // ---------------------------------------------------------------------------
+
+  /// Cache participants for a trip
+  static Future<void> cacheParticipants(
+    String tripId,
+    List<Participant> participants,
+  ) async {
+    final db = await LocalDatabase.database;
+    final batch = db.batch();
+    for (final p in participants) {
+      batch.insert(
+        'participants',
+        {
+          'id': p.id,
+          'trip_id': p.tripId,
+          'user_id': p.userId,
+          'role': p.role.value,
+          'display_name': p.displayName,
+          'avatar_url': p.avatarUrl,
+          'is_shadow': p.isShadow ? 1 : 0,
+          'joined_at': p.joinedAt.toIso8601String(),
+          'last_synced_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Get cached participants for a trip
+  static Future<List<Participant>> getCachedParticipants(String tripId) async {
+    final db = await LocalDatabase.database;
+    final maps = await db.query(
+      'participants',
+      where: 'trip_id = ?',
+      whereArgs: [tripId],
+    );
+    return maps
+        .map(
+          (map) => Participant(
+            id: map['id'] as String,
+            tripId: map['trip_id'] as String,
+            userId: map['user_id'] as String?,
+            role: ParticipantRole.fromString(
+              map['role'] as String? ?? 'MEMBER',
+            ),
+            displayName: map['display_name'] as String?,
+            avatarUrl: map['avatar_url'] as String?,
+            isShadow: (map['is_shadow'] as int?) == 1,
+            joinedAt:
+                map['joined_at'] != null &&
+                    (map['joined_at'] as String).isNotEmpty
+                ? DateTime.parse(map['joined_at'] as String)
+                : DateTime.now(),
+          ),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sub-groups (with nested members)
+  // ---------------------------------------------------------------------------
+
+  /// Cache sub-groups for a trip
+  static Future<void> cacheSubGroups(
+    String tripId,
+    List<SubGroup> subGroups,
+  ) async {
+    final db = await LocalDatabase.database;
+    final batch = db.batch();
+    for (final sg in subGroups) {
+      batch.insert(
+        'sub_groups',
+        {
+          'id': sg.id,
+          'trip_id': sg.tripId,
+          'name': sg.name,
+          'type': sg.type.value,
+          'capacity': sg.capacity,
+          'created_at': sg.createdAt?.toIso8601String(),
+          'last_synced_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      for (final m in sg.members) {
+        batch.insert(
+          'sub_group_members',
+          {
+            'id': m.id,
+            'sub_group_id': m.subGroupId,
+            'participant_id': m.participantId,
+            'display_name': m.displayName,
+            'avatar_url': m.avatarUrl,
+            'joined_at': m.joinedAt?.toIso8601String(),
+            'last_synced_at': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Get cached sub-groups for a trip (with members)
+  static Future<List<SubGroup>> getCachedSubGroups(String tripId) async {
+    final db = await LocalDatabase.database;
+    final sgMaps = await db.query(
+      'sub_groups',
+      where: 'trip_id = ?',
+      whereArgs: [tripId],
+      orderBy: 'created_at ASC',
+    );
+    final subGroups = <SubGroup>[];
+    for (final sgMap in sgMaps) {
+      final memberMaps = await db.query(
+        'sub_group_members',
+        where: 'sub_group_id = ?',
+        whereArgs: [sgMap['id']],
+      );
+      final members = memberMaps
+          .map(
+            (m) => SubGroupMember(
+              id: m['id'] as String,
+              subGroupId: m['sub_group_id'] as String,
+              participantId: m['participant_id'] as String,
+              displayName: m['display_name'] as String?,
+              avatarUrl: m['avatar_url'] as String?,
+              joinedAt: m['joined_at'] != null
+                  ? DateTime.parse(m['joined_at'] as String)
+                  : null,
+            ),
+          )
+          .toList();
+
+      subGroups.add(
+        SubGroup(
+          id: sgMap['id'] as String,
+          tripId: sgMap['trip_id'] as String,
+          name: sgMap['name'] as String,
+          type: SubGroupType.fromValue(sgMap['type'] as String? ?? 'CAR'),
+          capacity: sgMap['capacity'] as int? ?? 4,
+          createdAt: sgMap['created_at'] != null
+              ? DateTime.parse(sgMap['created_at'] as String)
+              : null,
+          members: members,
+        ),
+      );
+    }
+    return subGroups;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Activity Logs
+  // ---------------------------------------------------------------------------
+
+  /// Cache activity logs for a trip
+  static Future<void> cacheActivityLogs(
+    String tripId,
+    List<ActivityLog> logs,
+  ) async {
+    final db = await LocalDatabase.database;
+    final batch = db.batch();
+    for (final log in logs) {
+      batch.insert(
+        'activity_logs',
+        {
+          'id': log.id,
+          'trip_id': log.tripId,
+          'actor_id': log.actorId,
+          'target_participant_id': log.targetParticipantId,
+          'category': log.category,
+          'event_type': log.eventType,
+          'log_text': log.logText,
+          'metadata': jsonEncode(log.metadata),
+          'actor_name': log.actorName,
+          'actor_avatar': log.actorAvatar,
+          'created_at': log.createdAt.toIso8601String(),
+          'last_synced_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Get cached activity logs for a trip
+  static Future<List<ActivityLog>> getCachedActivityLogs(String tripId) async {
+    final db = await LocalDatabase.database;
+    final maps = await db.query(
+      'activity_logs',
+      where: 'trip_id = ?',
+      whereArgs: [tripId],
+      orderBy: 'created_at DESC',
+      limit: 50,
+    );
+    return maps
+        .map(
+          (map) => ActivityLog(
+            id: map['id'] as String,
+            tripId: map['trip_id'] as String,
+            actorId: map['actor_id'] as String?,
+            targetParticipantId: map['target_participant_id'] as String?,
+            category: map['category'] as String,
+            eventType: map['event_type'] as String,
+            logText: map['log_text'] as String,
+            metadata: map['metadata'] != null
+                ? jsonDecode(map['metadata'] as String)
+                    as Map<String, dynamic>
+                : {},
+            actorName: map['actor_name'] as String?,
+            actorAvatar: map['actor_avatar'] as String?,
+            createdAt: DateTime.parse(map['created_at'] as String),
+          ),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Expense Categories
+  // ---------------------------------------------------------------------------
+
+  /// Cache expense categories for a trip
+  static Future<void> cacheCategories(
+    String tripId,
+    List<ExpenseCategory> categories,
+  ) async {
+    final db = await LocalDatabase.database;
+    final batch = db.batch();
+    for (final cat in categories) {
+      batch.insert(
+        'categories',
+        {
+          'id': cat.id,
+          'trip_id': tripId,
+          'name': cat.name,
+          'icon': cat.icon,
+          'last_synced_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Get cached categories for a trip
+  static Future<List<ExpenseCategory>> getCachedCategories(
+    String tripId,
+  ) async {
+    final db = await LocalDatabase.database;
+    final maps = await db.query(
+      'categories',
+      where: 'trip_id = ?',
+      whereArgs: [tripId],
+    );
+    return maps
+        .map(
+          (m) => ExpenseCategory(
+            id: m['id'] as String,
+            tripId: tripId,
+            name: m['name'] as String,
+            icon: m['icon'] as String? ?? 'other',
+          ),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sync Queue
+  // ---------------------------------------------------------------------------
 
   /// Add item to sync queue for later upload
   static Future<void> addToSyncQueue({
