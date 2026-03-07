@@ -36,7 +36,7 @@ final tripSubGroupsProvider = StreamProvider.family<List<SubGroup>, String>((
             final membersData = await SupabaseConfig.client
                 .from('sub_group_members')
                 .select(
-                  '*, participants!participant_id(*, profiles!user_id(display_name, avatar_url))',
+                  '*, participants!participant_id(*)',
                 )
                 .eq('sub_group_id', sg['id']);
 
@@ -210,7 +210,7 @@ class SubGroupService {
       final data = await _client
           .from('sub_group_members')
           .select(
-            '*, participants!participant_id(*, profiles!user_id(display_name, avatar_url))',
+            '*, participants!participant_id(*)',
           )
           .eq('sub_group_id', subGroupId);
 

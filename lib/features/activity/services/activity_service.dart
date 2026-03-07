@@ -33,17 +33,18 @@ final tripActivityProvider = StreamProvider.family<List<ActivityLog>, String>((
           return data.map((json) => ActivityLog.fromJson(json)).toList();
         }
 
-        final profiles = await SupabaseConfig.client
-            .from('profiles')
-            .select('id, display_name, avatar_url')
-            .inFilter('id', actorIds);
+        final participants = await SupabaseConfig.client
+            .from('participants')
+            .select('user_id, display_name')
+            .eq('trip_id', tripId)
+            .inFilter('user_id', actorIds);
 
-        final profileMap = {for (var p in (profiles as List)) p['id']: p};
+        final participantMap = {for (var p in (participants as List)) p['user_id']: p};
 
         return data.map((json) {
           final actorId = json['actor_id'];
-          if (actorId != null && profileMap.containsKey(actorId)) {
-            json['actor'] = profileMap[actorId];
+          if (actorId != null && participantMap.containsKey(actorId)) {
+            json['actor'] = participantMap[actorId];
           }
           return ActivityLog.fromJson(json);
         }).toList();
@@ -79,17 +80,18 @@ final tripTransactionActivityProvider =
                   .toList();
             }
 
-            final profiles = await SupabaseConfig.client
-                .from('profiles')
-                .select('id, display_name, avatar_url')
-                .inFilter('id', actorIds);
+            final participants = await SupabaseConfig.client
+                .from('participants')
+                .select('user_id, display_name')
+                .eq('trip_id', tripId)
+                .inFilter('user_id', actorIds);
 
-            final profileMap = {for (var p in (profiles as List)) p['id']: p};
+            final participantMap = {for (var p in (participants as List)) p['user_id']: p};
 
             return filteredData.map((json) {
               final actorId = json['actor_id'];
-              if (actorId != null && profileMap.containsKey(actorId)) {
-                json['actor'] = profileMap[actorId];
+              if (actorId != null && participantMap.containsKey(actorId)) {
+                json['actor'] = participantMap[actorId];
               }
               return ActivityLog.fromJson(json);
             }).toList();
@@ -108,7 +110,7 @@ class ActivityService {
     try {
       final data = await _client
           .from('trip_activity_logs')
-          .select('*, actor:profiles!actor_id(display_name, avatar_url)')
+          .select('*')
           .eq('trip_id', tripId)
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);

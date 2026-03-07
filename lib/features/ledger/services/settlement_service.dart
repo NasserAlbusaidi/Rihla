@@ -49,7 +49,7 @@ class SettlementService {
             'settled_at': DateTime.now().toIso8601String(),
           })
           .select(
-            '*, payer_participant:participants!payer_participant_id(*, profiles!user_id(display_name, avatar_url)), recipient_participant:participants!recipient_participant_id(*, profiles!user_id(display_name, avatar_url))',
+            '*, payer_participant:participants!payer_participant_id(*), recipient_participant:participants!recipient_participant_id(*)',
           )
           .single();
 
@@ -88,7 +88,7 @@ class SettlementService {
       final data = await _client
           .from('settlements')
           .select(
-            '*, payer_participant:participants!payer_participant_id(*, profiles!user_id(display_name, avatar_url)), recipient_participant:participants!recipient_participant_id(*, profiles!user_id(display_name, avatar_url))',
+            '*, payer_participant:participants!payer_participant_id(*), recipient_participant:participants!recipient_participant_id(*)',
           )
           .eq('trip_id', tripId)
           .eq('is_deleted', false)

@@ -32,7 +32,7 @@ final tripExpensesProvider = StreamProvider.family<List<Expense>, String>((
         final result = await SupabaseConfig.client
             .from('expenses')
             .select(
-              '*, expense_categories(*), participants!payer_participant_id(*, profiles!user_id(display_name, avatar_url))',
+              '*, expense_categories(*), participants!payer_participant_id(*)',
             )
             .eq('trip_id', tripId)
             .eq('is_deleted', false)
@@ -68,7 +68,7 @@ final tripSettlementsProvider = StreamProvider.family<List<Settlement>, String>(
         final result = await SupabaseConfig.client
             .from('settlements')
             .select(
-              '*, payer_participant:participants!payer_participant_id(*, profiles!user_id(display_name, avatar_url)), recipient_participant:participants!recipient_participant_id(*, profiles!user_id(display_name, avatar_url))',
+              '*, payer_participant:participants!payer_participant_id(*), recipient_participant:participants!recipient_participant_id(*)',
             )
             .eq('trip_id', tripId)
             .eq('is_deleted', false)

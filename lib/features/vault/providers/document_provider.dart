@@ -37,7 +37,7 @@ final tripDocumentsProvider = StreamProvider.family<List<Document>, String>((
           // Fetch with uploader profile info
           final docs = await SupabaseConfig.client
               .from('documents')
-              .select('*, profiles!uploader_id(display_name)')
+              .select('*')
               .eq('trip_id', tripId)
               .order('created_at', ascending: false);
 

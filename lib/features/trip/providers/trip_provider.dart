@@ -71,7 +71,7 @@ final tripLogisticsParticipantsProvider =
 
             final result = await SupabaseConfig.client
                 .from('participants')
-                .select('*, profiles!user_id(display_name, avatar_url)')
+                .select('*')
                 .eq('trip_id', tripId);
 
             return (result).map((json) => Participant.fromJson(json)).toList();
@@ -421,7 +421,7 @@ class TripService {
     try {
       final data = await _client
           .from('participants')
-          .select('*, profiles!user_id(display_name, avatar_url)')
+          .select('*')
           .eq('trip_id', tripId);
 
       return (data).map((json) => Participant.fromJson(json)).toList();

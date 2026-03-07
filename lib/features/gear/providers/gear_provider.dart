@@ -36,7 +36,7 @@ final tripGearProvider = StreamProvider.family<List<GearItem>, String>((
           // Fetch with profile info
           final items = await SupabaseConfig.client
               .from('gear_items')
-              .select('*, profiles!assigned_to(display_name, avatar_url)')
+              .select('*')
               .eq('trip_id', tripId)
               .eq('is_deleted', false)
               .order('sequence_id', ascending: true);

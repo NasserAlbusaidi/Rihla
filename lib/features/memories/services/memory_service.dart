@@ -16,7 +16,7 @@ class MemoryService {
     try {
       final data = await SupabaseConfig.client
           .from('trip_memories')
-          .select('*, profiles!uploaded_by(display_name)')
+          .select('*')
           .eq('trip_id', tripId)
           .order('created_at', ascending: false);
 
@@ -85,7 +85,7 @@ class MemoryService {
             'storage_path': storagePath,
             'caption': caption,
           })
-          .select('*, profiles!uploaded_by(display_name)')
+          .select('*')
           .single();
 
       final memory = Memory.fromJson(data);

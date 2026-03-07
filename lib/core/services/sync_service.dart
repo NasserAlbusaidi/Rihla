@@ -113,9 +113,7 @@ class SyncService {
     try {
       final data = await _client
           .from('settlements')
-          .select(
-            '*, payer_profile:profiles!payer_id(display_name), recipient_profile:profiles!recipient_id(display_name)',
-          )
+          .select('*')
           .eq('trip_id', tripId)
           .order('created_at', ascending: false);
 
