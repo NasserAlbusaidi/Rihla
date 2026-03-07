@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,9 +11,6 @@ import '../../../core/theme/app_theme.dart';
 // AppFormatters not needed for settings
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/app_settings_model.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../auth/providers/profile_provider.dart';
-import '../../auth/services/profile_service.dart';
 
 /// Settings Screen with profile, theme, and about sections
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -33,151 +29,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       NotificationStatus.error => 'Could not register this device right now',
       NotificationStatus.off => 'Get notified about trip updates',
     };
-  }
-
-  Widget _getAvatarIcon(String avatar, {double size = 24, Color? color}) {
-    switch (avatar) {
-      case 'mountains':
-        return Icon(Iconsax.mask, size: size, color: color);
-      case 'tent':
-        return Icon(Iconsax.house, size: size, color: color);
-      case 'backpack':
-        return Icon(Iconsax.bag_2, size: size, color: color);
-      case 'compass':
-        return Icon(Iconsax.radar, size: size, color: color);
-      case 'map':
-        return Icon(Iconsax.map, size: size, color: color);
-      case 'fire':
-        return Icon(Iconsax.flash, size: size, color: color);
-      case 'tree':
-        return Icon(Iconsax.tree, size: size, color: color);
-      case 'car':
-        return Icon(Iconsax.car, size: size, color: color);
-      case 'camera':
-        return Icon(Iconsax.camera, size: size, color: color);
-      case 'stars':
-        return Icon(Iconsax.magic_star, size: size, color: color);
-      default:
-        return Icon(Iconsax.user, size: size, color: color);
-    }
-  }
-
-  void _showEditProfileDialog(BuildContext context) {
-    final profileAsync = ref.read(profileNotifierProvider);
-    final profile = profileAsync.valueOrNull;
-
-    final nameController = TextEditingController(
-      text: profile?.displayName ?? '',
-    );
-    String selectedAvatar =
-        profile?.avatarUrl ?? ProfileService.availableAvatars.first;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text('Edit Profile'),
-          content: SizedBox(
-            width: 340, // Fixed width to satisfy IntrinsicWidth
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Avatar Selection
-                  const Text(
-                    'Choose Avatar',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 80,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: ProfileService.availableAvatars.length,
-                      itemBuilder: (context, index) {
-                        final avatar = ProfileService.availableAvatars[index];
-                        final isSelected = selectedAvatar == avatar;
-                        return GestureDetector(
-                          onTap: () {
-                            HapticService.selection();
-                            setDialogState(() => selectedAvatar = avatar);
-                          },
-                          child: Container(
-                            width: 56,
-                            height: 56,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.surfaceLight,
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : Colors.transparent,
-                                width: 2,
-                              ),
-                            ),
-                            child: Center(
-                              child: _getAvatarIcon(
-                                avatar,
-                                size: 24,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: nameController,
-                    inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                    decoration: const InputDecoration(
-                      labelText: 'Display Name',
-                      hintText: 'Enter your name',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                try {
-                  await ref
-                      .read(profileNotifierProvider.notifier)
-                      .updateProfile(
-                        displayName: nameController.text.trim(),
-                        avatarUrl: selectedAvatar,
-                      );
-                  if (context.mounted) Navigator.pop(context);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(
-                      content: Text('Error: $e'),
-                      backgroundColor: AppColors.error,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ));
-                  }
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showThemeDialog() {
@@ -380,7 +231,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(currentUserProvider);
     final settings = ref.watch(settingsProvider);
     final notificationStatus = ref.watch(notificationStatusProvider);
     final appMetadata =
@@ -396,14 +246,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: _buildAppBar(
                 context,
               ).animate().fadeIn().slideY(begin: -0.2),
-            ),
-
-            // Profile Section
-            SliverToBoxAdapter(
-              child: _buildProfileSection(
-                context,
-                user,
-              ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
             ),
 
             // Preferences Header
@@ -442,13 +284,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   .animate()
                   .fadeIn(delay: 400.ms)
                   .slideY(begin: 0.1),
-            ),
-
-            // Sign Out
-            SliverToBoxAdapter(
-              child: _buildSignOutButton(
-                context,
-              ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
             ),
 
             // Footer
@@ -535,102 +370,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildProfileSection(BuildContext context, dynamic user) {
-    final profileAsync = ref.watch(profileNotifierProvider);
-
-    return profileAsync.when(
-      data: (profile) {
-        final email = user?.email ?? 'OFFLINE';
-        final displayName = profile?.displayName ?? email.split('@').first;
-        final avatar = profile?.avatarUrl ?? 'backpack';
-
-        return Transform.translate(
-          offset: const Offset(0, -20),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.borderLight, width: 1.5),
-              boxShadow: AppColors.cardShadowLarge,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.05),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      width: 2,
-                    ),
-                  ),
-                  child: Center(
-                    child: _getAvatarIcon(
-                      avatar,
-                      size: 36,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        email,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => _showEditProfileDialog(context),
-                  icon: const Icon(
-                    Iconsax.edit,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      loading: () => Transform.translate(
-        offset: const Offset(0, -20),
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-          height: 120,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.borderLight, width: 1.5),
-          ),
-        ),
-      ),
-      error: (e, _) => Center(child: Text('Error loading profile')),
     );
   }
 
@@ -815,78 +554,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSignOutButton(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      child: InkWell(
-        onTap: () {
-          HapticService.warning();
-          showDialog(
-            context: context,
-            builder: (dialogContext) => AlertDialog(
-              backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              title: const Text(
-                'Sign out?',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-              ),
-              content: const Text(
-                'You can sign back in anytime.',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext);
-                    ref.read(authServiceProvider).signOut();
-                  },
-                  child: const Text(
-                    'Sign Out',
-                    style: TextStyle(
-                      color: AppColors.rose,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-            color: AppColors.rose.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: AppColors.rose.withValues(alpha: 0.15),
-              width: 1.5,
-            ),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Iconsax.logout, color: AppColors.rose, size: 20),
-              SizedBox(width: 12),
-              Text(
-                'Sign Out',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.rose,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
