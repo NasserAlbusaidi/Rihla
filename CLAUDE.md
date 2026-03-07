@@ -41,7 +41,7 @@ Firebase is also configured for push notifications (FCM). Platform config files:
 
 Each feature under `lib/features/` is self-contained with `models/`, `providers/`, `screens/`, `services/`, and optionally `widgets/`. There is no shared repository abstraction — services interact directly with Supabase.
 
-Features: `auth`, `trip`, `ledger`, `gear`, `logistics`, `vault`, `activity`, `home`, `settings`.
+Features: `auth`, `trip`, `ledger`, `gear`, `logistics`, `vault`, `activity`, `home`, `settings`, `memories`, `onboarding`.
 
 ### State Management: Riverpod 2.x
 
@@ -55,7 +55,7 @@ Every major data stream follows **cache-on-success + fallback-to-cache-on-error*
 
 ### Routing: Mixed
 
-- **GoRouter** handles top-level routes: `/login`, `/home`, `/create-trip`, `/join-trip`, `/settings`, `/forgot-password`, `/reset-password`
+- **GoRouter** handles top-level routes: `/home`, `/create-trip`, `/join-trip`, `/settings`, `/onboarding`
 - **CommandCenter** (the per-trip hub) and all feature screens below it use `Navigator.push` — they are NOT in GoRouter. This is intentional but means deep linking doesn't reach trip sub-screens.
 
 ### Navigation Flow
@@ -63,8 +63,8 @@ Every major data stream follows **cache-on-success + fallback-to-cache-on-error*
 ```
 HomeScreen (/home, GoRouter)
   → tap trip card → Navigator.push(CommandCenter)
-    → CommandCenter shows module cards: Ledger, Gear, Logistics, Vault, Activity
-      → each module pushed via Navigator.push
+    → CommandCenter shows module cards: Ledger, Gear, Logistics, Vault, Activity, Memories
+      → each module pushed via Navigator.push (using AppPageRoute for slide transitions)
 ```
 
 ### Offline / Sync
@@ -73,6 +73,24 @@ HomeScreen (/home, GoRouter)
 - `CacheService`: static methods for batch cache read/write and sync queue management
 - `SyncService`: uploads pending queue to Supabase, downloads fresh data. `fullSync()` = upload + download
 - `ConnectivityProvider`: checks online status every 60 seconds via Supabase query
+
+### Shared Widgets (`lib/shared/widgets/`)
+
+Reusable UI components used across features:
+- `ModuleHeader` — dark gradient header replacing per-screen duplicates
+- `AppTabBar` — unified tab bar with gradient pill indicator
+- `OfflineBanner` — connectivity indicator (watches `connectivityProvider`)
+- `EmptyStateView` — consistent empty states with optional CTA
+- `SearchFilterBar` — expandable search + filter chips
+- `SmartModuleCard` — module cards for CommandCenter
+- `LoadingButton` / `SkeletonLoader` — loading states
+
+### Design Tokens (`lib/core/theme/app_theme.dart`)
+
+Spacing constants (`space4`–`space32`), border radii (`radiusSmall=12`, `radiusMedium=16`, `radiusLarge=20`), elevation shadows (`shadowFlat`, `shadowRaised`, `shadowFloating`), and `buttonHeight=52`. 
+### Page Transitions (`lib/core/utils/page_transitions.dart`)
+
+`AppPageRoute` (slide-right) and `AppBottomSheetRoute` (slide-up) replace raw `MaterialPageRoute` across all navigation.
 
 ### Financial Calculations
 
@@ -84,13 +102,16 @@ All money math uses the `Decimal` package (not `double`). Currency is OMR (Omani
 - **Shadow profiles**: Non-app participants supported via `shadow_profiles` table — trip leaders can add members who don't have accounts.
 - **Trip modules**: Each trip has a `TripModules` object controlling which features appear in CommandCenter (docs, gear, itinerary, logistics).
 - **Document storage**: `trip-documents` Supabase bucket. Signed URLs with 1-hour expiry, cached locally. Max 25 MB per file.
+- **Memories storage**: `trip-memories` Supabase bucket for trip photo/media uploads.
+- **Thawani payments**: `thawani_payment` package for Omani payment processing. Note: `Product` class needs separate import from `thawani_payment/models/products.dart`; `onCreate` expects `Create` type.
+- **Onboarding**: 3-page PageView stored in SharedPreferences via `onboardingCompleteProvider`. Router redirect reads `valueOrNull` synchronously — override with `overrideWith((ref) => true)` in tests, not async.
 - **Multi-currency**: Trips can have a base currency. Expenses support automatic conversion using live rates or manual overrides.
 - **Push notifications**: Firebase Cloud Messaging (FCM). Token storage in `fcm_tokens` table.
-- **Auth**: Supabase PKCE flow. Deep link scheme: `io.supabase.rihla://reset-password`.
+- **Auth**: Supabase anonymous sign-in (`signInAnonymously()`). No login screen — session created silently on first launch via `SupabaseConfig.ensureAnonymousSession()`. All RLS policies work because `auth.uid()` is valid for anonymous users. No email/password, no password reset.
 
 ## Database
 
-26 SQL migrations in `supabase/migrations/`. Core tables: `trips`, `participants`, `expenses`, `settlements`, `gear_items`, `documents`, `sub_groups`, `sub_group_members`, `profiles`, `shadow_profiles`, `trip_activity_logs`. All tables use RLS; the helper function `is_trip_member(trip_uuid)` (SECURITY DEFINER) prevents RLS recursion.
+28 SQL migrations in `supabase/migrations/`. Core tables: `trips`, `participants`, `expenses`, `settlements`, `gear_items`, `documents`, `sub_groups`, `sub_group_members`, `profiles`, `shadow_profiles`, `trip_activity_logs`, `trip_memories`, `payment_tracking`. All tables use RLS; the helper function `is_trip_member(trip_uuid)` (SECURITY DEFINER) prevents RLS recursion.
 
 ## Testing
 
@@ -99,6 +120,9 @@ All money math uses the `Decimal` package (not `double`). Currency is OMR (Omani
 - `test/integration/` — E2E widget test with mocked Riverpod providers
 - Mocking uses `mocktail`
 - Integration tests override providers to avoid real Supabase calls
+- CommandCenter tests require `tripMemoriesProvider` override
+- Ledger tests require `tripTransactionActivityProvider` override
+- Label references in tests: `'SPENDING'` (not `'TREASURY'`), `'Ledger'` (not `'Audit Log'`)
 
 ## CI/CD
 
