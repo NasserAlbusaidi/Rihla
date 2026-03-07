@@ -266,6 +266,9 @@ class LocalDatabase {
     if (oldVersion < 4) {
       // Add new columns to sync_queue
       await db.execute(
+        'ALTER TABLE sync_queue ADD COLUMN retry_count INTEGER DEFAULT 0',
+      );
+      await db.execute(
         'ALTER TABLE sync_queue ADD COLUMN last_error TEXT',
       );
       await db.execute(

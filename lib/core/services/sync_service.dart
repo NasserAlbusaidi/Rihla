@@ -257,7 +257,6 @@ class SyncService {
           .from('gear_items')
           .select('*')
           .eq('trip_id', tripId)
-          .eq('is_deleted', false)
           .order('sequence_id', ascending: true);
 
       final items =
@@ -297,36 +296,13 @@ class SyncService {
     try {
       final sgData = await _client
           .from('sub_groups')
-          .select('*')
-          .eq('trip_id', tripId);
+          .select('*, sub_group_members(*, participants!participant_id(*))')
+          .eq('trip_id', tripId)
+          .order('created_at', ascending: true);
 
-      final subGroups = <SubGroup>[];
-      for (final sgJson in (sgData as List)) {
-        final sgId = sgJson['id'] as String;
-
-        // Fetch members for this sub-group with participant join
-        final memberData = await _client
-            .from('sub_group_members')
-            .select('*, participants!participant_id(*)')
-            .eq('sub_group_id', sgId);
-
-        final members = (memberData as List)
-            .map((m) => SubGroupMember.fromJson(m as Map<String, dynamic>))
-            .toList();
-
-        final subGroup = SubGroup(
-          id: sgId,
-          tripId: sgJson['trip_id'] as String,
-          name: sgJson['name'] as String,
-          type: SubGroupType.fromValue(sgJson['type'] as String? ?? 'CAR'),
-          capacity: sgJson['capacity'] as int? ?? 4,
-          createdAt: sgJson['created_at'] != null
-              ? DateTime.parse(sgJson['created_at'] as String)
-              : null,
-          members: members,
-        );
-        subGroups.add(subGroup);
-      }
+      final subGroups = (sgData as List)
+          .map((json) => SubGroup.fromJson(json as Map<String, dynamic>))
+          .toList();
 
       await CacheService.cacheSubGroups(tripId, subGroups);
       repo.notifyChange('sub_groups', tripId);
