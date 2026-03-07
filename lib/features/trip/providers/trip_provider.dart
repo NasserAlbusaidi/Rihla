@@ -120,6 +120,8 @@ class TripService {
   /// Create a new trip
   Future<Trip?> createTrip({
     required String name,
+    required List<String> memberNames,
+    required int creatorIndex,
     TripModules modules = const TripModules(),
     DateTime? startDate,
     DateTime? endDate,
@@ -175,12 +177,16 @@ class TripService {
 
       final trip = Trip.fromJson(tripData);
 
-      // Add creator as participant with LEADER role
-      await _client.from('participants').insert({
-        'trip_id': trip.id,
-        'user_id': userId,
-        'role': 'LEADER',
-      });
+      // Insert all members as participants
+      for (int i = 0; i < memberNames.length; i++) {
+        final isCreator = i == creatorIndex;
+        await _client.from('participants').insert({
+          'trip_id': trip.id,
+          'user_id': isCreator ? userId : null,
+          'role': isCreator ? 'LEADER' : 'MEMBER',
+          'display_name': memberNames[i],
+        });
+      }
 
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
