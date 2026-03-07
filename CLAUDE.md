@@ -55,7 +55,7 @@ Every major data stream follows **cache-on-success + fallback-to-cache-on-error*
 
 ### Routing: Mixed
 
-- **GoRouter** handles top-level routes: `/home`, `/create-trip`, `/join-trip`, `/settings`, `/onboarding`
+- **GoRouter** handles top-level routes: `/home`, `/create-trip`, `/join-trip`, `/settings`, `/onboarding`. Join-trip has a two-step flow: enter code → pick unclaimed name.
 - **CommandCenter** (the per-trip hub) and all feature screens below it use `Navigator.push` — they are NOT in GoRouter. This is intentional but means deep linking doesn't reach trip sub-screens.
 
 ### Navigation Flow
@@ -99,7 +99,7 @@ All money math uses the `Decimal` package (not `double`). Currency is OMR (Omani
 ## Key Technical Details
 
 - **Soft deletes**: Expenses, gear items, and settlements use `is_deleted` + `deleted_at` flags. Hard deletes only on trips (cascade) and documents.
-- **Shadow profiles**: Non-app participants supported via `shadow_profiles` table — trip leaders can add members who don't have accounts.
+- **Name-based members**: Trip creator adds member names during creation and picks which name is theirs. Joiners enter invite code then pick an unclaimed name. All participants have `display_name` set directly on the `participants` row — no `profiles` table joins needed. Device name stored in SharedPreferences via `settingsProvider`.
 - **Trip modules**: Each trip has a `TripModules` object controlling which features appear in CommandCenter (docs, gear, itinerary, logistics).
 - **Document storage**: `trip-documents` Supabase bucket. Signed URLs with 1-hour expiry, cached locally. Max 25 MB per file.
 - **Memories storage**: `trip-memories` Supabase bucket for trip photo/media uploads.
@@ -122,6 +122,7 @@ All money math uses the `Decimal` package (not `double`). Currency is OMR (Omani
 - Integration tests override providers to avoid real Supabase calls
 - CommandCenter tests require `tripMemoriesProvider` override
 - Ledger tests require `tripTransactionActivityProvider` override
+- Integration tests require `sharedPreferencesProvider` override (home screen reads device name from settings)
 - Label references in tests: `'SPENDING'` (not `'TREASURY'`), `'Ledger'` (not `'Audit Log'`)
 
 ## CI/CD

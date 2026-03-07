@@ -16,6 +16,8 @@ import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 import 'package:safar/features/activity/services/activity_service.dart';
 import 'package:safar/features/memories/providers/memory_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:safar/core/providers/settings_provider.dart';
 
 class MockUser extends Mock implements User {}
 
@@ -34,6 +36,8 @@ void main() {
   when(() => mockUser.email).thenReturn('test@example.com');
 
   testWidgets('Happy Path: Navigate to Ledger and Add Expense', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
     // 1. Initialize the app with mocked providers
     await tester.pumpWidget(
       ProviderScope(
@@ -97,6 +101,7 @@ void main() {
             mockTrip.id,
           ).overrideWith((ref) async => []),
           onboardingCompleteProvider.overrideWith((ref) => true),
+          sharedPreferencesProvider.overrideWithValue(prefs),
         ],
         child: Consumer(
           builder: (context, ref, _) {
