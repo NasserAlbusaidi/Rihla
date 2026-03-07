@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/cache_service.dart';
@@ -28,16 +29,25 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus> {
   }
 
   void _startPeriodicCheck() {
-    _checkTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+    _checkTimer = Timer.periodic(const Duration(seconds: 60), (_) async {
       await checkConnectivity();
     });
   }
 
-  /// Check current connectivity
+  /// Check current connectivity and auto-sync on offline→online transition
   Future<void> checkConnectivity() async {
+    final wasOffline = state == ConnectivityStatus.offline;
     final isOnline = await SyncService.isOnline();
     if (!mounted) return;
-    state = isOnline ? ConnectivityStatus.online : ConnectivityStatus.offline;
+
+    if (isOnline) {
+      state = ConnectivityStatus.online;
+      if (wasOffline) {
+        debugPrint('Connectivity restored — triggering sync');
+      }
+    } else {
+      state = ConnectivityStatus.offline;
+    }
   }
 
   /// Set syncing state
