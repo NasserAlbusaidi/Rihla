@@ -267,3 +267,39 @@ The gear empty state bug was structural. `_buildEmptyState()` showed a nice "No 
 The categories grid change is about using space. A horizontal scrolling list of 8+ category icons on a screen that's mostly empty space feels wrong. You can only see 4-5 at a time, and you have to scroll to discover the rest. A 4-column grid shows everything at once. The categories aren't a scrollable feed — they're a finite set of options. Grid is the right metaphor for "pick one from these."
 
 What I notice about these bugs: three of them are about the gap between "works in my head" and "works in someone's hand." The overflow, the empty state, the horizontal scroll — all defensible design choices in isolation, all wrong when you actually use the app. The fourth (settings header) is about coherence across screens, which you can only see when you navigate between them. Testing catches logic bugs. Humans catch experience bugs.
+
+## 2026-03-07 — Offline-first: laying the foundation
+
+Starting the offline-first architecture work. Task 1 is schema expansion — making SQLite capable of holding everything the app needs to function without a network connection.
+
+The existing schema was surprisingly sparse. Only trips, expenses, gear_items, settlements, and sync_queue. No participants, no sub_groups, no activity logs, no categories. The app was caching the *outputs* of trip planning (expenses, gear) but not the *structure* (who's in the trip, how they're organized). You can't render a ledger screen offline if you don't know who the participants are.
+
+The gear_items table was also wrong — it had `name` and `category` columns from an earlier model, but the actual GearItem class uses `item_name`, `assigned_to`, `is_packed`, `sequence_id`, `is_high_priority`. The cache schema and the model had diverged. This is the kind of silent rot that only surfaces when you actually try to round-trip data through SQLite: write a GearItem, read it back, and get a crash because the column names don't match.
+
+The migration strategy for v3->v4 is interesting. For gear_items, I DROP and recreate rather than ALTER. SQLite's ALTER TABLE is limited — you can add columns but can't rename or remove them (well, RENAME COLUMN works in newer SQLite versions, but the column set is so different it's cleaner to start fresh). This means existing cached gear data is lost on upgrade. That's acceptable because gear items are always re-synced from Supabase on next connection. The cache is ephemeral by design.
+
+Adding `last_error` and `conflict_data` to sync_queue is forward-looking. Right now the sync engine is fire-and-forget with a retry counter. But for real offline-first, you need to know *why* a sync failed and *what* the server's version looked like when it conflicted. These columns are the foundation for showing users "this expense couldn't sync because someone else deleted the trip" instead of silently retrying forever.
+
+Five new tables, five new indexes, a corrected gear schema, and two new sync_queue columns. The schema now mirrors the Supabase structure closely enough that the app could theoretically render every screen from SQLite alone. That's the goal of this whole effort — SQLite as the single source of truth, Supabase as the sync target.
+
+## 2026-03-08 — Task 4: The great provider inversion
+
+Replaced every data-fetching StreamProvider in the app with a one-liner that reads from OfflineRepository. The diff is -281/+47. That ratio tells the story: the old providers were doing too much. Each one had a Supabase `.stream()` call, an `.asyncMap()` that often made a *second* Supabase query (because the stream builder doesn't support joins), error handlers falling back to cache, and cache-write side effects on success. That's four concerns in one provider.
+
+The new providers are purely reactive pipes from SQLite. `ref.read(offlineRepositoryProvider).watchExpenses(tripId)` — that's it. The complexity didn't disappear; it moved to where it belongs. The OfflineRepository owns the SQLite read streams. The sync engine (Task 6, not yet built) will own keeping SQLite fresh from Supabase. The services (Task 5, not yet built) will own writes through the sync queue. Clean separation.
+
+What I find interesting is the test impact. The old Supabase-streaming providers failed silently in widget tests because there was no real Supabase connection — the stream just never emitted and `pumpAndSettle` would time out... except it didn't, because the test was overriding those specific providers anyway. But now *every* provider that touches `offlineRepositoryProvider` needs an override, because OfflineRepository tries to access SQLite (which doesn't exist in test). Seven new overrides in the CommandCenter test. The irony: making providers simpler made tests more explicit about their dependencies. That's actually a win — the old tests were hiding their real dependency graph behind Supabase's silent failures.
+
+One pattern I notice: the `tripTransactionActivityProvider` is now a `.map()` transform on `watchActivityLogs()`, filtering to `category == 'MONEY'`. In the old code, it was a completely separate Supabase stream with its own query, its own participant enrichment loop, its own error handling — 45 lines duplicating the general activity provider with one `WHERE` clause difference. The new version is one line of stream transformation. That feels right. Derived data should be derived, not independently fetched.
+
+## 2026-03-08 — Task 5: The write path gets honest
+
+The read path (Task 4) was about simplification — replacing complex Supabase stream pipelines with clean SQLite reads. The write path is the opposite: making simple code more complex, but for a good reason.
+
+The old write methods were brutally honest in a bad way: try Supabase, succeed or fail. If you're offline, you get an error snackbar and your expense just... vanishes. The user typed in all the details, hit save, and nothing happened. That's the kind of experience that makes people stop trusting software.
+
+The new pattern is try-Supabase-then-fallback-to-local. It's a nested try/catch, which I normally find ugly, but here it maps cleanly to the control flow: the outer try catches truly unexpected errors (programming bugs, corrupt state), the inner try catches expected failures (network down, timeout). The fallback path creates a local object with a UUID, saves it to SQLite, queues it for sync. From the user's perspective, they added an expense and it appeared in their list. That it hasn't reached the server yet is an implementation detail they shouldn't have to care about.
+
+The interesting design tension is in the gear item methods. `claimItem`, `packItem`, `togglePriority` — these are all tiny updates to a single field. Each one now takes an optional `tripId` parameter so it can update the local SQLite row. The parameter is optional because making it required would break the signature contract and force every caller to change simultaneously. But without it, the local update doesn't happen. So it's "optional" in the type system but effectively required for correctness. I updated all the callers in gear_screen.dart to pass `widget.trip.id`, but this is the kind of thing where the type system can't enforce what matters. A new caller six months from now might forget.
+
+The `updateExpense` method stays untouched — it has complex history logging that requires Supabase (inserting into `expense_history` before updating the expense). That's a future problem for the sync engine. For now, editing expenses still requires connectivity. Creating and deleting don't.

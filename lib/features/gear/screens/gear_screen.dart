@@ -553,18 +553,19 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
   void _handleMenuAction(String action, GearItem item) {
     final service = ref.read(gearServiceProvider);
+    final tripId = widget.trip.id;
     switch (action) {
       case 'priority':
         HapticService.selection();
-        service.togglePriority(item.id, !item.isHighPriority);
+        service.togglePriority(item.id, !item.isHighPriority, tripId: tripId);
         break;
       case 'claim':
         HapticService.selection();
-        service.claimItem(item.id);
+        service.claimItem(item.id, tripId: tripId);
         break;
       case 'unclaim':
         HapticService.selection();
-        service.unclaimItem(item.id);
+        service.unclaimItem(item.id, tripId: tripId);
         break;
       case 'delete':
         HapticService.warning();
@@ -600,7 +601,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     );
 
     if (confirmed == true) {
-      ref.read(gearServiceProvider).deleteItem(item.id);
+      ref.read(gearServiceProvider).deleteItem(item.id, tripId: widget.trip.id);
     }
   }
 
@@ -624,17 +625,18 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     if (!isMine && item.assignedTo != null) return;
 
     final service = ref.read(gearServiceProvider);
+    final tripId = widget.trip.id;
 
     if (item.isPacked) {
-      service.unpackItem(item.id);
+      service.unpackItem(item.id, tripId: tripId);
     } else if (item.assignedTo != null) {
-      service.packItem(item.id);
+      service.packItem(item.id, tripId: tripId);
     } else {
       // Claim and pack in one go
       () async {
         try {
-          await service.claimItem(item.id);
-          await service.packItem(item.id);
+          await service.claimItem(item.id, tripId: tripId);
+          await service.packItem(item.id, tripId: tripId);
         } catch (e) {
           debugPrint('Failed to claim and pack: $e');
         }

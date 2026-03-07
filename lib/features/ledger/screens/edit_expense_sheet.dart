@@ -152,7 +152,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
 
       final success = await ref
           .read(expenseServiceProvider)
-          .deleteExpense(widget.expense.id);
+          .deleteExpense(widget.expense.id, tripId: widget.tripId);
 
       setState(() => _isSubmitting = false);
 

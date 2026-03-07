@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/cache_service.dart';
 import '../../../core/services/offline_repository.dart';
 import '../models/gear_item_model.dart';
 
@@ -54,7 +56,7 @@ class GearService {
 
   SupabaseClient get _client => SupabaseConfig.client;
 
-  /// Add a new gear item
+  /// Add a new gear item — writes to SQLite immediately if offline
   Future<GearItem?> addItem({
     required String tripId,
     required String itemName,
@@ -62,139 +64,151 @@ class GearService {
   }) async {
     _ref.read(gearLoadingProvider.notifier).state = true;
     _ref.read(gearErrorProvider.notifier).state = null;
-
-    SupabaseConfig.log('addItem: "$itemName" to trip $tripId');
+    final repo = _ref.read(offlineRepositoryProvider);
 
     try {
-      final data = await _client
-          .from('gear_items')
-          .insert({
-            'trip_id': tripId,
-            'item_name': itemName,
-            'is_high_priority': isHighPriority,
-          })
-          .select()
-          .single();
-
-      SupabaseConfig.log('addItem: SUCCESS - id: ${data['id']}');
-      _ref.read(gearLoadingProvider.notifier).state = false;
-      return GearItem.fromJson(data);
+      try {
+        final data = await _client
+            .from('gear_items')
+            .insert({
+              'trip_id': tripId,
+              'item_name': itemName,
+              'is_high_priority': isHighPriority,
+            })
+            .select()
+            .single();
+        final item = GearItem.fromJson(data);
+        await CacheService.cacheGearItems(tripId, [item]);
+        repo.notifyChange('gear_items', tripId);
+        _ref.read(gearLoadingProvider.notifier).state = false;
+        return item;
+      } catch (e) {
+        debugPrint('Supabase gear insert failed, saving locally: $e');
+        final item = GearItem(
+          id: repo.generateId(),
+          tripId: tripId,
+          itemName: itemName,
+          isHighPriority: isHighPriority,
+          createdAt: DateTime.now(),
+        );
+        await repo.saveGearItem(item);
+        _ref.read(gearLoadingProvider.notifier).state = false;
+        return item;
+      }
     } catch (e) {
-      SupabaseConfig.log('addItem: FAILED', error: e);
       _ref.read(gearErrorProvider.notifier).state = e.toString();
       _ref.read(gearLoadingProvider.notifier).state = false;
       return null;
     }
   }
 
-  /// Delete a gear item
-  Future<bool> deleteItem(String itemId) async {
-    SupabaseConfig.log('deleteItem: $itemId');
+  /// Delete a gear item — soft delete locally, try Supabase
+  Future<bool> deleteItem(String itemId, {String? tripId}) async {
     try {
-      // Soft delete
-      await _client
-          .from('gear_items')
-          .update({
-            'is_deleted': true,
-            'deleted_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', itemId);
-      SupabaseConfig.log('deleteItem: SUCCESS');
-      return true;
-    } catch (e) {
-      SupabaseConfig.log('deleteItem: FAILED', error: e);
-      _ref.read(gearErrorProvider.notifier).state = e.toString();
-      return false;
-    }
-  }
-
-  /// Claim a gear item (assign to current user)
-  Future<bool> claimItem(String itemId) async {
-    final userId = _client.auth.currentUser?.id;
-    SupabaseConfig.log('claimItem: $itemId by user $userId');
-
-    try {
-      if (userId == null) {
-        SupabaseConfig.log('claimItem: FAILED - no user');
-        return false;
+      final repo = _ref.read(offlineRepositoryProvider);
+      try {
+        await _client.from('gear_items').update({
+          'is_deleted': true,
+          'deleted_at': DateTime.now().toIso8601String(),
+        }).eq('id', itemId);
+      } catch (_) {
+        // Offline
       }
-
-      await _client
-          .from('gear_items')
-          .update({'assigned_to': userId})
-          .eq('id', itemId);
-      SupabaseConfig.log('claimItem: SUCCESS');
+      if (tripId != null) {
+        await repo.deleteGearItem(itemId, tripId);
+      }
       return true;
     } catch (e) {
-      SupabaseConfig.log('claimItem: FAILED', error: e);
       _ref.read(gearErrorProvider.notifier).state = e.toString();
       return false;
     }
   }
 
-  /// Unclaim a gear item
-  Future<bool> unclaimItem(String itemId) async {
-    SupabaseConfig.log('unclaimItem: $itemId');
+  /// Claim a gear item (assign to current user) — update locally, try Supabase
+  Future<bool> claimItem(String itemId, {String? tripId}) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return false;
+
+    final repo = _ref.read(offlineRepositoryProvider);
     try {
-      await _client
-          .from('gear_items')
-          .update({'assigned_to': null, 'is_packed': false})
-          .eq('id', itemId);
-      SupabaseConfig.log('unclaimItem: SUCCESS');
+      try {
+        await _client.from('gear_items').update({'assigned_to': userId}).eq('id', itemId);
+      } catch (_) {
+        // Offline
+      }
+      if (tripId != null) {
+        await repo.updateGearItem(itemId, tripId, {'assigned_to': userId});
+      }
       return true;
     } catch (e) {
-      SupabaseConfig.log('unclaimItem: FAILED', error: e);
       _ref.read(gearErrorProvider.notifier).state = e.toString();
       return false;
     }
   }
 
-  /// Mark item as packed
-  Future<bool> packItem(String itemId) async {
-    SupabaseConfig.log('packItem: $itemId');
+  /// Unclaim a gear item — update locally, try Supabase
+  Future<bool> unclaimItem(String itemId, {String? tripId}) async {
+    final repo = _ref.read(offlineRepositoryProvider);
     try {
-      await _client
-          .from('gear_items')
-          .update({'is_packed': true})
-          .eq('id', itemId);
-      SupabaseConfig.log('packItem: SUCCESS');
+      try {
+        await _client.from('gear_items').update({'assigned_to': null, 'is_packed': false}).eq('id', itemId);
+      } catch (_) {}
+      if (tripId != null) {
+        await repo.updateGearItem(itemId, tripId, {'assigned_to': null, 'is_packed': 0});
+      }
       return true;
     } catch (e) {
-      SupabaseConfig.log('packItem: FAILED', error: e);
       _ref.read(gearErrorProvider.notifier).state = e.toString();
       return false;
     }
   }
 
-  /// Mark item as unpacked
-  Future<bool> unpackItem(String itemId) async {
-    SupabaseConfig.log('unpackItem: $itemId');
+  /// Mark item as packed — update locally, try Supabase
+  Future<bool> packItem(String itemId, {String? tripId}) async {
+    final repo = _ref.read(offlineRepositoryProvider);
     try {
-      await _client
-          .from('gear_items')
-          .update({'is_packed': false})
-          .eq('id', itemId);
-      SupabaseConfig.log('unpackItem: SUCCESS');
+      try {
+        await _client.from('gear_items').update({'is_packed': true}).eq('id', itemId);
+      } catch (_) {}
+      if (tripId != null) {
+        await repo.updateGearItem(itemId, tripId, {'is_packed': 1});
+      }
       return true;
     } catch (e) {
-      SupabaseConfig.log('unpackItem: FAILED', error: e);
       _ref.read(gearErrorProvider.notifier).state = e.toString();
       return false;
     }
   }
 
-  /// Toggle item priority
-  Future<bool> togglePriority(String itemId, bool isHigh) async {
-    SupabaseConfig.log('togglePriority: $itemId to $isHigh');
+  /// Mark item as unpacked — update locally, try Supabase
+  Future<bool> unpackItem(String itemId, {String? tripId}) async {
+    final repo = _ref.read(offlineRepositoryProvider);
     try {
-      await _client
-          .from('gear_items')
-          .update({'is_high_priority': isHigh})
-          .eq('id', itemId);
-      SupabaseConfig.log('togglePriority: SUCCESS');
+      try {
+        await _client.from('gear_items').update({'is_packed': false}).eq('id', itemId);
+      } catch (_) {}
+      if (tripId != null) {
+        await repo.updateGearItem(itemId, tripId, {'is_packed': 0});
+      }
       return true;
     } catch (e) {
-      SupabaseConfig.log('togglePriority: FAILED', error: e);
+      _ref.read(gearErrorProvider.notifier).state = e.toString();
+      return false;
+    }
+  }
+
+  /// Toggle item priority — update locally, try Supabase
+  Future<bool> togglePriority(String itemId, bool isHigh, {String? tripId}) async {
+    final repo = _ref.read(offlineRepositoryProvider);
+    try {
+      try {
+        await _client.from('gear_items').update({'is_high_priority': isHigh}).eq('id', itemId);
+      } catch (_) {}
+      if (tripId != null) {
+        await repo.updateGearItem(itemId, tripId, {'is_high_priority': isHigh ? 1 : 0});
+      }
+      return true;
+    } catch (e) {
       _ref.read(gearErrorProvider.notifier).state = e.toString();
       return false;
     }

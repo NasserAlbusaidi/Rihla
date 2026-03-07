@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/cache_service.dart';
 import '../../../core/services/offline_repository.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
@@ -47,7 +48,7 @@ class ExpenseService {
 
   SupabaseClient get _client => SupabaseConfig.client;
 
-  /// Add a new expense
+  /// Add a new expense — writes to SQLite immediately if offline
   Future<Expense?> addExpense({
     required String tripId,
     required String payerParticipantId,
@@ -63,30 +64,61 @@ class ExpenseService {
     _ref.read(expenseLoadingProvider.notifier).state = true;
     _ref.read(expenseErrorProvider.notifier).state = null;
 
-    try {
-      final data = await _client
-          .from('expenses')
-          .insert({
-            'trip_id': tripId,
-            'payer_participant_id': payerParticipantId,
-            'amount': amount.toString(),
-            'description': description,
-            'scope': scope.value,
-            'sub_group_id': scope == ExpenseScope.subGroup ? subGroupId : null,
-            'custom_split_participants': scope == ExpenseScope.custom
-                ? customSplitParticipants
-                : null,
-            'receipt_url': receiptUrl,
-            'category_id': categoryId,
-            'note': note,
-          })
-          .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
-          .single();
+    final repo = _ref.read(offlineRepositoryProvider);
 
-      _ref.read(expenseLoadingProvider.notifier).state = false;
-      return Expense.fromJson(data);
+    try {
+      // Try Supabase first (for server-generated ID and relationships)
+      try {
+        final data = await _client
+            .from('expenses')
+            .insert({
+              'trip_id': tripId,
+              'payer_participant_id': payerParticipantId,
+              'amount': amount.toString(),
+              'description': description,
+              'scope': scope.value,
+              'sub_group_id': scope == ExpenseScope.subGroup ? subGroupId : null,
+              'custom_split_participants': scope == ExpenseScope.custom
+                  ? customSplitParticipants
+                  : null,
+              'receipt_url': receiptUrl,
+              'category_id': categoryId,
+              'note': note,
+            })
+            .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
+            .single();
+
+        final expense = Expense.fromJson(data);
+        // Cache the server-returned expense
+        await CacheService.cacheExpenses(tripId, [expense]);
+        repo.notifyChange('expenses', tripId);
+        _ref.read(expenseLoadingProvider.notifier).state = false;
+        return expense;
+      } catch (e) {
+        // Supabase failed (offline) — save locally with generated ID
+        debugPrint('Supabase insert failed, saving locally: $e');
+        final expense = Expense(
+          id: repo.generateId(),
+          tripId: tripId,
+          payerParticipantId: payerParticipantId,
+          amount: amount,
+          description: description,
+          scope: scope,
+          subGroupId: scope == ExpenseScope.subGroup ? subGroupId : null,
+          customSplitParticipants: scope == ExpenseScope.custom
+              ? customSplitParticipants
+              : null,
+          receiptUrl: receiptUrl,
+          categoryId: categoryId,
+          note: note,
+          createdAt: DateTime.now(),
+        );
+        await repo.saveExpense(expense);
+        _ref.read(expenseLoadingProvider.notifier).state = false;
+        return expense;
+      }
     } catch (e) {
-      debugPrint('❌ addExpense FAILED: $e');
+      debugPrint('addExpense FAILED: $e');
       _ref.read(expenseErrorProvider.notifier).state = e.toString();
       _ref.read(expenseLoadingProvider.notifier).state = false;
       return null;
@@ -182,21 +214,26 @@ class ExpenseService {
     }
   }
 
-  /// Delete an expense
-  Future<bool> deleteExpense(String expenseId) async {
-    debugPrint('🗑️ deleteExpense called with ID: $expenseId');
+  /// Delete an expense — soft delete locally, try Supabase
+  Future<bool> deleteExpense(String expenseId, {String? tripId}) async {
     try {
-      await _client
-          .from('expenses')
-          .update({
-            'is_deleted': true,
-            'deleted_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', expenseId);
-      debugPrint('✅ deleteExpense SUCCESS for ID: $expenseId');
+      final repo = _ref.read(offlineRepositoryProvider);
+      // Try Supabase first
+      try {
+        await _client.from('expenses').update({
+          'is_deleted': true,
+          'deleted_at': DateTime.now().toIso8601String(),
+        }).eq('id', expenseId);
+      } catch (_) {
+        // Offline — will sync later
+      }
+      // Always update local
+      if (tripId != null) {
+        await repo.deleteExpense(expenseId, tripId);
+      }
       return true;
     } catch (e) {
-      debugPrint('❌ deleteExpense FAILED: $e');
+      debugPrint('deleteExpense FAILED: $e');
       return false;
     }
   }
