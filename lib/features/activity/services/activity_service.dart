@@ -2,103 +2,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/offline_repository.dart';
 import '../models/activity_log_model.dart';
 
 final activityServiceProvider = Provider<ActivityService>((ref) {
   return ActivityService();
 });
 
-/// Stream of activity logs for a trip
+/// Stream of activity logs — reads from SQLite
 final tripActivityProvider = StreamProvider.family<List<ActivityLog>, String>((
   ref,
   tripId,
 ) {
-  return SupabaseConfig.client
-      .from('trip_activity_logs')
-      .stream(primaryKey: ['id'])
-      .eq('trip_id', tripId)
-      .order('created_at', ascending: false)
-      .limit(50)
-      .asyncMap((data) async {
-        if (data.isEmpty) return <ActivityLog>[];
-
-        // Optimized: Fetch unique actor profiles involved in this batch
-        final actorIds = data
-            .map((e) => e['actor_id'] as String?)
-            .where((id) => id != null)
-            .toSet()
-            .toList();
-
-        if (actorIds.isEmpty) {
-          return data.map((json) => ActivityLog.fromJson(json)).toList();
-        }
-
-        final participants = await SupabaseConfig.client
-            .from('participants')
-            .select('user_id, display_name')
-            .eq('trip_id', tripId)
-            .inFilter('user_id', actorIds);
-
-        final participantMap = {for (var p in (participants as List)) p['user_id']: p};
-
-        return data.map((json) {
-          final enriched = Map<String, dynamic>.from(json);
-          final actorId = enriched['actor_id'];
-          if (actorId != null && participantMap.containsKey(actorId)) {
-            enriched['actor'] = participantMap[actorId];
-          }
-          return ActivityLog.fromJson(enriched);
-        }).toList();
-      });
+  return ref.read(offlineRepositoryProvider).watchActivityLogs(tripId);
 });
 
-/// Stream of transaction-only activity logs for a trip (expenses & settlements)
+/// Transaction-only activity logs (filtered from cached data)
 final tripTransactionActivityProvider =
     StreamProvider.family<List<ActivityLog>, String>((ref, tripId) {
-      return SupabaseConfig.client
-          .from('trip_activity_logs')
-          .stream(primaryKey: ['id'])
-          .eq('trip_id', tripId)
-          .order('created_at', ascending: false)
-          .limit(50)
-          .asyncMap((data) async {
-            // Filter to only MONEY category (expenses & settlements)
-            final filteredData = data
-                .where((e) => e['category'] == 'MONEY')
-                .toList();
-
-            if (filteredData.isEmpty) return <ActivityLog>[];
-
-            final actorIds = filteredData
-                .map((e) => e['actor_id'] as String?)
-                .where((id) => id != null)
-                .toSet()
-                .toList();
-
-            if (actorIds.isEmpty) {
-              return filteredData
-                  .map((json) => ActivityLog.fromJson(json))
-                  .toList();
-            }
-
-            final participants = await SupabaseConfig.client
-                .from('participants')
-                .select('user_id, display_name')
-                .eq('trip_id', tripId)
-                .inFilter('user_id', actorIds);
-
-            final participantMap = {for (var p in (participants as List)) p['user_id']: p};
-
-            return filteredData.map((json) {
-              final enriched = Map<String, dynamic>.from(json);
-              final actorId = enriched['actor_id'];
-              if (actorId != null && participantMap.containsKey(actorId)) {
-                enriched['actor'] = participantMap[actorId];
-              }
-              return ActivityLog.fromJson(enriched);
-            }).toList();
-          });
-    });
+  return ref.read(offlineRepositoryProvider).watchActivityLogs(tripId).map(
+    (logs) => logs.where((log) => log.category == 'MONEY').toList(),
+  );
+});
 
 class ActivityService {
   SupabaseClient get _client => SupabaseConfig.client;

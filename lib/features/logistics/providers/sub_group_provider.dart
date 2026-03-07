@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/offline_repository.dart';
 import '../models/sub_group_model.dart';
 
 /// Loading state for sub-group operations
@@ -11,51 +12,12 @@ final subGroupLoadingProvider = StateProvider<bool>((ref) => false);
 /// Error state for sub-group operations
 final subGroupErrorProvider = StateProvider<String?>((ref) => null);
 
-/// Stream of sub-groups for a trip
+/// Stream of sub-groups — reads from SQLite
 final tripSubGroupsProvider = StreamProvider.family<List<SubGroup>, String>((
   ref,
   tripId,
 ) {
-  SupabaseConfig.log('tripSubGroupsProvider: Starting stream for trip $tripId');
-
-  return SupabaseConfig.client
-      .from('sub_groups')
-      .stream(primaryKey: ['id'])
-      .eq('trip_id', tripId)
-      .order('created_at', ascending: true)
-      .asyncMap((data) async {
-        SupabaseConfig.log(
-          'tripSubGroupsProvider: Got ${data.length} sub_groups',
-        );
-
-        // For each sub-group, fetch members with profiles
-        final subGroups = <SubGroup>[];
-        for (final sg in data) {
-          try {
-            SupabaseConfig.log('Fetching members for sub_group ${sg['id']}');
-            final membersData = await SupabaseConfig.client
-                .from('sub_group_members')
-                .select(
-                  '*, participants!participant_id(*)',
-                )
-                .eq('sub_group_id', sg['id']);
-
-            final members = (membersData as List)
-                .map((m) => SubGroupMember.fromJson(m as Map<String, dynamic>))
-                .toList();
-
-            subGroups.add(SubGroup.fromJson(sg).copyWith(members: members));
-          } catch (e) {
-            SupabaseConfig.log(
-              'Error fetching members for ${sg['id']}',
-              error: e,
-            );
-            // Still add the sub-group without members
-            subGroups.add(SubGroup.fromJson(sg));
-          }
-        }
-        return subGroups;
-      });
+  return ref.read(offlineRepositoryProvider).watchSubGroups(tripId);
 });
 
 /// Sub-groups filtered by type

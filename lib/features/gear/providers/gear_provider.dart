@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/offline_repository.dart';
 import '../models/gear_item_model.dart';
 
 /// Loading state for gear operations
@@ -10,50 +11,12 @@ final gearLoadingProvider = StateProvider<bool>((ref) => false);
 /// Error state for gear operations
 final gearErrorProvider = StateProvider<String?>((ref) => null);
 
-/// Stream of gear items for a trip
+/// Stream of gear items — reads from SQLite
 final tripGearProvider = StreamProvider.family<List<GearItem>, String>((
   ref,
   tripId,
 ) {
-  SupabaseConfig.log('tripGearProvider: Starting stream for trip $tripId');
-
-  return SupabaseConfig.client
-      .from('gear_items')
-      .stream(primaryKey: ['id'])
-      .eq('trip_id', tripId)
-      .order('sequence_id', ascending: true)
-      .asyncMap((data) async {
-        // Client-side filtering for soft delete since stream builder might not support eq
-        final activeItems = data
-            .where((json) => json['is_deleted'] != true)
-            .toList();
-
-        SupabaseConfig.log(
-          'tripGearProvider: Got ${activeItems.length} active items from stream, fetching with profiles...',
-        );
-
-        try {
-          // Fetch with profile info
-          final items = await SupabaseConfig.client
-              .from('gear_items')
-              .select('*')
-              .eq('trip_id', tripId)
-              .eq('is_deleted', false)
-              .order('sequence_id', ascending: true);
-
-          SupabaseConfig.log(
-            'tripGearProvider: SUCCESS - ${items.length} items',
-          );
-          return items.map((json) => GearItem.fromJson(json)).toList();
-        } catch (e) {
-          SupabaseConfig.log(
-            'tripGearProvider: FAILED to fetch with profiles',
-            error: e,
-          );
-          // Fallback: return active items without profile info (filtered for deleted)
-          return activeItems.map((json) => GearItem.fromJson(json)).toList();
-        }
-      });
+  return ref.read(offlineRepositoryProvider).watchGearItems(tripId);
 });
 
 /// Gear items grouped by status

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
-import '../../../core/services/cache_service.dart';
+import '../../../core/services/offline_repository.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -18,76 +18,20 @@ final expenseLoadingProvider = StateProvider<bool>((ref) => false);
 /// Error state for expense operations
 final expenseErrorProvider = StateProvider<String?>((ref) => null);
 
-/// Stream of expenses for the current trip with offline caching
+/// Stream of expenses — reads from SQLite, always instant
 final tripExpensesProvider = StreamProvider.family<List<Expense>, String>((
   ref,
   tripId,
 ) {
-  return SupabaseConfig.client
-      .from('expenses')
-      .stream(primaryKey: ['id'])
-      .eq('trip_id', tripId)
-      .order('created_at', ascending: false)
-      .asyncMap((data) async {
-        final result = await SupabaseConfig.client
-            .from('expenses')
-            .select(
-              '*, expense_categories(*), participants!payer_participant_id(*)',
-            )
-            .eq('trip_id', tripId)
-            .eq('is_deleted', false)
-            .order('created_at', ascending: false);
-
-        final expenses = (result as List)
-            .map((json) => Expense.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        // Cache expenses for offline access
-        await CacheService.cacheExpenses(tripId, expenses);
-
-        return expenses;
-      })
-      .handleError((error) async {
-        // On error (offline), return cached expenses
-        debugPrint('📡 Network error, using cached expenses: $error');
-        return await CacheService.getCachedExpenses(tripId);
-      });
+  return ref.read(offlineRepositoryProvider).watchExpenses(tripId);
 });
 
-/// Stream of settlements for the current trip
+/// Stream of settlements — reads from SQLite
 final tripSettlementsProvider = StreamProvider.family<List<Settlement>, String>((
   ref,
   tripId,
 ) {
-  return SupabaseConfig.client
-      .from('settlements')
-      .stream(primaryKey: ['id'])
-      .eq('trip_id', tripId)
-      .order('settled_at', ascending: false)
-      .asyncMap((data) async {
-        final result = await SupabaseConfig.client
-            .from('settlements')
-            .select(
-              '*, payer_participant:participants!payer_participant_id(*), recipient_participant:participants!recipient_participant_id(*)',
-            )
-            .eq('trip_id', tripId)
-            .eq('is_deleted', false)
-            .order('settled_at', ascending: false);
-
-        final settlements = (result as List)
-            .map((json) => Settlement.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        // Cache settlements for offline access
-        await CacheService.cacheSettlements(tripId, settlements);
-
-        return settlements;
-      })
-      .handleError((error) async {
-        // On error (offline), return cached settlements
-        debugPrint('📡 Network error, using cached settlements: $error');
-        return await CacheService.getCachedSettlements(tripId);
-      });
+  return ref.read(offlineRepositoryProvider).watchSettlements(tripId);
 });
 
 /// Expense service provider

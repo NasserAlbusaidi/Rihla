@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:decimal/decimal.dart';
+import 'package:safar/features/activity/services/activity_service.dart';
+import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/home/screens/command_center.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
+import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 import 'package:safar/features/trip/models/trip_model.dart';
 import 'package:safar/features/trip/providers/trip_provider.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -38,6 +42,24 @@ void main() {
           userTripsProvider.overrideWith((ref) => Stream.value([mockTrip])),
           currentTripProvider.overrideWith((ref) => mockTrip),
           tripExpensesProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
+          tripSettlementsProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value(<Settlement>[])),
+          tripLogisticsParticipantsProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value(<Participant>[])),
+          tripGearProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
+          tripSubGroupsProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
+          tripActivityProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
+          tripTransactionActivityProvider(
             mockTrip.id,
           ).overrideWith((ref) => Stream.value([])),
           tripBalancesProvider(mockTrip.id).overrideWith(
