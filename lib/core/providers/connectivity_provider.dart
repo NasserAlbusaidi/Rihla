@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/cache_service.dart';
+import '../services/offline_repository.dart';
 import '../services/sync_service.dart';
 
 /// Connectivity state
@@ -77,7 +78,8 @@ class SyncController {
     _ref.read(connectivityProvider.notifier).setSyncing();
 
     try {
-      final result = await SyncService.fullSync(userId);
+      final repo = _ref.read(offlineRepositoryProvider);
+      final result = await SyncService.fullSync(userId, repo);
       _ref.read(connectivityProvider.notifier).setOnline();
       _ref.invalidate(pendingSyncCountProvider);
       return result;
