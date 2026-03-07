@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,11 +9,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/page_transitions.dart';
-import '../../../shared/widgets/app_tab_bar.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
-import '../../activity/services/activity_service.dart';
-import '../../activity/widgets/timeline_card.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
@@ -38,22 +34,8 @@ class LedgerScreen extends ConsumerStatefulWidget {
   ConsumerState<LedgerScreen> createState() => _LedgerScreenState();
 }
 
-class _LedgerScreenState extends ConsumerState<LedgerScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final List<String> _tabs = ['All Debts', 'My Debts', 'To Pay', 'Settled'];
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+class _LedgerScreenState extends ConsumerState<LedgerScreen> {
+  bool _showByCategory = false;
 
   void _openSettleUp(BuildContext context) {
     Navigator.of(context).push(
@@ -280,7 +262,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     );
 
     final netBalance = myBalance.netBalance;
-    final participantCount = max(1, participants.length);
+    final participantCount = participants.length > 1 ? participants.length : 1;
 
     return CustomScrollView(
       slivers: [
@@ -291,123 +273,449 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             participantCount,
           ).animate().fadeIn().slideY(begin: -0.2),
         ),
-        // Offline indicator
-        const SliverToBoxAdapter(
-          child: OfflineBanner(),
-        ),
-        // Combined Activity Section
-        // We can either keep the Activity Log (audit trail) OR replace it with the Ledger List.
-        // The user asked for "transaction logging", implying the Ledger List IS the log.
-        // However, Activity Log has "creates/updates" which might be useful.
-        // Let's keep the Activity Log for "Audit" but rename it, and use the Ledger for "Financial History".
+        const SliverToBoxAdapter(child: OfflineBanner()),
+        // Member balances
         SliverToBoxAdapter(
-          child: _buildRecentActivity(context).animate().fadeIn(delay: 150.ms),
-        ),
-        SliverToBoxAdapter(
-          child: _buildDebtTabs(context).animate().fadeIn(delay: 200.ms),
-        ),
-        SliverToBoxAdapter(
-          child: _buildTabContent(
+          child: _buildMemberBalances(
             context,
-            transactions,
             balances,
             currentParticipantId,
-            netBalance,
-            settlements.length,
-          ),
+          ).animate().fadeIn(delay: 100.ms),
+        ),
+        // Spending summary toggle
+        SliverToBoxAdapter(
+          child: _buildSpendingSummary(
+            context,
+            expenses,
+          ).animate().fadeIn(delay: 150.ms),
+        ),
+        // Transactions
+        SliverToBoxAdapter(
+          child: _buildTransactionList(
+            context,
+            transactions,
+            currentParticipantId,
+          ).animate().fadeIn(delay: 200.ms),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
       ],
     );
   }
 
-  /// Collapsible Recent Activity section showing transaction timeline
-  Widget _buildRecentActivity(BuildContext context) {
-    final activityAsync = ref.watch(
-      tripTransactionActivityProvider(widget.trip.id),
-    );
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
-        boxShadow: AppColors.cardShadow,
-      ),
+  Widget _buildMemberBalances(
+    BuildContext context,
+    List<UserBalance> balances,
+    String? currentParticipantId,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              initiallyExpanded: false,
-              tilePadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 8,
-              ),
-              childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Iconsax.activity,
-                  size: 20,
-                  color: AppColors.primary,
-                ),
-              ),
-              title: const Text(
-                'Activity',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              subtitle: Text(
-                'Track changes & updates',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              children: [
-                activityAsync.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Text('Error: $e'),
-                  data: (logs) {
-                    if (logs.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        child: Text(
-                          'No recent activity',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 13,
+          const Text(
+            'BALANCES',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textMuted,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 80,
+            child: balances.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No participants yet',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                  )
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: balances.length,
+                    itemBuilder: (context, index) {
+                      final balance = balances[index];
+                      final isMe = balance.participantId == currentParticipantId;
+                      final isPositive = balance.netBalance >= Decimal.zero;
+
+                      return GestureDetector(
+                        onTap: () {
+                          HapticService.lightClick();
+                          _showBalanceTooltip(context, balance);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 12),
+                          child: Column(
+                            children: [
+                              Stack(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: isMe
+                                        ? AppColors.primary
+                                        : (isPositive
+                                                  ? AppColors.success
+                                                  : AppColors.error)
+                                              .withValues(alpha: 0.15),
+                                    child: Text(
+                                      (balance.displayName ?? 'U')[0].toUpperCase(),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: isMe
+                                            ? Colors.white
+                                            : (isPositive ? AppColors.success : AppColors.error),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      width: 14,
+                                      height: 14,
+                                      decoration: BoxDecoration(
+                                        color: isPositive ? AppColors.success : AppColors.error,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
+                                      child: Icon(
+                                        isPositive ? Icons.add : Icons.remove,
+                                        size: 8,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                width: 60,
+                                child: Text(
+                                  isMe ? 'You' : (balance.displayName ?? 'User'),
+                                  textAlign: TextAlign.center,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isMe ? FontWeight.w600 : FontWeight.normal,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
-                    }
-                    return Column(
-                      children: logs.take(5).toList().asMap().entries.map((
-                        entry,
-                      ) {
-                        return TimelineCard(
-                          log: entry.value,
-                          isLast: entry.key == min(logs.length, 5) - 1,
-                        );
-                      }).toList(),
-                    );
-                  },
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpendingSummary(
+    BuildContext context,
+    List<Expense> expenses,
+  ) {
+    // Group expenses by category
+    final Map<String, ({String name, String icon, Decimal total, int count})> categoryTotals = {};
+    Decimal grandTotal = Decimal.zero;
+
+    for (final e in expenses) {
+      grandTotal = grandTotal + e.amount;
+      final key = e.categoryName ?? 'Other';
+      final existing = categoryTotals[key];
+      if (existing != null) {
+        categoryTotals[key] = (
+          name: existing.name,
+          icon: e.categoryIcon ?? 'other',
+          total: existing.total + e.amount,
+          count: existing.count + 1,
+        );
+      } else {
+        categoryTotals[key] = (
+          name: key,
+          icon: e.categoryIcon ?? 'other',
+          total: e.amount,
+          count: 1,
+        );
+      }
+    }
+
+    final sortedCategories = categoryTotals.values.toList()
+      ..sort((a, b) => b.total.compareTo(a.total));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'SPENDING',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textMuted,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _showByCategory = !_showByCategory),
+                child: Text(
+                  _showByCategory ? 'Hide Categories' : 'By Category',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Total spending card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Iconsax.wallet_3, color: AppColors.primary, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Total Spent',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppFormatters.formatCurrency(grandTotal, widget.trip.currency),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${expenses.length} expenses',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
           ),
+          // Category breakdown
+          if (_showByCategory && sortedCategories.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.border),
+                boxShadow: AppColors.cardShadow,
+              ),
+              child: Column(
+                children: sortedCategories.map((cat) {
+                  final percentage = grandTotal > Decimal.zero
+                      ? (cat.total / grandTotal).toDecimal(scaleOnInfinitePrecision: 4).toDouble() * 100
+                      : 0.0;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            _getCategoryIcon(cat.icon),
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                cat.name,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: percentage / 100,
+                                  backgroundColor: AppColors.surfaceLight,
+                                  color: AppColors.primary,
+                                  minHeight: 4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              AppFormatters.formatCurrency(cat.total, widget.trip.currency),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              '${percentage.toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionList(
+    BuildContext context,
+    List<Transaction> transactions,
+    String? currentParticipantId,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 24),
+          const Text(
+            'RECENT',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textMuted,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (transactions.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+              child: Column(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: const Icon(
+                      Iconsax.wallet_3,
+                      size: 32,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'No Expenses Yet',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Add your first expense to start tracking\ncosts and splitting them with your group.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () {
+                      HapticService.medium();
+                      _addExpense(context);
+                    },
+                    icon: const Icon(Iconsax.add, size: 18),
+                    label: const Text('Add Expense'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...transactions
+                .take(15)
+                .toList()
+                .asMap()
+                .entries
+                .map(
+                  (entry) =>
+                      _buildTransactionCard(context, entry.value, currentParticipantId)
+                          .animate()
+                          .fadeIn(delay: Duration(milliseconds: (50 * entry.key).clamp(0, 500)), duration: 300.ms)
+                          .slideY(begin: 0.05, end: 0, delay: Duration(milliseconds: (50 * entry.key).clamp(0, 500))),
+                ),
         ],
       ),
     );
@@ -424,6 +732,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     return ModuleHeader(
       title: 'Ledger',
       subtitle: widget.trip.name.toUpperCase(),
+      useDarkTheme: true,
       actions: [
         Container(
           decoration: BoxDecoration(
@@ -443,15 +752,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
       ],
       bottom: Column(
         children: [
-          // Glass Balance Card
+          // Balance summary
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Row(
               children: [
@@ -459,16 +766,6 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'CURRENT BALANCE',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
@@ -476,10 +773,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                           Text(
                             isPositive ? '+' : '-',
                             style: TextStyle(
-                              color: isPositive
-                                  ? AppColors.primary
-                                  : AppColors.error,
-                              fontSize: 32,
+                              color: isPositive ? AppColors.primary : AppColors.error,
+                              fontSize: 28,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -490,32 +785,30 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                             ),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 36,
+                              fontSize: 32,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -1,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Text(
                             widget.trip.currency,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
-                        isPositive
-                            ? 'You are currently owed'
-                            : 'You currently owe others',
+                        isPositive ? 'You are owed' : 'You owe others',
                         style: TextStyle(
                           color: isPositive
                               ? AppColors.primary.withValues(alpha: 0.8)
                               : AppColors.error.withValues(alpha: 0.8),
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -525,9 +818,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
               ],
             ),
           ),
-
-          const SizedBox(height: 24),
-
+          const SizedBox(height: 16),
+          // Action buttons
           Row(
             children: [
               Expanded(
@@ -542,8 +834,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
               Expanded(
                 child: _buildHeaderAction(
                   'SETTLE UP',
-                  Iconsax.arrange_circle_2,
-                  Colors.white.withValues(alpha: 0.1),
+                  Iconsax.money_send,
+                  AppColors.emerald,
                   () => _openSettleUp(context),
                 ),
               ),
@@ -604,343 +896,6 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     );
   }
 
-  Widget _buildDebtTabs(BuildContext context) {
-    return AppTabBar(
-      controller: _tabController,
-      tabs: _tabs,
-    );
-  }
-
-  Widget _buildTabContent(
-    BuildContext context,
-    List<Transaction> transactions,
-    List<UserBalance> balances,
-    String? currentParticipantId,
-    Decimal netBalance,
-    int settlementsCount,
-  ) {
-    final isPositive = netBalance >= Decimal.zero;
-
-    // Filter balances based on selected tab
-    List<UserBalance> filteredBalances;
-    String tabTitle;
-    switch (_tabController.index) {
-      case 0: // All Debts - show everyone
-        filteredBalances = balances;
-        tabTitle = 'All Balances';
-        break;
-      case 1: // My Debts - only current user
-        filteredBalances = balances
-            .where((b) => b.participantId == currentParticipantId)
-            .toList();
-        tabTitle = 'My Balance';
-        break;
-      case 2: // To Pay - users with negative balance
-        filteredBalances = balances
-            .where((b) => b.netBalance < Decimal.zero)
-            .toList();
-        tabTitle = 'Members Who Owe';
-        break;
-      case 3: // Settled - show settled settlements count
-        filteredBalances = balances
-            .where((b) => b.netBalance == Decimal.zero)
-            .toList();
-        tabTitle = 'Settled Up ($settlementsCount payments)';
-        break;
-      default:
-        filteredBalances = balances;
-        tabTitle = 'All Balances';
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Your Balance',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: isPositive
-                  ? AppColors.success.withValues(alpha: 0.05)
-                  : AppColors.error.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: isPositive
-                    ? AppColors.success.withValues(alpha: 0.2)
-                    : AppColors.error.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isPositive ? AppColors.success : AppColors.error,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            (isPositive ? AppColors.success : AppColors.error)
-                                .withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    isPositive ? Iconsax.arrow_up_1 : Iconsax.arrow_down_1,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isPositive ? 'YOU ARE OWED' : 'YOU OWE',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 10,
-                          letterSpacing: 1.2,
-                          color: isPositive
-                              ? AppColors.success
-                              : AppColors.error,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isPositive
-                            ? 'Clean sheet, plus some.'
-                            : 'Time to settle up, maybe?',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  AppFormatters.formatCurrency(netBalance.abs(), widget.trip.currency),
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: isPositive ? AppColors.success : AppColors.error,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Balances with tappable avatars
-          Text(
-            tabTitle,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: filteredBalances.isEmpty ? 60 : 80,
-            child: filteredBalances.isEmpty
-                ? Center(
-                    child: Text(
-                      _tabController.index == 3
-                          ? 'No settlements yet'
-                          : 'No one in this category',
-                      style: const TextStyle(color: AppColors.textMuted),
-                    ),
-                  )
-                : ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: filteredBalances.length,
-                    itemBuilder: (context, index) {
-                      final balance = filteredBalances[index];
-                      final isMe =
-                          balance.participantId == currentParticipantId;
-                      final isPositive = balance.netBalance >= Decimal.zero;
-
-                      return GestureDetector(
-                        onTap: () {
-                          HapticService.lightClick();
-                          _showBalanceTooltip(context, balance);
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 12),
-                          child: Column(
-                            children: [
-                              Stack(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 24,
-                                    backgroundColor: isMe
-                                        ? AppColors.primary
-                                        : (isPositive
-                                                  ? AppColors.success
-                                                  : AppColors.error)
-                                              .withValues(alpha: 0.15),
-                                    child: Text(
-                                      (balance.displayName ?? 'U')[0]
-                                          .toUpperCase(),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: isMe
-                                            ? Colors.white
-                                            : (isPositive
-                                                  ? AppColors.success
-                                                  : AppColors.error),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      width: 14,
-                                      height: 14,
-                                      decoration: BoxDecoration(
-                                        color: isPositive
-                                            ? AppColors.success
-                                            : AppColors.error,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        isPositive ? Icons.add : Icons.remove,
-                                        size: 8,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              SizedBox(
-                                width: 60,
-                                child: Text(
-                                  isMe
-                                      ? 'You'
-                                      : (balance.displayName ?? 'User'),
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: isMe
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Transactions History',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              TextButton(
-                onPressed: () => _openSettleUp(context),
-                child: const Text('Settle Up'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (transactions.isEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-              child: Column(
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: const Icon(
-                      Iconsax.wallet_3,
-                      size: 32,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'No Expenses Yet',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Add your first expense to start tracking\ncosts and splitting them with your group.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: () {
-                      HapticService.medium();
-                      Navigator.of(context).push(
-                        AppPageRoute(
-                          builder: (context) => AddExpenseScreen(tripId: widget.trip.id),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Iconsax.add, size: 18),
-                    label: const Text('Add Expense'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            ...transactions
-                .take(10) // Show last 10 mixed transactions
-                .toList()
-                .asMap()
-                .entries
-                .map(
-                  (entry) =>
-                      _buildTransactionCard(context, entry.value, currentParticipantId)
-                          .animate()
-                          .fadeIn(delay: Duration(milliseconds: (50 * entry.key).clamp(0, 500)), duration: 300.ms)
-                          .slideY(begin: 0.05, end: 0, delay: Duration(milliseconds: (50 * entry.key).clamp(0, 500))),
-                ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildTransactionCard(
     BuildContext context,

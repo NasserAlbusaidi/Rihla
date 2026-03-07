@@ -136,12 +136,13 @@ class ExpenseService {
             'category_id': categoryId,
             'note': note,
           })
-          .select('*, expense_categories(name, icon)')
+          .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
           .single();
 
       _ref.read(expenseLoadingProvider.notifier).state = false;
       return Expense.fromJson(data);
     } catch (e) {
+      debugPrint('❌ addExpense FAILED: $e');
       _ref.read(expenseErrorProvider.notifier).state = e.toString();
       _ref.read(expenseLoadingProvider.notifier).state = false;
       return null;
@@ -223,7 +224,7 @@ class ExpenseService {
           .from('expenses')
           .update(updates)
           .eq('id', expenseId)
-          .select('*, expense_categories(name, icon)')
+          .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
           .single();
 
       debugPrint('✅ updateExpense SUCCESS');
