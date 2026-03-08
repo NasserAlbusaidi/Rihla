@@ -48,6 +48,10 @@ app.*.map.json
 .env
 config.json
 
+# Firebase config files
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
 # Agent run logs and generated skill files
 data/run-logs/
 SKILL.md
