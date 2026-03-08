@@ -262,11 +262,19 @@ class OfflineRepository {
       whereArgs: [itemId],
     );
 
+    // Convert SQLite integers back to booleans for Supabase sync
+    final syncData = Map<String, dynamic>.from(updates);
+    for (final key in ['is_packed', 'is_high_priority', 'is_deleted']) {
+      if (syncData.containsKey(key) && syncData[key] is int) {
+        syncData[key] = syncData[key] == 1;
+      }
+    }
+
     await CacheService.addToSyncQueue(
       tableName: 'gear_items',
       recordId: itemId,
       action: SyncAction.update,
-      data: Map<String, dynamic>.from(updates),
+      data: syncData,
     );
     notifyChange('gear_items', tripId);
   }

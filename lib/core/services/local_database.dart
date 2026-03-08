@@ -9,7 +9,7 @@ class LocalDatabase {
   static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
   static const int _databaseVersion =
-      4; // Expanded schema for offline-first
+      5; // Added currency to trips
 
   /// Get database instance (safe for concurrent access)
   static Future<Database> get database async {
@@ -44,6 +44,7 @@ class LocalDatabase {
         invite_code TEXT NOT NULL,
         leader_id TEXT NOT NULL,
         icon TEXT DEFAULT 'airplane',
+        currency TEXT DEFAULT 'OMR',
         start_date TEXT,
         end_date TEXT,
         modules TEXT,
@@ -264,16 +265,22 @@ class LocalDatabase {
     }
 
     if (oldVersion < 4) {
-      // Add new columns to sync_queue
-      await db.execute(
-        'ALTER TABLE sync_queue ADD COLUMN retry_count INTEGER DEFAULT 0',
-      );
-      await db.execute(
-        'ALTER TABLE sync_queue ADD COLUMN last_error TEXT',
-      );
-      await db.execute(
-        'ALTER TABLE sync_queue ADD COLUMN conflict_data TEXT',
-      );
+      // Add new columns to sync_queue (try-catch: column may already exist)
+      try {
+        await db.execute(
+          'ALTER TABLE sync_queue ADD COLUMN retry_count INTEGER DEFAULT 0',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE sync_queue ADD COLUMN last_error TEXT',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE sync_queue ADD COLUMN conflict_data TEXT',
+        );
+      } catch (_) {}
 
       // Drop and recreate gear_items with correct schema
       await db.execute('DROP TABLE IF EXISTS gear_items');
@@ -390,6 +397,14 @@ class LocalDatabase {
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_categories_trip ON categories(trip_id)',
       );
+    }
+
+    if (oldVersion < 5) {
+      try {
+        await db.execute(
+          "ALTER TABLE trips ADD COLUMN currency TEXT DEFAULT 'OMR'",
+        );
+      } catch (_) {}
     }
   }
 

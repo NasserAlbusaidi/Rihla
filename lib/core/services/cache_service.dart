@@ -22,6 +22,7 @@ class CacheService {
       'invite_code': trip.inviteCode,
       'leader_id': trip.leaderId,
       'icon': trip.icon,
+      'currency': trip.currency,
       'start_date': trip.startDate?.toIso8601String(),
       'end_date': trip.endDate?.toIso8601String(),
       'modules': jsonEncode(trip.modules.toJson()),
@@ -29,6 +30,29 @@ class CacheService {
       'updated_at': trip.updatedAt?.toIso8601String(),
       'synced_at': DateTime.now().toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Delete a trip and all its related data from local cache
+  static Future<void> deleteTrip(String tripId) async {
+    final db = await LocalDatabase.database;
+    await db.transaction((txn) async {
+      // Child tables with trip_id foreign key
+      await txn.delete('activity_logs', where: 'trip_id = ?', whereArgs: [tripId]);
+      await txn.delete('categories', where: 'trip_id = ?', whereArgs: [tripId]);
+      await txn.delete('expenses', where: 'trip_id = ?', whereArgs: [tripId]);
+      await txn.delete('settlements', where: 'trip_id = ?', whereArgs: [tripId]);
+      await txn.delete('gear_items', where: 'trip_id = ?', whereArgs: [tripId]);
+      await txn.delete('participants', where: 'trip_id = ?', whereArgs: [tripId]);
+      // Sub-group members reference sub_groups, so delete them first
+      final subGroups = await txn.query('sub_groups',
+          columns: ['id'], where: 'trip_id = ?', whereArgs: [tripId]);
+      for (final sg in subGroups) {
+        await txn.delete('sub_group_members',
+            where: 'sub_group_id = ?', whereArgs: [sg['id']]);
+      }
+      await txn.delete('sub_groups', where: 'trip_id = ?', whereArgs: [tripId]);
+      await txn.delete('trips', where: 'id = ?', whereArgs: [tripId]);
+    });
   }
 
   /// Get cached trips
@@ -43,6 +67,7 @@ class CacheService {
         inviteCode: map['invite_code'] as String,
         leaderId: map['leader_id'] as String,
         icon: map['icon'] as String? ?? 'airplane',
+        currency: map['currency'] as String? ?? 'OMR',
         startDate: map['start_date'] != null
             ? DateTime.parse(map['start_date'] as String)
             : null,

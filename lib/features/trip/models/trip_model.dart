@@ -10,6 +10,7 @@ class Trip {
   final DateTime? startDate;
   final DateTime? endDate;
   final String icon; // airplane, car, camping, hiking, beach, mountain, ship
+  final String currency;
 
   const Trip({
     required this.id,
@@ -22,6 +23,7 @@ class Trip {
     this.startDate,
     this.endDate,
     this.icon = 'airplane',
+    this.currency = 'OMR',
   });
 
   /// Create Trip from Supabase JSON
@@ -45,6 +47,7 @@ class Trip {
           ? DateTime.parse(json['end_date'] as String)
           : null,
       icon: json['icon'] as String? ?? 'airplane',
+      currency: json['currency'] as String? ?? 'OMR',
     );
   }
 
@@ -57,6 +60,7 @@ class Trip {
       'leader_id': leaderId,
       'modules': modules.toJson(),
       'icon': icon,
+      'currency': currency,
       'created_at': createdAt.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       if (startDate != null)
@@ -78,6 +82,7 @@ class Trip {
     DateTime? startDate,
     DateTime? endDate,
     String? icon,
+    String? currency,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -90,6 +95,7 @@ class Trip {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       icon: icon ?? this.icon,
+      currency: currency ?? this.currency,
     );
   }
 
@@ -127,9 +133,6 @@ class Trip {
     if (now.isBefore(startDate!)) return null;
     return now.difference(startDate!).inDays + 1;
   }
-
-  /// Default currency for the trip (OMR for Omani Rial)
-  String get currency => 'OMR';
 
   @override
   bool operator ==(Object other) =>

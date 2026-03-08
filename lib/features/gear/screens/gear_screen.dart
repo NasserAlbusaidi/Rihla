@@ -132,7 +132,22 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: _buildAddItemInput(),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Text(
+                'ADD YOUR FIRST ITEM',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 1.2,
+                ),
+              ).animate().fadeIn(delay: 350.ms),
+              const SizedBox(height: 16),
+              _buildAddItemInput().animate().fadeIn(delay: 400.ms),
+            ],
+          ),
         ),
         const Expanded(
           child: EmptyStateView(

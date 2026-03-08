@@ -152,6 +152,13 @@ class TripService {
         });
       }
 
+      // Cache the new trip and notify observers
+      await CacheService.cacheTrip(trip);
+      final repo = _ref.read(offlineRepositoryProvider);
+      repo.notifyChange('trips');
+      // Also download participants for the new trip
+      await SyncService.downloadTripData(trip.id, repo);
+
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
 
@@ -195,8 +202,12 @@ class TripService {
           .eq('user_id', userId)
           .maybeSingle();
 
+      final repo = _ref.read(offlineRepositoryProvider);
+
       if (existing != null) {
-        // Already a member, just return the trip
+        // Already a member — cache and return the trip
+        await CacheService.cacheTrip(trip);
+        repo.notifyChange('trips');
         _ref.read(tripLoadingProvider.notifier).state = false;
         _ref.read(currentTripProvider.notifier).state = trip;
         return trip;
@@ -208,6 +219,11 @@ class TripService {
         'user_id': userId,
         'role': 'MEMBER',
       });
+
+      // Cache the trip and download its data
+      await CacheService.cacheTrip(trip);
+      repo.notifyChange('trips');
+      await SyncService.downloadTripData(trip.id, repo);
 
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
@@ -290,6 +306,13 @@ class TripService {
           .eq('id', participantId);
 
       final trip = await getTripById(tripId);
+      // Cache and download trip data after claiming
+      if (trip != null) {
+        await CacheService.cacheTrip(trip);
+        final repo = _ref.read(offlineRepositoryProvider);
+        repo.notifyChange('trips');
+        await SyncService.downloadTripData(trip.id, repo);
+      }
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
       return trip;
@@ -315,7 +338,7 @@ class TripService {
     }
   }
 
-  /// Update trip details
+  /// Update trip details (leader only)
   Future<bool> updateTrip(
     String tripId, {
     String? name,
@@ -324,6 +347,16 @@ class TripService {
     String? icon,
   }) async {
     try {
+      // Verify current user is the leader
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return false;
+      final trip = await getTripById(tripId);
+      if (trip == null || trip.leaderId != userId) {
+        _ref.read(tripErrorProvider.notifier).state =
+            'Only the trip leader can edit this trip';
+        return false;
+      }
+
       final updates = <String, dynamic>{};
       if (name != null && name.isNotEmpty) {
         updates['name'] = name;
@@ -343,6 +376,12 @@ class TripService {
       SupabaseConfig.log('Updating trip $tripId with: $updates');
 
       await _client.from('trips').update(updates).eq('id', tripId);
+      // Re-fetch and cache updated trip
+      final updated = await getTripById(tripId);
+      if (updated != null) {
+        await CacheService.cacheTrip(updated);
+        _ref.read(offlineRepositoryProvider).notifyChange('trips');
+      }
       SupabaseConfig.log('Trip update successful');
       return true;
     } catch (e) {
@@ -367,10 +406,22 @@ class TripService {
   /// Delete a trip (leader only)
   Future<bool> deleteTrip(String tripId) async {
     try {
+      // Verify current user is the leader
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return false;
+      final trip = await getTripById(tripId);
+      if (trip == null || trip.leaderId != userId) {
+        _ref.read(tripErrorProvider.notifier).state =
+            'Only the trip leader can delete this trip';
+        return false;
+      }
+
       SupabaseConfig.log('deleteTrip: $tripId');
-      // Trip deletion cascades to all related tables (participants, expenses, etc.)
-      // based on ON DELETE CASCADE in schema.
       await _client.from('trips').delete().eq('id', tripId);
+
+      // Remove from local cache
+      await CacheService.deleteTrip(tripId);
+      _ref.read(offlineRepositoryProvider).notifyChange('trips');
 
       SupabaseConfig.log('deleteTrip: SUCCESS');
       return true;

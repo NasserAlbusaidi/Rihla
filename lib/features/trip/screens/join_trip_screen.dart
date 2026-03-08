@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/haptic_service.dart';
 import '../models/trip_model.dart';
 import '../providers/trip_provider.dart';
 
@@ -26,7 +27,25 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
   List<Participant>? _unclaimedNames;
 
   @override
+  void initState() {
+    super.initState();
+    _codeController.addListener(_onCodeChanged);
+  }
+
+  void _onCodeChanged() {
+    final text = _codeController.text;
+    if (text.isNotEmpty) {
+      if (text.length == 6) {
+        HapticService.success();
+      } else {
+        HapticService.lightClick();
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    _codeController.removeListener(_onCodeChanged);
     _codeController.dispose();
     super.dispose();
   }

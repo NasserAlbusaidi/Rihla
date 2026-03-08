@@ -125,7 +125,7 @@ class ExpenseService {
     }
   }
 
-  /// Update an existing expense and log the change
+  /// Update an existing expense and log the change — offline-safe
   Future<Expense?> updateExpense({
     required String expenseId,
     required Expense oldExpense,
@@ -144,68 +144,83 @@ class ExpenseService {
     _ref.read(expenseLoadingProvider.notifier).state = true;
     _ref.read(expenseErrorProvider.notifier).state = null;
 
+    final repo = _ref.read(offlineRepositoryProvider);
+
+    // Build update map with only changed fields
+    final updates = <String, dynamic>{};
+    if (newAmount != null && newAmount != oldExpense.amount) {
+      updates['amount'] = newAmount.toString();
+    }
+    if (newDescription != null && newDescription != oldExpense.description) {
+      updates['description'] = newDescription;
+    }
+    if (newScope != null && newScope != oldExpense.scope) {
+      updates['scope'] = newScope.value;
+      if (newScope == ExpenseScope.subGroup) {
+        updates['sub_group_id'] = newSubGroupId;
+        updates['custom_split_participants'] = null;
+      } else if (newScope == ExpenseScope.custom) {
+        updates['sub_group_id'] = null;
+        updates['custom_split_participants'] = newCustomSplitParticipants;
+      } else {
+        updates['sub_group_id'] = null;
+        updates['custom_split_participants'] = null;
+      }
+    }
+    if (newCategoryId != null && newCategoryId != oldExpense.categoryId) {
+      updates['category_id'] = newCategoryId;
+    }
+
+    debugPrint('   Built updates: $updates');
+
+    if (updates.isEmpty) {
+      debugPrint('   No changes detected, returning old expense');
+      _ref.read(expenseLoadingProvider.notifier).state = false;
+      return oldExpense;
+    }
+
     try {
-      final userId = _client.auth.currentUser?.id;
+      // Try Supabase first
+      try {
+        final userId = _client.auth.currentUser?.id;
 
-      // Build update map with only changed fields
-      final updates = <String, dynamic>{};
-      if (newAmount != null && newAmount != oldExpense.amount) {
-        updates['amount'] = newAmount.toString();
-      }
-      if (newDescription != null && newDescription != oldExpense.description) {
-        updates['description'] = newDescription;
-      }
-      if (newScope != null && newScope != oldExpense.scope) {
-        updates['scope'] = newScope.value;
-        if (newScope == ExpenseScope.subGroup) {
-          updates['sub_group_id'] = newSubGroupId;
-          updates['custom_split_participants'] = null;
-        } else if (newScope == ExpenseScope.custom) {
-          updates['sub_group_id'] = null;
-          updates['custom_split_participants'] = newCustomSplitParticipants;
-        } else {
-          updates['sub_group_id'] = null;
-          updates['custom_split_participants'] = null;
-        }
-      }
-      if (newCategoryId != null && newCategoryId != oldExpense.categoryId) {
-        updates['category_id'] = newCategoryId;
-      }
+        // Log the edit to history
+        debugPrint('   Logging to expense_history...');
+        await _client.from('expense_history').insert({
+          'expense_id': expenseId,
+          'edited_by': userId,
+          'old_amount': oldExpense.amount.toString(),
+          'new_amount': (newAmount ?? oldExpense.amount).toString(),
+          'old_description': oldExpense.description,
+          'new_description': newDescription ?? oldExpense.description,
+          'old_scope': oldExpense.scope.value,
+          'new_scope': (newScope ?? oldExpense.scope).value,
+          'edit_note': editNote,
+        });
 
-      debugPrint('   Built updates: $updates');
+        // Update the expense
+        debugPrint('   Updating expense in DB...');
+        final data = await _client
+            .from('expenses')
+            .update(updates)
+            .eq('id', expenseId)
+            .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
+            .single();
 
-      if (updates.isEmpty) {
-        debugPrint('   No changes detected, returning old expense');
+        final expense = Expense.fromJson(data);
+        // Cache the server-returned expense
+        await CacheService.cacheExpenses(oldExpense.tripId, [expense]);
+        repo.notifyChange('expenses', oldExpense.tripId);
+        debugPrint('✅ updateExpense SUCCESS');
+        _ref.read(expenseLoadingProvider.notifier).state = false;
+        return expense;
+      } catch (e) {
+        // Supabase failed (offline) — update locally
+        debugPrint('Supabase expense update failed, saving locally: $e');
+        await repo.updateExpense(oldExpense, updates);
         _ref.read(expenseLoadingProvider.notifier).state = false;
         return oldExpense;
       }
-
-      // Log the edit to history
-      debugPrint('   Logging to expense_history...');
-      await _client.from('expense_history').insert({
-        'expense_id': expenseId,
-        'edited_by': userId,
-        'old_amount': oldExpense.amount.toString(),
-        'new_amount': (newAmount ?? oldExpense.amount).toString(),
-        'old_description': oldExpense.description,
-        'new_description': newDescription ?? oldExpense.description,
-        'old_scope': oldExpense.scope.value,
-        'new_scope': (newScope ?? oldExpense.scope).value,
-        'edit_note': editNote,
-      });
-
-      // Update the expense
-      debugPrint('   Updating expense in DB...');
-      final data = await _client
-          .from('expenses')
-          .update(updates)
-          .eq('id', expenseId)
-          .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
-          .single();
-
-      debugPrint('✅ updateExpense SUCCESS');
-      _ref.read(expenseLoadingProvider.notifier).state = false;
-      return Expense.fromJson(data);
     } catch (e) {
       debugPrint('❌ updateExpense FAILED: $e');
       _ref.read(expenseErrorProvider.notifier).state = e.toString();

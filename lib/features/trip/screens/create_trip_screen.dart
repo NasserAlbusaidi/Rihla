@@ -337,6 +337,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _nameController,
+            maxLength: 50,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               hintText: 'e.g. Patagonia Basecamp',

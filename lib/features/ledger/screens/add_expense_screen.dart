@@ -7,11 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
+import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/expense_category_model.dart';
@@ -47,6 +49,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   // Receipt capture state
   String? _receiptPath;
   bool _isUploadingReceipt = false;
+
+  /// Get the trip's currency code
+  String get _tripCurrency {
+    final trips = ref.read(userTripsProvider).valueOrNull;
+    if (trips == null) return 'OMR';
+    final trip = trips.cast<Trip?>().firstWhere(
+      (t) => t!.id == widget.tripId,
+      orElse: () => null,
+    );
+    return trip?.currency ?? 'OMR';
+  }
 
   @override
   void dispose() {
@@ -103,10 +116,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         if (_amount == '0') {
           _amount = key;
         } else {
-          // Limit to 3 decimal places (OMR)
+          // Limit decimal places based on trip currency
+          final maxDecimals = AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3;
           if (_amount.contains('.')) {
             final parts = _amount.split('.');
-            if (parts[1].length < 3) {
+            if (parts[1].length < maxDecimals) {
               _amount += key;
             }
           } else {
@@ -224,6 +238,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       barrierDismissible: false,
       builder: (context) => _SuccessDialog(
         expense: expense,
+        currency: _tripCurrency,
         onDone: () {
           Navigator.of(context).pop();
           context.pop(true);
@@ -349,9 +364,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            const Text(
-              'OMR',
-              style: TextStyle(
+            Text(
+              _tripCurrency,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w300,
                 color: AppColors.textMuted,
@@ -1149,11 +1164,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 /// Success Dialog after saving expense
 class _SuccessDialog extends StatelessWidget {
   final Expense expense;
+  final String currency;
   final VoidCallback onDone;
   final VoidCallback onAddAnother;
 
   const _SuccessDialog({
     required this.expense,
+    required this.currency,
     required this.onDone,
     required this.onAddAnother,
   });
@@ -1249,7 +1266,7 @@ class _SuccessDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    expense.formattedAmount,
+                    AppFormatters.formatCurrency(expense.amount, currency),
                     style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,

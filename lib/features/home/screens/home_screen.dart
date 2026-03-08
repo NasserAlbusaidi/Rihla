@@ -22,6 +22,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Seed SQLite from Supabase on first load (populates participants, expenses, etc.)
+    ref.watch(tripSeedProvider);
     final tripsAsync = ref.watch(userTripsProvider);
 
     return Scaffold(
@@ -323,16 +325,14 @@ class HomeScreen extends ConsumerWidget {
           if (sortedTrips.isEmpty)
             _buildEmptyTrips(context).animate().fadeIn(delay: 500.ms)
           else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: sortedTrips.length,
-              itemBuilder: (context, index) {
-                return _buildTripCard(context, ref, sortedTrips[index])
-                    .animate()
-                    .fadeIn(delay: Duration(milliseconds: 500 + (index * 100)))
-                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOutBack);
-              },
+            Column(
+              children: [
+                for (int i = 0; i < sortedTrips.length; i++)
+                  _buildTripCard(context, ref, sortedTrips[i])
+                      .animate()
+                      .fadeIn(delay: Duration(milliseconds: 500 + (i * 100)))
+                      .slideY(begin: 0.1, end: 0, curve: Curves.easeOutBack),
+              ],
             ),
 
           const SizedBox(height: 40),

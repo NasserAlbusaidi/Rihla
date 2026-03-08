@@ -33,6 +33,12 @@ import '../../vault/providers/document_provider.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 
+/// Eagerly download trip data from Supabase once per trip
+final _tripDataSeedProvider = FutureProvider.family<void, String>((ref, tripId) async {
+  final repo = ref.read(offlineRepositoryProvider);
+  await SyncService.downloadTripData(tripId, repo);
+});
+
 /// Command Center - Main navigation hub for trips (Light theme)
 class CommandCenter extends ConsumerWidget {
   const CommandCenter({super.key});
@@ -42,13 +48,18 @@ class CommandCenter extends ConsumerWidget {
     final tripsAsync = ref.watch(userTripsProvider);
     final currentTrip = ref.watch(currentTripProvider);
 
-    // Trigger trip data download when online
+    // Eagerly download trip data on entry (runs once per trip via FutureProvider)
+    final tripForSeed = currentTrip ?? ref.read(userTripsProvider).valueOrNull?.firstOrNull;
+    if (tripForSeed != null) {
+      ref.watch(_tripDataSeedProvider(tripForSeed.id));
+    }
+
+    // Re-download on connectivity restore
     ref.listen<ConnectivityStatus>(connectivityProvider, (prev, next) {
-      if (next == ConnectivityStatus.online) {
+      if (prev == ConnectivityStatus.offline && next == ConnectivityStatus.online) {
         final trip = currentTrip ?? ref.read(userTripsProvider).valueOrNull?.firstOrNull;
         if (trip != null) {
-          final repo = ref.read(offlineRepositoryProvider);
-          SyncService.downloadTripData(trip.id, repo);
+          ref.invalidate(_tripDataSeedProvider(trip.id));
         }
       }
     });

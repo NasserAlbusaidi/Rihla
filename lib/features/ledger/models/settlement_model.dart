@@ -65,6 +65,7 @@ class Settlement {
       'recipient_participant_id': recipientParticipantId,
       'amount': amount.toString(),
       'note': note,
+      'settled_at': settledAt.toIso8601String(),
     };
   }
 }
