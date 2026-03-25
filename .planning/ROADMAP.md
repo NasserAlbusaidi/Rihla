@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md — Firebase package upgrade + FirebaseConfig + dual-auth bootstrap
 - [ ] 01-02-PLAN.md — MoneySerializer TDD + SQLite v6 migration + Firestore round-trip test
-- [ ] 01-03-PLAN.md — Firebase Emulator setup + security rules + JS rule tests
+- [x] 01-03-PLAN.md — Firebase Emulator setup + security rules + JS rule tests
 
 ### Phase 2: Groups
 **Goal**: Users can create a persistent group, share an invite code, and see all their groups on the home screen
@@ -116,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 1/3 | In Progress|  |
+| 1. Data Foundation | 2/3 | In Progress|  |
 | 2. Groups | 0/TBD | Not started | - |
 | 3. Events | 0/TBD | Not started | - |
 | 4. Firestore Repository Layer | 0/TBD | Not started | - |

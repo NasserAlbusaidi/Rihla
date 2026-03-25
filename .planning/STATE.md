@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-01-PLAN.md (Firebase deps upgrade + dual-auth bootstrap + behavioral tests)
-last_updated: "2026-03-25T21:18:37.691Z"
+stopped_at: Completed 01-03-PLAN.md (Firebase Emulator config + Firestore security rules + JS rule tests)
+last_updated: "2026-03-25T21:24:35.440Z"
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 01 (data-foundation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Plan: 2 of 3
 
 *Updated after each plan completion*
 | Phase 01 P01 | 6 | 3 tasks | 6 files |
+| Phase 01-data-foundation P03 | 2 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,9 @@ Recent decisions affecting current work:
 - [Pre-Phase 1]: Group-level balance computed client-side from per-event summaries in SQLite — no single aggregation document that would create a write hotspot
 - [Phase 01]: firebase_messaging bumped to ^16.1.3 — firebase_messaging 15.x is incompatible with firebase_core 4.x (transitive firebase_core_platform_interface conflict)
 - [Phase 01]: FirebaseConfig static class mirrors SupabaseConfig pattern — consistent dual-auth config across the app
+- [Phase 01-data-foundation]: memberIds is an array on group document — rules use in operator for O(1) membership check, no cross-document get() for group itself (D-14)
+- [Phase 01-data-foundation]: Group delete blocked unconditionally (allow delete: if false) — groups are persistent cross-event constructs
+- [Phase 01-data-foundation]: inviteCodes collection is publicly readable for join flow — authenticated write only
 
 ### Pending Todos
 
@@ -77,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T21:18:37.689Z
-Stopped at: Completed 01-01-PLAN.md (Firebase deps upgrade + dual-auth bootstrap + behavioral tests)
+Last session: 2026-03-25T21:24:35.438Z
+Stopped at: Completed 01-03-PLAN.md (Firebase Emulator config + Firestore security rules + JS rule tests)
 Resume file: None
