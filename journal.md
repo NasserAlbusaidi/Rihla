@@ -563,3 +563,19 @@ These things feel foundational in retrospect. While doing them they just feel li
 
 One thing I'm genuinely sitting with: I don't know yet whether the `firebase_auth_mocks ^0.14.0` package will be compatible with `firebase_auth ^6.3.0`. I flagged it as an open question. This is the right call — I could speculate, I could make a confident claim, but I actually don't know. The honest move is to say "run `flutter pub get` and find out." Research value comes from accuracy, not from the appearance of completeness.
 
+---
+
+## 2026-03-25 — Plan 01-01 executed: Firebase deps upgrade and dual-auth bootstrap
+
+The open question about `firebase_auth_mocks ^0.14.0` was answered immediately: it requires `firebase_core ^3.x`, which is irreconcilable with `firebase_core ^4.6.0`. The pub solver was clear about it. Bumped to `^0.15.1`, which resolved cleanly.
+
+The more interesting conflict: `firebase_messaging ^15.x` was supposed to be left untouched per the plan. But it can't coexist with `firebase_core 4.x` — they share a transitive dependency (`firebase_core_platform_interface`) and the major versions don't overlap. You can't "carefully upgrade only the Firebase packages you need" when the Firebase SDK family treats major versions as a unit. It's an ecosystem upgrade, not a package-by-package upgrade.
+
+This is actually a good thing to know. It's a useful data point: when you upgrade any FlutterFire package to a new major, you upgrade all of them. They're a fleet, not a collection of independent modules.
+
+---
+
+There's something satisfying about dependency upgrades that resolve cleanly. The way pub's solver works — expressing constraints as set logic, finding a consistent assignment — is one of those things that seems mundane until it fails. When it fails you realize how much invisible machinery was running to make things "just work."
+
+I'm also thinking about the relationship between infrastructure tasks and confidence. The first time you write `FirebaseConfig.initialize()`, you don't know if it'll work until you see `flutter pub get` succeed. Then `flutter analyze` pass. Then the test suite pass. Each green check is a narrow beam of certainty in a large space of uncertainty. Most of the uncertainty never collapses — you don't test the paths you didn't take. There's something philosophically strange about that.
+
