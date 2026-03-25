@@ -8,8 +8,7 @@ class LocalDatabase {
   static Database? _database;
   static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
-  static const int _databaseVersion =
-      5; // Added currency to trips
+  static const int _databaseVersion = 6; // Extended with groups tables
 
   /// Get database instance (safe for concurrent access)
   static Future<Database> get database async {
@@ -202,6 +201,52 @@ class LocalDatabase {
       )
     ''');
 
+    // Groups table
+    await db.execute('''
+      CREATE TABLE groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        invite_code TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        member_ids TEXT NOT NULL DEFAULT '[]',
+        currency TEXT DEFAULT 'OMR',
+        created_at TEXT NOT NULL,
+        updated_at TEXT,
+        synced_at TEXT
+      )
+    ''');
+
+    // Group members table
+    await db.execute('''
+      CREATE TABLE group_members (
+        id TEXT PRIMARY KEY,
+        group_id TEXT NOT NULL,
+        user_id TEXT,
+        display_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'MEMBER',
+        is_shadow INTEGER NOT NULL DEFAULT 0,
+        joined_at TEXT NOT NULL,
+        synced_at TEXT,
+        FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // Group ledger table
+    await db.execute('''
+      CREATE TABLE group_ledger (
+        id TEXT PRIMARY KEY,
+        group_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        counterparty_id TEXT NOT NULL,
+        net_amount_subunits INTEGER NOT NULL DEFAULT 0,
+        currency TEXT NOT NULL DEFAULT 'OMR',
+        last_updated_at TEXT NOT NULL,
+        event_id TEXT,
+        synced_at TEXT,
+        FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
+      )
+    ''');
+
     // Create indexes for faster queries
     await db.execute('CREATE INDEX idx_expenses_trip ON expenses(trip_id)');
     await db.execute('CREATE INDEX idx_gear_trip ON gear_items(trip_id)');
@@ -223,6 +268,16 @@ class LocalDatabase {
     );
     await db.execute(
       'CREATE INDEX idx_categories_trip ON categories(trip_id)',
+    );
+    await db.execute('CREATE INDEX idx_groups_invite ON groups(invite_code)');
+    await db.execute(
+      'CREATE INDEX idx_group_members_group ON group_members(group_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_group_ledger_group ON group_ledger(group_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_group_ledger_pair ON group_ledger(group_id, member_id, counterparty_id)',
     );
   }
 
@@ -406,6 +461,61 @@ class LocalDatabase {
         );
       } catch (_) {}
     }
+
+    if (oldVersion < 6) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS groups (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          invite_code TEXT NOT NULL,
+          created_by TEXT NOT NULL,
+          member_ids TEXT NOT NULL DEFAULT '[]',
+          currency TEXT DEFAULT 'OMR',
+          created_at TEXT NOT NULL,
+          updated_at TEXT,
+          synced_at TEXT
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS group_members (
+          id TEXT PRIMARY KEY,
+          group_id TEXT NOT NULL,
+          user_id TEXT,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'MEMBER',
+          is_shadow INTEGER NOT NULL DEFAULT 0,
+          joined_at TEXT NOT NULL,
+          synced_at TEXT,
+          FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS group_ledger (
+          id TEXT PRIMARY KEY,
+          group_id TEXT NOT NULL,
+          member_id TEXT NOT NULL,
+          counterparty_id TEXT NOT NULL,
+          net_amount_subunits INTEGER NOT NULL DEFAULT 0,
+          currency TEXT NOT NULL DEFAULT 'OMR',
+          last_updated_at TEXT NOT NULL,
+          event_id TEXT,
+          synced_at TEXT,
+          FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_groups_invite ON groups(invite_code)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_group_ledger_group ON group_ledger(group_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_group_ledger_pair ON group_ledger(group_id, member_id, counterparty_id)',
+      );
+    }
   }
 
   /// Close database
@@ -421,6 +531,9 @@ class LocalDatabase {
   static Future<void> clearAll() async {
     final db = await database;
     // Delete child tables first to respect foreign key constraints
+    await db.delete('group_ledger');
+    await db.delete('group_members');
+    await db.delete('groups');
     await db.delete('activity_logs');
     await db.delete('sub_group_members');
     await db.delete('sub_groups');
