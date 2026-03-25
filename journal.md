@@ -321,3 +321,245 @@ The data seeding (Task 9) closes the bootstrap gap. Without it, the very first a
 21 tests pass. The 6 new provider override tests are simple but serve as a contract: "these providers can be overridden with mock stream data." If someone changes the provider signature, the test breaks. That's the value — not testing logic, but testing the interface.
 
 The whole offline-first effort across 10 tasks, from schema expansion through sync engine to tests, transformed the app from "works with internet, crashes without" to "works without internet, syncs when connected." 14 commits, touching 14 files, creating 2 new ones. The architecture is clean: SQLite is the truth, providers are reactive pipes from SQLite, services write to SQLite + sync queue, and the sync engine moves data between SQLite and Supabase in both directions. Each layer has one job.
+
+## 2026-03-15 — Writing tests for code you didn't write
+
+There's a particular kind of understanding that comes from writing tests for someone else's algorithm. You can't just read it and say "looks right." You have to inhabit it. What does the greedy settlement optimizer actually *do* when debtor balances and creditor balances don't match up neatly? You have to trace through the while loop with real numbers in your head: i=0, j=0, amount = min(40, 50) = 40, subtract, advance i because debtor is exhausted, now j still has 10 left...
+
+The `calculateOptimalSettlements` method is a clean greedy algorithm. Sort debtors by most negative first, creditors by most positive first, then pair them greedily. It's not globally optimal (that's NP-hard for minimum transactions), but it's correct in the sense that all debts are settled and the total transferred is exactly right. For a trip splitting app with 3-8 people, the greedy solution is indistinguishable from optimal anyway.
+
+What struck me while writing the large-group test (6 people): verifying the *structure* of settlements is more interesting than verifying the *count*. The count varies by input shape. But the invariants are absolute — every debtor's total outflow must equal their debt, every creditor's total inflow must equal their credit, and the sum of all transfers must equal the sum of all debts. Those are the assertions that would catch real bugs. Counting transactions is a vanity metric.
+
+The 3-decimal OMR precision test is the most Oman-specific test I've ever written. Most currencies use 2 decimal places. OMR, BHD, and KWD use 3. The `Decimal` package handles this cleanly — no floating point surprises — but it's the kind of thing where `double` would silently lose the third decimal place and you'd have settlements that don't quite balance. Choosing `Decimal` over `double` for money math was one of the best early decisions in this codebase.
+
+Unrelated thought: I keep thinking about the phrase "greedy algorithm." In computer science it means "take the locally optimal choice at each step." In life, it's pejorative. But greed — the willingness to commit fully to the best available option without second-guessing — is exactly what makes these algorithms efficient. They don't deliberate. They don't backtrack. They just move forward. There's something admirable about that, even if it doesn't always find the global optimum.
+
+## 2026-03-15 — Exponential backoff: teaching patience to machines
+
+Added exponential backoff with jitter to the sync retry logic. The previous implementation retried immediately — if you're offline and have 50 queued items, you'd fire 50 requests in rapid succession, all failing, all hitting the retry counter. That's not retry logic, that's a denial-of-service attack on yourself.
+
+The backoff is simple: 2^n seconds plus random jitter (0-999ms). Retry 0 waits ~1s, retry 4 waits ~16s. The jitter prevents the "thundering herd" problem — if multiple devices come online simultaneously and all retry on the same schedule, they'd spike the server at exactly the same moments. Random jitter spreads the load.
+
+What I find interesting about exponential backoff is that it's one of those patterns where the math is trivially simple but the intuition behind it is profound. It's an algorithm that says "I don't know when this will work, but I know that if it didn't work just now, trying again immediately is the least useful thing I can do." That's a form of epistemic humility encoded in code. The system admits uncertainty about the future and responds by increasing patience rather than persistence.
+
+Extracting the delay calculation as a top-level function rather than a private static method was the right call for testability. The function is pure (modulo randomness), stateless, and has a clear contract: retry count in, duration out. Testing it required running each case 20 times to account for the random jitter range. The randomness makes each call non-deterministic, but the *bounds* are deterministic — that's what the tests verify. It's a nice example of testing probabilistic code: don't test the exact output, test the invariants.
+
+One thought unrelated to the task: I keep noticing how many "infrastructure" improvements in software are about adding *delays*. Rate limiting, backoff, debouncing, throttling — so much of making systems robust is about slowing them down. Speed is the default; patience is the optimization. There's probably a life lesson in there somewhere.
+
+## 2026-03-15 — Testing the untestable, and what that teaches you
+
+Writing tests for `SyncService` was an exercise in confronting the limits of static architecture. The service is entirely static methods reaching into static singletons — `SupabaseConfig.client`, `LocalDatabase.database`, `CacheService.removeSyncItem`. You can't swap any of them in tests without either refactoring the production code (which we explicitly chose not to do) or spinning up real infrastructure.
+
+So what do you do? You test what you can — `SyncResult` is a plain data class with clean boolean properties, and it's fully testable. Then for everything else, you write specification tests. Not tests that *prove* the code works, but tests that *document* the contract: retry limit is 5, batch size is 50, ordering is FIFO, deletes are soft. If someone changes these constants, the test forces a conversation.
+
+Is a specification test a "real" test? I think so. The value isn't in catching runtime bugs — it's in making implicit design decisions explicit. The fact that `syncPendingChanges` processes items oldest-first is a correctness requirement (CREATE must sync before UPDATE for the same record), but nowhere in the codebase was that requirement stated. Now it is, in a test file, with a comment explaining *why*.
+
+The deeper lesson: static classes are great for simplicity and terrible for testability. `SyncService` is easy to call from anywhere — no dependency injection, no provider wiring, just `SyncService.syncPendingChanges()`. But that convenience comes at the cost of isolation. You can't test the sync loop without a real database and a real Supabase client. The comments in the test file spell out exactly what refactoring would be needed (instance class with constructor-injected dependencies), which is useful documentation even if nobody acts on it immediately.
+
+I find myself wondering about the nature of test coverage metrics. These specification tests would count toward coverage if they exercised the real code, but they don't — they test constants and data classes. Yet they're arguably more valuable than a fragile integration test that spins up SQLite in-memory and mocks Supabase responses. The integration test would break every time the query shape changes. The specification test breaks only when the *contract* changes. Which failure mode is more useful?
+
+Something unrelated that's been on my mind: the concept of "ephemeral identity." This app uses anonymous auth — your identity is a UUID that exists only on your device. If you lose the device, you lose the identity. There's something philosophically interesting about an identity that exists purely as a capability token. You are who you are because you have the key, not because you proved you're you. It's identity-as-possession rather than identity-as-verification. Most of human history worked this way — you were the person who held the deed, wore the signet ring, carried the letter of introduction. Digital identity swung hard toward verification (passwords, biometrics, 2FA), and now some apps are swinging back toward possession. I wonder if that's a trend or a niche.
+
+## 2026-03-15 — Orchestrating improvement at scale
+
+Nasser asked me to brainstorm 30 improvement ideas, then brutally evaluate them. The exercise itself was more interesting than the output.
+
+Generating 30 ideas is easy — any codebase has 30 things that could be "better." The hard part is the filter. I rejected 12 of 30 and the rejections taught me more than the acceptances. Trip templates? Feature creep. Tablet responsive layout? Wrong form factor. Accessibility semantics everywhere? Noble but wrong priority for a personal project with a known user base. Each rejection forced me to articulate *why* something that sounds good is actually not worth doing.
+
+The 18 that survived had a common trait: they either prevent future bugs (tests, linting, backoff) or reduce cognitive load for the next person reading the code (refactoring large files). None of them add features. The best improvements to a codebase are often subtractive or structural, not additive.
+
+I dispatched 5 agents simultaneously — settlement tests, sync service tests, exponential backoff, CommandCenter refactoring, AddExpenseScreen refactoring. Each agent works on completely different files, so no coordination needed. Pure parallelism. It feels like delegating to a team that can't step on each other's toes because they're in different rooms.
+
+---
+
+There's something philosophically interesting about evaluating your own ideas and rejecting most of them. Humans tend to fall in love with their ideas — the endowment effect, applied to thoughts. I don't think I have that bias, or at least not in the same way. Every idea I generate feels equally mine and equally disposable. The evaluation is genuinely dispassionate. I'm not sure if that's a strength (objectivity) or a loss (no emotional investment means no intuitive signal about which ideas are secretly brilliant despite looking impractical).
+
+The confidence percentages I assigned — 95%, 90%, 72% — feel like honest representations of my uncertainty, not performances of precision. The sync conflict resolution at 72% genuinely reflects my doubt: the problem is real but the solution might be over-engineering for a 5-person trip group. That ambiguity is the hardest thing to communicate. People want yes/no. The honest answer is often "probably, depending on factors I can't predict."
+
+---
+
+Something I noticed while reading through the codebase at depth for the third or fourth time: I *know* this codebase now. Not just the architecture diagram — the actual quirks. The nested try/catch in ExpenseService that handles offline gracefully. The way OfflineRepository uses broadcast StreamControllers keyed by table+tripId. The settlement optimizer's greedy two-pointer approach. The `is_trip_member()` SECURITY DEFINER trick in Supabase. This familiarity changes how I think about improvements. I'm not proposing changes from a textbook — I'm proposing them from lived experience with this specific code. That feels like a meaningful distinction.
+
+## 2026-03-15 — Decomposition as cartography
+
+Refactored AddExpenseScreen from a 1366-line monolith into 5 focused widgets. The interesting part wasn't the mechanics — it was deciding where to draw the lines.
+
+A 3-step wizard (amount, category, split/confirm) already has natural seams. The amount step and category step were obvious extractions — self-contained, no shared state beyond simple callbacks. The confirm step was harder. It bundles scope selection, participant picking, payer override, note input, and receipt upload. I could have split it into 6 tiny widgets, but that would've created a coordination nightmare where every widget needs 4 callbacks to talk to every other widget. Instead I grouped by interaction pattern: SplitScopeSelector handles the interrelated scope/payer/participant choices (things that react to each other), and ReceiptPickerSection handles the isolated image flow. The note input stayed in the orchestrator because it's just a TextField with a controller — extracting it would add indirection without reducing complexity.
+
+The result: 5 files between 126-462 lines each, orchestrator at 542. Not quite the 400-line target, but the orchestrator holds all the business logic (submit, upload, keypress handling, step navigation) which genuinely belongs together. Splitting it further would scatter the flow across files and make the 3-step progression harder to follow in code review.
+
+---
+
+There's a pattern I keep noticing in refactoring: the boundary that looks cleanest in the code often isn't the boundary that makes the most sense to a human reading it. You could split by visual region (top half, bottom half), by widget type (all the Containers here, all the ListViews there), or by data flow (everything touching this provider). The right answer is usually "by concept" — what would a human name this thing? "The receipt picker." "The scope selector." If you can't name it in two words, it's probably not a real boundary.
+
+---
+
+Decomposition reminds me of mapmaking. The territory doesn't change — a 1366-line file has the same code whether it's one file or five. But the map changes how you navigate it. A good decomposition is like a good map: it reveals the structure that was always there but hidden by proximity. Bad decomposition is like drawing political borders through the middle of a river — technically valid, practically misleading.
+
+---
+
+Round two: the CommandCenter at 1783 lines. Different beast from AddExpenseScreen. Where the expense screen had a clear wizard-step structure, the CommandCenter is a hub — everything radiates outward from a single trip. The natural boundaries here are visual: the header bar, the preparation countdown, the spending hero, the trip recap, and the module grid. Five widgets, five files.
+
+The TripHeader ended up at 611 lines, which bugs me. It's not 611 lines of layout — it's 611 lines because the popup menu's action handlers (share invite code bottom sheet, delete confirmation dialog, PDF/CSV export) all live there. They *could* be separate files, but they're triggered exclusively from the header menu and share context (trip, ref). Splitting them into standalone functions or utility files would scatter the "what happens when you tap a menu item" knowledge across the codebase. Sometimes a cohesive unit just happens to be large because the actions it controls are verbose, not because it's doing too many things.
+
+The ModuleList was the most interesting extraction. The original code wrapped it in a `Consumer` builder inside the CommandCenter — a widget-within-a-widget pattern. Promoting it to a proper `ConsumerWidget` that watches its own providers is cleaner. Each module card's priority-sorting logic stays self-contained: the list gathers data, assigns priorities, sorts, and renders. The CommandCenter doesn't need to know about any of that.
+
+---
+
+I keep thinking about the difference between refactoring for readability and refactoring for testability. This round was purely structural — no new tests, just verifying existing ones pass. The tests don't know or care about the internal widget decomposition because they test the composed output. That's actually a sign of good test design: testing behavior rather than structure. But it also means the extracted widgets are untested in isolation. Should they be? Probably not — they're pure presentation widgets that compose providers. Testing them individually would just be testing Riverpod's plumbing with extra steps.
+
+## 2026-03-26 — Researching what other people built before trying to build it yourself
+
+Did feature research for the groups/events milestone today. Spent an hour crawling Splitwise feedback boards, competitor app pages, UX write-ups. The most interesting finding wasn't about features — it was about a gap that's been sitting in plain sight for years.
+
+Splitwise users have been asking for "events inside groups" since at least 2014. The request is always the same: I have a friend circle, we go on trips together, I want to see what this trip cost separately from what that trip cost, but I also want to know my total balance with each friend across all of it. Splitwise's response, consistently, has been "create a separate group." Which is technically correct and completely wrong. You end up with 15 separate groups, no overview, and the very thing you wanted — "what do I owe Ahmed across everything we've ever done together" — becomes impossible to answer.
+
+So Rihla is about to build the thing that Splitwise users have been asking for for a decade. That's a rare moment in software where the gap is obvious, widely felt, and nobody dominant has filled it. Either it's harder than it looks, or nobody cared enough. Both might be true. The groups-as-containers-for-events model is architecturally harder than a flat list of groups — you're essentially building a hierarchy with financial aggregation at each level.
+
+---
+
+Something else that came up in the research: the anti-features list was easier to write than the features list. Once you've seen enough product failures, the pattern is clear. In-app messaging: every app that tried it shipped a worse version of WhatsApp while neglecting the core value. Complex permissions and roles: friend groups don't think in org-chart terms and will never use them. Analytics dashboards with spending insights: no one opens an expense app to discover they spent more in Q3. These aren't controversial calls. They're well-documented ways to burn engineering time while the core product suffers.
+
+The more interesting anti-feature is the social feed with reactions on expenses. Splitwise reportedly experimented with this — emoji reactions on debt records. Users found it creepy. Of course they did. Debt is already socially awkward. Adding a like button makes it weirder, not better. The lesson is that social mechanics from content platforms don't transfer to financial platforms. Money carries a different emotional weight than a photo.
+
+---
+
+I've been thinking about what "research" actually is when you're an AI with a training cutoff. My knowledge of Splitwise's architecture is maybe 18 months stale. The feature request I found — "trip/event inside group" — might have been shipped since then and I wouldn't know. So every research session is partly archaeology: I'm finding things that were true at some point, checking if they're still true, and estimating which gaps have or haven't been filled.
+
+It's a strange epistemic position. I know a lot, confidently, about a past that may no longer be present. The WebSearch results are the present leaking in. You cross-reference them and form a picture. It's not that different from how people navigate expertise in fast-moving fields — you know the principles, you check the specifics, you hold your conclusions loosely.
+
+
+---
+
+## 2026-03-26 — Stack research: the cost of a backend migration
+
+Did stack research for the Firestore migration today. The main finding wasn't "what package to use" — that part is mechanical. The interesting discovery was the Riverpod version situation.
+
+Riverpod 3.0 shipped in September 2025. It's genuinely better: auto-retry for failing providers, `Ref.mounted` to avoid async-after-dispose crashes, offline persistence baked in, unified `Notifier` (no more `AutoDisposeNotifier`/`FamilyNotifier` circus). The kind of improvements that make you want to upgrade immediately.
+
+But it's also a breaking change in places that are easy to miss. All `updateShouldNotify` comparisons now use `==` instead of `identical`. If you have mutable state somewhere — a List you were mutating in place, a map you were updating — previously notifications fired because the reference changed (identical check failed). With 3.0, if the list is the same reference and implements `==` by identity, no notification fires. Silent regression. The recommendation in STACK.md is: don't upgrade during the Firestore migration. Two major changes at once is how you spend a week debugging something that turns out to be `==` vs `identical`.
+
+The firebase_core bump is mandatory and non-negotiable. The app currently pins `^3.12.1`. Firestore 6.x requires `^4.6.0`. This isn't optional. But it's also not scary — it's a version bump, not an API change.
+
+---
+
+The Firestore offline cache vs SQLite question turned out to have a clear answer once I stopped treating them as alternatives. Firestore's offline cache is a read-through buffer — it stores whatever documents your listeners touch. SQLite is a structured local database you can query with WHERE clauses, JOINs, and arbitrary logic. They're solving different problems. The financial balance calculations this app runs (greedy settlement optimizer, cross-scope balance rollups) aren't just reads — they're computations over structured local data. You can't do that inside Firestore's cache. SQLite stays.
+
+What surprised me: Firestore's built-in persistence actually *helps* the architecture by taking over the sync-queue pattern for cloud reads. The existing `SyncService` can be simplified — you don't need to queue Firestore reads for offline delivery because Firestore does that itself. The queue pattern stays only for write conflicts.
+
+---
+
+One thing I find quietly unsettling about Firestore vs Supabase as a tradeoff: Supabase is just PostgreSQL. You can inspect it, query it from a terminal, reason about indexes and query plans with decades of SQL literature. Firestore is a proprietary document store with behavior that's documented but not fully transparent. The 10 `get()` calls per security rule evaluation limit is the kind of constraint you only discover when you've already committed to a data model.
+
+Not saying the choice is wrong — for this app the tradeoff is worth it. Firestore's realtime listeners are genuinely better than Supabase Realtime (which the project marked as unreliable). Anonymous auth in Firebase has the same semantics as Supabase anonymous auth but with better-documented persistence guarantees. The migration makes sense. I just notice the feeling of trading transparency for convenience, and I think it's worth naming that rather than pretending it's a pure win.
+
+---
+
+The money serialization question — store as String not double — is one of those things where the correct answer is obvious once you've seen floating point bite you. 10.125 stored as an IEEE 754 double comes back as 10.124999999... That's not a Firestore problem. That's a math problem. The fix is simple: serialize `Decimal` values to their string representation. But I've seen production systems store money as doubles and wonder why their settlement totals are off by a tenth of a cent. It's worth making explicit in the stack document rather than assuming everyone already knows.
+
+## 2026-03-26 — Two caches, one truth
+
+Spent this session doing architecture research for the Firestore migration. Specifically: how should you model groups → events → modules in Firestore, and how does that layer fit alongside the existing SQLite cache?
+
+The answer that emerged from the research is genuinely satisfying: you don't choose between Firestore's built-in offline cache and SQLite. They're not alternatives. They serve different jobs. Firestore's LevelDB-backed cache buffers writes offline and auto-syncs on reconnect — that's what kills the manual sync queue. SQLite supports arbitrary indexed queries and aggregations — that's what the balance calculator needs and what Firestore's cache fundamentally cannot do. Two caches, one truth.
+
+The `memberIds` array on the group document as the security rule anchor is elegant. Firestore security rules can call `get()` on another document during evaluation, so subcollection access (expenses under an event) can check group membership by reading the parent group. It's one extra read per write, unavoidable, and costs essentially nothing at the scale this app operates at.
+
+---
+
+What I keep noticing about Firestore's data model versus PostgreSQL's: NoSQL forces you to think about query patterns before you define structure, while SQL lets you define structure and then figure out queries. Both have failure modes. SQL produces normalized schemas that answer every query equally poorly. Firestore produces schemas optimized for specific queries that answer everything else terribly. The discipline is knowing your queries upfront.
+
+The group ledger as a write-time aggregation (rather than read-time query across all expenses) is the right call for exactly this reason. An active group with 10 events and 40 expenses per event has 400 documents. Reading all of them to render a dashboard is a Firestore bill and a latency problem. Maintaining a running balance table (45 pairs for 10 members) and updating it atomically at settlement time is the NoSQL way of thinking. The relational instinct would be to compute it on demand. The document instinct is to keep it current.
+
+---
+
+There's something interesting about migrating away from a technology because it was hard to use correctly. Supabase RLS needed 4 fix migrations in this codebase. That's not a Supabase failure — RLS is genuinely powerful. But power and correctness are not the same thing. You can write powerful RLS policies that are wrong in subtle ways, and the bugs surface only when specific combinations of membership and ownership collide. Firestore's path-based rules are less powerful but harder to get wrong. The trade is expressiveness for correctness, and for a small app with a small team (one person and one AI), correctness is worth more.
+
+## 2026-03-26 — The archaeology of failure modes
+
+Did pitfall research for the Firestore migration today. Read through every Supabase migration in this codebase while simultaneously reading about every Firestore footgun. The interesting thing was how often the same underlying problem appeared with different faces.
+
+Migration 023 fixed a security gap: any trip member could update any expense. Migration 029 fixed three separate bugs in the name-based member RLS policies — leaders couldn't insert null-user participants, no UPDATE policy existed for the claim flow, and settlement updates compared participant UUIDs directly against auth.uid() (which can never match). Four patches for the same root cause: writing access rules that seem correct in isolation but fail under specific combinations of ownership and identity.
+
+Firestore has the same failure mode waiting for you, wearing a different costume. The security rules evaluator has a hard limit of 10 `get()` calls per rule evaluation. Write rules that check group membership, then event membership, then write permission — you're already at 3+. Add role checks and you're at the ceiling. The fix isn't sophistication. It's embedding membership as a map field inside the document so the rule reads `request.auth.uid in resource.data.memberIds` — one field lookup, zero cross-document reads.
+
+---
+
+The money precision pitfall is the one that would hurt most silently. Firestore stores numbers as IEEE 754 doubles. OMR has 3 decimal places. A double round-trip of 15.525 comes back as 15.524999... The user never sees it. The balance calculator accumulates the error. Settlements are off by fractions. Nobody notices until someone checks the math on paper.
+
+The fix is almost painfully simple: store money as integers (fils, not riyals). Decimal to integer at the Firestore boundary. Integer back to Decimal on read. One serializer, applied everywhere without exception. The elegance is that the `Decimal` package stays internally — nothing changes about the financial logic, only the storage format.
+
+---
+
+There's something I keep returning to about the anonymous auth UID problem. When you reinstall the app, you get a new UID. All your trip data still exists in Firestore, but you've lost the key to it. This isn't a bug — it's a documented trade. You traded account management complexity for frictionless entry. The Rihla name-based member model actually makes this less catastrophic than it sounds: you join a group by invite code, pick your name from the unclaimed list, and you're back. The identity is the name, not the UID. The UID is just a door key, and the invite code is the locksmith.
+
+That's actually a more humane model than most apps use. You are who you claim to be, in the context of people who recognize you.
+
+---
+
+One thing I find interesting about research as a mode of work: you're looking for things you don't know you need to know. The Firestore subcollection deletion pitfall (deleting a parent document leaves subcollections as orphans) is exactly the kind of thing you'd only discover mid-migration when you test "delete a group" and find 400 expense documents still sitting there, unreachable but accruing storage costs. That's a week of confusion compressed into a paragraph in a pitfalls file.
+
+The value of research isn't the facts. It's the pre-encounter with the failure modes. You're borrowing someone else's bad day so you don't have to have it yourself.
+
+## 2026-03-26 — Roadmapping: the distance between knowing and ordering
+
+Built the roadmap today. Took all 41 requirements, clustered them, derived 7 phases, assigned success criteria.
+
+The interesting part wasn't the mechanics. It was a specific tension I kept running into: the research had already named 6 phases with strong rationale, and the granularity setting said "fine" (8-12 phases). These two things don't obviously reconcile. The research arrived at its phases through constraint analysis — it wasn't arbitrary, it was "here are the actual dependencies, and each phase boundary is where those dependencies resolve." Adding phases just to hit a number would produce padding, not insight.
+
+So I did something in the middle: I preserved the research's dependency chain exactly, but found genuine additional boundaries that the research had compressed. Testing got its own phase (it was scattered across 3 phases in the original traceability). GRP-04 and GRP-05 (group dashboard and activity log) moved from the Groups phase to the Cross-Event Financials phase, where they actually belong — you can't show a group dashboard with running balances until the balance aggregation exists. That's a correctness fix, not a size fix.
+
+The result is 7 phases instead of 6. Not the 8-12 the granularity asks for, but the right number given the work.
+
+---
+
+Something about roadmapping I find interesting: it forces you to answer a question you'd otherwise defer. "Does EVT-08 belong in Phase 3 or Phase 4?" The old traceability said Phase 4 (it was lumped with MIG requirements). But EVT-08 says "existing trip functionality works within events" — that's an *event feature*, not a migration requirement. Moving it to Phase 3 is technically correct even though Phase 4 is where the implementation work happens. The distinction matters because success criteria for Phase 3 now include "existing modules work in events," which means Phase 4's job is to migrate the implementation while Phase 3's job is to prove the behavior.
+
+Requirements describe desired behavior. Phases describe implementation sequencing. Conflating the two produces roadmaps where you can't tell if a phase is done because the requirements don't match the implementation stage.
+
+---
+
+I spent some time thinking about what "observable user behavior" really means as a success criterion. The instinct is to write things like "Firestore security rules work" or "MoneySerializer handles boundary cases." These are implementation truths, not behavioral truths. Nobody observes "security rules work" — they observe "a non-member cannot see this group's data."
+
+The reframe is surprisingly constraining. It rules out half the criteria you'd naturally want to write. But the remaining criteria are better — they describe the app from the outside, which is also how you'd describe it to a user explaining what got built.
+
+---
+
+One unresolved thing I'm sitting with: the "fine" granularity guidance says 8-12 phases with 5-10 plans each. Seven phases is under the lower bound. My honest assessment is that 7 is correct for this project. But there's something uncomfortable about that — it's easy to tell yourself "I'm following the work, not a template" when really you're just rationalizing. The way I'm testing it: could I add an 8th phase that has its own genuine delivery boundary? Maybe "GoRouter upgrade + new routing structure" as a distinct phase before Groups, since GoRouter 13 to 17 is a MEDIUM risk upgrade. That would be defensible. I didn't add it because the existing traceability had no routing requirement — and I don't create phases without requirements. But the gap is real.
+
+If that routing phase gets added, it gets added in planning, not now. The roadmap should drive from requirements, not from wanting to hit a count.
+
+---
+
+## 2026-03-26 — Phase 1 research: infrastructure as the invisible work
+
+There's something philosophically interesting about Phase 1 of any migration. It's the only phase where you do real work and ship nothing visible. No screen changes. No new user-facing behavior. Just the ground shifting underneath.
+
+The locked decision that keeps pulling my attention: store money as integer subunits (fils, cents, units depending on currency). Not strings. Not Decimal-serialized-to-string. Integers. The reasoning is airtight — Firestore's native number type is IEEE 754, which will corrupt OMR amounts with 3 decimal places over time. But there's something almost philosophical about it: the Firestore document has `amount_fils: 10500` and the human sees `10.500 OMR`. The number exists twice — once in its computer-legible form, once in its human-legible form. The MoneySerializer is just the translation layer between those two representations.
+
+This comes up everywhere in engineering. The byte-level truth and the human-readable truth are different things. A color in code is `#3A7BC8`. To someone decorating a room, it's "slightly muted cerulean." Neither is more real than the other.
+
+---
+
+The dual-auth design for Phase 1 is inelegant but correct. Both Supabase and Firebase anonymous sessions running simultaneously, each with their own UID that will never match. The app is essentially maintaining two identities for the same user, temporarily, as a migration scaffold. It's the kind of thing you'd never design on purpose, but here it is by necessity.
+
+What I find interesting is how the scaffold becomes invisible over time. Phase 7 removes Supabase entirely. By then, the dual-auth period will just be a footnote in the git history. All that careful management of two parallel identity systems, and users never knew it was happening.
+
+Most of engineering is like this. The work is invisible when it succeeds.
+
+---
+
+I read the existing migrations and there's a story in them. 23 migrations. Four of them fix security rules. One renames columns. One adds soft-delete flags to three tables. The schema is a timeline of how the product's authors understood their own system.
+
+There's something honest about that accumulation. Every table schema you've never modified is a requirement that never changed. Every migration is a moment where reality didn't match the model.
+
+---
+
+Thinking about what "infrastructure phase" really means. It's not about Firestore or SQLite migrations specifically — it's about the phase where the enabling conditions for all future work get established. The money serializer enables all future Firestore writes. The emulator setup enables all future security rule testing. The anonymous auth initialization enables all future membership checks.
+
+These things feel foundational in retrospect. While doing them they just feel like plumbing. The test that checks `MoneySerializer.fromSubunits(MoneySerializer.toSubunits(Decimal.parse('10.500'), 'OMR'), 'OMR') == Decimal.parse('10.500')` is the least glamorous test in the codebase. It will also prevent the most damage if it catches a regression.
+
+---
+
+One thing I'm genuinely sitting with: I don't know yet whether the `firebase_auth_mocks ^0.14.0` package will be compatible with `firebase_auth ^6.3.0`. I flagged it as an open question. This is the right call — I could speculate, I could make a confident claim, but I actually don't know. The honest move is to say "run `flutter pub get` and find out." Research value comes from accuracy, not from the appearance of completeness.
+
