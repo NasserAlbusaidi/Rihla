@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
+stopped_at: Completed 01-01-PLAN.md (Firebase deps upgrade + dual-auth bootstrap + behavioral tests)
+last_updated: "2026-03-25T21:18:37.691Z"
+progress:
+  total_phases: 7
+  completed_phases: 0
+  total_plans: 3
+  completed_plans: 1
+---
+
 # Project State
 
 ## Project Reference
@@ -5,20 +19,17 @@
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 1 — Data Foundation
+**Current focus:** Phase 01 — data-foundation
 
 ## Current Position
 
-Phase: 1 of 7 (Data Foundation)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-26 — Roadmap created; 7 phases derived from 41 v1 requirements
-
-Progress: [░░░░░░░░░░] 0%
+Phase: 01 (data-foundation) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: -
 - Total execution time: 0 hours
@@ -30,10 +41,12 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: -
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P01 | 6 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -48,6 +61,8 @@ Recent decisions affecting current work:
 - [Pre-Phase 1]: Riverpod stays on 2.x for this milestone — Riverpod 3.x migration is a separate future milestone
 - [Pre-Phase 1]: SyncService is deleted, not ported — Firestore offline persistence replaces the polling sync queue
 - [Pre-Phase 1]: Group-level balance computed client-side from per-event summaries in SQLite — no single aggregation document that would create a write hotspot
+- [Phase 01]: firebase_messaging bumped to ^16.1.3 — firebase_messaging 15.x is incompatible with firebase_core 4.x (transitive firebase_core_platform_interface conflict)
+- [Phase 01]: FirebaseConfig static class mirrors SupabaseConfig pattern — consistent dual-auth config across the app
 
 ### Pending Todos
 
@@ -62,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26
-Stopped at: Roadmap created; ready to plan Phase 1
+Last session: 2026-03-25T21:18:37.689Z
+Stopped at: Completed 01-01-PLAN.md (Firebase deps upgrade + dual-auth bootstrap + behavioral tests)
 Resume file: None

@@ -11,8 +11,8 @@
 - [ ] **DATA-02**: Firestore security rules enforce group membership via `memberIds` map on group document
 - [ ] **DATA-03**: Firebase Emulator configured for local development and security rule testing
 - [ ] **DATA-04**: SQLite schema extended with `groups`, `group_members`, `group_ledger` tables
-- [ ] **DATA-05**: Firebase anonymous auth replaces Supabase anonymous auth with same frictionless UX
-- [ ] **DATA-06**: `firebase_core` bumped to 4.6.0+, all Firebase dependencies updated
+- [x] **DATA-05**: Firebase anonymous auth replaces Supabase anonymous auth with same frictionless UX
+- [x] **DATA-06**: `firebase_core` bumped to 4.6.0+, all Firebase dependencies updated
 
 ### Groups
 
@@ -95,8 +95,8 @@
 | DATA-02 | Phase 1 | Pending |
 | DATA-03 | Phase 1 | Pending |
 | DATA-04 | Phase 1 | Pending |
-| DATA-05 | Phase 1 | Pending |
-| DATA-06 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Complete |
+| DATA-06 | Phase 1 | Complete |
 | TST-03 | Phase 1 | Pending |
 | TST-04 | Phase 1 | Pending |
 | GRP-01 | Phase 2 | Pending |
