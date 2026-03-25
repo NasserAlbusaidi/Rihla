@@ -97,11 +97,11 @@
 | DATA-04 | Phase 1 | Pending |
 | DATA-05 | Phase 1 | Pending |
 | DATA-06 | Phase 1 | Pending |
+| TST-03 | Phase 1 | Pending |
+| TST-04 | Phase 1 | Pending |
 | GRP-01 | Phase 2 | Pending |
 | GRP-02 | Phase 2 | Pending |
 | GRP-03 | Phase 2 | Pending |
-| GRP-04 | Phase 5 | Pending |
-| GRP-05 | Phase 5 | Pending |
 | GRP-06 | Phase 2 | Pending |
 | GRP-07 | Phase 2 | Pending |
 | EVT-01 | Phase 3 | Pending |
@@ -111,33 +111,33 @@
 | EVT-05 | Phase 3 | Pending |
 | EVT-06 | Phase 3 | Pending |
 | EVT-07 | Phase 3 | Pending |
-| EVT-08 | Phase 4 | Pending |
-| FIN-01 | Phase 4 | Pending |
+| EVT-08 | Phase 3 | Pending |
+| MIG-01 | Phase 4 | Pending |
+| MIG-02 | Phase 4 | Pending |
+| MIG-03 | Phase 4 | Pending |
+| MIG-04 | Phase 4 | Pending |
+| MIG-05 | Phase 4 | Pending |
+| FIN-01 | Phase 5 | Pending |
 | FIN-02 | Phase 5 | Pending |
 | FIN-03 | Phase 5 | Pending |
 | FIN-04 | Phase 5 | Pending |
 | FIN-05 | Phase 5 | Pending |
 | FIN-06 | Phase 5 | Pending |
 | FIN-07 | Phase 5 | Pending |
-| MIG-01 | Phase 4 | Pending |
-| MIG-02 | Phase 4 | Pending |
-| MIG-03 | Phase 4 | Pending |
-| MIG-04 | Phase 4 | Pending |
-| MIG-05 | Phase 4 | Pending |
-| MIG-06 | Phase 6 | Pending |
-| MIG-07 | Phase 6 | Pending |
-| TST-01 | Phase 1 | Pending |
-| TST-02 | Phase 3 | Pending |
-| TST-03 | Phase 1 | Pending |
-| TST-04 | Phase 1 | Pending |
-| TST-05 | Phase 4 | Pending |
-| TST-06 | Phase 4 | Pending |
+| GRP-04 | Phase 5 | Pending |
+| GRP-05 | Phase 5 | Pending |
+| TST-01 | Phase 6 | Pending |
+| TST-02 | Phase 6 | Pending |
+| TST-05 | Phase 6 | Pending |
+| TST-06 | Phase 6 | Pending |
+| MIG-06 | Phase 7 | Pending |
+| MIG-07 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 37 total
-- Mapped to phases: 37
+- v1 requirements: 41 total
+- Mapped to phases: 41
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after initial definition*
+*Last updated: 2026-03-26 after roadmap creation (traceability updated to match 7-phase roadmap)*
