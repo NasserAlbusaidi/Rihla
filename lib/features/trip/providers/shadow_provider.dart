@@ -49,7 +49,7 @@ class ShadowService {
             'created_by': userId,
             'role': 'MEMBER',
           })
-          .select('*, profiles!user_id(display_name, avatar_url)')
+          .select('*')
           .single();
 
       return Participant.fromJson(data);
@@ -113,7 +113,7 @@ class ShadowService {
     try {
       final data = await _client
           .from('participants')
-          .select('*, profiles!user_id(display_name, avatar_url)')
+          .select('*')
           .eq('trip_id', tripId)
           .eq('is_shadow', true)
           .isFilter('user_id', null);
@@ -130,7 +130,7 @@ class ShadowService {
     try {
       final data = await _client
           .from('participants')
-          .select('*, profiles!user_id(display_name, avatar_url)')
+          .select('*')
           .eq('trip_id', tripId)
           .eq('is_shadow', false);
 

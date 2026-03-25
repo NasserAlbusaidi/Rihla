@@ -1,9 +1,11 @@
+import 'package:decimal/decimal.dart';
+
 class Settlement {
   final String id;
   final String tripId;
   final String? payerParticipantId;
   final String? recipientParticipantId;
-  final double amount;
+  final Decimal amount;
   final String? note;
   final DateTime settledAt;
   final String? payerName;
@@ -40,7 +42,7 @@ class Settlement {
       recipientParticipantId:
           json['recipient_participant_id'] as String? ??
           json['recipient_id'] as String?,
-      amount: (json['amount'] as num).toDouble(),
+      amount: Decimal.parse(json['amount'].toString()),
       note: json['note'] as String?,
       settledAt: DateTime.parse(json['settled_at'] as String),
       payerName:
@@ -61,8 +63,9 @@ class Settlement {
       'trip_id': tripId,
       'payer_participant_id': payerParticipantId,
       'recipient_participant_id': recipientParticipantId,
-      'amount': amount,
+      'amount': amount.toString(),
       'note': note,
+      'settled_at': settledAt.toIso8601String(),
     };
   }
 }

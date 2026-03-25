@@ -1,11 +1,12 @@
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/cache_service.dart';
+import '../../../core/services/offline_repository.dart';
+import '../../../core/services/sync_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/trip_model.dart';
 
@@ -18,65 +19,16 @@ final tripErrorProvider = StateProvider<String?>((ref) => null);
 /// Current selected trip
 final currentTripProvider = StateProvider<Trip?>((ref) => null);
 
-/// User's trips stream with offline caching
+/// User's trips — reads from SQLite, always instant
 final userTripsProvider = StreamProvider<List<Trip>>((ref) {
-  final user = ref.watch(currentUserProvider);
-  if (user == null) return Stream.value([]);
-
-  return SupabaseConfig.client
-      .from('participants')
-      .stream(primaryKey: ['id'])
-      .eq('user_id', user.id)
-      .asyncMap((participations) async {
-        if (participations.isEmpty) {
-          // Try to get cached trips if no online data
-          return await CacheService.getCachedTrips();
-        }
-
-        final tripIds = participations
-            .map((p) => p['trip_id'] as String)
-            .toList();
-
-        final tripsData = await SupabaseConfig.client
-            .from('trips')
-            .select()
-            .inFilter('id', tripIds)
-            .order('created_at', ascending: false);
-
-        final trips = (tripsData).map((json) => Trip.fromJson(json)).toList();
-
-        // Cache trips for offline access
-        for (final trip in trips) {
-          await CacheService.cacheTrip(trip);
-        }
-
-        return trips;
-      })
-      .handleError((error) async {
-        // On error (offline), return cached trips
-        debugPrint('📡 Network error, using cached trips: $error');
-        return await CacheService.getCachedTrips();
-      });
+  return ref.read(offlineRepositoryProvider).watchTrips();
 });
 
-/// Trip participants stream for logistics (with profiles)
+/// Trip participants — reads from SQLite
 final tripLogisticsParticipantsProvider =
     StreamProvider.family<List<Participant>, String>((ref, tripId) {
-      return SupabaseConfig.client
-          .from('participants')
-          .stream(primaryKey: ['id'])
-          .eq('trip_id', tripId)
-          .asyncMap((data) async {
-            if (data.isEmpty) return <Participant>[];
-
-            final result = await SupabaseConfig.client
-                .from('participants')
-                .select('*, profiles!user_id(display_name, avatar_url)')
-                .eq('trip_id', tripId);
-
-            return (result).map((json) => Participant.fromJson(json)).toList();
-          });
-    });
+  return ref.read(offlineRepositoryProvider).watchParticipants(tripId);
+});
 
 /// Provider for the current user's participant record in a trip
 final currentParticipantProvider = Provider.family<Participant?, String>((
@@ -95,6 +47,18 @@ final currentParticipantProvider = Provider.family<Participant?, String>((
     },
     orElse: () => null,
   );
+});
+
+/// Provider that seeds SQLite on first load
+final tripSeedProvider = FutureProvider<void>((ref) async {
+  final cachedTrips = await CacheService.getCachedTrips();
+  if (cachedTrips.isEmpty) {
+    final user = ref.read(currentUserProvider);
+    if (user != null) {
+      final repo = ref.read(offlineRepositoryProvider);
+      await SyncService.fullSync(user.id, repo);
+    }
+  }
 });
 
 /// Trip service provider
@@ -120,6 +84,8 @@ class TripService {
   /// Create a new trip
   Future<Trip?> createTrip({
     required String name,
+    required List<String> memberNames,
+    required int creatorIndex,
     TripModules modules = const TripModules(),
     DateTime? startDate,
     DateTime? endDate,
@@ -175,12 +141,23 @@ class TripService {
 
       final trip = Trip.fromJson(tripData);
 
-      // Add creator as participant with LEADER role
-      await _client.from('participants').insert({
-        'trip_id': trip.id,
-        'user_id': userId,
-        'role': 'LEADER',
-      });
+      // Insert all members as participants
+      for (int i = 0; i < memberNames.length; i++) {
+        final isCreator = i == creatorIndex;
+        await _client.from('participants').insert({
+          'trip_id': trip.id,
+          'user_id': isCreator ? userId : null,
+          'role': isCreator ? 'LEADER' : 'MEMBER',
+          'display_name': memberNames[i],
+        });
+      }
+
+      // Cache the new trip and notify observers
+      await CacheService.cacheTrip(trip);
+      final repo = _ref.read(offlineRepositoryProvider);
+      repo.notifyChange('trips');
+      // Also download participants for the new trip
+      await SyncService.downloadTripData(trip.id, repo);
 
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
@@ -225,8 +202,12 @@ class TripService {
           .eq('user_id', userId)
           .maybeSingle();
 
+      final repo = _ref.read(offlineRepositoryProvider);
+
       if (existing != null) {
-        // Already a member, just return the trip
+        // Already a member — cache and return the trip
+        await CacheService.cacheTrip(trip);
+        repo.notifyChange('trips');
         _ref.read(tripLoadingProvider.notifier).state = false;
         _ref.read(currentTripProvider.notifier).state = trip;
         return trip;
@@ -239,9 +220,101 @@ class TripService {
         'role': 'MEMBER',
       });
 
+      // Cache the trip and download its data
+      await CacheService.cacheTrip(trip);
+      repo.notifyChange('trips');
+      await SyncService.downloadTripData(trip.id, repo);
+
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
 
+      return trip;
+    } catch (e) {
+      _ref.read(tripErrorProvider.notifier).state = e.toString();
+      _ref.read(tripLoadingProvider.notifier).state = false;
+      return null;
+    }
+  }
+
+  /// Find trip and return unclaimed participant names
+  Future<({Trip trip, List<Participant> unclaimed})?> findTripForJoin(String inviteCode) async {
+    _ref.read(tripLoadingProvider.notifier).state = true;
+    _ref.read(tripErrorProvider.notifier).state = null;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final tripData = await _client
+          .from('trips')
+          .select()
+          .eq('invite_code', inviteCode.toUpperCase())
+          .maybeSingle();
+
+      if (tripData == null) {
+        throw Exception('Trip not found. Please check the invite code.');
+      }
+
+      final trip = Trip.fromJson(tripData);
+
+      // Check if already a participant
+      final existing = await _client
+          .from('participants')
+          .select('id')
+          .eq('trip_id', trip.id)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (existing != null) {
+        _ref.read(tripLoadingProvider.notifier).state = false;
+        _ref.read(currentTripProvider.notifier).state = trip;
+        return null; // Already a member — caller should navigate directly
+      }
+
+      // Get unclaimed participants
+      final participantsData = await _client
+          .from('participants')
+          .select()
+          .eq('trip_id', trip.id)
+          .isFilter('user_id', null);
+
+      final unclaimed = participantsData
+          .map((json) => Participant.fromJson(json))
+          .toList();
+
+      _ref.read(tripLoadingProvider.notifier).state = false;
+      return (trip: trip, unclaimed: unclaimed);
+    } catch (e) {
+      _ref.read(tripErrorProvider.notifier).state = e.toString();
+      _ref.read(tripLoadingProvider.notifier).state = false;
+      return null;
+    }
+  }
+
+  /// Claim a participant name in a trip
+  Future<Trip?> claimParticipant(String tripId, String participantId) async {
+    _ref.read(tripLoadingProvider.notifier).state = true;
+    _ref.read(tripErrorProvider.notifier).state = null;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      await _client
+          .from('participants')
+          .update({'user_id': userId})
+          .eq('id', participantId);
+
+      final trip = await getTripById(tripId);
+      // Cache and download trip data after claiming
+      if (trip != null) {
+        await CacheService.cacheTrip(trip);
+        final repo = _ref.read(offlineRepositoryProvider);
+        repo.notifyChange('trips');
+        await SyncService.downloadTripData(trip.id, repo);
+      }
+      _ref.read(tripLoadingProvider.notifier).state = false;
+      _ref.read(currentTripProvider.notifier).state = trip;
       return trip;
     } catch (e) {
       _ref.read(tripErrorProvider.notifier).state = e.toString();
@@ -265,7 +338,7 @@ class TripService {
     }
   }
 
-  /// Update trip details
+  /// Update trip details (leader only)
   Future<bool> updateTrip(
     String tripId, {
     String? name,
@@ -274,6 +347,16 @@ class TripService {
     String? icon,
   }) async {
     try {
+      // Verify current user is the leader
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return false;
+      final trip = await getTripById(tripId);
+      if (trip == null || trip.leaderId != userId) {
+        _ref.read(tripErrorProvider.notifier).state =
+            'Only the trip leader can edit this trip';
+        return false;
+      }
+
       final updates = <String, dynamic>{};
       if (name != null && name.isNotEmpty) {
         updates['name'] = name;
@@ -293,6 +376,12 @@ class TripService {
       SupabaseConfig.log('Updating trip $tripId with: $updates');
 
       await _client.from('trips').update(updates).eq('id', tripId);
+      // Re-fetch and cache updated trip
+      final updated = await getTripById(tripId);
+      if (updated != null) {
+        await CacheService.cacheTrip(updated);
+        _ref.read(offlineRepositoryProvider).notifyChange('trips');
+      }
       SupabaseConfig.log('Trip update successful');
       return true;
     } catch (e) {
@@ -317,10 +406,22 @@ class TripService {
   /// Delete a trip (leader only)
   Future<bool> deleteTrip(String tripId) async {
     try {
+      // Verify current user is the leader
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return false;
+      final trip = await getTripById(tripId);
+      if (trip == null || trip.leaderId != userId) {
+        _ref.read(tripErrorProvider.notifier).state =
+            'Only the trip leader can delete this trip';
+        return false;
+      }
+
       SupabaseConfig.log('deleteTrip: $tripId');
-      // Trip deletion cascades to all related tables (participants, expenses, etc.)
-      // based on ON DELETE CASCADE in schema.
       await _client.from('trips').delete().eq('id', tripId);
+
+      // Remove from local cache
+      await CacheService.deleteTrip(tripId);
+      _ref.read(offlineRepositoryProvider).notifyChange('trips');
 
       SupabaseConfig.log('deleteTrip: SUCCESS');
       return true;
@@ -335,7 +436,7 @@ class TripService {
     try {
       final data = await _client
           .from('participants')
-          .select('*, profiles!user_id(display_name, avatar_url)')
+          .select('*')
           .eq('trip_id', tripId);
 
       return (data).map((json) => Participant.fromJson(json)).toList();

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/trip_model.dart';
 import '../providers/trip_provider.dart';
@@ -19,6 +20,7 @@ class CreateTripScreen extends ConsumerStatefulWidget {
 
 class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
   final _nameController = TextEditingController();
+  final _memberController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _enableDocs = true;
   bool _enableGear = true;
@@ -26,19 +28,48 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
   bool _enableLogistics = true;
   DateTime? _startDate;
   DateTime? _endDate;
+  final List<String> _memberNames = [];
+  int? _creatorIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-populate with device name if set
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final deviceName = ref.read(settingsProvider).deviceName;
+      if (deviceName.isNotEmpty) {
+        setState(() {
+          _memberNames.add(deviceName);
+          _creatorIndex = 0;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _memberController.dispose();
     super.dispose();
   }
 
   Future<void> _createTrip() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_memberNames.isEmpty) {
+      ref.read(tripErrorProvider.notifier).state = 'Add at least one member';
+      return;
+    }
+    if (_creatorIndex == null) {
+      ref.read(tripErrorProvider.notifier).state = 'Select which name is yours';
+      return;
+    }
+
     final tripService = ref.read(tripServiceProvider);
     final trip = await tripService.createTrip(
       name: _nameController.text.trim(),
+      memberNames: _memberNames,
+      creatorIndex: _creatorIndex!,
       modules: TripModules(
         docs: _enableDocs,
         gear: _enableGear,
@@ -152,6 +183,14 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
                       _buildDateSection()
                           .animate()
                           .fadeIn(delay: 150.ms)
+                          .slideY(begin: 0.1),
+
+                      const SizedBox(height: 24),
+
+                      // Members Section
+                      _buildMembersSection()
+                          .animate()
+                          .fadeIn(delay: 175.ms)
                           .slideY(begin: 0.1),
 
                       const SizedBox(height: 24),
@@ -298,6 +337,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _nameController,
+            maxLength: 50,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               hintText: 'e.g. Patagonia Basecamp',
@@ -312,6 +352,195 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildMembersSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Iconsax.people,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Members',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      'Add everyone on this trip',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Add member input
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _memberController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter a name',
+                    isDense: true,
+                  ),
+                  onSubmitted: (_) => _addMember(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _addMember,
+                icon: const Icon(Iconsax.add_circle, color: AppColors.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Member list
+          ...List.generate(_memberNames.length, (index) {
+            final isCreator = _creatorIndex == index;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  // Radio to select "This is me"
+                  GestureDetector(
+                    onTap: () => setState(() => _creatorIndex = index),
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              isCreator ? AppColors.primary : AppColors.border,
+                          width: 2,
+                        ),
+                      ),
+                      child: isCreator
+                          ? Center(
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _memberNames[index],
+                      style: TextStyle(
+                        fontWeight:
+                            isCreator ? FontWeight.w700 : FontWeight.w500,
+                        color: isCreator
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  if (isCreator)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'YOU',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                  IconButton(
+                    icon: const Icon(
+                      Iconsax.close_circle,
+                      size: 18,
+                      color: AppColors.textMuted,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _memberNames.removeAt(index);
+                        if (_creatorIndex == index) {
+                          _creatorIndex = null;
+                        } else if (_creatorIndex != null &&
+                            _creatorIndex! > index) {
+                          _creatorIndex = _creatorIndex! - 1;
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+            );
+          }),
+
+          if (_memberNames.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _creatorIndex == null
+                    ? 'Tap the circle next to your name'
+                    : '${_memberNames.length} member${_memberNames.length == 1 ? '' : 's'}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _creatorIndex == null
+                      ? AppColors.amber
+                      : AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _addMember() {
+    final name = _memberController.text.trim();
+    if (name.isEmpty) return;
+    setState(() {
+      _memberNames.add(name);
+      _memberController.clear();
+    });
   }
 
   Widget _buildModulesSection() {

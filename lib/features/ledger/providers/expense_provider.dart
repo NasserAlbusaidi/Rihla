@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/cache_service.dart';
+import '../../../core/services/offline_repository.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -18,76 +19,20 @@ final expenseLoadingProvider = StateProvider<bool>((ref) => false);
 /// Error state for expense operations
 final expenseErrorProvider = StateProvider<String?>((ref) => null);
 
-/// Stream of expenses for the current trip with offline caching
+/// Stream of expenses — reads from SQLite, always instant
 final tripExpensesProvider = StreamProvider.family<List<Expense>, String>((
   ref,
   tripId,
 ) {
-  return SupabaseConfig.client
-      .from('expenses')
-      .stream(primaryKey: ['id'])
-      .eq('trip_id', tripId)
-      .order('created_at', ascending: false)
-      .asyncMap((data) async {
-        final result = await SupabaseConfig.client
-            .from('expenses')
-            .select(
-              '*, expense_categories(*), participants!payer_participant_id(*, profiles!user_id(display_name, avatar_url))',
-            )
-            .eq('trip_id', tripId)
-            .eq('is_deleted', false)
-            .order('created_at', ascending: false);
-
-        final expenses = (result as List)
-            .map((json) => Expense.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        // Cache expenses for offline access
-        await CacheService.cacheExpenses(tripId, expenses);
-
-        return expenses;
-      })
-      .handleError((error) async {
-        // On error (offline), return cached expenses
-        debugPrint('📡 Network error, using cached expenses: $error');
-        return await CacheService.getCachedExpenses(tripId);
-      });
+  return ref.read(offlineRepositoryProvider).watchExpenses(tripId);
 });
 
-/// Stream of settlements for the current trip
+/// Stream of settlements — reads from SQLite
 final tripSettlementsProvider = StreamProvider.family<List<Settlement>, String>((
   ref,
   tripId,
 ) {
-  return SupabaseConfig.client
-      .from('settlements')
-      .stream(primaryKey: ['id'])
-      .eq('trip_id', tripId)
-      .order('settled_at', ascending: false)
-      .asyncMap((data) async {
-        final result = await SupabaseConfig.client
-            .from('settlements')
-            .select(
-              '*, payer_participant:participants!payer_participant_id(*, profiles!user_id(display_name, avatar_url)), recipient_participant:participants!recipient_participant_id(*, profiles!user_id(display_name, avatar_url))',
-            )
-            .eq('trip_id', tripId)
-            .eq('is_deleted', false)
-            .order('settled_at', ascending: false);
-
-        final settlements = (result as List)
-            .map((json) => Settlement.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        // Cache settlements for offline access
-        await CacheService.cacheSettlements(tripId, settlements);
-
-        return settlements;
-      })
-      .handleError((error) async {
-        // On error (offline), return cached settlements
-        debugPrint('📡 Network error, using cached settlements: $error');
-        return await CacheService.getCachedSettlements(tripId);
-      });
+  return ref.read(offlineRepositoryProvider).watchSettlements(tripId);
 });
 
 /// Expense service provider
@@ -103,7 +48,7 @@ class ExpenseService {
 
   SupabaseClient get _client => SupabaseConfig.client;
 
-  /// Add a new expense
+  /// Add a new expense — writes to SQLite immediately if offline
   Future<Expense?> addExpense({
     required String tripId,
     required String payerParticipantId,
@@ -119,36 +64,68 @@ class ExpenseService {
     _ref.read(expenseLoadingProvider.notifier).state = true;
     _ref.read(expenseErrorProvider.notifier).state = null;
 
-    try {
-      final data = await _client
-          .from('expenses')
-          .insert({
-            'trip_id': tripId,
-            'payer_participant_id': payerParticipantId,
-            'amount': amount.toString(),
-            'description': description,
-            'scope': scope.value,
-            'sub_group_id': scope == ExpenseScope.subGroup ? subGroupId : null,
-            'custom_split_participants': scope == ExpenseScope.custom
-                ? customSplitParticipants
-                : null,
-            'receipt_url': receiptUrl,
-            'category_id': categoryId,
-            'note': note,
-          })
-          .select('*, expense_categories(name, icon)')
-          .single();
+    final repo = _ref.read(offlineRepositoryProvider);
 
-      _ref.read(expenseLoadingProvider.notifier).state = false;
-      return Expense.fromJson(data);
+    try {
+      // Try Supabase first (for server-generated ID and relationships)
+      try {
+        final data = await _client
+            .from('expenses')
+            .insert({
+              'trip_id': tripId,
+              'payer_participant_id': payerParticipantId,
+              'amount': amount.toString(),
+              'description': description,
+              'scope': scope.value,
+              'sub_group_id': scope == ExpenseScope.subGroup ? subGroupId : null,
+              'custom_split_participants': scope == ExpenseScope.custom
+                  ? customSplitParticipants
+                  : null,
+              'receipt_url': receiptUrl,
+              'category_id': categoryId,
+              'note': note,
+            })
+            .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
+            .single();
+
+        final expense = Expense.fromJson(data);
+        // Cache the server-returned expense
+        await CacheService.cacheExpenses(tripId, [expense]);
+        repo.notifyChange('expenses', tripId);
+        _ref.read(expenseLoadingProvider.notifier).state = false;
+        return expense;
+      } catch (e) {
+        // Supabase failed (offline) — save locally with generated ID
+        debugPrint('Supabase insert failed, saving locally: $e');
+        final expense = Expense(
+          id: repo.generateId(),
+          tripId: tripId,
+          payerParticipantId: payerParticipantId,
+          amount: amount,
+          description: description,
+          scope: scope,
+          subGroupId: scope == ExpenseScope.subGroup ? subGroupId : null,
+          customSplitParticipants: scope == ExpenseScope.custom
+              ? customSplitParticipants
+              : null,
+          receiptUrl: receiptUrl,
+          categoryId: categoryId,
+          note: note,
+          createdAt: DateTime.now(),
+        );
+        await repo.saveExpense(expense);
+        _ref.read(expenseLoadingProvider.notifier).state = false;
+        return expense;
+      }
     } catch (e) {
+      debugPrint('addExpense FAILED: $e');
       _ref.read(expenseErrorProvider.notifier).state = e.toString();
       _ref.read(expenseLoadingProvider.notifier).state = false;
       return null;
     }
   }
 
-  /// Update an existing expense and log the change
+  /// Update an existing expense and log the change — offline-safe
   Future<Expense?> updateExpense({
     required String expenseId,
     required Expense oldExpense,
@@ -167,68 +144,83 @@ class ExpenseService {
     _ref.read(expenseLoadingProvider.notifier).state = true;
     _ref.read(expenseErrorProvider.notifier).state = null;
 
+    final repo = _ref.read(offlineRepositoryProvider);
+
+    // Build update map with only changed fields
+    final updates = <String, dynamic>{};
+    if (newAmount != null && newAmount != oldExpense.amount) {
+      updates['amount'] = newAmount.toString();
+    }
+    if (newDescription != null && newDescription != oldExpense.description) {
+      updates['description'] = newDescription;
+    }
+    if (newScope != null && newScope != oldExpense.scope) {
+      updates['scope'] = newScope.value;
+      if (newScope == ExpenseScope.subGroup) {
+        updates['sub_group_id'] = newSubGroupId;
+        updates['custom_split_participants'] = null;
+      } else if (newScope == ExpenseScope.custom) {
+        updates['sub_group_id'] = null;
+        updates['custom_split_participants'] = newCustomSplitParticipants;
+      } else {
+        updates['sub_group_id'] = null;
+        updates['custom_split_participants'] = null;
+      }
+    }
+    if (newCategoryId != null && newCategoryId != oldExpense.categoryId) {
+      updates['category_id'] = newCategoryId;
+    }
+
+    debugPrint('   Built updates: $updates');
+
+    if (updates.isEmpty) {
+      debugPrint('   No changes detected, returning old expense');
+      _ref.read(expenseLoadingProvider.notifier).state = false;
+      return oldExpense;
+    }
+
     try {
-      final userId = _client.auth.currentUser?.id;
+      // Try Supabase first
+      try {
+        final userId = _client.auth.currentUser?.id;
 
-      // Build update map with only changed fields
-      final updates = <String, dynamic>{};
-      if (newAmount != null && newAmount != oldExpense.amount) {
-        updates['amount'] = newAmount.toString();
-      }
-      if (newDescription != null && newDescription != oldExpense.description) {
-        updates['description'] = newDescription;
-      }
-      if (newScope != null && newScope != oldExpense.scope) {
-        updates['scope'] = newScope.value;
-        if (newScope == ExpenseScope.subGroup) {
-          updates['sub_group_id'] = newSubGroupId;
-          updates['custom_split_participants'] = null;
-        } else if (newScope == ExpenseScope.custom) {
-          updates['sub_group_id'] = null;
-          updates['custom_split_participants'] = newCustomSplitParticipants;
-        } else {
-          updates['sub_group_id'] = null;
-          updates['custom_split_participants'] = null;
-        }
-      }
-      if (newCategoryId != null && newCategoryId != oldExpense.categoryId) {
-        updates['category_id'] = newCategoryId;
-      }
+        // Log the edit to history
+        debugPrint('   Logging to expense_history...');
+        await _client.from('expense_history').insert({
+          'expense_id': expenseId,
+          'edited_by': userId,
+          'old_amount': oldExpense.amount.toString(),
+          'new_amount': (newAmount ?? oldExpense.amount).toString(),
+          'old_description': oldExpense.description,
+          'new_description': newDescription ?? oldExpense.description,
+          'old_scope': oldExpense.scope.value,
+          'new_scope': (newScope ?? oldExpense.scope).value,
+          'edit_note': editNote,
+        });
 
-      debugPrint('   Built updates: $updates');
+        // Update the expense
+        debugPrint('   Updating expense in DB...');
+        final data = await _client
+            .from('expenses')
+            .update(updates)
+            .eq('id', expenseId)
+            .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
+            .single();
 
-      if (updates.isEmpty) {
-        debugPrint('   No changes detected, returning old expense');
+        final expense = Expense.fromJson(data);
+        // Cache the server-returned expense
+        await CacheService.cacheExpenses(oldExpense.tripId, [expense]);
+        repo.notifyChange('expenses', oldExpense.tripId);
+        debugPrint('✅ updateExpense SUCCESS');
+        _ref.read(expenseLoadingProvider.notifier).state = false;
+        return expense;
+      } catch (e) {
+        // Supabase failed (offline) — update locally
+        debugPrint('Supabase expense update failed, saving locally: $e');
+        await repo.updateExpense(oldExpense, updates);
         _ref.read(expenseLoadingProvider.notifier).state = false;
         return oldExpense;
       }
-
-      // Log the edit to history
-      debugPrint('   Logging to expense_history...');
-      await _client.from('expense_history').insert({
-        'expense_id': expenseId,
-        'edited_by': userId,
-        'old_amount': oldExpense.amount.toString(),
-        'new_amount': (newAmount ?? oldExpense.amount).toString(),
-        'old_description': oldExpense.description,
-        'new_description': newDescription ?? oldExpense.description,
-        'old_scope': oldExpense.scope.value,
-        'new_scope': (newScope ?? oldExpense.scope).value,
-        'edit_note': editNote,
-      });
-
-      // Update the expense
-      debugPrint('   Updating expense in DB...');
-      final data = await _client
-          .from('expenses')
-          .update(updates)
-          .eq('id', expenseId)
-          .select('*, expense_categories(name, icon)')
-          .single();
-
-      debugPrint('✅ updateExpense SUCCESS');
-      _ref.read(expenseLoadingProvider.notifier).state = false;
-      return Expense.fromJson(data);
     } catch (e) {
       debugPrint('❌ updateExpense FAILED: $e');
       _ref.read(expenseErrorProvider.notifier).state = e.toString();
@@ -237,21 +229,26 @@ class ExpenseService {
     }
   }
 
-  /// Delete an expense
-  Future<bool> deleteExpense(String expenseId) async {
-    debugPrint('🗑️ deleteExpense called with ID: $expenseId');
+  /// Delete an expense — soft delete locally, try Supabase
+  Future<bool> deleteExpense(String expenseId, {String? tripId}) async {
     try {
-      await _client
-          .from('expenses')
-          .update({
-            'is_deleted': true,
-            'deleted_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', expenseId);
-      debugPrint('✅ deleteExpense SUCCESS for ID: $expenseId');
+      final repo = _ref.read(offlineRepositoryProvider);
+      // Try Supabase first
+      try {
+        await _client.from('expenses').update({
+          'is_deleted': true,
+          'deleted_at': DateTime.now().toIso8601String(),
+        }).eq('id', expenseId);
+      } catch (_) {
+        // Offline — will sync later
+      }
+      // Always update local
+      if (tripId != null) {
+        await repo.deleteExpense(expenseId, tripId);
+      }
       return true;
     } catch (e) {
-      debugPrint('❌ deleteExpense FAILED: $e');
+      debugPrint('deleteExpense FAILED: $e');
       return false;
     }
   }
@@ -384,13 +381,13 @@ class BalanceCalculator {
           settlementAdjustmentMap.containsKey(s.payerParticipantId)) {
         settlementAdjustmentMap[s.payerParticipantId!] =
             settlementAdjustmentMap[s.payerParticipantId!]! +
-            Decimal.parse(s.amount.toString());
+            s.amount;
       }
       if (s.recipientParticipantId != null &&
           settlementAdjustmentMap.containsKey(s.recipientParticipantId)) {
         settlementAdjustmentMap[s.recipientParticipantId!] =
             settlementAdjustmentMap[s.recipientParticipantId!]! -
-            Decimal.parse(s.amount.toString());
+            s.amount;
       }
     }
 

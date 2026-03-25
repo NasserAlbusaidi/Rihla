@@ -1,16 +1,23 @@
+import 'dart:async';
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Local database service for offline caching
 class LocalDatabase {
   static Database? _database;
+  static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
   static const int _databaseVersion =
-      3; // Incremented for participant-based columns
+      5; // Added currency to trips
 
-  /// Get database instance
+  /// Get database instance (safe for concurrent access)
   static Future<Database> get database async {
-    _database ??= await _initDatabase();
+    if (_database != null) return _database!;
+    if (_initCompleter != null) return _initCompleter!.future;
+    _initCompleter = Completer<Database>();
+    _database = await _initDatabase();
+    _initCompleter!.complete(_database!);
     return _database!;
   }
 
@@ -37,6 +44,7 @@ class LocalDatabase {
         invite_code TEXT NOT NULL,
         leader_id TEXT NOT NULL,
         icon TEXT DEFAULT 'airplane',
+        currency TEXT DEFAULT 'OMR',
         start_date TEXT,
         end_date TEXT,
         modules TEXT,
@@ -71,10 +79,14 @@ class LocalDatabase {
       CREATE TABLE gear_items (
         id TEXT PRIMARY KEY,
         trip_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        category TEXT NOT NULL,
-        is_checked INTEGER DEFAULT 0,
-        created_at TEXT NOT NULL,
+        item_name TEXT NOT NULL,
+        assigned_to TEXT,
+        is_packed INTEGER DEFAULT 0,
+        sequence_id INTEGER DEFAULT 0,
+        is_high_priority INTEGER DEFAULT 0,
+        assigned_to_name TEXT,
+        assigned_to_avatar TEXT,
+        created_at TEXT,
         synced_at TEXT,
         is_deleted INTEGER DEFAULT 0,
         deleted_at TEXT,
@@ -109,7 +121,84 @@ class LocalDatabase {
         action TEXT NOT NULL,
         data TEXT NOT NULL,
         created_at TEXT NOT NULL,
-        retry_count INTEGER DEFAULT 0
+        retry_count INTEGER DEFAULT 0,
+        last_error TEXT,
+        conflict_data TEXT
+      )
+    ''');
+
+    // Participants table
+    await db.execute('''
+      CREATE TABLE participants (
+        id TEXT PRIMARY KEY,
+        trip_id TEXT NOT NULL,
+        user_id TEXT,
+        role TEXT NOT NULL DEFAULT 'MEMBER',
+        display_name TEXT,
+        avatar_url TEXT,
+        is_shadow INTEGER NOT NULL DEFAULT 0,
+        joined_at TEXT NOT NULL DEFAULT '',
+        last_synced_at TEXT,
+        FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // Sub groups table
+    await db.execute('''
+      CREATE TABLE sub_groups (
+        id TEXT PRIMARY KEY,
+        trip_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'CAR',
+        capacity INTEGER NOT NULL DEFAULT 4,
+        created_at TEXT,
+        last_synced_at TEXT,
+        FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // Sub group members table
+    await db.execute('''
+      CREATE TABLE sub_group_members (
+        id TEXT PRIMARY KEY,
+        sub_group_id TEXT NOT NULL,
+        participant_id TEXT NOT NULL,
+        display_name TEXT,
+        avatar_url TEXT,
+        joined_at TEXT,
+        last_synced_at TEXT,
+        FOREIGN KEY (sub_group_id) REFERENCES sub_groups (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // Activity logs table
+    await db.execute('''
+      CREATE TABLE activity_logs (
+        id TEXT PRIMARY KEY,
+        trip_id TEXT NOT NULL,
+        actor_id TEXT,
+        target_participant_id TEXT,
+        category TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        log_text TEXT NOT NULL,
+        metadata TEXT,
+        actor_name TEXT,
+        actor_avatar TEXT,
+        created_at TEXT NOT NULL,
+        last_synced_at TEXT,
+        FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // Categories table
+    await db.execute('''
+      CREATE TABLE categories (
+        id TEXT PRIMARY KEY,
+        trip_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        icon TEXT,
+        last_synced_at TEXT,
+        FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
       )
     ''');
 
@@ -120,6 +209,21 @@ class LocalDatabase {
       'CREATE INDEX idx_settlements_trip ON settlements(trip_id)',
     );
     await db.execute('CREATE INDEX idx_sync_queue ON sync_queue(table_name)');
+    await db.execute(
+      'CREATE INDEX idx_participants_trip ON participants(trip_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_sub_groups_trip ON sub_groups(trip_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_sgm_group ON sub_group_members(sub_group_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_activity_trip ON activity_logs(trip_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_categories_trip ON categories(trip_id)',
+    );
   }
 
   /// Handle database upgrades
@@ -159,6 +263,149 @@ class LocalDatabase {
         'ALTER TABLE settlements RENAME COLUMN recipient_id TO recipient_participant_id',
       );
     }
+
+    if (oldVersion < 4) {
+      // Add new columns to sync_queue (try-catch: column may already exist)
+      try {
+        await db.execute(
+          'ALTER TABLE sync_queue ADD COLUMN retry_count INTEGER DEFAULT 0',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE sync_queue ADD COLUMN last_error TEXT',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE sync_queue ADD COLUMN conflict_data TEXT',
+        );
+      } catch (_) {}
+
+      // Drop and recreate gear_items with correct schema
+      await db.execute('DROP TABLE IF EXISTS gear_items');
+      await db.execute('''
+        CREATE TABLE gear_items (
+          id TEXT PRIMARY KEY,
+          trip_id TEXT NOT NULL,
+          item_name TEXT NOT NULL,
+          assigned_to TEXT,
+          is_packed INTEGER DEFAULT 0,
+          sequence_id INTEGER DEFAULT 0,
+          is_high_priority INTEGER DEFAULT 0,
+          assigned_to_name TEXT,
+          assigned_to_avatar TEXT,
+          created_at TEXT,
+          synced_at TEXT,
+          is_deleted INTEGER DEFAULT 0,
+          deleted_at TEXT,
+          FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_gear_trip ON gear_items(trip_id)',
+      );
+
+      // Create participants table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS participants (
+          id TEXT PRIMARY KEY,
+          trip_id TEXT NOT NULL,
+          user_id TEXT,
+          role TEXT NOT NULL DEFAULT 'MEMBER',
+          display_name TEXT,
+          avatar_url TEXT,
+          is_shadow INTEGER NOT NULL DEFAULT 0,
+          joined_at TEXT NOT NULL DEFAULT '',
+          last_synced_at TEXT,
+          FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // Create sub_groups table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sub_groups (
+          id TEXT PRIMARY KEY,
+          trip_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'CAR',
+          capacity INTEGER NOT NULL DEFAULT 4,
+          created_at TEXT,
+          last_synced_at TEXT,
+          FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // Create sub_group_members table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sub_group_members (
+          id TEXT PRIMARY KEY,
+          sub_group_id TEXT NOT NULL,
+          participant_id TEXT NOT NULL,
+          display_name TEXT,
+          avatar_url TEXT,
+          joined_at TEXT,
+          last_synced_at TEXT,
+          FOREIGN KEY (sub_group_id) REFERENCES sub_groups (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // Create activity_logs table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS activity_logs (
+          id TEXT PRIMARY KEY,
+          trip_id TEXT NOT NULL,
+          actor_id TEXT,
+          target_participant_id TEXT,
+          category TEXT NOT NULL,
+          event_type TEXT NOT NULL,
+          log_text TEXT NOT NULL,
+          metadata TEXT,
+          actor_name TEXT,
+          actor_avatar TEXT,
+          created_at TEXT NOT NULL,
+          last_synced_at TEXT,
+          FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // Create categories table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS categories (
+          id TEXT PRIMARY KEY,
+          trip_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          icon TEXT,
+          last_synced_at TEXT,
+          FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // Create indexes for new tables
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_participants_trip ON participants(trip_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sub_groups_trip ON sub_groups(trip_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sgm_group ON sub_group_members(sub_group_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_activity_trip ON activity_logs(trip_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_categories_trip ON categories(trip_id)',
+      );
+    }
+
+    if (oldVersion < 5) {
+      try {
+        await db.execute(
+          "ALTER TABLE trips ADD COLUMN currency TEXT DEFAULT 'OMR'",
+        );
+      } catch (_) {}
+    }
   }
 
   /// Close database
@@ -173,6 +420,12 @@ class LocalDatabase {
   /// Clear all cached data
   static Future<void> clearAll() async {
     final db = await database;
+    // Delete child tables first to respect foreign key constraints
+    await db.delete('activity_logs');
+    await db.delete('sub_group_members');
+    await db.delete('sub_groups');
+    await db.delete('participants');
+    await db.delete('categories');
     await db.delete('expenses');
     await db.delete('settlements');
     await db.delete('gear_items');

@@ -12,15 +12,25 @@ class SupabaseConfig {
     await Supabase.initialize(
       url: const String.fromEnvironment('SUPABASE_URL'),
       anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
-      authOptions: const FlutterAuthClientOptions(
-        authFlowType: AuthFlowType.pkce,
-      ),
       realtimeClientOptions: const RealtimeClientOptions(
         logLevel: RealtimeLogLevel.info,
       ),
       debug: kDebugMode, // Only enable debug logging in debug builds
     );
     log('Supabase initialized');
+  }
+
+  /// Ensure an anonymous session exists.
+  /// If no session is active, signs in anonymously so that
+  /// `auth.uid()` is always available for RLS policies.
+  static Future<void> ensureAnonymousSession() async {
+    if (client.auth.currentSession != null) {
+      log('Session already active');
+      return;
+    }
+    log('No session found — signing in anonymously');
+    await client.auth.signInAnonymously();
+    log('Anonymous session established');
   }
 
   /// Get the current authenticated user

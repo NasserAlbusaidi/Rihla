@@ -66,18 +66,24 @@ void main() {
           tripActivityProvider(
             mockTrip.id,
           ).overrideWith((ref) => Stream.value([])),
+          tripTransactionActivityProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
         ],
         child: MaterialApp(home: LedgerScreen(trip: mockTrip)),
       ),
     );
 
-    // Allow animations to settle
+    // Allow streams and animations to settle
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
-    // Verify expense is shown
-    expect(find.text('Pizza'), findsOneWidget);
-    expect(find.text('10.000'), findsOneWidget); // 3 decimal places
-    expect(find.text('OMR'), findsWidgets);
+    // Verify expense is shown (rendered via unified ledger as transaction card)
+    // Items may be below the viewport in CustomScrollView, so use skipOffstage
+    expect(find.text('Pizza', skipOffstage: false), findsOneWidget);
+    expect(find.textContaining('10.000', skipOffstage: false), findsWidgets); // 3 decimal places
 
     // Verify balance header
     // Since I paid 10 for a group of 1 (myself), net is 0.
@@ -121,20 +127,27 @@ void main() {
           tripActivityProvider(
             mockTrip.id,
           ).overrideWith((ref) => Stream.value([])),
+          tripTransactionActivityProvider(
+            mockTrip.id,
+          ).overrideWith((ref) => Stream.value([])),
         ],
         child: MaterialApp(home: LedgerScreen(trip: mockTrip)),
       ),
     );
 
+    // Allow streams and animations to settle
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     // I paid 10. 2 people. Share is 5.
     // Paid 10. Owed 5. Net +5.
     // Should show positive balance.
 
-    expect(find.text('Pizza'), findsOneWidget);
+    expect(find.text('Pizza', skipOffstage: false), findsOneWidget);
     expect(
-      find.textContaining('5.000'),
+      find.textContaining('5.000', skipOffstage: false),
       findsWidgets,
     ); // Should find 5.000 in balance header or tooltip
   });

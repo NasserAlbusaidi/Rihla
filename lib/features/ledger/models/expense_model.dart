@@ -1,5 +1,4 @@
 import 'package:decimal/decimal.dart';
-import '../../../core/utils/formatters.dart';
 
 /// Expense scope determines who shares the cost
 enum ExpenseScope {
@@ -124,10 +123,8 @@ class Expense {
     };
   }
 
-  /// Format amount for display (OMR uses 3 decimal places)
-  String get formattedAmount {
-    return AppFormatters.formatOMR(amount);
-  }
+  /// Alias for receiptUrl for backward compatibility
+  String? get receiptPath => receiptUrl;
 
   Expense copyWith({
     String? id,

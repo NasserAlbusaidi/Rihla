@@ -15,6 +15,9 @@ import 'package:safar/core/router/app_router.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 import 'package:safar/features/activity/services/activity_service.dart';
+import 'package:safar/features/memories/providers/memory_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:safar/core/providers/settings_provider.dart';
 
 class MockUser extends Mock implements User {}
 
@@ -33,6 +36,8 @@ void main() {
   when(() => mockUser.email).thenReturn('test@example.com');
 
   testWidgets('Happy Path: Navigate to Ledger and Add Expense', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
     // 1. Initialize the app with mocked providers
     await tester.pumpWidget(
       ProviderScope(
@@ -67,14 +72,14 @@ void main() {
             ),
           ),
           tripBalancesProvider(mockTrip.id).overrideWith(
-            (ref) => Future.value([
+            (ref) async => [
               UserBalance(
                 participantId: 'p-1',
                 totalPaid: Decimal.zero,
                 totalOwed: Decimal.zero,
                 netBalance: Decimal.zero,
               ),
-            ]),
+            ],
           ),
           tripGearProvider(mockTrip.id).overrideWith((ref) => Stream.value([])),
           tripSubGroupsProvider(
@@ -92,6 +97,11 @@ void main() {
           tripSettlementsProvider(
             mockTrip.id,
           ).overrideWith((ref) => Stream.value([])),
+          tripMemoriesProvider(
+            mockTrip.id,
+          ).overrideWith((ref) async => []),
+          onboardingCompleteProvider.overrideWith((ref) => true),
+          sharedPreferencesProvider.overrideWithValue(prefs),
         ],
         child: Consumer(
           builder: (context, ref, _) {
@@ -123,11 +133,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // 4. Verify Ledger Screen
-    expect(find.text('Recent Activity', skipOffstage: false), findsWidgets);
-    expect(find.text('Add Expense', skipOffstage: false), findsWidgets);
+    expect(find.text('Ledger', skipOffstage: false), findsWidgets);
+    expect(find.text('ADD EXPENSE', skipOffstage: false), findsWidgets);
 
     // 5. Add Expense (verify New Expense sheet appears)
-    final addBtn = find.text('Add Expense', skipOffstage: false);
+    final addBtn = find.text('ADD EXPENSE', skipOffstage: false);
     await tester.tap(addBtn.first);
     await tester.pumpAndSettle();
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
@@ -41,6 +42,17 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
 
   // Payer selection (for leaders)
   String? _selectedPayerId;
+
+  /// Get the trip's currency code
+  String get _tripCurrency {
+    final trips = ref.read(userTripsProvider).valueOrNull;
+    if (trips == null) return 'OMR';
+    final trip = trips.cast<Trip?>().firstWhere(
+      (t) => t!.id == widget.tripId,
+      orElse: () => null,
+    );
+    return trip?.currency ?? 'OMR';
+  }
 
   @override
   void initState() {
@@ -152,7 +164,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
 
       final success = await ref
           .read(expenseServiceProvider)
-          .deleteExpense(widget.expense.id);
+          .deleteExpense(widget.expense.id, tripId: widget.tripId);
 
       setState(() => _isSubmitting = false);
 
@@ -334,13 +346,11 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     final currentParticipant = ref.watch(
       currentParticipantProvider(widget.tripId),
     );
-    final trip = ref
-        .watch(userTripsProvider)
-        .valueOrNull
-        ?.firstWhere(
-          (t) => t.id == widget.tripId,
-          orElse: () => throw Exception('Trip not found'),
-        );
+    final trips = ref.watch(userTripsProvider).valueOrNull;
+    final trip = trips?.cast<Trip?>().firstWhere(
+      (t) => t!.id == widget.tripId,
+      orElse: () => null,
+    );
     final participantsAsync = ref.watch(
       tripLogisticsParticipantsProvider(widget.tripId),
     );
@@ -491,7 +501,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                 ),
                 // Show original amount for reference
                 Text(
-                  'was ${widget.expense.amount.toStringAsFixed(3)} OMR',
+                  'was ${widget.expense.amount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3)} $_tripCurrency',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textMuted,
@@ -508,7 +518,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
               onChanged: (_) => setState(() {}), // Trigger rebuild for diff
               decoration: InputDecoration(
                 hintText: '0.000',
-                suffixText: 'OMR',
+                suffixText: _tripCurrency,
                 fillColor: AppColors.surfaceLight,
                 filled: true,
                 border: OutlineInputBorder(
@@ -548,7 +558,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          widget.expense.amount.toStringAsFixed(3),
+                          widget.expense.amount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3),
                           style: const TextStyle(
                             decoration: TextDecoration.lineThrough,
                             color: AppColors.textMuted,
@@ -563,7 +573,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '${newAmount.toStringAsFixed(3)} OMR',
+                          '${newAmount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3)} $_tripCurrency',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: AppColors.warning,

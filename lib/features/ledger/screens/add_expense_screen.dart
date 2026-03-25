@@ -2,22 +2,25 @@ import 'dart:io';
 import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
+import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
+import '../widgets/amount_input_section.dart';
+import '../widgets/category_selection_step.dart';
+import '../widgets/expense_success_dialog.dart';
+import '../widgets/receipt_picker_section.dart';
+import '../widgets/split_scope_selector.dart';
 
 /// Omni-Splitter (Add Expense Screen) - Redesigned with 3-step flow
 class AddExpenseScreen extends ConsumerStatefulWidget {
@@ -47,6 +50,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   // Receipt capture state
   String? _receiptPath;
   bool _isUploadingReceipt = false;
+
+  /// Get the trip's currency code
+  String get _tripCurrency {
+    final trips = ref.read(userTripsProvider).valueOrNull;
+    if (trips == null) return 'OMR';
+    final trip = trips.cast<Trip?>().firstWhere(
+      (t) => t!.id == widget.tripId,
+      orElse: () => null,
+    );
+    return trip?.currency ?? 'OMR';
+  }
 
   @override
   void dispose() {
@@ -103,10 +117,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         if (_amount == '0') {
           _amount = key;
         } else {
-          // Limit to 3 decimal places (OMR)
+          // Limit decimal places based on trip currency
+          final maxDecimals = AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3;
           if (_amount.contains('.')) {
             final parts = _amount.split('.');
-            if (parts[1].length < 3) {
+            if (parts[1].length < maxDecimals) {
               _amount += key;
             }
           } else {
@@ -118,7 +133,25 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   Future<void> _submit() async {
-    final amount = Decimal.parse(_amount);
+    Decimal amount;
+    try {
+      amount = Decimal.parse(_amount);
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid amount')),
+        );
+      }
+      return;
+    }
+    if (amount <= Decimal.zero) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Amount must be greater than zero')),
+        );
+      }
+      return;
+    }
     final note = _noteController.text.trim();
 
     final currentParticipant = ref.read(
@@ -135,6 +168,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (_receiptPath != null) {
       setState(() => _isUploadingReceipt = true);
       receiptUrl = await _uploadReceipt(_receiptPath!);
+      if (!mounted) return;
       setState(() => _isUploadingReceipt = false);
     }
 
@@ -203,8 +237,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _SuccessDialog(
+      builder: (context) => ExpenseSuccessDialog(
         expense: expense,
+        currency: _tripCurrency,
         onDone: () {
           Navigator.of(context).pop();
           context.pop(true);
@@ -248,8 +283,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               child: IndexedStack(
                 index: _currentStep,
                 children: [
-                  SingleChildScrollView(child: _buildAmountStep()),
-                  _buildCategoryStep(categoriesAsync),
+                  SingleChildScrollView(
+                    child: AmountInputSection(
+                      amount: _amount,
+                      currency: _tripCurrency,
+                      onKeyPress: _onKeyPress,
+                    ),
+                  ),
+                  CategorySelectionStep(
+                    categoriesAsync: categoriesAsync,
+                    selectedCategoryId: _selectedCategoryId,
+                    onCategorySelected: (id) {
+                      setState(() => _selectedCategoryId = id);
+                    },
+                  ),
                   _buildConfirmStep(error),
                 ],
               ),
@@ -319,187 +366,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
-  Widget _buildAmountStep() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const SizedBox(height: 40),
-        // Amount Display
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            const Text(
-              'OMR',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w300,
-                color: AppColors.textMuted,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              _amount,
-              style: const TextStyle(
-                fontSize: 64,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 40),
-        // Numpad
-        _buildNumpad(),
-        const SizedBox(height: 40),
-      ],
-    );
-  }
-
-  Widget _buildNumpad() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Column(
-        children: [
-          _buildNumpadRow(['1', '2', '3']),
-          const SizedBox(height: 20),
-          _buildNumpadRow(['4', '5', '6']),
-          const SizedBox(height: 20),
-          _buildNumpadRow(['7', '8', '9']),
-          const SizedBox(height: 20),
-          _buildNumpadRow(['.', '0', 'back']),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNumpadRow(List<String> keys) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: keys.map((key) {
-        if (key == 'back') {
-          return _buildNumpadKey(
-            child: const Icon(
-              Icons.backspace_outlined,
-              color: AppColors.textPrimary,
-            ),
-            onTap: () => _onKeyPress('back'),
-          );
-        }
-        return _buildNumpadKey(
-          child: Text(
-            key,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          onTap: () => _onKeyPress(key),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildNumpadKey({required Widget child, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 80,
-        height: 60,
-        alignment: Alignment.center,
-        child: child,
-      ),
-    );
-  }
-
-  Widget _buildCategoryStep(AsyncValue<List<ExpenseCategory>> categoriesAsync) {
-    return categoriesAsync.when(
-      data: (categories) => Column(
-        children: [
-          const SizedBox(height: 44),
-          const Text(
-            'What was this for?',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 44),
-          SizedBox(
-            height: 120,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 16),
-              itemBuilder: (context, index) {
-                final cat = categories[index];
-                final isSelected = _selectedCategoryId == cat.id;
-                return GestureDetector(
-                  onTap: () {
-                    HapticService.lightClick();
-                    setState(() => _selectedCategoryId = cat.id);
-                  },
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.mint
-                              : AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: AppColors.mint.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Icon(
-                          cat.iconData,
-                          color: isSelected
-                              ? Colors.white
-                              : AppColors.textSecondary,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        cat.name,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                          color: isSelected
-                              ? AppColors.textPrimary
-                              : AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => const NetworkErrorWidget(),
-    );
-  }
-
   Widget _buildConfirmStep(String? error) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -515,55 +381,27 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          // Scope Tabs
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    _buildConfirmScopeTab(
-                      'Global',
-                      ExpenseScope.global,
-                      Iconsax.global,
-                    ),
-                    _buildConfirmScopeTab(
-                      'My Car',
-                      ExpenseScope.subGroup,
-                      Iconsax.car,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    _buildConfirmScopeTab(
-                      'Custom',
-                      ExpenseScope.custom,
-                      Iconsax.people,
-                    ),
-                    _buildConfirmScopeTab(
-                      'Personal',
-                      ExpenseScope.personal,
-                      Iconsax.user,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          SplitScopeSelector(
+            tripId: widget.tripId,
+            scope: _scope,
+            onScopeChanged: (scope) => setState(() => _scope = scope),
+            customSplitParticipants: _customSplitParticipants,
+            onCustomSplitChanged: (participants) {
+              setState(() {
+                _customSplitParticipants.clear();
+                _customSplitParticipants.addAll(participants);
+              });
+            },
+            selectedSubGroupId: _selectedSubGroupId,
+            onAutoSelectSubGroup: _autoSelectUserSubGroup,
+            onSubGroupIdCleared: (value) {
+              setState(() => _selectedSubGroupId = value);
+            },
+            selectedPayerId: _selectedPayerId,
+            onPayerChanged: (value) {
+              setState(() => _selectedPayerId = value);
+            },
           ),
-          // Custom participant selection
-          if (_scope == ExpenseScope.custom) ...[
-            const SizedBox(height: 16),
-            _buildCustomParticipantSelector(),
-          ],
-          const SizedBox(height: 24),
-          // Paid By selector (for leaders only)
-          _buildPayerSelector(),
           const SizedBox(height: 24),
           // Note Input
           const Text(
@@ -591,432 +429,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           ),
           // Receipt Capture
           const SizedBox(height: 24),
-          const Text(
-            'RECEIPT (OPTIONAL)',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
-              letterSpacing: 1.5,
-            ),
+          ReceiptPickerSection(
+            receiptPath: _receiptPath,
+            isUploading: _isUploadingReceipt,
+            onPick: _pickReceipt,
+            onRemove: () => setState(() => _receiptPath = null),
           ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: _pickReceipt,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: _receiptPath != null
-                      ? AppColors.mint
-                      : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-              child: _receiptPath != null
-                  ? Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(_receiptPath!),
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Receipt attached',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                'Tap to change',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            HapticService.lightClick();
-                            setState(() => _receiptPath = null);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.rose.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Iconsax.trash,
-                              size: 18,
-                              color: AppColors.rose,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Iconsax.camera,
-                            size: 20,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Add a receipt photo',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-          ),
-          if (_isUploadingReceipt)
-            const Padding(
-              padding: EdgeInsets.only(top: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  SizedBox(width: 8),
-                  Text('Uploading receipt...'),
-                ],
-              ),
-            ),
           if (error != null) _buildErrorBanner(error),
         ],
       ),
-    );
-  }
-
-  Widget _buildConfirmScopeTab(
-    String label,
-    ExpenseScope scope,
-    IconData icon,
-  ) {
-    final isSelected = _scope == scope;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          HapticService.selection();
-          setState(() => _scope = scope);
-
-          // Auto-select user's sub-group when choosing 'My Car' scope
-          if (scope == ExpenseScope.subGroup) {
-            _autoSelectUserSubGroup();
-          } else {
-            _selectedSubGroupId = null;
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected ? AppColors.cardShadow : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? AppColors.mint : AppColors.textMuted,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected
-                      ? AppColors.textPrimary
-                      : AppColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Build participant multi-select for custom splits
-  Widget _buildCustomParticipantSelector() {
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(widget.tripId),
-    );
-    final currentParticipant = ref.watch(
-      currentParticipantProvider(widget.tripId),
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'SELECT PARTICIPANTS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textMuted,
-                letterSpacing: 1.5,
-              ),
-            ),
-            Text(
-              '${_customSplitParticipants.length} selected',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: _customSplitParticipants.isNotEmpty
-                    ? AppColors.mint
-                    : AppColors.textMuted,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          constraints: const BoxConstraints(maxHeight: 200),
-          child: participantsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                const InlineErrorWidget(message: 'Unable to load participants'),
-            data: (participants) {
-              // Exclude current user from selection (they're auto-included)
-              final otherParticipants = participants
-                  .where((p) => p.id != currentParticipant?.id)
-                  .toList();
-
-              if (otherParticipants.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No other participants to select'),
-                );
-              }
-
-              return ListView.builder(
-                shrinkWrap: true,
-                itemCount: otherParticipants.length,
-                itemBuilder: (context, index) {
-                  final participant = otherParticipants[index];
-                  final isSelected = _customSplitParticipants.contains(
-                    participant.id,
-                  );
-
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    leading: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.mint.withValues(alpha: 0.2)
-                            : AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: Text(
-                          (participant.displayName ?? 'U')[0].toUpperCase(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isSelected
-                                ? AppColors.mint
-                                : AppColors.textMuted,
-                          ),
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      participant.displayName ?? 'Unknown',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    subtitle: participant.isShadow
-                        ? Text(
-                            'Shadow Profile',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                            ),
-                          )
-                        : null,
-                    trailing: Checkbox(
-                      value: isSelected,
-                      activeColor: AppColors.mint,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      onChanged: (checked) {
-                        HapticService.lightClick();
-                        setState(() {
-                          if (checked == true) {
-                            _customSplitParticipants.add(participant.id);
-                          } else {
-                            _customSplitParticipants.remove(participant.id);
-                          }
-                        });
-                      },
-                    ),
-                    onTap: () {
-                      HapticService.lightClick();
-                      setState(() {
-                        if (isSelected) {
-                          _customSplitParticipants.remove(participant.id);
-                        } else {
-                          _customSplitParticipants.add(participant.id);
-                        }
-                      });
-                    },
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Build payer selector (leaders can add expense on behalf of others)
-  Widget _buildPayerSelector() {
-    final currentParticipant = ref.watch(
-      currentParticipantProvider(widget.tripId),
-    );
-    final trip = ref
-        .watch(userTripsProvider)
-        .valueOrNull
-        ?.firstWhere(
-          (t) => t.id == widget.tripId,
-          orElse: () => throw Exception('Trip not found'),
-        );
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(widget.tripId),
-    );
-    final participants = participantsAsync.valueOrNull ?? [];
-
-    // Check if current user is the leader
-    final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.id;
-
-    // If not leader or no participants, don't show
-    if (!isLeader || participants.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    // Default to current participant if not set
-    final effectivePayerId = _selectedPayerId ?? currentParticipant?.id;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'PAID BY',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textMuted,
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.textMuted.withValues(alpha: 0.3),
-            ),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: effectivePayerId,
-              isExpanded: true,
-              icon: const Icon(Iconsax.arrow_down_1),
-              items: participants.map((p) {
-                final isMe = p.id == currentParticipant?.id;
-                return DropdownMenuItem(
-                  value: p.id,
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.primaryLight,
-                        child: Text(
-                          (p.displayName ?? 'U')[0].toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          isMe
-                              ? '${p.displayName ?? 'Unknown'} (Me)'
-                              : p.displayName ?? 'Unknown',
-                          style: TextStyle(
-                            fontWeight: isMe
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                HapticService.lightClick();
-                setState(() => _selectedPayerId = value);
-              },
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1114,208 +535,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     ],
                   ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Success Dialog after saving expense
-class _SuccessDialog extends StatelessWidget {
-  final Expense expense;
-  final VoidCallback onDone;
-  final VoidCallback onAddAnother;
-
-  const _SuccessDialog({
-    required this.expense,
-    required this.onDone,
-    required this.onAddAnother,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.background,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Close button
-            Align(
-              alignment: Alignment.topRight,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: AppColors.textMuted),
-                onPressed: onDone,
-              ),
-            ),
-
-            // Success Icon
-            Container(
-              width: 80,
-              height: 80,
-              decoration: const BoxDecoration(
-                color: AppColors.primaryLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Iconsax.tick_circle5,
-                size: 48,
-                color: AppColors.primary,
-              ),
-            ).animate().scale(
-              delay: 100.ms,
-              duration: 300.ms,
-              curve: Curves.elasticOut,
-            ),
-
-            const SizedBox(height: 16),
-
-            Text(
-              'Expense Saved',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-
-            const SizedBox(height: 4),
-
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'SYNCED TO CLOUD',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Summary Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: AppColors.cardShadow,
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'TOTAL AMOUNT',
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    expense.formattedAmount,
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Category row
-                  if (expense.categoryName != null)
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Iconsax.category,
-                            size: 18,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'CATEGORY',
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
-                            Text(
-                              expense.categoryName!,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        const Icon(
-                          Iconsax.arrow_right_3,
-                          size: 16,
-                          color: AppColors.textMuted,
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Done Button
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: onDone,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Done', style: TextStyle(fontWeight: FontWeight.w600)),
-                    SizedBox(width: 8),
-                    Icon(Iconsax.tick_circle, size: 18),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Add Another
-            TextButton(
-              onPressed: onAddAnother,
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Iconsax.add, size: 18),
-                  SizedBox(width: 8),
-                  Text('Add Another'),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );

@@ -131,7 +131,7 @@ void main() {
             tripId: 't1',
             payerParticipantId: 'p2',
             recipientParticipantId: 'p1',
-            amount: 10.0,
+            amount: Decimal.parse('10'),
             settledAt: DateTime.now(),
           ),
         ];

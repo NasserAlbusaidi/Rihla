@@ -11,6 +11,32 @@ void main() {
       expect(AppFormatters.formatOMR(Decimal.parse('10.5256')), '10.526 OMR');
     });
 
+    test('formatCurrency: Should format with correct symbol and decimals', () {
+      expect(
+        AppFormatters.formatCurrency(Decimal.parse('10'), 'OMR'),
+        'ر.ع. 10.000',
+      );
+      expect(
+        AppFormatters.formatCurrency(Decimal.parse('25.5'), 'USD'),
+        '\$ 25.50',
+      );
+      expect(
+        AppFormatters.formatCurrency(Decimal.parse('99.99'), 'EUR'),
+        '€ 99.99',
+      );
+      expect(
+        AppFormatters.formatCurrency(Decimal.parse('100'), 'AED'),
+        'د.إ 100.00',
+      );
+    });
+
+    test('formatCurrency: Should fallback for unknown currency', () {
+      expect(
+        AppFormatters.formatCurrency(Decimal.parse('50'), 'XYZ'),
+        'XYZ 50.000',
+      );
+    });
+
     test('formatRelativeDate: Should return Today for same day', () {
       final now = DateTime(2023, 10, 10, 12, 0);
       final date = DateTime(2023, 10, 10, 8, 0);

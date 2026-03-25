@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/haptic_service.dart';
+import '../models/trip_model.dart';
 import '../providers/trip_provider.dart';
 
-/// Join Trip Screen - Light theme design
+/// Join Trip Screen — two-step flow: enter code, then pick your name
 class JoinTripScreen extends ConsumerStatefulWidget {
   const JoinTripScreen({super.key});
 
@@ -20,18 +22,69 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
   final _codeController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
+  // Step 2 state
+  Trip? _foundTrip;
+  List<Participant>? _unclaimedNames;
+
+  @override
+  void initState() {
+    super.initState();
+    _codeController.addListener(_onCodeChanged);
+  }
+
+  void _onCodeChanged() {
+    final text = _codeController.text;
+    if (text.isNotEmpty) {
+      if (text.length == 6) {
+        HapticService.success();
+      } else {
+        HapticService.lightClick();
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _codeController.removeListener(_onCodeChanged);
     _codeController.dispose();
     super.dispose();
   }
 
-  Future<void> _joinTrip() async {
+  Future<void> _findTrip() async {
     if (!_formKey.currentState!.validate()) return;
 
     final code = _codeController.text.trim().toUpperCase();
     final tripService = ref.read(tripServiceProvider);
-    final trip = await tripService.joinTrip(code);
+    final result = await tripService.findTripForJoin(code);
+
+    if (result == null) {
+      // Either error (shown via tripErrorProvider) or already a member
+      final error = ref.read(tripErrorProvider);
+      if (error == null && mounted) {
+        // Already a member — navigate home
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You\'re already in this trip!'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+        context.go('/home');
+      }
+      return;
+    }
+
+    setState(() {
+      _foundTrip = result.trip;
+      _unclaimedNames = result.unclaimed;
+    });
+  }
+
+  Future<void> _claimName(Participant participant) async {
+    final tripService = ref.read(tripServiceProvider);
+    final trip = await tripService.claimParticipant(
+      _foundTrip!.id,
+      participant.id,
+    );
 
     if (trip != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -40,13 +93,26 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
             children: [
               const Icon(Iconsax.tick_circle, color: Colors.white, size: 20),
               const SizedBox(width: 12),
-              Text('Joined "${trip.name}"!'),
+              Text('Joined "${trip.name}" as ${participant.displayName}!'),
             ],
           ),
           backgroundColor: AppColors.primary,
         ),
       );
       context.go('/home');
+    }
+  }
+
+  void _goBack() {
+    if (_foundTrip != null) {
+      // Go back to code entry
+      setState(() {
+        _foundTrip = null;
+        _unclaimedNames = null;
+      });
+      ref.read(tripErrorProvider.notifier).state = null;
+    } else {
+      context.pop();
     }
   }
 
@@ -62,32 +128,9 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
           children: [
             _buildAppBar(),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      // Header
-                      _buildHeader().animate().fadeIn().slideY(begin: 0.1),
-
-                      const SizedBox(height: 48),
-
-                      // Code Input Card
-                      _buildCodeCard(
-                        error,
-                      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-
-                      const SizedBox(height: 32),
-
-                      // Join Button
-                      _buildJoinButton(
-                        isLoading,
-                      ).animate().fadeIn(delay: 300.ms),
-                    ],
-                  ),
-                ),
-              ),
+              child: _foundTrip != null
+                  ? _buildNamePicker(isLoading, error)
+                  : _buildCodeEntry(isLoading, error),
             ),
           ],
         ),
@@ -102,12 +145,12 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
         children: [
           IconButton(
             icon: const Icon(Iconsax.arrow_left),
-            onPressed: () => context.pop(),
+            onPressed: _goBack,
           ),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Join Trip',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              _foundTrip != null ? 'Pick Your Name' : 'Join Trip',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
           ),
@@ -117,7 +160,37 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildCodeEntry(bool isLoading, String? error) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            // Header
+            _buildCodeHeader().animate().fadeIn().slideY(begin: 0.1),
+
+            const SizedBox(height: 48),
+
+            // Code Input Card
+            _buildCodeCard(error)
+                .animate()
+                .fadeIn(delay: 200.ms)
+                .slideY(begin: 0.1),
+
+            const SizedBox(height: 32),
+
+            // Find Trip Button
+            _buildFindButton(isLoading)
+                .animate()
+                .fadeIn(delay: 300.ms),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCodeHeader() {
     return Column(
       children: [
         Container(
@@ -160,7 +233,6 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
       ),
       child: Column(
         children: [
-          // Code Input
           TextFormField(
             controller: _codeController,
             textAlign: TextAlign.center,
@@ -200,18 +272,13 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
               }
               return null;
             },
-            onFieldSubmitted: (_) => _joinTrip(),
+            onFieldSubmitted: (_) => _findTrip(),
           ),
-
           const SizedBox(height: 8),
-
-          // Helper text
           Text(
             'Ask your trip organizer for the code',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-
-          // Error
           if (error != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -222,19 +289,12 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Iconsax.warning_2,
-                    color: AppColors.error,
-                    size: 18,
-                  ),
+                  const Icon(Iconsax.warning_2, color: AppColors.error, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       error,
-                      style: const TextStyle(
-                        color: AppColors.error,
-                        fontSize: 13,
-                      ),
+                      style: const TextStyle(color: AppColors.error, fontSize: 13),
                     ),
                   ),
                 ],
@@ -246,7 +306,7 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
     );
   }
 
-  Widget _buildJoinButton(bool isLoading) {
+  Widget _buildFindButton(bool isLoading) {
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -263,7 +323,7 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
           ],
         ),
         child: ElevatedButton(
-          onPressed: isLoading ? null : _joinTrip,
+          onPressed: isLoading ? null : _findTrip,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
@@ -280,12 +340,197 @@ class _JoinTripScreenState extends ConsumerState<JoinTripScreen> {
               : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Iconsax.login),
+                    Icon(Iconsax.search_normal),
                     SizedBox(width: 8),
-                    Text('Join Trip'),
+                    Text('Find Trip'),
                   ],
                 ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildNamePicker(bool isLoading, String? error) {
+    final unclaimed = _unclaimedNames ?? [];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          // Trip info header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Iconsax.airplane, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _foundTrip!.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${unclaimed.length} name${unclaimed.length == 1 ? '' : 's'} available',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn().slideY(begin: 0.1),
+
+          const SizedBox(height: 24),
+
+          // Prompt
+          Text(
+            'Which one is you?',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ).animate().fadeIn(delay: 100.ms),
+
+          const SizedBox(height: 16),
+
+          if (unclaimed.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Column(
+                children: [
+                  Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
+                  SizedBox(height: 16),
+                  Text(
+                    'All names have been claimed',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Ask the trip creator to add your name',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 200.ms)
+          else
+            ...List.generate(unclaimed.length, (index) {
+              final participant = unclaimed[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Material(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: isLoading ? null : () => _claimName(participant),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.borderLight, width: 1.5),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Center(
+                              child: Text(
+                                (participant.displayName ?? '?')[0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              participant.displayName ?? 'Unknown',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Iconsax.arrow_right_3,
+                            size: 18,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ).animate().fadeIn(delay: Duration(milliseconds: 200 + (index * 80))).slideY(begin: 0.1);
+            }),
+
+          // Error display
+          if (error != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Iconsax.warning_2, color: AppColors.error, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      error,
+                      style: const TextStyle(color: AppColors.error, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

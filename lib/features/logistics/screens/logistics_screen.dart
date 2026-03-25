@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_tab_bar.dart';
+import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../trip/models/trip_model.dart';
@@ -36,6 +39,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _nameController.dispose();
+    _capacityController.dispose();
     super.dispose();
   }
 
@@ -45,127 +50,42 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            _buildTabBar(),
-            Expanded(
-              child: subGroupsAsync.when(
-                data: (groups) => _buildTabContent(groups),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => NetworkErrorWidget(
-                  onRetry: () =>
-                      ref.invalidate(tripSubGroupsProvider(widget.trip.id)),
+      body: Column(
+        children: [
+          ModuleHeader(
+            title: 'Logistics',
+            subtitle: widget.trip.name.toUpperCase(),
+            actions: [
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Iconsax.add,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  onPressed: () => _showCreateDialog(),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(
-              Iconsax.arrow_left,
-              color: AppColors.textSecondary,
-            ),
-            onPressed: () => context.pop(),
+            ],
           ),
-          const SizedBox(width: 8),
+          AppTabBar(
+            controller: _tabController,
+            tabs: const ['Cars', 'Rooms'],
+            activeColor: AppColors.sky,
+          ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'LOGISTICS / CONVOY',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                Text(
-                  widget.trip.name,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(
-              Iconsax.add_circle,
-              color: AppColors.mint,
-              size: 28,
-            ),
-            onPressed: () => _showCreateDialog(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        onTap: (_) => setState(() {}),
-        indicator: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerHeight: 0,
-        labelColor: AppColors.textPrimary,
-        unselectedLabelColor: AppColors.textMuted,
-        labelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1,
-        ),
-        tabs: [
-          Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Iconsax.car, size: 16),
-                const SizedBox(width: 8),
-                const Text('VEHICLES'),
-              ],
-            ),
-          ),
-          Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Iconsax.house, size: 16),
-                const SizedBox(width: 8),
-                const Text('ROOMS'),
-              ],
+            child: subGroupsAsync.when(
+              data: (groups) => _buildTabContent(groups),
+              loading: () => SkeletonLoader.groupList(),
+              error: (e, _) => NetworkErrorWidget(
+                onRetry: () =>
+                    ref.invalidate(tripSubGroupsProvider(widget.trip.id)),
+              ),
             ),
           ),
         ],
@@ -196,10 +116,15 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
       children: [
         _buildUnassignedPool(groups, type),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(24),
-            itemCount: groups.length,
-            itemBuilder: (context, index) => _buildGroupCard(groups[index]),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(tripSubGroupsProvider(widget.trip.id));
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(24),
+              itemCount: groups.length,
+              itemBuilder: (context, index) => _buildGroupCard(groups[index]),
+            ),
           ),
         ),
       ],
@@ -225,50 +150,69 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
 
         if (unassigned.isEmpty) return const SizedBox.shrink();
 
-        return Container(
-          height: 100,
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  'UNASSIGNED PERSONNEL',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5,
-                    color: AppColors.textMuted,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Row(
+                children: [
+                  Text(
+                    'UNASSIGNED PERSONNEL',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.5,
+                      color: AppColors.textMuted,
+                    ),
                   ),
-                ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${unassigned.length} LEFT',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: unassigned.length,
-                  itemBuilder: (context, index) {
-                    final p = unassigned[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Draggable<Participant>(
-                        data: p,
-                        feedback: _buildPoolItem(p, isFeedback: true),
-                        childWhenDragging: Opacity(
-                          opacity: 0.3,
-                          child: _buildPoolItem(p),
-                        ),
-                        onDragStarted: () => HapticService.selection(),
+            ),
+            SizedBox(
+              height: 90,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: unassigned.length,
+                itemBuilder: (context, index) {
+                  final p = unassigned[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Draggable<Participant>(
+                      data: p,
+                      feedback: _buildPoolItem(p, isFeedback: true),
+                      childWhenDragging: Opacity(
+                        opacity: 0.3,
                         child: _buildPoolItem(p),
                       ),
-                    );
-                  },
-                ),
+                      onDragStarted: () => HapticService.selection(),
+                      child: _buildPoolItem(p),
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
       loading: () => const SizedBox(height: 100),
@@ -353,6 +297,20 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => _showCreateDialog(),
+              icon: const Icon(Iconsax.add, size: 18),
+              label: Text('Add ${type.displayName}'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -373,34 +331,45 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           margin: const EdgeInsets.only(bottom: 24),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(32),
             border: Border.all(
               color: candidateData.isNotEmpty
-                  ? AppColors.mint
-                  : AppColors.surfaceLight,
-              width: 2,
+                  ? AppColors.primary
+                  : AppColors.borderLight,
+              width: candidateData.isNotEmpty ? 2 : 1.5,
             ),
-            boxShadow: AppColors.cardShadow,
+            boxShadow: candidateData.isNotEmpty
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ]
+                : AppColors.cardShadow,
           ),
           child: Column(
             children: [
-              // Tactical Header
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.borderLight,
+                          width: 1.5,
+                        ),
                       ),
                       child: Icon(
                         group.type == SubGroupType.car
                             ? Iconsax.car
                             : Iconsax.house,
-                        color: AppColors.textPrimary,
+                        color: AppColors.primary,
                         size: 24,
                       ),
                     ),
@@ -415,21 +384,33 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                             Text(
                               group.name.toUpperCase(),
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                letterSpacing: 1,
+                                letterSpacing: -0.3,
                                 color: AppColors.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              '${group.memberCount}/${group.capacity} SLOTS FILLED',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
                                 color: group.isFull
-                                    ? AppColors.warning
-                                    : AppColors.textMuted,
+                                    ? AppColors.warning.withValues(alpha: 0.1)
+                                    : AppColors.primary.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '${group.memberCount} / ${group.capacity} SLOTS FILLED',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w900,
+                                  color: group.isFull
+                                      ? AppColors.warning
+                                      : AppColors.primary,
+                                ),
                               ),
                             ),
                           ],
@@ -438,7 +419,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                     ),
                     IconButton(
                       icon: const Icon(
-                        Iconsax.trash,
+                        Iconsax.more,
                         size: 20,
                         color: AppColors.textMuted,
                       ),
@@ -447,17 +428,14 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                   ],
                 ),
               ),
-
-              // Member Slots Grid
               Container(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                  spacing: 16,
+                  runSpacing: 16,
                   children: List.generate(group.capacity, (index) {
                     if (index < group.members.length) {
-                      final member = group.members[index];
-                      return _buildMemberSlot(member, group);
+                      return _buildMemberSlot(group.members[index], group);
                     }
                     return _buildEmptySlot(group);
                   }),
@@ -471,47 +449,54 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }
 
   Widget _buildMemberSlot(SubGroupMember member, SubGroup group) {
-    return GestureDetector(
-      onTap: () async {
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            title: const Text('Remove Member?'),
-            content: Text('Remove ${member.displayName} from ${group.name}?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('CANCEL'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'REMOVE',
-                  style: TextStyle(color: AppColors.rose),
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () async {
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: AppColors.surface,
+                title: const Text(
+                  'REMOVE MEMBER',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
                 ),
+                content: Text(
+                  'Remove ${member.displayName?.toUpperCase()} from ${group.name.toUpperCase()}?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('CANCEL'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text(
+                      'REMOVE',
+                      style: TextStyle(
+                        color: AppColors.rose,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-        if (confirm == true) {
-          HapticService.lightClick();
-          await ref.read(subGroupServiceProvider).removeMember(member.id);
-        }
-      },
-      onLongPress: () async {
-        HapticService.selection();
-        await ref.read(subGroupServiceProvider).removeMember(member.id);
-      },
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
+            );
+            if (confirm == true) {
+              HapticService.lightClick();
+              await ref.read(subGroupServiceProvider).removeMember(member.id);
+            }
+          },
+          child: Container(
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: AppColors.surfaceLight,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.mint, width: 2),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
             child: Center(
               child: member.avatarUrl != null
@@ -519,62 +504,71 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                       child: Image.network(
                         member.avatarUrl!,
                         fit: BoxFit.cover,
+                        width: 60,
+                        height: 60,
                       ),
                     )
                   : Text(
                       member.initials,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: AppColors.mint,
+                        color: AppColors.primary,
                       ),
                     ),
             ),
           ),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: 56,
-            child: Text(
-              (member.displayName?.split(' ')[0] ?? 'UNK').toUpperCase(),
-              style: const TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textMuted,
-              ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: 60,
+          child: Text(
+            (member.displayName?.split(' ')[0] ?? 'UNK').toUpperCase(),
+            style: const TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textSecondary,
             ),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildEmptySlot(SubGroup group) {
     return GestureDetector(
       onTap: () => _showMemberPicker(group),
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.border.withValues(alpha: 0.5),
-            width: 2,
-            style: BorderStyle.none,
-          ),
-        ),
-        child: Container(
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.border.withValues(alpha: 0.3),
-              width: 2,
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.borderLight,
+                width: 2,
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: const Icon(
+              Iconsax.add,
+              color: AppColors.textMuted,
+              size: 20,
             ),
           ),
-          child: const Icon(Iconsax.add, color: AppColors.textMuted, size: 16),
-        ),
+          const SizedBox(height: 6),
+          const Text(
+            'OPEN',
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -639,7 +633,6 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
 
                         return Flexible(
                           child: ListView.builder(
-                            shrinkWrap: true,
                             itemCount: unassigned.length,
                             itemBuilder: (context, index) {
                               final p = unassigned[index];
@@ -710,7 +703,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Delete Logistics Unit?'),
+        title: const Text('Delete Group?'),
         content: Text(
           'This will remove ${group.name} and all its assignments.',
         ),
@@ -767,7 +760,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              group != null ? 'EDIT LOGISTICS UNIT' : 'NEW LOGISTICS UNIT',
+              group != null ? 'EDIT GROUP' : 'NEW GROUP',
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
@@ -782,6 +775,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             TextField(
               controller: _nameController,
               autofocus: true,
+              inputFormatters: [LengthLimitingTextInputFormatter(50)],
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
@@ -801,6 +795,10 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             TextField(
               controller: _capacityController,
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                LengthLimitingTextInputFormatter(2),
+                FilteringTextInputFormatter.digitsOnly,
+              ],
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
@@ -875,7 +873,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                             ),
                           )
                         : Text(
-                            group != null ? 'UPDATE UNIT' : 'INITIALIZE UNIT',
+                            group != null ? 'SAVE CHANGES' : 'CREATE GROUP',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1,

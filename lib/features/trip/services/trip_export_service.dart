@@ -9,6 +9,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/utils/formatters.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
@@ -24,6 +25,8 @@ class TripExportService {
     required List<Settlement> settlements,
     required List<Participant> participants,
     required List<SubGroup> subGroups,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     // Calculate balances
     final balances = BalanceCalculator.calculateBalances(
@@ -63,17 +66,17 @@ class TripExportService {
 
           // Outstanding Settlements (if any)
           if (outstandingSettlements.isNotEmpty) ...[
-            _buildOutstandingSettlementsSection(outstandingSettlements),
+            _buildOutstandingSettlementsSection(outstandingSettlements, trip.currency),
             pw.SizedBox(height: 20),
           ],
 
           // Expenses Table
-          _buildExpensesSection(expenses, userNames, dateFormat),
+          _buildExpensesSection(expenses, userNames, dateFormat, trip.currency),
           pw.SizedBox(height: 20),
 
           // Completed Settlements
           if (settlements.isNotEmpty)
-            _buildCompletedSettlementsSection(settlements, userNames),
+            _buildCompletedSettlementsSection(settlements, userNames, trip.currency),
         ],
         footer: (context) => pw.Container(
           alignment: pw.Alignment.centerRight,
@@ -105,6 +108,8 @@ class TripExportService {
     required Trip trip,
     required List<Expense> expenses,
     required List<Participant> participants,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final Map<String, String> userNames = {
       for (var p in participants) p.id: p.displayName ?? 'Unknown',
@@ -114,7 +119,7 @@ class TripExportService {
     // Build CSV data
     final List<List<dynamic>> rows = [
       // Header row
-      ['Date', 'Description', 'Category', 'Amount (OMR)', 'Payer', 'Scope'],
+      ['Date', 'Description', 'Category', 'Amount (${trip.currency})', 'Payer', 'Scope'],
     ];
 
     for (final expense in expenses) {
@@ -122,7 +127,9 @@ class TripExportService {
         dateFormat.format(expense.createdAt),
         expense.description ?? expense.categoryName ?? 'Expense',
         expense.categoryName ?? '',
-        expense.amount.toStringAsFixed(3),
+        expense.amount.toStringAsFixed(
+          AppFormatters.currencyConfig[trip.currency]?.decimals ?? 3,
+        ),
         userNames[expense.payerParticipantId] ?? 'Unknown',
         expense.scope.name,
       ]);
@@ -257,6 +264,7 @@ class TripExportService {
 
   static pw.Widget _buildOutstandingSettlementsSection(
     List<Map<String, dynamic>> settlements,
+    String currency,
   ) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(15),
@@ -280,7 +288,7 @@ class TripExportService {
           ...settlements.map((s) {
             final from = s['fromUserName'] as String;
             final to = s['toUserName'] as String;
-            final amount = (s['amount'] as Decimal).toStringAsFixed(3);
+            final amount = AppFormatters.formatCurrency(s['amount'] as Decimal, currency);
             return pw.Padding(
               padding: const pw.EdgeInsets.symmetric(vertical: 4),
               child: pw.Row(
@@ -296,7 +304,7 @@ class TripExportService {
                   pw.SizedBox(width: 10),
                   pw.Expanded(
                     child: pw.Text(
-                      '$from owes $to $amount OMR',
+                      '$from owes $to $amount',
                       style: const pw.TextStyle(fontSize: 12),
                     ),
                   ),
@@ -313,6 +321,7 @@ class TripExportService {
     List<Expense> expenses,
     Map<String, String> userNames,
     DateFormat dateFormat,
+    String currency,
   ) {
     // Calculate total
     Decimal total = Decimal.zero;
@@ -331,7 +340,7 @@ class TripExportService {
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
             ),
             pw.Text(
-              'Total: ${total.toStringAsFixed(3)} OMR',
+              'Total: ${AppFormatters.formatCurrency(total, currency)}',
               style: pw.TextStyle(
                 fontSize: 12,
                 fontWeight: pw.FontWeight.bold,
@@ -388,6 +397,7 @@ class TripExportService {
   static pw.Widget _buildCompletedSettlementsSection(
     List<Settlement> settlements,
     Map<String, String> userNames,
+    String currency,
   ) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -425,7 +435,7 @@ class TripExportService {
                 pw.SizedBox(width: 10),
                 pw.Expanded(
                   child: pw.Text(
-                    '$from paid $to ${s.amount.toStringAsFixed(3)} OMR',
+                    '$from paid $to ${AppFormatters.formatCurrency(s.amount, currency)}',
                     style: const pw.TextStyle(fontSize: 12),
                   ),
                 ),
