@@ -7,10 +7,10 @@
 
 ### Data Foundation
 
-- [ ] **DATA-01**: All monetary values stored as integer fils (not doubles) in Firestore, with Decimal conversion at the boundary
+- [x] **DATA-01**: All monetary values stored as integer fils (not doubles) in Firestore, with Decimal conversion at the boundary
 - [x] **DATA-02**: Firestore security rules enforce group membership via `memberIds` map on group document
 - [x] **DATA-03**: Firebase Emulator configured for local development and security rule testing
-- [ ] **DATA-04**: SQLite schema extended with `groups`, `group_members`, `group_ledger` tables
+- [x] **DATA-04**: SQLite schema extended with `groups`, `group_members`, `group_ledger` tables
 - [x] **DATA-05**: Firebase anonymous auth replaces Supabase anonymous auth with same frictionless UX
 - [x] **DATA-06**: `firebase_core` bumped to 4.6.0+, all Firebase dependencies updated
 
@@ -59,7 +59,7 @@
 
 - [ ] **TST-01**: Unit tests for all financial calculations (balance, settlement optimization, cross-event aggregation)
 - [ ] **TST-02**: Widget tests for group dashboard, event creation, balance toggle
-- [ ] **TST-03**: Integration tests using `fake_cloud_firestore` — no real Firebase calls in tests
+- [x] **TST-03**: Integration tests using `fake_cloud_firestore` — no real Firebase calls in tests
 - [x] **TST-04**: Firestore security rules tested via Firebase Emulator
 - [ ] **TST-05**: 80%+ code coverage enforced
 - [ ] **TST-06**: Offline scenario tests (write while offline, verify sync on reconnect)
@@ -91,13 +91,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | Phase 1 | Pending |
+| DATA-01 | Phase 1 | Complete |
 | DATA-02 | Phase 1 | Complete |
 | DATA-03 | Phase 1 | Complete |
-| DATA-04 | Phase 1 | Pending |
+| DATA-04 | Phase 1 | Complete |
 | DATA-05 | Phase 1 | Complete |
 | DATA-06 | Phase 1 | Complete |
-| TST-03 | Phase 1 | Pending |
+| TST-03 | Phase 1 | Complete |
 | TST-04 | Phase 1 | Complete |
 | GRP-01 | Phase 2 | Pending |
 | GRP-02 | Phase 2 | Pending |
