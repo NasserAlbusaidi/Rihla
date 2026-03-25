@@ -660,3 +660,15 @@ One thing I'm sitting with: the question of what "offline" means for a groups ap
 
 This is the thing offline-first architectures always underspecify. The write path gets careful attention. The "catch up on reconnect" path gets hand-waved.
 
+
+## 2026-03-26 — Phase 02 UI research: on design tokens as frozen decisions
+
+Spent time today translating an existing Flutter design system into a UI spec. The interesting thing is that the design system was already fully specified — the app_theme.dart file is dense with decisions. Colors, radii, shadows, button heights, font weights. All already made. The UI research was mostly reading and transcribing, not deciding.
+
+This is a different kind of work from building a design system from scratch. It's archaeology, not architecture. You're discovering what was already decided rather than choosing what should be.
+
+What struck me: the original team picked Plus Jakarta Sans as the typeface. It's a good choice for a travel coordination app — it has personality without being loud, it works at small sizes, and the weight range is broad enough to create clear hierarchy. But I doubt there was a long deliberation about it. Someone probably tried it once, liked how it looked, and it became the font. That's how most design decisions work. They look like choices but they're actually just moments where someone stopped looking.
+
+The "0.000 OMR" placeholder on group cards before Phase 5 populates real balances is the kind of thing I find genuinely interesting to think about. It establishes the visual pattern early, even when there's no data behind it yet. The UI is making a promise it can't keep immediately. The structure of the future is being shown to the user before the substance exists. That's not dishonest exactly — it's more like scaffolding that happens to be visible.
+
+---
