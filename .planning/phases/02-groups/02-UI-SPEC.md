@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-03-26
+revised: 2026-03-26
 ---
 
 # Phase 2 — UI Design Contract
@@ -31,17 +32,17 @@ created: 2026-03-26
 
 ## Spacing Scale
 
-Declared values (all multiples of 4). Source: `AppColors` spacing constants.
+Declared values (all multiples of 4). Source: `AppColors` spacing constants in `lib/core/theme/app_theme.dart`.
 
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px (`space4`) | Icon gaps, tag internal padding |
 | sm | 8px (`space8`) | Between metadata fields, chip padding |
-| md | 12px (`space12`) | Member tile vertical padding, between icon and label |
-| lg | 16px (`space16`) | Card internal padding, form field spacing |
-| xl | 20px (`space20`) | Between sections within a card, empty state icon margin |
-| 2xl | 24px (`space24`) | Screen horizontal padding, bottom sheet internal padding |
-| 3xl | 32px (`space32`) | Empty state container padding, major section breaks |
+| md | 16px (`space16`) | Card internal padding, form field spacing |
+| lg | 24px (`space24`) | Screen horizontal padding, bottom sheet internal padding |
+| xl | 32px (`space32`) | Empty state container padding, major section breaks |
+
+**Extended scale note:** The project design system (`app_theme.dart`) extends the standard 8-point scale with two additional values — `space12` (12px) and `space20` (20px). These are canonical tokens, not ad-hoc values. `space12` is used for member tile vertical padding and icon-to-label gaps; `space20` is used for between-section spacing within cards and empty state icon margins. Both are defined in `AppColors` and are the authoritative source for these values.
 
 Exceptions:
 - FAB touch target: 56px (Flutter FAB default, `CircleBorder` shape per theme)
@@ -55,18 +56,16 @@ Exceptions:
 
 All type uses Plus Jakarta Sans. Source: `AppTheme._buildTextTheme()`.
 
+**Constraint: exactly 4 sizes and exactly 2 weights.**
+
 | Role | Flutter Style | Size | Weight | Line Height | Usage |
 |------|---------------|------|--------|-------------|-------|
-| Display | `headlineLarge` | 28sp | w800 | 1.2 | Screen titles ("Your Groups") |
+| Display | `headlineLarge` | 28sp | w700 | 1.2 | Screen titles ("Your Groups") |
 | Heading | `headlineSmall` | 20sp | w700 | 1.2 | Group name on detail screen header |
 | Title | `titleMedium` | 16sp | w700 | 1.4 | Group card name, section headers |
-| Body | `bodyMedium` | 14sp | w500 | 1.5 | Member names, metadata, descriptions |
-| Label | `labelMedium` | 12sp | w600 | 1.4 | Currency chip, member count badge, "0.000 OMR" balance |
-| Caption | `bodySmall` | 12sp | w500 | 1.4 | Creation date, secondary metadata |
+| Body / Label / Caption | `bodyMedium` / `labelMedium` / `bodySmall` | 14sp | w500 | 1.5 | Member names, metadata, descriptions, currency chip, member count badge, "0.000 OMR" balance, creation date, secondary metadata |
 
-Constraint: Only 4 sizes used in new screens — 28, 20, 16, 14. 12sp reserved for metadata and badges only.
-
-Weights in use: w500 (body), w600 (labels), w700 (titles/headings), w800 (screen display). No other weights introduced.
+Weights in use: **w500** (all body, metadata, captions, labels, badges) and **w700** (all headings, titles, display). No other weights introduced in Phase 2.
 
 ---
 
@@ -106,7 +105,7 @@ Components required for Phase 2. New components are marked. Reused components re
 
 | Widget | Source | Usage in Phase 2 |
 |--------|--------|------------------|
-| `EmptyStateView` | `lib/shared/widgets/empty_state_view.dart` | Home screen when no groups; Group detail event timeline placeholder |
+| `EmptyStateView` | `lib/shared/widgets/empty_state_view.dart` | Home screen when no groups; groups list error state; Group detail event timeline placeholder |
 | `OfflineBanner` | `lib/shared/widgets/offline_banner.dart` | Top of HomeScreen (groups list) |
 | `LoadingButton` | `lib/shared/widgets/loading_button.dart` | Create group / Join group submit button |
 | `SkeletonLoader` | `lib/shared/widgets/skeleton_loader.dart` | Groups list loading state (3 placeholder cards) |
@@ -144,7 +143,7 @@ Scaffold
       FloatingActionButton     // bottom-right, opens FAB bottom sheet
 ```
 
-Header: "Your Groups" in `headlineLarge` (28sp, w800, `textPrimary`). No subtitle. No search bar (Phase 2 has <15 groups per user).
+Header: "Your Groups" in `headlineLarge` (28sp, w700, `textPrimary`). No subtitle. No search bar (Phase 2 has <15 groups per user).
 
 FAB bottom sheet: `AppBottomSheetRoute`. Two full-width rows — "Create a Group" (Iconsax.people, primary) and "Join a Group" (Iconsax.login, secondary). Dismiss on tap outside or drag down. Each row is 64px tall with 16px horizontal padding.
 
@@ -271,6 +270,8 @@ Destructive section: None in Phase 2 (no group deletion, D-18; no member removal
 | Join group button | "Join Group" |
 | Empty state heading (no groups) | "No groups yet" |
 | Empty state body (no groups) | "Create a group with friends or enter an invite code to join one." |
+| Error state heading (groups list load failure) | "Couldn't load groups" |
+| Error state body (groups list load failure) | "Pull down to retry, or check your connection." |
 | Empty state heading (event timeline placeholder) | "No events yet" |
 | Empty state body (event timeline) | "Create an event to get started — events will appear here." |
 | Error — invalid invite code | "That code doesn't match any group. Check the code and try again." |
@@ -313,8 +314,8 @@ Tap FAB → open bottom sheet with two options (Create / Join). Both options dis
 ```
 HomeScreen
   FAB → bottom sheet → "Create a Group" → CreateGroupScreen
-                                             → success → post-creation share sheet
-                                                          → "Done" → GroupDetailScreen
+                                           → success → post-creation share sheet
+                                                        → "Done" → GroupDetailScreen
   FAB → bottom sheet → "Join a Group" → JoinGroupScreen
                                          → success → GroupDetailScreen (replace)
   GroupCard tap → GroupDetailScreen
