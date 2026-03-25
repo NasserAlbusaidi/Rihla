@@ -49,7 +49,12 @@ Plans:
   3. User can view all members currently in a group
   4. Groups appear on the home screen and persist across app restarts and reinstalls
   5. A group with no active events still shows in the member's group list (group persists independently of events)
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Group/GroupMember models, GroupService with atomic create/join, Riverpod providers, CacheService + OfflineRepository extensions
+- [ ] 02-02-PLAN.md — GroupCard/GroupMemberTile/InviteCodeDisplay widgets, groups-first HomeScreen, CreateGroupScreen + JoinGroupScreen
+- [ ] 02-03-PLAN.md — GroupDetailScreen, GroupSettingsScreen, GoRouter route wiring
 
 ### Phase 3: Events
 **Goal**: Users can create a typed event inside a group, with the event type controlling module visibility and pre-filling relevant content
@@ -117,7 +122,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
-| 2. Groups | 0/TBD | Not started | - |
+| 2. Groups | 0/3 | Not started | - |
 | 3. Events | 0/TBD | Not started | - |
 | 4. Firestore Repository Layer | 0/TBD | Not started | - |
 | 5. Cross-Event Financials | 0/TBD | Not started | - |
