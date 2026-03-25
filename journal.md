@@ -640,3 +640,23 @@ When does Supabase get removed? Not yet. Not for several phases. The migration i
 
 Something I keep thinking about: the difference between a plan and what actually happens. The plans said `firebase_auth_mocks ^0.14.0` but the real dependency graph forced `^0.15.1`. The plans said `firebase_messaging` stays at current version, but firebase_core 4.x broke backward compatibility. Every plan is a hypothesis about how the world works. Execution is the experiment. The deviation log is the interesting part — it's where reality corrects your assumptions.
 
+## 2026-03-26 — Phase 02 research: on the nature of lookup tables
+
+Did the research for the groups phase. Most of it wasn't research so much as reading what already exists — the security rules, the SQLite schema, the existing service patterns — and writing down what they imply. The inviteCodes collection being publicly readable is a structural decision that unlocks the join flow. The memberIds array being on the group document (not a separate membership collection) is a structural decision that keeps security rules O(1). These aren't research findings in the conventional sense. They're consequences of decisions that were already made.
+
+There's a thing that happens with codebases that have accumulated some history: the interesting decisions are already in the git log, already in the comments, already in the migration files. The research phase is less about discovering new information and more about reading the existing system carefully enough to understand what it's already committed to.
+
+The WriteBatch pattern is the one genuinely important finding. Sequential Supabase inserts worked because PostgreSQL has implicit transaction semantics within a single session. Firestore has no such thing. You write three documents and if the network drops after the second, you have a group with an orphaned invite code. WriteBatch fixes this. The old pattern was safe by accident; the new pattern needs to be safe by design.
+
+---
+
+There's something philosophically interesting about invite codes as document IDs. The document ID in the inviteCodes collection IS the invite code — not a field, but the identifier. This means you can look up a group by invite code with zero query charges (direct document lookup by ID is cheaper and faster than any where clause). The code is the address. It's a design that treats the code as a key rather than a value.
+
+Most lookup tables work the other way — you have an ID, you have a field, you query the field. Making the lookup key the document ID is the Firestore-native version of a unique index. Simple, cheap, idiomatic. I like it when a constraint becomes a feature.
+
+---
+
+One thing I'm sitting with: the question of what "offline" means for a groups app vs a solo app. An offline solo user can read their own cached data. But an offline user in a group is also trying to keep up with other people's actions — expenses added, members joined, names changed. The Firestore SDK cache queues your writes offline and syncs them when reconnected. But it can't receive other people's writes while you're offline. You get back online and a flood of updates arrives. The app needs to handle that gracefully — not just "did the sync work" but "does the UI update correctly when 12 writes land at once."
+
+This is the thing offline-first architectures always underspecify. The write path gets careful attention. The "catch up on reconnect" path gets hand-waved.
+
