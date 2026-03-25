@@ -59,8 +59,8 @@ These exist in the current codebase and work:
 - **Existing codebase**: ~100 Dart files, feature-first architecture (auth, trip, ledger, gear, logistics, vault, activity, home, settings, memories, onboarding)
 - **Current architecture**: Riverpod 2.x state management, GoRouter + Navigator.push routing, SQLite offline cache with sync queue, Supabase backend
 - **Pain points driving change**: Supabase RLS complexity (4 fix migrations), unreliable Realtime subscriptions, no persistent group concept
-- **Firebase already present**: FCM configured, `firebase_options.dart` exists, just need to add Firestore
-- **Offline-first architecture**: OfflineRepository → CacheService → SyncService pipeline. This may partially overlap with Firestore's built-in offline persistence — need to decide how they coexist
+- **Firebase fully initialized**: firebase_core 4.x, cloud_firestore 6.x, firebase_auth 6.x. Dual-auth bootstrap (Firebase → Supabase). Emulator configured (Firestore:8080, Auth:9099)
+- **Offline-first architecture**: OfflineRepository → CacheService → SyncService pipeline. SQLite v6 extended with groups/group_members/group_ledger tables. Firestore offline persistence coexists alongside SQLite
 - **Financial precision**: All money math uses `Decimal` package, currency is OMR (3 decimal places). This must not regress during migration
 - **User base**: Small, Oman-focused. Anonymous auth means no user accounts to migrate — just data
 
@@ -78,10 +78,12 @@ These exist in the current codebase and work:
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Groups wrap trips (not replace) | Preserves existing trip experience, adds layer on top | — Pending |
-| Firestore over Realtime DB | Better querying, offline support, scales well | — Pending |
+| Firestore over Realtime DB | Better querying, offline support, scales well | Validated in Phase 01 |
 | Both event-level and group-level ledger | Cross-event balances are the killer feature | — Pending |
-| Fine-grained phases | Complex migration + new features need careful sequencing | — Pending |
-| Keep SQLite alongside Firestore | Fast local reads, existing offline architecture works well | — Pending |
+| Fine-grained phases | Complex migration + new features need careful sequencing | Validated in Phase 01 |
+| Keep SQLite alongside Firestore | Fast local reads, existing offline architecture works well | Validated in Phase 01 |
+| Integer subunits for Firestore money | Store amounts as integer fils/cents, not strings or floats | Decided in Phase 01 — MoneySerializer uses currency-aware scaling |
+| Dual-auth bootstrap | Firebase anon auth runs alongside Supabase during migration | Decided in Phase 01 — sequential init in main.dart |
 
 ## Evolution
 
@@ -101,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-26 after initialization*
+*Last updated: 2026-03-26 after Phase 01 (data-foundation) completion*
