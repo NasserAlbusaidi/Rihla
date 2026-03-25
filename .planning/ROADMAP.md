@@ -32,7 +32,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Anonymous sign-in via Firebase Auth completes silently on first launch with no login screen shown to the user
   4. SQLite database opens with the extended schema (groups, group_members, group_ledger tables present) without migration errors
   5. All Firebase package versions are consistent and `flutter pub get` succeeds with no version conflicts
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Firebase package upgrade + FirebaseConfig + dual-auth bootstrap
+- [ ] 01-02-PLAN.md — MoneySerializer TDD + SQLite v6 migration + Firestore round-trip test
+- [ ] 01-03-PLAN.md — Firebase Emulator setup + security rules + JS rule tests
 
 ### Phase 2: Groups
 **Goal**: Users can create a persistent group, share an invite code, and see all their groups on the home screen
@@ -111,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 0/TBD | Not started | - |
+| 1. Data Foundation | 0/3 | Planning complete | - |
 | 2. Groups | 0/TBD | Not started | - |
 | 3. Events | 0/TBD | Not started | - |
 | 4. Firestore Repository Layer | 0/TBD | Not started | - |
