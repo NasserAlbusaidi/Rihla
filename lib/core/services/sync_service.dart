@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,6 +14,14 @@ import '../config/supabase_config.dart';
 import 'cache_service.dart';
 import 'local_database.dart';
 import 'offline_repository.dart';
+
+/// Calculate exponential backoff delay with jitter for sync retries.
+/// Delays: ~1s, ~2s, ~4s, ~8s, ~16s for retries 0-4.
+Duration calculateSyncRetryDelay(int retryCount) {
+  final baseSeconds = math.pow(2, retryCount).toInt();
+  final jitterMs = math.Random().nextInt(1000);
+  return Duration(seconds: baseSeconds, milliseconds: jitterMs);
+}
 
 /// Sync service handles synchronizing local cache with Supabase
 class SyncService {
@@ -80,6 +89,9 @@ class SyncService {
             where: 'id = ?',
             whereArgs: [id],
           );
+
+          // Exponential backoff with jitter before processing the next item
+          await Future.delayed(calculateSyncRetryDelay(currentRetry));
         }
       }
     } catch (e) {

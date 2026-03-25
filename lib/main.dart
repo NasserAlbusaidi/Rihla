@@ -18,6 +18,7 @@ void main() async {
     (options) {
       options.dsn = const String.fromEnvironment('SENTRY_DSN');
       options.tracesSampleRate = 0.2;
+      // ignore: experimental_member_use
       options.profilesSampleRate = 0.1;
     },
     appRunner: () async {
