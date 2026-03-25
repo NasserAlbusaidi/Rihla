@@ -12,7 +12,7 @@ Rihla v2 evolves the existing Flutter trip-planning app into a persistent group 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Data Foundation** - Firestore initialized, security rules tested, integer money storage enforced, SQLite schema extended
+- [x] **Phase 1: Data Foundation** - Firestore initialized, security rules tested, integer money storage enforced, SQLite schema extended (completed 2026-03-25)
 - [ ] **Phase 2: Groups** - Users can create and join persistent groups; groups appear on home screen
 - [ ] **Phase 3: Events** - Users can create typed events inside groups with template-driven modules and gear presets
 - [ ] **Phase 4: Firestore Repository Layer** - All per-event module writes routed through Firestore; SyncService retired
@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Firebase package upgrade + FirebaseConfig + dual-auth bootstrap
-- [ ] 01-02-PLAN.md — MoneySerializer TDD + SQLite v6 migration + Firestore round-trip test
+- [x] 01-02-PLAN.md — MoneySerializer TDD + SQLite v6 migration + Firestore round-trip test
 - [x] 01-03-PLAN.md — Firebase Emulator setup + security rules + JS rule tests
 
 ### Phase 2: Groups
@@ -116,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 2/3 | In Progress|  |
+| 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
 | 2. Groups | 0/TBD | Not started | - |
 | 3. Events | 0/TBD | Not started | - |
 | 4. Firestore Repository Layer | 0/TBD | Not started | - |

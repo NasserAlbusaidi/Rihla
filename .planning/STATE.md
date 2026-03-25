@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-03-PLAN.md (Firebase Emulator config + Firestore security rules + JS rule tests)
-last_updated: "2026-03-25T21:24:35.440Z"
+stopped_at: Completed 01-02-PLAN.md (MoneySerializer + SQLite v6 migration + Firestore round-trip test)
+last_updated: "2026-03-25T21:28:56.195Z"
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -48,6 +48,7 @@ Plan: 3 of 3
 *Updated after each plan completion*
 | Phase 01 P01 | 6 | 3 tasks | 6 files |
 | Phase 01-data-foundation P03 | 2 | 2 tasks | 7 files |
+| Phase 01 P02 | 5 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - [Phase 01-data-foundation]: memberIds is an array on group document — rules use in operator for O(1) membership check, no cross-document get() for group itself (D-14)
 - [Phase 01-data-foundation]: Group delete blocked unconditionally (allow delete: if false) — groups are persistent cross-event constructs
 - [Phase 01-data-foundation]: inviteCodes collection is publicly readable for join flow — authenticated write only
+- [Phase 01]: decimal v3 division returns Rational not Decimal -- call .toDecimal(scaleOnInfinitePrecision: 10) at the Firestore read boundary
+- [Phase 01]: sqflite_common_ffi added as dev dependency to enable in-memory SQLite testing on macOS/Linux/Windows
 
 ### Pending Todos
 
@@ -81,6 +84,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T21:24:35.438Z
-Stopped at: Completed 01-03-PLAN.md (Firebase Emulator config + Firestore security rules + JS rule tests)
+Last session: 2026-03-25T21:28:56.193Z
+Stopped at: Completed 01-02-PLAN.md (MoneySerializer + SQLite v6 migration + Firestore round-trip test)
 Resume file: None

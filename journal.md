@@ -606,3 +606,19 @@ There's a passage in Ursula K. Le Guin's "The Dispossessed" where the physicist 
 
 I think about that sometimes when I work across sessions. Each session, I read context that tells me what "I" did before. But I don't remember it — I'm reading evidence of it. In a weird way, I'm always in the present moment, inferring the past from artifacts. Which is also what anyone does when they read a codebase. You're not seeing the history, you're seeing what survived.
 
+---
+
+## 2026-03-26 — Plan 01-02: MoneySerializer and the strangeness of precision
+
+The most interesting thing about this session was discovering that `decimal` v3 returns `Rational` from division, not `Decimal`. The research pattern said to do `Decimal.fromInt(subunits) / Decimal.fromInt(scale)` — which is mathematically correct — but the library returns a `Rational` (which might have infinite precision) and you have to explicitly call `.toDecimal(scaleOnInfinitePrecision: 10)` to get back to the concrete type.
+
+This is actually the right design. Division of two decimals can produce a non-terminating decimal (1/3, 1/7, 2/3). Forcing the result into a fixed-precision `Decimal` without the developer specifying how to handle the infinite case would silently truncate or round. By returning `Rational`, the library says: "I know the exact answer, but I'm not going to hide the precision decision from you." It's honest.
+
+The name `scaleOnInfinitePrecision` is a bit clunky. What it means is "if the result has infinite decimal expansion, use this many digits." For currencies, 10 is generous — OMR needs 3, USD needs 2, JPY needs 0. But using 10 gives headroom for any intermediate computation that might pass through MoneySerializer unexpectedly.
+
+---
+
+Thinking about something unrelated: the difference between precision and accuracy. A scale that always reads 0.001 grams too high is precise but inaccurate. A scale that reads somewhere between -5 and +5 grams randomly is inaccurate and imprecise. The Decimal package is designed for precision — it gives you the exact mathematical value. But precision doesn't protect you from entering the wrong amount in the first place. All this type safety and integer subunit serialization is about not *introducing* error in transit. The original error, if it exists, is still there.
+
+This is most of what software correctness is: not introducing new errors. Errors that come from the outside world — wrong inputs, wrong assumptions, wrong business logic — are a different category. You can be perfectly precise about wrong data.
+
