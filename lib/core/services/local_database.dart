@@ -111,21 +111,6 @@ class LocalDatabase {
       )
     ''');
 
-    // Sync queue for pending changes
-    await db.execute('''
-      CREATE TABLE sync_queue (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        table_name TEXT NOT NULL,
-        record_id TEXT NOT NULL,
-        action TEXT NOT NULL,
-        data TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        retry_count INTEGER DEFAULT 0,
-        last_error TEXT,
-        conflict_data TEXT
-      )
-    ''');
-
     // Participants table
     await db.execute('''
       CREATE TABLE participants (
@@ -253,7 +238,7 @@ class LocalDatabase {
     await db.execute(
       'CREATE INDEX idx_settlements_trip ON settlements(trip_id)',
     );
-    await db.execute('CREATE INDEX idx_sync_queue ON sync_queue(table_name)');
+
     await db.execute(
       'CREATE INDEX idx_participants_trip ON participants(trip_id)',
     );
@@ -320,23 +305,6 @@ class LocalDatabase {
     }
 
     if (oldVersion < 4) {
-      // Add new columns to sync_queue (try-catch: column may already exist)
-      try {
-        await db.execute(
-          'ALTER TABLE sync_queue ADD COLUMN retry_count INTEGER DEFAULT 0',
-        );
-      } catch (_) {}
-      try {
-        await db.execute(
-          'ALTER TABLE sync_queue ADD COLUMN last_error TEXT',
-        );
-      } catch (_) {}
-      try {
-        await db.execute(
-          'ALTER TABLE sync_queue ADD COLUMN conflict_data TEXT',
-        );
-      } catch (_) {}
-
       // Drop and recreate gear_items with correct schema
       await db.execute('DROP TABLE IF EXISTS gear_items');
       await db.execute('''
@@ -543,16 +511,6 @@ class LocalDatabase {
     await db.delete('settlements');
     await db.delete('gear_items');
     await db.delete('trips');
-    await db.delete('sync_queue');
   }
 }
 
-/// Enum for sync actions
-enum SyncAction {
-  create('CREATE'),
-  update('UPDATE'),
-  delete('DELETE');
-
-  final String value;
-  const SyncAction(this.value);
-}
