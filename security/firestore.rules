@@ -43,6 +43,38 @@ service cloud.firestore {
       allow update: if isMember() || isValidJoin();
       allow delete: if false;
 
+      // Events subcollection -- more restrictive than generic subcollection rule (D-32)
+      match /events/{eventId} {
+        function isGroupMemberForEvent() {
+          return request.auth != null &&
+            request.auth.uid in
+              get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+        }
+
+        function isEventParticipant() {
+          return request.auth != null &&
+            request.auth.uid in resource.data.participantIds;
+        }
+
+        function isValidEventCreate() {
+          return request.auth != null &&
+            request.resource.data.name is string &&
+            request.resource.data.name.size() > 0 &&
+            request.resource.data.type is string &&
+            request.resource.data.participantIds is list &&
+            request.resource.data.participantIds.size() > 0;
+        }
+
+        // Any group member can read all events (transparency, D-32)
+        allow read: if isGroupMemberForEvent();
+        // Any group member can create events (D-07)
+        allow create: if isGroupMemberForEvent() && isValidEventCreate();
+        // Only event participants can update event data
+        allow update: if isEventParticipant();
+        // No hard deletes -- soft delete only via update (D-09)
+        allow delete: if false;
+      }
+
       // Group subcollections -- ONE get() call to parent for membership
       match /{subcollection}/{docId} {
         function isGroupMember() {

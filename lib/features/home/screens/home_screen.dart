@@ -35,7 +35,11 @@ class HomeScreen extends ConsumerWidget {
             Expanded(
               child: groupsAsync.when(
                 data: (groups) => RefreshIndicator(
-                  onRefresh: () async => ref.refresh(userGroupsProvider.future),
+                  onRefresh: () async {
+                    ref.invalidate(userGroupsProvider);
+                    // Wait briefly for the new stream to emit its first value
+                    await ref.read(userGroupsProvider.future);
+                  },
                   color: AppColors.primary,
                   child: groups.isEmpty
                       ? const EmptyStateView(
