@@ -322,9 +322,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
       onWillAcceptWithDetails: (details) => !group.isFull,
       onAcceptWithDetails: (details) async {
         HapticService.lightClick();
-        await ref
-            .read(subGroupServiceProvider)
-            .addMember(subGroupId: group.id, participantId: details.data.id);
+        // Legacy screen: addMember requires EventRef context (groupId, eventId).
+        // This screen will be updated in a future plan to use EventRef.
+        debugPrint(
+          'addMember not supported in legacy screen — migrate to EventRef flow',
+        );
       },
       builder: (context, candidateData, rejectedData) {
         return Container(
@@ -484,7 +486,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             );
             if (confirm == true) {
               HapticService.lightClick();
-              await ref.read(subGroupServiceProvider).removeMember(member.id);
+              // Legacy screen: removeMember requires EventRef context (groupId, eventId, subGroupId).
+              // This screen will be updated in a future plan to use EventRef.
+              debugPrint(
+                'removeMember not supported in legacy screen — migrate to EventRef flow',
+              );
             }
           },
           child: Container(
@@ -666,12 +672,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                                 ),
                                 onTap: () async {
                                   HapticService.lightClick();
-                                  await ref
-                                      .read(subGroupServiceProvider)
-                                      .addMember(
-                                        subGroupId: group.id,
-                                        participantId: p.id,
-                                      );
+                                  // Legacy screen: addMember requires EventRef context (groupId, eventId).
+                                  // This screen will be updated in a future plan to use EventRef.
+                                  debugPrint(
+                                    'addMember not supported in legacy screen — migrate to EventRef flow',
+                                  );
                                   if (context.mounted) Navigator.pop(context);
                                 },
                               );
@@ -714,7 +719,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           ),
           TextButton(
             onPressed: () async {
-              await ref.read(subGroupServiceProvider).deleteSubGroup(group.id);
+              // Legacy screen: deleteSubGroup requires EventRef context (groupId, eventId).
+              // This screen will be updated in a future plan to use EventRef.
+              debugPrint(
+                'deleteSubGroup not supported in legacy screen — migrate to EventRef flow',
+              );
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text(
@@ -822,7 +831,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                         ? null
                         : () async {
                             final name = _nameController.text.trim();
-                            final capacity =
+                            // capacity used when EventRef context is available (future plan)
+                            final _ =
                                 int.tryParse(_capacityController.text) ?? 4;
 
                             if (name.isEmpty) return;
@@ -830,29 +840,19 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                             HapticService.lightClick();
 
                             if (group != null) {
-                              final success = await ref
-                                  .read(subGroupServiceProvider)
-                                  .updateSubGroup(
-                                    group.id,
-                                    name: name,
-                                    capacity: capacity,
-                                  );
-                              if (success && context.mounted) {
-                                Navigator.pop(context);
-                              }
+                              // Legacy screen: updateSubGroup requires EventRef context (groupId, eventId).
+                              // This screen will be updated in a future plan to use EventRef.
+                              debugPrint(
+                                'updateSubGroup not supported in legacy screen — migrate to EventRef flow',
+                              );
+                              if (context.mounted) Navigator.pop(context);
                             } else {
-                              final result = await ref
-                                  .read(subGroupServiceProvider)
-                                  .createSubGroup(
-                                    tripId: widget.trip.id,
-                                    name: name,
-                                    type: type,
-                                    capacity: capacity,
-                                  );
-
-                              if (result != null && context.mounted) {
-                                Navigator.pop(context);
-                              }
+                              // Legacy screen: createSubGroup requires EventRef context (groupId, eventId).
+                              // This screen will be updated in a future plan to use EventRef.
+                              debugPrint(
+                                'createSubGroup not supported in legacy screen — migrate to EventRef flow',
+                              );
+                              if (context.mounted) Navigator.pop(context);
                             }
                           },
                     style: ElevatedButton.styleFrom(

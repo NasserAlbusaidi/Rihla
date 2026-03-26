@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/services/offline_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -567,20 +568,31 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   }
 
   void _handleMenuAction(String action, GearItem item) {
-    final service = ref.read(gearServiceProvider);
+    final repo = ref.read(offlineRepositoryProvider);
     final tripId = widget.trip.id;
+    final currentUserId = ref.read(currentUserProvider)?.id;
     switch (action) {
       case 'priority':
         HapticService.selection();
-        service.togglePriority(item.id, !item.isHighPriority, tripId: tripId);
+        repo.updateGearItem(
+          item.id,
+          tripId,
+          {'is_high_priority': item.isHighPriority ? 0 : 1},
+        );
         break;
       case 'claim':
         HapticService.selection();
-        service.claimItem(item.id, tripId: tripId);
+        if (currentUserId != null) {
+          repo.updateGearItem(item.id, tripId, {'assigned_to': currentUserId});
+        }
         break;
       case 'unclaim':
         HapticService.selection();
-        service.unclaimItem(item.id, tripId: tripId);
+        repo.updateGearItem(
+          item.id,
+          tripId,
+          {'assigned_to': null, 'is_packed': 0},
+        );
         break;
       case 'delete':
         HapticService.warning();
@@ -616,7 +628,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     );
 
     if (confirmed == true) {
-      ref.read(gearServiceProvider).deleteItem(item.id, tripId: widget.trip.id);
+      ref
+          .read(offlineRepositoryProvider)
+          .deleteGearItem(item.id, widget.trip.id);
     }
   }
 
@@ -624,13 +638,15 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final name = _itemController.text.trim();
     if (name.isEmpty) return;
 
-    await ref
-        .read(gearServiceProvider)
-        .addItem(
-          tripId: widget.trip.id,
-          itemName: name,
-          isHighPriority: _isHighPriority,
-        );
+    final repo = ref.read(offlineRepositoryProvider);
+    final newItem = GearItem(
+      id: repo.generateId(),
+      tripId: widget.trip.id,
+      itemName: name,
+      isHighPriority: _isHighPriority,
+      createdAt: DateTime.now(),
+    );
+    await repo.saveGearItem(newItem);
 
     _itemController.clear();
     setState(() => _isHighPriority = false);
@@ -639,19 +655,26 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   void _togglePacked(GearItem item, bool isMine) {
     if (!isMine && item.assignedTo != null) return;
 
-    final service = ref.read(gearServiceProvider);
+    final repo = ref.read(offlineRepositoryProvider);
+    final currentUserId = ref.read(currentUserProvider)?.id;
     final tripId = widget.trip.id;
 
     if (item.isPacked) {
-      service.unpackItem(item.id, tripId: tripId);
+      repo.updateGearItem(item.id, tripId, {'is_packed': 0});
     } else if (item.assignedTo != null) {
-      service.packItem(item.id, tripId: tripId);
+      repo.updateGearItem(item.id, tripId, {'is_packed': 1});
     } else {
       // Claim and pack in one go
       () async {
         try {
-          await service.claimItem(item.id, tripId: tripId);
-          await service.packItem(item.id, tripId: tripId);
+          if (currentUserId != null) {
+            await repo.updateGearItem(
+              item.id,
+              tripId,
+              {'assigned_to': currentUserId},
+            );
+          }
+          await repo.updateGearItem(item.id, tripId, {'is_packed': 1});
         } catch (e) {
           debugPrint('Failed to claim and pack: $e');
         }
