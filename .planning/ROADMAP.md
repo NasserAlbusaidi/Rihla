@@ -67,6 +67,7 @@ Plans:
   3. A new Camping event has tent, sleeping bag, and cooler pre-added to the gear list without user input
   4. A Custom event presents a module picker with no preset content
   5. The group event timeline shows all past and upcoming events in chronological order with financial totals per event
+  6. Pull-to-refresh on the home screen groups list reloads data from Firestore (carried from Phase 2 UAT gap #8)
 **Plans**: TBD
 
 ### Phase 4: Firestore Repository Layer
