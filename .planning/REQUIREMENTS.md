@@ -16,13 +16,13 @@
 
 ### Groups
 
-- [ ] **GRP-01**: User can create a group with a name and invite code
-- [ ] **GRP-02**: User can join a group via invite link or code
-- [ ] **GRP-03**: User can see all members in a group
+- [x] **GRP-01**: User can create a group with a name and invite code
+- [x] **GRP-02**: User can join a group via invite link or code
+- [x] **GRP-03**: User can see all members in a group
 - [ ] **GRP-04**: Group dashboard shows total spent across all events, member count, and per-member running balances
 - [ ] **GRP-05**: Group activity log shows group-level events ("Ahmed added camping trip", "Sara settled with Khalid")
-- [ ] **GRP-06**: User can view list of groups they belong to on home screen
-- [ ] **GRP-07**: Group persists independently of events — members remain even when no active event
+- [x] **GRP-06**: User can view list of groups they belong to on home screen
+- [x] **GRP-07**: Group persists independently of events — members remain even when no active event
 
 ### Events
 
@@ -99,11 +99,11 @@
 | DATA-06 | Phase 1 | Complete |
 | TST-03 | Phase 1 | Complete |
 | TST-04 | Phase 1 | Complete |
-| GRP-01 | Phase 2 | Pending |
-| GRP-02 | Phase 2 | Pending |
-| GRP-03 | Phase 2 | Pending |
-| GRP-06 | Phase 2 | Pending |
-| GRP-07 | Phase 2 | Pending |
+| GRP-01 | Phase 2 | Complete |
+| GRP-02 | Phase 2 | Complete |
+| GRP-03 | Phase 2 | Complete |
+| GRP-06 | Phase 2 | Complete |
+| GRP-07 | Phase 2 | Complete |
 | EVT-01 | Phase 3 | Pending |
 | EVT-02 | Phase 3 | Pending |
 | EVT-03 | Phase 3 | Pending |
