@@ -2,11 +2,13 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/firestore_repository.dart';
 import '../models/group_member_model.dart';
 import '../models/group_model.dart';
 
@@ -26,14 +28,20 @@ final groupErrorProvider = StateProvider<String?>((ref) => null);
 
 /// Service for group CRUD operations against Firestore.
 ///
-/// Uses WriteBatch for atomic multi-document writes (createGroup writes
-/// 3 docs; joinGroup writes 2 docs atomically per research Pattern 1 & 2).
-class GroupService {
+/// Extends [FirestoreRepository] so all Firestore access flows through the
+/// base class `db` getter (MIG-05). Uses WriteBatch for atomic multi-document
+/// writes (createGroup writes 3 docs; joinGroup writes 2 docs atomically
+/// per research Pattern 1 & 2).
+class GroupService extends FirestoreRepository {
   final Ref _ref;
 
-  GroupService(this._ref);
+  /// Production constructor — uses [FirebaseConfig.firestore] via base class.
+  GroupService(this._ref) : super();
 
-  FirebaseFirestore get _db => FirebaseConfig.firestore;
+  /// Test constructor — injects a [FakeFirebaseFirestore] for unit testing.
+  @visibleForTesting
+  GroupService.withFirestore(this._ref, FirebaseFirestore firestoreDb)
+      : super.withFirestore(firestoreDb);
 
   /// Generate a unique 6-character invite code.
   ///
@@ -76,9 +84,9 @@ class GroupService {
 
     // Step 1: Create group + invite code atomically.
     // These must be batched so a group always has its invite code lookup.
-    final batch = _db.batch();
+    final batch = db.batch();
 
-    batch.set(_db.collection('groups').doc(groupId), {
+    batch.set(db.collection('groups').doc(groupId), {
       'id': groupId,
       'name': name,
       'inviteCode': inviteCode,
@@ -89,7 +97,7 @@ class GroupService {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    batch.set(_db.collection('inviteCodes').doc(inviteCode), {
+    batch.set(db.collection('inviteCodes').doc(inviteCode), {
       'groupId': groupId,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -100,7 +108,7 @@ class GroupService {
     // The members subcollection rule requires the group doc to exist
     // with the user in memberIds (isGroupMember check), so this must
     // be a separate write after the group batch commits.
-    await _db
+    await db
         .collection('groups')
         .doc(groupId)
         .collection('members')
@@ -151,7 +159,7 @@ class GroupService {
     // Look up the group ID from the invite code.
     // inviteCodes collection is publicly readable (no membership check).
     final codeDoc =
-        await _db.collection('inviteCodes').doc(normalizedCode).get();
+        await db.collection('inviteCodes').doc(normalizedCode).get();
     if (!codeDoc.exists) {
       throw Exception('Invalid invite code');
     }
@@ -167,7 +175,7 @@ class GroupService {
     //
     // NOTE: If security rules block this, we need to add a join-specific
     // rule. For now, try the update and let the error surface.
-    await _db.collection('groups').doc(groupId).update({
+    await db.collection('groups').doc(groupId).update({
       'memberIds': FieldValue.arrayUnion([uid]),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -177,7 +185,7 @@ class GroupService {
     const uuid = Uuid();
     final memberId = uuid.v4();
 
-    await _db
+    await db
         .collection('groups')
         .doc(groupId)
         .collection('members')
@@ -192,7 +200,7 @@ class GroupService {
     });
 
     // Step 3: Now user is a member — can read the group document.
-    final updatedDoc = await _db.collection('groups').doc(groupId).get();
+    final updatedDoc = await db.collection('groups').doc(groupId).get();
     return Group.fromDoc(updatedDoc);
   }
 
@@ -210,7 +218,7 @@ class GroupService {
     if (name != null) updateMap['name'] = name;
     if (currency != null) updateMap['currency'] = currency;
 
-    await _db.collection('groups').doc(groupId).update(updateMap);
+    await db.collection('groups').doc(groupId).update(updateMap);
   }
 
   /// Update a member's display name in the group (D-07).
@@ -219,7 +227,7 @@ class GroupService {
     required String memberId,
     required String displayName,
   }) async {
-    await _db
+    await db
         .collection('groups')
         .doc(groupId)
         .collection('members')

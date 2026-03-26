@@ -18,7 +18,10 @@ abstract class FirestoreRepository {
   FirestoreRepository() : _db = FirebaseConfig.firestore;
 
   /// Test constructor -- injects a [FakeFirebaseFirestore] for unit testing.
-  @visibleForTesting
+  ///
+  /// Marked [protected] so subclasses can call `super.withFirestore(db)` in
+  /// their own `@visibleForTesting` named constructors.
+  @protected
   FirestoreRepository.withFirestore(FirebaseFirestore db) : _db = db;
 
   /// Access the underlying Firestore instance (db).

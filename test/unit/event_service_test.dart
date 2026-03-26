@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/services/event_service.dart';
+import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 
@@ -59,13 +60,18 @@ void main() {
       // Register fallback values required by mocktail
       registerFallbackValue('');
 
-      // Default stub: addItem returns null (GearItem?) for all tests.
+      // Default stub: addGearItem returns a GearItem for all tests.
       // Individual tests can override this with specific verifications.
-      when(() => mockGearService.addItem(
-            tripId: any(named: 'tripId'),
+      when(() => mockGearService.addGearItem(
+            groupId: any(named: 'groupId'),
+            eventId: any(named: 'eventId'),
             itemName: any(named: 'itemName'),
             isHighPriority: any(named: 'isHighPriority'),
-          )).thenAnswer((_) async => null);
+          )).thenAnswer((_) async => GearItem(
+            id: 'test-id',
+            tripId: 'test-trip',
+            itemName: 'Test Item',
+          ));
     });
 
     // Helper: Create an EventService that uses the injected fakeDb
@@ -155,14 +161,19 @@ void main() {
       });
 
       test(
-          'createEvent for Camping type calls GearService.addItem 3 times with correct items',
+          'createEvent for Camping type calls GearService.addGearItem 3 times with correct items',
           () async {
         // Stub gear service to succeed
-        when(() => mockGearService.addItem(
-              tripId: any(named: 'tripId'),
+        when(() => mockGearService.addGearItem(
+              groupId: any(named: 'groupId'),
+              eventId: any(named: 'eventId'),
               itemName: any(named: 'itemName'),
               isHighPriority: any(named: 'isHighPriority'),
-            )).thenAnswer((_) async => null);
+            )).thenAnswer((_) async => GearItem(
+              id: 'test-id',
+              tripId: 'test-trip',
+              itemName: 'Test Item',
+            ));
 
         final service = buildService();
 
@@ -176,25 +187,28 @@ void main() {
           createdBy: 'uid-1',
         );
 
-        // Verify Tent, Sleeping Bag, Cooler were seeded
-        verify(() => mockGearService.addItem(
-              tripId: any(named: 'tripId'),
+        // Verify Tent, Sleeping Bag, Cooler were seeded via addGearItem
+        verify(() => mockGearService.addGearItem(
+              groupId: any(named: 'groupId'),
+              eventId: any(named: 'eventId'),
               itemName: 'Tent',
               isHighPriority: true,
             )).called(1);
-        verify(() => mockGearService.addItem(
-              tripId: any(named: 'tripId'),
+        verify(() => mockGearService.addGearItem(
+              groupId: any(named: 'groupId'),
+              eventId: any(named: 'eventId'),
               itemName: 'Sleeping Bag',
               isHighPriority: true,
             )).called(1);
-        verify(() => mockGearService.addItem(
-              tripId: any(named: 'tripId'),
+        verify(() => mockGearService.addGearItem(
+              groupId: any(named: 'groupId'),
+              eventId: any(named: 'eventId'),
               itemName: 'Cooler',
               isHighPriority: false,
             )).called(1);
       });
 
-      test('createEvent for Trip type does NOT call GearService.addItem',
+      test('createEvent for Trip type does NOT call GearService.addGearItem',
           () async {
         final service = buildService();
 
@@ -208,8 +222,9 @@ void main() {
           createdBy: 'uid-1',
         );
 
-        verifyNever(() => mockGearService.addItem(
-              tripId: any(named: 'tripId'),
+        verifyNever(() => mockGearService.addGearItem(
+              groupId: any(named: 'groupId'),
+              eventId: any(named: 'eventId'),
               itemName: any(named: 'itemName'),
               isHighPriority: any(named: 'isHighPriority'),
             ));

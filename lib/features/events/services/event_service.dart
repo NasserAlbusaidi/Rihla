@@ -5,18 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/config/firebase_config.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/cache_service.dart';
-import '../../../core/services/offline_repository.dart';
-import '../../../core/services/sync_service.dart';
+import '../../../core/services/firestore_repository.dart';
 import '../../gear/providers/gear_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/event_model.dart';
 
 /// Service for Event CRUD operations against Firestore.
 ///
-/// Mirrors the [GroupService] pattern. Constructor takes a [Ref] for
+/// Extends [FirestoreRepository] so all Firestore access flows through the
+/// base class `db` getter (MIG-05). Constructor takes a [Ref] for
 /// Riverpod integration and an optional [GearService] for testability.
 ///
 /// Events are stored as a subcollection:
@@ -25,31 +24,30 @@ import '../models/event_model.dart';
 /// Each created event also creates a matching Supabase trip record (the
 /// bridge pattern from D-22). Bridge failure does NOT throw — it logs
 /// and continues so events can be created even during Supabase outages.
-class EventService {
+class EventService extends FirestoreRepository {
   final Ref? _ref;
-  final FirebaseFirestore _db;
   final GearService? _gearServiceOverride;
 
   /// Default constructor for Riverpod-managed use.
   EventService(Ref ref)
       : _ref = ref,
-        _db = FirebaseConfig.firestore,
         _gearServiceOverride = null,
-        _skipBridgeInTest = false;
+        _skipBridgeInTest = false,
+        super();
 
   /// Test-only constructor: inject FakeFirebaseFirestore and a mock GearService.
   ///
   /// When using this constructor, the Supabase bridge is skipped entirely
   /// and [_skipBridgeInTest] is set to true so gear seeding still happens
-  /// for Camping events (bridge is treated as succeeded in test context).
+  /// for Camping events.
   @visibleForTesting
-  EventService.withFirestore(FirebaseFirestore db, GearService gearService)
+  EventService.withFirestore(FirebaseFirestore firestoreDb, GearService gearService)
       : _ref = null,
-        _db = db,
         _gearServiceOverride = gearService,
-        _skipBridgeInTest = true;
+        _skipBridgeInTest = true,
+        super.withFirestore(firestoreDb);
 
-  // Private flag used by the test constructor to skip bridge + still seed gear
+  // Private flag used by the test constructor to skip bridge
   final bool _skipBridgeInTest;
 
   GearService get _gearService {
@@ -121,7 +119,7 @@ class EventService {
     );
 
     // Step 1: Write to Firestore
-    await _db
+    await db
         .collection('groups')
         .doc(groupId)
         .collection('events')
@@ -129,13 +127,8 @@ class EventService {
         .set(event.toFirestoreMap());
 
     // Step 2: Attempt Supabase bridge trip creation (fire-and-forget).
-    // In test mode (_skipBridgeInTest=true) the bridge is skipped entirely
-    // but gear seeding still proceeds so GearService calls can be verified.
-    bool bridgeSucceeded = false;
-    if (_skipBridgeInTest) {
-      // Test context: treat bridge as succeeded for gear-seeding purposes
-      bridgeSucceeded = true;
-    } else {
+    // In test mode (_skipBridgeInTest=true) the bridge is skipped entirely.
+    if (!_skipBridgeInTest) {
       try {
         // Check Supabase authentication safely — Supabase.instance may not be
         // initialized in Firebase-only mode or during cold starts.
@@ -172,7 +165,6 @@ class EventService {
             participantIds: participantIds,
             participantNames: participantNames,
           );
-          bridgeSucceeded = true;
           debugPrint('[BRIDGE] Bridge trip INSERT succeeded for $eventId');
 
           // Cache bridge trip to SQLite so userTripsProvider can find it.
@@ -195,11 +187,7 @@ class EventService {
             );
             debugPrint('[BRIDGE] Caching trip to SQLite: id=${bridgeTrip.id}, leaderId=${bridgeTrip.leaderId}');
             await CacheService.cacheTrip(bridgeTrip);
-            final repo = _ref.read(offlineRepositoryProvider);
-            repo.notifyChange('trips');
-            debugPrint('[BRIDGE] Downloading trip data from Supabase...');
-            await SyncService.downloadTripData(bridgeTripId, repo);
-            debugPrint('[BRIDGE] Download complete');
+            debugPrint('[BRIDGE] Bridge trip cached to SQLite');
           }
         }
       } catch (e, st) {
@@ -208,11 +196,11 @@ class EventService {
       }
     }
 
-    // Step 3: Seed camping gear presets only if bridge succeeded.
-    // Per Pitfall 4: only seed if bridge created the Supabase trip,
-    // since gear items are written to Supabase via GearService.
-    if (type == EventType.camping && bridgeSucceeded) {
-      await _seedCampingGear(eventId);
+    // Step 3: Seed camping gear presets.
+    // Gear items are now written to Firestore via GearService (Plan 04-02),
+    // so seeding proceeds regardless of Supabase bridge state.
+    if (type == EventType.camping) {
+      await _seedCampingGear(groupId, eventId);
     }
 
     return event;
@@ -278,23 +266,29 @@ class EventService {
     }
   }
 
-  /// Seed the three camping preset gear items.
+  /// Seed the three camping preset gear items using the Firestore GearService API.
   ///
   /// Per D-13: Tent (high priority), Sleeping Bag (high priority), Cooler
   /// (normal priority) are added to the event's gear list on creation.
-  Future<void> _seedCampingGear(String eventId) async {
-    await _gearService.addItem(
-      tripId: eventId,
+  ///
+  /// Uses [GearService.addGearItem] (groupId, eventId, itemName) per the
+  /// Firestore-backed GearService API from Plan 04-02.
+  Future<void> _seedCampingGear(String groupId, String eventId) async {
+    await _gearService.addGearItem(
+      groupId: groupId,
+      eventId: eventId,
       itemName: 'Tent',
       isHighPriority: true,
     );
-    await _gearService.addItem(
-      tripId: eventId,
+    await _gearService.addGearItem(
+      groupId: groupId,
+      eventId: eventId,
       itemName: 'Sleeping Bag',
       isHighPriority: true,
     );
-    await _gearService.addItem(
-      tripId: eventId,
+    await _gearService.addGearItem(
+      groupId: groupId,
+      eventId: eventId,
       itemName: 'Cooler',
       isHighPriority: false,
     );
@@ -308,7 +302,7 @@ class EventService {
     required String groupId,
     required String eventId,
   }) async {
-    await _db
+    await db
         .collection('groups')
         .doc(groupId)
         .collection('events')
@@ -341,7 +335,7 @@ class EventService {
       updateMap['endDate'] = Timestamp.fromDate(endDate);
     }
 
-    await _db
+    await db
         .collection('groups')
         .doc(groupId)
         .collection('events')
@@ -359,7 +353,7 @@ class EventService {
     required List<String> participantIds,
     required Map<String, String> participantNames,
   }) async {
-    await _db
+    await db
         .collection('groups')
         .doc(groupId)
         .collection('events')
