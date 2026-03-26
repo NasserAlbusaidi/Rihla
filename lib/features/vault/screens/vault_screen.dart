@@ -6,19 +6,22 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/search_filter_bar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
-import '../../trip/models/trip_model.dart';
+import '../../events/models/event_model.dart';
+import '../../groups/models/group_model.dart';
 import '../models/document_model.dart';
 import '../providers/document_provider.dart';
 
 /// Vault Screen - Document management with upload/download
 class VaultScreen extends ConsumerStatefulWidget {
-  final Trip trip;
+  final Event event;
+  final Group group;
 
-  const VaultScreen({super.key, required this.trip});
+  const VaultScreen({super.key, required this.event, required this.group});
 
   @override
   ConsumerState<VaultScreen> createState() => _VaultScreenState();
@@ -29,10 +32,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Use deprecated shim provider while screen is still on Trip-ID API.
-    // Migrate to eventDocumentsProvider(EventRef) in the EventRef migration plan.
-    // ignore: deprecated_member_use
-    final documentsAsync = ref.watch(tripDocumentsProvider(widget.trip.id));
+    final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id,);
+    final documentsAsync = ref.watch(eventDocumentsProvider(eventRef));
     final isLoading = ref.watch(documentLoadingProvider);
     final connectivity = ref.watch(connectivityProvider);
 
@@ -43,7 +44,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           children: [
             ModuleHeader(
               title: 'Vault',
-              subtitle: widget.trip.name.toUpperCase(),
+              subtitle: widget.event.name.toUpperCase(),
             ),
             const Expanded(
               child: EmptyStateView(
@@ -64,7 +65,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         children: [
           ModuleHeader(
             title: 'Vault',
-            subtitle: widget.trip.name.toUpperCase(),
+            subtitle: widget.event.name.toUpperCase(),
             actions: [
               Container(
                 decoration: BoxDecoration(
@@ -161,8 +162,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        // ignore: deprecated_member_use
-        ref.invalidate(tripDocumentsProvider(widget.trip.id));
+        ref.invalidate(
+          eventDocumentsProvider(
+            (groupId: widget.event.groupId, eventId: widget.event.id),
+          ),
+        );
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(20),
@@ -366,10 +370,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
   Future<void> _deleteDocument(WidgetRef ref, Document doc) async {
     final service = ref.read(documentServiceProvider);
-    // fileUrl holds the Firebase Storage path after migration
     await service.deleteDocument(
-      groupId: '', // groupId not available at Trip layer — screen needs EventRef migration
-      eventId: doc.tripId,
+      groupId: widget.event.groupId,
+      eventId: widget.event.id,
       documentId: doc.id,
       storagePath: doc.fileUrl,
     );
@@ -377,10 +380,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
   void _uploadDocument(BuildContext context, WidgetRef ref) async {
     final service = ref.read(documentServiceProvider);
-    // groupId not available at Trip layer — screen needs EventRef migration
     final result = await service.pickAndUpload(
-      groupId: '',
-      eventId: widget.trip.id,
+      groupId: widget.event.groupId,
+      eventId: widget.event.id,
     );
 
     if (!context.mounted) return;

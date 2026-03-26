@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/types/event_ref.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/event_model.dart';
 import '../models/event_type_config.dart';
@@ -12,7 +13,7 @@ import '../models/event_type_config.dart';
 /// Card widget for displaying an event in the group timeline.
 ///
 /// Displays event type icon, name with type badge, date range, participant
-/// count, and live financial total pulled from the bridge trip's expenses.
+/// count, and live financial total from Firestore via eventExpensesProvider.
 ///
 /// Past events (endDate before now) are wrapped in Opacity(0.6) per D-26.
 class EventCard extends ConsumerWidget {
@@ -29,8 +30,9 @@ class EventCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final config = EventTypeConfig.forType(event.type);
 
-    // Sum expenses from the bridge trip for live financial total (EVT-07).
-    final expensesAsync = ref.watch(tripExpensesProvider(event.bridgeTripId));
+    // Sum expenses from Firestore for live financial total (EVT-07).
+    final eventRef = (groupId: event.groupId, eventId: event.id);
+    final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final totalSpent = expensesAsync.whenOrNull(
           data: (expenses) {
             if (expenses.isEmpty) return Decimal.zero;

@@ -5,20 +5,24 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
-import '../../trip/models/trip_model.dart';
+import '../../events/models/event_model.dart';
+import '../../groups/models/group_model.dart';
 import '../services/activity_service.dart';
 import '../widgets/timeline_card.dart';
 
 class ActivityFeedScreen extends ConsumerWidget {
-  final Trip trip;
+  final Event event;
+  final Group group;
 
-  const ActivityFeedScreen({super.key, required this.trip});
+  const ActivityFeedScreen({super.key, required this.event, required this.group});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activityAsync = ref.watch(tripActivityProvider(trip.id));
+    final eventRef = (groupId: event.groupId, eventId: event.id);
+    final activityAsync = ref.watch(eventActivityProvider(eventRef));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -26,20 +30,20 @@ class ActivityFeedScreen extends ConsumerWidget {
         children: [
           ModuleHeader(
             title: 'Activity',
-            subtitle: trip.name.toUpperCase(),
+            subtitle: event.name.toUpperCase(),
           ),
           Expanded(
             child: activityAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => NetworkErrorWidget(
-                onRetry: () => ref.invalidate(tripActivityProvider(trip.id)),
+                onRetry: () => ref.invalidate(eventActivityProvider(eventRef)),
               ),
               data: (logs) {
                 if (logs.isEmpty) return _buildEmptyState();
 
                 return RefreshIndicator(
                   onRefresh: () async =>
-                      ref.invalidate(tripActivityProvider(trip.id)),
+                      ref.invalidate(eventActivityProvider(eventRef)),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(24),
                     itemCount: logs.length,

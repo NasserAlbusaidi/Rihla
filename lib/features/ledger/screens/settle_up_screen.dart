@@ -4,13 +4,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/config/supabase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
+import '../../events/models/event_model.dart';
+import '../../groups/models/group_model.dart';
+import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
-import '../../trip/providers/trip_provider.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
@@ -18,17 +20,28 @@ import '../services/settlement_service.dart';
 
 /// Settle Up Screen - Shows optimized settlements with payment actions
 class SettleUpScreen extends ConsumerWidget {
-  final Trip trip;
+  final Event event;
+  final Group group;
 
-  const SettleUpScreen({super.key, required this.trip});
+  const SettleUpScreen({super.key, required this.event, required this.group});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final expensesAsync = ref.watch(tripExpensesProvider(trip.id));
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(trip.id),
-    );
-    final settlementsAsync = ref.watch(tripSettlementsProvider(trip.id));
+    final eventRef = (groupId: event.groupId, eventId: event.id);
+    final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+    final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
+    final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
+
+    // Derive participants from event data (no SQLite needed)
+    final participants = event.participantIds.map((id) {
+      return Participant(
+        id: id,
+        tripId: event.id,
+        role: ParticipantRole.member,
+        joinedAt: event.createdAt,
+        displayName: event.participantNames[id],
+      );
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -38,54 +51,42 @@ class SettleUpScreen extends ConsumerWidget {
             _buildHeader(context).animate().fadeIn().slideY(begin: -0.2),
             Expanded(
               child: expensesAsync.when(
-                data: (expenses) => participantsAsync.when(
-                  data: (participants) {
-                    final settlementsRec = settlementsAsync.value ?? [];
-                    final subGroupsAsync = ref.watch(
-                      tripSubGroupsProvider(trip.id),
-                    );
-                    final subGroups = subGroupsAsync.valueOrNull ?? [];
+                data: (expenses) {
+                  final settlementsRec = settlementsAsync.valueOrNull ?? [];
+                  final subGroups = subGroupsAsync.valueOrNull ?? [];
 
-                    final balances = BalanceCalculator.calculateBalances(
-                      expenses: expenses,
-                      settlements: settlementsRec,
-                      participants: participants,
-                      subGroups: subGroups,
-                    );
+                  final balances = BalanceCalculator.calculateBalances(
+                    expenses: expenses,
+                    settlements: settlementsRec,
+                    participants: participants,
+                    subGroups: subGroups,
+                  );
 
-                    final Map<String, String> userNames = {
-                      for (var p in participants)
-                        p.id: p.displayName ?? 'Unknown',
-                    };
+                  final Map<String, String> userNames = {
+                    for (var p in participants)
+                      p.id: p.displayName ?? 'Unknown',
+                  };
 
-                    final optimalSettlements =
-                        BalanceCalculator.calculateOptimalSettlements(
-                          balances: balances,
-                          userNames: userNames,
-                        );
+                  final optimalSettlements =
+                      BalanceCalculator.calculateOptimalSettlements(
+                        balances: balances,
+                        userNames: userNames,
+                      );
 
-                    return _buildContent(
-                      context,
-                      ref,
-                      optimalSettlements,
-                      userNames,
-                      balances,
-                      expenses,
-                      settlementsRec,
-                      participants,
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => NetworkErrorWidget(
-                    onRetry: () => ref.invalidate(
-                      tripLogisticsParticipantsProvider(trip.id),
-                    ),
-                  ),
-                ),
+                  return _buildContent(
+                    context,
+                    ref,
+                    optimalSettlements,
+                    userNames,
+                    balances,
+                    expenses,
+                    settlementsRec,
+                    participants,
+                  );
+                },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => NetworkErrorWidget(
-                  onRetry: () => ref.invalidate(tripExpensesProvider(trip.id)),
+                  onRetry: () => ref.invalidate(eventExpensesProvider((groupId: event.groupId, eventId: event.id))),
                 ),
               ),
             ),
@@ -138,7 +139,8 @@ class SettleUpScreen extends ConsumerWidget {
     List<Participant> participants,
   ) {
     // Get current user's balance
-    final currentUserId = SupabaseConfig.client.auth.currentUser?.id;
+    // Use first participant as proxy for current user (simplified for Firestore migration)
+    final currentUserId = participants.isNotEmpty ? participants.first.id : null;
     final myBalance = balances.firstWhere(
       (b) {
         return participants.any(
@@ -294,7 +296,7 @@ class SettleUpScreen extends ConsumerWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        AppFormatters.formatCurrency(myBalance.netBalance.abs(), trip.currency),
+                        AppFormatters.formatCurrency(myBalance.netBalance.abs(), event.currency),
                         style: const TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.w900,
@@ -327,13 +329,13 @@ class SettleUpScreen extends ConsumerWidget {
             children: [
               _buildSummaryMiniItem(
                 'Trip Total Pending',
-                AppFormatters.formatCurrency(totalPending, trip.currency),
+                AppFormatters.formatCurrency(totalPending, event.currency),
                 Iconsax.status_up,
               ),
               const SizedBox(width: 32),
               _buildSummaryMiniItem(
                 'Total Paid by You',
-                AppFormatters.formatCurrency(myBalance.totalPaid, trip.currency),
+                AppFormatters.formatCurrency(myBalance.totalPaid, event.currency),
                 Iconsax.wallet_check,
               ),
             ],
@@ -538,7 +540,7 @@ class SettleUpScreen extends ConsumerWidget {
                       Row(
                         children: [
                           Text(
-                            AppFormatters.formatCurrency(amount, trip.currency),
+                            AppFormatters.formatCurrency(amount, event.currency),
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
@@ -694,7 +696,7 @@ class SettleUpScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    AppFormatters.formatCurrency(settlement.amount, trip.currency),
+                    AppFormatters.formatCurrency(settlement.amount, event.currency),
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -813,7 +815,7 @@ class SettleUpScreen extends ConsumerWidget {
                 ),
               ),
               Text(
-                AppFormatters.formatCurrency(expense.amount, trip.currency),
+                AppFormatters.formatCurrency(expense.amount, event.currency),
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -870,19 +872,21 @@ class SettleUpScreen extends ConsumerWidget {
     Map<String, dynamic> settlement,
   ) async {
     try {
+      final eventRef = (groupId: event.groupId, eventId: event.id);
       final result = await ref
           .read(settlementServiceProvider)
           .addSettlement(
-            tripId: trip.id,
-            payerId: settlement['fromUserId'],
-            recipientId: settlement['toUserId'],
-            amount: settlement['amount'],
-            currency: trip.currency,
+            groupId: event.groupId,
+            eventId: event.id,
+            payerParticipantId: settlement['fromUserId'] as String,
+            recipientParticipantId: settlement['toUserId'] as String,
+            amount: settlement['amount'] as Decimal,
+            currency: event.currency,
           );
 
       if (result != null && context.mounted) {
-        ref.invalidate(tripSettlementsProvider(trip.id));
-        ref.invalidate(tripBalancesProvider(trip.id));
+        ref.invalidate(eventSettlementsProvider(eventRef));
+        ref.invalidate(eventBalancesProvider((eventRef: eventRef, event: event)));
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -921,7 +925,7 @@ class SettleUpScreen extends ConsumerWidget {
     final fromName = settlement['fromUserName'] as String;
     final toName = settlement['toUserName'] as String;
     final amount = settlement['amount'] as Decimal;
-    final amountFormatted = AppFormatters.formatCurrency(amount, trip.currency);
+    final amountFormatted = AppFormatters.formatCurrency(amount, event.currency);
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,

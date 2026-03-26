@@ -4,21 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../shared/widgets/app_tab_bar.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../events/models/event_model.dart';
+import '../../groups/models/group_model.dart';
 import '../../trip/models/trip_model.dart';
-import '../../trip/providers/trip_provider.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
 
 /// Logistics Screen - Manage cars, rooms, and teams
 class LogisticsScreen extends ConsumerStatefulWidget {
-  final Trip trip;
+  final Event event;
+  final Group group;
 
-  const LogisticsScreen({super.key, required this.trip});
+  const LogisticsScreen({super.key, required this.event, required this.group});
 
   @override
   ConsumerState<LogisticsScreen> createState() => _LogisticsScreenState();
@@ -46,7 +49,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final subGroupsAsync = ref.watch(tripSubGroupsProvider(widget.trip.id));
+    final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id,);
+    final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -54,7 +58,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         children: [
           ModuleHeader(
             title: 'Logistics',
-            subtitle: widget.trip.name.toUpperCase(),
+            subtitle: widget.event.name.toUpperCase(),
             actions: [
               Container(
                 decoration: BoxDecoration(
@@ -83,8 +87,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
               data: (groups) => _buildTabContent(groups),
               loading: () => SkeletonLoader.groupList(),
               error: (e, _) => NetworkErrorWidget(
-                onRetry: () =>
-                    ref.invalidate(tripSubGroupsProvider(widget.trip.id)),
+                onRetry: () => ref.invalidate(
+                  eventSubGroupsProvider(
+                    (groupId: widget.event.groupId, eventId: widget.event.id,),
+                  ),
+                ),
               ),
             ),
           ),
@@ -118,7 +125,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(tripSubGroupsProvider(widget.trip.id));
+              ref.invalidate(
+                eventSubGroupsProvider(
+                  (groupId: widget.event.groupId, eventId: widget.event.id,),
+                ),
+              );
             },
             child: ListView.builder(
               padding: const EdgeInsets.all(24),
@@ -132,91 +143,85 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }
 
   Widget _buildUnassignedPool(List<SubGroup> groups, SubGroupType type) {
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(widget.trip.id),
+    final participants = ref.watch(
+      eventLogisticsParticipantsProvider(widget.event),
     );
 
-    return participantsAsync.when(
-      data: (participants) {
-        // Find participants not in any group of this type
-        final assignedUserIds = groups
-            .expand((g) => g.members)
-            .map((m) => m.participantId)
-            .toSet();
+    // Find participants not in any group of this type
+    final assignedUserIds = groups
+        .expand((g) => g.members)
+        .map((m) => m.participantId)
+        .toSet();
 
-        final unassigned = participants
-            .where((p) => !assignedUserIds.contains(p.id))
-            .toList();
+    final unassigned = participants
+        .where((p) => !assignedUserIds.contains(p.id))
+        .toList();
 
-        if (unassigned.isEmpty) return const SizedBox.shrink();
+    if (unassigned.isEmpty) return const SizedBox.shrink();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Row(
-                children: [
-                  Text(
-                    'UNASSIGNED PERSONNEL',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '${unassigned.length} LEFT',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
+            children: [
+              Text(
+                'UNASSIGNED PERSONNEL',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: AppColors.textMuted,
+                ),
               ),
-            ),
-            SizedBox(
-              height: 90,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: unassigned.length,
-                itemBuilder: (context, index) {
-                  final p = unassigned[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Draggable<Participant>(
-                      data: p,
-                      feedback: _buildPoolItem(p, isFeedback: true),
-                      childWhenDragging: Opacity(
-                        opacity: 0.3,
-                        child: _buildPoolItem(p),
-                      ),
-                      onDragStarted: () => HapticService.selection(),
-                      child: _buildPoolItem(p),
-                    ),
-                  );
-                },
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${unassigned.length} LEFT',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
-            ),
-          ],
-        );
-      },
-      loading: () => const SizedBox(height: 100),
-      error: (_, __) => const SizedBox.shrink(),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 90,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: unassigned.length,
+            itemBuilder: (context, index) {
+              final p = unassigned[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Draggable<Participant>(
+                  data: p,
+                  feedback: _buildPoolItem(p, isFeedback: true),
+                  childWhenDragging: Opacity(
+                    opacity: 0.3,
+                    child: _buildPoolItem(p),
+                  ),
+                  onDragStarted: () => HapticService.selection(),
+                  child: _buildPoolItem(p),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -585,9 +590,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
       backgroundColor: Colors.transparent,
       builder: (context) => Consumer(
         builder: (context, ref, _) {
-          final participantsAsync = ref.watch(
-            tripLogisticsParticipantsProvider(widget.trip.id),
+          final participants = ref.watch(
+            eventLogisticsParticipantsProvider(widget.event),
           );
+          final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id,);
+          final allGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
           return Container(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
             decoration: const BoxDecoration(
@@ -609,85 +616,74 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                participantsAsync.when(
-                  data: (participants) {
-                    final allGroupsAsync = ref.watch(
-                      tripSubGroupsProvider(widget.trip.id),
-                    );
-                    return allGroupsAsync.when(
-                      data: (groups) {
-                        final assignedUserIds = groups
-                            .expand((g) => g.members)
-                            .map((m) => m.participantId)
-                            .toSet();
+                allGroupsAsync.when(
+                  data: (groups) {
+                    final assignedUserIds = groups
+                        .expand((g) => g.members)
+                        .map((m) => m.participantId)
+                        .toSet();
 
-                        final unassigned = participants
-                            .where((p) => !assignedUserIds.contains(p.id))
-                            .toList();
+                    final unassigned = participants
+                        .where((p) => !assignedUserIds.contains(p.id))
+                        .toList();
 
-                        if (unassigned.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 40),
-                            child: Center(
-                              child: Text(
-                                'No unassigned members',
-                                style: TextStyle(color: AppColors.textMuted),
+                    if (unassigned.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(
+                          child: Text(
+                            'No unassigned members',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Flexible(
+                      child: ListView.builder(
+                        itemCount: unassigned.length,
+                        itemBuilder: (context, index) {
+                          final p = unassigned[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: AppColors.background,
+                              backgroundImage:
+                                  p.avatarUrl != null &&
+                                      p.avatarUrl!.startsWith('http')
+                                  ? NetworkImage(p.avatarUrl!)
+                                  : null,
+                              child:
+                                  p.avatarUrl == null ||
+                                      !p.avatarUrl!.startsWith('http')
+                                  ? Text(
+                                      p.displayName?[0] ?? 'U',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.mint,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            title: Text(
+                              p.displayName ?? 'Unknown',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          );
-                        }
-
-                        return Flexible(
-                          child: ListView.builder(
-                            itemCount: unassigned.length,
-                            itemBuilder: (context, index) {
-                              final p = unassigned[index];
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: AppColors.background,
-                                  backgroundImage:
-                                      p.avatarUrl != null &&
-                                          p.avatarUrl!.startsWith('http')
-                                      ? NetworkImage(p.avatarUrl!)
-                                      : null,
-                                  child:
-                                      p.avatarUrl == null ||
-                                          !p.avatarUrl!.startsWith('http')
-                                      ? Text(
-                                          p.displayName?[0] ?? 'U',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.mint,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                                title: Text(
-                                  p.displayName ?? 'Unknown',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                onTap: () async {
-                                  HapticService.lightClick();
-                                  // Legacy screen: addMember requires EventRef context (groupId, eventId).
-                                  // This screen will be updated in a future plan to use EventRef.
-                                  debugPrint(
-                                    'addMember not supported in legacy screen — migrate to EventRef flow',
-                                  );
-                                  if (context.mounted) Navigator.pop(context);
-                                },
+                            onTap: () async {
+                              HapticService.lightClick();
+                              // addMember requires sub-group service with EventRef context.
+                              // Wired in a future plan when full sub-group write flow is added.
+                              debugPrint(
+                                'addMember not yet wired — EventRef flow pending',
                               );
+                              if (context.mounted) Navigator.pop(context);
                             },
-                          ),
-                        );
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (e, _) =>
-                          const InlineErrorWidget(message: 'Unable to load'),
+                          );
+                        },
+                      ),
                     );
                   },
                   loading: () =>

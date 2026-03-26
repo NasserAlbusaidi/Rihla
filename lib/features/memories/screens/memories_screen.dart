@@ -8,16 +8,19 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../trip/models/trip_model.dart';
+import '../../events/models/event_model.dart';
+import '../../groups/models/group_model.dart';
 import '../models/memory_model.dart';
 import '../providers/memory_provider.dart';
 
 /// Memories screen - Photo timeline for a trip
 class MemoriesScreen extends ConsumerStatefulWidget {
-  final Trip trip;
+  final Event event;
+  final Group group;
 
-  const MemoriesScreen({super.key, required this.trip});
+  const MemoriesScreen({super.key, required this.event, required this.group});
 
   @override
   ConsumerState<MemoriesScreen> createState() => _MemoriesScreenState();
@@ -30,11 +33,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     setState(() => _isUploading = true);
 
     final service = ref.read(memoryServiceProvider);
-    // groupId not available at Trip layer — screen needs EventRef migration.
-    // uploadPhoto requires groupId + eventId; pass empty groupId as interim.
     final memory = await service.uploadPhoto(
-      groupId: '', // TODO: migrate to EventRef in EventRef migration plan
-      eventId: widget.trip.id,
+      groupId: widget.event.groupId,
+      eventId: widget.event.id,
       source: source,
     );
 
@@ -42,8 +43,11 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     setState(() => _isUploading = false);
 
     if (memory != null) {
-      // ignore: deprecated_member_use
-      ref.invalidate(tripMemoriesProvider(widget.trip.id));
+      ref.invalidate(
+        eventMemoriesProvider(
+          (groupId: widget.event.groupId, eventId: widget.event.id),
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -166,10 +170,11 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Use deprecated shim provider while screen is still on Trip-ID API.
-    // Migrate to eventMemoriesProvider(EventRef) in the EventRef migration plan.
-    // ignore: deprecated_member_use
-    final memoriesAsync = ref.watch(tripMemoriesProvider(widget.trip.id));
+    final memoriesAsync = ref.watch(
+      eventMemoriesProvider(
+        (groupId: widget.event.groupId, eventId: widget.event.id),
+      ),
+    );
 
     final connectivity = ref.watch(connectivityProvider);
     if (connectivity == ConnectivityStatus.offline) {
@@ -240,10 +245,11 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextButton(
-                        // ignore: deprecated_member_use
                         onPressed: () => ref.invalidate(
-                            // ignore: deprecated_member_use
-                            tripMemoriesProvider(widget.trip.id)),
+                          eventMemoriesProvider(
+                            (groupId: widget.event.groupId, eventId: widget.event.id,),
+                          ),
+                        ),
                         child: const Text('Retry'),
                       ),
                     ],
@@ -296,8 +302,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                 Consumer(
                   builder: (context, ref, _) {
                     final count = ref
-                            // ignore: deprecated_member_use
-                            .watch(tripMemoriesProvider(widget.trip.id))
+                            .watch(eventMemoriesProvider((groupId: widget.event.groupId, eventId: widget.event.id,)))
                             .valueOrNull
                             ?.length ??
                         0;
@@ -386,8 +391,11 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        // ignore: deprecated_member_use
-        ref.invalidate(tripMemoriesProvider(widget.trip.id));
+        ref.invalidate(
+          eventMemoriesProvider(
+            (groupId: widget.event.groupId, eventId: widget.event.id),
+          ),
+        );
       },
       color: AppColors.primary,
       child: ListView.builder(
@@ -603,16 +611,18 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
               onDelete: () async {
                 Navigator.pop(context);
                 final service = ref.read(memoryServiceProvider);
-                // groupId not available at Trip layer — passes empty string as interim
                 final deleted = await service.deleteMemory(
-                  groupId: '',
-                  eventId: memory.tripId,
+                  groupId: widget.event.groupId,
+                  eventId: widget.event.id,
                   memoryId: memory.id,
                   storagePath: memory.storagePath,
                 );
                 if (deleted) {
-                  // ignore: deprecated_member_use
-                  ref.invalidate(tripMemoriesProvider(widget.trip.id));
+                  ref.invalidate(
+                    eventMemoriesProvider(
+                      (groupId: widget.event.groupId, eventId: widget.event.id,),
+                    ),
+                  );
                 }
               },
             ),

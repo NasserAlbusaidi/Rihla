@@ -5,21 +5,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 import '../../gear/models/gear_item_model.dart';
 import '../../gear/providers/gear_provider.dart';
 import '../../gear/screens/gear_screen.dart';
+import '../../groups/models/group_model.dart';
 import '../../ledger/models/expense_model.dart';
+import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../ledger/screens/ledger_screen.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../logistics/screens/logistics_screen.dart';
 import '../../memories/screens/memories_screen.dart';
-import '../../trip/models/trip_model.dart';
-import '../../trip/providers/trip_provider.dart';
 import '../../vault/models/document_model.dart';
 import '../../vault/providers/document_provider.dart';
 import '../../vault/screens/vault_screen.dart';
@@ -27,32 +28,38 @@ import '../models/event_model.dart';
 
 /// Priority-sorted list of module cards for an event hub.
 ///
-/// Adapts [ModuleList] to accept an [Event] and a [Trip] facade.
+/// Uses EventRef-based Firestore providers for all data.
+/// No Trip facade — part of bridge removal in Plan 04-05.
 /// Cards are filtered by [event.modules] booleans — only enabled
 /// modules render a card. This supports Custom events with arbitrary
 /// module selections per D-14.
 class EventModuleList extends ConsumerWidget {
   final Event event;
-  final Trip trip;
+  final Group group;
+  final EventRef eventRef;
 
-  const EventModuleList({super.key, required this.event, required this.trip});
+  const EventModuleList({
+    super.key,
+    required this.event,
+    required this.group,
+    required this.eventRef,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Always watch core providers — needed for Ledger card.
-    final expensesAsync = ref.watch(tripExpensesProvider(trip.id));
-    final balancesAsync = ref.watch(tripBalancesProvider(trip.id));
-    final currentParticipant = ref.watch(currentParticipantProvider(trip.id));
+    final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+    final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
 
     // Conditionally watch module-specific providers.
     final gearAsync = event.modules.gear
-        ? ref.watch(tripGearProvider(trip.id))
+        ? ref.watch(eventGearItemsProvider(eventRef))
         : null;
     final subGroupsAsync = event.modules.logistics
-        ? ref.watch(tripSubGroupsProvider(trip.id))
+        ? ref.watch(eventSubGroupsProvider(eventRef))
         : null;
     final docsAsync = event.modules.vault
-        ? ref.watch(tripDocumentsProvider(trip.id))
+        ? ref.watch(eventDocumentsProvider(eventRef))
         : null;
 
     // Build module card configs.
@@ -60,7 +67,7 @@ class EventModuleList extends ConsumerWidget {
 
     // --- Ledger (conditional on event.modules.ledger — Custom type can toggle off) ---
     if (event.modules.ledger) {
-      _addLedgerCard(cards, expensesAsync, balancesAsync, currentParticipant, context);
+      _addLedgerCard(cards, expensesAsync, settlementsAsync, context);
     }
 
     // --- Gear ---
@@ -117,19 +124,14 @@ class EventModuleList extends ConsumerWidget {
   void _addLedgerCard(
     List<_ModuleCardConfig> cards,
     AsyncValue<List<Expense>> expensesAsync,
-    AsyncValue<List<UserBalance>> balancesAsync,
-    Participant? currentParticipant,
+    AsyncValue<List<Settlement>> settlementsAsync,
     BuildContext context,
   ) {
     final expenses = expensesAsync.valueOrNull ?? [];
-    final balances = balancesAsync.valueOrNull;
-    final userBalance = balances?.cast<UserBalance?>().firstWhere(
-      (b) => b?.participantId == currentParticipant?.id,
-      orElse: () => null,
+    final totalSpent = expenses.fold<Decimal>(
+      Decimal.zero,
+      (sum, e) => sum + e.amount,
     );
-    final net = userBalance?.netBalance ?? Decimal.zero;
-    final isDebt = net < Decimal.zero;
-    final isOwed = net > Decimal.zero;
 
     String? ledgerSummary;
     String? ledgerAction;
@@ -138,27 +140,16 @@ class EventModuleList extends ConsumerWidget {
 
     if (expenses.isNotEmpty) {
       final count = expenses.length;
-      if (net == Decimal.zero) {
-        ledgerSummary = '$count expense${count != 1 ? 's' : ''} \u00b7 All settled';
-        ledgerPriority = 50;
-      } else if (isDebt) {
-        ledgerAction =
-            'You owe ${AppFormatters.formatCurrency(net.abs(), trip.currency)}';
-        ledgerPriority = 100;
-      } else {
-        ledgerAction =
-            'You are owed ${AppFormatters.formatCurrency(net, trip.currency)}';
-        ledgerPriority = 90;
-      }
+      ledgerSummary =
+          '$count expense${count != 1 ? "s" : ""} \u00b7 ${AppFormatters.formatCurrency(totalSpent, event.currency)}';
+      ledgerPriority = 50;
     }
 
     cards.add(_ModuleCardConfig(
       icon: Iconsax.wallet_3,
       title: 'Ledger',
       description: 'Track shared expenses and split costs fairly',
-      color: isDebt
-          ? AppColors.rose
-          : (isOwed ? AppColors.emerald : AppColors.accentSecondary),
+      color: AppColors.accentSecondary,
       onTap: () => _openLedger(context),
       summaryText: ledgerSummary,
       actionText: ledgerAction,
@@ -186,7 +177,7 @@ class EventModuleList extends ConsumerWidget {
 
       if (unclaimed > 0) {
         gearAction =
-            '$unclaimed item${unclaimed != 1 ? 's' : ''} still need someone';
+            '$unclaimed item${unclaimed != 1 ? "s" : ""} still need someone';
         gearPriority = 80;
       } else {
         gearSummary = '$total items \u00b7 $packed packed';
@@ -218,13 +209,11 @@ class EventModuleList extends ConsumerWidget {
     int logisticsPriority = 10;
 
     if (subGroups.isNotEmpty) {
-      final cars =
-          subGroups.where((g) => g.type == SubGroupType.car).length;
-      final rooms =
-          subGroups.where((g) => g.type == SubGroupType.room).length;
+      final cars = subGroups.where((g) => g.type == SubGroupType.car).length;
+      final rooms = subGroups.where((g) => g.type == SubGroupType.room).length;
       final parts = <String>[];
-      if (cars > 0) parts.add('$cars car${cars != 1 ? 's' : ''}');
-      if (rooms > 0) parts.add('$rooms room${rooms != 1 ? 's' : ''}');
+      if (cars > 0) parts.add('$cars car${cars != 1 ? "s" : ""}');
+      if (rooms > 0) parts.add('$rooms room${rooms != 1 ? "s" : ""}');
       logisticsSummary = parts.join(' \u00b7 ');
       logisticsPriority = 50;
     }
@@ -253,7 +242,7 @@ class EventModuleList extends ConsumerWidget {
 
     if (docs.isNotEmpty) {
       vaultSummary =
-          '${docs.length} document${docs.length != 1 ? 's' : ''} uploaded';
+          '${docs.length} document${docs.length != 1 ? "s" : ""} uploaded';
       vaultPriority = 50;
     }
 
@@ -286,31 +275,41 @@ class EventModuleList extends ConsumerWidget {
 
   void _openLedger(BuildContext context) {
     Navigator.of(context).push(
-      AppPageRoute(builder: (context) => LedgerScreen(trip: trip)),
+      AppPageRoute(
+        builder: (context) => LedgerScreen(event: event, group: group),
+      ),
     );
   }
 
   void _openGear(BuildContext context) {
     Navigator.of(context).push(
-      AppPageRoute(builder: (context) => GearScreen(trip: trip)),
+      AppPageRoute(
+        builder: (context) => GearScreen(event: event, group: group),
+      ),
     );
   }
 
   void _openLogistics(BuildContext context) {
     Navigator.of(context).push(
-      AppPageRoute(builder: (context) => LogisticsScreen(trip: trip)),
+      AppPageRoute(
+        builder: (context) => LogisticsScreen(event: event, group: group),
+      ),
     );
   }
 
   void _openVault(BuildContext context) {
     Navigator.of(context).push(
-      AppPageRoute(builder: (context) => VaultScreen(trip: trip)),
+      AppPageRoute(
+        builder: (context) => VaultScreen(event: event, group: group),
+      ),
     );
   }
 
   void _openMemories(BuildContext context) {
     Navigator.of(context).push(
-      AppPageRoute(builder: (context) => MemoriesScreen(trip: trip)),
+      AppPageRoute(
+        builder: (context) => MemoriesScreen(event: event, group: group),
+      ),
     );
   }
 }

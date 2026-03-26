@@ -5,21 +5,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/search_filter_bar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../trip/models/trip_model.dart';
+import '../../events/models/event_model.dart';
+import '../../groups/models/group_model.dart';
 import '../models/gear_item_model.dart';
 import '../providers/gear_provider.dart';
 
 /// Gear Screen - Packing checklist with claim functionality
 class GearScreen extends ConsumerStatefulWidget {
-  final Trip trip;
+  final Event event;
+  final Group group;
 
-  const GearScreen({super.key, required this.trip});
+  const GearScreen({super.key, required this.event, required this.group});
 
   @override
   ConsumerState<GearScreen> createState() => _GearScreenState();
@@ -40,7 +43,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final gearAsync = ref.watch(tripGearProvider(widget.trip.id));
+    final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id);
+    final gearAsync = ref.watch(eventGearItemsProvider(eventRef));
     final currentUserId = ref.watch(currentUserProvider)?.id;
 
     return Scaffold(
@@ -49,7 +53,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         children: [
           ModuleHeader(
             title: 'Gear',
-            subtitle: widget.trip.name.toUpperCase(),
+            subtitle: widget.event.name.toUpperCase(),
           ),
           SearchFilterBar(
             onSearchChanged: (q) => setState(() => _searchQuery = q),
@@ -108,7 +112,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(tripGearProvider(widget.trip.id));
+              ref.invalidate(eventGearItemsProvider((groupId: widget.event.groupId, eventId: widget.event.id)));
             },
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/balance_cache_repository.dart';
 import '../../../core/types/event_ref.dart';
+import '../../events/models/event_model.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -86,6 +87,67 @@ final eventSettlementsProvider =
       return settlements; // pass through unchanged
     },
   );
+});
+
+// ---------------------------------------------------------------------------
+// NEW: EventRef-based balance provider
+// ---------------------------------------------------------------------------
+
+/// Provider for user balances in an event.
+///
+/// Derives participants directly from [Event.participantIds] and
+/// [Event.participantNames] — no SQLite lookup needed. Uses
+/// [eventExpensesProvider], [eventSettlementsProvider], and
+/// [eventSubGroupsProvider] (all Firestore-backed).
+///
+/// Takes a record `({EventRef eventRef, Event event})` to carry both
+/// the EventRef (for provider lookups) and the Event (for participant data).
+final eventBalancesProvider = Provider.family<
+    AsyncValue<List<UserBalance>>,
+    ({EventRef eventRef, Event event})>((ref, params) {
+  final expensesAsync = ref.watch(eventExpensesProvider(params.eventRef));
+  final settlementsAsync =
+      ref.watch(eventSettlementsProvider(params.eventRef));
+  final subGroupsAsync =
+      ref.watch(eventSubGroupsProvider(params.eventRef));
+
+  if (expensesAsync.isLoading ||
+      settlementsAsync.isLoading ||
+      subGroupsAsync.isLoading) {
+    if (!expensesAsync.hasValue ||
+        !settlementsAsync.hasValue ||
+        !subGroupsAsync.hasValue) {
+      return const AsyncValue.loading();
+    }
+  }
+
+  if (expensesAsync.hasError) {
+    return AsyncValue.error(expensesAsync.error!, expensesAsync.stackTrace!);
+  }
+
+  final expenses = expensesAsync.valueOrNull ?? [];
+  final settlements = settlementsAsync.valueOrNull ?? [];
+  final subGroups = subGroupsAsync.valueOrNull ?? [];
+
+  // Derive participants from event data (no SQLite needed)
+  final participants = params.event.participantIds.map((id) {
+    return Participant(
+      id: id,
+      tripId: params.event.id,
+      role: ParticipantRole.member,
+      joinedAt: params.event.createdAt,
+      displayName: params.event.participantNames[id],
+    );
+  }).toList();
+
+  final balances = BalanceCalculator.calculateBalances(
+    expenses: expenses,
+    settlements: settlements,
+    participants: participants,
+    subGroups: subGroups,
+  );
+
+  return AsyncValue.data(balances);
 });
 
 // ---------------------------------------------------------------------------

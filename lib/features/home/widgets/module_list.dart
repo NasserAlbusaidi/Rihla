@@ -10,18 +10,16 @@ import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 import '../../gear/models/gear_item_model.dart';
 import '../../gear/providers/gear_provider.dart';
-import '../../gear/screens/gear_screen.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
-import '../../ledger/screens/ledger_screen.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
-import '../../logistics/screens/logistics_screen.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../../vault/models/document_model.dart';
 import '../../vault/providers/document_provider.dart';
-import '../../vault/screens/vault_screen.dart';
+import '../../gear/models/gear_item_model.dart';
+import '../../gear/providers/gear_provider.dart';
 
 /// Priority-sorted list of module cards (Ledger, Gear, Logistics, Vault).
 ///
@@ -256,27 +254,23 @@ class ModuleList extends ConsumerWidget {
   }
 
   void _openLedger(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(builder: (context) => LedgerScreen(trip: trip)),
-    );
+    // TODO: Legacy ModuleList deprecated. Use EventModuleList with EventRef instead.
+    debugPrint('[ModuleList] _openLedger deferred — use EventCommandCenter');
   }
 
   void _openGear(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(builder: (context) => GearScreen(trip: trip)),
-    );
+    // TODO: Legacy ModuleList deprecated. Use EventModuleList with EventRef instead.
+    debugPrint('[ModuleList] _openGear deferred — use EventCommandCenter');
   }
 
   void _openLogistics(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(builder: (context) => LogisticsScreen(trip: trip)),
-    );
+    // TODO: Legacy ModuleList deprecated. Use EventModuleList with EventRef instead.
+    debugPrint('[ModuleList] _openLogistics deferred — use EventCommandCenter');
   }
 
   void _openVault(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(builder: (context) => VaultScreen(trip: trip)),
-    );
+    // TODO: Legacy ModuleList deprecated. Use EventModuleList with EventRef instead.
+    debugPrint('[ModuleList] _openVault deferred — use EventCommandCenter');
   }
 }
 

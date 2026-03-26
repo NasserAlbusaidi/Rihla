@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/types/event_ref.dart';
+import '../../events/models/event_model.dart';
+import '../../trip/models/trip_model.dart';
 import '../models/sub_group_model.dart';
 import '../services/sub_group_service.dart';
 
@@ -47,3 +49,21 @@ final subGroupsByTypeProvider =
         (groups) => groups.where((g) => g.type == params.type).toList(),
       );
     });
+
+/// Derives a [List<Participant>] from an [Event]'s participantIds/participantNames.
+///
+/// Used by LogisticsScreen to show participants for drag-and-drop assignment.
+/// No SQLite lookup needed — data comes from Firestore event document.
+final eventLogisticsParticipantsProvider =
+    Provider.family<List<Participant>, Event>((ref, event) {
+  return event.participantIds.map((id) {
+    return Participant(
+      id: id,
+      tripId: event.id,
+      role: ParticipantRole.member,
+      joinedAt: event.createdAt,
+      displayName: event.participantNames[id],
+      avatarUrl: null,
+    );
+  }).toList();
+});

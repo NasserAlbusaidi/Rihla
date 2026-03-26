@@ -7,28 +7,31 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
+import '../../events/models/event_model.dart';
+import '../../groups/models/group_model.dart';
+import '../../trip/models/trip_model.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
-import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../models/transaction_model.dart';
 import '../providers/expense_provider.dart';
 import '../providers/ledger_provider.dart';
-import '../../trip/providers/trip_provider.dart';
 import 'add_expense_screen.dart';
 import 'edit_expense_sheet.dart';
 import 'settle_up_screen.dart';
 
-/// Ledger Screen - Trip Settlement with dark header, debt tabs, and actions
+/// Ledger Screen - Event Settlement with dark header, debt tabs, and actions
 class LedgerScreen extends ConsumerStatefulWidget {
-  final Trip trip;
+  final Event event;
+  final Group group;
 
-  const LedgerScreen({super.key, required this.trip});
+  const LedgerScreen({super.key, required this.event, required this.group});
 
   @override
   ConsumerState<LedgerScreen> createState() => _LedgerScreenState();
@@ -40,7 +43,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   void _openSettleUp(BuildContext context) {
     Navigator.of(context).push(
       AppPageRoute(
-        builder: (context) => SettleUpScreen(trip: widget.trip),
+        builder: (context) =>
+            SettleUpScreen(event: widget.event, group: widget.group),
       ),
     );
   }
@@ -163,7 +167,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           ),
         ),
         Text(
-          AppFormatters.formatCurrency(amount, widget.trip.currency),
+          AppFormatters.formatCurrency(amount, widget.event.currency),
           style: TextStyle(
             fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
             color: color,
@@ -175,60 +179,59 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch raw streams for Balance Calculation
-    final expensesAsync = ref.watch(tripExpensesProvider(widget.trip.id));
-    final settlementsAsync = ref.watch(tripSettlementsProvider(widget.trip.id));
-    
+    final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id);
+
+    // Watch raw streams for Balance Calculation using EventRef-based providers
+    final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+    final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
+
     // Watch Unified Ledger for Transaction List
-    final ledgerAsync = ref.watch(tripUnifiedLedgerProvider(widget.trip.id));
-    
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(widget.trip.id),
-    );
-    final currentParticipant = ref.watch(
-      currentParticipantProvider(widget.trip.id),
-    );
-    final currentParticipantId = currentParticipant?.id;
+    final ledgerAsync = ref.watch(eventUnifiedLedgerProvider(eventRef));
+
+    // Derive participants from event data (no SQLite lookup needed)
+    final participants = widget.event.participantIds.map((id) {
+      return Participant(
+        id: id,
+        tripId: widget.event.id,
+        role: ParticipantRole.member,
+        joinedAt: widget.event.createdAt,
+        displayName: widget.event.participantNames[id],
+      );
+    }).toList();
+
+    // Sub-groups from Firestore
+    final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
+    final subGroups = subGroupsAsync.valueOrNull ?? [];
+
+    // Current participant: match device name to event participant
+    final currentParticipantId = participants.isNotEmpty
+        ? participants.first.id
+        : null;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: expensesAsync.when(
         data: (expenses) => settlementsAsync.when(
-          data: (settlements) => participantsAsync.when(
-            data: (participants) {
-              final subGroupsAsync = ref.watch(
-                tripSubGroupsProvider(widget.trip.id),
-              );
-              final subGroups = subGroupsAsync.valueOrNull ?? [];
-              
-              // Use unified ledger if available, else empty
-              final transactions = ledgerAsync.valueOrNull ?? [];
-
-              return _buildContent(
-                context,
-                expenses,
-                settlements,
-                transactions,
-                participants,
-                currentParticipantId,
-                subGroups,
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => NetworkErrorWidget(
-              onRetry: () => ref.invalidate(
-                tripLogisticsParticipantsProvider(widget.trip.id),
-              ),
-            ),
-          ),
+          data: (settlements) {
+            final transactions = ledgerAsync.valueOrNull ?? [];
+            return _buildContent(
+              context,
+              expenses,
+              settlements,
+              transactions,
+              participants,
+              currentParticipantId,
+              subGroups,
+            );
+          },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => NetworkErrorWidget(
-            onRetry: () => ref.invalidate(tripSettlementsProvider(widget.trip.id)),
+            onRetry: () => ref.invalidate(eventSettlementsProvider(eventRef)),
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => NetworkErrorWidget(
-          onRetry: () => ref.invalidate(tripExpensesProvider(widget.trip.id)),
+          onRetry: () => ref.invalidate(eventExpensesProvider(eventRef)),
         ),
       ),
     );
@@ -512,7 +515,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        AppFormatters.formatCurrency(grandTotal, widget.trip.currency),
+                        AppFormatters.formatCurrency(grandTotal, widget.event.currency),
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
@@ -598,7 +601,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              AppFormatters.formatCurrency(cat.total, widget.trip.currency),
+                              AppFormatters.formatCurrency(cat.total, widget.event.currency),
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -731,7 +734,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 
     return ModuleHeader(
       title: 'Ledger',
-      subtitle: widget.trip.name.toUpperCase(),
+      subtitle: widget.event.name.toUpperCase(),
       useDarkTheme: true,
       actions: [
         Container(
@@ -781,7 +784,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           const SizedBox(width: 4),
                           Text(
                             absBalance.toStringAsFixed(
-                              AppFormatters.currencyConfig[widget.trip.currency]?.decimals ?? 3,
+                              AppFormatters.currencyConfig[widget.event.currency]?.decimals ?? 3,
                             ),
                             style: const TextStyle(
                               color: Colors.white,
@@ -792,7 +795,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            widget.trip.currency,
+                            widget.event.currency,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.5),
                               fontSize: 13,
@@ -1017,7 +1020,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               ),
             ),
             Text(
-              AppFormatters.formatCurrency(transaction.amount, widget.trip.currency),
+              AppFormatters.formatCurrency(transaction.amount, widget.event.currency),
               style: TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
@@ -1035,15 +1038,21 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) =>
-          EditExpenseSheet(tripId: widget.trip.id, expense: expense),
+      builder: (context) => EditExpenseSheet(
+        groupId: widget.event.groupId,
+        eventId: widget.event.id,
+        expense: expense,
+      ),
     );
   }
 
   void _addExpense(BuildContext context) {
     Navigator.of(context).push(
       AppPageRoute(
-        builder: (context) => AddExpenseScreen(tripId: widget.trip.id),
+        builder: (context) => AddExpenseScreen(
+          groupId: widget.event.groupId,
+          eventId: widget.event.id,
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -16,12 +17,14 @@ import '../providers/category_provider.dart';
 
 /// Bottom sheet for editing an existing expense
 class EditExpenseSheet extends ConsumerStatefulWidget {
-  final String tripId;
+  final String groupId;
+  final String eventId;
   final Expense expense;
 
   const EditExpenseSheet({
     super.key,
-    required this.tripId,
+    required this.groupId,
+    required this.eventId,
     required this.expense,
   });
 
@@ -48,7 +51,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     final trips = ref.read(userTripsProvider).valueOrNull;
     if (trips == null) return 'OMR';
     final trip = trips.cast<Trip?>().firstWhere(
-      (t) => t!.id == widget.tripId,
+      (t) => t!.id == widget.eventId,
       orElse: () => null,
     );
     return trip?.currency ?? 'OMR';
@@ -96,31 +99,27 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     }
 
     final expenseService = ref.read(expenseServiceProvider);
-    final result = await expenseService.updateExpense(
+    await expenseService.updateExpense(
+      groupId: widget.groupId,
+      eventId: widget.eventId,
       expenseId: widget.expense.id,
-      oldExpense: widget.expense,
-      newAmount: newAmount != widget.expense.amount ? newAmount : null,
-      newDescription: _noteController.text.trim() != widget.expense.description
+      amount: newAmount != widget.expense.amount ? newAmount : null,
+      description: _noteController.text.trim() != widget.expense.description
           ? _noteController.text.trim()
           : null,
-      newCategoryId: _selectedCategoryId != widget.expense.categoryId
-          ? _selectedCategoryId
-          : null,
-      newScope: _scope != widget.expense.scope ? _scope : null,
-      newSubGroupId: _scope == ExpenseScope.subGroup
-          ? _selectedSubGroupId
-          : null,
-      newCustomSplitParticipants: _scope == ExpenseScope.custom
+      scope: _scope != widget.expense.scope ? _scope : null,
+      subGroupId: _scope == ExpenseScope.subGroup ? _selectedSubGroupId : null,
+      customSplitParticipants: _scope == ExpenseScope.custom
           ? _customSplitParticipants.toList()
           : null,
-      editNote: 'Manual edit',
     );
+    final result = true; // updateExpense returns void; treat as success
 
     setState(() => _isSubmitting = false);
 
-    if (result != null && mounted) {
+    if (result && mounted) {
       // Invalidate to refresh the expenses list
-      ref.invalidate(tripExpensesProvider(widget.tripId));
+      ref.invalidate(eventExpensesProvider((groupId: widget.groupId, eventId: widget.eventId)));
 
       HapticService.success();
       Navigator.pop(context, true);
@@ -162,15 +161,20 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     if (confirmed == true && mounted) {
       setState(() => _isSubmitting = true);
 
-      final success = await ref
+      await ref
           .read(expenseServiceProvider)
-          .deleteExpense(widget.expense.id, tripId: widget.tripId);
+          .deleteExpense(
+            groupId: widget.groupId,
+            eventId: widget.eventId,
+            expenseId: widget.expense.id,
+          );
+      const success = true; // deleteExpense returns void; treat as success
 
       setState(() => _isSubmitting = false);
 
       if (success && mounted) {
         // Invalidate to refresh the expenses list
-        ref.invalidate(tripExpensesProvider(widget.tripId));
+        ref.invalidate(eventExpensesProvider((groupId: widget.groupId, eventId: widget.eventId)));
 
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -192,9 +196,9 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   }
 
   Widget _buildScopeSection() {
-    final subGroupsAsync = ref.watch(tripSubGroupsProvider(widget.tripId));
+    final subGroupsAsync = ref.watch(tripSubGroupsProvider(widget.eventId));
     final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(widget.tripId),
+      tripLogisticsParticipantsProvider(widget.eventId),
     );
 
     return Column(
@@ -344,15 +348,15 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
 
   Widget _buildPayerSelector() {
     final currentParticipant = ref.watch(
-      currentParticipantProvider(widget.tripId),
+      currentParticipantProvider(widget.eventId),
     );
     final trips = ref.watch(userTripsProvider).valueOrNull;
     final trip = trips?.cast<Trip?>().firstWhere(
-      (t) => t!.id == widget.tripId,
+      (t) => t!.id == widget.eventId,
       orElse: () => null,
     );
     final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(widget.tripId),
+      tripLogisticsParticipantsProvider(widget.eventId),
     );
     final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.id;
 
@@ -413,7 +417,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final categoriesAsync = ref.watch(tripCategoriesProvider(widget.tripId));
+    final categoriesAsync = ref.watch(tripCategoriesProvider(widget.eventId));
 
     return Container(
       padding: EdgeInsets.only(

@@ -25,9 +25,14 @@ import '../widgets/split_scope_selector.dart';
 
 /// Omni-Splitter (Add Expense Screen) - Redesigned with 3-step flow
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  final String tripId;
+  final String groupId;
+  final String eventId;
 
-  const AddExpenseScreen({super.key, required this.tripId});
+  const AddExpenseScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -55,11 +60,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   /// Get the trip's currency code
   String get _tripCurrency {
     final trips = ref.read(userTripsProvider).valueOrNull;
-    debugPrint('[EXPENSE] _tripCurrency: tripId=${widget.tripId}, '
+    debugPrint('[EXPENSE] _tripCurrency: tripId=${widget.eventId}, '
         'userTrips=${trips?.length ?? 0}');
     if (trips == null) return 'OMR';
     final trip = trips.cast<Trip?>().firstWhere(
-      (t) => t!.id == widget.tripId,
+      (t) => t!.id == widget.eventId,
       orElse: () => null,
     );
     debugPrint('[EXPENSE] _tripCurrency: found=${trip != null}, '
@@ -76,11 +81,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   /// Find and auto-select the user's current car sub-group
   void _autoSelectUserSubGroup() {
     final currentParticipant = ref.read(
-      currentParticipantProvider(widget.tripId),
+      currentParticipantProvider(widget.eventId),
     );
     if (currentParticipant == null) return;
 
-    final subGroupsAsync = ref.read(tripSubGroupsProvider(widget.tripId));
+    final subGroupsAsync = ref.read(tripSubGroupsProvider(widget.eventId));
     final subGroups = subGroupsAsync.valueOrNull ?? [];
 
     // Find the first car sub-group the user is a member of
@@ -159,11 +164,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
     final note = _noteController.text.trim();
 
-    debugPrint('[EXPENSE] _submit: tripId=${widget.tripId}');
+    debugPrint('[EXPENSE] _submit: tripId=${widget.eventId}');
     debugPrint('[EXPENSE] _submit: looking up currentParticipant...');
 
     final currentParticipant = ref.read(
-      currentParticipantProvider(widget.tripId),
+      currentParticipantProvider(widget.eventId),
     );
     debugPrint('[EXPENSE] _submit: currentParticipant=${currentParticipant?.id ?? "NULL"}');
     if (currentParticipant == null) {
@@ -175,7 +180,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           debugPrint('[EXPENSE]   trip: id=${t.id}, name=${t.name}, leaderId=${t.leaderId}');
         }
       }
-      final participantsAsync = ref.read(tripLogisticsParticipantsProvider(widget.tripId));
+      final participantsAsync = ref.read(tripLogisticsParticipantsProvider(widget.eventId));
       debugPrint('[EXPENSE] _submit: participantsAsync state=${participantsAsync.runtimeType}');
       participantsAsync.whenData((participants) {
         debugPrint('[EXPENSE]   participants: ${participants.length}');
@@ -202,7 +207,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     final expenseService = ref.read(expenseServiceProvider);
     final expense = await expenseService.addExpense(
-      tripId: widget.tripId,
+      groupId: widget.groupId,
+      eventId: widget.eventId,
       payerParticipantId: _selectedPayerId ?? currentParticipant.id,
       amount: amount,
       description: note.isNotEmpty ? note : null,
@@ -244,7 +250,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       final file = File(filePath);
       final fileName = filePath.split('/').last;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final storagePath = '${widget.tripId}/receipts/$timestamp-$fileName';
+      final storagePath = '${widget.eventId}/receipts/$timestamp-$fileName';
 
       await SupabaseConfig.client.storage
           .from('trip-documents')
@@ -299,12 +305,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(expenseLoadingProvider);
     final error = ref.watch(expenseErrorProvider);
-    final categoriesAsync = ref.watch(tripCategoriesProvider(widget.tripId));
+    final categoriesAsync = ref.watch(tripCategoriesProvider(widget.eventId));
 
     categoriesAsync.when(
-      data: (cats) => debugPrint('[EXPENSE] build: ${cats.length} categories for tripId=${widget.tripId}'),
-      loading: () => debugPrint('[EXPENSE] build: categories LOADING for tripId=${widget.tripId}'),
-      error: (e, _) => debugPrint('[EXPENSE] build: categories ERROR for tripId=${widget.tripId}: $e'),
+      data: (cats) => debugPrint('[EXPENSE] build: ${cats.length} categories for tripId=${widget.eventId}'),
+      loading: () => debugPrint('[EXPENSE] build: categories LOADING for tripId=${widget.eventId}'),
+      error: (e, _) => debugPrint('[EXPENSE] build: categories ERROR for tripId=${widget.eventId}: $e'),
     );
 
     return Scaffold(
@@ -416,7 +422,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           ),
           const SizedBox(height: 24),
           SplitScopeSelector(
-            tripId: widget.tripId,
+            tripId: widget.eventId,
             scope: _scope,
             onScopeChanged: (scope) => setState(() => _scope = scope),
             customSplitParticipants: _customSplitParticipants,

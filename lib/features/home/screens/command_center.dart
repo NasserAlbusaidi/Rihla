@@ -8,7 +8,6 @@ import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/page_transitions.dart';
-import '../../ledger/screens/add_expense_screen.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../../../shared/widgets/offline_banner.dart';
@@ -17,7 +16,6 @@ import '../widgets/module_list.dart';
 import '../widgets/preparation_hero.dart';
 import '../widgets/trip_header.dart';
 import '../widgets/trip_recap_card.dart';
-import '../../ledger/screens/ledger_screen.dart';
 
 /// @Deprecated('Supabase sync removed — Firestore handles offline persistence.')
 /// Retained for backward compat with screens that watch it. No-op in 04-04+.
@@ -356,16 +354,12 @@ class CommandCenter extends ConsumerWidget {
   }
 
   void _openLedger(BuildContext context, Trip trip) {
-    Navigator.of(context).push(
-      AppPageRoute(builder: (context) => LedgerScreen(trip: trip)),
-    );
+    // TODO: Legacy CommandCenter deprecated. Use EventCommandCenter instead.
+    debugPrint('[CommandCenter] _openLedger deferred — use EventCommandCenter');
   }
 
   void _openAddExpense(BuildContext context, Trip trip) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (context) => AddExpenseScreen(tripId: trip.id),
-      ),
-    );
+    // TODO: Legacy CommandCenter deprecated. Use EventCommandCenter instead.
+    debugPrint('[CommandCenter] _openAddExpense deferred — use EventCommandCenter');
   }
 }
