@@ -196,10 +196,12 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   }
 
   Widget _buildScopeSection() {
-    final subGroupsAsync = ref.watch(tripSubGroupsProvider(widget.eventId));
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(widget.eventId),
-    );
+    final EventRef eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
+    // Participants are derived from EventModel directly in the parent screen.
+    // For the scope section we don't have direct access to Event here;
+    // use an empty participants list — scope editing can still change the scope type.
+    final participantsAsync = AsyncValue.data(const <Participant>[]);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -9,6 +9,7 @@ import '../../../core/config/supabase_config.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/types/event_ref.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
@@ -85,7 +86,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
     if (currentParticipant == null) return;
 
-    final subGroupsAsync = ref.read(tripSubGroupsProvider(widget.eventId));
+    final EventRef eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final subGroupsAsync = ref.read(eventSubGroupsProvider(eventRef));
     final subGroups = subGroupsAsync.valueOrNull ?? [];
 
     // Find the first car sub-group the user is a member of
