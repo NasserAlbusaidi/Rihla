@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,9 +8,11 @@ import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -46,12 +49,43 @@ final _testMembers = [
   ),
 ];
 
+/// Balances stub with two zero-balance members (no expenses yet).
+///
+/// groupBalancesProvider now drives the Members & Balances section.
+/// Even with no expenses, we supply the two members with zero balances
+/// so GroupMemberBalanceCard renders both names.
+final _membersWithZeroBalance = (
+  balances: <UserBalance>[
+    UserBalance(
+      participantId: 'uid-creator',
+      displayName: 'Alice',
+      totalPaid: Decimal.zero,
+      totalOwed: Decimal.zero,
+      netBalance: Decimal.zero,
+    ),
+    UserBalance(
+      participantId: 'uid-member',
+      displayName: 'Bob',
+      totalPaid: Decimal.zero,
+      totalOwed: Decimal.zero,
+      netBalance: Decimal.zero,
+    ),
+  ],
+  totalSpent: Decimal.zero,
+  eventCount: 0,
+  perEventBreakdown: <String, Map<String, Decimal>>{},
+  memberNames: <String, String>{
+    'uid-creator': 'Alice',
+    'uid-member': 'Bob',
+  },
+);
+
 /// Wraps a widget in ProviderScope + MaterialApp with shared test overrides.
 ///
 /// Also overrides [groupEventsProvider] so GroupDetailScreen does not attempt
-/// to open a real Firestore stream, and overrides
-/// [tripExpensesProvider] (no-op empty list) to prevent SQLite initialization
-/// from EventCard's live financial total.
+/// to open a real Firestore stream.
+/// Overrides [groupBalancesProvider] and [groupActivityProvider] for the
+/// new financial sections added in Plan 05-05.
 Widget _wrap(Widget child, SharedPreferences prefs) {
   return ProviderScope(
     overrides: [
@@ -63,6 +97,12 @@ Widget _wrap(Widget child, SharedPreferences prefs) {
         (ref) => Stream.value(_testMembers),
       ),
       groupEventsProvider('group-1').overrideWith(
+        (ref) => Stream.value(const []),
+      ),
+      groupBalancesProvider('group-1').overrideWith(
+        (ref) => AsyncValue.data(_membersWithZeroBalance),
+      ),
+      groupActivityProvider('group-1').overrideWith(
         (ref) => Stream.value(const []),
       ),
     ],
@@ -126,8 +166,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Members'), findsOneWidget);
-        // Member names rendered via GroupMemberTile
+        // Section header renamed to "Members & Balances" in Plan 05-05 (D-29).
+        expect(find.text('Members & Balances'), findsOneWidget);
+        // Member names rendered via GroupMemberBalanceCard (replaced GroupMemberTile)
         expect(find.text('Alice'), findsWidgets);
         expect(find.text('Bob'), findsOneWidget);
       });
