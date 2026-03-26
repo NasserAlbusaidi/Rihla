@@ -108,7 +108,16 @@ Plans:
   4. After a settlement is recorded, the group-level balance updates to reflect the new net amounts
   5. Group activity log shows group-level events such as "Sara settled with Khalid" and "Ahmed added camping trip"
   6. Group dashboard shows total amount spent across all events and each member's contribution percentage
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 05-00-PLAN.md — Wave 0: test stub files for Phase 5 services, providers, and widgets
+- [ ] 05-01-PLAN.md — Settlement model scope field + GroupSettlementService + GroupActivityLog model + GroupActivityService
+- [ ] 05-02-PLAN.md — Cross-event BalanceCalculator TDD (multi-event aggregation tests)
+- [ ] 05-03-PLAN.md — groupBalancesProvider + groupSettlementsProvider + groupActivityProvider
+- [ ] 05-04-PLAN.md — GroupBalanceHero + GroupSpendingStats + GroupMemberBalanceCard + GroupActivityTile widgets
+- [ ] 05-05-PLAN.md — GroupDetailScreen restructure with financial sections (D-27 layout)
+- [ ] 05-06-PLAN.md — GroupSettleUpScreen + GroupActivityScreen + human verification
 
 ### Phase 6: Testing and Coverage
 **Goal**: The codebase meets the 80%+ coverage requirement with unit tests for all financial logic, widget tests for key screens, and offline scenario tests
@@ -142,6 +151,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 2. Groups | 3/4 | In Progress|  |
 | 3. Events | 5/5 | Complete   | 2026-03-26 |
 | 4. Firestore Repository Layer | 6/6 | Complete   | 2026-03-26 |
-| 5. Cross-Event Financials | 0/TBD | Not started | - |
+| 5. Cross-Event Financials | 0/7 | Not started | - |
 | 6. Testing and Coverage | 0/TBD | Not started | - |
 | 7. Data Migration and Supabase Removal | 0/TBD | Not started | - |
