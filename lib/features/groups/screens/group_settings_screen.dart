@@ -146,7 +146,10 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
-    final currentUid = FirebaseConfig.currentUser?.uid;
+    String? currentUid;
+    try {
+      currentUid = FirebaseConfig.currentUser?.uid;
+    } catch (_) {}
 
     return Scaffold(
       backgroundColor: AppColors.background,
