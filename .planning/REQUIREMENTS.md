@@ -37,13 +37,13 @@
 
 ### Cross-Event Financials
 
-- [ ] **FIN-01**: Per-event balance shows what each member owes/is owed within that event
+- [x] **FIN-01**: Per-event balance shows what each member owes/is owed within that event
 - [x] **FIN-02**: Group-level balance shows net balance per member across ALL events in the group
 - [x] **FIN-03**: User can toggle between per-event and group-level balance view
 - [x] **FIN-04**: Cross-event settle-up: "You owe Nasser 15.500 across 3 events — settle now?"
 - [ ] **FIN-05**: Group-level balance updates via write-time aggregation when settlements or expenses change
 - [ ] **FIN-06**: Group spending stats: total spent across all events, per-member contribution breakdown
-- [ ] **FIN-07**: Settlement optimization works at both event and group level
+- [x] **FIN-07**: Settlement optimization works at both event and group level
 
 ### Firestore Migration
 
@@ -117,13 +117,13 @@
 | MIG-03 | Phase 4 | Complete |
 | MIG-04 | Phase 4 | Complete |
 | MIG-05 | Phase 4 | Complete |
-| FIN-01 | Phase 5 | Pending |
+| FIN-01 | Phase 5 | Complete |
 | FIN-02 | Phase 5 | Complete |
 | FIN-03 | Phase 5 | Complete |
 | FIN-04 | Phase 5 | Complete |
 | FIN-05 | Phase 5 | Pending |
 | FIN-06 | Phase 5 | Pending |
-| FIN-07 | Phase 5 | Pending |
+| FIN-07 | Phase 5 | Complete |
 | GRP-04 | Phase 5 | Complete |
 | GRP-05 | Phase 5 | Complete |
 | TST-01 | Phase 6 | Pending |
