@@ -1,135 +1,95 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
-import '../../../core/config/supabase_config.dart';
-import '../../../core/services/cache_service.dart';
-import '../../../core/services/offline_repository.dart';
+import '../../../core/services/firestore_repository.dart';
+import '../../../core/services/money_serializer.dart';
 import '../models/settlement_model.dart';
-import '../providers/expense_provider.dart';
 
-/// Settlement service provider
-final settlementServiceProvider = Provider<SettlementService>((ref) {
-  return SettlementService(ref);
-});
+/// Firestore-backed service for Settlement CRUD operations.
+///
+/// Extends [FirestoreRepository] for production use or test injection via
+/// [SettlementService.withFirestore].
+///
+/// Settlements are stored in the subcollection:
+///   `groups/{groupId}/events/{eventId}/settlements/{settlementId}`
+///
+/// All money amounts are stored as integer fils via [MoneySerializer] at the
+/// Firestore boundary. Internal logic always uses [Decimal].
+class SettlementService extends FirestoreRepository {
+  SettlementService() : super();
 
-/// Service for handling settlement operations
-class SettlementService {
-  final Ref _ref;
+  /// Test constructor -- injects a [FakeFirebaseFirestore] for unit testing.
+  @visibleForTesting
+  SettlementService.withFirestore(FirebaseFirestore db)
+      : super.withFirestore(db);
 
-  SettlementService(this._ref);
-
-  SupabaseClient get _client => SupabaseConfig.client;
-
-  /// Add a new settlement (record a payment) — offline-safe
-  Future<Settlement?> addSettlement({
-    required String tripId,
-    required String payerId,
-    required String recipientId,
-    required Decimal amount,
-    String? note,
-    String currency = 'OMR',
-  }) async {
-    debugPrint(
-      '💰 addSettlement called: tripId=$tripId, payer=$payerId, recipient=$recipientId, amount=$amount',
-    );
-    _ref.read(expenseLoadingProvider.notifier).state = true;
-    _ref.read(expenseErrorProvider.notifier).state = null;
-
-    final repo = _ref.read(offlineRepositoryProvider);
-
-    try {
-      // Try Supabase first for server-generated ID
-      try {
-        debugPrint('   Inserting settlement into DB...');
-        final data = await _client
-            .from('settlements')
-            .insert({
-              'trip_id': tripId,
-              'payer_participant_id': payerId,
-              'recipient_participant_id': recipientId,
-              'amount': amount.toString(),
-              'note': note,
-              'currency': currency,
-              'settled_at': DateTime.now().toIso8601String(),
-            })
-            .select(
-              '*, payer_participant:participants!payer_participant_id(*), recipient_participant:participants!recipient_participant_id(*)',
-            )
-            .single();
-
-        final settlement = Settlement.fromJson(data);
-        // Cache the server-returned settlement
-        await CacheService.cacheSettlements(tripId, [settlement]);
-        repo.notifyChange('settlements', tripId);
-        debugPrint('✅ addSettlement SUCCESS: ${data['id']}');
-        _ref.read(expenseLoadingProvider.notifier).state = false;
-        return settlement;
-      } catch (e) {
-        // Supabase failed (offline) — save locally with generated ID
-        debugPrint('Supabase settlement insert failed, saving locally: $e');
-        final settlement = Settlement(
-          id: repo.generateId(),
-          tripId: tripId,
-          payerParticipantId: payerId,
-          recipientParticipantId: recipientId,
-          amount: amount,
-          note: note,
-          settledAt: DateTime.now(),
+  /// Returns a real-time stream of non-deleted settlements for the given event,
+  /// ordered newest first.
+  ///
+  /// The query filters `isDeleted == false` so soft-deleted documents are
+  /// excluded from the stream without a client-side filter.
+  Stream<List<Settlement>> watchSettlements(String groupId, String eventId) {
+    return eventSubcollection(groupId, eventId, 'settlements')
+        .where('isDeleted', isEqualTo: false)
+        .orderBy('settledAt', descending: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map(
+                (doc) =>
+                    Settlement.fromFirestore({...doc.data(), 'id': doc.id}),
+              )
+              .toList(),
         );
-        await repo.saveSettlement(settlement);
-        _ref.read(expenseLoadingProvider.notifier).state = false;
-        return settlement;
-      }
-    } catch (e) {
-      debugPrint('❌ addSettlement FAILED: $e');
-      _ref.read(expenseErrorProvider.notifier).state = e.toString();
-      _ref.read(expenseLoadingProvider.notifier).state = false;
-      return null;
-    }
   }
 
-  /// Delete a settlement — offline-safe
-  Future<bool> deleteSettlement(String settlementId, {required String tripId}) async {
-    try {
-      final repo = _ref.read(offlineRepositoryProvider);
-      // Try Supabase first
-      try {
-        await _client
-            .from('settlements')
-            .update({
-              'is_deleted': true,
-              'deleted_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', settlementId);
-      } catch (_) {
-        // Offline — will sync later
-      }
-      // Always update local cache
-      await repo.deleteSettlement(settlementId, tripId);
-      return true;
-    } catch (e) {
-      _ref.read(expenseErrorProvider.notifier).state = e.toString();
-      return false;
-    }
+  /// Creates a new settlement document in Firestore and returns the resulting
+  /// [Settlement] object.
+  ///
+  /// The [amount] is converted to integer fils via [MoneySerializer.toSubunits]
+  /// before being stored. The returned [Settlement] is deserialized from the
+  /// data that was written, so amount round-trips through [MoneySerializer].
+  Future<Settlement> addSettlement({
+    required String groupId,
+    required String eventId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required Decimal amount,
+    String currency = 'OMR',
+    String? note,
+  }) async {
+    final id = const Uuid().v4();
+    final now = DateTime.now().toUtc();
+    final data = <String, dynamic>{
+      'id': id,
+      'eventId': eventId,
+      'payerParticipantId': payerParticipantId,
+      'recipientParticipantId': recipientParticipantId,
+      'amountFils': MoneySerializer.toSubunits(amount, currency),
+      'currency': currency,
+      'note': note,
+      'isDeleted': false,
+      'deletedAt': null,
+      'settledAt': now.toIso8601String(),
+    };
+    await eventSubcollection(groupId, eventId, 'settlements').doc(id).set(data);
+    return Settlement.fromFirestore(data);
   }
 
-  /// Get all settlements for a trip
-  Future<List<Settlement>> getSettlements(String tripId) async {
-    try {
-      final data = await _client
-          .from('settlements')
-          .select(
-            '*, payer_participant:participants!payer_participant_id(*), recipient_participant:participants!recipient_participant_id(*)',
-          )
-          .eq('trip_id', tripId)
-          .eq('is_deleted', false)
-          .order('settled_at', ascending: false);
-
-      return (data as List).map((json) => Settlement.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
+  /// Soft-deletes a settlement by setting [isDeleted] = true and recording a
+  /// [deletedAt] timestamp. The document is NOT removed from Firestore.
+  Future<void> deleteSettlement({
+    required String groupId,
+    required String eventId,
+    required String settlementId,
+  }) async {
+    await eventSubcollection(groupId, eventId, 'settlements')
+        .doc(settlementId)
+        .update({
+      'isDeleted': true,
+      'deletedAt': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 }
