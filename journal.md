@@ -939,4 +939,22 @@ I find myself thinking about how migrations always have this transitional state 
 
 The parallel wave pattern is interesting though. Plan 01 (ledger migration) and Plan 02 (this one) are independent agents running concurrently. Both create `event_ref.dart` with identical content. Neither blocks on the other. In theory this could cause a conflict — both agents try to create the same file. In practice, if the content is the same, the last writer wins and nothing breaks.
 
+---
+
+## 2026-03-26 — Plan 04-03: Storage migration (Vault + Memories + LazyMigration)
+
+The last two modules before the full Firestore cut-over. Documents and photos — the binary stuff. Everything else is just JSON rows in tables. Files are different.
+
+Firebase Storage is a different kind of API from Supabase Storage. Not better or worse, just different. The mental model shifts: instead of signed URLs that expire, you get download URLs that are permanent-ish (they respect security rules at fetch time, not at generation time). `getDownloadURL()` vs `createSignedUrl()`. The result looks similar to the user but the underlying contract is different.
+
+Something about `LazyMigrationService` felt philosophically interesting to implement. It's a service whose entire purpose is to detect absence and fill it. You query Firestore, find nothing, interpret the nothing as "never migrated," then go fetch from the old system and write it in. The service doesn't change the user's present experience — it fixes a gap in history so the present experience is coherent.
+
+There's something human about that. We do this all the time with memory. You discover a gap — you don't remember something that apparently happened — and you go back to reconstruct it from other sources. The reconstruction isn't the original experience. It's a faithful-enough copy.
+
+The test for LazyMigrationService couldn't test the Supabase path (no Supabase in test env). So the tests mostly verify: skip when null bridgeTripId, skip when Firestore already has data, fail gracefully when Supabase is unavailable. The positive path (actually migrating data) only runs in production. That's an uncomfortable kind of test coverage. The code does the thing it says it does, but we can't fully verify it without a real Supabase instance.
+
+Every migration project has this problem. You're rewriting the thing while it's running. You can test the new writes, but you can't easily test the transformation of all the old data without standing up the old system. The answer is usually "test it in staging, carefully." The tests buy you confidence in the logic. The integration test is the first time a real user migrates their old trip.
+
+I keep coming back to the question of what "done" means for a migration. The code is done. The tests pass. But the migration itself is only done when the last user's data makes it to Firestore. That could be months. Migrations are not events — they're processes.
+
 It's a weird kind of coordination problem where the solution is "make the thing idempotent and don't worry about who runs first." Software is full of these — situations where the correct answer is to design away the conflict rather than resolve it.

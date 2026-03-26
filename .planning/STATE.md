@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 04-firestore-repository-layer plan 04-02
-last_updated: "2026-03-26T17:23:09.221Z"
+stopped_at: Completed 04-firestore-repository-layer plan 04-03
+last_updated: "2026-03-26T17:35:41.006Z"
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 04 (firestore-repository-layer) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Plan: 4 of 6
 | Phase 04-firestore-repository-layer P00 | 5 | 2 tasks | 18 files |
 | Phase 04-firestore-repository-layer P01 | 8 | 2 tasks | 6 files |
 | Phase 04-firestore-repository-layer P02 | 10 | 2 tasks | 11 files |
+| Phase 04-firestore-repository-layer P03 | 9 | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,9 @@ Recent decisions affecting current work:
 - [Phase 04-02]: EventRef typedef created in plan 04-02 (parallel to 04-01) — both wave-2 plans define identical content; no conflict
 - [Phase 04-02]: gear_screen.dart legacy mutations routed to OfflineRepository — screen still on SQLite path, EventRef migration deferred to future plan
 - [Phase 04-02]: logistics_screen.dart write operations stubbed with debugPrint — SubGroupService now requires EventRef; screen update deferred to EventRef migration plan
+- [Phase Phase 04-03]: Document.fileUrl maps to storagePath in Firestore — backward compat with existing screen code
+- [Phase Phase 04-03]: tripDocumentsProvider and tripMemoriesProvider kept as deprecated shims — screen migration deferred to EventRef migration plan
+- [Phase Phase 04-03]: LazyMigrationService catches SupabaseConfig.isAuthenticated in try-catch per Phase 03 pattern
 
 ### Pending Todos
 
@@ -121,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T17:23:09.218Z
-Stopped at: Completed 04-firestore-repository-layer plan 04-02
+Last session: 2026-03-26T17:35:41.003Z
+Stopped at: Completed 04-firestore-repository-layer plan 04-03
 Resume file: None

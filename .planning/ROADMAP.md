@@ -93,7 +93,7 @@ Plans:
 - [x] 04-00-PLAN.md — FirestoreRepository base class + model Firestore serialization + security rules + test stubs
 - [x] 04-01-PLAN.md — ExpenseService + SettlementService Firestore migration + provider migration with asyncMap side-write
 - [x] 04-02-PLAN.md — GearService + SubGroupService + ActivityService Firestore migration
-- [ ] 04-03-PLAN.md — Vault + Memories Firebase Storage migration + LazyMigrationService + tests
+- [x] 04-03-PLAN.md — Vault + Memories Firebase Storage migration + LazyMigrationService + tests
 - [ ] 04-04-PLAN.md — SyncService deletion + BalanceCacheRepository + ConnectivityNotifier + base class refactor
 - [ ] 04-05-PLAN.md — Bridge teardown + screen migration to EventRef providers
 
