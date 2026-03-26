@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-groups-00-PLAN.md
-last_updated: "2026-03-26T01:43:40.898Z"
+stopped_at: Completed 02-groups-01-PLAN.md
+last_updated: "2026-03-26T01:48:47.130Z"
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 02 (groups) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Plan: 2 of 4
 | Phase 01-data-foundation P03 | 2 | 2 tasks | 7 files |
 | Phase 01 P02 | 5 | 3 tasks | 6 files |
 | Phase 02-groups P00 | 3min | 2 tasks | 6 files |
+| Phase 02-groups P01 | 7 | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 01-data-foundation]: inviteCodes collection is publicly readable for join flow — authenticated write only
 - [Phase 01]: decimal v3 division returns Rational not Decimal -- call .toDecimal(scaleOnInfinitePrecision: 10) at the Firestore read boundary
 - [Phase 01]: sqflite_common_ffi added as dev dependency to enable in-memory SQLite testing on macOS/Linux/Windows
+- [Phase 02-groups]: memberIds stored as List<String> array in Firestore and JSON-encoded in SQLite per D-14
+- [Phase 02-groups]: GroupMember role field is String not enum (CREATOR/MEMBER) for forward-compatible Firestore serialization
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T01:43:40.895Z
-Stopped at: Completed 02-groups-00-PLAN.md
+Last session: 2026-03-26T01:48:47.128Z
+Stopped at: Completed 02-groups-01-PLAN.md
 Resume file: None
