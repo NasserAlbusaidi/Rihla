@@ -65,7 +65,8 @@ class GroupService {
       throw Exception('User not authenticated');
     }
 
-    final displayName = _ref.read(settingsProvider).deviceName;
+    final rawName = _ref.read(settingsProvider).deviceName;
+    final displayName = rawName.isEmpty ? 'Anonymous' : rawName;
 
     const uuid = Uuid();
     final groupId = uuid.v4();
@@ -143,10 +144,12 @@ class GroupService {
       throw Exception('User not authenticated');
     }
 
-    final displayName = _ref.read(settingsProvider).deviceName;
+    final rawName = _ref.read(settingsProvider).deviceName;
+    final displayName = rawName.isEmpty ? 'Anonymous' : rawName;
     final normalizedCode = inviteCode.toUpperCase();
 
-    // Look up the group ID from the invite code
+    // Look up the group ID from the invite code.
+    // inviteCodes collection is publicly readable (no membership check).
     final codeDoc =
         await _db.collection('inviteCodes').doc(normalizedCode).get();
     if (!codeDoc.exists) {
@@ -155,45 +158,40 @@ class GroupService {
 
     final groupId = codeDoc.data()!['groupId'] as String;
 
-    // Fetch current group to check membership
-    final groupDoc = await _db.collection('groups').doc(groupId).get();
-    if (!groupDoc.exists) {
-      throw Exception('Invalid invite code');
-    }
-
-    final existingMemberIds =
-        List<String>.from(groupDoc.data()!['memberIds'] as List);
-    if (existingMemberIds.contains(uid)) {
-      throw Exception('Already a member');
-    }
-
-    const uuid = Uuid();
-    final memberId = uuid.v4();
-
-    final batch = _db.batch();
-
-    // Doc 1: new member document
-    batch.set(
-      _db.collection('groups').doc(groupId).collection('members').doc(memberId),
-      {
-        'id': memberId,
-        'userId': uid,
-        'displayName': displayName,
-        'role': 'MEMBER',
-        'joinedAt': FieldValue.serverTimestamp(),
-        'isShadow': false,
-      },
-    );
-
-    // Doc 2: update memberIds via arrayUnion
-    batch.update(_db.collection('groups').doc(groupId), {
+    // Step 1: Add user to group's memberIds first.
+    // The groups rule allows update if isMember(), but the joiner isn't
+    // a member yet. We need a rule that allows arrayUnion on memberIds
+    // for authenticated users. For now, update memberIds first — the
+    // security rule allows update if isMember(), and after this write
+    // the user IS a member for subsequent reads.
+    //
+    // NOTE: If security rules block this, we need to add a join-specific
+    // rule. For now, try the update and let the error surface.
+    await _db.collection('groups').doc(groupId).update({
       'memberIds': FieldValue.arrayUnion([uid]),
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    await batch.commit();
+    // Step 2: Create member document (now user is in memberIds,
+    // so isGroupMember() check passes).
+    const uuid = Uuid();
+    final memberId = uuid.v4();
 
-    // Fetch updated group document and return it
+    await _db
+        .collection('groups')
+        .doc(groupId)
+        .collection('members')
+        .doc(memberId)
+        .set({
+      'id': memberId,
+      'userId': uid,
+      'displayName': displayName,
+      'role': 'MEMBER',
+      'joinedAt': FieldValue.serverTimestamp(),
+      'isShadow': false,
+    });
+
+    // Step 3: Now user is a member — can read the group document.
     final updatedDoc = await _db.collection('groups').doc(groupId).get();
     return Group.fromDoc(updatedDoc);
   }

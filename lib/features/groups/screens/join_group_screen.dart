@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../providers/group_provider.dart';
@@ -21,19 +22,33 @@ class JoinGroupScreen extends ConsumerStatefulWidget {
 
 class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   final _codeController = TextEditingController();
+  final _nameController = TextEditingController();
+  bool _didInitName = false;
 
   @override
   void dispose() {
     _codeController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
   Future<void> _joinGroup() async {
     final isLoading = ref.read(groupLoadingProvider);
-    if (isLoading) return; // Prevent double submit
+    if (isLoading) return;
+
+    final trimmedName = _nameController.text.trim();
+    if (trimmedName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your name first.')),
+      );
+      return;
+    }
 
     ref.read(groupLoadingProvider.notifier).state = true;
     ref.read(groupErrorProvider.notifier).state = null;
+
+    // Save name to settings so GroupService picks it up
+    await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
 
     try {
       final group = await ref.read(groupServiceProvider).joinGroup(
@@ -66,12 +81,19 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (error.contains('Already a member')) {
       return "You're already in this group.";
     }
+    debugPrint('JoinGroup error: $error');
     return "Couldn't join the group. Check your connection and try again.";
   }
 
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(groupLoadingProvider);
+    final deviceName = ref.watch(settingsProvider).deviceName;
+
+    if (!_didInitName) {
+      _nameController.text = deviceName;
+      _didInitName = true;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -85,9 +107,24 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
           children: [
             const SizedBox(height: AppColors.space32),
 
+            // Your name
             Text(
-              'Enter the invite code',
-              style: Theme.of(context).textTheme.headlineSmall,
+              'Your name',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: AppColors.space8),
+            TextFormField(
+              controller: _nameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                hintText: 'Enter your name',
+              ),
+            ),
+            const SizedBox(height: AppColors.space24),
+
+            Text(
+              'Invite code',
+              style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: AppColors.space8),
             Text(
@@ -96,7 +133,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                     color: AppColors.textSecondary,
                   ),
             ),
-            const SizedBox(height: AppColors.space32),
+            const SizedBox(height: AppColors.space16),
 
             // Invite code input — uppercase, max 6 chars, spaced display
             TextFormField(

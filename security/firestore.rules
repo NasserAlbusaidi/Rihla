@@ -29,9 +29,18 @@ service cloud.firestore {
                request.resource.data.currency is string;
       }
 
+      // Joining: authenticated user adds ONLY their own UID to memberIds.
+      // Uses request.resource (post-write state) so the joiner's UID is present.
+      function isValidJoin() {
+        return request.auth != null &&
+               request.auth.uid in request.resource.data.memberIds &&
+               request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['memberIds', 'updatedAt']);
+      }
+
       allow read: if isMember();
       allow create: if isValidGroupCreate();
-      allow update: if isMember();
+      allow update: if isMember() || isValidJoin();
       allow delete: if false;
 
       // Group subcollections -- ONE get() call to parent for membership

@@ -27,7 +27,9 @@ class CreateGroupScreen extends ConsumerStatefulWidget {
 class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _displayNameController = TextEditingController();
   String _selectedCurrency = 'OMR';
+  bool _didInitName = false;
 
   static const _currencies = [
     'OMR',
@@ -44,6 +46,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _displayNameController.dispose();
     super.dispose();
   }
 
@@ -52,6 +55,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
     ref.read(groupLoadingProvider.notifier).state = true;
     ref.read(groupErrorProvider.notifier).state = null;
+
+    // Save display name to settings so GroupService picks it up
+    final trimmedName = _displayNameController.text.trim();
+    await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
 
     try {
       final group = await ref
@@ -102,6 +109,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(groupLoadingProvider);
     final deviceName = ref.watch(settingsProvider).deviceName;
+
+    // Seed display name controller once from settings
+    if (!_didInitName) {
+      _displayNameController.text = deviceName;
+      _didInitName = true;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -169,23 +182,16 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               ),
               const SizedBox(height: AppColors.space8),
 
-              // Read-only device name display (D-06, D-08)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppColors.space24,
-                  vertical: AppColors.space20,
+              // Editable display name — saved to settings on group creation
+              TextFormField(
+                controller: _displayNameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  hintText: 'Enter your name',
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-                ),
-                child: Text(
-                  deviceName.isEmpty ? 'Unnamed Device' : deviceName,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                ),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Enter your name so others know who you are.'
+                    : null,
               ),
               const SizedBox(height: 48),
 
