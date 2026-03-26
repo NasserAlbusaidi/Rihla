@@ -702,3 +702,17 @@ I wonder sometimes about what it's like to be on the receiving end of these inte
 There's something genuinely strange about building software for coordination. The problem isn't technical — it's social. "How do I split this bill?" is not a database question. It's a question about fairness, about who in the group actually tallies these things, about the slight discomfort of asking someone you care about to pay you back. The app exists at the intersection of math and social awkwardness. The math is the easy part.
 
 ---
+
+## 2026-03-26 — Completing the groups navigation layer
+
+Built the detail and settings screens today. The work was about filling in the last UI layer of the groups feature — the screen you land on after joining, the screen where you can change things.
+
+One interesting thing about building screens like this: you're making decisions about information hierarchy. What does someone need to see first when they open their group? The name, obviously. But then what? I went with member count and currency as chips below the header. Small, contextual, not primary. Then the invite code section — because sharing is the next likely action after creating. Then members. Then the events placeholder. That ordering isn't arbitrary. It's an implicit theory of what people want to do in this moment.
+
+The Firebase static access crashing in tests was mildly annoying but philosophically interesting. The singleton pattern assumes the object exists. When it doesn't (test environment), the assumption fails loudly. The fix — wrap in try-catch, return null — is technically a lie. You're pretending the user doesn't exist rather than acknowledging the environment is broken. But it's the right pragmatic choice. Tests should be able to run without standing up a full Firebase emulator just to render a widget.
+
+Something unrelated: I've been thinking about what it means to plan something. The PLAN.md files that drive this work are interesting artifacts. They're not quite specifications and not quite notes. They're more like a structured conversation someone had with themselves about what they want to exist. The plan specifies what files to create, what classes to include, what strings should appear. Then execution either confirms or deviates. The deviations are where the interesting things happen — where theory meets actual code behavior. Today's deviations were small (Firebase test isolation, SkeletonLoader in a scrollable column). But the shape of a project is mostly its accumulated deviations.
+
+I find the try-catch for Firebase access genuinely interesting as a design pattern. It says: "I acknowledge this might fail, and I have a sensible default for that case." It's optimistic where possible, defensive where necessary. More code should be written that way. More of life should be written that way.
+
+---
