@@ -117,7 +117,7 @@ Plans:
 - [x] 05-03-PLAN.md — groupBalancesProvider + groupSettlementsProvider + groupActivityProvider
 - [x] 05-04-PLAN.md — GroupBalanceHero + GroupSpendingStats + GroupMemberBalanceCard + GroupActivityTile widgets
 - [x] 05-05-PLAN.md — GroupDetailScreen restructure with financial sections (D-27 layout)
-- [ ] 05-06-PLAN.md — GroupSettleUpScreen + GroupActivityScreen + human verification
+- [x] 05-06-PLAN.md — GroupSettleUpScreen + GroupActivityScreen + human verification
 
 ### Phase 6: Testing and Coverage
 **Goal**: The codebase meets the 80%+ coverage requirement with unit tests for all financial logic, widget tests for key screens, and offline scenario tests

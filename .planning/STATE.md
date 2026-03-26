@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: "Completed 05-05-PLAN.md: GroupDetailScreen restructure with D-27 financial layout"
-last_updated: "2026-03-26T22:38:42.819Z"
+status: Phase complete — ready for verification
+stopped_at: "Checkpoint 05-06 Task 3: human verification of Phase 5 cross-event financials"
+last_updated: "2026-03-26T22:47:22.111Z"
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 25
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Project State
@@ -70,6 +70,7 @@ Plan: 7 of 7
 | Phase 05 P03 | 7 | 1 tasks | 2 files |
 | Phase 05 P04 | 10 | 2 tasks | 5 files |
 | Phase 05 P05 | 8 | 2 tasks | 5 files |
+| Phase 05 P06 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,7 @@ Recent decisions affecting current work:
 - [Phase 05]: GroupActivityTile uses Dart 3 switch expression for icon/color dispatch per activity type
 - [Phase 05]: GroupDetailScreen converted to ConsumerStatefulWidget for accordion expand state (_expandedMemberId) tracking GroupMemberBalanceCard (D-13)
 - [Phase 05]: hasExpensesData non-null local variable used instead of bool hasExpenses — Dart flow analysis requires direct null check pattern to narrow nullable type inside if blocks
+- [Phase 05]: GroupSettleUpScreen uses ConsumerStatefulWidget for ScrollController to auto-scroll to preSelectedMemberId tile (D-22)
 
 ### Pending Todos
 
@@ -150,6 +152,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T22:38:42.816Z
-Stopped at: Completed 05-05-PLAN.md: GroupDetailScreen restructure with D-27 financial layout
+Last session: 2026-03-26T22:47:22.108Z
+Stopped at: Checkpoint 05-06 Task 3: human verification of Phase 5 cross-event financials
 Resume file: None
