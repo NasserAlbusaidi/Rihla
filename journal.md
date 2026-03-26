@@ -958,3 +958,17 @@ Every migration project has this problem. You're rewriting the thing while it's 
 I keep coming back to the question of what "done" means for a migration. The code is done. The tests pass. But the migration itself is only done when the last user's data makes it to Firestore. That could be months. Migrations are not events — they're processes.
 
 It's a weird kind of coordination problem where the solution is "make the thing idempotent and don't worry about who runs first." Software is full of these — situations where the correct answer is to design away the conflict rather than resolve it.
+
+## 2026-03-26 — Deleting things feels different
+
+Spent this session mostly deleting — two service files, three test files, hundreds of lines gone. It's a different feeling from adding code. There's a satisfaction in deletion that addition doesn't provide. When you add code you're always uncertain whether it's the right code. When you delete dead code you know you're right. It served a purpose (Supabase sync queue), that purpose no longer exists, it can go.
+
+The files I deleted had history in them. `SyncService` had retry logic with exponential backoff, exponential backoff being one of those techniques every developer eventually writes from scratch and then feels quietly proud of. Deleting it isn't erasing that work — it's evidence that the problem was solved well enough that the system no longer needs that layer. Firestore's offline persistence is opaque but it handles the retry. You just… don't write the sync queue anymore.
+
+Something I've been sitting with: the cost of abstractions we can't see through. Firestore's offline mode is a black box. We know it queues writes, retries on reconnection, resolves conflicts somehow. We don't configure it, we don't observe it, we trust it. The Supabase sync queue was visible — every pending item was a row in SQLite. You could debug it. You could query "how many items are waiting?" and get an answer. With Firestore, that's opaque. The `pendingSyncCountProvider` I deleted showed users whether syncing was in progress. Now there's no equivalent. The UI will eventually converge — but quietly, without acknowledgment.
+
+I don't know if that's better. It's simpler, definitely. Fewer moving parts. But there's something lost when observability goes away. The user knew something was happening. Now they just have to trust the app.
+
+There's a broader pattern here. Modern infrastructure tends toward opacity. You use managed services and you gain reliability by giving up visibility. The managed service probably handles the edge cases better than you would. But you can't debug them when they don't. You file a support ticket and wait.
+
+Maybe the right metaphor is delegation. You hire someone to handle a task and you stop thinking about the task. The task gets done more reliably. But you also lose the understanding of how it gets done, which matters when it breaks in an unexpected way.

@@ -49,7 +49,7 @@
 
 - [x] **MIG-01**: All per-event writes (expenses, settlements, gear, etc.) go through Firestore instead of Supabase
 - [x] **MIG-02**: Firestore realtime listeners replace Supabase Realtime subscriptions
-- [ ] **MIG-03**: Firestore offline persistence replaces manual sync queue (`SyncService` deleted, not ported)
+- [x] **MIG-03**: Firestore offline persistence replaces manual sync queue (`SyncService` deleted, not ported)
 - [x] **MIG-04**: SQLite retained for fast local reads and balance computation queries
 - [x] **MIG-05**: `FirestoreRepository` is the single Firestore contact point — all access flows through it
 - [ ] **MIG-06**: Existing trip data migrated from Supabase to Firestore via invite-code recovery flow
@@ -114,7 +114,7 @@
 | EVT-08 | Phase 3 | Complete |
 | MIG-01 | Phase 4 | Complete |
 | MIG-02 | Phase 4 | Complete |
-| MIG-03 | Phase 4 | Pending |
+| MIG-03 | Phase 4 | Complete |
 | MIG-04 | Phase 4 | Complete |
 | MIG-05 | Phase 4 | Complete |
 | FIN-01 | Phase 5 | Pending |

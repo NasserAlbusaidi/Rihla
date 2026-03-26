@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 04-firestore-repository-layer plan 04-03
-last_updated: "2026-03-26T17:35:41.006Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-03-26T17:57:58.964Z"
 progress:
   total_phases: 7
   completed_phases: 3
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 04 (firestore-repository-layer) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Plan: 5 of 6
 | Phase 04-firestore-repository-layer P01 | 8 | 2 tasks | 6 files |
 | Phase 04-firestore-repository-layer P02 | 10 | 2 tasks | 11 files |
 | Phase 04-firestore-repository-layer P03 | 9 | 2 tasks | 13 files |
+| Phase 04 P04 | 90m | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,10 @@ Recent decisions affecting current work:
 - [Phase Phase 04-03]: Document.fileUrl maps to storagePath in Firestore — backward compat with existing screen code
 - [Phase Phase 04-03]: tripDocumentsProvider and tripMemoriesProvider kept as deprecated shims — screen migration deferred to EventRef migration plan
 - [Phase Phase 04-03]: LazyMigrationService catches SupabaseConfig.isAuthenticated in try-catch per Phase 03 pattern
+- [Phase 04]: BalanceCacheRepository replaces OfflineRepository for balance query path — narrow SQLite wrapper, no stream subscriptions to manage
+- [Phase 04]: Firestore Source.server ping replaces Supabase auth.refreshSession for connectivity detection
+- [Phase 04]: FirestoreRepository.withFirestore uses @protected so subclasses can call super.withFirestore without lint warnings (MIG-05)
+- [Phase 04]: Camping gear seeding is now unconditional (not gated on Supabase bridge success)
 
 ### Pending Todos
 
@@ -125,6 +130,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T17:35:41.003Z
-Stopped at: Completed 04-firestore-repository-layer plan 04-03
+Last session: 2026-03-26T17:57:58.961Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
