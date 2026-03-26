@@ -138,13 +138,11 @@ void main() {
         expect(data['participantNames'], equals({'uid-1': 'Nasser'}));
         expect(data['isDeleted'], isFalse);
         expect(data['currency'], equals('OMR'));
-        expect(data['bridgeTripId'], isNotNull);
-        expect(data['bridgeTripId'], isNotEmpty);
         expect(data['createdAt'], isNotNull);
         expect(data['modules'], isA<Map>());
       });
 
-      test('bridgeTripId equals eventId (same UUID)', () async {
+      test('createEvent returns an Event with matching id and groupId', () async {
         final service = buildService();
 
         final event = await service.createEvent(
@@ -157,7 +155,8 @@ void main() {
           createdBy: 'uid-1',
         );
 
-        expect(event.bridgeTripId, equals(event.id));
+        expect(event.id, isNotEmpty);
+        expect(event.groupId, equals('group-1'));
       });
 
       test(
@@ -355,14 +354,11 @@ void main() {
         'modules': {'ledger': true, 'gear': false, 'logistics': false, 'vault': false, 'memories': false},
         'currency': 'OMR',
         'isDeleted': false,
-        'bridgeTripId': 'bridge-1',
         'createdAt': now.subtract(const Duration(hours: 1)).toIso8601String(),
         'startDate': null,
         'endDate': null,
         'deletedAt': null,
         'updatedAt': null,
-        // Has a start date
-        'startDate2': 'set', // marker — actual null startDate will be in next doc
       });
 
       // Event WITHOUT start date (should sort first)
@@ -380,7 +376,6 @@ void main() {
         'modules': {'ledger': true, 'gear': false, 'logistics': false, 'vault': false, 'memories': false},
         'currency': 'OMR',
         'isDeleted': false,
-        'bridgeTripId': 'bridge-2',
         'createdAt': now.toIso8601String(),
         'startDate': null,
         'endDate': null,

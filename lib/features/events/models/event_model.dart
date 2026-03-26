@@ -149,9 +149,8 @@ class EventModules {
 /// Events are stored as a Firestore subcollection at
 /// `groups/{groupId}/events/{eventId}` per D-29.
 ///
-/// The [bridgeTripId] field maps this Firestore event to a Supabase trip
-/// record, allowing existing module screens to function via the bridge
-/// pattern described in D-22.
+/// The bridge pattern (D-22) has been removed in Plan 04-05.
+/// All module screens now use EventRef-based Firestore providers.
 class Event {
   final String id;
   final String name;
@@ -169,12 +168,6 @@ class Event {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
-  /// Supabase trip ID used by the bridge pattern (D-22).
-  ///
-  /// Falls back to [id] if not set, ensuring existing module screens
-  /// always receive a valid trip ID.
-  final String bridgeTripId;
-
   const Event({
     required this.id,
     required this.name,
@@ -191,7 +184,6 @@ class Event {
     this.deletedAt,
     required this.createdAt,
     this.updatedAt,
-    required this.bridgeTripId,
   });
 
   /// Deserializes an Event from a Firestore document snapshot.
@@ -254,7 +246,6 @@ class Event {
       deletedAt: deletedAt,
       createdAt: createdAt,
       updatedAt: updatedAt,
-      bridgeTripId: data['bridgeTripId'] as String? ?? doc.id,
     );
   }
 
@@ -280,7 +271,6 @@ class Event {
       'createdAt': createdAt.toIso8601String(),
       'serverCreatedAt': FieldValue.serverTimestamp(),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
-      'bridgeTripId': bridgeTripId,
     };
   }
 
@@ -312,7 +302,6 @@ class Event {
       deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      bridgeTripId: bridgeTripId,
     );
   }
 
