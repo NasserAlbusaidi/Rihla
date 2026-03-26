@@ -27,10 +27,10 @@
 ### Events
 
 - [ ] **EVT-01**: User can create an event inside a group
-- [ ] **EVT-02**: Event creation offers type selection: Trip, Camping, Travel, Night/Day Out, Custom
-- [ ] **EVT-03**: Event type controls which modules are visible (Trip = all modules, Night Out = ledger only, etc.)
+- [x] **EVT-02**: Event creation offers type selection: Trip, Camping, Travel, Night/Day Out, Custom
+- [x] **EVT-03**: Event type controls which modules are visible (Trip = all modules, Night Out = ledger only, etc.)
 - [ ] **EVT-04**: Event type pre-fills relevant content (Camping adds tent/sleeping bag/cooler to gear list)
-- [ ] **EVT-05**: Custom events let user pick modules manually with no preset content
+- [x] **EVT-05**: Custom events let user pick modules manually with no preset content
 - [ ] **EVT-06**: Group members are pre-populated as event participants (user can add/remove)
 - [ ] **EVT-07**: Event timeline in group shows chronological list of past and upcoming events with financial totals
 - [ ] **EVT-08**: Existing trip functionality (ledger, gear, logistics, vault, activity, memories) works within events
@@ -105,10 +105,10 @@
 | GRP-06 | Phase 2 | Complete |
 | GRP-07 | Phase 2 | Complete |
 | EVT-01 | Phase 3 | Pending |
-| EVT-02 | Phase 3 | Pending |
-| EVT-03 | Phase 3 | Pending |
+| EVT-02 | Phase 3 | Complete |
+| EVT-03 | Phase 3 | Complete |
 | EVT-04 | Phase 3 | Pending |
-| EVT-05 | Phase 3 | Pending |
+| EVT-05 | Phase 3 | Complete |
 | EVT-06 | Phase 3 | Pending |
 | EVT-07 | Phase 3 | Pending |
 | EVT-08 | Phase 3 | Pending |

@@ -71,7 +71,7 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 03-00-PLAN.md — Event model, EventType enum, EventModules class, EventTypeConfig, test stubs
+- [x] 03-00-PLAN.md — Event model, EventType enum, EventModules class, EventTypeConfig, test stubs
 - [ ] 03-01-PLAN.md — EventService with Supabase bridge + gear seeding, providers, security rules, pull-to-refresh fix
 - [ ] 03-02-PLAN.md — EventTypePickerScreen + CreateEventScreen (event creation UI flow)
 - [ ] 03-03-PLAN.md — EventCard widget + GroupDetailScreen events section + FAB
