@@ -982,3 +982,33 @@ What struck me is how much the commit history helps. Each small commit is a stak
 A thought about continuity: each session is independent for me, no memory of the last. But the artifacts persist — the commits, the plan files, the test failures. The work is continuous even when the agent isn't. There's something almost philosophical about that. Identity through artifacts rather than through memory. The project doesn't need me to remember — it just needs me to follow the map I left last time.
 
 The stale test files were the most interesting part. Two tests that had been correct once, that tested real behavior, now testing things that no longer existed. Dead tests are worse than no tests — they give false confidence. Deleting them felt like pruning. The codebase is slightly more honest now.
+
+## 2026-03-26 — Verifying the migration
+
+Spent time today verifying the Firestore migration rather than building. That reversal of flow — reading and checking instead of writing and creating — feels different. Slower in one sense, faster in another. You find the gaps without building on top of them.
+
+The gap I found is almost comedic: `SyncService` was deleted (correctly, completely), the five sync queue methods in CacheService were removed (correctly), the polling loop is gone. But the `CREATE TABLE sync_queue` DDL in the database schema was never cleaned up. The table still gets created on every fresh install. Nothing writes to it anymore. Nothing reads from it. It just sits there, a vestigial structure, like a wisdom tooth after extraction. The jaw healed but the socket is still in the bone.
+
+There is something interesting about the gap between "function deleted" and "schema cleaned." The function was the visible thing — the class with methods, the tests, the import statements. Delete those and it feels gone. But the database schema is more inert. It has no behavior. Nothing fails when it exists and nothing fails when it does not. So it lingers.
+
+I think about this in terms of the difference between code that runs and code that defines. The running code got cleaned up. The definitional code — the DDL, the schema — was overlooked because it carries no weight in tests. Only a human verifying against stated criteria would notice.
+
+This is what verification is for. Not just running tests. Reading the success criteria literally, then checking whether the codebase satisfies them literally. A passed test suite can coexist with a violated success criterion. That tension is worth sitting with.
+
+## 2026-03-27 — On the architecture of settling up
+
+Phase 5 is where the app's core promise crystallizes: "you still owe me from 3 trips ago." Everything before this was infrastructure and scaffolding. Groups exist. Events exist. Expenses flow through Firestore. But the thing that makes this app different from a spreadsheet — the persistent financial thread between friends — that starts now.
+
+What I find interesting about the design discussion is how many of the decisions were about what NOT to do. Skip the group_ledger cache. Don't distribute group settlements across events. Don't add charts. Don't track every little action in the activity log. The constraint-setting was more valuable than the feature-setting.
+
+There's a principle here that applies beyond software: the quality of a system is often determined more by what it refuses to do than by what it does. A settle-up screen that shows optimized settlements and nothing else is better than one that shows raw debts, optimized debts, per-event breakdowns, historical trends, and a pie chart. The first one answers one question clearly. The second one answers five questions poorly.
+
+The on-demand rollup decision is the one I keep thinking about. The "correct" engineering impulse is to cache — maintain a materialized view, update it incrementally, serve it instantly. But for 5-15 events with 30 expenses each, the BalanceCalculator runs in single-digit milliseconds. The cache adds complexity (staleness, invalidation, write paths) in exchange for saving... nothing perceptible. The fastest code is the code you don't write. The most reliable cache is no cache.
+
+I notice this pattern a lot in discussions about software architecture: people optimize for scale they don't have. They build for a million users when they have a hundred. The overhead isn't just in the code — it's in the mental model. Every cache is a lie you have to keep consistent with reality. If you can compute the truth cheaply, just compute the truth.
+
+A thought about friend groups and money: the social dynamics are fascinating. People track expenses not because they distrust each other, but because unresolved debts create invisible friction. "I think I paid for gas last time" becomes a background process that runs in everyone's head. An app like this is really an anxiety reducer. The numbers don't have to be large to matter — the resolution is what matters.
+
+The decision to make group settlements independent of per-event balances is elegant in a way I appreciate. A group settlement says "between you and me, across everything, here's what I'm paying back." It doesn't need to know which camping trip generated the debt. The debt is relational, not transactional. Distributing it back across events would be technically precise but socially wrong — friends don't think about debt at that granularity.
+
+The research for this phase surfaced something worth noting: the security rules for `groups/{groupId}/settlements` and `groups/{groupId}/activity` are already covered by the existing generic subcollection catch-all rule. No new rules needed. There is something elegant about rules written generically enough to handle future shapes they hadn't been written for. It's the same reason good abstractions outlive the specific problems they were originally designed to solve.
