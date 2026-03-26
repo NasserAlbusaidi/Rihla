@@ -7,12 +7,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/events/screens/event_command_center.dart';
+import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
+import 'package:safar/features/logistics/providers/sub_group_provider.dart';
+import 'package:safar/features/trip/providers/trip_provider.dart';
+import 'package:safar/features/vault/providers/document_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -235,11 +240,69 @@ void main() {
       expect(find.byType(FloatingActionButton), findsOneWidget);
     });
 
-    test(
-      'tapping event card navigates to EventCommandCenter',
-      () {},
-      skip: 'Awaiting Plan 03-04: EventCard navigation',
-    );
+    testWidgets('tapping event card navigates to EventCommandCenter',
+        (tester) async {
+      final event = _makeEvent(id: 'evt-tap', name: 'Tap Navigation Trip');
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupDetailProvider(_groupId).overrideWith(
+              (ref) => Stream.value(_testGroup),
+            ),
+            groupMembersProvider(_groupId).overrideWith(
+              (ref) => Stream.value(_testMembers),
+            ),
+            groupEventsProvider(_groupId).overrideWith(
+              (ref) => Stream.value([event]),
+            ),
+            // EventCard reads tripExpensesProvider for financial totals
+            tripExpensesProvider(event.bridgeTripId).overrideWith(
+              (ref) => Stream.value(const []),
+            ),
+            // EventCommandCenter (pushed on tap) needs all module providers
+            tripBalancesProvider(event.bridgeTripId).overrideWith(
+              (ref) async => <UserBalance>[],
+            ),
+            currentParticipantProvider(event.bridgeTripId).overrideWith(
+              (ref) => null,
+            ),
+            tripGearProvider(event.bridgeTripId).overrideWith(
+              (ref) => Stream.value(const []),
+            ),
+            tripSubGroupsProvider(event.bridgeTripId).overrideWith(
+              (ref) => Stream.value(const []),
+            ),
+            tripDocumentsProvider(event.bridgeTripId).overrideWith(
+              (ref) => Stream.value(const []),
+            ),
+          ],
+          child: MaterialApp(home: const GroupDetailScreen(groupId: _groupId)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify the event card exists (may be off-screen in a scrollable list)
+      expect(find.text('Tap Navigation Trip'), findsOneWidget);
+
+      // Scroll down to bring the event card into view
+      await tester.scrollUntilVisible(
+        find.text('Tap Navigation Trip'),
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      // Tap the event card
+      await tester.tap(find.text('Tap Navigation Trip'));
+      await tester.pumpAndSettle();
+
+      // EventCommandCenter should now be on screen
+      expect(find.byType(EventCommandCenter), findsOneWidget);
+      // Header still shows event name (ModuleHeader in EventCommandCenter)
+      expect(find.text('Tap Navigation Trip'), findsAtLeastNWidgets(1));
+    });
   });
 
   group('EventCard financial total', () {

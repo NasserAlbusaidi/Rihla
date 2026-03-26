@@ -5,12 +5,14 @@ import 'package:intl/intl.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_provider.dart';
 import '../models/event_model.dart';
 import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
+import 'event_command_center.dart';
 
 /// Event creation form — Step 2 of the event creation flow.
 ///
@@ -98,7 +100,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     final uid = FirebaseConfig.currentUser?.uid ?? '';
 
     try {
-      await ref.read(eventServiceProvider).createEvent(
+      final event = await ref.read(eventServiceProvider).createEvent(
             groupId: widget.groupId,
             name: _nameController.text.trim(),
             type: widget.eventType,
@@ -114,11 +116,20 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
           );
       if (!mounted) return;
       ref.read(eventLoadingProvider.notifier).state = false;
+      // Retrieve the Group object from cache (already watched elsewhere in widget)
+      final group = ref.read(groupDetailProvider(widget.groupId)).valueOrNull;
       // Pop both CreateEventScreen and EventTypePickerScreen (D-05)
-      // TODO(Plan 03-04): Navigate to EventCommandCenter after creation
       Navigator.of(context)
         ..pop()
         ..pop();
+      // Push EventCommandCenter for the newly created event
+      if (group != null) {
+        Navigator.of(context).push(
+          AppPageRoute(
+            builder: (_) => EventCommandCenter(event: event, group: group),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('[CreateEventScreen] Create event error: $e');
       if (!mounted) return;

@@ -13,6 +13,7 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 // skeleton_loader not used here — members section uses inline placeholders
 import '../../events/providers/event_provider.dart';
+import '../../events/screens/event_command_center.dart';
 import '../../events/screens/event_type_picker_screen.dart';
 import '../../events/widgets/event_card.dart';
 import '../models/group_model.dart';
@@ -349,15 +350,14 @@ class GroupDetailScreen extends ConsumerWidget {
                   EventCard(
                     event: events[i],
                     onTap: () {
-                      // TODO(Plan 03-04): Navigate to EventCommandCenter
-                      // Navigator.of(context).push(
-                      //   AppPageRoute(
-                      //     builder: (_) => EventCommandCenter(
-                      //       event: events[i],
-                      //       group: group,
-                      //     ),
-                      //   ),
-                      // );
+                      Navigator.of(context).push(
+                        AppPageRoute(
+                          builder: (_) => EventCommandCenter(
+                            event: events[i],
+                            group: group,
+                          ),
+                        ),
+                      );
                     },
                   ),
                 ],
