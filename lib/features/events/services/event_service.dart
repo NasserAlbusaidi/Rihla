@@ -154,6 +154,12 @@ class EventService {
           debugPrint(
               '[EventService] Supabase not authenticated — skipping bridge');
         } else {
+          debugPrint('[BRIDGE] Creating bridge trip:');
+          debugPrint('[BRIDGE]   eventId=$eventId');
+          debugPrint('[BRIDGE]   supabaseUid=$supabaseUid');
+          debugPrint('[BRIDGE]   firebaseUid(createdBy)=$createdBy');
+          debugPrint('[BRIDGE]   participantIds=$participantIds');
+          debugPrint('[BRIDGE]   participantNames=$participantNames');
           await _createBridgeTrip(
             eventId: eventId,
             name: name,
@@ -167,11 +173,9 @@ class EventService {
             participantNames: participantNames,
           );
           bridgeSucceeded = true;
-          debugPrint('[EventService] Bridge trip created for event $eventId');
+          debugPrint('[BRIDGE] Bridge trip INSERT succeeded for $eventId');
 
           // Cache bridge trip to SQLite so userTripsProvider can find it.
-          // Without this, Ledger screens throw "Trip not found" because
-          // userTripsProvider reads from SQLite, not Supabase.
           if (_ref != null) {
             final bridgeTrip = Trip(
               id: bridgeTripId,
@@ -189,10 +193,13 @@ class EventService {
               endDate: endDate,
               createdAt: now,
             );
+            debugPrint('[BRIDGE] Caching trip to SQLite: id=${bridgeTrip.id}, leaderId=${bridgeTrip.leaderId}');
             await CacheService.cacheTrip(bridgeTrip);
             final repo = _ref.read(offlineRepositoryProvider);
             repo.notifyChange('trips');
+            debugPrint('[BRIDGE] Downloading trip data from Supabase...');
             await SyncService.downloadTripData(bridgeTripId, repo);
+            debugPrint('[BRIDGE] Download complete');
           }
         }
       } catch (e, st) {
@@ -247,22 +254,27 @@ class EventService {
         'end_date': endDate.toIso8601String().split('T').first,
     });
 
-    // Insert participants — creator gets Supabase UID (so is_trip_member()
-    // RLS check passes), others get null user_id (name-based members,
-    // matching the original Trip pattern where joiners claim names later).
+    debugPrint('[BRIDGE] Trip row inserted. Now inserting participants...');
+    debugPrint('[BRIDGE]   createdByFirebaseUid=$createdByFirebaseUid');
+
     for (final uid in participantIds) {
       final isCreator = uid == createdByFirebaseUid;
       final displayName = participantNames[uid] ?? 'Unknown';
+      final effectiveUserId = isCreator ? supabaseUid : null;
+      debugPrint('[BRIDGE]   participant: firebaseUid=$uid, isCreator=$isCreator, '
+          'effectiveUserId=$effectiveUserId, name=$displayName, '
+          'role=${isCreator ? "LEADER" : "MEMBER"}');
       try {
         await SupabaseConfig.client.from('participants').insert({
           'trip_id': eventId,
-          'user_id': isCreator ? supabaseUid : null,
+          'user_id': effectiveUserId,
           'display_name': displayName,
           'role': isCreator ? 'LEADER' : 'MEMBER',
           'joined_at': DateTime.now().toIso8601String(),
         });
+        debugPrint('[BRIDGE]   → INSERT OK');
       } catch (e) {
-        debugPrint('[EventService] Failed to insert bridge participant $uid: $e');
+        debugPrint('[BRIDGE]   → INSERT FAILED: $e');
       }
     }
   }

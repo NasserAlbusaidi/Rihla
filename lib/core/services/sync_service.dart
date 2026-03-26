@@ -198,6 +198,7 @@ class SyncService {
     String tripId,
     OfflineRepository repo,
   ) async {
+    debugPrint('[SYNC] downloadTripData START for tripId=$tripId');
     try {
       await Future.wait([
         _pullExpenses(tripId, repo),
@@ -208,8 +209,9 @@ class SyncService {
         _pullActivityLogs(tripId, repo),
         _pullCategories(tripId, repo),
       ]);
+      debugPrint('[SYNC] downloadTripData COMPLETE for tripId=$tripId');
     } catch (e) {
-      debugPrint('Error downloading trip data for $tripId: $e');
+      debugPrint('[SYNC] downloadTripData FAILED for $tripId: $e');
     }
   }
 
@@ -286,17 +288,24 @@ class SyncService {
     OfflineRepository repo,
   ) async {
     try {
+      debugPrint('[SYNC] _pullParticipants: querying tripId=$tripId');
       final data = await _client
           .from('participants')
           .select('*')
           .eq('trip_id', tripId);
 
+      debugPrint('[SYNC] _pullParticipants: raw data=${data.length} rows');
+      for (final row in data) {
+        debugPrint('[SYNC]   participant: id=${row['id']}, user_id=${row['user_id']}, '
+            'display_name=${row['display_name']}, role=${row['role']}');
+      }
       final participants =
           (data as List).map((json) => Participant.fromJson(json)).toList();
       await CacheService.cacheParticipants(tripId, participants);
       repo.notifyChange('participants', tripId);
+      debugPrint('[SYNC] _pullParticipants: cached ${participants.length} participants');
     } catch (e) {
-      debugPrint('Error pulling participants: $e');
+      debugPrint('[SYNC] _pullParticipants FAILED: $e');
     }
   }
 
@@ -351,18 +360,24 @@ class SyncService {
     OfflineRepository repo,
   ) async {
     try {
+      debugPrint('[SYNC] _pullCategories: querying tripId=$tripId');
       final data = await _client
           .from('expense_categories')
           .select('*')
           .eq('trip_id', tripId);
 
+      debugPrint('[SYNC] _pullCategories: got ${data.length} categories');
+      for (final row in data) {
+        debugPrint('[SYNC]   category: id=${row['id']}, name=${row['name']}, '
+            'is_default=${row['is_default']}');
+      }
       final categories = (data as List)
           .map((json) => ExpenseCategory.fromJson(json as Map<String, dynamic>))
           .toList();
       await CacheService.cacheCategories(tripId, categories);
       repo.notifyChange('categories', tripId);
     } catch (e) {
-      debugPrint('Error pulling categories: $e');
+      debugPrint('[SYNC] _pullCategories FAILED: $e');
     }
   }
 }

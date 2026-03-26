@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -36,16 +37,32 @@ final currentParticipantProvider = Provider.family<Participant?, String>((
   tripId,
 ) {
   final user = ref.watch(currentUserProvider);
-  if (user == null) return null;
+  debugPrint('[PARTICIPANT] currentParticipantProvider: tripId=$tripId, '
+      'supabaseUser=${user?.id}');
+  if (user == null) {
+    debugPrint('[PARTICIPANT]   → user is null, returning null');
+    return null;
+  }
 
   final participantsAsync = ref.watch(
     tripLogisticsParticipantsProvider(tripId),
   );
   return participantsAsync.maybeWhen(
     data: (participants) {
-      return participants.where((p) => p.userId == user.id).firstOrNull;
+      debugPrint('[PARTICIPANT]   participants loaded: ${participants.length}');
+      for (final p in participants) {
+        debugPrint('[PARTICIPANT]     id=${p.id}, userId=${p.userId}, '
+            'name=${p.displayName}, role=${p.role}');
+      }
+      final match = participants.where((p) => p.userId == user.id).firstOrNull;
+      debugPrint('[PARTICIPANT]   → match for userId=${user.id}: '
+          '${match != null ? "FOUND (${match.id})" : "NOT FOUND"}');
+      return match;
     },
-    orElse: () => null,
+    orElse: () {
+      debugPrint('[PARTICIPANT]   → participants not loaded yet');
+      return null;
+    },
   );
 });
 

@@ -9,6 +9,7 @@ import '../../../core/config/supabase_config.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
@@ -54,11 +55,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   /// Get the trip's currency code
   String get _tripCurrency {
     final trips = ref.read(userTripsProvider).valueOrNull;
+    debugPrint('[EXPENSE] _tripCurrency: tripId=${widget.tripId}, '
+        'userTrips=${trips?.length ?? 0}');
     if (trips == null) return 'OMR';
     final trip = trips.cast<Trip?>().firstWhere(
       (t) => t!.id == widget.tripId,
       orElse: () => null,
     );
+    debugPrint('[EXPENSE] _tripCurrency: found=${trip != null}, '
+        'currency=${trip?.currency ?? "OMR (default)"}');
     return trip?.currency ?? 'OMR';
   }
 
@@ -154,10 +159,33 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
     final note = _noteController.text.trim();
 
+    debugPrint('[EXPENSE] _submit: tripId=${widget.tripId}');
+    debugPrint('[EXPENSE] _submit: looking up currentParticipant...');
+
     final currentParticipant = ref.read(
       currentParticipantProvider(widget.tripId),
     );
+    debugPrint('[EXPENSE] _submit: currentParticipant=${currentParticipant?.id ?? "NULL"}');
     if (currentParticipant == null) {
+      // Log additional context to diagnose
+      final trips = ref.read(userTripsProvider).valueOrNull;
+      debugPrint('[EXPENSE] _submit: userTrips count=${trips?.length ?? 0}');
+      if (trips != null) {
+        for (final t in trips) {
+          debugPrint('[EXPENSE]   trip: id=${t.id}, name=${t.name}, leaderId=${t.leaderId}');
+        }
+      }
+      final participantsAsync = ref.read(tripLogisticsParticipantsProvider(widget.tripId));
+      debugPrint('[EXPENSE] _submit: participantsAsync state=${participantsAsync.runtimeType}');
+      participantsAsync.whenData((participants) {
+        debugPrint('[EXPENSE]   participants: ${participants.length}');
+        for (final p in participants) {
+          debugPrint('[EXPENSE]     id=${p.id}, userId=${p.userId}, name=${p.displayName}');
+        }
+      });
+      final user = ref.read(currentUserProvider);
+      debugPrint('[EXPENSE] _submit: currentUser supabaseId=${user?.id}');
+
       ref.read(expenseErrorProvider.notifier).state =
           'Could not identify your participant record.';
       return;
@@ -272,6 +300,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final isLoading = ref.watch(expenseLoadingProvider);
     final error = ref.watch(expenseErrorProvider);
     final categoriesAsync = ref.watch(tripCategoriesProvider(widget.tripId));
+
+    categoriesAsync.when(
+      data: (cats) => debugPrint('[EXPENSE] build: ${cats.length} categories for tripId=${widget.tripId}'),
+      loading: () => debugPrint('[EXPENSE] build: categories LOADING for tripId=${widget.tripId}'),
+      error: (e, _) => debugPrint('[EXPENSE] build: categories ERROR for tripId=${widget.tripId}: $e'),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
