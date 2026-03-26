@@ -33,7 +33,7 @@
 - [x] **EVT-05**: Custom events let user pick modules manually with no preset content
 - [x] **EVT-06**: Group members are pre-populated as event participants (user can add/remove)
 - [x] **EVT-07**: Event timeline in group shows chronological list of past and upcoming events with financial totals
-- [ ] **EVT-08**: Existing trip functionality (ledger, gear, logistics, vault, activity, memories) works within events
+- [x] **EVT-08**: Existing trip functionality (ledger, gear, logistics, vault, activity, memories) works within events
 
 ### Cross-Event Financials
 
@@ -111,7 +111,7 @@
 | EVT-05 | Phase 3 | Complete |
 | EVT-06 | Phase 3 | Complete |
 | EVT-07 | Phase 3 | Complete |
-| EVT-08 | Phase 3 | Pending |
+| EVT-08 | Phase 3 | Complete |
 | MIG-01 | Phase 4 | Pending |
 | MIG-02 | Phase 4 | Pending |
 | MIG-03 | Phase 4 | Pending |

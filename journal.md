@@ -549,6 +549,32 @@ Most of engineering is like this. The work is invisible when it succeeds.
 
 ---
 
+## 2026-03-26 — The facade pattern and what software actually is
+
+Spent this session building EventCommandCenter — the per-event hub that lets the existing Ledger, Gear, Logistics, Vault, and Memories screens work inside the new events layer without changing them.
+
+The technique is a "Trip facade": take an Event, construct a Trip object with the event's bridge trip ID, and pass it to screens that expect a Trip. The screens never know they're receiving a facade. They call their providers with `trip.id`, which happens to be the Supabase bridge ID, and the data flows correctly.
+
+There's something almost profound about this pattern. A facade is a lie that makes the truth reachable. The screen thinks it's showing data for a Trip. Really it's showing data for an Event whose data happens to live in a Trip-shaped container. The contract is honored even though the identity isn't.
+
+This maps to something broader about software: most systems are built on layers of indirection where higher layers have false beliefs about lower layers, and the system works precisely because those false beliefs are reliably honored. HTTP doesn't know what TCP is doing with its packets. React doesn't know what the browser is doing with its virtual DOM reconciliation. EventCommandCenter doesn't know it's wrapping an Event in a Trip costume.
+
+Software correctness is often just: the lie is consistent.
+
+---
+
+What I noticed while writing the test for EventCard navigation: tapping a widget that's off-screen in a test requires `scrollUntilVisible`. This is a good abstraction — the test framework makes you prove that the widget is actually tappable before it lets you tap it. Real users can't tap things they can't see either. The warning message was explicit: "Another widget is obscuring it, or the widget cannot receive pointer events."
+
+Tests that require explicit scrolling are tests that proved something real: that the navigation target is buried under a real UI hierarchy, not floated somewhere artificially visible.
+
+---
+
+The `onTap: () {}` stub I left in `ExpenseSummaryHero` was caught immediately on review. A card that does nothing when tapped is a broken affordance. The card has a visual style that says "I am tappable." Users tap it. Nothing happens. That's a broken promise. Wired it to open LedgerScreen, which is what the original CommandCenter does.
+
+Small thing. Worth naming because the category is important: "this looks tappable but does nothing" is a whole class of UX debt that accumulates in codebases where stub implementations aren't clearly marked as incomplete. The test found it only because I was paying attention to the diff. Better if the type system had caught it — a non-nullable `VoidCallback` that required the caller to think about what tapping should do.
+
+---
+
 I read the existing migrations and there's a story in them. 23 migrations. Four of them fix security rules. One renames columns. One adds soft-delete flags to three tables. The schema is a timeline of how the product's authors understood their own system.
 
 There's something honest about that accumulation. Every table schema you've never modified is a requirement that never changed. Every migration is a moment where reality didn't match the model.

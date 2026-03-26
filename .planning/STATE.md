@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 03-events-03-03-PLAN.md
-last_updated: "2026-03-26T10:23:12.738Z"
+status: Phase complete — ready for verification
+stopped_at: "Completed 03-events-03-04 Tasks 1-2, awaiting checkpoint:human-verify for Task 3"
+last_updated: "2026-03-26T10:34:31.043Z"
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -57,6 +57,7 @@ Plan: 5 of 5
 | Phase 03-events P01 | 6 | 2 tasks | 6 files |
 | Phase 03-events P02 | 5 | 2 tasks | 4 files |
 | Phase 03-events P03 | 6 | 2 tasks | 4 files |
+| Phase 03-events P04 | 7 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Recent decisions affecting current work:
 - [Phase 03-events]: Custom event module overrides require optional modules param on EventService.createEvent — service now accepts modules override; null falls back to EventModules.forType(type)
 - [Phase 03-events]: EventCard is ConsumerWidget to watch tripExpensesProvider(bridgeTripId) for live financial totals
 - [Phase 03-events]: GroupDetailScreen FAB always visible (unconditional) — creating events valid regardless of loading state
+- [Phase 03-events]: Trip facade used in EventCommandCenter: event.bridgeTripId as Trip.id, event.modules.vault mapped to TripModules.docs
+- [Phase 03-events]: EventModuleList checks event.modules.ledger (not hardcoded) to support Custom type ledger toggle per D-14
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T10:23:12.735Z
-Stopped at: Completed 03-events-03-03-PLAN.md
+Last session: 2026-03-26T10:34:31.041Z
+Stopped at: Completed 03-events-03-04 Tasks 1-2, awaiting checkpoint:human-verify for Task 3
 Resume file: None

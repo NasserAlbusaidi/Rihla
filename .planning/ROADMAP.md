@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Foundation** - Firestore initialized, security rules tested, integer money storage enforced, SQLite schema extended (completed 2026-03-25)
 - [ ] **Phase 2: Groups** - Users can create and join persistent groups; groups appear on home screen
-- [ ] **Phase 3: Events** - Users can create typed events inside groups with template-driven modules and gear presets
+- [x] **Phase 3: Events** - Users can create typed events inside groups with template-driven modules and gear presets (completed 2026-03-26)
 - [ ] **Phase 4: Firestore Repository Layer** - All per-event module writes routed through Firestore; SyncService retired
 - [ ] **Phase 5: Cross-Event Financials** - Group-level running balances, balance toggle, cross-event settle-up, group dashboard
 - [ ] **Phase 6: Testing and Coverage** - 80%+ coverage enforced, offline scenario tests, widget tests, financial unit tests
@@ -75,7 +75,7 @@ Plans:
 - [x] 03-01-PLAN.md — EventService with Supabase bridge + gear seeding, providers, security rules, pull-to-refresh fix
 - [x] 03-02-PLAN.md — EventTypePickerScreen + CreateEventScreen (event creation UI flow)
 - [x] 03-03-PLAN.md — EventCard widget + GroupDetailScreen events section + FAB
-- [ ] 03-04-PLAN.md — EventCommandCenter + EventModuleList + navigation wiring + human verification
+- [x] 03-04-PLAN.md — EventCommandCenter + EventModuleList + navigation wiring + human verification
 
 ### Phase 4: Firestore Repository Layer
 **Goal**: All per-event module writes (expenses, settlements, gear, logistics, vault, memories, activity) flow through Firestore; the SyncService polling loop is gone; offline capability is preserved through Firestore's built-in write queue
@@ -132,7 +132,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
 | 2. Groups | 3/4 | In Progress|  |
-| 3. Events | 4/5 | In Progress|  |
+| 3. Events | 5/5 | Complete   | 2026-03-26 |
 | 4. Firestore Repository Layer | 0/TBD | Not started | - |
 | 5. Cross-Event Financials | 0/TBD | Not started | - |
 | 6. Testing and Coverage | 0/TBD | Not started | - |
