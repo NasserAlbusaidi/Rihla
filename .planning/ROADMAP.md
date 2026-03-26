@@ -87,14 +87,15 @@ Plans:
   3. The SyncService class and sync_queue SQLite table no longer exist in the codebase
   4. All Firestore reads and writes flow through FirestoreRepository — no direct FirebaseFirestore.instance calls exist outside that class
   5. SQLite still serves structured balance queries; the BalanceCalculator reads from SQLite and produces correct results
-**Plans**: 5 plans
+**Plans**: 6 plans
 
 Plans:
 - [ ] 04-00-PLAN.md — FirestoreRepository base class + model Firestore serialization + security rules + test stubs
-- [ ] 04-01-PLAN.md — ExpenseService + SettlementService Firestore migration + provider migration
+- [ ] 04-01-PLAN.md — ExpenseService + SettlementService Firestore migration + provider migration with asyncMap side-write
 - [ ] 04-02-PLAN.md — GearService + SubGroupService + ActivityService Firestore migration
-- [ ] 04-03-PLAN.md — Vault + Memories Firebase Storage migration + LazyMigrationService
-- [ ] 04-04-PLAN.md — SyncService deletion + bridge teardown + screen migration to EventRef providers
+- [ ] 04-03-PLAN.md — Vault + Memories Firebase Storage migration + LazyMigrationService + tests
+- [ ] 04-04-PLAN.md — SyncService deletion + BalanceCacheRepository + ConnectivityNotifier + base class refactor
+- [ ] 04-05-PLAN.md — Bridge teardown + screen migration to EventRef providers
 
 ### Phase 5: Cross-Event Financials
 **Goal**: The group dashboard shows live running balances across all events; users can see what they owe per event or in total across the group; cross-event settle-up works
@@ -133,14 +134,14 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
 | 2. Groups | 3/4 | In Progress|  |
 | 3. Events | 5/5 | Complete   | 2026-03-26 |
-| 4. Firestore Repository Layer | 0/5 | Not started | - |
+| 4. Firestore Repository Layer | 0/6 | Not started | - |
 | 5. Cross-Event Financials | 0/TBD | Not started | - |
 | 6. Testing and Coverage | 0/TBD | Not started | - |
 | 7. Data Migration and Supabase Removal | 0/TBD | Not started | - |
