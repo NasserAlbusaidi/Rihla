@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -46,6 +47,11 @@ final _testMembers = [
 ];
 
 /// Wraps a widget in ProviderScope + MaterialApp with shared test overrides.
+///
+/// Also overrides [groupEventsProvider] so GroupDetailScreen does not attempt
+/// to open a real Firestore stream, and overrides
+/// [tripExpensesProvider] (no-op empty list) to prevent SQLite initialization
+/// from EventCard's live financial total.
 Widget _wrap(Widget child, SharedPreferences prefs) {
   return ProviderScope(
     overrides: [
@@ -55,6 +61,9 @@ Widget _wrap(Widget child, SharedPreferences prefs) {
       ),
       groupMembersProvider('group-1').overrideWith(
         (ref) => Stream.value(_testMembers),
+      ),
+      groupEventsProvider('group-1').overrideWith(
+        (ref) => Stream.value(const []),
       ),
     ],
     child: MaterialApp(home: child),
@@ -124,16 +133,17 @@ void main() {
       });
 
       testWidgets(
-          'shows "No events yet" placeholder for event timeline', (tester) async {
+          'shows "No events yet" empty state when no events exist', (tester) async {
         await tester.pumpWidget(
           _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('No events yet'), findsOneWidget);
+        // Copywriting Contract message for 03-03
         expect(
           find.text(
-            'Create an event to get started — events will appear here.',
+            'Tap the + button to create the first event for this group.',
           ),
           findsOneWidget,
         );

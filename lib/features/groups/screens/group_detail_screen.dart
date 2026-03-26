@@ -12,6 +12,9 @@ import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 // skeleton_loader not used here — members section uses inline placeholders
+import '../../events/providers/event_provider.dart';
+import '../../events/screens/event_type_picker_screen.dart';
+import '../../events/widgets/event_card.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
 import '../widgets/group_member_tile.dart';
@@ -32,6 +35,20 @@ class GroupDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: Semantics(
+        label: 'Create event',
+        button: true,
+        child: FloatingActionButton(
+          onPressed: () => Navigator.of(context).push(
+            AppPageRoute(
+              builder: (_) => EventTypePickerScreen(groupId: groupId),
+            ),
+          ),
+          backgroundColor: AppColors.primary,
+          shape: const CircleBorder(),
+          child: const Icon(Iconsax.add, color: Colors.black),
+        ),
+      ),
       body: groupAsync.when(
         data: (group) {
           if (group == null) {
@@ -83,7 +100,7 @@ class GroupDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppColors.space24),
                 _buildMembersSection(context, ref),
                 const SizedBox(height: AppColors.space24),
-                _buildEventsSection(context),
+                _buildEventsSection(context, ref, group),
                 const SizedBox(height: AppColors.space32),
               ],
             ),
@@ -269,20 +286,92 @@ class GroupDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEventsSection(BuildContext context) {
+  Widget _buildEventsSection(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) {
+    final eventsAsync = ref.watch(groupEventsProvider(groupId));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Events',
-          style: Theme.of(context).textTheme.titleMedium,
+        // Section header with optional count chip when events exist
+        eventsAsync.when(
+          data: (events) => Row(
+            children: [
+              Text(
+                'Events',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const Spacer(),
+              if (events.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppColors.space8,
+                    vertical: AppColors.space4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius:
+                        BorderRadius.circular(AppColors.radiusSmall),
+                  ),
+                  child: Text(
+                    '${events.length}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                ),
+            ],
+          ),
+          loading: () =>
+              Text('Events', style: Theme.of(context).textTheme.titleMedium),
+          error: (e, st) =>
+              Text('Events', style: Theme.of(context).textTheme.titleMedium),
         ),
         const SizedBox(height: AppColors.space12),
-        const EmptyStateView(
-          icon: Iconsax.calendar_add,
-          title: 'No events yet',
-          message:
-              'Create an event to get started — events will appear here.',
+        // Event list or empty state
+        eventsAsync.when(
+          data: (events) {
+            if (events.isEmpty) {
+              return const EmptyStateView(
+                icon: Iconsax.calendar_add,
+                title: 'No events yet',
+                message:
+                    'Tap the + button to create the first event for this group.',
+              );
+            }
+            return Column(
+              children: [
+                for (int i = 0; i < events.length; i++) ...[
+                  if (i > 0) const SizedBox(height: AppColors.space12),
+                  EventCard(
+                    event: events[i],
+                    onTap: () {
+                      // TODO(Plan 03-04): Navigate to EventCommandCenter
+                      // Navigator.of(context).push(
+                      //   AppPageRoute(
+                      //     builder: (_) => EventCommandCenter(
+                      //       event: events[i],
+                      //       group: group,
+                      //     ),
+                      //   ),
+                      // );
+                    },
+                  ),
+                ],
+              ],
+            );
+          },
+          loading: () =>
+              const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text(
+            "Couldn't load events",
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textMuted,
+                ),
+          ),
         ),
       ],
     );
