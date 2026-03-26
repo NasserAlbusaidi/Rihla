@@ -247,7 +247,6 @@ class EventService {
         'logistics': modules.logistics,
       },
       'currency': currency,
-      'source': 'event_bridge',
       if (startDate != null)
         'start_date': startDate.toIso8601String().split('T').first,
       if (endDate != null)
