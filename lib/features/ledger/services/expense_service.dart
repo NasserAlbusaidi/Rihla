@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -22,7 +21,8 @@ class ExpenseService extends FirestoreRepository {
 
   /// Test constructor -- injects a [FakeFirebaseFirestore] for unit testing.
   @visibleForTesting
-  ExpenseService.withFirestore(FirebaseFirestore db) : super.withFirestore(db);
+  // ignore: invalid_use_of_visible_for_testing_member
+  ExpenseService.withFirestore(super.db) : super.withFirestore();
 
   /// Returns a real-time stream of non-deleted expenses for the given event,
   /// ordered newest first.

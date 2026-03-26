@@ -1,17 +1,23 @@
 import 'package:decimal/decimal.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/config/supabase_config.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/services/offline_repository.dart';
+import '../../../core/types/event_ref.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
+import '../services/expense_service.dart';
+import '../services/settlement_service.dart';
+
+export '../../../core/types/event_ref.dart'; // re-export so existing importers still work
+
+// ---------------------------------------------------------------------------
+// Loading / error state providers (kept for backward compat with screens)
+// ---------------------------------------------------------------------------
 
 /// Loading state for expense operations
 final expenseLoadingProvider = StateProvider<bool>((ref) => false);
@@ -19,7 +25,77 @@ final expenseLoadingProvider = StateProvider<bool>((ref) => false);
 /// Error state for expense operations
 final expenseErrorProvider = StateProvider<String?>((ref) => null);
 
-/// Stream of expenses — reads from SQLite, always instant
+// ---------------------------------------------------------------------------
+// Service providers (NEW Firestore-backed services)
+// ---------------------------------------------------------------------------
+
+/// Provider for the Firestore-backed [ExpenseService].
+final expenseServiceProvider = Provider<ExpenseService>(
+  (ref) => ExpenseService(),
+);
+
+/// Provider for the Firestore-backed [SettlementService].
+final settlementServiceProvider = Provider<SettlementService>(
+  (ref) => SettlementService(),
+);
+
+// ---------------------------------------------------------------------------
+// NEW: Firestore-backed stream providers using EventRef (D-15, RESEARCH.md Pattern 4)
+// ---------------------------------------------------------------------------
+
+/// Firestore-backed expense stream using [EventRef] as the family parameter.
+///
+/// Includes an [asyncMap] SQLite side-write so [BalanceCalculator] data is
+/// always fresh after each Firestore snapshot (D-15). The side-write uses
+/// [CacheService.cacheExpenses] as the interim implementation until
+/// [BalanceCacheRepository] is created in Plan 04-04.
+///
+/// **Why asyncMap over listen:** `asyncMap` keeps the stream pipeline intact
+/// and ensures SQLite writes complete before downstream subscribers receive
+/// the data. A separate `listen()` would create a dangling subscription
+/// outside Riverpod's lifecycle management.
+final eventExpensesProvider = StreamProvider.family<List<Expense>, EventRef>((
+  ref,
+  eventRef,
+) {
+  final service = ref.read(expenseServiceProvider);
+  return service.watchExpenses(eventRef.groupId, eventRef.eventId).asyncMap(
+    (expenses) async {
+      // Side effect: write to SQLite for BalanceCalculator (D-15)
+      await CacheService.cacheExpenses(eventRef.eventId, expenses);
+      return expenses; // pass through unchanged
+    },
+  );
+});
+
+/// Firestore-backed settlement stream using [EventRef] as the family parameter.
+///
+/// Includes an [asyncMap] SQLite side-write for BalanceCalculator (D-15).
+final eventSettlementsProvider =
+    StreamProvider.family<List<Settlement>, EventRef>((
+  ref,
+  eventRef,
+) {
+  final service = ref.read(settlementServiceProvider);
+  return service
+      .watchSettlements(eventRef.groupId, eventRef.eventId)
+      .asyncMap(
+    (settlements) async {
+      // Side effect: write to SQLite for BalanceCalculator (D-15)
+      await CacheService.cacheSettlements(eventRef.eventId, settlements);
+      return settlements; // pass through unchanged
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// LEGACY: Backward-compatible SQLite-backed stream providers
+// These remain so existing screen code continues to compile during migration.
+// They will be removed in Plan 04-05 when all screens migrate to EventRef providers.
+// ---------------------------------------------------------------------------
+
+/// @Deprecated('Use eventExpensesProvider with EventRef. Will be removed in 04-05.')
+/// Stream of expenses -- reads from SQLite, always instant.
 final tripExpensesProvider = StreamProvider.family<List<Expense>, String>((
   ref,
   tripId,
@@ -27,7 +103,8 @@ final tripExpensesProvider = StreamProvider.family<List<Expense>, String>((
   return ref.read(offlineRepositoryProvider).watchExpenses(tripId);
 });
 
-/// Stream of settlements — reads from SQLite
+/// @Deprecated('Use eventSettlementsProvider with EventRef. Will be removed in 04-05.')
+/// Stream of settlements -- reads from SQLite.
 final tripSettlementsProvider = StreamProvider.family<List<Settlement>, String>((
   ref,
   tripId,
@@ -35,226 +112,16 @@ final tripSettlementsProvider = StreamProvider.family<List<Settlement>, String>(
   return ref.read(offlineRepositoryProvider).watchSettlements(tripId);
 });
 
-/// Expense service provider
-final expenseServiceProvider = Provider<ExpenseService>((ref) {
-  return ExpenseService(ref);
-});
+// ---------------------------------------------------------------------------
+// Balance calculation providers (unchanged -- still uses legacy providers)
+// Updated to EventRef providers in Plan 04-05.
+// ---------------------------------------------------------------------------
 
-/// Expense service for CRUD operations
-class ExpenseService {
-  final Ref _ref;
-
-  ExpenseService(this._ref);
-
-  SupabaseClient get _client => SupabaseConfig.client;
-
-  /// Add a new expense — writes to SQLite immediately if offline
-  Future<Expense?> addExpense({
-    required String tripId,
-    required String payerParticipantId,
-    required Decimal amount,
-    String? description,
-    ExpenseScope scope = ExpenseScope.global,
-    String? subGroupId,
-    List<String>? customSplitParticipants,
-    String? receiptUrl,
-    String? categoryId,
-    String? note,
-  }) async {
-    _ref.read(expenseLoadingProvider.notifier).state = true;
-    _ref.read(expenseErrorProvider.notifier).state = null;
-
-    final repo = _ref.read(offlineRepositoryProvider);
-
-    try {
-      // Try Supabase first (for server-generated ID and relationships)
-      try {
-        final data = await _client
-            .from('expenses')
-            .insert({
-              'trip_id': tripId,
-              'payer_participant_id': payerParticipantId,
-              'amount': amount.toString(),
-              'description': description,
-              'scope': scope.value,
-              'sub_group_id': scope == ExpenseScope.subGroup ? subGroupId : null,
-              'custom_split_participants': scope == ExpenseScope.custom
-                  ? customSplitParticipants
-                  : null,
-              'receipt_url': receiptUrl,
-              'category_id': categoryId,
-              'note': note,
-            })
-            .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
-            .single();
-
-        final expense = Expense.fromJson(data);
-        // Cache the server-returned expense
-        await CacheService.cacheExpenses(tripId, [expense]);
-        repo.notifyChange('expenses', tripId);
-        _ref.read(expenseLoadingProvider.notifier).state = false;
-        return expense;
-      } catch (e) {
-        // Supabase failed (offline) — save locally with generated ID
-        debugPrint('Supabase insert failed, saving locally: $e');
-        final expense = Expense(
-          id: repo.generateId(),
-          tripId: tripId,
-          payerParticipantId: payerParticipantId,
-          amount: amount,
-          description: description,
-          scope: scope,
-          subGroupId: scope == ExpenseScope.subGroup ? subGroupId : null,
-          customSplitParticipants: scope == ExpenseScope.custom
-              ? customSplitParticipants
-              : null,
-          receiptUrl: receiptUrl,
-          categoryId: categoryId,
-          note: note,
-          createdAt: DateTime.now(),
-        );
-        await repo.saveExpense(expense);
-        _ref.read(expenseLoadingProvider.notifier).state = false;
-        return expense;
-      }
-    } catch (e) {
-      debugPrint('addExpense FAILED: $e');
-      _ref.read(expenseErrorProvider.notifier).state = e.toString();
-      _ref.read(expenseLoadingProvider.notifier).state = false;
-      return null;
-    }
-  }
-
-  /// Update an existing expense and log the change — offline-safe
-  Future<Expense?> updateExpense({
-    required String expenseId,
-    required Expense oldExpense,
-    Decimal? newAmount,
-    String? newDescription,
-    ExpenseScope? newScope,
-    String? newSubGroupId,
-    List<String>? newCustomSplitParticipants,
-    String? newCategoryId,
-    String? editNote,
-  }) async {
-    debugPrint('✏️ updateExpense called for ID: $expenseId');
-    debugPrint(
-      '   Updates: amount=$newAmount, scope=$newScope, category=$newCategoryId',
-    );
-    _ref.read(expenseLoadingProvider.notifier).state = true;
-    _ref.read(expenseErrorProvider.notifier).state = null;
-
-    final repo = _ref.read(offlineRepositoryProvider);
-
-    // Build update map with only changed fields
-    final updates = <String, dynamic>{};
-    if (newAmount != null && newAmount != oldExpense.amount) {
-      updates['amount'] = newAmount.toString();
-    }
-    if (newDescription != null && newDescription != oldExpense.description) {
-      updates['description'] = newDescription;
-    }
-    if (newScope != null && newScope != oldExpense.scope) {
-      updates['scope'] = newScope.value;
-      if (newScope == ExpenseScope.subGroup) {
-        updates['sub_group_id'] = newSubGroupId;
-        updates['custom_split_participants'] = null;
-      } else if (newScope == ExpenseScope.custom) {
-        updates['sub_group_id'] = null;
-        updates['custom_split_participants'] = newCustomSplitParticipants;
-      } else {
-        updates['sub_group_id'] = null;
-        updates['custom_split_participants'] = null;
-      }
-    }
-    if (newCategoryId != null && newCategoryId != oldExpense.categoryId) {
-      updates['category_id'] = newCategoryId;
-    }
-
-    debugPrint('   Built updates: $updates');
-
-    if (updates.isEmpty) {
-      debugPrint('   No changes detected, returning old expense');
-      _ref.read(expenseLoadingProvider.notifier).state = false;
-      return oldExpense;
-    }
-
-    try {
-      // Try Supabase first
-      try {
-        final userId = _client.auth.currentUser?.id;
-
-        // Log the edit to history
-        debugPrint('   Logging to expense_history...');
-        await _client.from('expense_history').insert({
-          'expense_id': expenseId,
-          'edited_by': userId,
-          'old_amount': oldExpense.amount.toString(),
-          'new_amount': (newAmount ?? oldExpense.amount).toString(),
-          'old_description': oldExpense.description,
-          'new_description': newDescription ?? oldExpense.description,
-          'old_scope': oldExpense.scope.value,
-          'new_scope': (newScope ?? oldExpense.scope).value,
-          'edit_note': editNote,
-        });
-
-        // Update the expense
-        debugPrint('   Updating expense in DB...');
-        final data = await _client
-            .from('expenses')
-            .update(updates)
-            .eq('id', expenseId)
-            .select('*, expense_categories(name, icon), participants!payer_participant_id(*)')
-            .single();
-
-        final expense = Expense.fromJson(data);
-        // Cache the server-returned expense
-        await CacheService.cacheExpenses(oldExpense.tripId, [expense]);
-        repo.notifyChange('expenses', oldExpense.tripId);
-        debugPrint('✅ updateExpense SUCCESS');
-        _ref.read(expenseLoadingProvider.notifier).state = false;
-        return expense;
-      } catch (e) {
-        // Supabase failed (offline) — update locally
-        debugPrint('Supabase expense update failed, saving locally: $e');
-        await repo.updateExpense(oldExpense, updates);
-        _ref.read(expenseLoadingProvider.notifier).state = false;
-        return oldExpense;
-      }
-    } catch (e) {
-      debugPrint('❌ updateExpense FAILED: $e');
-      _ref.read(expenseErrorProvider.notifier).state = e.toString();
-      _ref.read(expenseLoadingProvider.notifier).state = false;
-      return null;
-    }
-  }
-
-  /// Delete an expense — soft delete locally, try Supabase
-  Future<bool> deleteExpense(String expenseId, {String? tripId}) async {
-    try {
-      final repo = _ref.read(offlineRepositoryProvider);
-      // Try Supabase first
-      try {
-        await _client.from('expenses').update({
-          'is_deleted': true,
-          'deleted_at': DateTime.now().toIso8601String(),
-        }).eq('id', expenseId);
-      } catch (_) {
-        // Offline — will sync later
-      }
-      // Always update local
-      if (tripId != null) {
-        await repo.deleteExpense(expenseId, tripId);
-      }
-      return true;
-    } catch (e) {
-      debugPrint('deleteExpense FAILED: $e');
-      return false;
-    }
-  }
-}
-
-/// Provider for user balances in a trip
+/// Provider for user balances in a trip.
+///
+/// Currently watches [tripExpensesProvider] and [tripSettlementsProvider]
+/// (SQLite-backed) for backward compat. Will be migrated to [eventExpensesProvider]
+/// in Plan 04-05 when screens are updated.
 final tripBalancesProvider = FutureProvider.family<List<UserBalance>, String>((
   ref,
   tripId,
@@ -273,6 +140,10 @@ final tripBalancesProvider = FutureProvider.family<List<UserBalance>, String>((
     subGroups: subGroups,
   );
 });
+
+// ---------------------------------------------------------------------------
+// Balance calculation engine (pure function -- in-memory)
+// ---------------------------------------------------------------------------
 
 /// Balance calculation engine
 class BalanceCalculator {
@@ -328,9 +199,6 @@ class BalanceCalculator {
           if (expense.subGroupId != null &&
               subGroupMembers.containsKey(expense.subGroupId)) {
             splitRecipients = Set.from(subGroupMembers[expense.subGroupId]!);
-            // Note: Payer is NOT forced to be included.
-            // If they paid for a group they are not in (e.g. parents treating kids),
-            // they shouldn't bear a cost share.
           } else {
             // Fallback to global if sub-group not found
             splitRecipients = participants.map((p) => p.id).toSet();
@@ -342,7 +210,6 @@ class BalanceCalculator {
           if (expense.customSplitParticipants != null &&
               expense.customSplitParticipants!.isNotEmpty) {
             splitRecipients = expense.customSplitParticipants!.toSet();
-            // Note: Payer is NOT forced to be included.
           } else {
             // Fallback to global if no participants specified
             splitRecipients = participants.map((p) => p.id).toSet();
