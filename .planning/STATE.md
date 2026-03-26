@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 03-events-03-00-PLAN.md
-last_updated: "2026-03-26T10:02:27.827Z"
+stopped_at: Completed 03-events-03-01-PLAN.md
+last_updated: "2026-03-26T10:13:03.635Z"
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 03 (events) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Plan: 2 of 5
 | Phase 02-groups P02 | 5 | 3 tasks | 8 files |
 | Phase 02-groups P03 | 8 | 3 tasks | 4 files |
 | Phase 03-events P00 | 4 | 2 tasks | 7 files |
+| Phase 03-events P01 | 6 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,9 @@ Recent decisions affecting current work:
 - [Phase 02-groups]: GoRouter nested routes used for /group/:id/settings — consistent with GoRouter patterns while Navigator.push used within-screen for settings from GroupDetailScreen
 - [Phase 03-events]: EventModules constructor does not force ledger=true — preset types enforce via forType(), Custom toggles via copyWith per D-14
 - [Phase 03-events]: bridgeTripId falls back to doc.id — Supabase bridge always has valid trip ID for incremental field adoption
+- [Phase 03-events]: EventService.withFirestore test constructor sets _skipBridgeInTest=true so gear seeding can be verified without Supabase initialization
+- [Phase 03-events]: Supabase isAuthenticated check wrapped in try-catch to handle uninitialized Supabase in test/Firebase-only environments
+- [Phase 03-events]: pull-to-refresh uses ref.invalidate(userGroupsProvider) not ref.refresh — invalidate closes and reopens the Firestore stream subscription for fresh fetch
 
 ### Pending Todos
 
@@ -97,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T10:02:27.824Z
-Stopped at: Completed 03-events-03-00-PLAN.md
+Last session: 2026-03-26T10:13:03.633Z
+Stopped at: Completed 03-events-03-01-PLAN.md
 Resume file: None
