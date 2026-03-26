@@ -436,7 +436,7 @@ class _PayerSelector extends ConsumerWidget {
                         radius: 14,
                         backgroundColor: AppColors.primaryLight,
                         child: Text(
-                          (p.displayName ?? 'U')[0].toUpperCase(),
+                          (p.displayName?.isNotEmpty == true ? p.displayName![0] : 'U').toUpperCase(),
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
