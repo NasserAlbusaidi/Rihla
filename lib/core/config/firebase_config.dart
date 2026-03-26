@@ -45,8 +45,16 @@ class FirebaseConfig {
       return;
     }
     log('No Firebase session found — signing in anonymously');
-    await auth.signInAnonymously();
-    log('Firebase anonymous session established (uid: ${auth.currentUser?.uid})');
+    try {
+      await auth.signInAnonymously();
+      log(
+          'Firebase anonymous session established (uid: ${auth.currentUser?.uid})');
+    } on FirebaseAuthException catch (e) {
+      log('Firebase anonymous sign-in failed: ${e.code} — ${e.message}',
+          error: e);
+      // App continues without Firebase auth — features requiring auth
+      // will degrade gracefully (null currentUser checks already in place).
+    }
   }
 
   /// Get the current Firebase authenticated user.

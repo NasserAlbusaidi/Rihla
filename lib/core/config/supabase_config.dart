@@ -7,16 +7,30 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseConfig {
   static SupabaseClient get client => Supabase.instance.client;
 
-  /// Initialize Supabase with environment variables
+  static bool _initialized = false;
+
+  /// Initialize Supabase with environment variables.
+  ///
+  /// Skips initialization if SUPABASE_URL is not configured (e.g. during
+  /// Firebase migration when config.json may omit Supabase credentials).
   static Future<void> initialize() async {
+    const url = String.fromEnvironment('SUPABASE_URL');
+    const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+
+    if (url.isEmpty || anonKey.isEmpty) {
+      log('Supabase credentials not configured — skipping initialization');
+      return;
+    }
+
     await Supabase.initialize(
-      url: const String.fromEnvironment('SUPABASE_URL'),
-      anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
+      url: url,
+      anonKey: anonKey,
       realtimeClientOptions: const RealtimeClientOptions(
         logLevel: RealtimeLogLevel.info,
       ),
-      debug: kDebugMode, // Only enable debug logging in debug builds
+      debug: kDebugMode,
     );
+    _initialized = true;
     log('Supabase initialized');
   }
 
@@ -24,13 +38,22 @@ class SupabaseConfig {
   /// If no session is active, signs in anonymously so that
   /// `auth.uid()` is always available for RLS policies.
   static Future<void> ensureAnonymousSession() async {
+    if (!_initialized) {
+      log('Supabase not initialized — skipping anonymous session');
+      return;
+    }
     if (client.auth.currentSession != null) {
       log('Session already active');
       return;
     }
     log('No session found — signing in anonymously');
-    await client.auth.signInAnonymously();
-    log('Anonymous session established');
+    try {
+      await client.auth.signInAnonymously();
+      log('Anonymous session established');
+    } catch (e) {
+      log('Supabase anonymous sign-in failed — continuing without session',
+          error: e);
+    }
   }
 
   /// Get the current authenticated user
