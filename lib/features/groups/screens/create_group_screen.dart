@@ -54,27 +54,27 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     ref.read(groupErrorProvider.notifier).state = null;
 
     try {
-      final group = await ref.read(groupServiceProvider).createGroup(
+      final group = await ref
+          .read(groupServiceProvider)
+          .createGroup(
             name: _nameController.text.trim(),
             currency: _selectedCurrency,
-          );
+          )
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
-      if (mounted) {
-        await _showSharePrompt(context, group);
-      }
+      await _showSharePrompt(context, group);
     } catch (e) {
+      debugPrint('CreateGroup error: $e');
+      if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
       ref.read(groupErrorProvider.notifier).state = e.toString();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Couldn't create the group. Check your connection and try again.",
-            ),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
 

@@ -47,11 +47,14 @@ class HomeScreen extends ConsumerWidget {
                       : _buildGroupList(context, groups),
                 ),
                 loading: _buildSkeletonCards,
-                error: (e, st) => const EmptyStateView(
-                  icon: Iconsax.warning_2,
-                  title: "Couldn't load groups",
-                  message: 'Pull down to retry, or check your connection.',
-                ),
+                error: (e, st) {
+                  debugPrint('Groups load error: $e');
+                  return EmptyStateView(
+                    icon: Iconsax.warning_2,
+                    title: "Couldn't load groups",
+                    message: e.toString(),
+                  );
+                },
               ),
             ),
           ],

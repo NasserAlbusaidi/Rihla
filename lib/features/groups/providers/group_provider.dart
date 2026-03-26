@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -72,9 +73,10 @@ class GroupService {
     final inviteCode = _generateInviteCode();
     final now = DateTime.now();
 
+    // Step 1: Create group + invite code atomically.
+    // These must be batched so a group always has its invite code lookup.
     final batch = _db.batch();
 
-    // Doc 1: group document
     batch.set(_db.collection('groups').doc(groupId), {
       'id': groupId,
       'name': name,
@@ -86,26 +88,30 @@ class GroupService {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    // Doc 2: invite code lookup
     batch.set(_db.collection('inviteCodes').doc(inviteCode), {
       'groupId': groupId,
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // Doc 3: creator as member
-    batch.set(
-      _db.collection('groups').doc(groupId).collection('members').doc(memberId),
-      {
-        'id': memberId,
-        'userId': uid,
-        'displayName': displayName,
-        'role': 'CREATOR',
-        'joinedAt': FieldValue.serverTimestamp(),
-        'isShadow': false,
-      },
-    );
-
     await batch.commit();
+
+    // Step 2: Add creator as member AFTER group exists.
+    // The members subcollection rule requires the group doc to exist
+    // with the user in memberIds (isGroupMember check), so this must
+    // be a separate write after the group batch commits.
+    await _db
+        .collection('groups')
+        .doc(groupId)
+        .collection('members')
+        .doc(memberId)
+        .set({
+      'id': memberId,
+      'userId': uid,
+      'displayName': displayName,
+      'role': 'CREATOR',
+      'joinedAt': FieldValue.serverTimestamp(),
+      'isShadow': false,
+    });
 
     // Return a local Group object — serverTimestamp is not readable until
     // the next Firestore snapshot, so use now() as the local createdAt.
@@ -231,12 +237,20 @@ class GroupService {
 /// Provider for [GroupService].
 final groupServiceProvider = Provider<GroupService>(GroupService.new);
 
+/// Reactive Firebase auth state — providers that need the current UID
+/// should watch this so they re-evaluate when auth restores on restart.
+final firebaseUserProvider = StreamProvider<User?>((ref) {
+  return FirebaseConfig.auth.authStateChanges();
+});
+
 /// Reactive stream of all groups the current user belongs to.
 ///
-/// Queries Firestore with `arrayContains` on `memberIds` per D-14.
-/// Returns an empty list if the user is not authenticated.
+/// Watches [firebaseUserProvider] so the query re-runs when auth state
+/// changes (e.g. session restored on app restart). Without this,
+/// the UID is captured once at provider creation and never updates.
 final userGroupsProvider = StreamProvider<List<Group>>((ref) {
-  final uid = FirebaseConfig.currentUser?.uid;
+  final userAsync = ref.watch(firebaseUserProvider);
+  final uid = userAsync.valueOrNull?.uid;
   if (uid == null) return Stream.value([]);
 
   return FirebaseConfig.firestore

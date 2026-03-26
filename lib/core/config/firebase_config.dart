@@ -39,12 +39,20 @@ class FirebaseConfig {
   /// If no user is currently signed in, signs in anonymously so that
   /// Firebase Auth UID is available for Firestore security rules.
   /// Mirrors the SupabaseConfig.ensureAnonymousSession() pattern (D-07).
+  /// Ensure an anonymous Firebase session exists.
+  ///
+  /// Waits for Firebase Auth to restore any persisted session before
+  /// deciding to create a new one. Without this wait, `currentUser`
+  /// is null immediately after `initializeApp()` even when a session
+  /// IS persisted — causing a new anonymous UID on every restart.
   static Future<void> ensureAnonymousSession() async {
-    if (auth.currentUser != null) {
-      log('Firebase session already active (uid: ${auth.currentUser!.uid})');
+    // Wait for auth state restoration from disk (fires once on startup).
+    final restoredUser = await auth.authStateChanges().first;
+    if (restoredUser != null) {
+      log('Firebase session restored (uid: ${restoredUser.uid})');
       return;
     }
-    log('No Firebase session found — signing in anonymously');
+    log('No persisted Firebase session — signing in anonymously');
     try {
       await auth.signInAnonymously();
       log(
@@ -52,8 +60,6 @@ class FirebaseConfig {
     } on FirebaseAuthException catch (e) {
       log('Firebase anonymous sign-in failed: ${e.code} — ${e.message}',
           error: e);
-      // App continues without Firebase auth — features requiring auth
-      // will degrade gracefully (null currentUser checks already in place).
     }
   }
 
