@@ -15,6 +15,14 @@ class Settlement {
   final bool isDeleted;
   final DateTime? deletedAt;
 
+  /// Settlement scope: 'event' (default) or 'group'. Added per D-10.
+  /// Existing event settlements have no scope field — they default to 'event'.
+  final String scope;
+
+  /// For group-scoped settlements, the group ID. Null for event settlements.
+  /// Added per D-10.
+  final String? groupId;
+
   const Settlement({
     required this.id,
     required this.tripId,
@@ -27,6 +35,8 @@ class Settlement {
     this.recipientName,
     this.isDeleted = false,
     this.deletedAt,
+    this.scope = 'event',
+    this.groupId,
   });
 
   factory Settlement.fromJson(Map<String, dynamic> json) {
@@ -78,19 +88,31 @@ class Settlement {
   factory Settlement.fromFirestore(Map<String, dynamic> data) {
     final currency = data['currency'] as String? ?? 'OMR';
     final amountFils = data['amountFils'] as int? ?? 0;
+    final scope = data['scope'] as String? ?? 'event';
+    final groupId = data['groupId'] as String?;
+
+    // For group settlements, eventId may not be set — fall back to groupId as
+    // sentinel (per RESEARCH.md Pitfall 3). Event settlements always have eventId.
+    final tripId = data['eventId'] as String? ??
+        groupId ??
+        '';
 
     return Settlement(
       id: data['id'] as String,
-      tripId: data['eventId'] as String,
+      tripId: tripId,
       payerParticipantId: data['payerParticipantId'] as String?,
       recipientParticipantId: data['recipientParticipantId'] as String?,
       amount: MoneySerializer.fromSubunits(amountFils, currency),
       note: data['note'] as String?,
       settledAt: DateTime.parse(data['settledAt'] as String),
+      payerName: data['payerName'] as String?,
+      recipientName: data['recipientName'] as String?,
       isDeleted: data['isDeleted'] as bool? ?? false,
       deletedAt: data['deletedAt'] != null
           ? DateTime.parse(data['deletedAt'] as String)
           : null,
+      scope: scope,
+      groupId: groupId,
     );
   }
 
@@ -110,6 +132,8 @@ class Settlement {
       'settledAt': settledAt.toIso8601String(),
       'isDeleted': isDeleted,
       'deletedAt': deletedAt?.toIso8601String(),
+      'scope': scope,
+      'groupId': groupId,
     };
   }
 }
