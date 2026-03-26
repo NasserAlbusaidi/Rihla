@@ -367,9 +367,10 @@ class _PayerSelector extends ConsumerWidget {
     final trip = ref
         .watch(userTripsProvider)
         .valueOrNull
-        ?.firstWhere(
-          (t) => t.id == tripId,
-          orElse: () => throw Exception('Trip not found'),
+        ?.cast<Trip?>()
+        .firstWhere(
+          (t) => t!.id == tripId,
+          orElse: () => null,
         );
     final participantsAsync = ref.watch(
       tripLogisticsParticipantsProvider(tripId),

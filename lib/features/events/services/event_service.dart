@@ -7,7 +7,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/cache_service.dart';
+import '../../../core/services/offline_repository.dart';
+import '../../../core/services/sync_service.dart';
 import '../../gear/providers/gear_provider.dart';
+import '../../trip/models/trip_model.dart';
 import '../models/event_model.dart';
 
 /// Service for Event CRUD operations against Firestore.
@@ -163,6 +167,32 @@ class EventService {
           );
           bridgeSucceeded = true;
           debugPrint('[EventService] Bridge trip created for event $eventId');
+
+          // Cache bridge trip to SQLite so userTripsProvider can find it.
+          // Without this, Ledger screens throw "Trip not found" because
+          // userTripsProvider reads from SQLite, not Supabase.
+          if (_ref != null) {
+            final bridgeTrip = Trip(
+              id: bridgeTripId,
+              name: name,
+              inviteCode: '',
+              leaderId: supabaseUid,
+              modules: TripModules(
+                docs: resolvedModules.vault,
+                gear: resolvedModules.gear,
+                itinerary: false,
+                logistics: resolvedModules.logistics,
+              ),
+              currency: currency,
+              startDate: startDate,
+              endDate: endDate,
+              createdAt: now,
+            );
+            await CacheService.cacheTrip(bridgeTrip);
+            final repo = _ref.read(offlineRepositoryProvider);
+            repo.notifyChange('trips');
+            await SyncService.downloadTripData(bridgeTripId, repo);
+          }
         }
       } catch (e, st) {
         // Bridge failure must NOT throw — log and continue
