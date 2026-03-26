@@ -23,11 +23,15 @@ decisions:
   - "Trip facade used in EventCommandCenter: event.bridgeTripId as the Trip.id, event.modules.vault mapped to TripModules.docs"
   - "ExpenseSummaryHero onTap wired to open LedgerScreen (not left as stub)"
   - "EventModuleList checks event.modules.ledger (not hardcoded true) to support Custom type ledger toggle"
+  - "Bridge trip creator participant uses Supabase UID; others get null user_id (name-based members)"
+  - "cacheSingleGearItem added for individual inserts — cacheGearItems delete-all pattern breaks sequential seeding"
+  - "trips table has no 'source' column — removed from bridge insert"
+requirements-completed: [EVT-03, EVT-08]
 metrics:
-  duration: "7 minutes"
+  duration: "45 minutes (including human verification and 5 bridge bug fixes)"
   completed_date: "2026-03-26"
-  tasks_completed: 2
-  files_modified: 6
+  tasks_completed: 3
+  files_modified: 12
 ---
 
 # Phase 03 Plan 04: EventCommandCenter and Navigation Wiring Summary
@@ -103,18 +107,24 @@ Commit: `0be039e`
 
 None. All navigation is wired. All provider hooks are live.
 
-## Checkpoint Awaiting Human Verification
+## Human Verification: PASSED
 
-**Task 3 (checkpoint:human-verify)** requires device verification before this plan can be marked complete.
+**Task 3 (checkpoint:human-verify)** completed on device. Results:
 
-Steps to verify:
-1. `flutter run --dart-define-from-file=config.json`
-2. Open group → FAB → type picker → Create Camping event → verify EventCommandCenter header
-3. Verify module cards: Ledger, Gear, Logistics, Memories (no Vault for Camping)
-4. Tap Gear module → verify preset items (Tent, Sleeping Bag, Cooler)
-5. Back to group → verify event card appears → tap it → EventCommandCenter opens
-6. Create Night/Day Out → verify only Ledger card
-7. Create Custom event → verify module toggles including toggleable Ledger
+- [x] Event creation flow (type picker → form → EventCommandCenter)
+- [x] Module cards filtered by event type
+- [x] Night/Day Out → only Ledger module
+- [x] Custom → module toggles work (Ledger toggleable)
+- [x] Camping gear presets show all 3 items (after cacheSingleGearItem fix)
+- [x] Expense submission works end-to-end
+- [x] Event list shows in GroupDetailScreen (after Firestore index deployment)
+
+**Bridge bugs found and fixed during verification:**
+- `f2f8406` — Bridge trip not cached to SQLite (userTripsProvider couldn't find it)
+- `8786e28` — Participants used Firebase UIDs instead of Supabase UID (RLS blocked everything)
+- `094c7cb` — 'source' column doesn't exist in trips table (entire insert failed)
+- `018828f` — Empty displayName caused RangeError in PayerSelector avatar
+- `68dc44a` — cacheGearItems delete-all wiped prior items during sequential seeding
 
 ## Self-Check: PASSED
 
