@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 04-firestore-repository-layer plan 04-00
-last_updated: "2026-03-26T17:08:57.658Z"
+stopped_at: Completed 04-firestore-repository-layer plan 04-01
+last_updated: "2026-03-26T17:20:53.179Z"
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 18
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 04 (firestore-repository-layer) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Plan: 2 of 6
 | Phase 03-events P03 | 6 | 2 tasks | 4 files |
 | Phase 03-events P04 | 7 | 2 tasks | 6 files |
 | Phase 04-firestore-repository-layer P00 | 5 | 2 tasks | 18 files |
+| Phase 04-firestore-repository-layer P01 | 8 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase 04-00]: Expense.currency is a computed getter defaulting to 'OMR' -- existing model has no currency field, avoids breaking change while enabling MoneySerializer
 - [Phase 04-00]: Module subcollection security uses nested match /{module}/{docId} under match /events/{eventId} -- functionally equivalent to flat path, Firestore canonical syntax
 - [Phase 04-00]: SubGroup.fromFirestore returns members: const [] -- members are in a separate subcollection, not inlined in the document
+- [Phase 04-01]: asyncMap used over listen() for SQLite side-write: keeps stream pipeline intact, ensures SQLite writes complete before downstream subscribers receive data
+- [Phase 04-01]: CacheService.cacheExpenses/cacheSettlements used as interim until BalanceCacheRepository created in 04-04
+- [Phase 04-01]: tripExpensesProvider/tripSettlementsProvider kept as deprecated shims -- screen migration deferred to 04-05
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T17:08:57.655Z
-Stopped at: Completed 04-firestore-repository-layer plan 04-00
+Last session: 2026-03-26T17:20:53.177Z
+Stopped at: Completed 04-firestore-repository-layer plan 04-01
 Resume file: None

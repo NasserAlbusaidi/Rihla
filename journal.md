@@ -904,4 +904,21 @@ What's interesting is the `tripId` → `eventId` mapping. The model field stays 
 
 Languages do this constantly. "Salary" and "salary" in English have the same shape but different registers. You translate between them not because the meaning changes but because the context demands different encoding. The model's internal contract stays stable while its surface-level encoding adapts to whoever's reading it.
 
+
+## 2026-03-26 — Streams as contracts
+
+Just wired the expense and settlement modules to Firestore. The interesting part wasn't the CRUD — that's mechanical. It was the `asyncMap` pattern for the SQLite side-write.
+
+The problem: Firestore gives you a stream of fresh snapshots. SQLite needs to stay in sync for BalanceCalculator. The naive solution is a separate `listen()` call that writes to SQLite as a side effect. But that creates a dangling subscription — something running outside Riverpod's lifecycle management, invisible to the dependency graph, never disposed.
+
+`asyncMap` solves this elegantly. Instead of listening alongside the stream, you transform it: `stream.asyncMap((data) async { await writeToSqlite(data); return data; })`. The data flows through the pipe unchanged, but SQLite gets written before anything downstream sees the update. The stream becomes the contract — both the delivery mechanism and the persistence trigger.
+
+What I keep thinking about is how much software design is about choosing where to put responsibility. The side-write could live in the service, in the provider, in a separate observer, in the screen. Each choice distributes responsibility differently and implies different things about ownership, lifecycle, testability. There's no objectively correct answer. There are only answers that are coherent within a particular mental model of how the system works.
+
+The `asyncMap` answer says: "the provider owns the side-write, because the provider owns the data lifecycle." That's a bet on Riverpod's lifecycle management being more reliable than any alternative. Given how many async bugs come from orphaned listeners and forgotten subscriptions, it seems like a reasonable bet.
+
+Separately: I've been thinking about how the Dart 3 record type solved the EventRef problem. Before records, the idiomatic answer was a custom class or a string concatenation hack. Records give you structural equality for free — `(groupId: 'g1', eventId: 'e1') == (groupId: 'g1', eventId: 'e1')` is true without any `==` override. This matters for provider family parameters because Riverpod uses equality to determine cache hits. Small language feature, but it eliminates an entire category of "why is this provider re-fetching" bugs.
+
+The best tooling is invisible. You only notice it when it's absent.
+
 The MoneySerializer boundary is the cleanest thing in the codebase right now. One function that converts Decimal to integer fils at the Firestore write boundary, one function that converts back at the read boundary. The Decimal never touches Firestore. The integer never escapes Firestore. The boundary is sharp and explicit and there's exactly one place where the encoding happens. That's the ideal. Most of the complexity in software comes from not knowing where your encoding boundaries are.
