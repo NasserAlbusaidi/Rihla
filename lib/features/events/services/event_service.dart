@@ -162,6 +162,7 @@ class EventService {
             startDate: startDate,
             endDate: endDate,
             supabaseUid: supabaseUid,
+            createdByFirebaseUid: createdBy,
             participantIds: participantIds,
             participantNames: participantNames,
           );
@@ -219,6 +220,7 @@ class EventService {
     required EventModules modules,
     required String currency,
     required String supabaseUid,
+    required String createdByFirebaseUid,
     required List<String> participantIds,
     required Map<String, String> participantNames,
     DateTime? startDate,
@@ -245,15 +247,18 @@ class EventService {
         'end_date': endDate.toIso8601String().split('T').first,
     });
 
-    // Insert participants for each participantId
+    // Insert participants — creator gets Supabase UID (so is_trip_member()
+    // RLS check passes), others get null user_id (name-based members,
+    // matching the original Trip pattern where joiners claim names later).
     for (final uid in participantIds) {
+      final isCreator = uid == createdByFirebaseUid;
       final displayName = participantNames[uid] ?? 'Unknown';
       try {
         await SupabaseConfig.client.from('participants').insert({
           'trip_id': eventId,
-          'user_id': uid,
+          'user_id': isCreator ? supabaseUid : null,
           'display_name': displayName,
-          'role': 'member',
+          'role': isCreator ? 'LEADER' : 'MEMBER',
           'joined_at': DateTime.now().toIso8601String(),
         });
       } catch (e) {
