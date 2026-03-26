@@ -1,13 +1,22 @@
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/cache_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../events/providers/event_provider.dart';
+import '../../groups/providers/group_provider.dart';
 import '../models/trip_model.dart';
+
+/// Derived provider: list of group IDs the current user belongs to.
+/// Used by [currentParticipantProvider] to scan events across groups.
+final userGroupsForParticipantProvider = Provider<List<String>>((ref) {
+  final groupsAsync = ref.watch(userGroupsProvider);
+  return groupsAsync.valueOrNull?.map((g) => g.id).toList() ?? [];
+});
 
 /// Trip loading state
 final tripLoadingProvider = StateProvider<bool>((ref) => false);
@@ -33,38 +42,66 @@ final tripLogisticsParticipantsProvider =
   yield await CacheService.getCachedParticipants(tripId);
 });
 
-/// Provider for the current user's participant record in a trip
+/// Provider for the current user's participant record in an event.
+///
+/// The [eventId] parameter is the event ID (same as bridgeTripId). This
+/// provider looks up the Firebase UID in the Event's participantIds list,
+/// which is stored in Firestore. Falls back to the legacy SQLite path if
+/// Firestore data is not yet available.
 final currentParticipantProvider = Provider.family<Participant?, String>((
   ref,
-  tripId,
+  eventId,
 ) {
-  final user = ref.watch(currentUserProvider);
-  debugPrint('[PARTICIPANT] currentParticipantProvider: tripId=$tripId, '
-      'supabaseUser=${user?.id}');
-  if (user == null) {
-    debugPrint('[PARTICIPANT]   → user is null, returning null');
-    return null;
+  // Try Firebase UID first (primary path after Firestore migration)
+  String? uid;
+  try {
+    uid = FirebaseConfig.currentUser?.uid;
+  } catch (_) {
+    // Firebase not initialized (e.g. in tests)
   }
 
+  if (uid != null) {
+    // Find the event across all groups by scanning groupEventsProvider streams.
+    // The eventId is the bridgeTripId which equals the Firestore event doc ID.
+    // Since we don't have the groupId here, check the eventDetailProvider which
+    // takes an EventRef. But we can also scan via the expense provider's cached events.
+    //
+    // Simplest approach: use the legacy SQLite path as a fallback, but first
+    // try to find the event in any loaded group's events.
+    final userGroups = ref.watch(userGroupsForParticipantProvider);
+    for (final groupId in userGroups) {
+      final eventsAsync = ref.watch(groupEventsProvider(groupId));
+      final events = eventsAsync.valueOrNull;
+      if (events == null) continue;
+      final event = events.where((e) => e.id == eventId).firstOrNull;
+      if (event != null && event.participantIds.contains(uid)) {
+        final displayName = event.participantNames[uid] ?? '';
+        return Participant(
+          id: uid,
+          tripId: eventId,
+          role: event.createdBy == uid
+              ? ParticipantRole.leader
+              : ParticipantRole.member,
+          joinedAt: event.createdAt,
+          displayName: displayName,
+          userId: uid,
+        );
+      }
+    }
+  }
+
+  // Fallback: legacy Supabase/SQLite path
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+
   final participantsAsync = ref.watch(
-    tripLogisticsParticipantsProvider(tripId),
+    tripLogisticsParticipantsProvider(eventId),
   );
   return participantsAsync.maybeWhen(
     data: (participants) {
-      debugPrint('[PARTICIPANT]   participants loaded: ${participants.length}');
-      for (final p in participants) {
-        debugPrint('[PARTICIPANT]     id=${p.id}, userId=${p.userId}, '
-            'name=${p.displayName}, role=${p.role}');
-      }
-      final match = participants.where((p) => p.userId == user.id).firstOrNull;
-      debugPrint('[PARTICIPANT]   → match for userId=${user.id}: '
-          '${match != null ? "FOUND (${match.id})" : "NOT FOUND"}');
-      return match;
+      return participants.where((p) => p.userId == user.id).firstOrNull;
     },
-    orElse: () {
-      debugPrint('[PARTICIPANT]   → participants not loaded yet');
-      return null;
-    },
+    orElse: () => null,
   );
 });
 

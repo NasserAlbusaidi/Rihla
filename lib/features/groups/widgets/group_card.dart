@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
 import '../models/group_model.dart';
+import '../providers/group_balance_provider.dart';
 
 /// A card widget for displaying a group summary in the home screen list.
 ///
-/// Shows the group name, member count badge, and a placeholder balance.
-/// The balance is hardcoded to zero per D-03 — real balances are Phase 5.
-class GroupCard extends StatelessWidget {
+/// Shows the group name, member count badge, and total group spending
+/// from [groupBalancesProvider].
+class GroupCard extends ConsumerWidget {
   final Group group;
   final VoidCallback onTap;
 
@@ -19,7 +22,8 @@ class GroupCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final balancesAsync = ref.watch(groupBalancesProvider(group.id));
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -75,12 +79,26 @@ class GroupCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppColors.space8),
-            // Balance placeholder — D-03: hardcoded 0.000 OMR until Phase 5
-            Text(
-              '0.000 ${group.currency}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textMuted,
-                  ),
+            // Group total spending from groupBalancesProvider
+            balancesAsync.when(
+              data: (balances) => Text(
+                AppFormatters.formatCurrency(balances.totalSpent, group.currency),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+              ),
+              loading: () => Text(
+                '...',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+              ),
+              error: (_, __) => Text(
+                '0.000 ${group.currency}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+              ),
             ),
           ],
         ),

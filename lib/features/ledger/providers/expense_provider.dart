@@ -1,4 +1,5 @@
 import 'package:decimal/decimal.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/balance_cache_repository.dart';
@@ -59,10 +60,21 @@ final eventExpensesProvider = StreamProvider.family<List<Expense>, EventRef>((
 ) {
   final service = ref.read(expenseServiceProvider);
   final cache = ref.read(balanceCacheRepositoryProvider);
-  return service.watchExpenses(eventRef.groupId, eventRef.eventId).asyncMap(
+  return service.watchExpenses(eventRef.groupId, eventRef.eventId).handleError(
+    (e, st) {
+      debugPrint('[EXPENSES] eventExpensesProvider stream error: $e');
+    },
+  ).asyncMap(
     (expenses) async {
+      debugPrint('[EXPENSES] eventExpensesProvider asyncMap: ${expenses.length} expenses for ${eventRef.eventId}');
       // Side effect: write to SQLite for BalanceCalculator (D-15)
-      await cache.cacheExpenses(eventRef.eventId, expenses);
+      // Catch errors — SQLite FK constraints may fail for Firestore-only events
+      // that have no corresponding row in the legacy trips table.
+      try {
+        await cache.cacheExpenses(eventRef.eventId, expenses);
+      } catch (e) {
+        debugPrint('[EXPENSES] SQLite cache failed (non-critical): $e');
+      }
       return expenses; // pass through unchanged
     },
   );
@@ -83,7 +95,12 @@ final eventSettlementsProvider =
       .asyncMap(
     (settlements) async {
       // Side effect: write to SQLite for BalanceCalculator (D-15)
-      await cache.cacheSettlements(eventRef.eventId, settlements);
+      // Catch errors — SQLite FK constraints may fail for Firestore-only events
+      try {
+        await cache.cacheSettlements(eventRef.eventId, settlements);
+      } catch (_) {
+        // SQLite cache is non-critical; Firestore is the source of truth
+      }
       return settlements; // pass through unchanged
     },
   );

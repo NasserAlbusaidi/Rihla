@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/types/event_ref.dart';
@@ -138,15 +139,13 @@ class SettleUpScreen extends ConsumerWidget {
     List<Settlement> recordedSettlements,
     List<Participant> participants,
   ) {
-    // Get current user's balance
-    // Use first participant as proxy for current user (simplified for Firestore migration)
-    final currentUserId = participants.isNotEmpty ? participants.first.id : null;
+    // Get current user's balance using Firebase UID
+    String? currentUserId;
+    try {
+      currentUserId = FirebaseConfig.currentUser?.uid;
+    } catch (_) {}
     final myBalance = balances.firstWhere(
-      (b) {
-        return participants.any(
-          (p) => p.id == b.participantId && p.userId == currentUserId,
-        );
-      },
+      (b) => b.participantId == currentUserId,
       orElse: () => UserBalance(
               participantId: '',
               totalPaid: Decimal.zero,

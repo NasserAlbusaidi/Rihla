@@ -40,11 +40,14 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus> {
   ///
   /// Uses [Source.server] so the SDK attempts a real network request.
   /// A [FirebaseException] with code `unavailable` indicates no network.
+  ///
+  /// Reads from `inviteCodes` (publicly readable per security rules) rather
+  /// than `_health/ping` which is blocked by the default-deny rule.
   Future<bool> _isOnline() async {
     try {
       await FirebaseConfig.firestore
-          .collection('_health')
-          .doc('ping')
+          .collection('inviteCodes')
+          .limit(1)
           .get(const GetOptions(source: Source.server));
       return true;
     } catch (e) {

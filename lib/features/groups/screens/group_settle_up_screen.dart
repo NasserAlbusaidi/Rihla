@@ -50,6 +50,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
   /// Scroll to the tile that involves [widget.preSelectedMemberId] after
   /// the first build completes.
+  bool _isCurrentUser(String uid) {
+    try {
+      return FirebaseConfig.currentUser?.uid == uid;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void _scrollToPreSelected(List<Map<String, dynamic>> allSettlements) {
     if (widget.preSelectedMemberId == null) return;
     final idx = allSettlements.indexWhere(
@@ -516,8 +524,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                   ),
                 ],
 
-                // Record Settlement button — only for YOUR ACTIONS
-                if (isYourAction) ...[
+                // Record Settlement button — YOUR ACTIONS and WAITING FOR OTHERS
+                if (isYourAction || _isCurrentUser(toUserId)) ...[
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -549,9 +557,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                             ),
                           ),
                         ),
-                        child: const Text(
-                          'Record Settlement',
-                          style: TextStyle(
+                        child: Text(
+                          isYourAction ? 'Record Settlement' : 'Confirm Received',
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: Colors.black,
