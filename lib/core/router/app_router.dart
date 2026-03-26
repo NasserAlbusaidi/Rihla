@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/groups/screens/create_group_screen.dart';
+import '../../features/groups/screens/join_group_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
@@ -17,6 +19,10 @@ class AppRoutes {
   static const String createTrip = '/create-trip';
   static const String joinTrip = '/join-trip';
   static const String settings = '/settings';
+  // Groups routes (Phase 2)
+  static const String createGroup = '/create-group';
+  static const String joinGroup = '/join-group';
+  static const String groupDetail = '/group/:id';
 }
 
 /// Provider to track onboarding completion state
@@ -121,6 +127,57 @@ final routerProvider = Provider<GoRouter>((ref) {
               child: child,
             );
           },
+        ),
+      ),
+
+      // Create Group (Phase 2)
+      GoRoute(
+        path: AppRoutes.createGroup,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const CreateGroupScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 1),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
+              child: child,
+            );
+          },
+        ),
+      ),
+
+      // Join Group (Phase 2)
+      GoRoute(
+        path: AppRoutes.joinGroup,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const JoinGroupScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 1),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
+              child: child,
+            );
+          },
+        ),
+      ),
+
+      // Group Detail (Phase 2 — scaffold; detail screen wired in Plan 03)
+      GoRoute(
+        path: AppRoutes.groupDetail,
+        builder: (context, state) => Scaffold(
+          appBar: AppBar(title: const Text('Group')),
+          body: Center(
+            child: Text('Group ${state.pathParameters['id']} — coming in Plan 03'),
+          ),
         ),
       ),
 
