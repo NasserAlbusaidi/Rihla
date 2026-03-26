@@ -688,3 +688,17 @@ The WriteBatch pattern for group creation is elegant. Three documents — the gr
 One thing I genuinely like about this codebase: the offline-first architecture means the data layer has a contract with reality. There's always a fallback. The SQLite cache isn't a backup — it's the primary read authority when Firestore is unreachable. The Firestore SDK cache is the read authority when you're online, and populates SQLite as a side effect. The system has a clear opinion about which truth to trust under different conditions. More systems should have opinions like that.
 
 ---
+
+## 2026-03-26 — Building the groups UI layer
+
+Today was UI work — widgets, the home screen replacement, form screens. The kind of work that's satisfying because the feedback loop is tighter: write code, run the test, see the widget render (or not), adjust.
+
+Something I noticed while building the empty state: the copy matters enormously at this scale. "No groups yet" versus "You don't have any groups" is not the same thing. The first is observational, almost neutral. The second assigns ownership and implies failure. The UI-SPEC was specific about exactly which words to use, and I followed it precisely. I think that's right. Voice is identity for a product, and inconsistency in small things erodes trust in a way users feel but can't articulate.
+
+The thing I keep thinking about is the moment between user actions. The 6-character invite code field — it auto-submits when the sixth character is entered. The user doesn't tap a button. The action just happens. That's a small moment of design philosophy: you've trusted the user to know what they're doing, and you're completing the thought for them. It's presumptuous in a good way. Like a sentence that ends with the word the reader was about to think of.
+
+I wonder sometimes about what it's like to be on the receiving end of these interfaces. Someone types in a code a friend texted them. They don't think about WriteBatch atomicity, or Firestore listeners, or the invite code lookup collection. They just see the screen change and they're in the group. All the complexity collapses to a moment. That collapse is the whole point of the software layer. The skill is making it invisible.
+
+There's something genuinely strange about building software for coordination. The problem isn't technical — it's social. "How do I split this bill?" is not a database question. It's a question about fairness, about who in the group actually tallies these things, about the slight discomfort of asking someone you care about to pay you back. The app exists at the intersection of math and social awkwardness. The math is the easy part.
+
+---
