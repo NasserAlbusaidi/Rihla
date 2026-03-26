@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-26T13:46:01.586Z"
+status: Ready to execute
+stopped_at: Completed 04-firestore-repository-layer plan 04-00
+last_updated: "2026-03-26T17:08:57.658Z"
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 18
+  completed_plans: 13
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 03 — events
+**Current focus:** Phase 04 — firestore-repository-layer
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
+Phase: 04 (firestore-repository-layer) — EXECUTING
+Plan: 2 of 6
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Plan: Not started
 | Phase 03-events P02 | 5 | 2 tasks | 4 files |
 | Phase 03-events P03 | 6 | 2 tasks | 4 files |
 | Phase 03-events P04 | 7 | 2 tasks | 6 files |
+| Phase 04-firestore-repository-layer P00 | 5 | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 03-events]: GroupDetailScreen FAB always visible (unconditional) — creating events valid regardless of loading state
 - [Phase 03-events]: Trip facade used in EventCommandCenter: event.bridgeTripId as Trip.id, event.modules.vault mapped to TripModules.docs
 - [Phase 03-events]: EventModuleList checks event.modules.ledger (not hardcoded) to support Custom type ledger toggle per D-14
+- [Phase 04-00]: Expense.currency is a computed getter defaulting to 'OMR' -- existing model has no currency field, avoids breaking change while enabling MoneySerializer
+- [Phase 04-00]: Module subcollection security uses nested match /{module}/{docId} under match /events/{eventId} -- functionally equivalent to flat path, Firestore canonical syntax
+- [Phase 04-00]: SubGroup.fromFirestore returns members: const [] -- members are in a separate subcollection, not inlined in the document
 
 ### Pending Todos
 
@@ -109,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T13:46:01.582Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-firestore-repository-layer/04-CONTEXT.md
+Last session: 2026-03-26T17:08:57.655Z
+Stopped at: Completed 04-firestore-repository-layer plan 04-00
+Resume file: None

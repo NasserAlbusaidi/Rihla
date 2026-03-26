@@ -51,7 +51,7 @@
 - [ ] **MIG-02**: Firestore realtime listeners replace Supabase Realtime subscriptions
 - [ ] **MIG-03**: Firestore offline persistence replaces manual sync queue (`SyncService` deleted, not ported)
 - [ ] **MIG-04**: SQLite retained for fast local reads and balance computation queries
-- [ ] **MIG-05**: `FirestoreRepository` is the single Firestore contact point — all access flows through it
+- [x] **MIG-05**: `FirestoreRepository` is the single Firestore contact point — all access flows through it
 - [ ] **MIG-06**: Existing trip data migrated from Supabase to Firestore via invite-code recovery flow
 - [ ] **MIG-07**: `supabase_flutter` dependency completely removed
 
@@ -116,7 +116,7 @@
 | MIG-02 | Phase 4 | Pending |
 | MIG-03 | Phase 4 | Pending |
 | MIG-04 | Phase 4 | Pending |
-| MIG-05 | Phase 4 | Pending |
+| MIG-05 | Phase 4 | Complete |
 | FIN-01 | Phase 5 | Pending |
 | FIN-02 | Phase 5 | Pending |
 | FIN-03 | Phase 5 | Pending |
