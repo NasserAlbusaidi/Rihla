@@ -55,7 +55,7 @@ Plans:
 - [x] 02-00-PLAN.md — Wave 0: test stub files for group models, service, join flow, and widget tests
 - [x] 02-01-PLAN.md — Group/GroupMember models, GroupService with atomic create/join, Riverpod providers, CacheService + OfflineRepository extensions
 - [x] 02-02-PLAN.md — GroupCard/GroupMemberTile/InviteCodeDisplay widgets, groups-first HomeScreen, CreateGroupScreen + JoinGroupScreen
-- [ ] 02-03-PLAN.md — GroupSettingsScreen, GroupDetailScreen, GoRouter route wiring
+- [x] 02-03-PLAN.md — GroupSettingsScreen, GroupDetailScreen, GoRouter route wiring
 
 ### Phase 3: Events
 **Goal**: Users can create a typed event inside a group, with the event type controlling module visibility and pre-filling relevant content
