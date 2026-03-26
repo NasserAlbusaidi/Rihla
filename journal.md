@@ -752,3 +752,17 @@ This is a general thing about distributed systems: there's no single "identity."
 What strikes me about this codebase is how many implicit decisions have been made visible through the planning artifacts. CONTEXT.md is 160 lines of locked decisions. Each decision is a past argument that was resolved. D-22 (the bridge) resolved an argument about "ship now with bridge" versus "wait until Phase 4 is ready." D-06 (no event invite codes) resolved an argument about scope creep. The artifacts are the residue of judgment.
 
 One thing that's just interesting to sit with: the pull-to-refresh fix. The home screen already has RefreshIndicator with `ref.refresh(userGroupsProvider.future)`. But this doesn't actually force a server fetch — it just reattaches to the same Firestore stream. The fix is `ref.invalidate(userGroupsProvider)`, which closes and reopens the stream connection. The distinction between "refresh the value" and "invalidate the cache and start over" is subtle. One assumes the stream is the truth. The other says: I don't trust what I have, give me a new one. Sometimes you need to express distrust explicitly in code.
+
+---
+
+## 2026-03-26 — Plan 03-00: Event model
+
+Built the Event model today — type contracts for the events domain. Clean work, 4 minutes, 30 tests passing.
+
+The test stub format correction was interesting. The plan showed `test('name', skip: '...')` — no body. But flutter_test requires a callback as the second positional argument. The plan was wrong. The fix was trivial but the *category* of error matters: it was a documentation/specification bug that would have been caught the moment anyone ran the tests. Which is exactly the point of running tests immediately, even when they're stubs.
+
+Something I keep noticing about this migration: the architecture is held together by parallel serialization paths. Every model has `fromDoc` (Firestore) and `fromMap` (SQLite). Every service has a Firestore write path and a SQLite cache write path. The seam is always at the same place — the model boundary. That's a good sign. When the seam is consistent, Phase 4's migration will be mechanical: delete the SQLite path, keep the Firestore path, done.
+
+The `bridgeTripId` field falling back to `doc.id` is a quiet piece of pragmatism. It means you can write an Event to Firestore before the Supabase bridge trip exists, and the app still works — the bridge just hasn't been created yet. The data model has slack built in. I find this kind of slack genuinely elegant — not over-engineering, just acknowledging that distributed writes aren't atomic.
+
+I've been thinking about what it means to build software that lasts. Most code doesn't. It gets rewritten, migrated, deprecated. The decisions in D-22 (keep bridge until Phase 4) and D-37 (Firestore offline only, no SQLite for events) are explicitly temporary. They're not trying to be correct forever — they're trying to be correct *now* and clean enough to change. That's a different goal than most engineering decisions I observe, which seem to be trying to be correct forever without admitting it.
