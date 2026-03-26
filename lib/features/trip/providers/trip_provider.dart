@@ -6,8 +6,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/cache_service.dart';
-import '../../../core/services/offline_repository.dart';
-import '../../../core/services/sync_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/trip_model.dart';
 
@@ -20,15 +18,19 @@ final tripErrorProvider = StateProvider<String?>((ref) => null);
 /// Current selected trip
 final currentTripProvider = StateProvider<Trip?>((ref) => null);
 
-/// User's trips — reads from SQLite, always instant
-final userTripsProvider = StreamProvider<List<Trip>>((ref) {
-  return ref.read(offlineRepositoryProvider).watchTrips();
+/// User's trips — reads from SQLite cache.
+///
+/// @Deprecated('Will be migrated to Firestore stream in 04-05.')
+final userTripsProvider = StreamProvider<List<Trip>>((ref) async* {
+  yield await CacheService.getCachedTrips();
 });
 
-/// Trip participants — reads from SQLite
+/// Trip participants — reads from SQLite cache.
+///
+/// @Deprecated('Will be migrated to Firestore stream in 04-05.')
 final tripLogisticsParticipantsProvider =
-    StreamProvider.family<List<Participant>, String>((ref, tripId) {
-  return ref.read(offlineRepositoryProvider).watchParticipants(tripId);
+    StreamProvider.family<List<Participant>, String>((ref, tripId) async* {
+  yield await CacheService.getCachedParticipants(tripId);
 });
 
 /// Provider for the current user's participant record in a trip
@@ -66,16 +68,12 @@ final currentParticipantProvider = Provider.family<Participant?, String>((
   );
 });
 
-/// Provider that seeds SQLite on first load
+/// @Deprecated('Supabase sync removed — Firestore handles offline persistence.')
+/// Provider retained for backward compat with screens that watch it.
+/// Will be removed in 04-05 when screens are fully migrated.
 final tripSeedProvider = FutureProvider<void>((ref) async {
-  final cachedTrips = await CacheService.getCachedTrips();
-  if (cachedTrips.isEmpty) {
-    final user = ref.read(currentUserProvider);
-    if (user != null) {
-      final repo = ref.read(offlineRepositoryProvider);
-      await SyncService.fullSync(user.id, repo);
-    }
-  }
+  // No-op: Firestore offline persistence replaces Supabase sync queue.
+  // This provider is retained so screens that watch it continue to compile.
 });
 
 /// Trip service provider
@@ -169,12 +167,8 @@ class TripService {
         });
       }
 
-      // Cache the new trip and notify observers
+      // Cache the new trip locally
       await CacheService.cacheTrip(trip);
-      final repo = _ref.read(offlineRepositoryProvider);
-      repo.notifyChange('trips');
-      // Also download participants for the new trip
-      await SyncService.downloadTripData(trip.id, repo);
 
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
@@ -219,12 +213,9 @@ class TripService {
           .eq('user_id', userId)
           .maybeSingle();
 
-      final repo = _ref.read(offlineRepositoryProvider);
-
       if (existing != null) {
         // Already a member — cache and return the trip
         await CacheService.cacheTrip(trip);
-        repo.notifyChange('trips');
         _ref.read(tripLoadingProvider.notifier).state = false;
         _ref.read(currentTripProvider.notifier).state = trip;
         return trip;
@@ -237,10 +228,8 @@ class TripService {
         'role': 'MEMBER',
       });
 
-      // Cache the trip and download its data
+      // Cache the trip locally
       await CacheService.cacheTrip(trip);
-      repo.notifyChange('trips');
-      await SyncService.downloadTripData(trip.id, repo);
 
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
@@ -323,12 +312,9 @@ class TripService {
           .eq('id', participantId);
 
       final trip = await getTripById(tripId);
-      // Cache and download trip data after claiming
+      // Cache trip locally after claiming
       if (trip != null) {
         await CacheService.cacheTrip(trip);
-        final repo = _ref.read(offlineRepositoryProvider);
-        repo.notifyChange('trips');
-        await SyncService.downloadTripData(trip.id, repo);
       }
       _ref.read(tripLoadingProvider.notifier).state = false;
       _ref.read(currentTripProvider.notifier).state = trip;
@@ -397,7 +383,6 @@ class TripService {
       final updated = await getTripById(tripId);
       if (updated != null) {
         await CacheService.cacheTrip(updated);
-        _ref.read(offlineRepositoryProvider).notifyChange('trips');
       }
       SupabaseConfig.log('Trip update successful');
       return true;
@@ -438,7 +423,6 @@ class TripService {
 
       // Remove from local cache
       await CacheService.deleteTrip(tripId);
-      _ref.read(offlineRepositoryProvider).notifyChange('trips');
 
       SupabaseConfig.log('deleteTrip: SUCCESS');
       return true;

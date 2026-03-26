@@ -6,8 +6,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/services/offline_repository.dart';
-import '../../../core/services/sync_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/page_transitions.dart';
 import '../../ledger/screens/add_expense_screen.dart';
@@ -21,10 +19,10 @@ import '../widgets/trip_header.dart';
 import '../widgets/trip_recap_card.dart';
 import '../../ledger/screens/ledger_screen.dart';
 
-/// Eagerly download trip data from Supabase once per trip
+/// @Deprecated('Supabase sync removed — Firestore handles offline persistence.')
+/// Retained for backward compat with screens that watch it. No-op in 04-04+.
 final _tripDataSeedProvider = FutureProvider.family<void, String>((ref, tripId) async {
-  final repo = ref.read(offlineRepositoryProvider);
-  await SyncService.downloadTripData(tripId, repo);
+  // No-op: Firestore offline persistence replaces Supabase downloadTripData.
 });
 
 /// Command Center - Main navigation hub for trips (Light theme)

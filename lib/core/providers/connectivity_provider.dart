@@ -1,10 +1,9 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/cache_service.dart';
-import '../services/offline_repository.dart';
-import '../services/sync_service.dart';
+import '../config/firebase_config.dart';
 
 /// Connectivity state
 enum ConnectivityStatus { online, offline, syncing }
@@ -15,12 +14,15 @@ final connectivityProvider =
       return ConnectivityNotifier();
     });
 
-/// Pending sync count provider
-final pendingSyncCountProvider = FutureProvider<int>((ref) async {
-  return await CacheService.getSyncQueueCount();
-});
-
-/// Connectivity state notifier
+/// Connectivity state notifier.
+///
+/// Checks connectivity by attempting a Firestore server-only read against
+/// the `_health/ping` document. This replaces the previous Supabase
+/// `auth.refreshSession()` check (MIG-03 / D-16 in 04-CONTEXT.md).
+///
+/// Firestore handles offline writes automatically via its persistence layer,
+/// so the offline→online auto-sync trigger is removed — there is no manual
+/// upload queue to flush.
 class ConnectivityNotifier extends StateNotifier<ConnectivityStatus> {
   Timer? _checkTimer;
 
@@ -34,17 +36,35 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus> {
     });
   }
 
-  /// Check current connectivity and auto-sync on offline→online transition
+  /// Ping Firestore to check connectivity.
+  ///
+  /// Uses [Source.server] so the SDK attempts a real network request.
+  /// A [FirebaseException] with code `unavailable` indicates no network.
+  Future<bool> _isOnline() async {
+    try {
+      await FirebaseConfig.firestore
+          .collection('_health')
+          .doc('ping')
+          .get(const GetOptions(source: Source.server));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Check current connectivity and update state.
+  ///
+  /// Firestore handles offline write replay automatically, so there is no
+  /// manual sync trigger needed on the offline→online transition.
   Future<void> checkConnectivity() async {
-    final wasOffline = state == ConnectivityStatus.offline;
-    final isOnline = await SyncService.isOnline();
+    final isOnline = await _isOnline();
     if (!mounted) return;
 
     if (isOnline) {
-      state = ConnectivityStatus.online;
-      if (wasOffline) {
-        debugPrint('Connectivity restored — triggering sync');
+      if (state != ConnectivityStatus.online) {
+        debugPrint('Connectivity restored (Firestore reachable)');
       }
+      state = ConnectivityStatus.online;
     } else {
       state = ConnectivityStatus.offline;
     }
@@ -69,48 +89,5 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus> {
   void dispose() {
     _checkTimer?.cancel();
     super.dispose();
-  }
-}
-
-/// Sync provider for triggering syncs
-final syncProvider = Provider<SyncController>((ref) {
-  return SyncController(ref);
-});
-
-/// Sync controller
-class SyncController {
-  final Ref _ref;
-
-  SyncController(this._ref);
-
-  /// Trigger a full sync
-  Future<SyncResult> fullSync(String userId) async {
-    _ref.read(connectivityProvider.notifier).setSyncing();
-
-    try {
-      final repo = _ref.read(offlineRepositoryProvider);
-      final result = await SyncService.fullSync(userId, repo);
-      _ref.read(connectivityProvider.notifier).setOnline();
-      _ref.invalidate(pendingSyncCountProvider);
-      return result;
-    } catch (e) {
-      _ref.read(connectivityProvider.notifier).setOffline();
-      rethrow;
-    }
-  }
-
-  /// Sync pending changes only
-  Future<SyncResult> syncPending() async {
-    _ref.read(connectivityProvider.notifier).setSyncing();
-
-    try {
-      final result = await SyncService.syncPendingChanges();
-      _ref.read(connectivityProvider.notifier).setOnline();
-      _ref.invalidate(pendingSyncCountProvider);
-      return result;
-    } catch (e) {
-      _ref.read(connectivityProvider.notifier).setOffline();
-      rethrow;
-    }
   }
 }

@@ -1,8 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/services/cache_service.dart';
-import '../../../core/services/offline_repository.dart';
+import '../../../core/services/balance_cache_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
@@ -47,8 +46,7 @@ final settlementServiceProvider = Provider<SettlementService>(
 ///
 /// Includes an [asyncMap] SQLite side-write so [BalanceCalculator] data is
 /// always fresh after each Firestore snapshot (D-15). The side-write uses
-/// [CacheService.cacheExpenses] as the interim implementation until
-/// [BalanceCacheRepository] is created in Plan 04-04.
+/// [BalanceCacheRepository.cacheExpenses] (created in Plan 04-04).
 ///
 /// **Why asyncMap over listen:** `asyncMap` keeps the stream pipeline intact
 /// and ensures SQLite writes complete before downstream subscribers receive
@@ -59,10 +57,11 @@ final eventExpensesProvider = StreamProvider.family<List<Expense>, EventRef>((
   eventRef,
 ) {
   final service = ref.read(expenseServiceProvider);
+  final cache = ref.read(balanceCacheRepositoryProvider);
   return service.watchExpenses(eventRef.groupId, eventRef.eventId).asyncMap(
     (expenses) async {
       // Side effect: write to SQLite for BalanceCalculator (D-15)
-      await CacheService.cacheExpenses(eventRef.eventId, expenses);
+      await cache.cacheExpenses(eventRef.eventId, expenses);
       return expenses; // pass through unchanged
     },
   );
@@ -77,12 +76,13 @@ final eventSettlementsProvider =
   eventRef,
 ) {
   final service = ref.read(settlementServiceProvider);
+  final cache = ref.read(balanceCacheRepositoryProvider);
   return service
       .watchSettlements(eventRef.groupId, eventRef.eventId)
       .asyncMap(
     (settlements) async {
       // Side effect: write to SQLite for BalanceCalculator (D-15)
-      await CacheService.cacheSettlements(eventRef.eventId, settlements);
+      await cache.cacheSettlements(eventRef.eventId, settlements);
       return settlements; // pass through unchanged
     },
   );
@@ -95,21 +95,21 @@ final eventSettlementsProvider =
 // ---------------------------------------------------------------------------
 
 /// @Deprecated('Use eventExpensesProvider with EventRef. Will be removed in 04-05.')
-/// Stream of expenses -- reads from SQLite, always instant.
+/// Stream of expenses -- reads from SQLite via [BalanceCacheRepository].
 final tripExpensesProvider = StreamProvider.family<List<Expense>, String>((
   ref,
   tripId,
 ) {
-  return ref.read(offlineRepositoryProvider).watchExpenses(tripId);
+  return ref.read(balanceCacheRepositoryProvider).watchExpenses(tripId);
 });
 
 /// @Deprecated('Use eventSettlementsProvider with EventRef. Will be removed in 04-05.')
-/// Stream of settlements -- reads from SQLite.
+/// Stream of settlements -- reads from SQLite via [BalanceCacheRepository].
 final tripSettlementsProvider = StreamProvider.family<List<Settlement>, String>((
   ref,
   tripId,
 ) {
-  return ref.read(offlineRepositoryProvider).watchSettlements(tripId);
+  return ref.read(balanceCacheRepositoryProvider).watchSettlements(tripId);
 });
 
 // ---------------------------------------------------------------------------

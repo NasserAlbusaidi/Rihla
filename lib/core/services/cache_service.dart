@@ -589,56 +589,6 @@ class CacheService {
         .toList();
   }
 
-  // ---------------------------------------------------------------------------
-  // Sync Queue
-  // ---------------------------------------------------------------------------
-
-  /// Add item to sync queue for later upload
-  static Future<void> addToSyncQueue({
-    required String tableName,
-    required String recordId,
-    required SyncAction action,
-    required Map<String, dynamic> data,
-  }) async {
-    final db = await LocalDatabase.database;
-    await db.insert('sync_queue', {
-      'table_name': tableName,
-      'record_id': recordId,
-      'action': action.value,
-      'data': jsonEncode(data),
-      'created_at': DateTime.now().toIso8601String(),
-    });
-  }
-
-  /// Get pending sync items
-  static Future<List<Map<String, dynamic>>> getPendingSyncItems() async {
-    final db = await LocalDatabase.database;
-    return await db.query('sync_queue', orderBy: 'created_at ASC', limit: 50);
-  }
-
-  /// Remove item from sync queue
-  static Future<void> removeSyncItem(int id) async {
-    final db = await LocalDatabase.database;
-    await db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
-  }
-
-  /// Check if there are pending sync items
-  static Future<bool> hasPendingSync() async {
-    final db = await LocalDatabase.database;
-    final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM sync_queue',
-    );
-    return (result.first['count'] as int) > 0;
-  }
-
-  /// Get sync queue count
-  static Future<int> getSyncQueueCount() async {
-    final db = await LocalDatabase.database;
-    final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM sync_queue',
-    );
-    return result.first['count'] as int;
-  }
 
   // ---------------------------------------------------------------------------
   // Groups

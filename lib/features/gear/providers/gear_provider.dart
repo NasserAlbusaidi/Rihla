@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/services/offline_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../models/gear_item_model.dart';
 import '../services/gear_service.dart';
@@ -26,15 +25,14 @@ final eventGearItemsProvider =
       .watchGearItems(eventRef.groupId, eventRef.eventId);
 });
 
-/// @Deprecated('Use eventGearItemsProvider with EventRef')
+/// @Deprecated('Use eventGearItemsProvider with EventRef. Will be removed in 04-05.')
 ///
-/// Legacy stream of gear items from SQLite (Supabase path).
-/// Retained for backward compatibility with screens not yet migrated to Firestore.
+/// Legacy gear items stream — returns empty list until screens migrate in 04-05.
 final tripGearProvider = StreamProvider.family<List<GearItem>, String>((
   ref,
   tripId,
 ) {
-  return ref.read(offlineRepositoryProvider).watchGearItems(tripId);
+  return Stream.value([]);
 });
 
 /// Gear items grouped by status (uses SQLite legacy stream)

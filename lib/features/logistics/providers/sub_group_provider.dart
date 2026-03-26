@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/services/offline_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../models/sub_group_model.dart';
 import '../services/sub_group_service.dart';
@@ -27,15 +26,14 @@ final eventSubGroupsProvider =
       .watchSubGroups(eventRef.groupId, eventRef.eventId);
 });
 
-/// @Deprecated('Use eventSubGroupsProvider with EventRef')
+/// @Deprecated('Use eventSubGroupsProvider with EventRef. Will be removed in 04-05.')
 ///
-/// Legacy stream of sub-groups from SQLite (Supabase path).
-/// Retained for backward compatibility with screens not yet migrated to Firestore.
+/// Legacy sub-groups stream — returns empty list until screens migrate in 04-05.
 final tripSubGroupsProvider = StreamProvider.family<List<SubGroup>, String>((
   ref,
   tripId,
 ) {
-  return ref.read(offlineRepositoryProvider).watchSubGroups(tripId);
+  return Stream.value([]);
 });
 
 /// Sub-groups filtered by type (uses SQLite legacy stream)

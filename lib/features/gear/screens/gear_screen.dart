@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/services/offline_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -568,31 +567,20 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   }
 
   void _handleMenuAction(String action, GearItem item) {
-    final repo = ref.read(offlineRepositoryProvider);
-    final tripId = widget.trip.id;
-    final currentUserId = ref.read(currentUserProvider)?.id;
+    // TODO(04-05): Migrate gear mutations to GearService (Firestore).
+    // These operations are no-ops until screen migration in 04-05.
     switch (action) {
       case 'priority':
         HapticService.selection();
-        repo.updateGearItem(
-          item.id,
-          tripId,
-          {'is_high_priority': item.isHighPriority ? 0 : 1},
-        );
+        debugPrint('[GearScreen] priority toggle deferred to 04-05 migration');
         break;
       case 'claim':
         HapticService.selection();
-        if (currentUserId != null) {
-          repo.updateGearItem(item.id, tripId, {'assigned_to': currentUserId});
-        }
+        debugPrint('[GearScreen] claim deferred to 04-05 migration');
         break;
       case 'unclaim':
         HapticService.selection();
-        repo.updateGearItem(
-          item.id,
-          tripId,
-          {'assigned_to': null, 'is_packed': 0},
-        );
+        debugPrint('[GearScreen] unclaim deferred to 04-05 migration');
         break;
       case 'delete':
         HapticService.warning();
@@ -628,9 +616,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     );
 
     if (confirmed == true) {
-      ref
-          .read(offlineRepositoryProvider)
-          .deleteGearItem(item.id, widget.trip.id);
+      // TODO(04-05): Route delete to GearService (Firestore).
+      debugPrint('[GearScreen] deleteGearItem deferred to 04-05 migration');
     }
   }
 
@@ -638,15 +625,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final name = _itemController.text.trim();
     if (name.isEmpty) return;
 
-    final repo = ref.read(offlineRepositoryProvider);
-    final newItem = GearItem(
-      id: repo.generateId(),
-      tripId: widget.trip.id,
-      itemName: name,
-      isHighPriority: _isHighPriority,
-      createdAt: DateTime.now(),
-    );
-    await repo.saveGearItem(newItem);
+    // TODO(04-05): Route addItem to GearService (Firestore).
+    debugPrint('[GearScreen] addItem deferred to 04-05 migration');
 
     _itemController.clear();
     setState(() => _isHighPriority = false);
@@ -655,30 +635,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   void _togglePacked(GearItem item, bool isMine) {
     if (!isMine && item.assignedTo != null) return;
 
-    final repo = ref.read(offlineRepositoryProvider);
-    final currentUserId = ref.read(currentUserProvider)?.id;
-    final tripId = widget.trip.id;
-
-    if (item.isPacked) {
-      repo.updateGearItem(item.id, tripId, {'is_packed': 0});
-    } else if (item.assignedTo != null) {
-      repo.updateGearItem(item.id, tripId, {'is_packed': 1});
-    } else {
-      // Claim and pack in one go
-      () async {
-        try {
-          if (currentUserId != null) {
-            await repo.updateGearItem(
-              item.id,
-              tripId,
-              {'assigned_to': currentUserId},
-            );
-          }
-          await repo.updateGearItem(item.id, tripId, {'is_packed': 1});
-        } catch (e) {
-          debugPrint('Failed to claim and pack: $e');
-        }
-      }();
-    }
+    // TODO(04-05): Route togglePacked to GearService (Firestore).
+    debugPrint('[GearScreen] togglePacked deferred to 04-05 migration');
   }
 }

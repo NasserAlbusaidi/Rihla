@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
-import '../../../core/services/offline_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../models/activity_log_model.dart';
 
@@ -33,25 +32,20 @@ final eventTransactionActivityProvider =
       .map((logs) => logs.where((log) => log.category == 'MONEY').toList());
 });
 
-/// @Deprecated('Use eventActivityProvider with EventRef')
+/// @Deprecated('Use eventActivityProvider with EventRef. Will be removed in 04-05.')
 ///
-/// Legacy stream of activity logs from SQLite (Supabase path).
-/// Retained for backward compatibility with screens not yet migrated to Firestore.
+/// Legacy activity logs stream — returns empty list until screens migrate in 04-05.
 final tripActivityProvider =
     StreamProvider.family<List<ActivityLog>, String>((ref, tripId) {
-  return ref.read(offlineRepositoryProvider).watchActivityLogs(tripId);
+  return Stream.value([]);
 });
 
-/// @Deprecated('Use eventTransactionActivityProvider with EventRef')
+/// @Deprecated('Use eventTransactionActivityProvider with EventRef. Will be removed in 04-05.')
 ///
-/// Legacy transaction-only logs from SQLite (Supabase path).
-/// Retained for backward compatibility with screens not yet migrated to Firestore.
+/// Legacy transaction-only logs stream — returns empty list until screens migrate in 04-05.
 final tripTransactionActivityProvider =
     StreamProvider.family<List<ActivityLog>, String>((ref, tripId) {
-  return ref
-      .read(offlineRepositoryProvider)
-      .watchActivityLogs(tripId)
-      .map((logs) => logs.where((log) => log.category == 'MONEY').toList());
+  return Stream.value([]);
 });
 
 /// Firestore-backed service for activity log operations.
