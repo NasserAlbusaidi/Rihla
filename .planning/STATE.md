@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 05-02-PLAN.md (cross-event balance calculation tests)
-last_updated: "2026-03-26T22:03:40.902Z"
+stopped_at: "Completed 05-01-PLAN.md: Settlement model scope fields + GroupSettlementService + GroupActivityLog + GroupActivityService"
+last_updated: "2026-03-26T22:08:24.067Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 25
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 05 (cross-event-financials) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Plan: 3 of 7
 | Phase 04-firestore-repository-layer P05 | 65 | 3 tasks | 25 files |
 | Phase 05 P00 | 2 | 2 tasks | 6 files |
 | Phase 05 P02 | 3 | 1 tasks | 1 files |
+| Phase 05 P01 | 20 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Recent decisions affecting current work:
 - [Phase 04-firestore-repository-layer]: Removed tripBalancesProvider entirely — its only consumers were tests for the deleted Trip-based CommandCenter widget
 - [Phase 04-firestore-repository-layer]: expense_provider.dart re-exports event_ref.dart so screens get EventRef transitively without redundant imports
 - [Phase 05]: D-06 confirmed: BalanceCalculator handles combined multi-event expense lists without code changes — expense list is scope-agnostic, tripId on Expense is irrelevant to balance math
+- [Phase 05]: logGroupEvent returns void not Future<void> for fire-and-forget activity writes; errors caught silently via catchError/debugPrint
+- [Phase 05]: Settlement.fromFirestore reads scope with default 'event' for backward compat with existing event settlements that lack a scope field
+- [Phase 05]: eventId sentinel for group settlements set to groupId — group settlements have no eventId, avoids null dereference in fromFirestore (RESEARCH Pitfall 3)
 
 ### Pending Todos
 
@@ -136,6 +140,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T22:03:40.900Z
-Stopped at: Completed 05-02-PLAN.md (cross-event balance calculation tests)
+Last session: 2026-03-26T22:08:24.064Z
+Stopped at: Completed 05-01-PLAN.md: Settlement model scope fields + GroupSettlementService + GroupActivityLog + GroupActivityService
 Resume file: None
