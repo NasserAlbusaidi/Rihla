@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-03-27
+revised: 2026-03-27
 ---
 
 # Phase 5 — UI Design Contract
@@ -35,9 +36,9 @@ All values taken from `AppColors` constants in `lib/core/theme/app_theme.dart`.
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px (`space4`) | Icon gaps, badge padding, inline chip padding |
-| sm | 8px (`space8`) | Compact chip spacing, section sub-gaps |
+| sm | 8px (`space8`) | Compact chip spacing, section sub-gaps, section header-to-first-child gap, per-event row vertical padding |
 | md | 16px (`space16`) | Default horizontal content padding, list tile internal padding |
-| lg | 24px (`space24`) | Standard horizontal scroll padding, card internal padding, section gaps |
+| lg | 24px (`space24`) | Standard horizontal scroll padding, card internal padding, section gaps, horizontal scroll padding on GroupSettleUpScreen |
 | xl | 32px (`space32`) | Section-to-section spacing, bottom scroll clearance |
 | 2xl | 48px | Reserved — not used in this phase |
 | 3xl | 64px | Reserved — not used in this phase |
@@ -45,29 +46,39 @@ All values taken from `AppColors` constants in `lib/core/theme/app_theme.dart`.
 Exceptions:
 - Hero card internal padding: 24px (all sides) — matches existing `EventSpendingHero` and `SettleUpScreen` summary card
 - Settlement confirmation bottom sheet: 24px padding (all sides) — matches existing `SettleUpScreen._confirmPayment` pattern
-- Section header top label spacing: 12px between header text and first child
 - Member balance card expand arrow icon area: 44px minimum touch target (accessibility)
-- Per-event breakdown row padding: 12px vertical, 16px horizontal — tighter than main cards
+- Per-event breakdown row padding: 8px vertical, 16px horizontal — tighter than main cards
 
 ---
 
 ## Typography
 
-All roles use Plus Jakarta Sans. Font sizes drawn from existing `AppTheme._buildTextTheme` and in-code overrides found across existing screens.
+All roles use Plus Jakarta Sans. Exactly 4 sizes and 2 weights are declared — no additions permitted.
 
-| Role | Size | Weight | Line Height | Flutter TextStyle |
-|------|------|--------|-------------|-------------------|
-| Display amount | 36px | w900 | 1.1 | Hero card balance number — matches `SettleUpScreen._buildPremiumSummary` |
-| Heading | 20px | w700 | 1.2 | Section headers ("Members & Balances", "Activity") — `headlineSmall` |
-| Body | 14px | w500 | 1.5 | Descriptions, member names, breakdown rows — `bodyMedium` |
-| Label | 11px | w900 | 1.0 | Uppercase section category labels ("YOUR ACTIONS", "ACROSS 3 EVENTS") — letterSpacing: 1.5 |
+| Role | Size | Weight | Line Height | Flutter TextStyle | Usage |
+|------|------|--------|-------------|-------------------|-------|
+| Display amount | 36px | w700 | 1.1 | Hero card balance numbers, group total pending on GroupSettleUpScreen — matches `SettleUpScreen._buildPremiumSummary` |
+| Heading | 20px | w700 | 1.2 | Screen navigation titles (18px equivalent rounded up), section headers ("Members & Balances", "Activity"), settlement tile pairwise amounts — `headlineSmall` |
+| Body | 14px | w500 | 1.5 | Descriptions, member names, breakdown rows, CTA button labels, activity actor names, "Load more" button, settlement history amounts — `bodyMedium` |
+| Label | 11px | w700 | 1.0 | Uppercase section category labels ("YOUR ACTIONS", "ACROSS 3 EVENTS"), status pills ("YOU OWE", "OWED"), settled badge, mini stat labels in hero card — letterSpacing 1.5 |
 
-Additional in-use sizes (do not add beyond this list):
-- 28px w900 — event spending hero total (matches `EventSpendingHero`) — use for group total in hero card
-- 16px w700 — CTA button label — matches `elevatedButtonTheme`
-- 13px w600 — settlement history rows, per-event breakdown amounts
-- 12px w500 — activity log timestamps, chip sub-labels — `bodySmall`
-- 10px w600 — mini stat labels in hero card ("TOTAL PAID", "GROUP TOTAL") — `labelSmall`
+Weight mapping from prior draft:
+- w500 → w500 (unchanged — body/regular)
+- w600 → w500 (absorbed into body weight)
+- w700 → w700 (unchanged — emphasis/headings)
+- w800 → w700 (absorbed into emphasis weight)
+- w900 → w700 (absorbed into emphasis weight)
+
+Size mapping from prior draft:
+- 36px → 36px (display — unchanged)
+- 28px → 36px (group total in hero card — use display size, same role)
+- 20px → 20px (heading — unchanged)
+- 16px → 14px (body — absorbed into body size; button labels use 14px w700)
+- 14px → 14px (body — unchanged)
+- 13px → 14px (settlement history rows, per-event breakdown amounts — absorbed into body)
+- 12px → 11px (activity timestamps, chip sub-labels — absorbed into label size)
+- 11px → 11px (label — unchanged)
+- 10px → 11px (mini stat labels — absorbed into label size)
 
 ---
 
@@ -88,10 +99,9 @@ All hex values are from `AppColors` in `lib/core/theme/app_theme.dart`.
 Accent (`#13EC92` mint) reserved for:
 1. "Settle up" CTA button background gradient (`primaryGradient`) on hero card
 2. Hero card "SETTLE UP" button label gradient — matching `SettleUpScreen` pattern
-3. FAB icon color
-4. Positive net balance amount text in GroupSettleUpScreen settlement tiles ("OWED" pill)
-5. Focus border on note input field in settlement confirmation sheet
-6. Loading spinner color inside dark hero card
+3. Positive net balance amount text in GroupSettleUpScreen settlement tiles ("OWED" pill)
+4. Focus border on note input field in settlement confirmation sheet
+5. Loading spinner color inside dark hero card
 
 Destructive: `#EF4444` (`AppColors.rose`) — used only on debt amounts and "PAYMENT DUE" badges. No destructive delete actions in this phase.
 
@@ -108,11 +118,11 @@ Six new screens and widgets to build for this phase. Visual contracts for each:
 Dark gradient card (height: auto, min 140px) matching `EventSpendingHero` visual language:
 - Background: `darkHeaderGradient` (#0F172A → #1E293B), border-radius 32
 - Decorative circle: top-right, 100px, white at 5% alpha
-- Row 1: "GROUP BALANCES" label (10px w900 white54, letterSpacing 1.5) + conditional status pill
-- Status pill when user owes: "YOU OWE" red (rose 20% alpha background, rose text, 9px w900)
-- Status pill when user is owed: "OWED" mint (emerald 20% alpha background, mint text, 9px w900)
-- Row 2: Total group spent amount (28px w900 white, letterSpacing -1) — animated with TweenAnimationBuilder 800ms easeOutCubic
-- Row 2 sub-line: User net position ("You owe 15.500 OMR" or "You are owed 8.200 OMR" — 12px w700, rose/mint tinted)
+- Row 1: "GROUP BALANCES" label (11px w700 white54, letterSpacing 1.5) + conditional status pill
+- Status pill when user owes: "YOU OWE" red (rose 20% alpha background, rose text, 11px w700)
+- Status pill when user is owed: "OWED" mint (emerald 20% alpha background, mint text, 11px w700)
+- Row 2: Total group spent amount (36px w700 white, letterSpacing -1) — animated with TweenAnimationBuilder 800ms easeOutCubic
+- Row 2 sub-line: User net position ("You owe 15.500 OMR" or "You are owed 8.200 OMR" — 14px w700, rose/mint tinted)
 - Hidden entirely until any expense exists in any event (D-19)
 - Tap navigates to GroupSettleUpScreen (D-22)
 
@@ -120,8 +130,8 @@ Dark gradient card (height: auto, min 140px) matching `EventSpendingHero` visual
 
 Horizontal scrollable row of chips below the hero card:
 - Each chip: `surfaceLight` background, `radiusSmall` (12px), 8px horizontal + 4px vertical padding
-- Chip 1: "Total: {amount} across {n} events" — Iconsax.chart_2 icon 14px + text 13px w700
-- Chips 2+: Top spenders — "{name} {%}" — Iconsax.profile_circle icon 14px + text 13px w700
+- Chip 1: "Total: {amount} across {n} events" — Iconsax.chart_2 icon 14px + text 14px w700
+- Chips 2+: Top spenders — "{name} {%}" — Iconsax.profile_circle icon 14px + text 14px w700
 - Hidden until expenses exist (D-19)
 - No tap interaction — display only
 
@@ -131,7 +141,7 @@ Expandable tile per member:
 - Collapsed state: member name (14px w700 textPrimary) + net amount on right (14px w700, emerald if positive, rose if negative, textMuted if zero) + expand chevron (Iconsax.arrow_down_1, 16px, textMuted)
 - Settled state: name + "0.000 OMR" (textMuted) + "Settled" badge (surfaceLight bg, textMuted 11px w700, radiusSmall 6px)
 - Expand/collapse: `AnimatedCrossFade` or `flutter_animate` fadeIn+slideY(begin: -0.1, 300ms easeOutCubic) — source: `flutter_animate` already in pubspec
-- Expanded state: list of per-event rows — event name (13px w500 textSecondary) + net amount (13px w600, signed, color-coded) — tappable, navigates to LedgerScreen
+- Expanded state: list of per-event rows — event name (14px w500 textSecondary) + net amount (14px w700, signed, color-coded) — tappable, navigates to LedgerScreen
 - Card container: white surface, radiusMedium (16px), cardShadow, 1px border (AppColors.border)
 - Positive amount format: "+10.500 OMR" (emerald)
 - Negative amount format: "-5.000 OMR" (rose)
@@ -140,23 +150,23 @@ Expandable tile per member:
 ### 4. GroupSettleUpScreen (new screen — `lib/features/groups/screens/group_settle_up_screen.dart`)
 
 Full-screen, mirrors `SettleUpScreen` structure:
-- Header: back button (surface card, 14px border, cardShadow, radiusSmall) + "Settle Up" title (18px w900, letterSpacing -0.5) + 48px spacer
+- Header: back button (surface card, 14px border, cardShadow, radiusSmall, semanticLabel: "Back") + "Settle Up" title (20px w700, letterSpacing -0.5) + 48px spacer
 - Summary card: same `_buildPremiumSummary` pattern — gradient tinted by user net, 24px radius, cardShadowLarge, 24px padding
-- Summary card shows: "GROUP TOTAL PENDING" + amount (36px w900) + group event count sub-line (11px w900 textMuted, letterSpacing 1.5)
-- Section headers: uppercase label (11px w900 textMuted, letterSpacing 1.2) + Iconsax icon — same pattern as SettleUpScreen
+- Summary card shows: "GROUP TOTAL PENDING" label (11px w700 textMuted, letterSpacing 1.5) + amount (36px w700) + group event count sub-line (11px w700 textMuted, letterSpacing 1.5)
+- Section headers: uppercase label (11px w700 textMuted, letterSpacing 1.2) + Iconsax icon — same pattern as SettleUpScreen
 - Settlement tiles: grouped by urgency (YOUR ACTIONS / WAITING FOR OTHERS / OTHERS SETTLING)
 - Per-settlement expandable detail: "Camping: 10.000 OMR, Dinner: 5.500 OMR" shown as indented sub-list on expand
 - "Record settlement" action per tile via bottom sheet confirmation (D-26)
-- All-settled empty state: Iconsax.tick_circle in emerald circle + "All settled across the group!" (18px w700) + "No payments needed right now" (14px textMuted)
-- Horizontal scroll padding: 20px; vertical section spacing: 24px
+- All-settled empty state: Iconsax.tick_circle in emerald circle + "All settled across the group!" (20px w700) + "No payments needed right now" (14px w500 textMuted)
+- Horizontal scroll padding: 24px; vertical section spacing: 24px
 
 ### 5. GroupActivityTile (new widget — `lib/features/groups/widgets/group_activity_tile.dart`)
 
 Single log entry row:
 - Icon container: 36px circle, color-coded by action type (see icon map below)
 - Actor name (14px w700 textPrimary) + action description (14px w500 textSecondary) on same line
-- Timestamp below: relative date (11px textMuted) — matches `AppFormatters.formatRelativeDate`
-- Tile padding: 12px vertical, 0px horizontal (parent provides 24px horizontal)
+- Timestamp below: relative date (11px w500 textMuted) — matches `AppFormatters.formatRelativeDate`
+- Tile padding: 8px vertical, 0px horizontal (parent provides 24px horizontal)
 - No tap on member-joined / member-left entries; tap on settlement entries navigates to nothing (no drill-down, display only)
 
 Activity type icon map:
@@ -171,7 +181,7 @@ Activity type icon map:
 ### 6. GroupActivityScreen (new screen — `lib/features/groups/screens/group_activity_screen.dart`)
 
 Full-screen activity log:
-- Header: back button + "Group Activity" (18px w900) + spacer
+- Header: back button (semanticLabel: "Back") + "Group Activity" (20px w700) + spacer
 - ListView.builder with `GroupActivityTile` rows separated by 1px dividers (AppColors.border)
 - Pagination: 50 entries per page, Firestore cursor-based; "Load more" text button at list bottom (14px w700 primary color)
 - Empty state: `EmptyStateView` — "No group activity yet" heading + "Actions like creating events and settling up will appear here." body
@@ -193,9 +203,9 @@ Used in both `SettleUpScreen` (existing) and new `GroupSettleUpScreen` (same pat
 - Modal bottom sheet, transparent background, surface color container, `BorderRadius.vertical(top: Radius.circular(28))`
 - Drag handle: 40px wide, 4px tall, AppColors.border, centered
 - Amount field: pre-filled with suggested amount (D-11 partial settlement) — editable TextFormField with number keyboard
-- "Mark as Paid" button: `primaryGradient` container, 16px w800, black text, 16px vertical padding, radiusMedium
-- "Cancel" text button: textMuted color, 14px w600
-- No destructive confirmation — settlement recording is the only irreversible action; cancel is always available
+- "Mark as Paid" button: `primaryGradient` container, 14px w700, black text, 16px vertical padding, radiusMedium
+- "Not Now" text button: textMuted color, 14px w500 — dismisses sheet without recording
+- No destructive confirmation — settlement recording is the only irreversible action; dismiss is always available
 
 ### Loading States
 
@@ -225,6 +235,7 @@ Used in both `SettleUpScreen` (existing) and new `GroupSettleUpScreen` (same pat
 | Primary CTA — hero card (user owes) | "Settle Up" |
 | Primary CTA — hero card (all settled) | "All Settled" (disabled state — not a CTA) |
 | Primary CTA — settlement confirmation | "Mark as Paid" |
+| Dismiss — settlement confirmation | "Not Now" |
 | Hero card label — user owes | "YOU OWE" |
 | Hero card label — user is owed | "YOU ARE OWED" |
 | Hero card sub-line (all settled) | "All balances settled" |
@@ -266,8 +277,8 @@ ScrollableBody (horizontal padding: 24px)
   ├─ [16px gap — only shown when hero visible]
   ├─ GroupSpendingStats (hidden until first expense — D-19)
   ├─ [24px gap]
-  ├─ Section header: "Members & Balances" (16px w700)
-  ├─ [12px gap]
+  ├─ Section header: "Members & Balances" (20px w700)
+  ├─ [8px gap]
   ├─ GroupMemberBalanceCard × N (replaces plain GroupMemberTile)
   ├─ [24px gap]
   ├─ Section header: "Events" (existing)
@@ -276,7 +287,7 @@ ScrollableBody (horizontal padding: 24px)
   ├─ InviteCodeDisplay + share button (moved below events per D-30)
   ├─ [24px gap]
   ├─ Section header: "Recent Activity"
-  ├─ [12px gap]
+  ├─ [8px gap]
   ├─ GroupActivityTile × 5 (last 5 entries)
   ├─ "See all activity" TextButton (primary color, 14px w700)
   └─ [32px bottom clearance]
