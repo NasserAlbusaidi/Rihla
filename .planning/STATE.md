@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-03-26T17:57:58.964Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 04-firestore-repository-layer-05-PLAN.md
+last_updated: "2026-03-26T19:27:08.659Z"
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 18
 ---
 
 # Project State
@@ -63,6 +63,7 @@ Plan: 6 of 6
 | Phase 04-firestore-repository-layer P02 | 10 | 2 tasks | 11 files |
 | Phase 04-firestore-repository-layer P03 | 9 | 2 tasks | 13 files |
 | Phase 04 P04 | 90m | 2 tasks | 18 files |
+| Phase 04-firestore-repository-layer P05 | 65 | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Firestore Source.server ping replaces Supabase auth.refreshSession for connectivity detection
 - [Phase 04]: FirestoreRepository.withFirestore uses @protected so subclasses can call super.withFirestore without lint warnings (MIG-05)
 - [Phase 04]: Camping gear seeding is now unconditional (not gated on Supabase bridge success)
+- [Phase 04-firestore-repository-layer]: Removed tripBalancesProvider entirely — its only consumers were tests for the deleted Trip-based CommandCenter widget
+- [Phase 04-firestore-repository-layer]: expense_provider.dart re-exports event_ref.dart so screens get EventRef transitively without redundant imports
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T17:57:58.961Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-03-26T19:27:08.647Z
+Stopped at: Completed 04-firestore-repository-layer-05-PLAN.md
 Resume file: None

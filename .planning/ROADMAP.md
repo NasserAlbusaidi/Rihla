@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Data Foundation** - Firestore initialized, security rules tested, integer money storage enforced, SQLite schema extended (completed 2026-03-25)
 - [ ] **Phase 2: Groups** - Users can create and join persistent groups; groups appear on home screen
 - [x] **Phase 3: Events** - Users can create typed events inside groups with template-driven modules and gear presets (completed 2026-03-26)
-- [ ] **Phase 4: Firestore Repository Layer** - All per-event module writes routed through Firestore; SyncService retired
+- [x] **Phase 4: Firestore Repository Layer** - All per-event module writes routed through Firestore; SyncService retired (completed 2026-03-26)
 - [ ] **Phase 5: Cross-Event Financials** - Group-level running balances, balance toggle, cross-event settle-up, group dashboard
 - [ ] **Phase 6: Testing and Coverage** - 80%+ coverage enforced, offline scenario tests, widget tests, financial unit tests
 - [ ] **Phase 7: Data Migration and Supabase Removal** - Existing data migrated via invite-code recovery, Supabase dependency deleted
@@ -94,8 +94,8 @@ Plans:
 - [x] 04-01-PLAN.md — ExpenseService + SettlementService Firestore migration + provider migration with asyncMap side-write
 - [x] 04-02-PLAN.md — GearService + SubGroupService + ActivityService Firestore migration
 - [x] 04-03-PLAN.md — Vault + Memories Firebase Storage migration + LazyMigrationService + tests
-- [ ] 04-04-PLAN.md — SyncService deletion + BalanceCacheRepository + ConnectivityNotifier + base class refactor
-- [ ] 04-05-PLAN.md — Bridge teardown + screen migration to EventRef providers
+- [x] 04-04-PLAN.md — SyncService deletion + BalanceCacheRepository + ConnectivityNotifier + base class refactor
+- [x] 04-05-PLAN.md — Bridge teardown + screen migration to EventRef providers
 
 ### Phase 5: Cross-Event Financials
 **Goal**: The group dashboard shows live running balances across all events; users can see what they owe per event or in total across the group; cross-event settle-up works
@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
 | 2. Groups | 3/4 | In Progress|  |
 | 3. Events | 5/5 | Complete   | 2026-03-26 |
-| 4. Firestore Repository Layer | 4/6 | In Progress|  |
+| 4. Firestore Repository Layer | 6/6 | Complete   | 2026-03-26 |
 | 5. Cross-Event Financials | 0/TBD | Not started | - |
 | 6. Testing and Coverage | 0/TBD | Not started | - |
 | 7. Data Migration and Supabase Removal | 0/TBD | Not started | - |
