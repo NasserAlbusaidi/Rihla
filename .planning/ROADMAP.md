@@ -54,7 +54,7 @@ Plans:
 Plans:
 - [x] 02-00-PLAN.md — Wave 0: test stub files for group models, service, join flow, and widget tests
 - [x] 02-01-PLAN.md — Group/GroupMember models, GroupService with atomic create/join, Riverpod providers, CacheService + OfflineRepository extensions
-- [ ] 02-02-PLAN.md — GroupCard/GroupMemberTile/InviteCodeDisplay widgets, groups-first HomeScreen, CreateGroupScreen + JoinGroupScreen
+- [x] 02-02-PLAN.md — GroupCard/GroupMemberTile/InviteCodeDisplay widgets, groups-first HomeScreen, CreateGroupScreen + JoinGroupScreen
 - [ ] 02-03-PLAN.md — GroupSettingsScreen, GroupDetailScreen, GoRouter route wiring
 
 ### Phase 3: Events
@@ -123,7 +123,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
-| 2. Groups | 0/4 | Not started | - |
+| 2. Groups | 3/4 | In Progress|  |
 | 3. Events | 0/TBD | Not started | - |
 | 4. Firestore Repository Layer | 0/TBD | Not started | - |
 | 5. Cross-Event Financials | 0/TBD | Not started | - |
