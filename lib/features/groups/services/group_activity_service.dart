@@ -1,0 +1,128 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../../core/services/firestore_repository.dart';
+import '../models/group_activity_log_model.dart';
+
+/// Firestore-backed service for group-level activity log operations.
+///
+/// Activity entries are stored in the subcollection:
+///   `groups/{groupId}/activity/{activityId}`
+///
+/// This is separate from per-event activity logs (which live at
+/// `groups/{groupId}/events/{eventId}/activity_logs`). Group activity
+/// entries represent cross-group actions: settlements, member changes,
+/// event lifecycle events.
+///
+/// Key design decisions (from D-32, D-33, D-34):
+///   - [logGroupEvent] is fire-and-forget (returns `void`, not `Future<void>`)
+///   - Timestamps are client-side ISO 8601 strings (not FieldValue.serverTimestamp)
+///     per RESEARCH Pitfall 5 — avoids ordering issues with optimistic local reads
+///   - [watchRecentActivity] defaults to the 5 most recent entries (D-34)
+///   - [fetchActivityPage] / [fetchActivityPageRaw] enable cursor-based pagination
+class GroupActivityService extends FirestoreRepository {
+  GroupActivityService() : super();
+
+  /// Test constructor — injects a [FakeFirebaseFirestore] for unit testing.
+  @visibleForTesting
+  GroupActivityService.withFirestore(super.db) : super.withFirestore();
+
+  CollectionReference<Map<String, dynamic>> _activityRef(String groupId) =>
+      db.collection('groups').doc(groupId).collection('activity');
+
+  /// Stream of the [limit] most recent group activity entries (D-34: default 5).
+  ///
+  /// Ordered by timestamp descending (most recent first).
+  Stream<List<GroupActivityLog>> watchRecentActivity(
+    String groupId, {
+    int limit = 5,
+  }) {
+    return _activityRef(groupId)
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map(
+                (doc) => GroupActivityLog.fromFirestore(
+                  {...doc.data(), 'id': doc.id},
+                ),
+              )
+              .toList(),
+        );
+  }
+
+  /// Cursor-paginated activity fetch for full activity log screen (D-34: 50/page).
+  ///
+  /// Pass [startAfter] (a [DocumentSnapshot] from [fetchActivityPageRaw]) to
+  /// get the next page. Omit for the first page.
+  Future<List<GroupActivityLog>> fetchActivityPage(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) async {
+    var query = _activityRef(groupId)
+        .orderBy('timestamp', descending: true)
+        .limit(limit);
+    if (startAfter != null) query = query.startAfterDocument(startAfter);
+    final snap = await query.get();
+    return snap.docs
+        .map(
+          (doc) =>
+              GroupActivityLog.fromFirestore({...doc.data(), 'id': doc.id}),
+        )
+        .toList();
+  }
+
+  /// Returns the raw [QuerySnapshot] for cursor-based pagination.
+  ///
+  /// Use the last [DocumentSnapshot] from [QuerySnapshot.docs] as the
+  /// [startAfter] argument to [fetchActivityPage] for the next page.
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) async {
+    var query = _activityRef(groupId)
+        .orderBy('timestamp', descending: true)
+        .limit(limit);
+    if (startAfter != null) query = query.startAfterDocument(startAfter);
+    return query.get();
+  }
+
+  /// Fire-and-forget activity log write (D-33).
+  ///
+  /// Returns `void` — callers do NOT await this. Errors are caught and logged
+  /// via [debugPrint] to avoid crashing the caller's context.
+  ///
+  /// Timestamp is client-side [DateTime.now().toUtc()] (not
+  /// [FieldValue.serverTimestamp]) per RESEARCH Pitfall 5.
+  void logGroupEvent({
+    required String groupId,
+    required String type,
+    required String actorId,
+    required String actorName,
+    required String description,
+    Map<String, dynamic>? metadata,
+  }) {
+    final id = const Uuid().v4();
+    final now = DateTime.now().toUtc();
+    unawaited(
+      _activityRef(groupId)
+          .doc(id)
+          .set({
+        'id': id,
+        'type': type,
+        'actorId': actorId,
+        'actorName': actorName,
+        'description': description,
+        'metadata': metadata ?? const <String, dynamic>{},
+        'timestamp': now.toIso8601String(),
+      })
+          .catchError((Object e) => debugPrint('[GroupActivity] log failed: $e')),
+    );
+  }
+}

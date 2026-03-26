@@ -23,8 +23,7 @@ class GroupSettlementService extends FirestoreRepository {
 
   /// Test constructor — injects a [FakeFirebaseFirestore] for unit testing.
   @visibleForTesting
-  GroupSettlementService.withFirestore(FirebaseFirestore db)
-      : super.withFirestore(db);
+  GroupSettlementService.withFirestore(super.db) : super.withFirestore();
 
   CollectionReference<Map<String, dynamic>> _settlementsRef(String groupId) =>
       db.collection('groups').doc(groupId).collection('settlements');
