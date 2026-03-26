@@ -5,18 +5,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/event_command_center.dart';
+import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
+import 'package:safar/features/logistics/models/sub_group_model.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
-import 'package:safar/features/trip/providers/trip_provider.dart';
+import 'package:safar/features/vault/models/document_model.dart';
 import 'package:safar/features/vault/providers/document_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -79,9 +83,12 @@ Event _makeEvent({
     endDate: endDate,
     currency: 'OMR',
     createdAt: DateTime(2026, 3, 1),
-    bridgeTripId: id, // same as id for simplicity
   );
 }
+
+/// Returns the EventRef for an event.
+EventRef _eventRef(Event event) =>
+    (groupId: event.groupId, eventId: event.id);
 
 /// Wraps widget in ProviderScope with all required provider overrides.
 ///
@@ -90,7 +97,7 @@ Event _makeEvent({
 /// - [groupDetailProvider] returns [_testGroup]
 /// - [groupMembersProvider] returns [_testMembers]
 /// - [groupEventsProvider] returns the supplied [events]
-/// - [tripExpensesProvider] returns an empty list for all trip IDs
+/// - [eventExpensesProvider] returns an empty list for all event IDs
 Widget _wrap(
   Widget child,
   SharedPreferences prefs, {
@@ -108,10 +115,10 @@ Widget _wrap(
       groupEventsProvider(_groupId).overrideWith(
         (ref) => Stream.value(events),
       ),
-      // Override tripExpensesProvider for every event's bridgeTripId so
-      // EventCard does not try to open real SQLite (offlineRepositoryProvider).
+      // Override eventExpensesProvider for every event so
+      // EventCard does not try to open real Firestore.
       for (final event in events)
-        tripExpensesProvider(event.bridgeTripId).overrideWith(
+        eventExpensesProvider(_eventRef(event)).overrideWith(
           (ref) => Stream.value(const []),
         ),
     ],
@@ -243,6 +250,7 @@ void main() {
     testWidgets('tapping event card navigates to EventCommandCenter',
         (tester) async {
       final event = _makeEvent(id: 'evt-tap', name: 'Tap Navigation Trip');
+      final eventRef = _eventRef(event);
 
       await tester.pumpWidget(
         ProviderScope(
@@ -257,25 +265,22 @@ void main() {
             groupEventsProvider(_groupId).overrideWith(
               (ref) => Stream.value([event]),
             ),
-            // EventCard reads tripExpensesProvider for financial totals
-            tripExpensesProvider(event.bridgeTripId).overrideWith(
+            // EventCard reads eventExpensesProvider for financial totals
+            eventExpensesProvider(eventRef).overrideWith(
               (ref) => Stream.value(const []),
             ),
             // EventCommandCenter (pushed on tap) needs all module providers
-            tripBalancesProvider(event.bridgeTripId).overrideWith(
-              (ref) async => <UserBalance>[],
+            eventSettlementsProvider(eventRef).overrideWith(
+              (ref) => Stream.value(const <Settlement>[]),
             ),
-            currentParticipantProvider(event.bridgeTripId).overrideWith(
-              (ref) => null,
+            eventGearItemsProvider(eventRef).overrideWith(
+              (ref) => Stream.value(const <GearItem>[]),
             ),
-            tripGearProvider(event.bridgeTripId).overrideWith(
-              (ref) => Stream.value(const []),
+            eventSubGroupsProvider(eventRef).overrideWith(
+              (ref) => Stream.value(const <SubGroup>[]),
             ),
-            tripSubGroupsProvider(event.bridgeTripId).overrideWith(
-              (ref) => Stream.value(const []),
-            ),
-            tripDocumentsProvider(event.bridgeTripId).overrideWith(
-              (ref) => Stream.value(const []),
+            eventDocumentsProvider(eventRef).overrideWith(
+              (ref) => Stream.value(const <Document>[]),
             ),
           ],
           child: MaterialApp(home: const GroupDetailScreen(groupId: _groupId)),
@@ -306,13 +311,14 @@ void main() {
   });
 
   group('EventCard financial total', () {
-    testWidgets('shows total spent from bridge trip expenses', (tester) async {
+    testWidgets('shows total spent from Firestore event expenses', (tester) async {
       final event = _makeEvent(id: 'evt-money', name: 'Expensive Trip');
+      final eventRef = _eventRef(event);
 
-      // Override tripExpensesProvider for this specific event to return expenses
+      // Override eventExpensesProvider for this specific event to return expenses
       final testExpense = Expense(
         id: 'exp-1',
-        tripId: event.bridgeTripId,
+        tripId: event.id,
         payerParticipantId: 'uid-creator',
         amount: Decimal.parse('25.500'),
         scope: ExpenseScope.global,
@@ -332,7 +338,7 @@ void main() {
             groupEventsProvider(_groupId).overrideWith(
               (ref) => Stream.value([event]),
             ),
-            tripExpensesProvider(event.bridgeTripId).overrideWith(
+            eventExpensesProvider(eventRef).overrideWith(
               (ref) => Stream.value([testExpense]),
             ),
           ],
@@ -345,7 +351,7 @@ void main() {
       expect(find.text('25.500 OMR'), findsOneWidget);
     });
 
-    testWidgets('shows 0.000 OMR when bridge trip has no expenses',
+    testWidgets('shows 0.000 OMR when event has no expenses',
         (tester) async {
       final event = _makeEvent(id: 'evt-zero', name: 'Free Trip');
 

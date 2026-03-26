@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/models/event_type_config.dart';
 import 'package:safar/features/events/screens/event_command_center.dart';
+import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
+import 'package:safar/features/logistics/models/sub_group_model.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
-import 'package:safar/features/trip/models/trip_model.dart';
-import 'package:safar/features/trip/providers/trip_provider.dart';
+import 'package:safar/features/vault/models/document_model.dart';
 import 'package:safar/features/vault/providers/document_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -48,38 +51,35 @@ Event _makeEvent({
     modules: modules ?? EventModules.forType(type),
     currency: 'OMR',
     createdAt: DateTime(2026, 3, 1),
-    bridgeTripId: id,
   );
 }
 
 /// Returns all necessary provider overrides for an EventCommandCenter test.
 ///
-/// These overrides prevent SQLite and Supabase initialization errors by
+/// These overrides prevent Firestore initialization errors by
 /// returning empty in-memory values for all data providers.
-List<Override> _providerOverrides(String tripId, {List<Expense> expenses = const []}) {
+List<Override> _providerOverrides(
+  EventRef eventRef, {
+  List<Expense> expenses = const [],
+}) {
   return [
-    // Core expense/balance providers (always watched by EventModuleList)
-    tripExpensesProvider(tripId).overrideWith(
+    // Core expense/settlement providers (watched by EventModuleList + EventExpenseHero)
+    eventExpensesProvider(eventRef).overrideWith(
       (ref) => Stream.value(expenses),
     ),
-    tripBalancesProvider(tripId).overrideWith(
-      (ref) async => <UserBalance>[],
-    ),
-    // currentParticipantProvider is a Provider.family (not StreamProvider)
-    // Override it by watching a fixed value.
-    currentParticipantProvider(tripId).overrideWith(
-      (ref) => null,
+    eventSettlementsProvider(eventRef).overrideWith(
+      (ref) => Stream.value(const <Settlement>[]),
     ),
     // Module-specific providers (conditionally watched in EventModuleList
     // based on event.modules, but overriding all prevents init errors)
-    tripGearProvider(tripId).overrideWith(
-      (ref) => Stream.value(const []),
+    eventGearItemsProvider(eventRef).overrideWith(
+      (ref) => Stream.value(const <GearItem>[]),
     ),
-    tripSubGroupsProvider(tripId).overrideWith(
-      (ref) => Stream.value(const []),
+    eventSubGroupsProvider(eventRef).overrideWith(
+      (ref) => Stream.value(const <SubGroup>[]),
     ),
-    tripDocumentsProvider(tripId).overrideWith(
-      (ref) => Stream.value(const []),
+    eventDocumentsProvider(eventRef).overrideWith(
+      (ref) => Stream.value(const <Document>[]),
     ),
   ];
 }
@@ -90,8 +90,9 @@ Widget _wrapEventHub({
   required Group group,
   List<Expense> expenses = const [],
 }) {
+  final eventRef = (groupId: event.groupId, eventId: event.id);
   return ProviderScope(
-    overrides: _providerOverrides(event.bridgeTripId, expenses: expenses),
+    overrides: _providerOverrides(eventRef, expenses: expenses),
     child: MaterialApp(
       home: EventCommandCenter(event: event, group: group),
     ),
@@ -225,15 +226,14 @@ void main() {
     });
 
     testWidgets(
-        'expense summary hero renders without error via bridge trip ID',
+        'expense hero renders without error with live Firestore expenses',
         (tester) async {
-      // Verifies the Trip facade is correctly passed to ExpenseSummaryHero
-      // and the widget renders without throwing (providers are wired correctly).
+      // Verifies the EventExpenseHero renders correctly with Firestore providers.
       final event = _makeEvent(id: 'evt-money', name: 'Funded Trip');
 
       final testExpense = Expense(
         id: 'exp-1',
-        tripId: event.bridgeTripId,
+        tripId: event.id,
         payerParticipantId: 'uid-creator',
         amount: Decimal.parse('50.000'),
         scope: ExpenseScope.global,
@@ -251,7 +251,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      // The SPENDING label from ExpenseSummaryHero confirms it rendered
+      // The SPENDING label from EventExpenseHero confirms it rendered
       expect(find.text('SPENDING'), findsOneWidget);
       // Funded Trip name confirms the EventCommandCenter header rendered
       expect(find.text('Funded Trip'), findsOneWidget);

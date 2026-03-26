@@ -2,37 +2,47 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:safar/core/types/event_ref.dart';
+import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/ledger_screen.dart';
-import 'package:safar/features/trip/models/trip_model.dart';
-import 'package:safar/features/trip/providers/trip_provider.dart';
+import 'package:safar/features/logistics/models/sub_group_model.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
-import 'package:safar/features/activity/services/activity_service.dart';
 
 void main() {
-  final mockTrip = Trip(
-    id: 'trip-123',
-    name: 'Test Trip',
+  final mockGroup = Group(
+    id: 'group-1',
+    name: 'Test Group',
     inviteCode: 'ABCDEF',
-    leaderId: 'user-1',
-    modules: const TripModules(),
-    createdAt: DateTime(2023),
+    createdBy: 'uid-creator',
+    memberIds: const ['uid-creator', 'uid-member'],
+    currency: 'OMR',
+    createdAt: DateTime(2026, 1, 1),
   );
 
-  final mockParticipant = Participant(
-    id: 'p-1',
-    tripId: 'trip-123',
-    userId: 'user-1',
-    role: ParticipantRole.leader,
-    displayName: 'Test User',
-    joinedAt: DateTime.now(),
+  final mockEvent = Event(
+    id: 'evt-123',
+    name: 'Test Event',
+    type: EventType.trip,
+    groupId: 'group-1',
+    createdBy: 'uid-creator',
+    participantIds: const ['uid-creator'],
+    participantNames: const {'uid-creator': 'Test User'},
+    modules: EventModules.forType(EventType.trip),
+    currency: 'OMR',
+    createdAt: DateTime(2026, 1, 1),
   );
+
+  final EventRef eventRef = (groupId: 'group-1', eventId: 'evt-123');
 
   final mockExpense = Expense(
     id: 'e-1',
-    tripId: 'trip-123',
-    payerParticipantId: 'p-1',
+    tripId: 'evt-123',
+    payerParticipantId: 'uid-creator',
     amount: Decimal.parse('10.0'),
     description: 'Pizza',
     scope: ExpenseScope.global,
@@ -48,29 +58,17 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          tripExpensesProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([mockExpense])),
-          tripSettlementsProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([])),
-          tripLogisticsParticipantsProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([mockParticipant])),
-          tripSubGroupsProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([])),
-          currentParticipantProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => mockParticipant),
-          tripActivityProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([])),
-          tripTransactionActivityProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([])),
+          eventExpensesProvider(eventRef).overrideWith(
+            (ref) => Stream.value([mockExpense]),
+          ),
+          eventSettlementsProvider(eventRef).overrideWith(
+            (ref) => Stream.value(const <Settlement>[]),
+          ),
+          eventSubGroupsProvider(eventRef).overrideWith(
+            (ref) => Stream.value(const <SubGroup>[]),
+          ),
         ],
-        child: MaterialApp(home: LedgerScreen(trip: mockTrip)),
+        child: MaterialApp(home: LedgerScreen(event: mockEvent, group: mockGroup)),
       ),
     );
 
@@ -84,54 +82,42 @@ void main() {
     // Items may be below the viewport in CustomScrollView, so use skipOffstage
     expect(find.text('Pizza', skipOffstage: false), findsOneWidget);
     expect(find.textContaining('10.000', skipOffstage: false), findsWidgets); // 3 decimal places
-
-    // Verify balance header
-    // Since I paid 10 for a group of 1 (myself), net is 0.
-    // Wait, global scope splits among all participants. 1 participant.
-    // Paid 10. Owed 10. Net 0.
-    // So "You owe others" or "Others owe you" might not appear, or balance is 0.000.
-
-    // Let's add another participant to make it interesting
   });
 
   testWidgets('LedgerScreen calculates split correctly', (
     WidgetTester tester,
   ) async {
-    final mockParticipant2 = Participant(
-      id: 'p-2',
-      tripId: 'trip-123',
-      userId: 'user-2',
-      role: ParticipantRole.member,
-      displayName: 'Other User',
-      joinedAt: DateTime.now(),
+    // Two participants: uid-creator (payer) and uid-member
+    final mockEvent2 = Event(
+      id: 'evt-123',
+      name: 'Test Event',
+      type: EventType.trip,
+      groupId: 'group-1',
+      createdBy: 'uid-creator',
+      participantIds: const ['uid-creator', 'uid-member'],
+      participantNames: const {
+        'uid-creator': 'Test User',
+        'uid-member': 'Other User',
+      },
+      modules: EventModules.forType(EventType.trip),
+      currency: 'OMR',
+      createdAt: DateTime(2026, 1, 1),
     );
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          tripExpensesProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([mockExpense])),
-          tripSettlementsProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([])),
-          tripLogisticsParticipantsProvider(mockTrip.id).overrideWith(
-            (ref) => Stream.value([mockParticipant, mockParticipant2]),
+          eventExpensesProvider(eventRef).overrideWith(
+            (ref) => Stream.value([mockExpense]),
           ),
-          tripSubGroupsProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([])),
-          currentParticipantProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => mockParticipant),
-          tripActivityProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([])),
-          tripTransactionActivityProvider(
-            mockTrip.id,
-          ).overrideWith((ref) => Stream.value([])),
+          eventSettlementsProvider(eventRef).overrideWith(
+            (ref) => Stream.value(const <Settlement>[]),
+          ),
+          eventSubGroupsProvider(eventRef).overrideWith(
+            (ref) => Stream.value(const <SubGroup>[]),
+          ),
         ],
-        child: MaterialApp(home: LedgerScreen(trip: mockTrip)),
+        child: MaterialApp(home: LedgerScreen(event: mockEvent2, group: mockGroup)),
       ),
     );
 
