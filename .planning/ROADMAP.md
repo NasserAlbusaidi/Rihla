@@ -52,7 +52,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 02-00-PLAN.md — Wave 0: test stub files for group models, service, join flow, and widget tests
+- [x] 02-00-PLAN.md — Wave 0: test stub files for group models, service, join flow, and widget tests
 - [ ] 02-01-PLAN.md — Group/GroupMember models, GroupService with atomic create/join, Riverpod providers, CacheService + OfflineRepository extensions
 - [ ] 02-02-PLAN.md — GroupCard/GroupMemberTile/InviteCodeDisplay widgets, groups-first HomeScreen, CreateGroupScreen + JoinGroupScreen
 - [ ] 02-03-PLAN.md — GroupSettingsScreen, GroupDetailScreen, GoRouter route wiring
