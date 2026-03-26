@@ -90,12 +90,14 @@ class EventService {
     required String createdBy,
     DateTime? startDate,
     DateTime? endDate,
+    EventModules? modules,
   }) async {
     const uuid = Uuid();
     final eventId = uuid.v4();
     final bridgeTripId = eventId; // Same UUID per plan spec
     final now = DateTime.now().toUtc();
-    final modules = EventModules.forType(type);
+    // Use provided modules (Custom type override) or derive from type
+    final resolvedModules = modules ?? EventModules.forType(type);
 
     final event = Event(
       id: eventId,
@@ -105,7 +107,7 @@ class EventService {
       createdBy: createdBy,
       participantIds: List.unmodifiable(participantIds),
       participantNames: Map.unmodifiable(participantNames),
-      modules: modules,
+      modules: resolvedModules,
       startDate: startDate,
       endDate: endDate,
       currency: currency,
@@ -151,7 +153,7 @@ class EventService {
           await _createBridgeTrip(
             eventId: eventId,
             name: name,
-            modules: modules,
+            modules: resolvedModules,
             currency: currency,
             startDate: startDate,
             endDate: endDate,
