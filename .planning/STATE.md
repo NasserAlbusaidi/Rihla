@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 04-firestore-repository-layer plan 04-01
-last_updated: "2026-03-26T17:20:53.179Z"
+stopped_at: Completed 04-firestore-repository-layer plan 04-02
+last_updated: "2026-03-26T17:23:09.221Z"
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 04 (firestore-repository-layer) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Plan: 3 of 6
 | Phase 03-events P04 | 7 | 2 tasks | 6 files |
 | Phase 04-firestore-repository-layer P00 | 5 | 2 tasks | 18 files |
 | Phase 04-firestore-repository-layer P01 | 8 | 2 tasks | 6 files |
+| Phase 04-firestore-repository-layer P02 | 10 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,9 @@ Recent decisions affecting current work:
 - [Phase 04-01]: asyncMap used over listen() for SQLite side-write: keeps stream pipeline intact, ensures SQLite writes complete before downstream subscribers receive data
 - [Phase 04-01]: CacheService.cacheExpenses/cacheSettlements used as interim until BalanceCacheRepository created in 04-04
 - [Phase 04-01]: tripExpensesProvider/tripSettlementsProvider kept as deprecated shims -- screen migration deferred to 04-05
+- [Phase 04-02]: EventRef typedef created in plan 04-02 (parallel to 04-01) — both wave-2 plans define identical content; no conflict
+- [Phase 04-02]: gear_screen.dart legacy mutations routed to OfflineRepository — screen still on SQLite path, EventRef migration deferred to future plan
+- [Phase 04-02]: logistics_screen.dart write operations stubbed with debugPrint — SubGroupService now requires EventRef; screen update deferred to EventRef migration plan
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T17:20:53.177Z
-Stopped at: Completed 04-firestore-repository-layer plan 04-01
+Last session: 2026-03-26T17:23:09.218Z
+Stopped at: Completed 04-firestore-repository-layer plan 04-02
 Resume file: None
