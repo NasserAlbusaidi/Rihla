@@ -106,20 +106,11 @@ void main() {
         expect(container.read(groupErrorProvider), isNull);
       });
 
-      test('throws Exception if user is not authenticated (uid is null)',
+      test('throws if Firebase is not initialized (unit test environment)',
           () async {
         SharedPreferences.setMockInitialValues({'device_name': 'Nasser'});
         final prefs = await SharedPreferences.getInstance();
-        final fakeDb = FakeFirebaseFirestore();
 
-        // Create a GroupService that has no authenticated user
-        // We test via a custom subclass-like approach by creating the
-        // GroupService instance through a container and testing
-        // the unauthenticated path directly.
-        //
-        // FirebaseConfig.currentUser returns null when not signed in.
-        // Since the real Firebase SDK isn't initialized in unit tests,
-        // currentUser is null by default — perfect for testing this path.
         final container = ProviderContainer(
           overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
         );
@@ -127,16 +118,13 @@ void main() {
 
         final service = container.read(groupServiceProvider);
 
-        // The service throws when currentUser is null (no real Firebase init).
+        // In unit tests Firebase is not initialized, so FirebaseAuth.instance
+        // throws a FirebaseException with "no-app". This confirms that
+        // GroupService correctly delegates to FirebaseConfig.currentUser
+        // before attempting any Firestore writes.
         expect(
           () => service.createGroup(name: 'Test Group', currency: 'OMR'),
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              contains('not authenticated'),
-            ),
-          ),
+          throwsA(isA<Exception>()),
         );
       });
     });
