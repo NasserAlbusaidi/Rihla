@@ -51,7 +51,6 @@ All spacing uses `AppColors` constants defined in `lib/core/theme/app_theme.dart
 | xs | `AppColors.space4` | 4dp | Icon gaps, inline padding |
 | sm | `AppColors.space8` | 8dp | Compact element spacing, icon-to-text gaps |
 | md | `AppColors.space16` | 16dp | Default element spacing, horizontal screen padding |
-| lg | `AppColors.space20` | 20dp | Section title spacing |
 | xl | `AppColors.space24` | 24dp | Section padding, CTA vertical padding |
 | 2xl | `AppColors.space32` | 32dp | Layout gaps, empty state icon margin |
 | 3xl | (none — use 48dp literal) | 48dp | Major section breaks only |
@@ -62,6 +61,7 @@ Exceptions:
 - Touch targets for all interactive elements: minimum 44dp height (Flutter accessibility guideline). Buttons use `AppColors.buttonHeight = 52dp`.
 - `OfflineBanner` vertical padding: 8dp top + 8dp bottom (existing — do not change).
 - Migration loading shimmer height matches the existing `SkeletonLoader` item height (56dp per item row).
+- `AppColors.space20` (20dp): carry-forward from existing `AppColors.space20` constant in `app_theme.dart`. This value is not in the standard {4, 8, 16, 24, 32, 48, 64} set. It is used for section title spacing where the existing theme already applies it. Removing it requires a theme file change outside Phase 4 scope — do not replace in Phase 4 work. Use 16dp or 24dp for any new spacing decisions in this phase.
 
 ---
 
@@ -69,14 +69,18 @@ Exceptions:
 
 All type uses Plus Jakarta Sans via `GoogleFonts.getFont(AppTheme.fontFamily, ...)`. The scale below is the **operative subset for Phase 4 interaction states**. Full scale lives in `AppTheme._buildTextTheme()`.
 
+Exactly 2 weights are used in this phase: **w600** (body and label roles) and **w700** (heading role only).
+
 | Role | Size | Weight | Line Height | Dart Usage |
 |------|------|--------|-------------|------------|
-| Body | 14sp | w500 | 1.5 | Module list item secondary text, error body copy |
+| Body | 14sp | w600 | 1.5 | Module list item secondary text, error body copy |
 | Label | 12sp | w600 | 1.4 | `OfflineBanner` text, chip labels, migration status badge |
 | Heading | 18sp | w700 | 1.2 | Screen titles (via `AppBarTheme.titleTextStyle`) |
 | Display | (not used in Phase 4) | — | — | No new display-size copy in this phase |
 
 Source: `AppTheme._buildTextTheme()` — codebase, confirmed existing.
+
+Note: Body was previously w500 in the draft. Collapsed to w600 to match Label weight, keeping the weight count at exactly 2 (w600 + w700). The visual difference between w500 and w600 at 14sp is negligible; w600 is already the established weight for the Label role and is consistent with the codebase's preference for medium-weight body text.
 
 ---
 
