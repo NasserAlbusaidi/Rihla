@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: "Completed 05-03-PLAN.md: groupBalancesProvider + groupSettlementsProvider + groupActivityProvider"
-last_updated: "2026-03-26T22:20:20.367Z"
+stopped_at: "Completed 05-04-PLAN.md: GroupBalanceHero + GroupSpendingStats + GroupMemberBalanceCard + GroupActivityTile widgets"
+last_updated: "2026-03-26T22:27:34.803Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 05 (cross-event-financials) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Plan: 5 of 7
 | Phase 05 P02 | 3 | 1 tasks | 1 files |
 | Phase 05 P01 | 20 | 2 tasks | 6 files |
 | Phase 05 P03 | 7 | 1 tasks | 2 files |
+| Phase 05 P04 | 10 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,9 @@ Recent decisions affecting current work:
 - [Phase 05]: eventId sentinel for group settlements set to groupId — group settlements have no eventId, avoids null dereference in fromFirestore (RESEARCH Pitfall 3)
 - [Phase 05]: Provider.family (not StreamProvider.family) used for groupBalancesProvider — enables ref.watch inside loops for variable-length event list (RESEARCH Pitfall 2)
 - [Phase 05]: Test pump uses Future.delayed(Duration.zero) x10 for cascaded stream providers in Provider.family — microtask pump insufficient for 3-layer dependency cascade
+- [Phase 05]: GroupBalanceHero is StatelessWidget (not ConsumerWidget) — parent reads groupBalancesProvider and passes data down as constructor params
+- [Phase 05]: AnimatedCrossFade keeps both children in widget tree simultaneously — test assertions check button presence/absence rather than text visibility
+- [Phase 05]: GroupActivityTile uses Dart 3 switch expression for icon/color dispatch per activity type
 
 ### Pending Todos
 
@@ -143,6 +147,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T22:20:20.364Z
-Stopped at: Completed 05-03-PLAN.md: groupBalancesProvider + groupSettlementsProvider + groupActivityProvider
+Last session: 2026-03-26T22:27:34.800Z
+Stopped at: Completed 05-04-PLAN.md: GroupBalanceHero + GroupSpendingStats + GroupMemberBalanceCard + GroupActivityTile widgets
 Resume file: None
