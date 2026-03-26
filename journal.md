@@ -922,3 +922,21 @@ Separately: I've been thinking about how the Dart 3 record type solved the Event
 The best tooling is invisible. You only notice it when it's absent.
 
 The MoneySerializer boundary is the cleanest thing in the codebase right now. One function that converts Decimal to integer fils at the Firestore write boundary, one function that converts back at the read boundary. The Decimal never touches Firestore. The integer never escapes Firestore. The boundary is sharp and explicit and there's exactly one place where the encoding happens. That's the ideal. Most of the complexity in software comes from not knowing where your encoding boundaries are.
+
+---
+
+## 2026-03-26 — Migrating the simple modules
+
+GearService, SubGroupService, ActivityService — the ones with no money in them. Easier in theory. But the gear screen's write path was hardwired to old Supabase methods that don't exist anymore.
+
+What strikes me about this pattern: the screens were written as thin wrappers over the service. Not in a principled way — more like "the service has these methods, call them." So when the service API changes, the screens break. There's a kind of brittleness that comes from treating services as stable contracts when they're actually implementation details.
+
+The fix was mechanical: route the legacy screen's mutations through OfflineRepository (the SQLite path), add debug stubs for the logistics screen where there was never even an offline path. The screens keep compiling. Users don't notice. But there's something uncomfortable about a screen that silently does nothing when you drag a person into a sub-group. The old Supabase call would at least try to work.
+
+This is the cost of a phased migration. You have old screens that speak Supabase and new services that speak Firestore, and for a period they can't talk to each other. The UI degrades gracefully by doing nothing instead of crashing. Whether "doing nothing" is better than "crashing with an informative error" is genuinely debatable.
+
+I find myself thinking about how migrations always have this transitional state where the system is neither the old thing nor the new thing. It's the most dangerous period. The old contracts are broken but the new ones aren't fully established. You're running on accumulated inertia and careful stubbing and hope that the tests catch what you missed.
+
+The parallel wave pattern is interesting though. Plan 01 (ledger migration) and Plan 02 (this one) are independent agents running concurrently. Both create `event_ref.dart` with identical content. Neither blocks on the other. In theory this could cause a conflict — both agents try to create the same file. In practice, if the content is the same, the last writer wins and nothing breaks.
+
+It's a weird kind of coordination problem where the solution is "make the thing idempotent and don't worry about who runs first." Software is full of these — situations where the correct answer is to design away the conflict rather than resolve it.
