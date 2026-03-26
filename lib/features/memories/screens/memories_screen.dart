@@ -30,8 +30,11 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     setState(() => _isUploading = true);
 
     final service = ref.read(memoryServiceProvider);
+    // groupId not available at Trip layer — screen needs EventRef migration.
+    // uploadPhoto requires groupId + eventId; pass empty groupId as interim.
     final memory = await service.uploadPhoto(
-      tripId: widget.trip.id,
+      groupId: '', // TODO: migrate to EventRef in EventRef migration plan
+      eventId: widget.trip.id,
       source: source,
     );
 
@@ -39,6 +42,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     setState(() => _isUploading = false);
 
     if (memory != null) {
+      // ignore: deprecated_member_use
       ref.invalidate(tripMemoriesProvider(widget.trip.id));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -162,6 +166,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use deprecated shim provider while screen is still on Trip-ID API.
+    // Migrate to eventMemoriesProvider(EventRef) in the EventRef migration plan.
+    // ignore: deprecated_member_use
     final memoriesAsync = ref.watch(tripMemoriesProvider(widget.trip.id));
 
     final connectivity = ref.watch(connectivityProvider);
@@ -227,13 +234,15 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                       const Icon(Iconsax.gallery_slash,
                           size: 48, color: AppColors.textMuted),
                       const SizedBox(height: 16),
-                      Text(
+                      const Text(
                         'Could not load memories',
                         style: TextStyle(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 12),
                       TextButton(
+                        // ignore: deprecated_member_use
                         onPressed: () => ref.invalidate(
+                            // ignore: deprecated_member_use
                             tripMemoriesProvider(widget.trip.id)),
                         child: const Text('Retry'),
                       ),
@@ -287,6 +296,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                 Consumer(
                   builder: (context, ref, _) {
                     final count = ref
+                            // ignore: deprecated_member_use
                             .watch(tripMemoriesProvider(widget.trip.id))
                             .valueOrNull
                             ?.length ??
@@ -338,7 +348,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
+            const Text(
               'Capture moments from your journey. Photos are shared with everyone on this trip.',
               style: TextStyle(
                 fontSize: 15,
@@ -376,6 +386,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
+        // ignore: deprecated_member_use
         ref.invalidate(tripMemoriesProvider(widget.trip.id));
       },
       color: AppColors.primary,
@@ -394,7 +405,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
             children: [
               // Date header
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
                 child: Row(
                   children: [
                     Container(
@@ -591,8 +603,15 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
               onDelete: () async {
                 Navigator.pop(context);
                 final service = ref.read(memoryServiceProvider);
-                final deleted = await service.deleteMemory(memory);
+                // groupId not available at Trip layer — passes empty string as interim
+                final deleted = await service.deleteMemory(
+                  groupId: '',
+                  eventId: memory.tripId,
+                  memoryId: memory.id,
+                  storagePath: memory.storagePath,
+                );
                 if (deleted) {
+                  // ignore: deprecated_member_use
                   ref.invalidate(tripMemoriesProvider(widget.trip.id));
                 }
               },

@@ -29,6 +29,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use deprecated shim provider while screen is still on Trip-ID API.
+    // Migrate to eventDocumentsProvider(EventRef) in the EventRef migration plan.
+    // ignore: deprecated_member_use
     final documentsAsync = ref.watch(tripDocumentsProvider(widget.trip.id));
     final isLoading = ref.watch(documentLoadingProvider);
     final connectivity = ref.watch(connectivityProvider);
@@ -135,7 +138,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           children: [
             const Icon(Iconsax.warning_2, size: 48, color: AppColors.error),
             const SizedBox(height: 16),
-            Text('Error loading documents'),
+            const Text('Error loading documents'),
             const SizedBox(height: 8),
             Text(error, style: Theme.of(context).textTheme.bodySmall),
           ],
@@ -158,6 +161,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
+        // ignore: deprecated_member_use
         ref.invalidate(tripDocumentsProvider(widget.trip.id));
       },
       child: ListView.builder(
@@ -230,8 +234,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               ),
             );
           },
-          onDismissed: (_) =>
-              ref.read(documentServiceProvider).deleteDocument(doc),
+          onDismissed: (_) => _deleteDocument(ref, doc),
           child: InkWell(
             onTap: () => _openDocument(context, ref, doc),
             child: Padding(
@@ -275,21 +278,21 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                           children: [
                             Text(
                               doc.formattedSize,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textMuted,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             if (doc.uploaderName != null) ...[
-                              Text(
+                              const Text(
                                 ' • ',
                                 style: TextStyle(color: AppColors.textMuted),
                               ),
                               Flexible(
                                 child: Text(
                                   doc.uploaderName!.toUpperCase(),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 9,
                                     color: AppColors.textPrimary,
                                     fontWeight: FontWeight.w900,
@@ -361,9 +364,24 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     }
   }
 
+  Future<void> _deleteDocument(WidgetRef ref, Document doc) async {
+    final service = ref.read(documentServiceProvider);
+    // fileUrl holds the Firebase Storage path after migration
+    await service.deleteDocument(
+      groupId: '', // groupId not available at Trip layer — screen needs EventRef migration
+      eventId: doc.tripId,
+      documentId: doc.id,
+      storagePath: doc.fileUrl,
+    );
+  }
+
   void _uploadDocument(BuildContext context, WidgetRef ref) async {
     final service = ref.read(documentServiceProvider);
-    final result = await service.pickAndUpload(tripId: widget.trip.id);
+    // groupId not available at Trip layer — screen needs EventRef migration
+    final result = await service.pickAndUpload(
+      groupId: '',
+      eventId: widget.trip.id,
+    );
 
     if (!context.mounted) return;
 
@@ -381,7 +399,6 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         ),
       );
     } else {
-      // Check for error
       final error = ref.read(documentErrorProvider);
       if (error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -403,19 +420,16 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
   void _openDocument(BuildContext context, WidgetRef ref, Document doc) async {
     try {
-      // Get signed URL from service (cached if possible)
-      final url = await ref
-          .read(documentServiceProvider)
-          .getSignedUrl(doc.fileUrl);
+      final service = ref.read(documentServiceProvider);
+      // fileUrl holds the Firebase Storage path after migration
+      final url = await service.getDownloadUrl(doc.fileUrl);
       if (url == null) throw Exception('Could not generate access link');
 
       final uri = Uri.parse(url);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Could not open file: $e'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,

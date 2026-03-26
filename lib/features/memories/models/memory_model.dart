@@ -34,6 +34,35 @@ class Memory {
     );
   }
 
+  /// Deserialize a [Memory] from a Firestore document map.
+  ///
+  /// Field names are camelCase. [eventId] in Firestore maps to [tripId]
+  /// for backward compatibility with existing UI code.
+  factory Memory.fromFirestore(Map<String, dynamic> data) {
+    return Memory(
+      id: data['id'] as String,
+      tripId: data['eventId'] as String? ?? data['tripId'] as String? ?? '',
+      uploadedBy: data['uploadedBy'] as String,
+      storagePath: data['storagePath'] as String,
+      caption: data['caption'] as String?,
+      createdAt: DateTime.parse(data['createdAt'] as String),
+    );
+  }
+
+  /// Serialize this [Memory] to a Firestore document map.
+  ///
+  /// Field names are camelCase per Firestore convention.
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'eventId': tripId,
+      'uploadedBy': uploadedBy,
+      'storagePath': storagePath,
+      'caption': caption,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'trip_id': tripId,

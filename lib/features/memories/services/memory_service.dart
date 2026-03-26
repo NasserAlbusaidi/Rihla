@@ -1,124 +1,149 @@
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/config/supabase_config.dart';
+import '../../../core/config/firebase_config.dart';
+import '../../../core/services/firestore_repository.dart';
 import '../models/memory_model.dart';
 
-/// Service for managing trip photo memories
-class MemoryService {
-  static const String _bucket = 'trip-memories';
+/// Firestore + Firebase Storage backed memory service.
+///
+/// Extends [FirestoreRepository] for consistent Firestore path conventions.
+/// Photos are uploaded to Firebase Storage; metadata is stored in the event's
+/// `memories` subcollection at `groups/{groupId}/events/{eventId}/memories`.
+class MemoryService extends FirestoreRepository {
   static const _uuid = Uuid();
 
-  /// Get all memories for a trip, with signed URLs
-  Future<List<Memory>> getMemories(String tripId) async {
-    try {
-      final data = await SupabaseConfig.client
-          .from('trip_memories')
-          .select('*')
-          .eq('trip_id', tripId)
-          .order('created_at', ascending: false);
+  MemoryService() : super();
 
-      final memories =
-          (data as List).map((json) => Memory.fromJson(json)).toList();
+  @visibleForTesting
+  MemoryService.withFirestore(FirebaseFirestore db) : super.withFirestore(db);
 
-      // Generate signed URLs for all memories
-      final withUrls = <Memory>[];
-      for (final memory in memories) {
-        try {
-          final url = await SupabaseConfig.client.storage
-              .from(_bucket)
-              .createSignedUrl(memory.storagePath, 3600);
-          withUrls.add(memory.copyWith(signedUrl: url));
-        } catch (e) {
-          debugPrint('Failed to get signed URL for ${memory.id}: $e');
-          withUrls.add(memory);
-        }
-      }
+  FirebaseStorage get _storage => FirebaseStorage.instance;
 
-      return withUrls;
-    } catch (e) {
-      debugPrint('Error fetching memories: $e');
-      return [];
-    }
+  /// Watch all memories for an event as a live stream.
+  ///
+  /// Returns a [Stream<List<Memory>>] ordered by [createdAt] descending.
+  Stream<List<Memory>> watchMemories(String groupId, String eventId) {
+    return eventSubcollection(groupId, eventId, 'memories')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => Memory.fromFirestore({...doc.data(), 'id': doc.id}))
+            .toList());
   }
 
-  /// Upload a photo from camera or gallery
+  /// Write memory metadata directly to Firestore.
+  ///
+  /// Exposed [visibleForTesting] to allow unit tests to exercise the Firestore
+  /// path without triggering actual Firebase Storage uploads.
+  @visibleForTesting
+  Future<void> writeMetadataToFirestore({
+    required String groupId,
+    required String eventId,
+    required String memoryId,
+    required Map<String, dynamic> data,
+  }) async {
+    await eventSubcollection(groupId, eventId, 'memories').doc(memoryId).set(data);
+  }
+
+  /// Pick an image and upload to Firebase Storage, writing metadata to Firestore.
+  ///
+  /// Returns the created [Memory] on success, null if user cancelled.
+  /// Throws [Exception] if the user is not authenticated.
   Future<Memory?> uploadPhoto({
-    required String tripId,
+    required String groupId,
+    required String eventId,
     required ImageSource source,
     String? caption,
   }) async {
+    // 1. Pick image using ImagePicker
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: source,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+    if (pickedFile == null) return null;
+
+    // 2. Get current user for uploader attribution
+    final uid = FirebaseConfig.currentUser?.uid;
+    if (uid == null) throw Exception('Not authenticated');
+
+    // 3. Build storage path and upload to Firebase Storage
+    final id = _uuid.v4();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final extension = pickedFile.path.split('.').last.toLowerCase();
+    final storagePath = 'trip-memories/$eventId/$timestamp.$extension';
+
+    final ref = _storage.ref().child(storagePath);
+    final metadata = SettableMetadata(contentType: 'image/$extension');
+    await ref.putFile(File(pickedFile.path), metadata);
+
+    // 4. Write metadata to Firestore subcollection
+    final now = DateTime.now().toUtc();
+    final data = {
+      'id': id,
+      'eventId': eventId,
+      'uploadedBy': uid,
+      'storagePath': storagePath,
+      'caption': caption,
+      'createdAt': now.toIso8601String(),
+    };
+    await eventSubcollection(groupId, eventId, 'memories').doc(id).set(data);
+
+    // 5. Return Memory model from the written data
+    return Memory.fromFirestore(data);
+  }
+
+  /// Get the Firebase Storage download URL for a given storage path.
+  ///
+  /// Returns null on error (e.g. file not found or network unavailable).
+  Future<String?> getDownloadUrl(String storagePath) async {
     try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: source,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 85,
-      );
-
-      if (picked == null) return null;
-
-      final userId = SupabaseConfig.client.auth.currentUser?.id;
-      if (userId == null) return null;
-
-      final fileBytes = await picked.readAsBytes();
-      final ext = picked.path.split('.').last.toLowerCase();
-      final fileName = '${_uuid.v4()}.$ext';
-      final storagePath = '$tripId/$fileName';
-
-      // Upload to Supabase Storage
-      await SupabaseConfig.client.storage
-          .from(_bucket)
-          .uploadBinary(storagePath, fileBytes, fileOptions: FileOptions(
-            contentType: 'image/$ext',
-          ));
-
-      // Create database record
-      final data = await SupabaseConfig.client
-          .from('trip_memories')
-          .insert({
-            'trip_id': tripId,
-            'uploaded_by': userId,
-            'storage_path': storagePath,
-            'caption': caption,
-          })
-          .select('*')
-          .single();
-
-      final memory = Memory.fromJson(data);
-
-      // Get signed URL
-      final url = await SupabaseConfig.client.storage
-          .from(_bucket)
-          .createSignedUrl(storagePath, 3600);
-
-      return memory.copyWith(signedUrl: url);
+      return await _storage.ref().child(storagePath).getDownloadURL();
     } catch (e) {
-      debugPrint('Error uploading memory: $e');
+      debugPrint('MemoryService: Failed to get download URL for $storagePath: $e');
       return null;
     }
   }
 
-  /// Delete a memory
-  Future<bool> deleteMemory(Memory memory) async {
+  /// Delete memory metadata from Firestore only.
+  ///
+  /// Use this in tests where Firebase Storage is not available.
+  @visibleForTesting
+  Future<void> deleteMemoryMetadata({
+    required String groupId,
+    required String eventId,
+    required String memoryId,
+  }) async {
+    await eventSubcollection(groupId, eventId, 'memories')
+        .doc(memoryId)
+        .delete();
+  }
+
+  /// Delete a memory from both Firebase Storage and Firestore.
+  ///
+  /// Returns true on success, false on any error.
+  Future<bool> deleteMemory({
+    required String groupId,
+    required String eventId,
+    required String memoryId,
+    required String storagePath,
+  }) async {
     try {
-      // Delete from storage
-      await SupabaseConfig.client.storage
-          .from(_bucket)
-          .remove([memory.storagePath]);
-
-      // Delete from database
-      await SupabaseConfig.client
-          .from('trip_memories')
-          .delete()
-          .eq('id', memory.id);
-
+      await _storage.ref().child(storagePath).delete();
+      await eventSubcollection(groupId, eventId, 'memories')
+          .doc(memoryId)
+          .delete();
       return true;
     } catch (e) {
-      debugPrint('Error deleting memory: $e');
+      debugPrint('MemoryService: Failed to delete memory $memoryId: $e');
       return false;
     }
   }

@@ -40,6 +40,42 @@ class Document {
     );
   }
 
+  /// Deserialize a [Document] from a Firestore document map.
+  ///
+  /// Field names are camelCase. [storagePath] in Firestore maps to [fileUrl]
+  /// in the model for backward compatibility with existing UI code.
+  factory Document.fromFirestore(Map<String, dynamic> data) {
+    return Document(
+      id: data['id'] as String,
+      tripId: data['eventId'] as String? ?? data['tripId'] as String? ?? '',
+      uploaderId: data['uploaderId'] as String?,
+      fileUrl: data['storagePath'] as String,
+      fileName: data['fileName'] as String,
+      fileSize: data['fileSize'] as int?,
+      mimeType: data['mimeType'] as String?,
+      createdAt: data['createdAt'] != null
+          ? DateTime.parse(data['createdAt'] as String)
+          : null,
+    );
+  }
+
+  /// Serialize this [Document] to a Firestore document map.
+  ///
+  /// Field names are camelCase. [fileUrl] (the Firebase Storage path) maps to
+  /// [storagePath] in Firestore per the plan specification.
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'eventId': tripId,
+      'uploaderId': uploaderId,
+      'storagePath': fileUrl,
+      'fileName': fileName,
+      'fileSize': fileSize,
+      'mimeType': mimeType,
+      'createdAt': createdAt?.toIso8601String(),
+    };
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
