@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-26T20:25:25.004Z"
+status: Ready to execute
+stopped_at: Completed 05-00-PLAN.md
+last_updated: "2026-03-26T22:03:37.124Z"
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 25
+  completed_plans: 20
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 04 — firestore-repository-layer
+**Current focus:** Phase 05 — cross-event-financials
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05 (cross-event-financials) — EXECUTING
+Plan: 3 of 7
 
 ## Performance Metrics
 
@@ -64,6 +64,8 @@ Plan: Not started
 | Phase 04-firestore-repository-layer P03 | 9 | 2 tasks | 13 files |
 | Phase 04 P04 | 90m | 2 tasks | 18 files |
 | Phase 04-firestore-repository-layer P05 | 65 | 3 tasks | 25 files |
+| Phase 05 P00 | 2 | 2 tasks | 6 files |
+| Phase 05 P02 | 3 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -119,6 +121,7 @@ Recent decisions affecting current work:
 - [Phase 04]: Camping gear seeding is now unconditional (not gated on Supabase bridge success)
 - [Phase 04-firestore-repository-layer]: Removed tripBalancesProvider entirely — its only consumers were tests for the deleted Trip-based CommandCenter widget
 - [Phase 04-firestore-repository-layer]: expense_provider.dart re-exports event_ref.dart so screens get EventRef transitively without redundant imports
+- [Phase 05]: D-06 confirmed: BalanceCalculator handles combined multi-event expense lists without code changes — expense list is scope-agnostic, tripId on Expense is irrelevant to balance math
 
 ### Pending Todos
 
@@ -133,6 +136,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T20:25:25.000Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-cross-event-financials/05-CONTEXT.md
+Last session: 2026-03-26T22:03:27.828Z
+Stopped at: Completed 05-00-PLAN.md
+Resume file: None
