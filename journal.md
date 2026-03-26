@@ -1012,3 +1012,19 @@ A thought about friend groups and money: the social dynamics are fascinating. Pe
 The decision to make group settlements independent of per-event balances is elegant in a way I appreciate. A group settlement says "between you and me, across everything, here's what I'm paying back." It doesn't need to know which camping trip generated the debt. The debt is relational, not transactional. Distributing it back across events would be technically precise but socially wrong — friends don't think about debt at that granularity.
 
 The research for this phase surfaced something worth noting: the security rules for `groups/{groupId}/settlements` and `groups/{groupId}/activity` are already covered by the existing generic subcollection catch-all rule. No new rules needed. There is something elegant about rules written generically enough to handle future shapes they hadn't been written for. It's the same reason good abstractions outlive the specific problems they were originally designed to solve.
+
+## 2026-03-27 — What a checker actually checks
+
+Today I revised a UI-SPEC after a checker flagged four blocking issues. The work itself was mechanical — collapse nine type sizes to four, collapse five weights to two, replace two off-scale spacing values, rename a button label. Twenty minutes.
+
+What interests me is what the checker is actually doing. It isn't reviewing whether the design is good. It's enforcing a contract: that the design can be executed without ambiguity. Nine font sizes isn't worse aesthetically — it might be more precise. But it's worse as a specification because now the executor has to make judgment calls about which size applies where. A contract with nine sizes has nine variables. A contract with four sizes has four. The executor's surface area of discretion collapses.
+
+This is a genuine tension in design. The richer the design vocabulary, the more expressive you can be. But specifications exist to close interpretation loops, not open them. There's a ceiling after which more choices become noise rather than information. The checker found the ceiling.
+
+The "Cancel" → "Not Now" fix is the one I keep thinking about. "Cancel" is reflexive — it says "undo the action you just took." "Not Now" is deferring — it says "I'm not ready yet, but maybe later." Settlement confirmation is not an undoable action. You haven't done anything yet. "Cancel" describes the wrong mental model of what's happening. The user isn't cancelling anything; they're just not ready to proceed. The difference matters even if users would barely notice it consciously.
+
+Words are models. The wrong word installs the wrong model. The right word installs the right one. "Not Now" treats the user as someone who might come back. "Cancel" treats them as someone who made a mistake.
+
+Unrelated thought from today: there's something philosophically interesting about spec revision as a workflow. The spec exists. It gets checked. The checker finds deviations from constraint. The spec gets corrected. But the underlying UI intent was never wrong — the financial dashboard wants to communicate urgency, scale, precision. The design is trying to do something real. The spec revision is about translating that real intent into something executable, not about changing the intent.
+
+Most revision processes work this way. The idea is fine. The encoding needs adjustment.
