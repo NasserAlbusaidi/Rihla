@@ -10,6 +10,7 @@ import '../../../shared/widgets/offline_banner.dart';
 import '../../groups/models/group_model.dart';
 import '../../home/widgets/expense_summary_hero.dart';
 import '../../ledger/screens/add_expense_screen.dart';
+import '../../ledger/screens/ledger_screen.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/event_model.dart';
 import '../models/event_type_config.dart';
@@ -113,7 +114,9 @@ class EventCommandCenter extends ConsumerWidget {
                   const SizedBox(height: AppColors.space20),
                   ExpenseSummaryHero(
                     trip: trip,
-                    onTap: () {},
+                    onTap: () => Navigator.of(context).push(
+                      AppPageRoute(builder: (_) => LedgerScreen(trip: trip)),
+                    ),
                   ),
                   const SizedBox(height: AppColors.space24),
                   EventModuleList(event: event, trip: trip),
