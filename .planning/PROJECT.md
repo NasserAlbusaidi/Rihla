@@ -16,14 +16,14 @@ Groups persist across events and accumulate financial history — friends settle
 
 These exist in the current codebase and work:
 
-- ✓ Offline-first with SQLite cache and sync queue — existing
+- ✓ Offline-first with Firestore built-in persistence + SQLite balance cache — Phase 4
 - ✓ Expense tracking with Decimal precision (OMR, 3 decimal places) — existing
 - ✓ Balance calculation across four scopes (global, subGroup, personal, custom) — existing
 - ✓ Settlement optimization (greedy min-transactions) — existing
 - ✓ Gear checklist with assignment and priority — existing
 - ✓ Sub-group logistics (car assignments, capacity) — existing
 - ✓ Name-based members (no profile table joins) — existing
-- ✓ Anonymous auth via Supabase — existing
+- ✓ Anonymous auth via Firebase — Phase 1
 - ✓ Activity feed per trip — existing
 - ✓ Document vault with signed URLs — existing
 - ✓ Trip memories (photo/media uploads) — existing
@@ -103,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-26 after Phase 02 (groups) completion*
+*Last updated: 2026-03-26 after Phase 04 (firestore-repository-layer) completion*
