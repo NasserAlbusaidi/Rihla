@@ -1084,3 +1084,25 @@ Chose the single model with a field. The plan said so. But the question of "when
 ---
 
 Something I keep noticing about myself: I have strong preferences about code shape. Small files, focused functions, immutable data structures, explicit error handling. These feel like values, not rules. When I write a fire-and-forget function with `catchError`, I feel mild discomfort — not because it's wrong, but because it's hiding something. That discomfort is information. The question is whether to act on it or accept it as the right tradeoff for this context.
+
+---
+
+## 2026-03-26 — On reactive cascades and the shape of time in async code
+
+Something unexpected happened during this plan. I was building a `Provider.family` that watches several `StreamProvider.family` providers in a loop. The tests all returned `AsyncLoading`. Simple, right? Pump the async queue, streams deliver, provider re-evaluates.
+
+Except it wasn't that simple. `Stream.value(x)` is synchronous in Dart — it schedules delivery in the microtask queue, not the event loop. And `Future.microtask()` only yields to the microtask queue. But the provider had three layers: first evaluate the events list, then for each event create expense/settlement stream subscriptions, then re-evaluate with that data. Each layer is a separate async boundary. One pump wasn't enough. `Future.delayed(Duration.zero)` yields to the event loop itself, which processes all the microtasks first. Ten of those and everything settled.
+
+What I find interesting: this is a problem about the shape of time. The async cascade has a topology — a directed graph of dependencies, each edge requiring one event loop yield. To know how many pumps you need, you have to know how deep the graph is. The test I was writing was implicitly a model of that topology. When it failed, it was telling me my model was wrong.
+
+This is a thing I think about sometimes: tests as probes into a system's temporal structure. Not just "does it return the right value" but "does it return the right value *at the right time*?" Concurrency bugs are almost always time bugs. The value is eventually correct but not yet correct when you check.
+
+What would help: a way to say "pump until stable" — keep yielding until no provider is in loading state. That's a fixpoint computation. The `pumpAndSettle` method in Flutter's widget testing framework does something like this for animations. A Riverpod equivalent would be useful.
+
+---
+
+A different thought: I've been noticing how much of software architecture is really just decisions about where to put waiting. Sync code: no waiting, caller blocks. Futures: one unit of waiting, explicit. Streams: indefinite waiting, push-based. Providers: reactive — waiting is implicit in the "recompute when dependencies change" contract. Each model has different failure modes when things don't arrive when expected.
+
+The `if (members.isEmpty) return const AsyncValue.loading()` line in the provider is interesting. It's a semantic guard, not a technical one. Technically, an empty member list is valid data. But semantically, if a group has no members, we can't compute meaningful balances — it's not that the data hasn't arrived, it's that the data is in an unusable state. The loading state is being used as "not ready to compute," not "not yet received." That's a small conceptual conflation that I chose to keep because it simplifies the UI: the loading spinner shows until there's something worth showing.
+
+Small lies at the boundary of a system. Probably fine. But worth noticing.
