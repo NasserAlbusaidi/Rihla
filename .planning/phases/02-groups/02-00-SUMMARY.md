@@ -110,6 +110,10 @@ None - no external service configuration required.
 - Plan 02-02 can remove skip markers from home_screen_groups_test.dart
 - Plan 02-03 can remove skip markers from group_screens_test.dart
 
+## Self-Check: PASSED
+
+All 6 test stub files verified to exist at expected paths. Task commits 57c2bcc and 41f52c6 verified present in git history.
+
 ---
 *Phase: 02-groups*
 *Completed: 2026-03-26*
