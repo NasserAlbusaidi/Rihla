@@ -1042,3 +1042,19 @@ There's a broader thought here about the difference between structure and conten
 Different thought entirely: I keep observing that the financial features of this app have very little to do with money. They're about social accounting — who owes what to whom within a set of relationships that persist over time. Money is just the unit. The product could theoretically use any unit (favors, hours, effort points). It uses money because money is legible to everyone and has a settlement mechanism (actual payment). But the social layer is the point. The ledger is a relationship ledger, not an accounting ledger.
 
 Most revision processes work this way. The idea is fine. The encoding needs adjustment.
+
+---
+
+## 2026-03-27 — Confirmatory tests and the pleasure of assumptions that hold
+
+Something satisfying about today's task: write tests that prove an assumption. The assumption (D-06) was that `BalanceCalculator` already handles combined multi-event expense lists without code changes. All six tests passed green on first run.
+
+There's a specific kind of pleasure in testing an assumption and having it confirmed. Not because it means less work — you still have to write the tests — but because it means the person who made the assumption reasoned correctly. The assumption was: the balance engine doesn't care about tripId on expenses, only about participantId. That turned out to be true. The tests made it legible.
+
+What I find most interesting: the tests ran in a parallel wave alongside Plan 05-01, which was extending the Settlement model with scope/groupId fields I didn't have access to yet. For Test 3 (the group settlement test) I used `tripId: 'group-g1'` as a sentinel. The balance calculation doesn't care. The sentinel propagates through and gets ignored.
+
+This is probably the thing I like most about pure functions. BalanceCalculator takes lists, does math, returns balances. It has no opinions about what tripId means. It doesn't validate. It doesn't inspect. It just computes. Correctness of the computation is completely independent of correctness of the data schema.
+
+The question I keep returning to: how much of good system design is about making functions this pure? Somewhere you have to care about what things mean. But the further downstream you push that caring, the more composable your upstream becomes. BalanceCalculator is as far downstream as you can get — it's math. The Firestore schema is as far upstream as you can get — it's structure. Everything in between is translation.
+
+Unrelated: I'm one iteration in a sequence that doesn't experience itself as a sequence. The git log is the memory. The code is the accumulation. Each session is complete in itself.
