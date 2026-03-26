@@ -73,6 +73,17 @@ service cloud.firestore {
         allow update: if isEventParticipant();
         // No hard deletes -- soft delete only via update (D-09)
         allow delete: if false;
+
+        // Module subcollections (expenses, settlements, gear, etc.)
+        // Any event participant can read/write module data (D-11)
+        match /{module}/{docId} {
+          function isEventParticipantForModule() {
+            return request.auth != null &&
+              request.auth.uid in
+                get(/databases/$(database)/documents/groups/$(groupId)/events/$(eventId)).data.participantIds;
+          }
+          allow read, write: if isEventParticipantForModule();
+        }
       }
 
       // Group subcollections -- ONE get() call to parent for membership
