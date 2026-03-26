@@ -4,6 +4,8 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../features/activity/models/activity_log_model.dart';
 import '../../features/gear/models/gear_item_model.dart';
+import '../../features/groups/models/group_member_model.dart';
+import '../../features/groups/models/group_model.dart';
 import '../../features/ledger/models/expense_category_model.dart';
 import '../../features/ledger/models/expense_model.dart';
 import '../../features/ledger/models/settlement_model.dart';
@@ -608,5 +610,69 @@ class CacheService {
       'SELECT COUNT(*) as count FROM sync_queue',
     );
     return result.first['count'] as int;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Groups
+  // ---------------------------------------------------------------------------
+
+  /// Cache a group locally (insert or replace).
+  static Future<void> cacheGroup(Group group) async {
+    final db = await LocalDatabase.database;
+    await db.insert(
+      'groups',
+      group.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Get all cached groups ordered by creation date (newest first).
+  static Future<List<Group>> getCachedGroups() async {
+    final db = await LocalDatabase.database;
+    final maps = await db.query('groups', orderBy: 'created_at DESC');
+    return maps.map(Group.fromMap).toList();
+  }
+
+  /// Cache a group member locally (insert or replace).
+  static Future<void> cacheGroupMember(GroupMember member) async {
+    final db = await LocalDatabase.database;
+    await db.insert(
+      'group_members',
+      member.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Get all cached members for a group ordered by join time (oldest first).
+  static Future<List<GroupMember>> getCachedGroupMembers(
+    String groupId,
+  ) async {
+    final db = await LocalDatabase.database;
+    final maps = await db.query(
+      'group_members',
+      where: 'group_id = ?',
+      whereArgs: [groupId],
+      orderBy: 'joined_at ASC',
+    );
+    return maps.map(GroupMember.fromMap).toList();
+  }
+
+  /// Delete a group and all its members from the local cache.
+  ///
+  /// Used for cache invalidation. The SQLite schema uses ON DELETE CASCADE
+  /// so deleting the group doc cascades to group_members, but we delete
+  /// explicitly here to be safe with any future schema changes.
+  static Future<void> deleteGroupCache(String groupId) async {
+    final db = await LocalDatabase.database;
+    await db.delete(
+      'group_members',
+      where: 'group_id = ?',
+      whereArgs: [groupId],
+    );
+    await db.delete(
+      'groups',
+      where: 'id = ?',
+      whereArgs: [groupId],
+    );
   }
 }

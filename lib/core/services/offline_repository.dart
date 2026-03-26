@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../features/activity/models/activity_log_model.dart';
 import '../../features/gear/models/gear_item_model.dart';
+import '../../features/groups/models/group_member_model.dart';
+import '../../features/groups/models/group_model.dart';
 import '../../features/ledger/models/expense_category_model.dart';
 import '../../features/ledger/models/expense_model.dart';
 import '../../features/ledger/models/settlement_model.dart';
@@ -331,6 +333,51 @@ class OfflineRepository {
     yield await CacheService.getCachedCategories(tripId);
     yield* _getNotifier('categories:$tripId').stream
         .asyncMap((_) => CacheService.getCachedCategories(tripId));
+  }
+
+  // -- GROUPS ---------------------------------------------------------------
+
+  /// Reactive stream of all cached groups (newest first).
+  ///
+  /// Yields the current cache immediately, then re-emits whenever
+  /// [notifyChange('groups')] is called (e.g., after a Firestore snapshot
+  /// updates the cache as a side effect).
+  Stream<List<Group>> watchGroups() async* {
+    yield await CacheService.getCachedGroups();
+    yield* _getNotifier('groups').stream
+        .asyncMap((_) => CacheService.getCachedGroups());
+  }
+
+  /// Persist a group to the local SQLite cache and notify stream listeners.
+  Future<void> saveGroup(Group group) async {
+    final db = await LocalDatabase.database;
+    await db.insert(
+      'groups',
+      group.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    notifyChange('groups');
+  }
+
+  /// Reactive stream of cached members for a specific group (oldest first).
+  ///
+  /// Uses a group-scoped notifier key so only watchers of that group's
+  /// members are notified when membership changes.
+  Stream<List<GroupMember>> watchGroupMembers(String groupId) async* {
+    yield await CacheService.getCachedGroupMembers(groupId);
+    yield* _getNotifier('group_members:$groupId').stream
+        .asyncMap((_) => CacheService.getCachedGroupMembers(groupId));
+  }
+
+  /// Persist a group member to the local SQLite cache and notify listeners.
+  Future<void> saveGroupMember(GroupMember member) async {
+    final db = await LocalDatabase.database;
+    await db.insert(
+      'group_members',
+      member.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    notifyChange('group_members', member.groupId);
   }
 
   // -- HELPERS --------------------------------------------------------------
