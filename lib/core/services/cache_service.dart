@@ -244,6 +244,34 @@ class CacheService {
     await batch.commit(noResult: true);
   }
 
+  /// Cache a single gear item without deleting existing items for the trip.
+  ///
+  /// Used by [GearService.addItem] to avoid the delete-all-then-insert
+  /// pattern of [cacheGearItems], which wipes prior items when called
+  /// sequentially (e.g. camping preset seeding).
+  static Future<void> cacheSingleGearItem(GearItem item) async {
+    final db = await LocalDatabase.database;
+    await db.insert(
+      'gear_items',
+      {
+        'id': item.id,
+        'trip_id': item.tripId,
+        'item_name': item.itemName,
+        'assigned_to': item.assignedTo,
+        'is_packed': item.isPacked ? 1 : 0,
+        'sequence_id': item.sequenceId,
+        'is_high_priority': item.isHighPriority ? 1 : 0,
+        'assigned_to_name': item.assignedToName,
+        'assigned_to_avatar': item.assignedToAvatar,
+        'created_at': item.createdAt?.toIso8601String(),
+        'synced_at': DateTime.now().toIso8601String(),
+        'is_deleted': item.isDeleted ? 1 : 0,
+        'deleted_at': item.deletedAt?.toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   /// Get cached gear items for a trip
   static Future<List<GearItem>> getCachedGearItems(String tripId) async {
     final db = await LocalDatabase.database;

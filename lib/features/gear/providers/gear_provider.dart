@@ -78,7 +78,7 @@ class GearService {
             .select()
             .single();
         final item = GearItem.fromJson(data);
-        await CacheService.cacheGearItems(tripId, [item]);
+        await CacheService.cacheSingleGearItem(item);
         repo.notifyChange('gear_items', tripId);
         _ref.read(gearLoadingProvider.notifier).state = false;
         return item;
