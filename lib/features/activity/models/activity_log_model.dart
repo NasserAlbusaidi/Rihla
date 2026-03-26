@@ -58,4 +58,40 @@ class ActivityLog {
   bool get isDelete => eventType == 'DELETE';
   bool get isUpdate => eventType == 'UPDATE';
   bool get isCreate => eventType == 'CREATE';
+
+  /// Deserialize an [ActivityLog] from a Firestore document map.
+  ///
+  /// Field names are camelCase. [tripId] maps to `eventId` for backward
+  /// compatibility.
+  factory ActivityLog.fromFirestore(Map<String, dynamic> data) {
+    return ActivityLog(
+      id: data['id'] as String,
+      tripId: data['eventId'] as String,
+      actorId: data['actorId'] as String?,
+      targetParticipantId: data['targetParticipantId'] as String?,
+      category: data['category'] as String,
+      eventType: data['eventType'] as String,
+      logText: data['logText'] as String,
+      metadata: (data['metadata'] as Map<String, dynamic>?) ?? const {},
+      createdAt: DateTime.parse(data['createdAt'] as String),
+    );
+  }
+
+  /// Serialize this [ActivityLog] to a Firestore document map.
+  ///
+  /// Field names are camelCase. Actor display name and avatar are excluded
+  /// (they are read-time join artifacts).
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'eventId': tripId,
+      'actorId': actorId,
+      'targetParticipantId': targetParticipantId,
+      'category': category,
+      'eventType': eventType,
+      'logText': logText,
+      'metadata': metadata,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
 }

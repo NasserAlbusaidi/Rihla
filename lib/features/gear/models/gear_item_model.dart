@@ -63,6 +63,48 @@ class GearItem {
     };
   }
 
+  /// Deserialize a [GearItem] from a Firestore document map.
+  ///
+  /// Field names are camelCase. [tripId] maps to `eventId` for backward
+  /// compatibility. No money fields.
+  factory GearItem.fromFirestore(Map<String, dynamic> data) {
+    return GearItem(
+      id: data['id'] as String,
+      tripId: data['eventId'] as String,
+      itemName: data['itemName'] as String,
+      assignedTo: data['assignedTo'] as String?,
+      isPacked: data['isPacked'] as bool? ?? false,
+      sequenceId: data['sequenceId'] as int? ?? 0,
+      isHighPriority: data['isHighPriority'] as bool? ?? false,
+      isDeleted: data['isDeleted'] as bool? ?? false,
+      deletedAt: data['deletedAt'] != null
+          ? DateTime.parse(data['deletedAt'] as String)
+          : null,
+      createdAt: data['createdAt'] != null
+          ? DateTime.parse(data['createdAt'] as String)
+          : null,
+    );
+  }
+
+  /// Serialize this [GearItem] to a Firestore document map.
+  ///
+  /// Field names are camelCase. Supabase join artifacts (assignedToName,
+  /// assignedToAvatar) are excluded.
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'eventId': tripId,
+      'itemName': itemName,
+      'assignedTo': assignedTo,
+      'isPacked': isPacked,
+      'sequenceId': sequenceId,
+      'isHighPriority': isHighPriority,
+      'isDeleted': isDeleted,
+      'deletedAt': deletedAt?.toIso8601String(),
+      'createdAt': createdAt?.toIso8601String(),
+    };
+  }
+
   GearItem copyWith({
     String? id,
     String? tripId,

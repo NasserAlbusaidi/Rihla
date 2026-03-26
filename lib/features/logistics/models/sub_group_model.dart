@@ -48,6 +48,40 @@ class SubGroup {
     };
   }
 
+  /// Deserialize a [SubGroup] from a Firestore document map.
+  ///
+  /// Field names are camelCase. [tripId] maps to `eventId` for backward
+  /// compatibility. Members are a separate subcollection -- not inlined.
+  factory SubGroup.fromFirestore(Map<String, dynamic> data) {
+    return SubGroup(
+      id: data['id'] as String,
+      tripId: data['eventId'] as String,
+      name: data['name'] as String,
+      type: SubGroupType.fromValue(data['type'] as String? ?? 'CAR'),
+      capacity: data['capacity'] as int? ?? 4,
+      createdAt: data['createdAt'] != null
+          ? DateTime.parse(data['createdAt'] as String)
+          : null,
+      // Members are stored in a separate subcollection -- not inlined here
+      members: const [],
+    );
+  }
+
+  /// Serialize this [SubGroup] to a Firestore document map.
+  ///
+  /// Field names are camelCase. Members are stored in a separate subcollection
+  /// and are not written here.
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'eventId': tripId,
+      'name': name,
+      'type': type.value,
+      'capacity': capacity,
+      'createdAt': createdAt?.toIso8601String(),
+    };
+  }
+
   int get memberCount => members.length;
   bool get isFull => memberCount >= capacity;
   double get fillPercentage => (memberCount / capacity).clamp(0.0, 1.0);

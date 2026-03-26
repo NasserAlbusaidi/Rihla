@@ -1,5 +1,7 @@
 import 'package:decimal/decimal.dart';
 
+import '../../../core/services/money_serializer.dart';
+
 /// Expense scope determines who shares the cost
 enum ExpenseScope {
   global('global'),
@@ -122,6 +124,76 @@ class Expense {
       'note': note,
     };
   }
+
+  /// Deserialize an [Expense] from a Firestore document map.
+  ///
+  /// Field names are camelCase (not snake_case as in Supabase).
+  /// [tripId] maps to Firestore field `eventId` for backward compatibility
+  /// with BalanceCalculator and UI code that passes `trip.id`.
+  /// Money is stored as integer fils via [MoneySerializer].
+  factory Expense.fromFirestore(Map<String, dynamic> data) {
+    final currency = data['currency'] as String? ?? 'OMR';
+    final amountFils = data['amountFils'] as int? ?? 0;
+
+    List<String>? customSplit;
+    if (data['customSplitParticipants'] != null) {
+      final rawList = data['customSplitParticipants'];
+      if (rawList is List) {
+        customSplit = List<String>.from(rawList);
+      }
+    }
+
+    return Expense(
+      id: data['id'] as String,
+      tripId: data['eventId'] as String,
+      payerParticipantId: data['payerParticipantId'] as String,
+      amount: MoneySerializer.fromSubunits(amountFils, currency),
+      description: data['description'] as String?,
+      scope: ExpenseScope.fromString(data['scope'] as String? ?? 'global'),
+      subGroupId: data['subGroupId'] as String?,
+      customSplitParticipants: customSplit,
+      receiptUrl: data['receiptUrl'] as String?,
+      createdAt: DateTime.parse(data['createdAt'] as String),
+      categoryId: data['categoryId'] as String?,
+      note: data['note'] as String?,
+      isDeleted: data['isDeleted'] as bool? ?? false,
+      deletedAt: data['deletedAt'] != null
+          ? DateTime.parse(data['deletedAt'] as String)
+          : null,
+    );
+  }
+
+  /// Serialize this [Expense] to a Firestore document map.
+  ///
+  /// Field names are camelCase. Money is stored as integer fils via
+  /// [MoneySerializer]. Supabase join artifacts (payerName, categoryName,
+  /// categoryIcon) are intentionally excluded -- they are read-time join
+  /// artifacts that do not belong in Firestore.
+  Map<String, dynamic> toFirestore() {
+    final currency = this.currency;
+    return {
+      'id': id,
+      'eventId': tripId,
+      'payerParticipantId': payerParticipantId,
+      'amountFils': MoneySerializer.toSubunits(amount, currency),
+      'currency': currency,
+      'description': description,
+      'scope': scope.value,
+      'subGroupId': subGroupId,
+      'customSplitParticipants': customSplitParticipants ?? [],
+      'receiptUrl': receiptUrl,
+      'createdAt': createdAt.toIso8601String(),
+      'categoryId': categoryId,
+      'note': note,
+      'isDeleted': isDeleted,
+      'deletedAt': deletedAt?.toIso8601String(),
+    };
+  }
+
+  /// The currency for this expense.
+  ///
+  /// Expenses default to OMR (Omani Rial). Use [copyWith] to change.
+  String get currency => 'OMR';
 
   /// Alias for receiptUrl for backward compatibility
   String? get receiptPath => receiptUrl;
