@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/groups/screens/create_group_screen.dart';
+import '../../features/groups/screens/group_detail_screen.dart';
+import '../../features/groups/screens/group_settings_screen.dart';
 import '../../features/groups/screens/join_group_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
@@ -23,6 +25,7 @@ class AppRoutes {
   static const String createGroup = '/create-group';
   static const String joinGroup = '/join-group';
   static const String groupDetail = '/group/:id';
+  static const String groupSettings = '/group/:id/settings';
 }
 
 /// Provider to track onboarding completion state
@@ -170,15 +173,51 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // Group Detail (Phase 2 — scaffold; detail screen wired in Plan 03)
+      // Group Detail (Phase 2 — Plan 03)
       GoRoute(
         path: AppRoutes.groupDetail,
-        builder: (context, state) => Scaffold(
-          appBar: AppBar(title: const Text('Group')),
-          body: Center(
-            child: Text('Group ${state.pathParameters['id']} — coming in Plan 03'),
-          ),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: GroupDetailScreen(groupId: state.pathParameters['id']!),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ),
+              ),
+              child: child,
+            );
+          },
         ),
+        routes: [
+          GoRoute(
+            path: 'settings',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: GroupSettingsScreen(groupId: state.pathParameters['id']!),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+                  child: child,
+                );
+              },
+            ),
+          ),
+        ],
       ),
 
       // Settings
