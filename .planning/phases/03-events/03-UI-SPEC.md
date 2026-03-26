@@ -54,15 +54,17 @@ All text uses Plus Jakarta Sans. The type scale is defined in `AppTheme._buildTe
 | Role | Size | Weight | Line Height | Flutter Style |
 |------|------|--------|-------------|---------------|
 | Body | 14sp | w500 | 1.5 | `bodyMedium` (color: textSecondary) |
-| Label / Caption | 12sp | w600 | 1.4 | `labelMedium` (color: textSecondary) or `bodySmall` (color: textMuted) |
+| Label / Caption | 12sp | w700 | 1.4 | `labelMedium` (color: textSecondary) or `bodySmall` (color: textMuted) |
 | Title | 16sp | w700 | 1.3 | `titleMedium` (color: textPrimary) |
-| Heading | 28sp | w800 | 1.2 | `headlineLarge` (letterSpacing: -0.5, color: textPrimary or white on dark header) |
+| Heading | 28sp | w700 | 1.2 | `headlineLarge` (letterSpacing: -0.5, color: textPrimary or white on dark header) |
 
-**Event type picker card text:** Type name at 16sp w700 (titleMedium). Short description at 13sp w600 (textSecondary). Module chips at 12sp w700 (chip label style from chipTheme).
+**Weights:** Exactly two weights are used across the entire phase. w500 is reserved for body text only (`bodyMedium`). w700 is used for all other roles: labels, captions, titles, headings, chip text, and badge text. No w600 or w800 anywhere.
 
-**Event card in timeline:** Event name at 15sp w800 (matches SmartModuleCard title style). Meta row (date range, participant count, total) at 13sp w600 (textSecondary).
+**Event type picker card text:** Type name at 16sp w700 (titleMedium). Short description at 12sp w700 (bodySmall textMuted). Module chips at 12sp w700 (chip label style from chipTheme).
 
-**Event hub header:** Event name at 28sp w800 on dark gradient (headlineLarge white). Event type badge at 12sp w600 (white at 0.5 opacity, letterSpacing: 0.5). Group name subtitle at 13sp w600 (white at 0.5 opacity).
+**Event card in timeline:** Event name at 16sp w700 (titleMedium, maxLines:1 overflow ellipsis). Meta row (date range, participant count, total) at 12sp w700 (textMuted).
+
+**Event hub header:** Event name at 28sp w700 on dark gradient (headlineLarge white). Event type badge at 12sp w700 (white at 0.5 opacity, letterSpacing: 0.5). Group name subtitle at 12sp w700 (white at 0.5 opacity).
 
 ---
 
@@ -112,7 +114,7 @@ Full-screen scaffold with light `AppBar` (title: "Choose Event Type", leading: C
 **Type card anatomy:**
 - Container: `AppColors.surface`, `borderRadius: AppColors.radiusLarge` (20dp), `boxShadow: AppColors.shadowRaised`, padding: 16dp all sides
 - Left: 48×48dp icon container, `borderRadius: 14dp`, background: `typeColor.withValues(alpha: 0.1)`, icon size 24dp in `typeColor`
-- Right: Column with type name (`titleMedium`), description (`bodySmall` textMuted), then a horizontal Wrap of module chips
+- Right: Column with type name (`titleMedium` 16sp w700), description (`bodySmall` 12sp w700 textMuted), then a horizontal Wrap of module chips
 - Module chips: Chip with `AppColors.surfaceLight` background, `AppColors.radiusSmall` shape, 12sp w700 label, no border. Show only enabled modules for the type.
 - Trailing: `Iconsax.arrow_right_3` at 18dp in `AppColors.textMuted`
 - Inter-card spacing: 12dp (space12)
@@ -148,11 +150,11 @@ Container: `AppColors.surface`, `borderRadius: AppColors.radiusLarge`, `boxShado
 - Row: [48×48dp type icon container] [space12] [Expanded column] [space8] [`Iconsax.arrow_right_3` 18dp textMuted]
 - Icon container: `borderRadius: 14dp`, background: `typeColor.withValues(alpha: 0.1)`, icon 22dp in `typeColor`
 - Column:
-  - Row: event name (`titleSmall` 14sp w700 textPrimary, maxLines:1 overflow ellipsis) + space4 + type badge chip (12sp w700, `typeColor`, `typeColor.withValues(alpha:0.1)` background, radiusSmall)
+  - Row: event name (16sp w700 textPrimary, maxLines:1 overflow ellipsis) + space4 + type badge chip (12sp w700, `typeColor`, `typeColor.withValues(alpha:0.1)` background, radiusSmall)
   - space4
-  - Meta row: [date range or "No dates"] [·] [participant count + " people"] — 13sp w600 textMuted
+  - Meta row: [date range or "No dates"] [·] [participant count + " people"] — 12sp w700 textMuted
   - space4
-  - Total spent: "0.000 OMR" (or actual amount in Phase 5) — 13sp w700 textSecondary
+  - Total spent: "0.000 OMR" (or actual amount in Phase 5) — 12sp w700 textSecondary
 
 **Past event dimming:** Wrap the entire card in `Opacity(opacity: 0.6)` when `event.isPast == true`.
 
@@ -162,7 +164,7 @@ Container: `AppColors.surface`, `borderRadius: AppColors.radiusLarge`, `boxShado
 
 Replaces the current `_buildEventsSection` placeholder.
 
-Section header: Row with "Events" text (`titleMedium`) + Spacer + count chip ("3" in a surfaceLight pill, 12sp w700 textSecondary, radiusSmall, horizontal padding: space8, vertical: space4).
+Section header: Row with "Events" text (`titleMedium` 16sp w700) + Spacer + count chip ("{N}" in a surfaceLight pill, 12sp w700 textSecondary, radiusSmall, horizontal padding: space8, vertical: space4).
 
 Below header: space12 gap, then the event card list. Each card separated by space12.
 
@@ -173,8 +175,8 @@ FAB: Add `floatingActionButton: FloatingActionButton(...)` to `GroupDetailScreen
 ### Adapted Event Hub (EventCommandCenter)
 
 Structurally identical to existing `CommandCenter`. Replace `TripHeader` with `ModuleHeader(useDarkTheme: true)`:
-- `title`: event.name (28sp w800 white)
-- `subtitle`: "${eventTypeLabel(event.type)} · ${group.name}" (13sp w600 white 0.5 opacity)
+- `title`: event.name (28sp w700 white)
+- `subtitle`: "${eventTypeLabel(event.type)} · ${group.name}" (12sp w700 white 0.5 opacity)
 - `actions`: `[IconButton(icon: Iconsax.more_circle)]` for future edit/delete access
 
 Module cards use existing `SmartModuleCard`. Cards are rendered only for modules enabled in `event.modules`. Module color mapping:
@@ -191,7 +193,7 @@ FAB: `Iconsax.add` on `AppColors.primary` CircleBorder — opens Add Expense (sa
 `AlertDialog` with:
 - title: "Delete event?" (16sp w700 textPrimary)
 - content: "This will permanently remove {event.name} and cannot be undone. Financial records are preserved." (14sp w500 textSecondary)
-- actions: [TextButton("Cancel", `AppColors.textSecondary`), ElevatedButton("Delete", `AppColors.error` background)]
+- actions: [TextButton("Cancel", `AppColors.textSecondary`), ElevatedButton("Delete Event", `AppColors.error` background)]
 
 ---
 
@@ -238,7 +240,7 @@ When event is created while offline, the card appears immediately in the timelin
 | Start date button (unset) | "Start date" |
 | End date button (unset) | "End date" |
 | Dates section label | "Dates" |
-| Dates optional hint | "(optional)" inline after "Dates" label, 12sp w500 textMuted |
+| Dates optional hint | "(optional)" inline after "Dates" label, 12sp w700 textMuted |
 | Participants section label | "Participants" |
 | Modules section label | "Modules" (Custom type only) |
 | Primary CTA | "Create Event" |
@@ -258,11 +260,11 @@ When event is created while offline, the card appears immediately in the timelin
 | Delete event dialog title | "Delete event?" |
 | Delete event dialog body | "This will permanently remove {event.name} and cannot be undone. Financial records are preserved." |
 | Delete event cancel button | "Cancel" |
-| Delete event confirm button | "Delete" |
+| Delete event confirm button | "Delete Event" |
 | Members error (group detail) | "Couldn't load members" (existing copy, do not change) |
 
 **Destructive actions in this phase:**
-- Delete event (D-09): `AlertDialog` with explicit "Delete" `ElevatedButton` in `AppColors.error` background. No swipe-to-delete. Creator-only action (hide option from non-creators in the event hub actions menu).
+- Delete event (D-09): `AlertDialog` with explicit "Delete Event" `ElevatedButton` in `AppColors.error` background. No swipe-to-delete. Creator-only action (hide option from non-creators in the event hub actions menu).
 
 ---
 
@@ -298,6 +300,7 @@ Respect `MediaQuery.of(context).disableAnimations` — all animations must be sk
 - Event type cards: `Semantics(label: '{type name}: {description}. Modules: {module list}', button: true)`
 - Participant checkbox rows: `Semantics(label: '{member name}', checked: isSelected)`
 - Delete button in dialog: `Semantics(label: 'Delete event permanently', button: true)`
+- Event hub options button: `Semantics(label: 'Event options', button: true)` wrapping the `IconButton(icon: Iconsax.more_circle)` in the event hub header actions.
 - Minimum touch target: 44×44dp enforced on all interactive elements (back buttons, icon buttons, FAB, event cards)
 - Color contrast: All text on `AppColors.background` or `AppColors.surface` uses `textPrimary` (#0F172A on #FFFFFF = 19.1:1 ratio). `textSecondary` (#475569 on white = 5.9:1 ratio, passes AA). `textMuted` (#94A3B8) is used only for non-essential decorative text (dates, meta), not for required information.
 
