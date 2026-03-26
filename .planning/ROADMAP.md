@@ -74,7 +74,7 @@ Plans:
 - [x] 03-00-PLAN.md — Event model, EventType enum, EventModules class, EventTypeConfig, test stubs
 - [x] 03-01-PLAN.md — EventService with Supabase bridge + gear seeding, providers, security rules, pull-to-refresh fix
 - [x] 03-02-PLAN.md — EventTypePickerScreen + CreateEventScreen (event creation UI flow)
-- [ ] 03-03-PLAN.md — EventCard widget + GroupDetailScreen events section + FAB
+- [x] 03-03-PLAN.md — EventCard widget + GroupDetailScreen events section + FAB
 - [ ] 03-04-PLAN.md — EventCommandCenter + EventModuleList + navigation wiring + human verification
 
 ### Phase 4: Firestore Repository Layer
@@ -132,7 +132,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
 | 2. Groups | 3/4 | In Progress|  |
-| 3. Events | 3/5 | In Progress|  |
+| 3. Events | 4/5 | In Progress|  |
 | 4. Firestore Repository Layer | 0/TBD | Not started | - |
 | 5. Cross-Event Financials | 0/TBD | Not started | - |
 | 6. Testing and Coverage | 0/TBD | Not started | - |
