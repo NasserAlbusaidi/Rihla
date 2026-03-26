@@ -68,7 +68,14 @@ Plans:
   4. A Custom event presents a module picker with no preset content
   5. The group event timeline shows all past and upcoming events in chronological order with financial totals per event
   6. Pull-to-refresh on the home screen groups list reloads data from Firestore (carried from Phase 2 UAT gap #8)
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 03-00-PLAN.md — Event model, EventType enum, EventModules class, EventTypeConfig, test stubs
+- [ ] 03-01-PLAN.md — EventService with Supabase bridge + gear seeding, providers, security rules, pull-to-refresh fix
+- [ ] 03-02-PLAN.md — EventTypePickerScreen + CreateEventScreen (event creation UI flow)
+- [ ] 03-03-PLAN.md — EventCard widget + GroupDetailScreen events section + FAB
+- [ ] 03-04-PLAN.md — EventCommandCenter + EventModuleList + navigation wiring + human verification
 
 ### Phase 4: Firestore Repository Layer
 **Goal**: All per-event module writes (expenses, settlements, gear, logistics, vault, memories, activity) flow through Firestore; the SyncService polling loop is gone; offline capability is preserved through Firestore's built-in write queue
@@ -125,7 +132,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
 | 2. Groups | 3/4 | In Progress|  |
-| 3. Events | 0/TBD | Not started | - |
+| 3. Events | 0/5 | Not started | - |
 | 4. Firestore Repository Layer | 0/TBD | Not started | - |
 | 5. Cross-Event Financials | 0/TBD | Not started | - |
 | 6. Testing and Coverage | 0/TBD | Not started | - |
