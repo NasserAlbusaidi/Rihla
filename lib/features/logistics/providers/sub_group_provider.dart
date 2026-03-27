@@ -38,18 +38,6 @@ final tripSubGroupsProvider = StreamProvider.family<List<SubGroup>, String>((
   return Stream.value([]);
 });
 
-/// Sub-groups filtered by type (uses SQLite legacy stream)
-final subGroupsByTypeProvider =
-    Provider.family<
-      AsyncValue<List<SubGroup>>,
-      ({String tripId, SubGroupType type})
-    >((ref, params) {
-      final allGroups = ref.watch(tripSubGroupsProvider(params.tripId));
-      return allGroups.whenData(
-        (groups) => groups.where((g) => g.type == params.type).toList(),
-      );
-    });
-
 /// Derives a [List<Participant>] from an [Event]'s participantIds/participantNames.
 ///
 /// Used by LogisticsScreen to show participants for drag-and-drop assignment.
