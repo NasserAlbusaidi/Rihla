@@ -5,8 +5,8 @@ import '../../../core/config/firebase_config.dart';
 
 /// Firebase auth state provider — listens to Firebase auth state changes.
 ///
-/// Mirrors the Supabase authStateProvider pattern. Emits the current
-/// Firebase User whenever auth state changes (sign-in, sign-out, token refresh).
+/// Emits the current Firebase User whenever auth state changes
+/// (sign-in, sign-out, token refresh).
 final firebaseAuthStateProvider = StreamProvider<firebase_auth.User?>((ref) {
   return FirebaseConfig.authStateChanges;
 });

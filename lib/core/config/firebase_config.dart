@@ -9,8 +9,8 @@ import '../../firebase_options.dart';
 
 /// Firebase client configuration and initialization.
 ///
-/// Mirrors the SupabaseConfig pattern. All Firebase initialization,
-/// anonymous auth, and accessor getters live here.
+/// Centralizes all Firebase initialization and configuration.
+/// Anonymous auth, and accessor getters live here.
 class FirebaseConfig {
   static FirebaseAuth get auth => FirebaseAuth.instance;
   static FirebaseFirestore get firestore => FirebaseFirestore.instance;
@@ -34,12 +34,7 @@ class FirebaseConfig {
     log('Firebase initialized with Firestore offline persistence enabled');
   }
 
-  /// Ensure an anonymous Firebase session exists.
-  ///
-  /// If no user is currently signed in, signs in anonymously so that
-  /// Firebase Auth UID is available for Firestore security rules.
-  /// Mirrors the SupabaseConfig.ensureAnonymousSession() pattern (D-07).
-  /// Ensure an anonymous Firebase session exists.
+  /// Ensures an anonymous Firebase Auth session exists on launch.
   ///
   /// Waits for Firebase Auth to restore any persisted session before
   /// deciding to create a new one. Without this wait, `currentUser`

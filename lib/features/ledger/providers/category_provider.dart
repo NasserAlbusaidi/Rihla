@@ -1,128 +1,108 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/config/supabase_config.dart';
 import '../models/expense_category_model.dart';
 
-/// Loading state for category operations
+/// Loading state for category operations.
 final categoryLoadingProvider = StateProvider<bool>((ref) => false);
 
-/// Error state for category operations
+/// Error state for category operations.
 final categoryErrorProvider = StateProvider<String?>((ref) => null);
 
-/// Stream of expense categories for a trip
+/// Default expense categories (hardcoded, no backend).
+///
+/// Custom categories via the legacy backend have been removed. These are the
+/// built-in defaults that cover common expense types.
 final tripCategoriesProvider =
     StreamProvider.family<List<ExpenseCategory>, String>((ref, tripId) {
-      SupabaseConfig.log(
-        'tripCategoriesProvider: Starting stream for trip $tripId',
-      );
+  return Stream.value(_defaultCategories);
+});
 
-      return SupabaseConfig.client
-          .from('expense_categories')
-          .stream(primaryKey: ['id'])
-          .eq('trip_id', tripId)
-          .order('is_default', ascending: false)
-          .order('name', ascending: true)
-          .map((data) {
-            SupabaseConfig.log(
-              'tripCategoriesProvider: Got ${data.length} categories',
-            );
-            return data.map((json) => ExpenseCategory.fromJson(json)).toList();
-          });
-    });
+final _defaultCategories = [
+  ExpenseCategory(
+    id: 'food',
+    tripId: '',
+    name: 'Food & Dining',
+    icon: 'food',
+    color: '#F59E0B',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'transport',
+    tripId: '',
+    name: 'Transport',
+    icon: 'transport',
+    color: '#3B82F6',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'accommodation',
+    tripId: '',
+    name: 'Accommodation',
+    icon: 'lodging',
+    color: '#8B5CF6',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'activities',
+    tripId: '',
+    name: 'Activities',
+    icon: 'other',
+    color: '#10B981',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'shopping',
+    tripId: '',
+    name: 'Shopping',
+    icon: 'gear',
+    color: '#EC4899',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'other',
+    tripId: '',
+    name: 'Other',
+    icon: 'other',
+    color: '#6B7280',
+    isDefault: true,
+  ),
+];
 
-/// Category service provider
+/// Category service provider.
 final categoryServiceProvider = Provider<CategoryService>((ref) {
   return CategoryService(ref);
 });
 
-/// Service for managing expense categories
+/// Service for managing expense categories.
+///
+/// Custom category CRUD has been removed. Only default categories are
+/// available. Create/update/delete methods return success/failure but are
+/// no-ops for default categories.
 class CategoryService {
   final Ref _ref;
-
   CategoryService(this._ref);
 
-  /// Create a new custom category (leader only)
   Future<ExpenseCategory?> createCategory({
     required String tripId,
     required String name,
     String icon = 'other',
     String color = '#22C55E',
   }) async {
-    _ref.read(categoryLoadingProvider.notifier).state = true;
-    _ref.read(categoryErrorProvider.notifier).state = null;
-
-    SupabaseConfig.log('createCategory: $name for trip $tripId');
-
-    try {
-      final data = await SupabaseConfig.client
-          .from('expense_categories')
-          .insert({
-            'trip_id': tripId,
-            'name': name,
-            'icon': icon,
-            'color': color,
-            'is_default': false,
-          })
-          .select()
-          .single();
-
-      SupabaseConfig.log('createCategory: SUCCESS - id: ${data['id']}');
-      _ref.read(categoryLoadingProvider.notifier).state = false;
-      return ExpenseCategory.fromJson(data);
-    } catch (e) {
-      SupabaseConfig.log('createCategory: FAILED', error: e);
-      _ref.read(categoryErrorProvider.notifier).state = e.toString();
-      _ref.read(categoryLoadingProvider.notifier).state = false;
-      return null;
-    }
+    // Custom categories not supported in this version.
+    // Return null to indicate creation was not performed.
+    return null;
   }
 
-  /// Update a category (leader only)
   Future<bool> updateCategory({
     required String categoryId,
     String? name,
     String? icon,
     String? color,
   }) async {
-    SupabaseConfig.log('updateCategory: $categoryId');
-
-    try {
-      final updates = <String, dynamic>{};
-      if (name != null) updates['name'] = name;
-      if (icon != null) updates['icon'] = icon;
-      if (color != null) updates['color'] = color;
-
-      await SupabaseConfig.client
-          .from('expense_categories')
-          .update(updates)
-          .eq('id', categoryId);
-
-      SupabaseConfig.log('updateCategory: SUCCESS');
-      return true;
-    } catch (e) {
-      SupabaseConfig.log('updateCategory: FAILED', error: e);
-      _ref.read(categoryErrorProvider.notifier).state = e.toString();
-      return false;
-    }
+    return false;
   }
 
-  /// Delete a custom category (leader only, can't delete defaults)
   Future<bool> deleteCategory(String categoryId) async {
-    SupabaseConfig.log('deleteCategory: $categoryId');
-
-    try {
-      await SupabaseConfig.client
-          .from('expense_categories')
-          .delete()
-          .eq('id', categoryId)
-          .eq('is_default', false); // Can only delete non-default
-
-      SupabaseConfig.log('deleteCategory: SUCCESS');
-      return true;
-    } catch (e) {
-      SupabaseConfig.log('deleteCategory: FAILED', error: e);
-      _ref.read(categoryErrorProvider.notifier).state = e.toString();
-      return false;
-    }
+    return false;
   }
 }
