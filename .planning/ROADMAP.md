@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Firestore Repository Layer** - All per-event module writes routed through Firestore; SyncService retired (completed 2026-03-26)
 - [ ] **Phase 5: Cross-Event Financials** - Group-level running balances, balance toggle, cross-event settle-up, group dashboard
 - [ ] **Phase 6: Testing and Coverage** - 80%+ coverage enforced, offline scenario tests, widget tests, financial unit tests
-- [ ] **Phase 7: Data Migration and Supabase Removal** - Existing data migrated via invite-code recovery, Supabase dependency deleted
+- [ ] **Phase 7: Data Migration and Supabase Removal** - Supabase dependency deleted, old trip data abandoned (MIG-06 descoped per D-01)
 
 ## Phase Details
 
@@ -138,14 +138,19 @@ Plans:
 - [x] 06-05-PLAN.md — CI coverage enforcement inline in release workflow (lcov filtering, 80% threshold) + gap closure
 
 ### Phase 7: Data Migration and Supabase Removal
-**Goal**: Existing user data is accessible in the new Firestore-backed app; the supabase_flutter dependency is gone from the codebase
+**Goal**: The supabase_flutter dependency is completely removed from the codebase; the app boots and runs on Firebase only
 **Depends on**: Phase 6
-**Requirements**: MIG-06, MIG-07
+**Requirements**: MIG-06 (descoped per D-01 -- old trip data abandoned, no recovery flow), MIG-07
 **Success Criteria** (what must be TRUE):
-  1. A user with existing trip data can recover their data in the new app by entering the trip's invite code — their expenses, gear, and settlements appear correctly
+  1. ~~A user with existing trip data can recover their data in the new app by entering the trip's invite code~~ (descoped per D-01: old trip data abandoned, users start fresh with groups+events)
   2. `flutter pub get` succeeds with no supabase_flutter or supabase-dart packages in pubspec.lock
   3. `flutter analyze` reports zero references to Supabase types (SupabaseClient, SupabaseQueryBuilder, etc.) in the codebase
-**Plans**: TBD
+  4. `flutter test` passes with zero failures
+**Plans**: 2 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Remove supabase_flutter dependency, delete dead Supabase-only files, clean boot sequence and router
+- [ ] 07-02-PLAN.md — Rewrite remaining Supabase references in active code to Firebase equivalents, verify zero Supabase refs
 
 ## Progress
 
@@ -160,4 +165,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. Firestore Repository Layer | 6/6 | Complete   | 2026-03-26 |
 | 5. Cross-Event Financials | 6/7 | In Progress|  |
 | 6. Testing and Coverage | 4/5 | In Progress|  |
-| 7. Data Migration and Supabase Removal | 0/TBD | Not started | - |
+| 7. Data Migration and Supabase Removal | 0/2 | Not started | - |
