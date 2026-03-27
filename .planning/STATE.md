@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-27T10:13:58.135Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-27T10:27:29.180Z"
 progress:
   total_phases: 7
   completed_phases: 6
@@ -76,6 +76,7 @@ Plan: 2 of 2
 | Phase 06 P04 | 7 | 3 tasks | 5 files |
 | Phase 06 P05 | 90 | 2 tasks | 18 files |
 | Phase 07 P01 | 4 | 2 tasks | 11 files |
+| Phase 07-data-migration-and-supabase-removal P02 | 15 | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ Recent decisions affecting current work:
 - [Phase 06]: SettingsNotifier tests extracted to dedicated settings_notifier_test.dart — provider_tests.dart tests were not discovered in combined flutter test runs
 - [Phase 07]: LazyMigrationService deleted and Supabase data recovery descoped per D-01 — old trip data abandoned, no migration needed
 - [Phase 07]: supabase_flutter removed from pubspec.yaml — app now boots on Firebase only with no Supabase initialization
+- [Phase 07]: firebase_auth.User.uid used everywhere — User.id was Supabase, User.uid is Firebase; three latent bugs fixed in gear_screen, edit_expense_sheet, split_scope_selector
+- [Phase 07]: CategoryProvider hardcoded to 6 defaults — expense_categories Supabase table has no Firestore equivalent; custom categories deferred
+- [Phase 07]: TripService class deleted — only served legacy create/join trip screens deleted in Plan 01; no active consumers remain
 
 ### Pending Todos
 
@@ -167,6 +171,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T10:13:58.132Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-03-27T10:27:29.177Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

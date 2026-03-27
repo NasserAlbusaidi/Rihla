@@ -96,7 +96,7 @@ void main() {
       expect(data['currency'], equals('OMR'));
       expect(data['payerParticipantId'], equals('uid-1'));
       expect(data['eventId'], equals('event-1'));
-      // Supabase join artifacts must NOT be present
+      // Legacy join artifacts must NOT be present
       expect(data.containsKey('payerName'), isFalse);
       expect(data.containsKey('categoryName'), isFalse);
       expect(data.containsKey('categoryIcon'), isFalse);

@@ -4,7 +4,7 @@ import 'package:thawani_payment/thawani_payment.dart';
 import 'package:thawani_payment/models/products.dart';
 import 'package:thawani_payment/models/create.dart';
 
-import '../../../core/config/supabase_config.dart';
+import '../../../core/config/firebase_config.dart';
 
 /// Thawani payment gateway integration for settling debts
 class ThawaniService {
@@ -57,7 +57,7 @@ class ThawaniService {
       return;
     }
 
-    final clientId = SupabaseConfig.client.auth.currentUser?.id ?? 'anonymous';
+    final clientId = FirebaseConfig.currentUser?.uid ?? 'anonymous';
 
     // ignore: unused_local_variable
     final payment = Thawani.pay(

@@ -45,7 +45,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   Widget build(BuildContext context) {
     final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id);
     final gearAsync = ref.watch(eventGearItemsProvider(eventRef));
-    final currentUserId = ref.watch(currentUserProvider)?.id;
+    final currentUserId = ref.watch(currentUserProvider)?.uid;
 
     return Scaffold(
       backgroundColor: AppColors.background,

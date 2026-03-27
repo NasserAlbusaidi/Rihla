@@ -1,11 +1,11 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../config/supabase_config.dart';
+import '../config/firebase_config.dart';
 
 enum NotificationStatus {
   off,
@@ -35,8 +35,6 @@ class NotificationService {
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<RemoteMessage>? _messageSubscription;
   StreamSubscription<RemoteMessage>? _messageOpenedSubscription;
-
-  SupabaseClient get _client => SupabaseConfig.client;
 
   /// Initialize Firebase Messaging. Call only after the user has opted in.
   Future<bool> initialize() async {
@@ -84,7 +82,7 @@ class NotificationService {
     }
   }
 
-  /// Save FCM token to Supabase.
+  /// Save FCM token to Firestore.
   Future<void> _saveToken() async {
     if (!_initialized) return;
 
@@ -92,15 +90,15 @@ class NotificationService {
       final token = await _messaging!.getToken();
       if (token == null) return;
 
-      final userId = _client.auth.currentUser?.id;
+      final userId = FirebaseConfig.currentUser?.uid;
       if (userId == null) return;
 
-      await _client.from('fcm_tokens').upsert({
+      await FirebaseConfig.firestore.collection('fcm_tokens').doc(userId).set({
         'user_id': userId,
         'token': token,
         'platform': defaultTargetPlatform.name,
         'updated_at': DateTime.now().toIso8601String(),
-      }, onConflict: 'user_id, token');
+      }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('FCM: Failed to save token: $e');
       _setStatus(NotificationStatus.error);
@@ -109,16 +107,16 @@ class NotificationService {
 
   /// Handle token refresh.
   Future<void> _onTokenRefresh(String token) async {
-    final userId = _client.auth.currentUser?.id;
+    final userId = FirebaseConfig.currentUser?.uid;
     if (userId == null) return;
 
     try {
-      await _client.from('fcm_tokens').upsert({
+      await FirebaseConfig.firestore.collection('fcm_tokens').doc(userId).set({
         'user_id': userId,
         'token': token,
         'platform': defaultTargetPlatform.name,
         'updated_at': DateTime.now().toIso8601String(),
-      }, onConflict: 'user_id, token');
+      }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('FCM: Token refresh save failed: $e');
       _setStatus(NotificationStatus.error);
@@ -139,9 +137,12 @@ class NotificationService {
   Future<void> removeToken() async {
     try {
       _messaging ??= FirebaseMessaging.instance;
-      final token = await _messaging!.getToken();
-      if (token != null) {
-        await _client.from('fcm_tokens').delete().eq('token', token);
+      final userId = FirebaseConfig.currentUser?.uid;
+      if (userId != null) {
+        await FirebaseConfig.firestore
+            .collection('fcm_tokens')
+            .doc(userId)
+            .delete();
       }
     } catch (e) {
       debugPrint('FCM: Token removal failed: $e');
@@ -150,7 +151,6 @@ class NotificationService {
       _setStatus(NotificationStatus.off);
     }
   }
-
 
   bool get isInitialized => _initialized;
 

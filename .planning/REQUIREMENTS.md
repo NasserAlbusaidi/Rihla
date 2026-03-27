@@ -53,7 +53,7 @@
 - [x] **MIG-04**: SQLite retained for fast local reads and balance computation queries
 - [x] **MIG-05**: `FirestoreRepository` is the single Firestore contact point — all access flows through it
 - [ ] **MIG-06**: Existing trip data migrated from Supabase to Firestore via invite-code recovery flow
-- [ ] **MIG-07**: `supabase_flutter` dependency completely removed
+- [x] **MIG-07**: `supabase_flutter` dependency completely removed
 
 ### Testing
 
@@ -131,7 +131,7 @@
 | TST-05 | Phase 6 | Complete |
 | TST-06 | Phase 6 | Complete |
 | MIG-06 | Phase 7 | Pending |
-| MIG-07 | Phase 7 | Pending |
+| MIG-07 | Phase 7 | Complete |
 
 **Coverage:**
 - v1 requirements: 41 total

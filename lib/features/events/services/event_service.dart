@@ -16,8 +16,7 @@ import '../models/event_model.dart';
 /// Events are stored as a subcollection:
 ///   `groups/{groupId}/events/{eventId}`
 ///
-/// The Supabase bridge pattern (D-22) has been removed in Plan 04-05.
-/// Events are now Firestore-only.
+/// Events are Firestore-only.
 class EventService extends FirestoreRepository {
   final Ref? _ref;
   final GearService? _gearServiceOverride;
