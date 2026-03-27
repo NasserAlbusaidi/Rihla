@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** Rihla v2 — Groups, Events, and Cross-Event Financial Tracking
-**Domain:** Offline-first mobile expense coordination app with Supabase-to-Firestore migration
-**Researched:** 2026-03-26
-**Confidence:** HIGH (stack and architecture), MEDIUM (dual-cache integration specifics)
+**Project:** Rihla v2.0 — Major UI/UX Overhaul
+**Domain:** Flutter mobile app — design system migration, navigation restructuring, visual redesign
+**Researched:** 2026-03-28
+**Confidence:** HIGH (stack, architecture, pitfalls verified) / MEDIUM (Stitch workflow, visual trend direction)
 
 ## Executive Summary
 
-Rihla v2 is a phased migration and feature expansion on an existing Flutter/Riverpod codebase. The primary work is replacing Supabase (PostgreSQL + Realtime) with Firebase Firestore as the cloud backend, while simultaneously introducing a persistent groups layer above the existing trip/event architecture. The codebase already has Firebase initialized for FCM, which means this migration is additive rather than a rewrite — but it is still large in scope, touching every service layer and the entire security model. The recommended approach is a strict layer-by-layer build order: data foundation first (schema, Firestore init, security rules), then groups, then events, then module migration, then cross-event financials, then final Supabase removal. This ordering respects the hard dependency chain and avoids partial migrations where both backends are live simultaneously for long periods.
+Rihla v2.0 is a visual and navigational overhaul of a fully functional, 624-test Flutter app. The backend (Firebase, Riverpod 2.x, sqflite, GoRouter 17.x) is stable and completely out of scope. The milestone delivers three things: a warm earthy design system (terracotta, sand, olive) replacing the current generic palette; a flatter information architecture that surfaces key data without deep tap hierarchies; and a rich dashboard home that makes the app feel alive rather than barren. Research confirms this combination — design token system + content surfacing + skeleton loading — is the standard playbook for group/social finance app redesigns in 2026, with Airbnb and Revolut as reference implementations for card richness and balance display respectively. Splitwise and Tricount, the direct competitors, use clinical blue/white palettes and flat list views — a genuine market gap that Rihla can own by committing to warmth and density.
 
-The defining architectural decision for this milestone is the dual-cache strategy. Firestore's built-in offline persistence handles write queuing and auto-sync, eliminating the existing `SyncService` polling loop. SQLite is retained specifically for structured queries that power balance calculations — Firestore's cache cannot perform SQL aggregates, and the greedy min-transactions algorithm needs fast indexed reads. These two caches serve different roles and must have a defined authority hierarchy: Firestore SDK cache is the read authority; SQLite is populated as a side effect of confirmed Firestore listener events and provides the structured query layer. Any design that treats them as co-equals will produce data inconsistency.
+The recommended approach is strictly outside-in and phased. The design token layer (ThemeExtension-based, two-layer palette/semantic split) must exist before any screen is touched. This is non-negotiable: without it, every screen change creates fresh hardcoded-value debt. Once tokens are in place, screens migrate progressively from the most-seen (Home) to the least-seen (module detail screens). Navigation flattening is achieved primarily through content surfacing — showing balance summaries, inline event data, and recent activity one level higher — not through structural navigation changes like adding a bottom tab bar. ARCHITECTURE.md research explicitly recommends against StatefulShellRoute for this app because the data model has a single hierarchy (Group → Event → Module), not parallel top-level sections.
 
-The key risks are financial precision (OMR amounts must be stored as integers in fils, never as Firestore doubles), write hotspots on the cross-event group balance document (use per-event balance summaries aggregated client-side, not a single group-level aggregation document), and Firestore security rules complexity (the 10-get limit per rule evaluation means membership must be embedded in the group document as a map field, not resolved via cross-document lookups). These three risks are non-negotiable prerequisites that must be addressed in the foundation phase before any feature work begins.
+The primary risks are all about the existing codebase's brittleness under visual change. The test suite has 257 `find.text()` calls that will cascade-fail on any label rename. The codebase has 895 direct `AppColors.*` references that will mass-compile-fail if the class is replaced rather than extended. The earthy palette itself is an accessibility risk — terracotta on sand fails WCAG AA at approximately 2.8:1 contrast ratio. All three are predictable, preventable, and must be addressed before any visual work begins.
 
 ---
 
@@ -19,188 +19,156 @@ The key risks are financial precision (OMR amounts must be stored as integers in
 
 ### Recommended Stack
 
-The Firestore migration requires upgrading `firebase_core` from `^3.12.1` to `^4.6.0` — this is mandatory because `cloud_firestore ^6.2.0` requires it. All other FlutterFire packages (`firebase_auth ^6.3.0`, `firebase_storage ^13.2.0`, `firebase_messaging`) align on `firebase_core` 4.x. Riverpod must stay on 2.x for this milestone: Riverpod 3.0 shipped September 2025 with breaking changes to every provider type, and mixing a Riverpod major-version migration with a Firestore migration creates compounding risk. Plan Riverpod 3.x as a separate future milestone. GoRouter should be upgraded from `^13.2.0` to `^17.1.0` to support the new `/groups`, `/groups/:id`, and `/groups/:id/events/:eventId` route structure.
+The backend stack requires zero changes. UI work needs 7 new packages added to pubspec.yaml. The core additions are: `animations ^2.1.2` for Material 3 page transitions (ContainerTransform, SharedAxis), `skeletonizer ^2.1.3` for full-layout skeleton loading on the dashboard, `lottie ^3.3.2` for animated empty state illustrations, `flutter_svg ^2.2.4` for static SVG illustrations, `haptic_feedback ^0.6.4+3` for coordinated tactile micro-interactions, `smooth_page_indicator ^2.0.1` for onboarding carousels, and `material_symbols_icons ^4.2906.0` for variable-weight icons on new screens. Existing packages — `flutter_animate ^4.5.0` (upgrade to 4.5.2, patch-safe), `shimmer ^3.0.0`, `google_fonts ^6.1.0`, `iconsax ^0.0.8`, and `go_router ^17.1.0` — all stay unchanged. Google Stitch is a web design tool, not a package; its Flutter code export produces layout references and visual specs, not production-ready code.
 
 **Core technologies:**
-- `cloud_firestore ^6.2.0`: Primary cloud database — NoSQL with built-in offline persistence, real-time listeners, and collection group queries for cross-event aggregation. Replaces Supabase PostgreSQL + Realtime.
-- `firebase_auth ^6.3.0`: Anonymous auth — same `signInAnonymously()` UX, Firestore security rules replace Supabase RLS.
-- `firebase_storage ^13.2.0`: Document vault and memories — replaces Supabase Storage buckets; `getDownloadURL()` replaces signed URL generation.
-- `firebase_core ^4.6.0`: Mandatory upgrade; current 3.x is incompatible with Firestore 6.x.
-- `sqflite ^2.4.2` (keep): Structured local reads for balance calculations — cannot be replaced by Firestore's offline cache.
-- `decimal ^3.2.4` (keep): OMR amounts stored as integer fils in Firestore, deserialized to Decimal at the boundary via a `MoneySerializer` utility.
-- `fake_cloud_firestore ^4.1.0+1` (dev): In-memory Firestore for unit tests; inject `FirebaseFirestore` as constructor parameter into all repositories so tests can pass `FakeFirebaseFirestore()`.
-- `go_router ^17.1.0`: Upgraded from 13.x for new group/event top-level routes; `Navigator.push` stays for per-event module screens within the group shell.
-- `flutter_riverpod ^2.4.9` (stay): Riverpod 3.x migration is a separate milestone.
+- `animations ^2.1.2`: M3 page transitions (ContainerTransform, SharedAxis) — Flutter.dev maintained, the correct package for Material motion semantics; never roll custom AnimatedSwitcher transitions for screen-level moves
+- `skeletonizer ^2.1.3`: Full-layout skeleton loading — wraps the real widget layout and renders it as a skeleton automatically, eliminating duplicate skeleton widget code; coexists with existing `shimmer` which stays for simple loading bars
+- `flutter_animate ^4.5.2` (upgrade from 4.5.0): Entry animations, list stagger, state transitions — already installed, chainable `.animate()` API on any widget; patch upgrade with zero API changes
+- `lottie ^3.3.2`: Animated empty states and onboarding illustrations — for complex looping animations where flutter_animate is insufficient; requires a `.json` asset file from LottieFiles
+- `haptic_feedback ^0.6.4+3`: Cross-platform tactile micro-interactions — provides iOS-style haptic patterns emulated consistently on Android API 26+, unlike the SDK's built-in 4-pattern `HapticFeedback` class
+- Flutter `ThemeExtension` (built-in, no package): Typed design token carrier — strongly typed, lerp-aware, tree-propagated token sets with zero package overhead; the correct architecture for earthy palette tokens
+- Flutter `ColorScheme.fromSeed` (built-in, no package): M3 tonal palette from terracotta seed — generates full warm palette across all M3 color roles from a single seed color
+
+**What NOT to add:** `get`/GetX (routing conflict with GoRouter), `flutter_screenutil` (mid-project adoption requires touching 300+ spacing calls), `animate_do` (redundant with flutter_animate), `auto_route` (conflicts with GoRouter), `fluent_ui` or any third-party component library (resist customization, conflict with M3 + earthy token system), additional icon packages beyond `iconsax` + `material_symbols_icons`.
 
 ### Expected Features
 
-The market gap Rihla v2 fills is well-documented: Splitwise users have repeatedly asked for "events inside groups" (persistent friend circle containing multiple trips) and received no resolution. No mainstream app does this well. Group-level running balances are the killer feature — almost all differentiating capabilities build on top of this, making it the central architectural dependency.
+Research benchmarked against Splitwise, Tricount, TripIt, Airbnb, Venmo, and Revolut. Key observation: Splitwise and Tricount are functionally mature but visually stagnant — clinical blue/white palettes, flat list views, spinners everywhere. This is a real market gap. Rihla can own warmth as a visual identity without looking derivative of any direct competitor.
 
-**Must have (table stakes for v2):**
-- Persistent group with member list — the entire new layer; without it nothing else works
-- Create event from group (members pre-populated) — eliminates re-inviting the same people per trip
-- Group event timeline — chronological list of past and upcoming events
-- Group-level running balance per member across all events — the core value proposition
-- Per-event vs. group balance toggle — the feature Splitwise users have been asking for for years
-- Group join via shareable link — extends existing trip invite flow to groups
-- All existing per-event features must not regress (offline capability, expense splitting, settlement, activity feed, push notifications)
+**Must have (table stakes):**
+- Balance summary visible on home screen without tapping — users open the app to answer "what do I owe?"; that answer must be instant; Venmo and Revolut both surface the primary number on first load
+- Skeleton screens instead of spinners for content loads — perceived approximately 3x faster than spinners per NN/G research; "500ms skeleton feels fast; 500ms spinner feels slow"; currently missing across all data-fetching screens
+- Context-specific illustrated empty states with a single clear CTA — "No expenses yet" with no guidance reads as broken; each empty screen must know WHY it is empty and what the user should do next
+- Color-coded financial states — green (owed to you), red (you owe), gray (settled) is a universal fintech convention; violating it confuses users familiar with any finance app
+- Readable typography hierarchy — H1/H2/body/caption clearly differentiated in weight and size; the "barren" look often comes entirely from uniform type weights
+- Cards with visible elevation or border separation — content cards must visually separate from background; currently too much flat whitespace
 
 **Should have (competitive differentiators):**
-- Event type templates with gear presets — "Camping" pre-fills gear list, no competitor does this
-- Template-driven module visibility — trip type controls which CommandCenter cards appear
-- Cross-event settle-up suggestion — "You owe Nasser 15.500 across 3 events — settle now?"
-- Group activity log — group-level narrative of all write operations
-- Group event history with financial totals — each past event shows inline total spend
+- Balance hero widget at top of home — net cross-group balance, color-coded, prominent above fold; Revolut reference
+- Rich group cards with inline balance, member avatar row, last activity — bento-grid treatment vs. current flat name-only list; Airbnb reference for card richness
+- Quick-action tray on home — Add Expense, Settle Up, Invite, Activity in one-tap reach; Revolut reference
+- Warm earthy palette (terracotta/sand/olive) with grain/texture overlays — "tactile rebellion" against flat sterility; 2026 dominant trend; competitors own clinical blue/white so Rihla can own warmth without looking derivative
+- Swipeable module tabs inside CommandCenter — replaces card-tap → push → back loop with horizontal swipe between Ledger, Gear, Logistics, Vault
+- Event cards with type-specific color accent and inline financial summary — instant visual scanning; past events muted/desaturated, upcoming at full color
+- Haptic feedback on all primary write actions — coordinated visual + haptic = premium feel; `HapticFeedback.lightImpact()` is a one-liner per action with high perceived quality lift
 
-**Defer to post-v2:**
-- Group spending stats and analytics dashboard — feature theatre for this use case
-- Complex member permissions (admin/editor/viewer) — flat membership is correct for friend groups
-- Web/desktop version — mobile-first
-- In-app chat, AI expense categorization, recurring expenses — all anti-features for this domain
+**Defer to later:**
+- Dark mode — doubles all visual work; earthy palette is inherently light-themed; ship a complete polished light theme first; dark mode as future milestone if user demand warrants
+- Rive animations — use static Lottie/SVG illustrations to ship on time; Rive's state machines (60fps, 2KB, interactive) are a polish pass after initial launch
+- Per-user theme customization — fractures visual identity; the earthy palette IS the brand; customization is for productivity tools, not social coordination apps
+- Animated background / parallax header — high battery drain during scroll; 30fps risk on mid-range Android; static grain/texture overlay achieves warmth at near-zero CPU cost
+- Infinite scroll on activity feed — fails for reference lookup (users scroll to find a specific expense); paginated "Load more" with clear position indicator is correct for expense history
 
 ### Architecture Approach
 
-The architecture introduces `FirestoreRepository` as a new component that is the sole point of contact with `FirebaseFirestore.instance`. Everything above it — providers, UI, business logic — continues to operate through `OfflineRepository` which serves reactive SQLite streams. Firestore snapshot listeners populate SQLite as a side effect, replacing the existing pull-based `SyncService` with a push-based listener pipeline. The `SyncService` and `sync_queue` SQLite table are retired entirely. The group ledger cross-event balance uses write-time aggregation via Firestore transactions (settlement write atomically updates the `groupLedger` subcollection) to avoid expensive read-time aggregation across all events.
+The overhaul touches three systems without touching any data or business logic. All services, repositories, providers, financial calculations, and testing infrastructure are explicitly out of scope and untouched. The three systems are: (1) design token layer replacing static `AppColors` with ThemeExtension-based two-layer system, (2) navigation flattening via GoRouter subroutes for event-level screens and progressive Navigator.push to context.push migration, (3) component library migration off direct AppColors references to theme context.
 
 **Major components:**
-1. `FirestoreRepository` — sole Firestore contact; generic document write/read/listen, document-to-SQLite mapping, snapshot listener lifecycle
-2. `OfflineRepository` — reactive SQLite streams, notify-on-change; unchanged role, now fed by Firestore listeners instead of `SyncService` pulls
-3. `GroupRepository` — group CRUD, invite code generation and resolution, member management; built on `FirestoreRepository`
-4. `EventRepository` — event CRUD, template seeding (maps event type to default modules + gear presets), module configuration
-5. `LedgerService` — expense and settlement writes including atomic group ledger transaction update; cross-event settlement idempotency via client-generated IDs
-6. `BalanceCalculator` — unchanged pure logic; reads from SQLite, not Firestore
-7. Firestore Security Rules — replace Supabase RLS; membership encoded as `members: { uid: role }` map on group document to avoid `get()` calls in rule evaluation
 
-**Firestore collection structure:**
-```
-/groups/{groupId}
-  /members/{memberId}
-  /events/{eventId}
-    /expenses/{expenseId}
-    /settlements/{settlementId}
-    /gearItems/{itemId}
-    /subGroups/{subGroupId}
-    /activityLogs/{logId}
-    /categories/{categoryId}
-  /groupLedger/{entryId}
-/inviteCodes/{code}
-```
+1. **Design Token Layer** (`lib/core/theme/`) — `app_tokens.dart` with raw primitive palette values (no Flutter dependencies), `extensions/app_color_scheme.dart` as semantic ThemeExtension for all widgets to read, `extensions/app_spacing.dart` as spacing scale ThemeExtension. The structural rule: widgets reference semantic tokens (`colors.brandPrimary`), never raw hex values. The `AppColors` public API stays identical throughout the entire migration — only the palette values behind it change. 63 files import `AppColors`; they must all continue to compile throughout.
+
+2. **Navigation Layer** (`lib/core/router/app_router.dart`) — Additive GoRouter subroutes for `/group/:groupId/event/:eventId` and its module sub-routes (ledger, gear, logistics, vault, memories). Existing `Navigator.push` calls migrated progressively to `context.push()` across 7 files with approximately 22 imperative push calls. No `StatefulShellRoute` or persistent bottom tab bar — the data model is a single hierarchy, not parallel top-level sections. Navigation flattening is achieved through content surfacing, not structural navigation changes.
+
+3. **Component Library** (`lib/shared/widgets/` + 4 new dashboard widgets) — 8 existing shared widgets get one migration pass each (replace `AppColors.*` with `AppColorScheme.of(context).*`). `ModuleHeader` specifically gets the `useDarkTheme` boolean removed — replaced by semantic token `colors.headerGradient`. 4 new widgets added: `hero_balance_card.dart`, `balance_pill.dart`, `dashboard_section_header.dart`, `event_timeline_tile.dart`.
+
+**Build order is strictly outside-in:** design tokens → splash/onboarding (zero visual test coverage) → home dashboard → group detail → event hub → module screens. Module screens (Ledger, Gear, Logistics, Vault, Memories) are redesigned last because they have the highest test density and the smallest first-impression impact.
+
+**Key architectural decision against bottom nav:** ARCHITECTURE.md explicitly flags adding a persistent bottom nav with StatefulShellRoute as an anti-pattern for this app. The single-hierarchy data model (Group → Event → Module) does not map to parallel top-level tabs. Adding StatefulShellRoute would require significant routing overhaul, new animation coordination logic, and would confuse users who work within one event at a time rather than context-switching between sections.
 
 ### Critical Pitfalls
 
-1. **Firestore doubles for money** — OMR has 3 decimal places; IEEE 754 doubles lose precision. Store all amounts as integer fils (1 OMR = 1000 fils). Write `MoneySerializer.toFils()` and `fromFils()` before the first Firestore write. No exceptions.
+1. **257 `find.text()` calls cascade-fail on any label change** — Add semantic `Key` identifiers to all interactive widgets and structural landmarks before touching any screen. Convert structural test assertions to `find.byKey()` while keeping `find.text()` only for content correctness tests (not structural navigation). Do this in a dedicated Phase 1 before any visual changes. Without it, renaming a single tab label causes 10+ failures across unrelated test files.
 
-2. **Relational schema translation** — The existing `SyncService` does joined selects (`expenses.select('*, participants!payer_participant_id(*)')`). Firestore has no joins. Denormalize `payerName` directly onto expense documents. Model document shape around screen read requirements, not around avoiding duplication.
+2. **895 `AppColors.*` references break on palette swap** — Introduce a two-layer system: `AppPalette` (raw color values) and keep `AppColors` as semantic aliases delegating to `AppPalette`. Public `AppColors` API stays identical. All 895 references compile throughout. The palette values behind them change in one place. Never do a mass search-and-replace across 895 files; any PR touching more than 50 files just to change colors is the wrong approach.
 
-3. **Write hotspot on group balance document** — A single `groups/{groupId}/balances` document updated on every expense write exceeds Firestore's 1-write-per-second soft limit for active groups. Compute group-level net balance client-side by aggregating per-event balance summaries from SQLite. The `groupLedger` subcollection stores net amounts per member pair; the dashboard reads O(members^2) ledger entries, not every expense.
+3. **Earthy palette fails WCAG AA contrast (~2.8:1 on body text)** — Validate every text-on-background combination through a WCAG contrast checker before writing any screen code. Minimum requirements: 4.5:1 for body text (normal size), 3:1 for large text (24px+) and icons. Workable solution: use dark brown (`#2C1A0E`) for body text on sand backgrounds — achieves 8:1+ while remaining warm. Reserve terracotta for large display text and interactive elements (where 3:1 suffices), not body copy.
 
-4. **Security rules 10-get limit** — Supabase used a `SECURITY DEFINER` SQL function for membership checks. Firestore rules have a hard limit of 10 `get()` calls per rule evaluation. Store group membership as a map field (`members: { "uid": "LEADER" }`) on the group document so rules can check `request.auth.uid in resource.data.members` without a cross-document `get()`.
+4. **Stitch output uses inline hardcoded values, not tokens** — Treat all Stitch Flutter export as layout reference only, never copypaste. Before generating in Stitch: export AppColors/AppPalette as Stitch design system tokens and import them into the Stitch project first. After generation: replace any residual `Color(0xFF...)` or magic `fontSize:` values with token references before committing. Add a CI lint step that fails on any `Color(0xFF` outside `app_theme.dart`.
 
-5. **Dual-cache authority ambiguity** — Running Firestore SDK cache and SQLite simultaneously without a defined authority produces split-brain. Define the hierarchy explicitly: Firestore SDK cache handles write queuing and auto-sync; SQLite is populated only as a side effect of Firestore listener events and provides structured query access. Never write to SQLite as the primary write path.
+5. **Dashboard `SingleChildScrollView > Column` renders all widgets eagerly** — Use `CustomScrollView` with `SliverList.builder` for the dashboard body from the start, not as a fix after jank is observed. Group cards that each watch a Firestore provider must be separate `ConsumerWidget` instances in the lazy builder. Measure with DevTools Performance view on a physical mid-range Android device (Snapdragon 665 class) before declaring performance acceptable. No frame should exceed 16ms during scroll.
 
 ---
 
 ## Implications for Roadmap
 
-Based on research, the dependency chain is strict and the suggested phase structure follows directly from it.
+The phase structure is dictated by two hard constraints: (1) the token layer is a prerequisite for all screen work, and (2) the test suite must stay green throughout — requiring test hardening before visual changes begin. These constraints make Phases 1 and 2 non-negotiable. After that, the outside-in screen redesign order follows directly from ARCHITECTURE.md's build order recommendation.
 
-### Phase 1: Data Foundation and Firestore Setup
+### Phase 1: Test Hardening
+**Rationale:** 257 `find.text()` calls will cascade-fail on any label rename. This is not optional prep work — it gates the entire overhaul. Without it, every subsequent phase creates unbounded test debugging that compounds across migrations.
+**Delivers:** Semantic `Key` identifiers on all interactive widgets and structural landmarks across the existing test suite. Structural test assertions converted from `find.text()` to `find.byKey()`. Existing behavior tests (logic, services, unit tests) unaffected.
+**Addresses:** Pitfall 1 (find.text cascade failures). Sets up all subsequent phases to work safely.
+**Avoids:** Mid-milestone test cascade debt that accumulates across screen migrations and becomes impossible to bisect by regression source.
 
-**Rationale:** Everything downstream depends on a correct data model and working security rules. Financial precision (integer fils storage) must be established before any expense write code exists. Security rules must be validated before any data is written to production. This phase has no UI deliverables but sets the constraints that all later phases must respect.
+### Phase 2: Design Token System
+**Rationale:** The token layer is the multiplier. Without it, every screen change is a debt-creation event. `AppColorScheme` ThemeExtension must exist before any screen is redesigned so that migrations write to tokens rather than hardcoded values. This phase also includes mandatory WCAG contrast validation — no screen code until every text/background combination is verified.
+**Delivers:** `app_tokens.dart` with warm earthy palette constants (terracotta, sand, olive, charcoal, warmWhite). `AppColorScheme` and `AppSpacing` ThemeExtension classes. Updated `AppTheme.lightTheme` with warm earthy ColorScheme via `ColorScheme.fromSeed(seedColor: terracotta)`. WCAG contrast validation for every text/background combination. Public `AppColors` API preserved and unchanged.
+**Uses:** Flutter ThemeExtension (built-in), ColorScheme.fromSeed (built-in). Zero new packages for this phase.
+**Avoids:** Pitfall 2 (895 AppColors references breaking), Pitfall 3 (WCAG contrast failure discovered after implementation — the recovery cost is HIGH). Visual review checkpoint: `AppTheme.lightTheme` update changes global appearance; plan a visual inspection pass before proceeding.
 
-**Delivers:** Working Firestore project with anonymous auth, correct collection structure, security rules tested against Firebase Emulator, `MoneySerializer` utility, SQLite schema migration (add `groups`, `group_ledger` tables; rename `trips` to `events`; add `groupId` columns), `firestore.indexes.json` scaffolded, Firestore offline cache configured with `CACHE_SIZE_UNLIMITED`.
+### Phase 3: Stitch Workflow and Design Reference
+**Rationale:** Stitch is the design specification source, not a code source. Establishing the workflow (token import into Stitch, code-as-reference protocol, CI lint rule) before generating any production screens prevents inline hardcoded value contamination from occurring at all.
+**Delivers:** Stitch project with AppPalette tokens imported. Screen mockups for Home, GroupDetail, EventCommandCenter as visual specifications. CI lint step catching any `Color(0xFF` outside `app_theme.dart`. Post-generation checklist documented in CLAUDE.md. Palette hex values finalized from Stitch output (used to update AppTokens if needed from Phase 2 approximations).
+**Avoids:** Pitfall 4 (Stitch inline values in production screens diverging silently from the token system).
 
-**Addresses:** All table stakes that require backend to exist before they can be built.
+### Phase 4: Animation Library and Loading States
+**Rationale:** Animation components with correct lifecycle must be built as shared components before any screen uses them. Building them per-screen leads to `AnimationController` leaks accumulating silently. Skeleton screens are high-value, independent of visual redesign, and quick to build — highest ROI relative to effort in the overhaul.
+**Delivers:** `lib/shared/animations/` with pre-tested micro-interaction components (tap bounce, fade in, slide up) with correct `SingleTickerProviderStateMixin`, `initState` initialization, and `dispose()`. Skeleton loader variants: `SkeletonLoader.dashboardHero()`, `SkeletonLoader.eventCard()`, `SkeletonLoader.groupList()` (extending existing shimmer-based SkeletonLoader). `skeletonizer` added for full-layout dashboard skeleton.
+**Uses:** `flutter_animate ^4.5.2`, `skeletonizer ^2.1.3`, `shimmer ^3.0.0` (kept alongside skeletonizer for simple loading bars).
+**Avoids:** Pitfall 5 (AnimationController leaks in new micro-interaction widgets — pre-built components prevent per-screen reimplementation errors).
 
-**Avoids:** Pitfall 2 (money as doubles), Pitfall 5 (security rules get limit), Pitfall 10 (rules version 1 blocking collection group queries), Pitfall 12 (cache size default), Pitfall 14 (no type enforcement in rules).
+### Phase 5: Home Dashboard Redesign
+**Rationale:** Home is the highest first-impression impact screen and has only 1 test file. Redesigning it after token and animation infrastructure is in place delivers maximum value with manageable test risk.
+**Delivers:** Single-scroll dashboard with: balance hero widget (net cross-group balance, color-coded green/red), rich group cards with inline balance pills and member avatar row using initials (no photos needed), quick-action tray (Add Expense, Settle Up, Invite, Activity in one tap), recent activity strip (last 5 items). `CustomScrollView` with `SliverList.builder` from the start, not `SingleChildScrollView > Column`.
+**Uses:** `hero_balance_card.dart` (new), `balance_pill.dart` (new), `dashboard_section_header.dart` (new), `AppColorScheme` tokens, `haptic_feedback`, `flutter_animate` stagger animations (capped at 8 items per ARCHITECTURE.md performance rules).
+**Implements:** Target state for HomeScreen from ARCHITECTURE.md.
+**Avoids:** Pitfall 6 (dashboard eager render) — SliverList from the start. Requires DevTools performance validation on physical mid-range Android before phase is declared done.
 
-**Research flag:** Standard patterns — well-documented Firebase setup process. Skip research-phase.
+### Phase 6: Navigation Restructuring
+**Rationale:** Navigation changes must precede group/event screen redesigns. Redesigning those screens with old Navigator.push routing and then restructuring navigation would require touching them twice. Mapping all 22 Navigator.push calls explicitly before writing any routing code is mandatory.
+**Delivers:** GoRouter subroutes for `/group/:groupId/event/:eventId` and module sub-routes (ledger, gear, logistics, vault, memories). 22 `Navigator.push`/`AppPageRoute` calls migrated to `context.push()` across 7 files. Updated CLAUDE.md navigation flow section (atomic with code change). Full navigation graph smoke test verifying hardware back button at every new screen depth.
+**Avoids:** Pitfall 8 (Navigator.push + GoRouter inconsistency orphaning back-navigation). Documentation update is mandatory and must happen in the same commit as the routing code change.
 
-### Phase 2: Groups Feature
+### Phase 7: Group Detail and Event Hub Redesign
+**Rationale:** GroupDetailScreen has 3 test files (highest risk among redesign screens) and is the gateway to all event content. EventCommandCenter redesign must happen in the same phase because navigation restructuring connects them directly.
+**Delivers:** GroupDetailScreen with event cards showing inline financial summary and type-specific color accents, member avatar row, past/upcoming visual distinction (muted vs. full color). EventCommandCenter with earthy palette re-skin. `event_timeline_tile.dart` (new shared widget). Token migration for `GroupBalanceHero`, `EventModuleList`, `EventCard`, `EventSpendingHero`. `animations` package (ContainerTransform on group card → detail expansion).
+**Uses:** `AppColorScheme` tokens, `lottie`/`flutter_svg` for empty states (Lottie for animated empty states, SVG from unDraw for static versions), `animations ^2.1.2`.
+**Implements:** Phases D and E from ARCHITECTURE.md build order.
+**Avoids:** Pitfall 7 (old/new screens coexisting without protocol) — compile-time flag (`bool.fromEnvironment('NEW_UI', defaultValue: false)`) must be in place before this phase begins; old tests pass without setting the flag.
 
-**Rationale:** Groups are the new container layer. Nothing in v2 (events, cross-event balances, group timeline) can be built without a working group data structure, join flow, and member list. This phase establishes the social foundation.
+### Phase 8: Module Screens Redesign
+**Rationale:** Module screens (Ledger, Gear, Logistics, Vault, Memories, Activity) have the highest test density but the smallest first-impression impact. Redesigning them last means all infrastructure is proven before touching the most complex widget trees. LedgerScreen has 15 widget files — the largest module — and goes last within this phase.
+**Delivers:** Token migration and visual polish for all 6 module screens. Card-style expense rows, color-coded balance displays, skeleton loading on all data-fetching screens (using skeletonizer for full-layout screens), context-specific illustrated empty states with CTAs for all empty scenarios (home/groups, events, expenses, gear, activity, members).
+**Uses:** All packages from previous phases. `flutter_svg ^2.2.4` for SVG illustrations from unDraw (earthy color palette injected into SVGs before committing to assets). `smooth_page_indicator ^2.0.1` if any module introduces a carousel.
+**Implements:** Phase F from ARCHITECTURE.md build order.
 
-**Delivers:** Group creation, join-via-invite-link flow, group member list, groups appearing on the home screen. `GroupRepository`, `groupsProvider`, `groupMembersProvider`, groups UI screens.
-
-**Addresses:** "Persistent group with member list" (table stakes), "Group join via shareable link" (table stakes), "Group member list" (table stakes).
-
-**Avoids:** Pitfall 4 (anonymous UID data loss on reinstall — make join-by-code the recovery path), Pitfall 7 (subcollection orphan deletion — use soft deletes from the start), Pitfall 11 (monotonic document IDs — use auto-generated Firestore IDs).
-
-**Research flag:** Standard patterns. Group CRUD with Firestore is well-documented.
-
-### Phase 3: Events Feature
-
-**Rationale:** Events (formerly trips) are the unit of activity inside a group. Once groups exist, events can be attached to them with group members pre-populated. The template engine (event type → default modules + gear presets) is a differentiator that should be built here, not bolted on later, because it affects the event creation flow and `modules` map schema.
-
-**Delivers:** Create event from group (with type selection), event template engine, template-driven module visibility, group event timeline (chronological list), CommandCenter adapted to work inside the group/event hierarchy. `EventRepository`, `groupEventsProvider`, `eventProvider`.
-
-**Addresses:** "Create event from group" (table stakes), "Group event timeline" (table stakes), "Event type templates with gear presets" (differentiator), "Template-driven module visibility" (differentiator).
-
-**Avoids:** Pitfall 1 (relational schema translation — event documents are denormalized at creation time), Pitfall 8 (composite indexes — add indexes for event queries to `firestore.indexes.json` as they are written), Pitfall 13 (serverTimestamp null offline — use client-generated `createdAt`).
-
-**Research flag:** Template engine (event type → gear presets) has no direct comparable — will need product-level decisions on preset contents. May benefit from a quick research-phase pass on gear list standards for common trip types.
-
-### Phase 4: Module Migration (Supabase to Firestore)
-
-**Rationale:** The existing ledger, gear, logistics, and vault modules still write to Supabase. This phase migrates each module's write path to Firestore and sets up snapshot listeners that populate SQLite from Firestore events (replacing `SyncService` pull behavior). The `SyncService` is retired here.
-
-**Delivers:** All per-event module writes (expenses, gear items, settlements, logistics, vault) routed through `FirestoreRepository`. Firestore snapshot listeners populating SQLite. `SyncService` and `sync_queue` table retired. Offline capability preserved through Firestore SDK write queue. `LedgerService` updated for Firestore writes.
-
-**Addresses:** "Offline capability must not regress" (hard constraint), all existing per-event features continue working.
-
-**Avoids:** Pitfall 6 (dual-cache authority ambiguity — SQLite writes happen only via Firestore listener side effects from this point forward), Pitfall 9 (non-idempotent settlement writes — client-generated settlement IDs).
-
-**Research flag:** Moderate complexity. Firestore listener-to-SQLite pipeline is the key new pattern. May benefit from a focused research-phase pass on the write path architecture before implementation.
-
-### Phase 5: Cross-Event Financial Layer
-
-**Rationale:** This is the killer feature and the hardest part. Cross-event balances build on working per-event financials (Phase 4). The `groupLedger` aggregation must be designed carefully to avoid write hotspots. Settlement across events requires idempotent batch writes.
-
-**Delivers:** Group-level running balance per member (reads from `groupLedger` subcollection), per-event vs. group balance toggle in UI, cross-event settle-up suggestion ("settle OMR 45 across 3 events"), group activity log. `LedgerService` extended with group ledger transaction writes. `watchGroupLedger()` in `OfflineRepository`.
-
-**Addresses:** "Group-level running balance" (table stakes), "Per-event vs. group balance toggle" (table stakes), "Cross-event settle-up suggestion" (differentiator), "Group activity log" (differentiator), "Group event history with financial totals" (differentiator).
-
-**Avoids:** Pitfall 3 (write hotspot on aggregation document — group balance computed client-side from per-event summaries), Pitfall 9 (non-idempotent settlement writes — Firestore batch writes with client-generated IDs).
-
-**Research flag:** HIGH complexity. Cross-event settlement atomicity and group ledger design need careful specification before implementation. Recommend research-phase on Firestore transaction patterns and distributed aggregation.
-
-### Phase 6: Data Migration and Supabase Removal
-
-**Rationale:** Final cleanup phase. The existing user base is small and uses anonymous auth (no identity continuity required across the migration). Data migration is a one-time operation, not an ongoing concern. Supabase is removed only after the migration is verified.
-
-**Delivers:** Existing Supabase data exported and imported into Firestore. `supabase_flutter` dependency removed. Collection group indexes finalized in `firestore.indexes.json`. Full regression test pass.
-
-**Addresses:** "Existing users should not lose data" (implicit constraint).
-
-**Avoids:** Pitfall 4 (anonymous UID data loss — migration relies on group invite codes, not UID continuity; users rejoin via code).
-
-**Research flag:** Data migration scripting for anonymous-auth Supabase to Firestore is non-standard. Will need a research-phase pass on migration tooling and the invite-code recovery strategy.
-
----
+### Phase 9: Polish Pass and Token Cleanup
+**Rationale:** Micro-interactions, haptic feedback, spring physics, grain/texture overlays, and animated balance counters are high-value but fully additive. Doing them last means they are added to finalized widget trees without rework risk. Token cleanup (`AppColors` deletion, dark theme support removal from `AppTheme`) happens here once all screens are confirmed migrated with zero remaining `AppColors.*` references.
+**Delivers:** Haptic feedback on all primary write actions (expense add, settlement record, group join). Animated balance counter on update via `TweenAnimationBuilder`. Grain/texture overlay on home background and card surfaces via `CustomPaint` semi-transparent PNG. Soft gradient treatment on group and event cards via `LinearGradient`. Spring physics on card presses via `SpringDescription`. Swipe-to-settle gesture on balance rows via `Dismissible`. `AppColors` class deleted. Dark theme code path removed from `AppTheme`. Compile-time feature flags cleaned up.
+**Uses:** `haptic_feedback ^0.6.4+3`, `flutter_animate` (spring physics), `CustomPaint`.
+**Avoids:** Remaining technical debt from Pitfall 2 (final grep confirms zero `AppColors.*` remaining).
 
 ### Phase Ordering Rationale
 
-The order is driven by three hard constraints discovered in research:
-
-1. **Financial precision before any expense code** — `MoneySerializer` must exist before Phase 4. Building it in Phase 1 prevents it being forgotten.
-2. **Groups before events before modules** — The Firestore collection structure is `/groups/{g}/events/{e}/expenses/{id}`. Each level must exist before the next can be built.
-3. **Per-event financials before cross-event financials** — The `groupLedger` aggregation is written by `LedgerService` when settlements are recorded. `LedgerService` must already be migrated to Firestore (Phase 4) before the group ledger update logic (Phase 5) can be added.
-
-The architecture research explicitly defines this as a 6-layer build order. That maps directly to 6 phases.
-
----
+- **Phases 1 and 2 are non-negotiable prerequisites.** Test hardening and token system are not optional prep — they are structural foundations. Skipping either and proceeding to screen redesigns creates a debt spiral that compounds with each subsequent phase and eventually requires a rewrite of already-redesigned screens.
+- **Phases 3 and 4 build shared infrastructure before it is needed.** Stitch workflow and animation library are created before the first screen that uses them, preventing the per-screen implementation errors they are designed to avoid.
+- **Home (Phase 5) before navigation (Phase 6)** because navigation restructuring requires knowing what the destination screens look like, and Home does not depend on GoRouter subroutes to be redesigned.
+- **Navigation (Phase 6) before group/event screens (Phase 7)** because redesigning GroupDetailScreen and EventCommandCenter with old Navigator.push routing and then restructuring later would require a second pass over the same files.
+- **Module screens (Phase 8) last** — highest test density, lowest first-impression impact, most complex widget trees. All infrastructure is proven before the most risk-bearing screen work begins.
+- **Polish pass (Phase 9) last** — micro-interactions and texture are additive and independent. Adding them to finalized widget trees avoids rework. Token cleanup requires all screens to be migrated first.
 
 ### Research Flags
 
-**Phases needing deeper research during planning:**
-- **Phase 5 (Cross-Event Financial Layer):** Firestore transaction contention under concurrent writes, distributed aggregation alternatives to write-time group ledger, idempotent cross-event settlement implementation. This is the most technically novel part of the build.
-- **Phase 6 (Data Migration):** Supabase anonymous auth export format, Firestore batch import tooling, invite-code recovery path for existing users.
-- **Phase 3 (Template Engine — gear presets):** Content decisions (what goes in Camping vs. Day Out presets) are product-level, not technical. Needs a product pass, not a tech research pass.
+Phases likely needing deeper research during planning:
+- **Phase 4 (Animation Library):** The `lib/shared/animations/` shared component pattern is recommended but not yet established in this codebase. Research needed on which animation components to pre-build vs. implement inline per screen. Rive vs. Lottie decision for empty states needs a prototype evaluation — FEATURES.md and STACK.md disagree on the right tool (FEATURES.md: Rive for interactive state machines; STACK.md: Lottie for simplicity).
+- **Phase 6 (Navigation Restructuring):** 22 Navigator.push calls need explicit mapping before implementation begins. GoRouter `parentNavigatorKey` behavior for full-screen routes within shell routes has known edge cases. This phase needs a detailed route map as a planning artifact — list every screen, its current routing method, and its target routing method — before any code is written.
+- **Phase 8 (Module Screens):** LedgerScreen has 15 widget files and is the largest module in the codebase. Its redesign may surface widget tree complexities not visible from high-level research. Consider a sub-planning pass for Ledger specifically before Phase 8 begins.
 
-**Phases with standard patterns (can skip research-phase):**
-- **Phase 1 (Firestore Setup):** Firebase initialization, anonymous auth, security rules with emulator — all well-documented official patterns.
-- **Phase 2 (Groups Feature):** Group CRUD with Firestore subcollections is a standard Firebase pattern with extensive documentation.
-- **Phase 4 (Module Migration):** Swapping Supabase write calls for Firestore write calls is mechanical, guided by existing code structure.
+Phases with standard patterns (can skip research-phase):
+- **Phase 1 (Test Hardening):** Entirely mechanical — add Keys to widgets, update test assertions to find.byKey. Well-understood Flutter testing pattern, zero ambiguity.
+- **Phase 2 (Design Token System):** ThemeExtension is official Flutter API, fully documented at api.flutter.dev. Implementation is mechanical once palette hex values are finalized.
+- **Phase 5 (Home Dashboard):** SliverList.builder + CustomScrollView + Riverpod StreamProvider/ConsumerWidget per list item is an established Flutter pattern. The existing codebase already uses this in several screens.
+- **Phase 9 (Polish Pass):** All packages are in place. Micro-interactions are additive one-liners per action. Token cleanup is a mechanical grep-and-delete.
 
 ---
 
@@ -208,48 +176,51 @@ The architecture research explicitly defines this as a 6-layer build order. That
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Package versions verified on pub.dev 2026-03-24. Riverpod 2.x stay recommendation is the only MEDIUM item (Riverpod 3.x community reports of early bugs, not official). |
-| Features | HIGH | Market gap analysis is grounded in documented Splitwise user feedback. Anti-features list is well-established from competitor analysis. |
-| Architecture | HIGH for Firestore data model; MEDIUM for dual-cache integration specifics | Firestore collection structure and security rules patterns are from official Firebase docs. The SQLite+Firestore dual-cache authority hierarchy is principled but untested at this specific integration point. |
-| Pitfalls | HIGH | Critical pitfalls are grounded in documented Firebase issues (FlutterFire issue #9626, Firestore write throughput docs) and observed patterns in existing Rihla migration history (4 RLS fix migrations). |
+| Stack | HIGH | All 7 new package versions verified on pub.dev March 2026. All existing packages confirmed compatible with new additions. "What NOT to add" rationale is clear and well-sourced. One MEDIUM item: Stitch token import capability is confirmed from a third-party source, not official Google documentation. |
+| Features | HIGH (table stakes) / MEDIUM (differentiators) | Table stakes — skeleton screens, illustrated empty states, color-coded finance, balance on home — are backed by NN/G research, Eleken UX guides, and multi-app competitive analysis. Differentiators — earthy palette, grain overlays, bento grid — are validated as 2026 design trends by Creative Bloq and Envato, but trends are inherently subjective. |
+| Architecture | HIGH (token system, navigation) / MEDIUM (Stitch workflow) | ThemeExtension two-layer token pattern is official Flutter API from api.flutter.dev. GoRouter subroute pattern with parentNavigatorKey is well-established. The Stitch-to-Flutter token import workflow is real (confirmed multiple sources, March 2026) but early-stage — "manual extraction is the current workflow" caveat confirmed. |
+| Pitfalls | HIGH | The two most critical pitfall metrics (257 find.text calls, 895 AppColors references) are measured directly from the actual codebase source files, not inferred. WCAG contrast math is deterministic. AnimationController leak pattern and SingleChildScrollView eager render pitfall are confirmed in Flutter official docs and community sources. |
 
-**Overall confidence:** HIGH for phase structure and technical decisions. MEDIUM for dual-cache integration specifics and cross-event settlement design.
+**Overall confidence:** HIGH for the approach and phase structure. The risks are specific, well-understood, and their mitigations are actionable. No phase depends on novel or unproven techniques.
 
 ### Gaps to Address
 
-- **Firestore emulator test setup:** Research files assume Firebase Emulator will be used for security rules testing. The project has no emulator configuration yet (`firebase.json`, emulator port config). This must be set up in Phase 1 before any security rules are written.
-- **Group invite code format:** The architecture defines an `/inviteCodes/{code}` top-level collection but does not specify code format, length, or collision strategy. Needs a product decision in Phase 2.
-- **Dual-cache conflict resolution:** The architecture defines Firestore SDK as the read authority, but does not specify what happens when a Firestore listener fires with data that contradicts an in-flight SQLite write (offline-written expense not yet confirmed). The write path research covers the happy path but not the conflict case. Needs explicit handling in Phase 4.
-- **GoRouter 13.x to 17.x migration risk:** STACK.md rates this MEDIUM confidence. The existing `GoRouter` configuration needs validation against 17.x breaking changes before Phase 2 adds new routes.
+- **WCAG contrast validation with final hex values:** Research gives approximate palette values (terracotta ~`#CC6B49`, sand ~`#F2E8D6`, olive ~`#7A8C5E`). Stitch may generate slightly different hex values when the palette is finalized. Contrast validation in Phase 2 must be performed against the finalized Stitch-sourced values, not the approximate research values. Do not write Phase 2 screen code before running every text/background combination through a contrast checker (WCAG AA: 4.5:1 for body, 3:1 for large text).
+
+- **Stitch token import capability:** PITFALLS.md rates this LOW confidence (sourced from tech-insider.org, not official Google documentation). The Phase 3 plan assumes Stitch can import existing design tokens. If this does not work, the fallback is manual token extraction from Stitch's visual output — workable but more tedious. Validate Stitch token import capability as the first action in Phase 3 before planning the full workflow.
+
+- **Rive vs. Lottie decision:** FEATURES.md recommends Rive (60fps, 2KB, interactive state machines) over Lottie (17fps, 24KB). STACK.md recommends Lottie (simpler integration, appropriate for one-shot/looping animations). Resolution for now: start with Lottie in Phase 4 (simpler, static-first, and the FEATURES.md MVP definition explicitly defers Rive). Add Rive only if interactive animation state machines are needed for the onboarding flow. Revisit in Phase 7 when empty states are being built.
+
+- **Physical device performance baseline:** Pitfall 6 requires testing on a "mid-range Android device (Snapdragon 665)" but no specific test device is identified in the codebase. Establish the target physical device or emulator configuration before Phase 5 begins, so performance validation has a consistent benchmark.
+
+- **`ModuleHeader` `useDarkTheme` test coverage:** ARCHITECTURE.md notes that removing the `useDarkTheme` boolean from `ModuleHeader` may break tests that check for the dark header variant. Audit these tests before Phase 7 and refactor them to use semantic token assertions rather than checking for specific gradient colors, as part of Phase 1 (test hardening) or Phase 7 planning.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [cloud_firestore pub.dev](https://pub.dev/packages/cloud_firestore) — version 6.2.0 confirmed 2026-03-24
-- [firebase_auth pub.dev](https://pub.dev/packages/firebase_auth) — version 6.3.0 confirmed 2026-03-24
-- [firebase_core pub.dev](https://pub.dev/packages/firebase_core) — version 4.6.0, mandatory upgrade for Firestore 6.x
-- [fake_cloud_firestore pub.dev](https://pub.dev/packages/fake_cloud_firestore) — version 4.1.0+1, cloud_firestore 6.x compatibility confirmed
-- [FlutterFire Firestore Usage](https://firebase.flutter.dev/docs/firestore/usage/) — offline persistence config, listener patterns
-- [Firebase Firestore Offline Docs](https://firebase.google.com/docs/firestore/manage-data/enable-offline) — 40 MB default cache, eviction policy
-- [Firestore Write-time Aggregations](https://firebase.google.com/docs/firestore/solutions/aggregation) — group ledger update strategy
-- [Firestore Transactions and Batched Writes](https://firebase.google.com/docs/firestore/manage-data/transactions) — atomic multi-document writes, 500 document limit
-- [Firestore best practices](https://firebase.google.com/docs/firestore/best-practices) — write throughput, hotspot prevention
-- [Firebase Group-based Security Rules](https://medium.com/firebase-developers/patterns-for-security-with-firebase-group-based-permissions-for-cloud-firestore-72859cdec8f6) — membership rule patterns
-- [Splitwise user feedback: events inside groups](https://feedback.splitwise.com/forums/162446-general/suggestions/13100073-add-a-trip-or-event-feature-inside-a-group-among) — market gap validation
+- Flutter official docs: ThemeExtension API, ColorScheme.fromSeed, NavigationBar, SliverList, AnimationController — design token architecture, animation lifecycle, scroll performance
+- W3C WCAG 2.1 Contrast Minimum specification — 4.5:1 for body text, 3:1 for large text and icons; deterministic accessibility requirements
+- pub.dev package pages for all 7 recommended packages — versions confirmed March 2026: animations 2.1.2, lottie 3.3.2, flutter_animate 4.5.2, flutter_svg 2.2.4, skeletonizer 2.1.3, haptic_feedback 0.6.4+3, smooth_page_indicator 2.0.1, material_symbols_icons 4.2906.0
+- Codebase direct analysis — 257 `find.text()` calls, 895 `AppColors.*` references, 22 `Navigator.push` calls measured from actual source and test files
 
 ### Secondary (MEDIUM confidence)
-- [Riverpod 3.0 What's New](https://riverpod.dev/docs/whats_new) — breaking changes documented; stay on 2.x recommendation
-- [go_router pub.dev](https://pub.dev/packages/go_router) — version 17.1.0 confirmed; migration risk from 13.x is LOW for standard route definitions
-- [FlutterFire issue #9626](https://github.com/firebase/flutterfire/issues/9626) — integer/double type mismatch in Firestore
-- [Offline-First Architecture in Flutter](https://dev.to/anurag_dev/implementing-offline-first-architecture-in-flutter-part-1-local-storage-with-conflict-resolution-4mdl) — dual-cache write-through strategy
+- NN/G: Skeleton Screens 101 — "500ms skeleton feels fast; 500ms spinner feels slow"; skeleton vs. spinner perception authority
+- Eleken: Empty State UX best practices — illustrated empty states, single CTA rule, context-specific copy standard
+- LeanCode: Building a Design System in Flutter — two-level atomic design for Flutter scale (tokens, atoms, organisms, screens)
+- codewithandrea.com: GoRouter StatefulShellRoute nested navigation — parentNavigatorKey patterns and shell route state preservation
+- DEV Community: Stitch + Flutter workflow 2026 — "production-adjacent but not production-ready" caveat for Stitch code export, confirmed from multiple sources
+- Callstack: Lottie vs. Rive — Rive 60fps vs. Lottie 17fps, 2KB vs. 24KB performance metrics
+- Envato: Mobile app color scheme trends 2026 — earthy warm neutrals, bento grid layouts, Soft Gradients 2.0 trend validation
+- Creative Bloq: Texture warmth 2026 graphic design trends — "tactile rebellion" against flat sterility, humanized digital interfaces
+- Flutter Performance Best Practices (official) — RepaintBoundary correct usage, SliverList over Column, animation performance rules
+- Eleken, ProCreator, DesignStudioUX: Multiple UX sources confirming bottom navigation (4-5 tabs), 2-tap depth goal, skeleton loading adoption in 2025-2026 mobile apps
 
-### Tertiary (referenced, not independently verified)
-- Rihla migration history `supabase/migrations/020-029` — observed RLS fix pattern across 4 migrations; confirms security rule complexity risk
-- [Firebase Anonymous Auth Best Practices](https://firebase.blog/posts/2023/07/best-practices-for-anonymous-authentication/) — UID ephemerality and reinstall behavior
+### Tertiary (LOW confidence)
+- tech-insider.org: Google Stitch design token import capability (March 2026 update) — needs validation in Phase 3; not from official Google documentation
+- Third-party Stitch Flutter code generation analysis — "production-adjacent but not production-ready" caveat; consistent with DEV Community source
 
 ---
-
-*Research completed: 2026-03-26*
+*Research completed: 2026-03-28*
 *Ready for roadmap: yes*

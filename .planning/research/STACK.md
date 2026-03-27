@@ -1,253 +1,364 @@
-# Technology Stack
+# Stack Research
 
-**Project:** Rihla v2 — Groups & Events (Supabase → Firestore migration)
-**Researched:** 2026-03-26
-**Research mode:** Ecosystem — existing Flutter app, adding groups/events layer + backend migration
+**Domain:** Flutter UI/UX overhaul — warm earthy design system, micro-interactions, rich dashboard, flatter navigation
+**Researched:** 2026-03-28
+**Milestone:** v2.0 Major UI/UX Overhaul
+**Confidence:** HIGH for package versions (verified pub.dev), MEDIUM for Stitch workflow (new tool, limited integration docs)
 
 ---
 
-## Context: What This Milestone Is Doing
+## Context: What This Milestone Is NOT Doing
 
-This is NOT a greenfield Flutter project. The existing app runs Flutter 3.x with Riverpod 2.x, Supabase, and sqflite. This milestone:
+This is a UI/UX overhaul on top of a complete, shipping app (v1.0). The backend stack (Firebase, Riverpod 2.x, sqflite, GoRouter 17.x) is already locked and validated across 624 tests. This research covers **only new packages and changes needed for visual/UX work**. Do not re-research Firebase, Riverpod, or sqflite — those are settled.
 
-1. Replaces Supabase with Firebase Firestore as the cloud backend
-2. Adds a groups/events layer on top of the existing trip architecture
-3. Keeps sqflite for fast local reads (hybrid offline architecture)
-4. Migrates from anonymous Supabase auth to anonymous Firebase Auth
+### Already in pubspec.yaml (no action needed)
 
-The current `pubspec.yaml` already has `firebase_core: ^3.12.1` and `firebase_messaging: ^15.2.4`. The Firebase project exists — FCM is live. This migration is additive, not a rewrite.
+| Package | Version | Status |
+|---------|---------|--------|
+| `flutter_animate` | `^4.5.0` | Already installed — primary animation engine |
+| `shimmer` | `^3.0.0` | Already installed — loading states |
+| `google_fonts` | `^6.1.0` | Already installed — Plus Jakarta Sans |
+| `material_symbols_icons` | Not yet in pubspec | Confirmed referenced in CLAUDE.md as "already in use" |
+| `iconsax` | `^0.0.8` | Already installed |
+| `cached_network_image` | `^3.3.1` | Already installed |
+| `go_router` | `^17.1.0` (upgraded in v1.0) | Already installed — StatefulShellRoute available |
 
 ---
 
 ## Recommended Stack
 
-### Backend — Firebase
+### Animation System
 
-| Technology | Recommended Version | Purpose | Why |
-|------------|--------------------|---------|----|
-| `firebase_core` | `^4.6.0` | Firebase app initialization | Required upgrade — current 3.x is incompatible with Firestore 6.x. All FlutterFire plugins now require firebase_core 4.x. Bump is mandatory. |
-| `cloud_firestore` | `^6.2.0` | Primary cloud database | NoSQL with built-in offline persistence, real-time listeners, collection group queries for cross-event aggregation. Replaces Supabase PostgreSQL + Realtime. Latest as of 2026-03-24. |
-| `firebase_auth` | `^6.3.0` | Anonymous authentication | Replaces `signInAnonymously()` on Supabase. Same UX: silently creates anonymous user on launch. UID persists across restarts on-device (but not across app reinstalls — same limitation as Supabase anonymous). |
-| `firebase_storage` | `^13.2.0` | Document vault + memories | Replaces Supabase Storage buckets (`trip-documents`, `trip-memories`). Signed URL pattern stays; implementation switches to `getDownloadURL()`. |
-| `firebase_messaging` | `^15.2.4` | Push notifications | Already in use. No version change needed — compatible with firebase_core 4.x. |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `flutter_animate` | `^4.5.2` (upgrade from 4.5.0) | Micro-interactions, entrance animations, state transitions | Already installed. The standard for Flutter UI polish — chainable `.animate()` API on any widget, handles fade, slide, scale, shimmer. Version 4.5.2 is the latest stable (published November 2024). No API changes from 4.5.0 — safe upgrade. |
+| `animations` | `^2.1.2` | M3 page transitions — container transform, shared axis, fade through | Flutter.dev maintained. Provides the exact Material motion patterns needed for flatter navigation: `ContainerTransformPageRoute` for hero-style screen transitions, `SharedAxisTransition` for horizontal tab transitions, `FadeScaleTransition` for FAB/modal entries. This is the correct package for M3 transitions — not roll-your-own `AnimatedSwitcher`. Published March 2026. |
+| `lottie` | `^3.3.2` | JSON-based animations for empty states, loading spinners, onboarding illustrations | Use for pre-designed animations from LottieFiles (free library has 1000s of relevant travel/group assets). Pure Dart, no native code. Flutter 3.27+ required — confirmed compatible. Reserve for complex looping animations where `flutter_animate` is insufficient. |
 
-**Confidence:** HIGH — versions verified from pub.dev 2026-03-24. All published by verified firebase.google.com publisher.
+**flutter_animate vs animations vs lottie — when to use each:**
+- `flutter_animate`: Entrance/exit animations on existing widgets. Button tap feedback. List item stagger. Fast to implement, no asset files.
+- `animations`: Screen-to-screen transitions with Material motion semantics. Dashboard → detail card expansions. Use `ContainerTransformPageRoute` as the drop-in for `AppPageRoute` in `page_transitions.dart`.
+- `lottie`: Empty states with personality (e.g., "No trips yet" animated illustration). Onboarding animations. Loading states that need brand character. Requires a `.json` asset file — download from LottieFiles.
 
-**Critical:** Do NOT pin `firebase_core` to 3.x. The 6.x Firestore package requires `firebase_core ^4.6.0`. Mixing these versions causes build failures.
-
----
-
-### State Management
-
-| Technology | Recommended Version | Purpose | Why |
-|------------|--------------------|---------|----|
-| `flutter_riverpod` | Stay on `^2.4.9` for now, plan Riverpod 3.x upgrade separately | Provider-based state management | See rationale below. |
-
-**Riverpod 2.x vs 3.x — DO NOT upgrade to 3.x in this milestone:**
-
-Riverpod 3.0 shipped in September 2025. It has real improvements (auto-retry, `Ref.mounted`, experimental offline persistence, unified `Notifier` API). However, it also has breaking changes that affect every provider in the codebase:
-
-- `StateProvider`, `StateNotifierProvider`, `ChangeNotifierProvider` are now legacy APIs
-- `Ref` loses its type parameter — all `AutoDisposeRef`, `FutureProviderRef` etc. disappear
-- All `updateShouldNotify` now use `==` (was `identical`) — silent behavior change for mutable state
-- All provider failures rethrow as `ProviderException` — every `catch (e)` block may need updating
-- Listeners in invisible widgets are auto-paused — can affect sync-on-background patterns
-
-The Firestore migration + groups feature is already a large scope. Mixing in a Riverpod major-version migration creates compounding risk. Do Riverpod 3.x as its own milestone after Firestore is stable.
-
-**For Firestore + Riverpod 2.x:** Use `StreamProvider.family` to wrap `FirebaseFirestore.instance.collection('...').snapshots()`. Firestore streams are hot and reconnect-aware — they work cleanly with Riverpod's `StreamProvider`. The existing `StreamProvider` and `StateNotifierProvider` patterns in the codebase transfer directly.
-
-**Confidence:** HIGH for "stay on 2.x for this milestone" recommendation. MEDIUM for Riverpod 3.x details (verified from official riverpod.dev docs, but the upgrade path has known early bugs per community reports).
+**Confidence:** HIGH — all three verified on pub.dev March 2026.
 
 ---
 
-### Local Storage (Keep Both)
+### Design Token System
 
-| Technology | Recommended Version | Purpose | Why |
-|------------|--------------------|---------|----|
-| `sqflite` | `^2.4.2` (current) | Fast local reads, sync queue | Keep alongside Firestore. See architecture rationale below. |
-| `path` | `^1.9.1` (current) | File path utilities for sqflite | No change needed. |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Flutter `ThemeExtension` (built-in) | Flutter SDK (no package) | Typed design token carrier for custom tokens not covered by M3 ColorScheme | The correct approach for the earthy palette (terracotta, sand, olive) is to extend M3's ColorScheme with project-specific token classes. ThemeExtension allows strongly typed, lerp-aware, tree-propagated token sets. Zero package overhead. The existing `AppColors` class in `app_theme.dart` becomes input data for two new classes: `AppColorTokens extends ThemeExtension<AppColorTokens>` and `AppSpacingTokens extends ThemeExtension<AppSpacingTokens>`. |
+| `ColorScheme.fromSeed` (built-in) | Flutter SDK | Generates M3 tonal palette from seed color | The terracotta seed (`Color(0xFFE2725B)`) will generate a full warm palette across primary/secondary/tertiary/error/surface roles. The existing `AppTheme.lightTheme` uses `useMaterial3: true` but a manually specified `ColorScheme.light()` — switch to `ColorScheme.fromSeed(seedColor: terracottaSeed, brightness: Brightness.light)` for the overhaul. Override specific roles that diverge from the generated palette (e.g., force olive for tertiary). |
 
-**Firestore offline persistence vs sqflite — keep both, different roles:**
+**No external design token packages needed.** `design_tokens_builder`, `token_theme_kit`, and `mix` are all valid for larger teams with Figma exports, but add significant complexity. The correct architecture for this app is:
 
-Firestore has built-in offline persistence (enabled by default on Android/iOS, 40 MB cache). It handles read-through caching and queued writes automatically. This eliminates the need for the `SyncService` upload-queue pattern for Firestore-managed data.
+1. Define `AppColorTokens` and `AppSpacingTokens` as `ThemeExtension` subclasses
+2. Register them in `AppTheme.lightTheme` via `ThemeData.extensions`
+3. Access via `Theme.of(context).extension<AppColorTokens>()!`
+4. The existing `AppColors` static constants become the raw values that populate these extensions
 
-However, sqflite is still justified for:
-- **Fast, synchronous local reads** without going through Firestore's async snapshot API
-- **The existing sync queue** for data that hasn't been migrated yet during the phased rollout
-- **Complex local aggregations** (balance calculations) that are expensive to recompute from Firestore streams on every UI frame
-- **Migration buffer** — during the Supabase → Firestore cutover, sqflite is the safety net
+This keeps design tokens typed, tree-propagated, and animatable (lerp) without adding a dependency.
 
-The existing `OfflineRepository → CacheService → SyncService` pipeline stays for sqflite-managed local state. The Firestore SDK owns its own offline cache independently. These do not conflict.
+**Confidence:** HIGH — ThemeExtension pattern is official Flutter API, documented at api.flutter.dev.
 
-**Do NOT replace sqflite with only Firestore's offline cache.** Firestore's cache is read-only (you can't query it independently without network) and limited to 40 MB by default. For this app's read-heavy financial calculations and offline-first mandate, the hybrid approach is correct.
+---
 
-Configure Firestore offline cache explicitly:
-```dart
-FirebaseFirestore.instance.settings = const Settings(
-  persistenceEnabled: true,
-  cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-);
+### Navigation Enhancement
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `go_router` | `^17.1.0` (already installed) | Add `StatefulShellRoute` for persistent bottom nav | GoRouter 17.x includes `StatefulShellRoute.indexedStack()` — the standard pattern for M3 `NavigationBar` with persistent tab state. The current app uses GoRouter for top-level routes + `Navigator.push` for sub-screens. The overhaul adds a persistent `NavigationBar` at the top shell level. **No version upgrade needed** — 17.1.0 is already the installed version. |
+| Flutter `NavigationBar` widget (built-in) | Flutter SDK | M3 bottom navigation bar | Replaces any `BottomNavigationBar` usage. M3 `NavigationBar` is the current standard — taller container, indicator pill on active destination, `NavigationDestination` children, `onDestinationSelected` + `selectedIndex` API. No package needed. |
+
+**Navigation overhaul pattern:**
+
+The existing GoRouter config has top-level routes (`/home`, `/create-trip`, etc.) without persistent navigation. The overhaul introduces a `StatefulShellRoute` wrapping the top-level destinations (Home, Groups, Profile/Settings), with `NavigationBar` rendered in the shell's `builder`. Each branch maintains its own Navigator stack. The existing `Navigator.push`-based module screens (CommandCenter, Ledger, Gear, etc.) remain unchanged — they push on top of the branch navigator.
+
+**go_router 17.x breaking change note:** `ShellRoute` now notifies GoRouter observers by default (`notifyRootObserver: true`). If `SentryNavigatorObserver` generates noise from tab switches, set `notifyRootObserver: false` on the `StatefulShellRoute`.
+
+**Confidence:** HIGH for navigation pattern. HIGH for go_router version.
+
+---
+
+### Visual Richness — Icons
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `material_symbols_icons` | `^4.2906.0` | Variable-weight icons for the new design language | 4177 icons with fill/weight/grade/optical size parameters. Recommended over `iconsax` for the overhaul because: (a) already referenced in the codebase per CLAUDE.md, (b) supports weight variations that match the earthy design language (lighter weight = more refined feel), (c) future-proof — Flutter will natively support Material Symbols, at which point the package import is the only removal needed. Published January 2026. |
+
+**iconsax vs material_symbols_icons decision:**
+
+Keep `iconsax` for any existing screens that already use it (to avoid churn). Use `material_symbols_icons` for all new screens in the overhaul. Do not rip out iconsax globally — that's unnecessary scope. The two can coexist.
+
+**Confidence:** HIGH — version verified pub.dev 2026-01-31.
+
+---
+
+### Visual Richness — Illustrations & SVG
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `flutter_svg` | `^2.2.4` | Render SVG illustrations (empty states, onboarding, event type icons) | The standard SVG renderer for Flutter. Version 2.2.4 published February 2026. For performance with many SVGs: pre-compile to `.vec` format using `vector_graphics_compiler`. `SvgPicture.asset('assets/illustrations/empty_trips.svg')` is the primary API. |
+
+**Illustration sourcing approach:**
+
+Do NOT add a heavy illustration package (e.g., `flutter_undraw`). Source SVG files from:
+- **unDraw** (undraw.co) — free, open license, earthy color customizable, travel/group themed
+- **LottieFiles** — for animated variants (loaded via `lottie` package)
+- Custom SVG designed in Google Stitch export or Figma
+
+Store SVGs in `assets/illustrations/`. Register in `pubspec.yaml` under `flutter: assets:`. The earthy terracotta color can be injected into unDraw SVGs before committing them as assets (unDraw supports color parameterization via URL or SVG editing).
+
+**Confidence:** HIGH for flutter_svg version. MEDIUM for illustration sourcing workflow (standard practice, no single authoritative source).
+
+---
+
+### Loading States
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `skeletonizer` | `^2.1.3` | Skeleton loading for dashboard cards, group lists, activity feeds | Upgrade from `shimmer ^3.0.0` for dashboard content. Skeletonizer wraps your real layout and renders it as a skeleton automatically — no duplicate skeleton widget needed. Correct choice for the rich dashboard home where content is structured (group cards, balance rows, activity items). Published February 2026. |
+
+**shimmer vs skeletonizer — keep both, different roles:**
+
+- `shimmer` (existing): Keep for `SkeletonLoader` in `lib/shared/widgets/` — it's already used for simple single-line loading bars
+- `skeletonizer` (add): Use for full-screen skeleton states on the new dashboard, group detail, and event screens where the full card layout should animate
+
+The two coexist cleanly. Add `skeletonizer` alongside `shimmer` rather than replacing it.
+
+**Confidence:** HIGH — version verified pub.dev February 2026.
+
+---
+
+### Haptic Feedback
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `haptic_feedback` | `^0.6.4+3` | Tactile micro-interactions for button taps, swipes, success states | The Flutter SDK's built-in `HapticFeedback` class provides only 4 patterns (lightImpact, mediumImpact, heavyImpact, selectionClick) with inconsistent Android behavior. `haptic_feedback` package provides iOS-style haptic patterns emulated consistently on Android API 26+. Use `HapticFeedback.mediumImpact()` from the package on primary CTAs, `HapticFeedback.selectionClick()` on tab switches and toggles. Published December 2025. |
+
+**Confidence:** HIGH — version verified pub.dev December 2025.
+
+---
+
+### Page Indicators (Onboarding / Carousels)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `smooth_page_indicator` | `^2.0.1` | Animated dot indicators for onboarding PageView and dashboard carousels | The standard choice for page indicators in Flutter. Supports WormEffect, ExpandingDotsEffect, JumpingDotEffect — all relevant for the warm earthy design. The existing onboarding PageView uses a manual indicator — replace with this. Published December 2025. |
+
+**Confidence:** HIGH — version verified pub.dev December 2025.
+
+---
+
+### Google Stitch Integration
+
+Google Stitch is a Google Labs AI design tool at `stitch.withgoogle.com`. It generates UI screens from text prompts, image uploads, and existing design screenshots. As of March 2026, it supports Flutter code export.
+
+**What Stitch actually does for Flutter:**
+
+1. You design screens via prompt in Stitch (or upload screenshots to redesign)
+2. Stitch generates Flutter widget code via its "Export" feature
+3. The output is functional Flutter code using standard Material 3 widgets — not a custom DSL
+4. You paste/adapt the output into the existing feature structure
+
+**Stitch-to-Flutter workflow (correct approach for this app):**
+
 ```
-Call this before any other Firestore operation, immediately after `Firebase.initializeApp()`.
+1. Design in Stitch:
+   - Upload current app screenshots to Stitch
+   - Prompt: "Redesign with warm earthy palette: terracotta #E2725B primary,
+     sand #F5E6D3 background, olive #6B7C3A accent. Light theme only."
+   - Generate all major screens (home dashboard, group detail, event screens)
+   - Iterate in Stitch until design is correct
 
-**Confidence:** HIGH for hybrid approach rationale. HIGH for Firestore settings API (verified from firebase.flutter.dev official docs).
+2. Extract design tokens from Stitch output:
+   - Note the exact hex values Stitch uses (it will generate a consistent palette)
+   - Map these to the AppColorTokens ThemeExtension classes
+   - Extract spacing values, border radii, and font weights
 
----
+3. Use Stitch code as reference, NOT copy-paste:
+   - Stitch Flutter output often uses hardcoded colors and inline styles
+   - Use it as a layout and visual reference
+   - Re-implement using AppColors, AppTheme, and existing widget architecture
+   - This keeps the codebase consistent with the design system
 
-### Financial Precision
+4. SVG illustrations: Stitch can generate placeholder illustrations
+   - Export as SVG or describe for unDraw sourcing
+```
 
-| Technology | Recommended Version | Purpose | Why |
-|------------|--------------------|---------|----|
-| `decimal` | `^3.2.4` (current) | Arbitrary-precision arithmetic | Keep as-is. All OMR amounts stored as strings in Firestore (e.g., `"10.500"`), deserialized to `Decimal` in the app. Never use Firestore's `num` type for money. |
+**What Stitch is NOT:**
 
-**Firestore serialization for money — store as String, not double:**
+- It does not generate production-ready Flutter code. Community testing confirms it "works well for rapid prototyping and MVPs but requires developer review and refinement."
+- It does not export design tokens as a `ThemeExtension` file — you extract them manually from its output
+- The MCP/Antigravity pipeline (Stitch → Antigravity agent → Flutter code) is experimental and unreliable for complex state logic
 
-Firestore's native number type is a 64-bit IEEE 754 double. Storing OMR amounts (3 decimal places) as doubles will cause precision loss (e.g., 10.125 stored as 10.124999... ). The correct approach:
+**No package addition needed for Stitch.** It is a web tool, not a Flutter package. The workflow is design-tool → manual implementation using the existing Flutter stack.
 
-- Serialize: `expense.amount.toString()` → stored as Firestore string field
-- Deserialize: `Decimal.parse(doc.data()['amount'] as String)`
-
-This is identical to how amounts should be handled with any JSON-based backend. No library change needed — the existing `Decimal` package handles this correctly.
-
-**Confidence:** HIGH — IEEE 754 double precision loss is a well-documented fact, not a guess.
-
----
-
-### Testing
-
-| Technology | Recommended Version | Purpose | Why |
-|------------|--------------------|---------|----|
-| `fake_cloud_firestore` | `^4.1.0+1` | Firestore unit testing | Provides a full in-memory Firestore implementation. Use instead of mocking individual document/collection references. Maintains a 1-to-1 version compatibility with `cloud_firestore` — version 4.x maps to cloud_firestore 6.x. Published 2026-03-24. |
-| `mocktail` | `^1.0.4` (current) | Non-Firestore mocking | Keep for mocking `firebase_auth`, services, notifiers. |
-| `firebase_auth_mocks` | `^0.14.0` | firebase_auth mocking | Provides `MockFirebaseAuth` for testing anonymous sign-in flows. Use alongside `fake_cloud_firestore`. |
-
-**Testing strategy for Firestore:**
-
-Do NOT mock `FirebaseFirestore.instance` directly. The class has too many internal collaborators. Instead:
-1. Inject `FirebaseFirestore` as a constructor parameter into repositories/services
-2. In tests, pass `FakeFirebaseFirestore()` — it behaves like real Firestore including streams, transactions, and batch writes
-3. Wrap each test with a fresh `FakeFirebaseFirestore()` instance — it does not persist between tests
-
-**Confidence:** MEDIUM for `firebase_auth_mocks` version (verified pub.dev exists, version checked but may have minor patch updates). HIGH for `fake_cloud_firestore` (version table explicitly confirmed on pub.dev page).
-
----
-
-### Navigation
-
-| Technology | Recommended Version | Purpose | Why |
-|------------|--------------------|---------|----|
-| `go_router` | `^17.1.0` | Top-level routing | Upgrade from current `^13.2.0`. GoRouter 17.x is the current stable. Major version bumps in GoRouter are generally non-breaking for standard route definitions. The groups layer adds new top-level routes (`/groups`, `/groups/:id`, `/groups/:id/events/:eventId`) that fit GoRouter's declarative model. |
-
-**Note on Navigator.push:** The existing pattern of using `Navigator.push` for CommandCenter and sub-feature screens is intentional and documented in CLAUDE.md. Keep it. GoRouter handles deep links and the groups/events top-level shell. Navigator.push handles the per-event module navigation within that shell.
-
-**Confidence:** MEDIUM — GoRouter 17.x version verified on pub.dev. Migration risk from 13.x is LOW for standard route definitions but should be validated against the existing `GoRouter` configuration.
-
----
-
-### Monitoring
-
-| Technology | Recommended Version | Purpose | Why |
-|------------|--------------------|---------|----|
-| `sentry_flutter` | `^9.0.0` (current) | Error tracking | No change. Sentry captures Firestore exceptions just like Supabase exceptions. The existing `SentryNavigatorObserver` works without modification. |
+**Confidence:** MEDIUM for Stitch export quality (Google Labs, actively improving, Flutter support confirmed but not deep). The design token extraction workflow is the practical approach — do not depend on Stitch code being production-ready.
 
 ---
 
 ## Alternatives Considered
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Cloud DB | Firestore | Firebase Realtime Database | Less querying capability (no compound queries), less suited to the groups-of-events document model. The project context explicitly chose Firestore. |
-| Cloud DB | Firestore | Keep Supabase | Supabase Realtime is cited as unreliable in the project's pain points. The migration is a stated requirement in PROJECT.md. |
-| Local DB | sqflite (keep) | Replace with Firestore-only | Firestore's offline cache is 40 MB by default, read-through only, and not independently queryable. Insufficient for this app's offline-first mandate. |
-| Local DB | sqflite (keep) | Migrate to Drift | Drift offers type-safe queries and code generation over sqflite, but migrating the existing sqflite schema during a Firestore migration adds unnecessary scope. Revisit in a future milestone. |
-| State Mgmt | Riverpod 2.x | Riverpod 3.x | Breaking changes (unified Notifier API, `ProviderException`, equality semantics) compound risk with the Firestore migration. Separate milestone. |
-| State Mgmt | Riverpod 2.x | Bloc/Cubit | No migration rationale. Riverpod is already embedded across ~100 files. |
-| Auth | Firebase anonymous | Full user accounts | PROJECT.md explicitly rules this out: "Anonymous auth works, adding login adds friction." |
-| Financial precision | `decimal` package | `money2` package | `money2` is a valid alternative with built-in currency handling, but migrating the precision layer during a backend migration is unwarranted risk. The existing `decimal` package is correct. |
-| Testing | `fake_cloud_firestore` | Mock `FirebaseFirestore` directly | Firestore's internal API surface is too large to mock reliably. `fake_cloud_firestore` is the standard community approach. |
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| `ThemeExtension` (built-in) | `mix` package (v2.0.1) | If the team wanted a full styling DSL with composable style objects. `mix` is excellent but adds significant conceptual overhead. For a single-developer project doing a targeted overhaul, ThemeExtension is less friction. |
+| `animations` (Flutter.dev) | Roll-your-own `AnimatedSwitcher` | Never. `animations` provides tested M3 motion patterns. Custom AnimatedSwitcher for screen transitions adds maintenance burden with no benefit. |
+| `flutter_svg` | `jovial_svg` | If SVG parsing performance is the bottleneck — jovial_svg pre-compiles to a binary format. The pre-compilation workflow for flutter_svg via `vector_graphics_compiler` achieves the same result; prefer the more widely used package. |
+| `skeletonizer` | Keep `shimmer` only | `shimmer` requires you to build a duplicate skeleton layout. `skeletonizer` wraps real widgets. For the rich dashboard, `skeletonizer` saves meaningful implementation time. |
+| `lottie` | `rive` (v0.14.4) | Use Rive if animations need to be interactive (respond to touch, have state machines). Lottie is simpler for one-shot or looping animations from a file. For empty states and onboarding, Lottie is appropriate. Rive is overkill unless an animation responds to user input. |
+| `haptic_feedback` package | SDK `HapticFeedback` class | Use the SDK class for very simple cases (light impact only). The package is worth adding for more expressive haptic patterns across the full app. |
+| `NavigationBar` (built-in) | `persistent_bottom_nav_bar_v2` or similar | Only if needing highly custom nav bar visuals that M3 NavigationBar cannot achieve. M3 NavigationBar supports indicator color, destination colors, and height customization — sufficient for the earthy design. Avoid external nav bar packages. |
 
 ---
 
-## Complete Dependency Delta
+## What NOT to Add
 
-What changes in `pubspec.yaml` for this milestone:
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| `get` / GetX | State management and routing conflict with Riverpod 2.x + GoRouter already in use. Mixing routing systems causes deep link and navigation observer conflicts. | GoRouter + Riverpod (already installed) |
+| `flutter_screenutil` | Adaptive sizing package that requires `ScreenUtil.init()` and wraps the widget tree. The app already uses fixed spacing tokens (`space4`–`space32`) which are appropriate for a mobile-first OMR-focused app. Adding ScreenUtil mid-project requires updating all spacing references. | Existing `AppColors.space*` constants, `MediaQuery.of(context).size` for responsive checks |
+| `auto_route` | Alternative router that conflicts with GoRouter. The GoRouter upgrade to 17.x with StatefulShellRoute covers the navigation overhaul requirements. | GoRouter 17.x (already installed) |
+| `fluent_ui` / third-party component libraries | Add 200+ components with their own design language, conflicting with the M3 + earthy token system being built. These libraries resist customization. | Material 3 widgets + AppTheme overrides |
+| `velocity_x` | Utility library that adds chainable Flutter widgets and extensions. Convenient but adds a dependency for what is essentially syntax sugar over Flutter APIs. | Standard Flutter widget API |
+| Additional icon packages (e.g., `line_icons`, `font_awesome_flutter`) | The app already has `iconsax` + `material_symbols_icons`. Three icon libraries is already at the maximum. Additional icon packages add significant bundle size. | Use `material_symbols_icons` for new screens |
+| `animate_do` | A second animation package redundant with `flutter_animate`. The app already has flutter_animate — it covers all the same animations. | `flutter_animate` (already installed) |
+
+---
+
+## Dependency Delta for v2.0 UI/UX Milestone
+
+Changes to `pubspec.yaml` for this milestone only:
 
 **Add:**
 ```yaml
-cloud_firestore: ^6.2.0
-firebase_auth: ^6.3.0
-firebase_storage: ^13.2.0
-fake_cloud_firestore: ^4.1.0+1  # dev_dependency
-firebase_auth_mocks: ^0.14.0     # dev_dependency
+dependencies:
+  animations: ^2.1.2         # M3 page transitions (ContainerTransform, SharedAxis)
+  lottie: ^3.3.2             # Animated illustrations for empty states / onboarding
+  material_symbols_icons: ^4.2906.0  # Variable-weight icons (if not already added)
+  skeletonizer: ^2.1.3       # Dashboard skeleton loading states
+  haptic_feedback: ^0.6.4+3  # Cross-platform haptic patterns
+  smooth_page_indicator: ^2.0.1  # Onboarding and carousel dots
+  flutter_svg: ^2.2.4        # SVG illustrations
 ```
 
 **Upgrade:**
 ```yaml
-firebase_core: ^4.6.0      # was ^3.12.1 — mandatory for Firestore 6.x compatibility
-go_router: ^17.1.0         # was ^13.2.0 — new group/event routes
+dependencies:
+  flutter_animate: ^4.5.2    # was ^4.5.0 — patch upgrade, no API changes
 ```
 
-**Remove (when Supabase migration is complete, not before):**
+**Keep unchanged (already installed, no action):**
 ```yaml
-supabase_flutter: ^2.3.4   # remove only after full data migration verified
+  shimmer: ^3.0.0            # Keep alongside skeletonizer for simple loading bars
+  google_fonts: ^6.1.0       # Plus Jakarta Sans
+  iconsax: ^0.0.8            # Keep for existing screens, new screens use material_symbols_icons
+  cached_network_image: ^3.3.1
+  go_router: ^17.1.0         # StatefulShellRoute already available
 ```
 
-**Keep unchanged:**
-```yaml
-flutter_riverpod: ^2.4.9
-sqflite: ^2.4.2
-decimal: ^3.2.4
-firebase_messaging: ^15.2.4
-sentry_flutter: ^9.0.0
-# ... all other existing UI and utility packages
-```
+**No removals** for this milestone. The existing packages remain valid.
 
 ---
 
-## Firestore Data Modeling Decisions (Affects Stack Usage)
+## Version Compatibility
 
-These shape how the Firestore SDK is used.
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| `animations: ^2.1.2` | Flutter 3.27+ | Maintained by Flutter.dev — always compatible with current SDK |
+| `lottie: ^3.3.2` | Flutter 3.27+ | Package page explicitly states Flutter 3.27 minimum requirement |
+| `skeletonizer: ^2.1.3` | `shimmer: ^3.0.0` | These coexist — different widget types, no conflicts |
+| `flutter_animate: ^4.5.2` | `animations: ^2.1.2` | No conflict — different use cases, can be applied to same widget tree |
+| `material_symbols_icons: ^4.2906.0` | `iconsax: ^0.0.8` | Both provide icon constants — no runtime conflicts |
+| `haptic_feedback: ^0.6.4+3` | Flutter services API | Wraps platform channels — no conflicts with existing packages |
+| `smooth_page_indicator: ^2.0.1` | `flutter_animate: ^4.5.2` | No conflict — indicators can be animated with flutter_animate |
 
-**Groups → Events → Expenses hierarchy:**
+---
+
+## Integration Points with Existing app_theme.dart
+
+The overhaul requires extending `app_theme.dart` without breaking the existing `AppColors` and `AppTheme` classes. The migration path:
+
+**Step 1 — Add earthy palette constants to AppColors:**
+```dart
+// New earthy palette (replace or extend the existing Neo-Outdoor colors)
+static const Color terracotta = Color(0xFFE2725B);
+static const Color sand = Color(0xFFF5E6D3);
+static const Color sandLight = Color(0xFFFAF4EE);
+static const Color olive = Color(0xFF6B7C3A);
+static const Color oliveLight = Color(0xFFEDF2E0);
+static const Color warmBrown = Color(0xFF8B5E3C);
+static const Color warmGray = Color(0xFF8C7B6B);
 ```
-/groups/{groupId}
-  /members/{memberId}
-  /events/{eventId}          ← was "trips" in Supabase
-    /expenses/{expenseId}
-    /settlements/{settlementId}
-    /gear_items/{gearItemId}
-    /participants/{participantId}
-/group_balances/{groupId}    ← running cross-event net balances (write-time aggregation)
+
+**Step 2 — Switch ColorScheme.light() to ColorScheme.fromSeed():**
+```dart
+colorScheme: ColorScheme.fromSeed(
+  seedColor: AppColors.terracotta,
+  brightness: Brightness.light,
+).copyWith(
+  tertiary: AppColors.olive,      // Force olive for tertiary role
+  surface: AppColors.sand,        // Warm sand surface
+),
 ```
 
-**Cross-event balance tracking** uses write-time aggregation via `FieldValue.increment` on the `/group_balances/{groupId}` document. This is the correct pattern — Firestore's `count()`, `sum()`, and `average()` aggregation queries work at read-time and do not support real-time listeners. For the group dashboard showing live running balances, write-time aggregation (update the balance document on every expense write) is the only pattern that supports real-time listeners.
+**Step 3 — Create AppColorTokens ThemeExtension:**
+```dart
+class AppColorTokens extends ThemeExtension<AppColorTokens> {
+  final Color terracotta;
+  final Color sand;
+  final Color olive;
+  // ... project-specific tokens beyond M3 ColorScheme
 
-**Collection group queries** (e.g., query all `expenses` subcollections across all events in a group) are available via `FirebaseFirestore.instance.collectionGroup('expenses').where('groupId', isEqualTo: groupId)`. Requires a Firestore composite index — must be created in Firebase Console or via `firestore.indexes.json` before deploying.
+  @override
+  ThemeExtension<AppColorTokens> copyWith({...}) { ... }
 
-**Security rules** replace Supabase RLS. Group membership is checked via a `get()` call in rules:
+  @override
+  ThemeExtension<AppColorTokens> lerp(AppColorTokens? other, double t) { ... }
+}
 ```
-allow read: if get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data != null;
+
+**Step 4 — Register in AppTheme.lightTheme:**
+```dart
+ThemeData(
+  extensions: [AppColorTokens(terracotta: ..., sand: ..., olive: ...)],
+  ...
+)
 ```
-Note: Firestore rules have a hard limit of 10 `get()` operations per rule evaluation. Do not chain more than 10 membership lookups in a single rule.
+
+**Step 5 — Access in widgets:**
+```dart
+final tokens = Theme.of(context).extension<AppColorTokens>()!;
+Container(color: tokens.sand, ...)
+```
+
+The existing `AppColors` constants remain for backward compatibility. New screens use `Theme.of(context).extension<AppColorTokens>()`. Old screens continue using `AppColors.primary`, `AppColors.textPrimary`, etc.
 
 ---
 
 ## Sources
 
-- [cloud_firestore pub.dev](https://pub.dev/packages/cloud_firestore) — version 6.2.0 confirmed 2026-03-24
-- [firebase_auth pub.dev](https://pub.dev/packages/firebase_auth) — version 6.3.0 confirmed 2026-03-24
-- [firebase_storage pub.dev](https://pub.dev/packages/firebase_storage) — version 13.2.0 confirmed 2026-03-24
-- [firebase_core pub.dev](https://pub.dev/packages/firebase_core) — version 4.6.0 confirmed 2026-03-24
-- [flutter_riverpod pub.dev](https://pub.dev/packages/flutter_riverpod) — version 3.3.1 is latest (stay on 2.x for this milestone)
-- [fake_cloud_firestore pub.dev](https://pub.dev/packages/fake_cloud_firestore) — version 4.1.0+1, cloud_firestore 6.x compatibility confirmed
-- [go_router pub.dev](https://pub.dev/packages/go_router) — version 17.1.0 confirmed
-- [Riverpod 3.0 What's New](https://riverpod.dev/docs/whats_new) — breaking changes documented
-- [Riverpod 2.0 to 3.0 Migration Guide](https://riverpod.dev/docs/3.0_migration)
-- [FlutterFire Firestore Usage](https://firebase.flutter.dev/docs/firestore/usage/) — offline persistence config
-- [Firebase Firestore Offline Docs](https://firebase.google.com/docs/firestore/manage-data/enable-offline)
-- [Firebase Anonymous Auth Best Practices](https://firebase.blog/posts/2023/07/best-practices-for-anonymous-authentication/)
-- [Firestore Aggregation Queries](https://firebase.google.com/docs/firestore/query-data/aggregation-queries)
-- [Firestore Write-time Aggregations](https://firebase.google.com/docs/firestore/solutions/aggregation)
-- [Firestore Group-based Security Rules](https://medium.com/firebase-developers/patterns-for-security-with-firebase-group-based-permissions-for-cloud-firestore-72859cdec8f6)
-- [Firestore Secure Role-based Access](https://firebase.google.com/docs/firestore/solutions/role-based-access)
+- [pub.dev: animations 2.1.2](https://pub.dev/packages/animations) — version confirmed March 2026
+- [pub.dev: lottie 3.3.2](https://pub.dev/packages/lottie) — version confirmed September 2025
+- [pub.dev: flutter_animate 4.5.2](https://pub.dev/packages/flutter_animate) — version confirmed November 2024
+- [pub.dev: flutter_svg 2.2.4](https://pub.dev/packages/flutter_svg) — version confirmed February 2026
+- [pub.dev: skeletonizer 2.1.3](https://pub.dev/packages/skeletonizer) — version confirmed February 2026
+- [pub.dev: haptic_feedback 0.6.4+3](https://pub.dev/packages/haptic_feedback) — version confirmed December 2025
+- [pub.dev: smooth_page_indicator 2.0.1](https://pub.dev/packages/smooth_page_indicator) — version confirmed December 2025
+- [pub.dev: material_symbols_icons 4.2906.0](https://pub.dev/packages/material_symbols_icons) — version confirmed January 2026
+- [pub.dev: go_router 17.1.0](https://pub.dev/packages/go_router) — version confirmed, StatefulShellRoute available
+- [pub.dev: rive 0.14.4](https://pub.dev/packages/rive) — version confirmed (alternative to lottie, not recommended for this milestone)
+- [Flutter API: ThemeExtension](https://api.flutter.dev/flutter/material/ThemeExtension-class.html) — design token architecture
+- [Flutter API: ColorScheme.fromSeed](https://api.flutter.dev/flutter/material/ColorScheme/ColorScheme.fromSeed.html) — M3 tonal palette generation
+- [Flutter API: NavigationBar](https://api.flutter.dev/flutter/material/NavigationBar-class.html) — M3 bottom navigation
+- [Google Stitch](https://stitch.withgoogle.com/) — AI UI design tool, Flutter export capability confirmed
+- [Stitch + Flutter workflow (DEV Community)](https://dev.to/techwithsam/stitch-antigravity-flutter-build-apps-with-ai-agents-in-2026-2pei) — MEDIUM confidence, practical workflow details
+- [Google Developers Blog: Stitch announcement](https://developers.googleblog.com/stitch-a-new-way-to-design-uis/) — official announcement
+- [Rive vs Lottie comparison 2025](https://dev.to/uianimation/rive-vs-lottie-which-animation-tool-should-you-use-in-2025-p4m) — recommendation rationale
+- [vector_graphics_compiler SVG optimization](https://pub.dev/packages/vector_graphics_compiler) — flutter_svg performance path
+- [unDraw open source illustrations](https://undraw.co/) — free SVG illustration source
+
+---
+*Stack research for: Rihla v2.0 UI/UX Overhaul (Flutter)*
+*Researched: 2026-03-28*

@@ -1,472 +1,565 @@
-# Architecture Patterns
+# Architecture Research
 
-**Domain:** Group + event coordination app with cross-event financial ledger
-**Researched:** 2026-03-26
-**Overall confidence:** HIGH (Firestore data modeling) / MEDIUM (dual-cache integration specifics)
-
----
-
-## Context: What We're Replacing and Why
-
-The current architecture is a manual sync pipeline:
-
-```
-Supabase (PostgreSQL + RLS) ← SyncService → SQLite → OfflineRepository → Riverpod Providers → UI
-```
-
-The pain points driving migration: RLS needed 4 fix migrations, Supabase Realtime subscriptions proved unreliable, and there is no concept of a persistent group above the trip level.
-
-Firebase Firestore fixes all three: path-based security rules are simpler than row-level SQL predicates, Firestore's built-in snapshot listeners are the canonical realtime mechanism with no separate Realtime product to manage, and the document model naturally expresses groups that contain events.
+**Domain:** Flutter mobile app — UI/UX overhaul (design system, navigation restructuring, visual redesign)
+**Researched:** 2026-03-28
+**Confidence:** HIGH (design token patterns, GoRouter shell routing) / MEDIUM (Stitch token extraction workflow, animation phasing)
 
 ---
 
-## Recommended Architecture
+## Context
 
-### System Overview
+This document covers the architectural decisions for the **v2.0 UI/UX overhaul** milestone only. The previous ARCHITECTURE.md (2026-03-26) documented the Firestore data layer — that layer is complete and stable. This document does not revisit backend architecture.
 
-```
-Firebase Firestore ←→ Firestore SDK (offline cache, listeners) ←→ FirestoreRepository
-                                                                         ↓
-                                                                   SQLiteCache (structured local reads)
-                                                                         ↓
-                                                                   OfflineRepository (reactive streams)
-                                                                         ↓
-                                                                   Riverpod Providers
-                                                                         ↓
-                                                                          UI
-```
+The overhaul touches three distinct systems:
 
-Two caches exist simultaneously:
-- **Firestore SDK cache** (LevelDB-backed, 40 MB default): handles write queuing offline, auto-sync on reconnect, Firestore listener continuity
-- **SQLite** (existing safar_cache.db): provides structured, queryable local reads for balance calculations, settlement logic, and fast initial renders without waiting for Firestore listeners
-
-The Firestore SDK cache is not a replacement for SQLite — they serve different roles. Firestore's cache does not support arbitrary SQL queries, aggregate functions, or indexed lookups across collections. SQLite fills that gap.
+1. **Design system** — replacing the current single-class `AppColors`/`AppTheme` file with a structured token system that can accept Stitch-sourced palette changes without ripple rewrites
+2. **Navigation** — replacing imperative `Navigator.push` calls inside group/event sub-screens with GoRouter declarative routes, flattening the tap hierarchy
+3. **Component library** — extracting repeated UI patterns into a versioned shared widget layer, simplifying the full-screen redesign phase
 
 ---
 
-## Firestore Collection Structure
+## System Overview
 
-### Top-Level Collections
-
-```
-/groups/{groupId}
-/users/{userId}
-```
-
-Everything except user profiles lives under groups. There is no top-level events or trips collection — events are always scoped to a group.
-
-### Group Document
+### Current State
 
 ```
-/groups/{groupId}
-  id:           string
-  name:         string
-  inviteCode:   string            -- short code for joining
-  createdBy:    string            -- Firebase UID of creator
-  memberIds:    string[]          -- Firebase UIDs, used in security rules
-  currency:     string            -- default 'OMR'
-  createdAt:    Timestamp
-  updatedAt:    Timestamp
+┌──────────────────────────────────────────────────────────────────┐
+│                         UI Layer                                  │
+│                                                                   │
+│  HomeScreen      GroupDetailScreen       EventCommandCenter       │
+│  (GoRouter)      (Navigator.push)        (Navigator.push)         │
+│       │               │                        │                  │
+│       │        LedgerScreen GearScreen    LedgerScreen            │
+│       │        (Navigator.push)           (Navigator.push)        │
+└───────┴───────────────┴────────────────────────┴──────────────────┘
+         │               │                        │
+         └───────────────┴────────────────────────┘
+                         │
+              AppColors / AppTheme
+              (single file, 63 files import it,
+               direct token references in every screen)
 ```
 
-`memberIds` is the security rule anchor. Every read/write to any subcollection under a group checks `resource.data.memberIds.contains(request.auth.uid)` — or for subcollections, uses `get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds.contains(request.auth.uid)`. This is the replacement for Supabase RLS.
+Key problems driving the overhaul:
 
-### Members Subcollection
+- `AppColors` is a static class with hardcoded hex values. Changing the palette (mint → terracotta) requires a global search-and-replace across 63 files.
+- Navigation has two modes: GoRouter handles top-level routes; `Navigator.push` handles everything inside a group/event (7 files, ~41 imperative push calls). Deep linking to a ledger screen is impossible.
+- `ModuleHeader`, `AppTabBar`, `SmartModuleCard` live in `lib/shared/widgets/` but are tightly coupled to `AppColors` constants, not to a theme context.
+- The dark gradient header (`darkHeaderGradient`) appears in `GroupBalanceHero`, `ModuleHeader`, `EventCommandCenter`, and the splash screen — four separate places with no single source of truth.
 
-```
-/groups/{groupId}/members/{memberId}
-  id:           string            -- participant record ID (not Firebase UID)
-  userId:       string?           -- Firebase UID if claimed, null if unclaimed
-  displayName:  string
-  role:         string            -- 'LEADER' | 'MEMBER'
-  joinedAt:     Timestamp
-  isShadow:     bool              -- unclaimed slot
-```
-
-This preserves the existing name-based participant model. `userId` is null until someone joins and claims the slot. Members subcollection is the source of truth for who's in the group; `memberIds` on the parent document is a denormalized index for security rules and fast membership checks.
-
-### Events Subcollection
+### Target State
 
 ```
-/groups/{groupId}/events/{eventId}
-  id:             string
-  name:           string
-  type:           string          -- 'TRIP' | 'CAMPING' | 'DAY_OUT' | 'NIGHT_OUT' | 'TRAVEL' | 'CUSTOM'
-  icon:           string
-  currency:       string
-  startDate:      Timestamp?
-  endDate:        Timestamp?
-  modules:        map             -- { ledger: bool, gear: bool, logistics: bool, vault: bool, ... }
-  templateApplied: bool           -- whether template presets have been seeded
-  status:         string          -- 'UPCOMING' | 'ACTIVE' | 'COMPLETED'
-  createdBy:      string
-  createdAt:      Timestamp
-  updatedAt:      Timestamp
+┌──────────────────────────────────────────────────────────────────┐
+│                         UI Layer                                  │
+│                                                                   │
+│  HomeScreen (dashboard)                                           │
+│  ├── GroupCard (inline, quick taps surface key info)              │
+│  └── RecentActivity feed                                          │
+│                                                                   │
+│  GroupDetailScreen    →    EventCommandCenter                     │
+│  (GoRouter /group/:id)     (GoRouter /group/:id/event/:eventId)   │
+│                              ↓                                    │
+│                    LedgerScreen, GearScreen, etc.                 │
+│                    (GoRouter subroutes, not Navigator.push)       │
+└──────────────────────────────────────────────────────────────────┘
+         │
+┌──────────────────────────────────────────────────────────────────┐
+│                     Design Token Layer                            │
+│                                                                   │
+│  AppTokens (palette constants — warm earthy values)              │
+│  AppColorScheme extends ThemeExtension<AppColorScheme>            │
+│  AppSpacing extends ThemeExtension<AppSpacing>                    │
+│  AppTypography (via AppTheme.lightTheme TextTheme)                │
+│  AppTheme.lightTheme (assembles ThemeData from tokens)            │
+└──────────────────────────────────────────────────────────────────┘
+         │
+┌──────────────────────────────────────────────────────────────────┐
+│                   Component Library                               │
+│                                                                   │
+│  lib/shared/widgets/ — reads tokens via Theme.of(context)        │
+│  No direct AppColors.* references — tokens only                   │
+└──────────────────────────────────────────────────────────────────┘
 ```
-
-Events replace what is currently called `trips`. The `modules` map drives which CommandCenter cards appear — same concept as `TripModules` today. The `type` field determines which template presets are seeded when the event is first created.
-
-### Event Subcollections (Module Data)
-
-All live under `/groups/{groupId}/events/{eventId}/`:
-
-```
-expenses/{expenseId}
-  id:                   string
-  eventId:              string
-  groupId:              string     -- denormalized for collection group queries
-  payerMemberId:        string
-  amount:               string     -- stored as string, Decimal precision
-  description:          string?
-  categoryId:           string?
-  categoryName:         string?
-  scope:                string     -- 'GLOBAL' | 'SUB_GROUP' | 'PERSONAL' | 'CUSTOM'
-  subGroupId:           string?
-  isDeleted:            bool
-  deletedAt:            Timestamp?
-  createdAt:            Timestamp
-
-settlements/{settlementId}
-  id:                   string
-  eventId:              string
-  groupId:              string     -- denormalized
-  payerMemberId:        string
-  recipientMemberId:    string
-  amount:               string
-  currency:             string
-  note:                 string?
-  isDeleted:            bool
-  deletedAt:            Timestamp?
-  settledAt:            Timestamp
-
-gearItems/{itemId}
-  id:                   string
-  itemName:             string
-  assignedTo:           string?
-  assignedToName:       string?
-  isPacked:             bool
-  sequenceId:           int
-  isHighPriority:       bool
-  isDeleted:            bool
-  deletedAt:            Timestamp?
-  createdAt:            Timestamp
-
-subGroups/{subGroupId}
-  id:                   string
-  name:                 string
-  type:                 string     -- 'CAR'
-  capacity:             int
-  memberIds:            string[]   -- participant IDs in this sub-group
-  createdAt:            Timestamp
-
-categories/{categoryId}
-  id:                   string
-  name:                 string
-  icon:                 string?
-
-activityLogs/{logId}
-  id:                   string
-  actorId:              string?
-  actorName:            string?
-  category:             string
-  eventType:            string
-  logText:              string
-  metadata:             map?
-  createdAt:            Timestamp
-```
-
-### Group-Level Ledger (Cross-Event Balances)
-
-This is the killer feature — running balances that accumulate across all events in a group.
-
-```
-/groups/{groupId}/groupLedger/{entryId}
-  memberId:         string
-  counterpartyId:   string
-  netAmount:        string      -- positive = counterparty owes member, negative = member owes counterparty
-  currency:         string
-  lastUpdatedAt:    Timestamp
-  eventId:          string      -- which event generated the last change
-```
-
-**Implementation approach:** Write-time aggregation using Firestore transactions. When a settlement is recorded at the event level, a transaction atomically writes the settlement document AND updates the relevant `groupLedger` entries for the two participants. This avoids expensive read-time aggregation across all events' settlements.
-
-The group ledger does NOT duplicate individual expense records — it only maintains the net balance between each pair of members. Balance calculation (the greedy min-transactions algorithm) runs locally against the group ledger entries, not against raw expenses.
-
-### Invite Codes Index (Top-Level)
-
-```
-/inviteCodes/{code}
-  groupId:    string
-  createdAt:  Timestamp
-```
-
-Flat collection at root level. Used to resolve invite codes to group IDs without requiring a collection group query or a full scan. Joiners look up their code here, then access the group. Security rules allow unauthenticated reads (invite code lookup is intentionally public; the group itself is private).
 
 ---
 
-## Security Rules Structure
+## Design Token Architecture
 
-Rules replace Supabase RLS entirely. The pattern is path-based:
+### The Problem with the Current Approach
+
+`AppColors` is a static class with hardcoded values accessed as `AppColors.primary`, `AppColors.space24`, etc. This works for a single palette but creates a coupling problem for redesign: every widget that writes `AppColors.primary` is hardcoded to the current neon mint color. Changing to terracotta requires touching all 63 importing files.
+
+Flutter's `ThemeExtension` API solves this cleanly. Custom token classes live in `ThemeData.extensions` and are read via `Theme.of(context).extension<T>()`. The widget code references semantic token names (`tokens.brandPrimary`), not raw hex values. The palette changes in one place — the `AppTheme` assembly — and propagates everywhere.
+
+**Confidence:** HIGH — ThemeExtension is the official Flutter mechanism for design tokens. Sources confirm widespread adoption in 2025 design systems.
+
+### Recommended Token Structure
 
 ```
-match /databases/{database}/documents {
+lib/core/theme/
+├── app_theme.dart          ← keep, but refactor: assembles ThemeData from tokens
+├── app_tokens.dart         ← NEW: raw primitive values (hex constants, pt sizes)
+├── extensions/
+│   ├── app_color_scheme.dart    ← NEW: ThemeExtension for semantic colors
+│   ├── app_spacing.dart         ← NEW: ThemeExtension for spacing scale
+│   └── app_radii.dart           ← NEW: ThemeExtension for border radii (optional — small)
+```
 
-  // Invite codes are public for lookup
-  match /inviteCodes/{code} {
-    allow read: if true;
-    allow write: if request.auth != null;
-  }
+**`app_tokens.dart` — primitive layer (no Flutter dependencies):**
 
-  match /groups/{groupId} {
-    // Helper function: is the caller a member of this group?
-    function isMember() {
-      return request.auth != null &&
-             request.auth.uid in resource.data.memberIds;
-    }
+```dart
+// Raw design primitives from Stitch/palette — never used directly by widgets
+abstract class AppTokens {
+  // Warm earthy palette
+  static const Color terracotta    = Color(0xFFCC6B49);  // primary brand
+  static const Color terracottaLight = Color(0xFFF5E6DE);
+  static const Color sand          = Color(0xFFF2E8D6);
+  static const Color sandDark      = Color(0xFFD4B896);
+  static const Color olive         = Color(0xFF7A8C5E);
+  static const Color oliveLight    = Color(0xFFEEF0E8);
+  static const Color charcoal      = Color(0xFF2C2C2C);
+  static const Color warmWhite     = Color(0xFFFAF8F5);
+  static const Color errorRed      = Color(0xFFD94F3D);
+  static const Color successGreen  = Color(0xFF5A8A5E);
 
-    allow read: if isMember();
-    allow create: if request.auth != null;
-    allow update: if isMember();
-    allow delete: if false; // groups don't get deleted
+  // Spacing scale
+  static const double s4  = 4;
+  static const double s8  = 8;
+  static const double s12 = 12;
+  static const double s16 = 16;
+  static const double s20 = 20;
+  static const double s24 = 24;
+  static const double s32 = 32;
+  static const double s48 = 48;
 
-    // All subcollections use group-level membership
-    match /{subcollection}/{docId} {
-      allow read, write: if request.auth != null &&
-        get(/databases/$(database)/documents/groups/$(groupId))
-          .data.memberIds.contains(request.auth.uid);
-    }
-  }
+  // Border radii
+  static const double rSmall  = 12;
+  static const double rMedium = 16;
+  static const double rLarge  = 20;
+  static const double rXLarge = 28;
 }
 ```
 
-**Performance note:** The `get()` call in subcollection rules costs one extra read per operation. This is unavoidable when membership data lives on the parent document. The alternative (duplicating `memberIds` into every subcollection document) creates consistency hazards when membership changes. Accept the extra read; Firestore caches the result within a single rule evaluation batch.
-
----
-
-## SQLite Cache Mapping
-
-The existing `LocalDatabase` tables map directly to the new Firestore structure. The migration adds two new tables and renames one concept:
-
-| Existing SQLite Table | New Name / Status | Maps to Firestore Path |
-|-----------------------|-------------------|------------------------|
-| `trips` | rename to `events`, add `groupId` + `eventType` columns | `/groups/{g}/events/{e}` |
-| `expenses` | add `groupId` column | `/groups/{g}/events/{e}/expenses/{id}` |
-| `settlements` | add `groupId` column | `/groups/{g}/events/{e}/settlements/{id}` |
-| `gear_items` | unchanged | `/groups/{g}/events/{e}/gearItems/{id}` |
-| `participants` | rename to `members`, add `userId` column | `/groups/{g}/members/{id}` |
-| `sub_groups` | unchanged | `/groups/{g}/events/{e}/subGroups/{id}` |
-| `sub_group_members` | unchanged | embedded in `subGroups.memberIds` |
-| `activity_logs` | unchanged | `/groups/{g}/events/{e}/activityLogs/{id}` |
-| `categories` | unchanged | `/groups/{g}/events/{e}/categories/{id}` |
-| `sync_queue` | **remove** | replaced by Firestore SDK write queue |
-| — | **add** `groups` | `/groups/{g}` |
-| — | **add** `group_ledger` | `/groups/{g}/groupLedger/{id}` |
-
-**Why keep SQLite at all?** Firestore's built-in offline cache (40 MB default, LevelDB-backed) does not support arbitrary SQL queries. The balance calculator runs SQL aggregate queries against SQLite. Settlement optimization reads all expenses and settlements for an event in one structured query. Fetching raw Firestore documents and doing balance math in-memory every render would be slower and harder to test. SQLite remains the structured query layer; Firestore's cache handles write buffering and sync.
-
-**Cache population:** Firestore snapshot listeners write incoming documents into SQLite. The `FirestoreRepository` (new class) owns this pipeline — it sets up listeners, maps Firestore documents to SQLite rows, and calls `OfflineRepository.notifyChange()` to trigger reactive stream re-emission. This is the same pattern as the current `SyncService._pull*()` methods, but driven by push (Firestore listeners) rather than pull (manual downloads).
-
----
-
-## Data Flow
-
-### Read Path (Online or Offline)
-
-```
-1. Provider subscribes to OfflineRepository.watch*()
-2. OfflineRepository emits current SQLite data immediately (no latency)
-3. In parallel, FirestoreRepository has active snapshot listener on Firestore
-4. Firestore listener fires (from server or SDK cache)
-5. FirestoreRepository writes document to SQLite
-6. FirestoreRepository calls repo.notifyChange(table, contextId)
-7. OfflineRepository re-emits updated data from SQLite
-8. Provider updates, UI rebuilds
-```
-
-When offline, steps 4-7 still happen — the Firestore SDK serves the listener from its local LevelDB cache. SQLite always has the most recent data that was loaded by any listener since app install (subject to Firestore's 40 MB eviction limit — see Pitfalls).
-
-### Write Path (Online)
-
-```
-1. User action → OfflineRepository.save*(record)
-2. OfflineRepository writes to SQLite immediately
-3. OfflineRepository calls FirestoreRepository.write(document)
-4. FirestoreRepository calls FirebaseFirestore.instance.collection(...).set(doc)
-5. Firestore SDK queues write (auto-syncs when online)
-6. notifyChange() fires → UI updates from SQLite immediately
-7. When Firestore confirms write, snapshot listener fires again (no-op if unchanged)
-```
-
-### Write Path (Offline)
-
-```
-1. User action → OfflineRepository.save*(record)
-2. SQLite write → immediate UI update
-3. FirestoreRepository.write() → Firestore SDK queues write in its own queue
-4. No sync_queue entry needed — Firestore handles this
-5. On reconnect, Firestore SDK drains its queue automatically
-```
-
-The existing `sync_queue` SQLite table is retired. The Firestore SDK's offline write queue replaces it. This eliminates the `SyncService.syncPendingChanges()` polling loop.
-
-**Auth token expiration risk:** If the device goes offline for an extended period, the Firebase anonymous auth token may expire. On reconnect, queued writes will fail with permission errors until `signInAnonymously()` re-authenticates. Mitigation: call `FirebaseAuth.instance.currentUser?.reload()` when the app foregrounds, and handle auth-refresh before enabling network.
-
-### Cross-Event Balance Data Flow
-
-```
-Settlement recorded (event-level write):
-  1. User confirms settlement in UI
-  2. Firestore transaction begins:
-     a. Write settlement to /groups/{g}/events/{e}/settlements/{id}
-     b. Read current groupLedger entry for (payerMemberId, recipientMemberId) pair
-     c. Update netAmount on groupLedger entry (atomic)
-  3. Both writes complete or both fail (transaction)
-  4. Snapshot listeners fire for settlements AND groupLedger
-  5. SQLite updates for both tables
-  6. GroupDashboard provider re-emits updated cross-event balances
-```
-
----
-
-## Component Boundaries
-
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| `FirestoreRepository` | Firestore reads/writes, snapshot listener setup, document-to-SQLite mapping | Firestore SDK, `LocalDatabase`, `OfflineRepository` |
-| `OfflineRepository` | Reactive SQLite streams, notify-on-change, write coordination | `LocalDatabase`, `CacheService`, `FirestoreRepository` |
-| `LocalDatabase` | SQLite schema, migrations, raw db access | sqflite |
-| `CacheService` | Batch read/write helpers for SQLite tables | `LocalDatabase` |
-| `GroupRepository` | Group CRUD, invite code resolution, member management | `FirestoreRepository` |
-| `EventRepository` | Event CRUD, template seeding, module configuration | `FirestoreRepository` |
-| `LedgerService` | Expense + settlement writes (with group ledger transaction) | `FirestoreRepository`, `OfflineRepository` |
-| `BalanceCalculator` | Pure logic, reads from SQLite via queries | `LocalDatabase` |
-| `SyncService` | **Retire** — replaced by Firestore SDK offline queue | — |
-| Riverpod Providers | Consume `OfflineRepository.watch*()` streams | `OfflineRepository` |
-
-**Key boundary:** `FirestoreRepository` is the only component that touches `FirebaseFirestore.instance` directly. Everything above it operates through `OfflineRepository` (reactive streams from SQLite). This keeps Firestore out of providers and UI, and makes the entire state layer testable by mocking `OfflineRepository` without any Firebase dependency.
-
----
-
-## Suggested Build Order
-
-Dependencies flow strictly top-down. Each layer must be stable before the next is built.
-
-### Layer 1 — Data Foundation (no dependencies on new features)
-1. **SQLite schema migration** — add `groups`, `group_ledger` tables; add `groupId` + `eventType` to `events` (was `trips`); rename `members` table
-2. **Firestore project setup** — add `cloud_firestore` package, configure `FirebaseOptions`, verify anonymous auth works with Firestore rules
-3. **`FirestoreRepository`** — generic document write/read/listen, no business logic
-4. **Security rules** — deploy group membership rules, test with Firebase emulator
-
-### Layer 2 — Groups Feature (depends on Layer 1)
-5. **`GroupRepository`** — create group, generate invite code, resolve invite code, join group (claim member slot), fetch group + members
-6. **Group providers** — `groupsProvider`, `groupMembersProvider` using `OfflineRepository.watchGroups()`
-7. **Groups UI** — group list (home screen), create group, join group flow
-
-### Layer 3 — Events Feature (depends on Layer 2)
-8. **`EventRepository`** — create event with template seeding, fetch events for group, update event modules
-9. **Template engine** — maps event type to default modules + gear presets
-10. **Event providers** — `groupEventsProvider`, `eventProvider`
-11. **Events UI** — event list in group dashboard, create event screen, CommandCenter adapted for events
-
-### Layer 4 — Module Migration (depends on Layer 3)
-12. **`LedgerService`** — expense writes route through Firestore (replacing Supabase), settlement writes include group ledger transaction
-13. **Gear, logistics, vault** — migrate each module's write path from Supabase to Firestore
-14. **`FirestoreRepository` listeners** — set up per-event snapshot listeners for expenses, settlements, gear items
-
-### Layer 5 — Cross-Event Ledger (depends on Layer 4)
-15. **`groupLedger` read path** — `watchGroupLedger(groupId)` in `OfflineRepository`
-16. **Cross-event balance display** — group dashboard showing running balances
-17. **Cross-event settlement flow** — settle up across all events, not just one
-
-### Layer 6 — Migration + Hardening
-18. **Data migration** — export existing Supabase data, import into Firestore (user base is small, anonymous auth means no identity continuity required)
-19. **Remove Supabase** — remove `supabase_flutter` dependency, retire `SyncService`, clean up `sync_queue` table
-20. **Collection group query indexes** — create composite indexes for cross-group expense queries if needed
-
----
-
-## Firestore Collection Group Queries
-
-Querying expenses across all events in a group requires a collection group query:
+**`extensions/app_color_scheme.dart` — semantic layer (what widgets use):**
 
 ```dart
-// All non-deleted expenses in a group, across all events
-FirebaseFirestore.instance
-  .collectionGroup('expenses')
-  .where('groupId', isEqualTo: groupId)
-  .where('isDeleted', isEqualTo: false)
-  .orderBy('createdAt', descending: true)
-  .snapshots();
+@immutable
+class AppColorScheme extends ThemeExtension<AppColorScheme> {
+  final Color brandPrimary;       // terracotta in light theme
+  final Color brandPrimaryLight;  // terracottaLight
+  final Color brandOnPrimary;     // white text on terracotta
+  final Color surface;
+  final Color surfaceVariant;     // sand
+  final Color backgroundPage;     // warmWhite
+  final Color textHeading;
+  final Color textBody;
+  final Color textMuted;
+  final Color border;
+  final Color debtRed;
+  final Color creditGreen;
+
+  const AppColorScheme({...required fields...});
+
+  @override
+  AppColorScheme copyWith({...}) {...}
+
+  @override
+  AppColorScheme lerp(ThemeExtension<AppColorScheme>? other, double t) {...}
+
+  // Convenience accessor — avoids null check at every call site
+  static AppColorScheme of(BuildContext context) =>
+      Theme.of(context).extension<AppColorScheme>()!;
+}
 ```
 
-This requires:
-1. A composite index on `(groupId, isDeleted, createdAt)` in the `expenses` collection group
-2. Security rules using `match /{path=**}/expenses/{expenseId}` syntax (rules version 2)
+**Widget usage (before vs. after):**
 
-The `groupId` field is why it gets denormalized into every expense document even though expenses are nested under an event — the collection group query needs a filterable field.
+```dart
+// Before — coupled to static class
+Container(color: AppColors.primary)
+const EdgeInsets.all(AppColors.space24)
+
+// After — reads from theme context
+final colors = AppColorScheme.of(context);
+Container(color: colors.brandPrimary)
+EdgeInsets.all(AppSpacing.of(context).l)  // l = large = 24pt
+```
+
+### Migration Path for AppColors
+
+`AppColors` has ~63 importing files. A single hard cutover would require touching every file in one phase. Instead:
+
+1. Create the new token classes alongside `AppColors` (do not delete `AppColors`)
+2. Update `AppTheme.lightTheme` to include the new `ThemeExtension` entries with the new palette values
+3. Migrate screens progressively: each screen being redesigned switches from `AppColors.*` to `AppColorScheme.of(context).*`
+4. After all screens are migrated, delete `AppColors`
+
+This means `AppColors` and the new token classes coexist during the redesign. Screens that have not yet been redesigned continue to compile and run correctly with the old tokens.
+
+**Important:** Keep `AppColors.space*` constants available until migrated. The spacing constants are referenced in ~300+ widget padding/margin calls. A spacing `ThemeExtension` is correct architecturally but is a separate migration from color.
+
+### Stitch → Flutter Token Workflow
+
+Google Stitch (stitch.withgoogle.com) exports Flutter widget code directly as of 2026. However, the integration is a design reference workflow, not a codegen pipeline:
+
+1. Use Stitch to generate UI mockups with the warm earthy palette
+2. Export to Figma or as Flutter widget code (Stitch generates Scaffold, Column, Row structures)
+3. Extract the color hex values and typography choices as `AppTokens` constants
+4. Implement screens manually using the exported code as reference
+
+Stitch's Flutter code export quality is production-adjacent but not production-ready — it generates correct widget composition but lacks Riverpod providers, proper error handling, and navigation wiring. Treat Stitch output as a wireframe reference, not a copypaste source.
+
+**Confidence:** MEDIUM — Stitch's Flutter export is real and functional (confirmed 2026), but automated token extraction into ThemeExtension classes is not supported. Manual extraction is the current workflow.
+
+---
+
+## Navigation Architecture
+
+### Current Navigation Map
+
+```
+/                   → auto-redirect (GoRouter)
+/onboarding         → GoRouter
+/home               → GoRouter (HomeScreen)
+  └─ FAB tap        → Navigator.push (not in GoRouter)
+       ├─ /create-group  → GoRouter (but entered via push in HomeScreen FAB)
+       └─ /join-group    → GoRouter
+/group/:id          → GoRouter (GroupDetailScreen)
+  └─ FAB tap        → Navigator.push → EventTypePickerScreen
+  └─ event card tap → Navigator.push → EventCommandCenter
+       └─ module tap → Navigator.push → LedgerScreen / GearScreen / LogisticsScreen
+/group/:id/settings → GoRouter (nested subroute)
+/settings           → GoRouter
+```
+
+Tap depth to reach ledger: Home → Group → Event → Ledger = 4 taps. EventCommandCenter and all module screens are invisible to GoRouter — deep links and back-stack management are fragile.
+
+### Recommended Navigation Restructuring
+
+**Phase 1 (low risk): Add event-level routes to GoRouter**
+
+Add routes to `AppRoutes` and `app_router.dart` without changing any existing `Navigator.push` calls yet. This creates the deep-link infrastructure:
+
+```dart
+// New routes in app_router.dart
+static const String eventDetail  = '/group/:groupId/event/:eventId';
+static const String eventLedger  = '/group/:groupId/event/:eventId/ledger';
+static const String eventGear    = '/group/:groupId/event/:eventId/gear';
+static const String eventLogistics = '/group/:groupId/event/:eventId/logistics';
+static const String eventVault   = '/group/:groupId/event/:eventId/vault';
+static const String eventMemories = '/group/:groupId/event/:eventId/memories';
+```
+
+**Phase 2 (medium risk): Replace Navigator.push with context.push in event screens**
+
+Replace the 7 files using `Navigator.of(context).push(AppPageRoute(...))` in the events/groups feature area with `context.push(AppRoutes.eventDetail(...))`. This is the primary navigation flattening work.
+
+The `AppPageRoute` slide transition is preserved by using GoRouter's `pageBuilder` with `CustomTransitionPage` (same pattern already used for `/group/:id` in the current router).
+
+**Phase 3 (flatter dashboard): Rich home screen using GoRouter**
+
+The new home dashboard is a single-scroll view. Group cards remain tappable to `context.push('/group/:id')`. The dashboard does not require a bottom navigation bar — the app is still single-stack. `StatefulShellRoute` is not needed because there are no parallel top-level sections.
+
+**Confidence:** HIGH — GoRouter nested routes with `parentNavigatorKey` are well-established for this pattern. The existing router already uses `CustomTransitionPage` for transitions; extending it to event sub-routes is straightforward.
+
+### Navigation Flattening Strategy
+
+The "reduce tap depth" goal is partially achieved via navigation restructuring, but primarily via UI redesign:
+
+| Tap reduction | How |
+|---------------|-----|
+| Balance summary on home dashboard | User sees cross-group debt/credit without entering any group |
+| Recent activity on home dashboard | Latest 5 activity items visible without entering a group |
+| Quick-add expense from group card | Long-press or swipe reveals add expense shortcut |
+| Event cards on group detail show balance | No need to enter EventCommandCenter just to see "how much did this trip cost?" |
+
+Navigation flattening is content surfacing, not route elimination. The routes still exist — but common answers (how much do I owe?) appear one level higher.
+
+---
+
+## Component Library Architecture
+
+### Current Shared Widgets
+
+```
+lib/shared/widgets/
+├── app_tab_bar.dart       — gradient pill tab bar
+├── empty_state_view.dart  — consistent empty states
+├── loading_button.dart    — button with loading spinner
+├── module_header.dart     — dark/light header with back button (light/dark variants)
+├── offline_banner.dart    — connectivity strip
+├── search_filter_bar.dart — expandable search + filter
+├── skeleton_loader.dart   — loading placeholders
+└── smart_module_card.dart — event module cards in CommandCenter
+```
+
+All import `AppColors` directly. None read from `ThemeData`. This must change before the palette can be swapped.
+
+### Recommended Component Evolution
+
+**Keep and migrate (all 8 shared widgets):**
+Each shared widget needs one pass: replace `AppColors.*` references with `Theme.of(context).*` or `AppColorScheme.of(context).*`. No structural changes needed for most — this is a mechanical token substitution.
+
+`ModuleHeader` is an exception. Its `useDarkTheme` boolean toggle creates a dual-implementation widget. The new design system should use a single `ModuleHeader` that reads semantic tokens (the "dark header" becomes `backgroundGradient: colors.headerGradient` rather than a hardcoded dark gradient). This simplifies the widget from ~200 LOC to ~120 LOC.
+
+**Add for dashboard:**
+
+```
+lib/shared/widgets/
+├── ...existing widgets...
+├── dashboard_section_header.dart   — NEW: "Your Groups" / "Recent Activity" section headers
+├── balance_pill.dart               — NEW: compact debt/credit indicator used on cards
+├── event_timeline_tile.dart        — NEW: timeline entry for group activity feed
+└── hero_balance_card.dart          — NEW: full-width balance summary for home dashboard
+```
+
+**Component library structure (atomic design, light version):**
+
+The full atomic-design hierarchy is overkill for a 130-file codebase. Apply a simplified two-level model:
+
+| Level | Location | Examples |
+|-------|----------|---------|
+| Tokens | `lib/core/theme/` | Colors, spacing, radii |
+| Atoms | `lib/shared/widgets/` | BalancePill, LoadingButton, EmptyStateView |
+| Organisms | `lib/features/*/widgets/` | GroupBalanceHero, EventModuleList, GroupCard |
+| Screens | `lib/features/*/screens/` | GroupDetailScreen, HomeScreen |
+
+Feature-specific widgets stay in `lib/features/{feature}/widgets/`. Cross-feature reusable atoms go to `lib/shared/widgets/`. The line is: "would two different features use this widget?" If yes → shared. If no → keep in feature.
+
+---
+
+## Animation Architecture
+
+### Existing Animation Stack
+
+The codebase already uses `flutter_animate ^4.5.0` and `shimmer ^3.0.0`. The home screen and several feature screens use `.animate().fadeIn().slideY()` chains. This is the right approach — do not introduce a second animation package.
+
+### Recommended Animation Patterns
+
+**Pattern 1: Entry animations via flutter_animate**
+
+Already in use on HomeScreen list items. Extend to all redesigned screens:
+
+```dart
+// Standard enter animation — apply to any card entering a list
+Widget card = SomeCard(...)
+  .animate()
+  .fadeIn(duration: 300.ms)
+  .slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic,
+          delay: Duration(milliseconds: 40 * index.clamp(0, 8)));
+```
+
+The `clamp(0, 8)` cap is important — stagger should stop after 8 items. Beyond that, users have already scrolled and the animation adds delay without delight.
+
+**Pattern 2: Implicit animations for state changes**
+
+For color/size changes on interaction (balance pill changing from red to green on settle up, buttons changing state), use Flutter's built-in implicit animation widgets:
+
+```dart
+AnimatedContainer(
+  duration: const Duration(milliseconds: 200),
+  curve: Curves.easeInOut,
+  color: isOwed ? colors.debtRed : colors.creditGreen,
+)
+```
+
+This is lighter than `flutter_animate` and sufficient for micro-interactions.
+
+**Pattern 3: Page transitions via GoRouter pageBuilder**
+
+All existing route transitions use `CurvedAnimation(curve: Curves.easeOutCubic)` with 300ms duration. Keep this as the universal transition spec. The redesign does not require hero animations or shared element transitions — they would add complexity without commensurate value in a list → detail app.
+
+**Pattern 4: SkeletonLoader for loading states**
+
+`SkeletonLoader.groupList()` is already implemented via shimmer. Extend with `SkeletonLoader.dashboardHero()` and `SkeletonLoader.eventCard()` for new dashboard shapes.
+
+### Animation Performance Rules
+
+- Never animate more than 8 list items simultaneously (stagger cap above)
+- Use `MediaQuery.of(context).disableAnimations` guard (already used in HomeScreen — keep this pattern on all new screens)
+- Avoid `flutter_animate` on widgets that rebuild frequently (e.g., providers watching balance streams). Wrap animating widget in `AnimatedSwitcher` keyed to the data state instead
+- Prefer 200–400ms durations. Under 200ms feels abrupt on the earthy warm aesthetic; over 400ms feels sluggish
+
+---
+
+## Phased Redesign Strategy
+
+### The Core Constraint
+
+63 files import `AppColors`. All 14 feature areas have screens. A "redesign everything at once" approach creates an unboundable phase with high regression risk across the 624-test suite.
+
+The correct strategy is **outside-in**: redesign from the first screen users see to the deepest, migrating the design token layer once per screen rather than globally.
+
+### Recommended Build Order
+
+**Phase A — Design foundation (no screen changes)**
+
+1. Create `app_tokens.dart` with the new warm earthy palette constants
+2. Create `AppColorScheme` and `AppSpacing` ThemeExtension classes
+3. Update `AppTheme.lightTheme` to register the new extensions AND apply the new `ColorScheme` values
+4. Update `AppTheme.lightTheme` with new warm palette colors (this changes the global appearance — plan a visual review checkpoint)
+5. Write token tests: verify `AppColorScheme.of(context)` resolves on a pumped MaterialApp
+
+**Why Phase A comes first:** If the token architecture is not in place before screen redesign starts, each screen redesign is a debt-creation event (new hardcoded values that will need another migration pass).
+
+**Phase B — Splash + onboarding (2 screens, no test dependencies)**
+
+6. Redesign `_SplashScreen` in `app_router.dart` — warm background, terracotta logo
+7. Redesign `OnboardingScreen` — warm earthy illustration backgrounds
+
+These screens have zero widget test coverage for their visual layout (tests check completion state via SharedPreferences). Safe to redesign freely.
+
+**Phase C — Home dashboard (1 screen, 1 test file)**
+
+8. Redesign `HomeScreen` as rich single-scroll dashboard: balance summary hero, group cards with inline balance pills, recent activity strip
+9. Migrate `GroupCard` widget to new tokens
+10. Migrate `OfflineBanner` to new tokens
+11. Update `test/features/home/home_screen_groups_test.dart` — find widgets by semantics/key, not by color
+
+**Phase D — Group detail (1 screen, 3 test files)**
+
+12. Redesign `GroupDetailScreen` — restructured layout per new information hierarchy
+13. Migrate `GroupBalanceHero`, `GroupMemberBalanceCard`, `GroupSpendingStats`, `InviteCodeDisplay` to new tokens
+14. Add `/group/:id/event/:eventId` route to GoRouter (Phase 1 of navigation restructuring)
+15. Update `group_detail_screen_test.dart`, `group_screens_test.dart`, `group_settle_up_screen_test.dart`
+
+**Phase E — Event hub (1 screen, implicitly tested via group tests)**
+
+16. Redesign `EventCommandCenter` — keep the dark header concept but re-skin with earthy palette
+17. Replace `Navigator.push` in `GroupDetailScreen` → `context.push(AppRoutes.eventDetail(...))`
+18. Replace `Navigator.push` in `EventCommandCenter` → `context.push(...)` for module routes
+19. Migrate `EventModuleList`, `EventSpendingHero`, `EventCard` to new tokens
+
+**Phase F — Module screens (6 screens, highest test density)**
+
+20. Redesign `LedgerScreen` and its widgets (15 widget files — the largest module)
+21. Redesign `GearScreen`
+22. Redesign `LogisticsScreen`
+23. Redesign `VaultScreen`
+24. Redesign `MemoriesScreen`
+25. Redesign `ActivityFeedScreen`
+
+Module screens are redesigned last because: they have the most test coverage, the most complex widget trees, and the smallest user-facing impact on first impression. Getting the home → group → event flow right matters more for the "eye-catching" goal than perfecting the add-expense form.
+
+**Phase G — Token cleanup**
+
+26. Grep for remaining `AppColors.*` references
+27. Delete `AppColors` class (final cleanup)
+28. Remove dark theme support from `AppTheme` (light-only per product spec)
+
+### Test Preservation Strategy
+
+The 624-test suite must stay green throughout. Rules for redesign phases:
+
+| Test type | Impact of redesign | Mitigation |
+|-----------|-------------------|------------|
+| Unit tests (logic, services) | None — no UI dependency | No changes needed |
+| Widget tests finding widgets by `Text('string')` | Safe — label text preserved | No changes needed |
+| Widget tests finding by `Icon(Iconsax.some_icon)` | Safe if icons preserved | Keep icon selections during redesign |
+| Widget tests checking specific colors | Breaking | Refactor: find by Key or semantics label |
+| Widget tests checking `ModuleHeader` dark theme | May break if `useDarkTheme` removed | Refactor header test before removing bool |
+
+The only risky tests are ones that check specific colors or rely on widget tree structure that changes (e.g., tests finding the back button by traversing from `AppBar`). These should be refactored to use `Key` or `Semantics` labels as each screen is redesigned — not all at once.
+
+---
+
+## Integration Points: New vs. Modified
+
+### Modified Files
+
+| File | Type of Change | Risk |
+|------|---------------|------|
+| `lib/core/theme/app_theme.dart` | Extend with new ColorScheme, register ThemeExtension instances, remove dark theme | MEDIUM — 63 importers |
+| `lib/shared/widgets/module_header.dart` | Replace `AppColors.*` with `AppColorScheme.of(context)`, remove `useDarkTheme` bool | MEDIUM — used in 5+ screens |
+| `lib/core/router/app_router.dart` | Add event-level routes, add `parentNavigatorKey` for full-screen routes | LOW — additive |
+| `lib/features/home/screens/home_screen.dart` | Full redesign | MEDIUM — 1 test file |
+| `lib/features/groups/screens/group_detail_screen.dart` | Full redesign, token migration | HIGH — 3 test files |
+| `lib/features/events/screens/event_command_center.dart` | Full redesign, Navigator.push → GoRouter | MEDIUM — covered via group tests |
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `lib/core/theme/app_tokens.dart` | Raw primitive palette values |
+| `lib/core/theme/extensions/app_color_scheme.dart` | Semantic color ThemeExtension |
+| `lib/core/theme/extensions/app_spacing.dart` | Spacing scale ThemeExtension |
+| `lib/shared/widgets/hero_balance_card.dart` | Home dashboard balance hero |
+| `lib/shared/widgets/balance_pill.dart` | Compact debt/credit indicator |
+| `lib/shared/widgets/dashboard_section_header.dart` | Section headers for dashboard scroll |
+| `lib/shared/widgets/event_timeline_tile.dart` | Activity feed timeline entry |
+
+### Preserved Unchanged
+
+- All services, repositories, providers — the data layer is untouched
+- `BalanceCalculator`, `MoneySerializer`, `Decimal` usage — financial logic is untouched
+- `LocalDatabase`, `OfflineRepository`, `FirestoreRepository` — backend layer is untouched
+- Test helper patterns (fake providers, `FakeFirebaseFirestore`, `MockFirebaseAuth`) — testing infrastructure is untouched
+
+---
+
+## Scaling Considerations
+
+This is a UI architecture, not a distributed systems concern. The relevant scaling dimension is **codebase scale** — how the design system stays maintainable as screens grow.
+
+| Concern | Current (14 screens) | Future (20+ screens) |
+|---------|---------------------|----------------------|
+| Token drift | Medium risk — `AppColors` changes might miss files | Low risk with ThemeExtension — token resolution is compile-time safe |
+| Shared widget consistency | Medium risk — 8 widgets use direct color constants | Low risk once token migrated — widget tree reads theme |
+| Navigation spaghetti | Growing — 41 imperative push calls | Resolved with GoRouter subroutes |
+| Test fragility | Medium — color-based finders will break on palette change | Low once tests use Key/semantics |
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Storing Members Only as an Array in the Group Document
+### Anti-Pattern 1: Big Bang Token Migration
 
-**What:** Putting all member data (name, role, join date) into a `members: []` array on the group document instead of a `members` subcollection.
+**What people do:** Create `AppColorScheme` and immediately replace all `AppColors.*` references in one commit across 63 files.
 
-**Why bad:** Firestore documents have a 1 MiB size limit. Groups with many events and accumulating member history will hit this. Array updates require read-modify-write which is not atomic without a transaction. Security rules cannot filter individual array elements.
+**Why it's wrong:** Creates an unreviable PR, breaks the test suite in unpredictable ways, and makes bisecting regressions nearly impossible.
 
-**Instead:** Use the `members/{memberId}` subcollection for member records, and keep only `memberIds: string[]` (UIDs only) on the group document for rule evaluation.
+**Do this instead:** Coexist `AppColors` and the new token system. Migrate one feature at a time, screen by screen. Each phase compiles and tests pass.
 
-### Anti-Pattern 2: Replacing SQLite with Firestore SDK Cache Entirely
+### Anti-Pattern 2: Stitch Code Copypaste
 
-**What:** Disabling SQLite and relying solely on Firestore's 40 MB LevelDB cache for all offline reads.
+**What people do:** Export Flutter code from Stitch and paste it directly into screen files, replacing existing widget trees.
 
-**Why bad:** Firestore's cache does not support SQL queries. The balance calculator performs multi-table joins and aggregate sums. These would require loading all documents into memory and doing arithmetic in Dart, which is slower and untestable without Firestore. The eviction policy can remove old documents that are needed for balance history.
+**Why it's wrong:** Stitch output has no Riverpod providers, no error states, no navigation wiring, and uses Material 3 defaults that clash with the existing typography setup. It also does not respect the immutability coding style requirement — Stitch generates `setState` in `StatefulWidget` trees.
 
-**Instead:** Maintain both caches. SQLite for structured queries and balance calculations; Firestore SDK cache for write buffering and auto-sync.
+**Do this instead:** Use Stitch output as a layout and color reference. Manually implement the widget tree using the Stitch design as a visual spec.
 
-### Anti-Pattern 3: Computing Cross-Event Balances at Read Time
+### Anti-Pattern 3: Adding Bottom Navigation for Navigation Depth
 
-**What:** On the group dashboard, query all expenses and settlements from all events and compute net balances in the UI layer.
+**What people do:** Add a persistent bottom navbar with tabs (Home, Groups, Activity, Settings) to solve the "too many taps" problem.
 
-**Why bad:** An active group with 10 events and 30 participants generates hundreds of expense documents. Reading all of them on every dashboard load is expensive in both Firestore reads (billed per document) and latency.
+**Why it's wrong:** The app has one primary content hierarchy: Group → Event → Module. A tab bar adds a navigation paradigm that does not match the data model. Users do not context-switch between "Ledger mode" and "Gear mode" — they work within an event. A bottom nav would require `StatefulShellRoute` with 4 branches, a significant routing overhaul, and new animation coordination logic.
 
-**Instead:** Maintain the `groupLedger` subcollection as a write-time aggregation. When a settlement is recorded, a transaction updates the ledger atomically. The dashboard reads O(members^2) ledger entries, not O(all expenses).
+**Do this instead:** Surface key information higher in the existing hierarchy (balance summary on home, event balances on group detail). Reduce taps through content density, not through navigation architecture changes.
 
-### Anti-Pattern 4: One Firestore Listener Per Screen
+### Anti-Pattern 4: Animating Riverpod-Provided Data Directly
 
-**What:** Each screen sets up its own `snapshots()` listener on the same collection, then cancels it on dispose.
+**What people do:** Apply `.animate().fadeIn()` directly to a `Consumer` widget that watches a `StreamProvider`, causing the animation to re-fire every time the stream emits a new value (including server-pushed updates).
 
-**Why bad:** Multiple listeners on the same path multiply Firestore reads. Teardown and re-setup on navigation causes data flicker.
+**Why it's wrong:** Real-time Firestore listeners can fire 5-10 times per second during active use. The animation would fire repeatedly, creating visual noise.
 
-**Instead:** Keep listeners alive at the `FirestoreRepository` level, scoped to the current group/event context. Providers consume the reactive SQLite streams via `OfflineRepository`, which do not involve Firestore directly.
-
----
-
-## Scalability Considerations
-
-| Concern | At 10 members | At 50 members | Notes |
-|---------|---------------|---------------|-------|
-| Group ledger entries | 45 pairs (n*(n-1)/2) | 1225 pairs | Manageable at both scales |
-| Firestore reads per session | ~100 | ~500 | Dominated by initial listener hydration |
-| SQLite query time (balance) | <5ms | <20ms | Indexed by groupId |
-| Security rule get() calls | 1 per write | 1 per write | Cached within evaluation context |
-| Firestore SDK cache size | Well under 40 MB | Likely under 40 MB | Large groups may need `CACHE_SIZE_UNLIMITED` |
-
-For the target market (Oman-focused, small friend groups), scalability above 50 members per group is not a concern. The architecture handles it anyway.
+**Do this instead:** Wrap in `AnimatedSwitcher` keyed to a stable value (e.g., `key: ValueKey(expenses.length)`), or animate only on the initial mount using `AnimationController` with `vsync` and `animateTo(1.0)` in `initState`.
 
 ---
 
 ## Sources
 
-- [Cloud Firestore Data Model — Firebase](https://firebase.google.com/docs/firestore/data-model) — subcollection model
-- [Writing conditions for Firestore Security Rules — Firebase](https://firebase.google.com/docs/firestore/security/rules-conditions) — `get()` for cross-document checks, array membership
-- [Access data offline — Firebase](https://firebase.google.com/docs/firestore/manage-data/enable-offline) — 40 MB default cache, eviction policy, write queue behavior
-- [Transactions and batched writes — Firebase](https://firebase.google.com/docs/firestore/manage-data/transactions) — atomic multi-document writes, 500 document limit
-- [Write-time aggregations — Firebase](https://firebase.google.com/docs/firestore/solutions/aggregation) — group ledger update strategy
-- [Collection group queries — Firebase blog](https://firebase.googleblog.com/2019/06/understanding-collection-group-queries.html) — cross-subcollection expense queries
-- [Cloud Firestore FlutterFire — snapshot listeners](https://firebase.flutter.dev/docs/firestore/usage/) — listener patterns, offline persistence configuration
-- [Secure data access for users and groups — Firebase](https://firebase.google.com/docs/firestore/solutions/role-based-access) — membership-based rule patterns
-- [Offline-First Architecture in Flutter — DEV Community](https://dev.to/anurag_dev/implementing-offline-first-architecture-in-flutter-part-1-local-storage-with-conflict-resolution-4mdl) — dual-cache write-through strategy
-- [GitHub discussion: Firestore cache eviction](https://github.com/firebase/firebase-ios-sdk/discussions/12277) — eviction behavior, auth token expiry risk during offline periods
+- [Flutter ThemeExtension API](https://api.flutter.dev/flutter/material/ThemeExtension-class.html) — official design token extension mechanism
+- [Creating Reusable Design System Tokens in Flutter with Theme Extensions](https://vibe-studio.ai/insights/creating-reusable-design-system-tokens-in-flutter-with-theme-extensions) — ThemeExtension implementation patterns
+- [Building a Design System in Flutter — LeanCode](https://leancode.co/blog/building-a-design-system-in-flutter-app) — atomic design adapted for Flutter
+- [Google Stitch Flutter export — DEV Community](https://dev.to/safiullahkorai/how-flutter-developers-can-use-stitch-to-build-client-apps-faster-in-2026-32g) — Stitch → Flutter workflow, manual implementation caveat
+- [GoRouter StatefulShellRoute — codewithandrea](https://codewithandrea.com/articles/flutter-bottom-navigation-bar-nested-routes-gorouter/) — nested navigation with state preservation
+- [GoRouter nested routes with parentNavigatorKey](https://github.com/flutter/flutter/issues/131091) — full-screen routes inside shell routes
+- [flutter_animate 2025 guide — Medium](https://medium.com/@arshadhp98/flutter-animate-the-easiest-way-to-bring-your-ui-to-life-2025-edition-ac7a0f9cb9dd) — animation chaining patterns
+- [Flutter animations micro-interactions guide — Medium](https://medium.com/@flutter-app/animations-micro-interactions-in-flutter-make-your-ui-delightful-592fb9da6e11) — implicit animation best practices
+- [Material 3 for Flutter — m3.material.io](https://m3.material.io/develop/flutter) — ColorScheme integration, ThemeData assembly
+
+---
+
+*Architecture research for: Flutter UI/UX overhaul — design system, navigation, component library*
+*Researched: 2026-03-28*

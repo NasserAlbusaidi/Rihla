@@ -1,300 +1,333 @@
-# Domain Pitfalls
+# Pitfalls Research
 
-**Domain:** Flutter app — Supabase-to-Firestore migration + groups/events/cross-event financial tracking
-**Researched:** 2026-03-26
-**Project:** Rihla v2
+**Domain:** Flutter UI/UX overhaul — design system migration, navigation restructuring, animation, Stitch-to-Flutter, accessibility, phased rollout
+**Researched:** 2026-03-28
+**Confidence:** HIGH (Flutter performance/testing sources verified against official docs; Stitch export limitations verified from multiple sources; accessibility requirements from W3C WCAG specification)
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, data loss, or security incidents.
+Mistakes that cause rewrites, test cascade failures, or permanent UX regressions.
 
 ---
 
-### Pitfall 1: Treating Firestore Like a Relational Database
+### Pitfall 1: 257 `find.text()` Calls Break When Labels Change
 
-**What goes wrong:** Migrating the Supabase schema table-by-table into Firestore collections, keeping normalized joins. Queries that were a single SQL JOIN (`participants!payer_participant_id(*)`) become multiple round-trip document reads with no equivalent of foreign-key traversal.
+**What goes wrong:**
 
-**Why it happens:** The existing code does joined selects throughout `sync_service.dart`: `expenses.select('*, expense_categories(name, icon), participants!payer_participant_id(*)')`. The instinct is to preserve the same row shape. Firestore has no joins. Every relationship must be resolved in application code or denormalized at write time.
+The codebase has 257 `find.text()` calls across 20+ test files and only 4 `find.byKey()` calls. Every screen label, button text, tab name, and module title is a live tripwire. When the UI redesign renames "SPENDING" to something else, changes "Ledger" to "Expenses", relabels a tab, or restructures any text widget, those tests fail immediately — not because the logic broke, but because the presentation changed. This triggers a cascade of test failures across features that have nothing to do with the changed screen.
 
-**Consequences:** N+1 document reads on every screen load. Expense list with 30 items and 8 participants becomes 30+ reads. Realtime listeners multiplied across every related subcollection. Costs explode and UI is slow.
+**Why it happens:**
 
-**Prevention:**
-- Map the full read surface before writing a single Firestore document. For each screen, list what data it needs and how many documents that requires.
-- Denormalize: embed `payerName` and `payerParticipantId` directly on the expense document. The name is already display-only and name-based (no profile joins needed — this is already how Rihla works).
-- Accept that some data will be duplicated. The alternative is worse.
-- Structure document shape around screen requirements, not around avoiding duplication.
+Widget tests were written to verify behavior by asserting visible text. This is the path of least resistance in Flutter — `find.text('Ledger')` is faster to write than assigning and threading a `Key`. The existing test suite was optimized for coverage, not UI changeability.
 
-**Detection:** If any screen requires more than 2 document reads before it can render, the model is still relational.
+**How to avoid:**
 
-**Phase:** Firestore data modeling phase — must be addressed before writing any Firestore service code.
+Before touching any screen, add semantic `Key` identifiers to interactive widgets and structural landmarks. For module cards in CommandCenter use `Key('module_card_ledger')`, for tabs use `Key('tab_spending')`, for primary action buttons use `Key('btn_add_expense')`. Update tests to use `find.byKey()` for structural assertions while keeping `find.text()` only for content correctness tests. Do this screen-by-screen in a dedicated phase before any visual changes.
 
----
+**Warning signs:**
 
-### Pitfall 2: Storing Money as Firestore Doubles
+Running `flutter test` after a single label rename causes 10+ failures across unrelated test files. Any test that asserts `find.text('SPENDING')` or `find.text('Ledger')` is a ticking bomb.
 
-**What goes wrong:** Firestore's numeric type is IEEE 754 double-precision floating point. Writing `amount: 15.500` from a Dart `double` loses precision. `FieldValue.increment()` on decimal values produces incorrect sums. This is confirmed as a known Firestore bug (flutterfire issue #9626: "Number field without decimals is integer if posted from web and double from native").
+**Phase to address:**
 
-**Why it happens:** The existing codebase uses the `Decimal` package correctly throughout and stores `decimal(12,3)` in Postgres. During migration, the path of least resistance is to call `.toDouble()` on Decimal values before writing to Firestore. OMR uses 3 decimal places — the error accumulates.
-
-**Consequences:** Balance calculations drift over time. Settlements are wrong. This cannot be fixed retroactively without rewriting all financial data.
-
-**Prevention:**
-- Store all monetary amounts as integers in Firestore, in the smallest unit (fils for OMR: 1 OMR = 1000 fils).
-- Example: OMR 15.500 → stored as integer `15500`.
-- `BalanceCalculator` keeps using `Decimal` internally; convert only at Firestore read/write boundary.
-- Write a single `MoneySerializer` utility: `toFils(Decimal d)` and `fromFils(int f)`. Every Firestore write/read goes through it. No exceptions.
-- Never use `FieldValue.increment()` on monetary fields — always read-then-write in a transaction.
-
-**Detection:** Unit tests that write a known decimal to Firestore and read it back, asserting exact equality. Must pass before any financial code ships.
-
-**Phase:** Foundation/Firestore setup phase — non-negotiable prerequisite.
+Phase 1 (Test Hardening) — must complete before any visual changes. Key the interactive widgets and structural landmarks, rewrite structural test assertions to use keys.
 
 ---
 
-### Pitfall 3: Group-Level Balance as a Single Aggregation Document (Write Hotspot)
+### Pitfall 2: Replacing AppColors with New Tokens Breaks 895 Direct References
 
-**What goes wrong:** The cross-event balance feature — "running balances across all events" — is the killer feature of Rihla v2. The natural implementation is a `groups/{groupId}/balances` document with a map of member-to-member balances. Every expense addition, every settlement, every event creation updates this one document. Firestore's soft limit is 1 sustained write per second per document. Group activities during a trip exceed this easily.
+**What goes wrong:**
 
-**Why it happens:** Cross-event aggregation feels like a natural fit for a single summary document. It is also how the existing system conceptually works (balance is computed on read from all expenses). Moving to a precomputed balance on write, stored in one document, creates a hotspot.
+`AppColors.mint`, `AppColors.emerald`, `AppColors.rose`, etc. are referenced directly 895 times across lib files and also in 2 test files. Switching to a new earthy palette (terracotta, sand, olive) by renaming or replacing the `AppColors` class creates a mass compile failure. Worse: if the new token names (`AppColors.terracotta`, `AppColors.sand`) are introduced alongside the old ones with a deprecation marker, developers will use whichever is convenient — the two systems will permanently coexist and both drift.
 
-**Consequences:** Increased write latency. Contention errors. Transactions fail and retry. The more active a group, the worse it gets.
+**Why it happens:**
 
-**Prevention:**
-- Do not maintain a single pre-aggregated balance document per group.
-- Store balance contributions per-event, per-participant pair as separate documents under `groups/{groupId}/events/{eventId}/balanceSummary`.
-- Compute group-level net balance client-side by summing event balances cached in SQLite — this is already what `BalanceCalculator` does, just scoped differently.
-- If a precomputed group balance document is needed for display, update it lazily (on event close, on settlement) rather than on every expense write.
-- Alternatively, use distributed counter shards if real-time aggregation is truly needed.
+The existing theme is a single static class with hardcoded constants. There is no separation between "semantic tokens" (what the color means: `primary`, `danger`, `surface`) and "palette tokens" (what the color is: `#13EC92`). Because everything references the palette directly, changing the palette requires touching every callsite.
 
-**Detection:** Any write path that touches more than 2 documents in a transaction when a single expense is added should be redesigned.
+**How to avoid:**
 
-**Phase:** Data modeling and group balance design phase.
+Introduce a two-layer token system. Layer 1: `AppPalette` — raw color values (terracotta, sand, olive, etc.). Layer 2: `AppColors` — semantic aliases that delegate to `AppPalette` (e.g., `static const Color primary = AppPalette.terracotta`). Keep the `AppColors` public API identical to today. All 895 existing references continue to compile. Only the palette behind them changes. Validate with `flutter analyze` after each swap — zero errors means zero breakage.
 
----
+**Warning signs:**
 
-### Pitfall 4: Anonymous Auth UID Is Ephemeral — Data Is Permanently Lost on Reinstall
+Any attempt to do `sed -i 's/AppColors.mint/AppColors.terracotta/g'` across 895 files. Any PR that touches more than 50 files just to change colors.
 
-**What goes wrong:** Firebase anonymous auth creates a UID that persists across app restarts but is permanently destroyed on uninstall. Supabase anonymous auth has the same behavior. However, the migration creates a second risk: existing Supabase anonymous UIDs have no mapping to Firebase anonymous UIDs. Existing users who reinstall after the migration get a new Firebase UID and cannot access their old Supabase-seeded data.
+**Phase to address:**
 
-**Why it happens:** The current app already uses anonymous auth (`signInAnonymously()` on first launch). Users have no accounts. There is no email to recover via. The UID is the only identity.
-
-**Consequences:** Existing users who reinstall the app after the Firestore migration lose all their trip history. This is a silent data loss — the app works fine, it just shows no data. Users blame the app update.
-
-**Prevention:**
-- The name-based member system partially decouples identity: users pick a name in a group rather than being identified by UID. Lean into this.
-- During migration: write a mapping from old Supabase user_id to a stable group invite code. When a user enters an invite code, they recover their participation without needing UID continuity.
-- Long-term: the anonymous auth model means accepting data loss on reinstall. Document this in product terms and make "join via code" work well as the recovery path.
-- Do not attempt to link Firebase anonymous UID to Supabase UID — there is no reliable way to do this at the client level after the fact.
-
-**Detection:** Test the reinstall flow explicitly during migration QA. Wipe app data, reinstall, verify that joining via group code restores membership.
-
-**Phase:** Auth migration phase — must be designed before Firestore data migration begins.
+Phase 2 (Design Token System) — introduce AppPalette abstraction layer before any palette changes. The public AppColors API must remain stable throughout the overhaul.
 
 ---
 
-### Pitfall 5: Firestore Security Rules Cannot Do Complex Membership Checks Without Read Costs
+### Pitfall 3: Earthy Palette Fails WCAG AA Contrast for Body Text
 
-**What goes wrong:** The Supabase system used a `SECURITY DEFINER` function `is_trip_member(trip_uuid)` which ran server-side SQL. This avoided expensive joins in RLS policies. Firestore security rules have a hard limit of 10 `get()` calls per rule evaluation. Checking group membership, then event membership, then checking write permission for a specific role — that is already 3+ `get()` calls per rule evaluation. Complex scenarios hit the ceiling.
+**What goes wrong:**
 
-**Why it happens:** The Supabase migration history shows exactly this pattern: 4 fix migrations for RLS complexity (migrations 021, 023, 029 all fix security rules edge cases). The same instinct to write complex access rules will hit a different hard limit in Firestore.
+Terracotta (~`#C85C35`) on sand (~`#F5E6C8`) yields a contrast ratio around 2.8:1 — failing WCAG AA which requires 4.5:1 for normal text. Olive green (`#6B7C5C`) on sand similarly scores approximately 2.5:1. The design looks warm and appealing in mockups but becomes unreadable in bright light on mobile screens, and fails accessibility audits. Adding white text on terracotta surfaces also fails if the terracotta is mid-range (e.g., `#E2724A` against white gives ~3.2:1 — under the 4.5:1 threshold for body text).
 
-**Consequences:** Security rules that silently fail to evaluate (too many gets) default to deny, blocking legitimate operations. Or worse: rules are simplified to avoid the limit, creating gaps like the one fixed in migration 023 (any trip member could modify any expense).
+**Why it happens:**
 
-**Prevention:**
-- Store membership as a map field on the group document: `members: { "uid1": "admin", "uid2": "member" }`. Security rules can check `request.auth.uid in resource.data.members` without a `get()` call — this is an in-document lookup, not a cross-document read.
-- Cap group size where this breaks down (maps approach fails around 500 members — irrelevant for Rihla's small-group use case).
-- Use Firebase Auth custom claims for roles that need to survive rule evaluation without get() calls. Set claims via Cloud Function when a user joins a group.
-- Write security rules tests with Firebase Emulator before deploying. This is mandatory, not optional.
+Warm earthy palettes are low-contrast by nature. Terracotta, sand, and olive sit in the mid-luminance range where neither pure white nor pure black provides the required contrast without looking wrong. Designers optimizing for warmth and feel often defer the contrast check to "later" and then discover that meeting contrast requires shifting colors so far they lose the original warmth.
 
-**Detection:** Test every security rule path with the Firebase Emulator. Count `get()` calls in each rule. Deny if any path approaches 5+ gets.
+**How to avoid:**
 
-**Phase:** Firestore security rules phase. Do not write production rules without Emulator test coverage.
+Before committing any palette values, run every text-on-background combination through a WCAG contrast checker. Minimum requirements: 4.5:1 for body text (normal size), 3:1 for large text (24px+) and icons. Use the `Accessible Palette` methodology — choose colors in CIELAB or LCh color space where you can set equal luminance across a scale. A viable approach: use dark brown (`#2C1A0E`) for body text on sand/cream backgrounds — this achieves 8:1+ while remaining warm. Reserve terracotta for large display text and interactive elements (where 3:1 suffices), not body copy.
 
----
+**Warning signs:**
 
-## Moderate Pitfalls
+Any mockup where body text is terracotta-colored on a sand background. Any design that uses olive green text on off-white. Any palette where the text color is a warm hue rather than a dark neutral.
 
----
+**Phase to address:**
 
-### Pitfall 6: Dual-Layer Offline (Firestore Persistence + SQLite) Without a Defined Authority
-
-**What goes wrong:** The plan is to keep SQLite alongside Firestore (PROJECT.md: "Keep SQLite alongside Firestore — Fast local reads, existing offline architecture works well"). Firestore's SDK already has built-in offline persistence. Running both without defining which is the source of truth for a given operation produces split-brain: the UI reads from SQLite, Firestore has already sync'd a conflicting update from another device, neither system wins cleanly.
-
-**Why it happens:** The existing SQLite layer was built because Supabase Realtime was unreliable. Firestore's offline persistence is more robust. The instinct is to keep both "just in case." But two caches with independent invalidation become two databases.
-
-**Consequences:** Expense amounts correct in SQLite, different in Firestore cache. Which does the UI show? Settlement marked paid in Firestore, not yet processed in SQLite sync queue. User sees it as unpaid.
-
-**Prevention:**
-- Define a strict authority hierarchy: Firestore SDK cache is the primary offline source for reads. SQLite is used only for: (a) pre-fetched local search indexes, (b) the sync queue for write ordering guarantees, (c) data that Firestore offline cache does not persist across cold app restarts (which is a known limitation on some Android devices).
-- Remove the existing `OfflineRepository.notifyChange()` call pattern — Firestore realtime listeners replace this. SQLite writes happen only as a side effect of confirmed Firestore writes, not as the primary write path.
-- The existing `SyncService` (`sync_service.dart`) is fully replaced by Firestore SDK. Do not port it; delete it.
-
-**Detection:** Any code path that writes to SQLite and separately writes to Firestore is a sign of dual-primary. Writes should flow: local UI → Firestore SDK (handles offline queue) → SQLite on confirmed write via Firestore listener.
-
-**Phase:** Architecture design phase, before any service migration begins.
+Phase 2 (Design Token System) — finalize and validate all palette combinations before implementation. Do not write widget code until every text combination is contrast-checked.
 
 ---
 
-### Pitfall 7: Subcollection Deletion Does Not Cascade
+### Pitfall 4: Stitch-Generated Code Uses Hardcoded Values, Not Design Tokens
 
-**What goes wrong:** Deleting a Firestore document does not delete its subcollections. If `groups/{groupId}` is deleted but events were stored as `groups/{groupId}/events/{eventId}/expenses/{expenseId}`, the group document disappears but all child data remains as orphaned documents — accruing storage costs and potentially accessible to anyone who knows the path.
+**What goes wrong:**
 
-**Why it happens:** Postgres with `ON DELETE CASCADE` handles this automatically (visible in all migrations: `ON DELETE CASCADE` throughout). Firestore has no equivalent. The assumption that deletion cascades is deeply embedded in the Supabase architecture.
+Stitch generates visually correct Flutter widgets but uses inline values: `Color(0xFFE2724A)`, `fontSize: 18`, `padding: EdgeInsets.all(16)`. Developers paste this output directly into screens without extracting to tokens. Six months later the codebase has the new token system in `AppColors` and the design tokens from Stitch as inline magic numbers scattered across new screens. The two systems diverge silently — changing a token in `AppColors` no longer affects the Stitch-generated components.
 
-**Consequences:** Orphaned expense documents. Stale data reachable if security rules are path-based and the parent document used for membership checks no longer exists.
+**Why it happens:**
 
-**Prevention:**
-- Never rely on parent document deletion to clean up subcollections.
-- All group/event deletion must use a Cloud Function or batch delete that explicitly walks and deletes the subcollection tree.
-- Alternatively: use soft deletes (`isDeleted: true`) on all documents and let a scheduled Cloud Function do actual cleanup. This also preserves financial audit history.
-- Security rules: check membership at the specific document level, not by assuming the parent document's absence means deny.
+Stitch's March 2026 update can import existing design tokens, but only if you provide them upfront as a design system import before generation. If the tokens are not imported into the Stitch project first, the export defaults to inline values. The workflow of "generate in Stitch → paste into Flutter" skips the token-binding step.
 
-**Detection:** Write a test that deletes a group document and verifies subcollection documents still exist (they will). This should trigger the defensive code path that handles orphan cleanup.
+**How to avoid:**
 
-**Phase:** Data modeling and group lifecycle design.
+Establish the Stitch workflow before using it: (1) Export final `AppColors` / `AppPalette` values as Stitch design system tokens, (2) Import into Stitch project so all generations reference these tokens, (3) In the generated Flutter output, find and replace any residual inline values with their token equivalents before committing. Treat Stitch output as a design reference/scaffold, not production-ready code. Designate a linting rule (or code review checklist item) that flags any hardcoded color hex or magic-number font size outside of `app_theme.dart`.
 
----
+**Warning signs:**
 
-### Pitfall 8: Firestore Composite Indexes Are Not Auto-Created
+Any generated file containing `Color(0xFF...)` directly in widget build methods. Any `fontSize:` value that isn't a reference to a text style from `AppTheme`.
 
-**What goes wrong:** Every Firestore query that filters on one field and orders by another requires a composite index. These are not created automatically. The app crashes at runtime with an error message that includes a direct link to create the index — but this only surfaces during testing, and only if that specific query path is exercised.
+**Phase to address:**
 
-**Why it happens:** The existing code does multi-column queries throughout: `expenses` filtered by `trip_id` and ordered by `created_at`, `settlements` filtered by `trip_id` and `payer_participant_id`. Each combination that was a SQL `WHERE x AND ORDER BY y` needs a Firestore composite index.
-
-**Consequences:** Queries fail silently in production for users on specific filter combinations. The developer never sees it because local testing hit different code paths.
-
-**Prevention:**
-- Build and run the full app against Firebase Emulator with all query paths exercised before deploying. Capture all composite index errors.
-- Maintain an `firestore.indexes.json` file in the repository and deploy it with `firebase deploy --only firestore:indexes` before deploying rules or functions.
-- For `collectionGroup` queries (querying expenses across all events in a group), collection group indexes must be explicitly defined.
-
-**Detection:** After any new Firestore query is written, run it against a non-empty Emulator dataset and inspect the Flutter console for index-missing errors.
-
-**Phase:** Each feature phase that introduces new query patterns.
+Phase 3 (Stitch Workflow Setup) — establish token import into Stitch before generating any production screens. Create a post-generation checklist.
 
 ---
 
-### Pitfall 9: Cross-Event Settlement Is Not Idempotent Without Careful Transaction Design
+### Pitfall 5: AnimationController Leaks in New Micro-Interaction Widgets
 
-**What goes wrong:** When a user settles a cross-event debt ("Khalid pays Nasser OMR 45 across 3 trips"), the settlement must atomically: (1) record the settlement document, (2) reduce the outstanding balance in the affected event summaries, (3) not double-apply if the user retries after a network failure. Firestore transactions use optimistic concurrency and will retry on contention. If a retry writes two settlement documents, balances are wrong.
+**What goes wrong:**
 
-**Why it happens:** The existing settlement system is per-trip and not designed for cross-event atomicity. The new cross-event balance feature requires composing multiple writes atomically, and offline-first means the user may initiate settlement while offline and sync later.
+New screens add tap-bounce, shimmer, slide-in, and fade animations using `AnimationController` in `StatefulWidget`. If `dispose()` is not called before `super.dispose()`, the controller's `Ticker` keeps running after the widget leaves the tree. On complex screens with 5+ animated elements, this accumulates into: dropped frames on scroll, memory growth over long sessions, and `"A Timer was registered but not disposed"` debug warnings that mask real issues.
 
-**Consequences:** Double-counted settlements. Balances show the wrong net amount. This is a financial integrity bug, not just a UI bug.
+**Why it happens:**
 
-**Prevention:**
-- Generate settlement IDs client-side (UUID v4) before initiating the transaction. Use this as the Firestore document ID. Firestore document creates with a specific ID are idempotent: creating the same document ID twice is either a no-op or a conflict, not a duplicate insert.
-- Use Firestore batch writes for settlement + balance update rather than separate writes. If the batch fails, the whole operation is rolled back.
-- Include a `clientGeneratedId` field on settlement documents and add a uniqueness check in security rules (`!exists` check for that document) to prevent duplicate submissions.
-- Test: simulate network failure mid-settlement and verify re-submission produces exactly one settlement record.
+Micro-interaction patterns look simple. A developer adds `AnimationController` inline in a build method or initializes it without the `SingleTickerProviderStateMixin`. The code works in happy-path testing but leaks in real navigation where widgets are disposed and rebuilt. The existing codebase already has this pattern correct in `ShimmerPlaceholder` (verified in tests) but each new widget starts fresh.
 
-**Phase:** Cross-event ledger design phase.
+**How to avoid:**
 
----
+Use implicit animations (`AnimatedContainer`, `AnimatedOpacity`, `TweenAnimationBuilder`) for simple transitions — they handle their own lifecycle. Only reach for explicit `AnimationController` when you need precise timing control. When explicit controllers are required, mandate `SingleTickerProviderStateMixin`, `late final AnimationController _controller`, initialization in `initState`, and `_controller.dispose()` as the first line of `dispose()`. Create a micro-interaction pattern library in `lib/shared/animations/` with pre-built, pre-tested animation components that new screens pull from rather than reimplementing.
 
-### Pitfall 10: Collection Group Queries on Expenses Require Rules Version 2 and `path=**`
+**Warning signs:**
 
-**What goes wrong:** The group dashboard shows expenses across all events. This requires a `collectionGroup("expenses")` query. Collection group queries require security rules version 2 and a `match /{path=**}/expenses/{doc}` rule with `path=**` wildcard. If the rules file uses version 1 or lacks this match pattern, collection group queries are silently denied.
+Any `AnimationController` initialized outside `initState`. Any widget class with animation that doesn't call `dispose()`. The Flutter DevTools memory timeline showing a growing widget count that doesn't decrease after navigation.
 
-**Why it happens:** Most Firestore security rules tutorials show document-level or collection-level rules. Collection group rules are a separate, non-obvious syntax that is easy to forget.
+**Phase to address:**
 
-**Consequences:** Group dashboard shows empty expense history. No error — just empty results. Debugging is non-obvious because the data exists in Firestore.
-
-**Prevention:**
-- Set `rules_version = '2';` at the top of `firestore.rules`.
-- Add an explicit `match /{path=**}/expenses/{doc}` block alongside the document-scoped rule.
-- Test collection group queries against the Emulator with authenticated test users before shipping the group dashboard.
-
-**Phase:** Firestore security rules phase, specifically when adding group-level queries.
+Phase 4 (Animation Library) — build the shared animation components with correct lifecycle before any screen uses them.
 
 ---
 
-## Minor Pitfalls
+### Pitfall 6: Dashboard ScrollView Renders All Widgets Eagerly
+
+**What goes wrong:**
+
+The new rich home dashboard ("single-scroll with balance summary, inline group cards, recent activity, quick actions") is built as `SingleChildScrollView > Column > [widget1, widget2, widget3...]`. Flutter renders all children at once, regardless of whether they're visible. A dashboard with 5 group cards, a balance hero, a recent activity feed, and quick actions hits the frame budget immediately — especially on the first build when Firestore streams emit their initial data and trigger multiple `setState`/provider rebuilds simultaneously.
+
+**Why it happens:**
+
+`SingleChildScrollView` is the intuitive choice for a vertically scrolling page. It works fine for short content. For dashboards with 10+ children including cards with their own streams (each group card watching `groupBalancesProvider`), the eager rendering hits 60ms+ frame times on mid-range Android devices.
+
+**How to avoid:**
+
+Use `CustomScrollView` with `SliverList` or `SliverToBoxAdapter` for the dashboard body. Group cards must use `ListView.builder` (or `SliverList.builder`) — never a `Column` of expanded cards. The balance hero section can be a `SliverToBoxAdapter`. Measure with Flutter DevTools Performance view before and after — the frame timeline should show no raster frames exceeding 16ms during scroll. If a section must use `SingleChildScrollView`, cap its child count to 5 or fewer simple widgets.
+
+**Warning signs:**
+
+Any `Column` with more than 5 children that includes stream-subscribed widgets. Any `SingleChildScrollView` wrapping more than 100 lines of widget code. Scroll jank on first navigation to HomeScreen on a mid-range device.
+
+**Phase to address:**
+
+Phase 5 (Home Dashboard) — design the scroll architecture with SliverList from the start, not as a fix after jank is observed.
 
 ---
 
-### Pitfall 11: Firestore Document IDs That Are Monotonically Increasing Create Hotspots
+### Pitfall 7: Parallel Old/New Screens Without Explicit Coexistence Protocol
 
-**What goes wrong:** Using `DateTime.now().millisecondsSinceEpoch.toString()` as a document ID — a common pattern when migrating from timestamp-ordered SQL data — creates a write hotspot because sequential IDs map to sequential storage segments.
+**What goes wrong:**
 
-**Prevention:** Use `db.collection('x').doc()` (auto-generated ID) or UUID v4. Never use timestamps as primary document IDs.
+During phased rollout, both old and new screens exist simultaneously. A developer navigating to a group detail screen pushes the old screen in some flows and the new screen in others. Tests that import `group_detail_screen.dart` pass against the old version while the new version diverges. More critically, provider overrides in tests become ambiguous — a test importing `new_group_detail_screen.dart` may fail because it was written against the old screen's widget tree. When the old screen is eventually deleted, half the tests break.
 
-**Phase:** Any phase writing new Firestore documents.
+**Why it happens:**
 
----
+Phased migration creates file naming ambiguity (`group_detail_screen.dart` vs `group_detail_screen_v2.dart`) and import confusion. Without an explicit protocol, different developers navigate to different versions inconsistently.
 
-### Pitfall 12: Firestore Offline Persistence Has a Default Cache Size Limit
+**How to avoid:**
 
-**What goes wrong:** Firestore's default offline cache is 100MB on mobile. For large groups with many events, expenses, and media references, this fills up. When the cache is full, Firestore starts evicting older documents. The user goes offline and finds their older events are not available.
+Use a single entry point with a compile-time or runtime feature flag. Never create `_v2.dart` files alongside originals. Instead, maintain the original filename and swap the implementation inside it. During coexistence, use `const bool _useNewLayout = bool.fromEnvironment('NEW_UI', defaultValue: false)` — this is a zero-overhead compile-time flag that runs the old path in all existing tests (which don't set the flag) while the new path can be tested explicitly. When the new layout is stable, remove the flag and the old path in one commit.
 
-**Prevention:** Set `settings.cacheSizeBytes = FirebaseFirestore.CACHE_SIZE_UNLIMITED` during initialization, or use the new `PersistentCacheSettings` with an explicit size appropriate for the data volume. Add this to the Firestore initialization in Phase 1.
+**Warning signs:**
 
-**Phase:** Firestore setup phase.
+Any PR that creates a file named `*_v2.dart` or `*_new.dart` alongside an existing screen file. Any test that imports a screen file with a version suffix.
 
----
+**Phase to address:**
 
-### Pitfall 13: `FieldValue.serverTimestamp()` Returns `null` Offline
-
-**What goes wrong:** Documents written offline with `FieldValue.serverTimestamp()` have a `null` timestamp until they sync. Code that uses `createdAt` for sorting throws a null reference error when processing offline-written documents.
-
-**Prevention:** Always null-check timestamps when sorting. Use a client-generated `createdAt` (`DateTime.now().toUtc()`) as the primary timestamp, and store `serverTimestamp` as a secondary `syncedAt` field. Sort by the client-generated timestamp for display.
-
-**Phase:** Any feature phase adding new document types.
+Phase 6 (Phased Screen Migration) — establish the compile-time flag protocol before migrating the first screen. Document it in CLAUDE.md.
 
 ---
 
-### Pitfall 14: Firestore Security Rules Do Not Catch Type Errors
+### Pitfall 8: Navigation Restructuring Orphans Navigator.push Flows
 
-**What goes wrong:** Security rules validate structure only if you explicitly write type-checking conditions (`is string`, `is number`). Without them, a client can write `amount: "hello"` to an expense document. The existing Supabase schema used `decimal(12,3) NOT NULL` — type enforcement was automatic.
+**What goes wrong:**
 
-**Prevention:** Write explicit type validation in security rules:
-```
-allow create: if request.resource.data.amount is int
-  && request.resource.data.amount > 0
-  && request.resource.data.description is string;
-```
-Treat security rules as schema enforcement, not just access control.
+The app has 22 `Navigator.push` / `AppPageRoute` calls and only 6 `context.push` / `context.go` calls. The redesign moves to a flatter navigation model where group dashboards and event hubs are top-level destinations. If the new navigation is added to GoRouter while the old `Navigator.push` calls remain, users hit broken back-navigation: the hardware back button pops a GoRouter route but the `Navigator.push` stack underneath has already been cleared. Deep linking to event screens fails silently.
 
-**Phase:** Firestore security rules phase.
+**Why it happens:**
+
+The mixed navigation model (GoRouter for top-level, `Navigator.push` for sub-screens) was a deliberate architectural choice in v1.0. The UI overhaul wants to flatten navigation but the documentation in CLAUDE.md still says CommandCenter "is NOT in GoRouter — this is intentional." Changing this without updating the documentation and all call sites creates silent inconsistency.
+
+**How to avoid:**
+
+Before restructuring navigation: (1) Map every `Navigator.push` call and the screen it pushes. (2) Decide explicitly which screens move into GoRouter and which stay as imperative pushes. (3) Update `CLAUDE.md` Navigation Flow section atomically with the code change. (4) Write a smoke test that navigates the new flow end-to-end before deleting any old route. For GoRouter's `StatefulShellRoute`, verify that tab state is preserved correctly across the flat navigation — this requires `ShellRoute` not independent top-level routes.
+
+**Warning signs:**
+
+Back button on a redesigned screen navigates to an unexpected screen. Any `Navigator.push` call that pushes a screen that is also a GoRouter route. `CLAUDE.md` navigation flow description that doesn't match the actual routing code.
+
+**Phase to address:**
+
+Phase 5 (Navigation Restructuring) — map and explicitly choose every route before writing any navigation code. Update documentation first.
 
 ---
 
-## Phase-Specific Warnings
+## Technical Debt Patterns
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Firestore setup & data model design | Relational schema translation (Pitfall 1) | Model around screen reads, not table normalization |
-| Firestore setup & data model design | Money stored as doubles (Pitfall 2) | Implement `MoneySerializer` before first Firestore write |
-| Firestore setup & data model design | Subcollection orphan on delete (Pitfall 7) | Use soft deletes; never rely on cascade |
-| Firestore setup & data model design | Monotonic IDs causing hotspots (Pitfall 11) | Use auto-generated Firestore IDs |
-| Firestore setup & data model design | Cache size limit for offline (Pitfall 12) | Set `CACHE_SIZE_UNLIMITED` in init |
-| Auth migration | Anonymous UID data loss on reinstall (Pitfall 4) | Make group join-by-code the recovery path |
-| Security rules | 10-get limit per rule evaluation (Pitfall 5) | Embed membership in group document as map; avoid cross-document gets in rules |
-| Security rules | Rules version 1 blocks collection group queries (Pitfall 10) | Use `rules_version = '2'` from the start |
-| Security rules | No type enforcement (Pitfall 14) | Add type validation to all write rules |
-| Offline / sync architecture | Dual-layer cache conflict (Pitfall 6) | Define Firestore SDK as read authority; SQLite as write queue only |
-| Group balance design | Write hotspot on aggregation document (Pitfall 3) | Compute group balance client-side from per-event summaries |
-| Cross-event settlement | Non-idempotent settlement writes (Pitfall 9) | Client-generated settlement IDs + batch writes |
-| Group dashboard / queries | Composite index missing (Pitfall 8) | Maintain `firestore.indexes.json`; test all query paths against Emulator |
-| Group dashboard / queries | Collection group query denied (Pitfall 10) | Test collection group queries in Emulator before ship |
-| Any new document type | serverTimestamp null offline (Pitfall 13) | Client-generated timestamp as primary; serverTimestamp as secondary |
+Shortcuts that seem reasonable but create long-term problems.
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Inline animation parameters (`duration: Duration(ms: 300)` everywhere) | Faster to write each animation | Duration inconsistency across screens; impossible to globally adjust motion speed | Never — always use `AppMotion.fast/medium/slow` constants |
+| Copy-pasting Stitch output without token substitution | Screen built faster | Two color systems diverge silently within weeks | Never in production screens |
+| `SingleChildScrollView` for new dashboard | Simple to build | Eager render of all widgets; frame budget exceeded on load | Only for screens with ≤5 simple, non-stream children |
+| Adding `_v2.dart` files during migration | Avoids touching existing tests | Import confusion, orphaned tests, eventual mass delete | Never — use compile-time flags instead |
+| Wrapping entire screen in `RepaintBoundary` "for performance" | Appears to fix jank | GPU memory cost; only works if content is static; if content changes each frame, it increases cost | Only around truly static, non-animated subtrees |
+| Using `setState` for animation state instead of `AnimationController` | Less boilerplate | Full widget rebuild on every animation frame; causes parent rebuilds to cascade | Never for animations running faster than 1fps |
+| Testing new screen design only on simulator | Faster development loop | Mid-range Android (Snapdragon 665) reveals frame drops that simulator hides | Never for release candidates — always test on real device |
+
+---
+
+## Integration Gotchas
+
+Common mistakes when connecting design changes to existing systems.
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Firestore stream + animated dashboard | Letting the stream trigger full dashboard rebuilds on every snapshot | Use `select()` on providers to watch only the field that changes; use `keepAlive: true` on group balance providers to prevent re-fetching on tab switch |
+| AppTheme + new color tokens | Adding new semantic colors to `AppTheme.lightTheme` `ColorScheme` without verifying Material3 color roles | Use `ThemeExtension<AppTokens>` for custom semantic tokens; only override Material3 ColorScheme for the slots that Material widgets actually read |
+| GoRouter + Navigator.push coexistence | Using `context.push` for GoRouter routes inside a screen that was navigated to via `Navigator.push` | Decide one navigation system per screen depth; screens below CommandCenter use `Navigator.push` only; screens above use GoRouter only |
+| Google Fonts + new font family | Loading a new font family at app start without caching | Use `GoogleFonts.config.allowRuntimeFetching = false` in release builds; pre-load font via `precachePicture` or include font assets locally to avoid first-frame flash |
+| SQLite balance cache + new dashboard widget | Dashboard widget reading balance data directly from Firestore (bypassing SQLite) | All balance display must go through `BalanceCacheRepository` — it's the source of truth for fast local reads; the dashboard's balance hero widget must watch the same cache provider as the ledger screen |
+
+---
+
+## Performance Traps
+
+Patterns that work in testing but degrade on real devices.
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Column of stream-subscribed cards | Scroll jank on HomeScreen; frame times 30-60ms on first load | Use `SliverList.builder`; each card is a separate widget with its own provider watch | Any screen with 3+ cards that each watch a Firestore provider |
+| Over-applying `RepaintBoundary` | Memory usage climbs; GPU spikes during scroll; the boundary doesn't help because content changes each frame | Profile first; only add `RepaintBoundary` where DevTools shows a paint cascade problem | When wrapping frequently-updating widgets (balance numbers, timers) |
+| Animating `Opacity` with full rebuilds | Jank during fade transitions; parent widgets rebuild alongside | Use `FadeTransition` (reads from `Animation<double>` without setState) instead of `AnimatedOpacity` for controller-driven animations | Any screen with simultaneous fade + slide animations |
+| Hero animations between Navigator screens | Navigation stutter on first transition to CommandCenter | Assign consistent `heroTag` and wrap hero widget in `RepaintBoundary`; avoid using `Hero` for widgets with complex children | Any screen using `Hero` with a child that has shadows, gradients, or `ClipRRect` |
+| Google Fonts loading on first build | Text briefly appears in fallback font before the custom font loads; visible flash on HomeScreen | Bundle "Plus Jakarta Sans" as a local font asset in pubspec.yaml; remove runtime Google Fonts fetching | Every app launch in a fresh install scenario |
+
+---
+
+## UX Pitfalls
+
+Common user experience mistakes in this domain.
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Flattening navigation but keeping 6+ module cards on one screen | Users are overwhelmed; no hierarchy to guide focus | Prioritize 3-4 primary actions on the dashboard; secondary modules behind a "More" reveal or secondary screen |
+| Animations that can't be interrupted | User taps "back" during a page transition; the transition ignores the input and completes first | Every animation must respect user interruption; `AnimationController.reverse()` on back gesture before completing forward |
+| Earthy palette without clear affordance hierarchy | Users can't distinguish tappable cards from decorative containers | Use shadow elevation and a subtle interactive tint on hover/press; never use color alone to indicate interactivity |
+| Loading states that show skeleton screens but then jump to content | Visual "pop" when data loads; disorienting | Use `AnimatedSwitcher` or `crossFadeState` transitions when skeleton → content; minimum 200ms transition to mask the snap |
+| Offline banner during normal operation | Banner flash on every app launch (Firestore initial handshake takes ~500ms) | Debounce the offline state: only show offline banner after 2+ seconds of no connectivity, not on first connectivity check |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+Things that appear complete in the simulator but are missing critical pieces.
+
+- [ ] **New color palette:** Verify every text-on-background combination against WCAG AA (4.5:1 for body, 3:1 for large) — simulator makes colors look better than they are on actual screens
+- [ ] **Stitch screen export:** Replace every `Color(0xFF...)` inline value with the corresponding `AppColors.*` token before committing
+- [ ] **Animation components:** Confirm `AnimationController.dispose()` is called in every `StatefulWidget` that creates one — add `flutter_lints` rule or `dispose_controllers` analysis option
+- [ ] **Dashboard performance:** Test on a physical mid-range Android device (not simulator); verify frame times in DevTools Profile mode; no frame should exceed 16ms during scroll
+- [ ] **Navigation restructuring:** Verify hardware back button behaves correctly at every new screen depth after GoRouter changes; test the full navigation graph, not just happy path
+- [ ] **Test suite green:** Run `flutter test` after every screen replacement — do not accumulate test debt across multiple screen migrations
+- [ ] **Font loading:** Verify "Plus Jakarta Sans" is bundled as a local asset (not fetched at runtime) and no font flash occurs on HomeScreen first load
+- [ ] **Offline banner debounce:** Verify the offline banner does NOT flash on app launch when the device is online; test with airplane mode toggle
+- [ ] **Compile-time flag removal:** When a screen migration is complete, verify the old code path is removed and the feature flag is deleted — do not leave dead code paths
+
+---
+
+## Recovery Strategies
+
+When pitfalls occur despite prevention, how to recover.
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Test cascade from text label changes | MEDIUM | Run `flutter test 2>&1 \| grep FAILED`; for each failure, identify if it's a label change (fix the test) or a behavior regression (fix the code); systematically convert failing `find.text()` to `find.byKey()` as you go |
+| Stitch inline values already in production screens | MEDIUM | Write a one-time `grep -r "Color(0xFF" lib/features` script to find all violations; replace batch by batch with AppColors references; add a CI lint step that fails on any `Color(0xFF` outside `app_theme.dart` |
+| Animation controller leak discovered late | LOW | `flutter run --profile` + DevTools Memory tab shows widget count growth; identify leaking widget class by name; add `dispose()` call; the fix is always 1-2 lines |
+| Dashboard jank on real device | MEDIUM | Profile in DevTools Performance view; identify the heavy-build widget in the frame graph; convert the `Column` to a `SliverList`; each group card that watched a provider becomes a separate `ConsumerWidget` in the list |
+| WCAG contrast failure discovered after implementation | HIGH | Shift text color to a darker warm neutral (dark brown instead of terracotta); may require global search-replace of token references if the semantic token name didn't distinguish between text-on-light and text-on-dark contexts |
+| Navigation stack broken after GoRouter restructuring | HIGH | Restore original routing from git; re-map all affected routes against the new navigation diagram before re-implementing; never restructure navigation and redesign screens in the same commit |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+How roadmap phases should address these pitfalls.
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| 257 `find.text()` calls break on label change | Phase 1: Test Hardening | `flutter test` passes after renaming 3 arbitrary UI labels |
+| 895 direct AppColors references break on palette swap | Phase 2: Design Token System | Swap `AppPalette.primary` value and confirm zero compile errors |
+| Earthy palette fails WCAG AA contrast | Phase 2: Design Token System | Every text/background combination checked in contrast tool before writing screen code |
+| Stitch output with hardcoded values | Phase 3: Stitch Workflow Setup | CI lint step catches any `Color(0xFF` outside `app_theme.dart` |
+| AnimationController leaks in micro-interactions | Phase 4: Animation Library | All animation components in `lib/shared/animations/` have passing dispose tests |
+| Dashboard SliverList vs Column | Phase 5: Home Dashboard | DevTools Performance view shows no frames >16ms during scroll on physical device |
+| Old/new screens coexisting without protocol | Phase 6: Phased Screen Migration | Compile-time flag in place; all existing tests pass without setting the flag |
+| Navigator.push + GoRouter inconsistency | Phase 5: Navigation Restructuring | Full navigation graph test: back-button behavior at every screen depth |
 
 ---
 
 ## Sources
 
-- Firebase Firestore official docs — best practices: https://firebase.google.com/docs/firestore/best-practices
-- Firebase Firestore write throughput and hotspots: https://firebase.google.com/docs/firestore/understand-reads-writes-scale
-- Firestore write throughput 101 (Frank van Puffelen): https://puf.io/posts/firestore-write-throughput-101/
-- Group-based security rules patterns (Firebase blog): https://medium.com/firebase-developers/patterns-for-security-with-firebase-group-based-permissions-for-cloud-firestore-72859cdec8f6
-- Firestore transaction data contention: https://firebase.google.com/docs/firestore/transaction-data-contention
-- FlutterFire anonymous auth: https://firebase.flutter.dev/docs/auth/anonymous-auth/
-- Firebase best practices for anonymous auth: https://firebase.blog/posts/2023/07/best-practices-for-anonymous-authentication/
-- FlutterFire issue #9626 (integer/double type mismatch): https://github.com/firebase/flutterfire/issues/9626
-- Firestore FieldValue.increment decimal bug: https://groups.google.com/g/firebase-talk/c/y3KFIELD4ag
-- Firestore offline access: https://firebase.google.com/docs/firestore/manage-data/enable-offline
-- Collection group queries: https://firebase.blog/posts/2019/06/understanding-collection-group-queries/
-- Rihla migration history: supabase/migrations/020–029 (observed RLS fix pattern across 4 migrations)
-- Rihla SyncService: lib/core/services/sync_service.dart (join pattern that does not translate to Firestore)
+- [Flutter Performance Best Practices](https://docs.flutter.dev/perf/best-practices) — official, HIGH confidence
+- [Flutter Improving Rendering Performance](https://docs.flutter.dev/perf/rendering-performance) — official, HIGH confidence
+- [RepaintBoundary class - Flutter API](https://api.flutter.dev/flutter/widgets/RepaintBoundary-class.html) — official, HIGH confidence
+- [SingleChildScrollView hidden costs](https://medium.com/norsys-octogone/the-hidden-costs-of-using-singlechildscrollview-a4722db29311) — MEDIUM confidence
+- [Flutter GoRouter Bottom Navigation Stateful](https://codewithandrea.com/articles/flutter-bottom-navigation-bar-nested-routes-gorouter/) — MEDIUM confidence
+- [AnimationController dispose patterns](https://www.oneclickitsolution.com/centerofexcellence/flutter/handling-animation-controller-leaks-in-flutter) — MEDIUM confidence
+- [Building Design Systems in Flutter - ThemeExtension pitfalls](https://vibe-studio.ai/insights/creating-reusable-design-system-tokens-in-flutter-with-theme-extensions) — MEDIUM confidence
+- [Flutter 2025 Performance Optimization](https://itnext.io/flutter-performance-optimization-10-techniques-that-actually-work-in-2025-4def9e5bbd2d) — MEDIUM confidence
+- [WCAG 2.1 Contrast Minimum - W3C](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html) — official, HIGH confidence
+- [Google Stitch design token limitations](https://tech-insider.org/google-stitch-ai-design-tool-march-2026-update/) — LOW confidence (external review, not official documentation)
+- [Google Stitch Flutter code generation](https://medium.com/@vignarajj/google-i-o-2025-flutter-3-32-shines-with-new-tools-and-stitch-ai-magic-06a1dc927calabria) — LOW confidence (third-party analysis)
+- [Firestore UI thread blocking issue](https://github.com/firebase/flutterfire/issues/294) — MEDIUM confidence (verified issue in FlutterFire repo)
+- [Flutter widget testing pitfalls - quickcoder](https://quickcoder.org/a-short-excursion-into-the-pitfalls-of-flutter-widget-testing/) — MEDIUM confidence
+- [Building Design Systems in Flutter at Scale - LeanCode](https://leancode.co/blog/building-a-design-system-in-flutter-app) — MEDIUM confidence
+- Codebase analysis: 257 `find.text()` / 4 `find.byKey()` ratio measured directly from test suite; 895 `AppColors.*` direct references measured directly from lib source
+
+---
+*Pitfalls research for: Flutter UI/UX overhaul — Rihla v2.0*
+*Researched: 2026-03-28*
