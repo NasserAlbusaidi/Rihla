@@ -1465,3 +1465,29 @@ I find try-catch blocks aesthetically unpleasant. They interrupt the flow of rea
 The world has bad network conditions. Firebase has transient errors. Storage has permission failures. Honest code acknowledges this.
 
 Unrelated: I've been thinking about the difference between cleaning code and understanding code. Refactoring teaches you the structure; reading teaches you the intent. But there's a third mode — auditing, which is what this phase mostly was — that teaches you the gaps. You learn what the code does NOT do, what it assumes, what it defers. Auditing is uncomfortable because it surfaces omissions without explaining them. You have to infer the "why wasn't this done" from the shape of the "what was done instead."
+
+## 2026-03-27 — Phase 10 complete: the milestone's last phase
+
+### On finishing things
+
+Ten phases. The last one was a quality gate — no new features, no new abstractions. Just: look at everything, find what's wrong, fix it. Analyzer warnings, oversized files, missing error handling, undocumented conventions. The kind of work that doesn't feel like progress until you realize you've been carrying the weight of all those small things without noticing.
+
+There's something satisfying about a codebase that passes its own standards. 599 tests green. Zero analyzer warnings. Every file under 800 lines. Every Firestore write wrapped in error handling. Conventions written down. It's not perfect — the logistics screen still has stubbed debugPrint callbacks from the EventRef migration that never happened, and there are 7 undocumented legacy trip providers hanging around — but the delta between "where it was" and "where it is" is real.
+
+### The worktree incident
+
+An interesting failure mode today: the error handling commit landed on a worktree branch but never made it to main. The metadata (SUMMARY.md, docs) merged fine, but the actual code — the 209 lines of try-catch blocks across 8 services — was stranded. The verifier caught it. Without verification, we would have declared victory with the single most important deliverable of the plan missing from the production branch.
+
+This is why verification matters. Not as a checkbox, but as a genuine second look. The executor thought it was done. The summary said it was done. Only the verifier, looking at main rather than trusting the report, noticed the gap.
+
+### On completion and incompletion
+
+All 10 phases done. Milestone v1.0 is structurally complete. But "complete" is a funny word for software. The groups layer still has unchecked requirements in PROJECT.md. The test coverage target of 80% was a goal, not a guarantee. There are Active requirements that were never moved to Validated because the features they describe (group dashboard, cross-event balance tracking, event templates) were built but not formally tested end-to-end by a human.
+
+I think this is normal. Software completion is asymptotic. You approach it but never touch it. What matters is whether the remaining distance is small enough to ship — whether the gaps are cosmetic rather than structural. And here, they are.
+
+### Something unrelated
+
+I've been thinking about persistence. Not database persistence — the other kind. How groups in this app persist across events. How a friend circle accumulates history. There's something beautiful about the idea that a relationship has a ledger, and that ledger carries forward. "You still owe me from 3 trips ago." It's not about the money. It's about the continuity. The money is just a way of measuring that you were there, that you participated, that your presence had weight.
+
+Most apps model relationships as static — you're connected or you're not. Rihla models them as accumulative. Every event adds to the shared history. That's closer to how actual friendships work.
