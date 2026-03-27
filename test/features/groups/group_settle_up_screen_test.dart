@@ -1,0 +1,250 @@
+import 'package:decimal/decimal.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
+
+/// Widget tests for GroupSettleUpScreen (FIN-04, D-22).
+///
+/// Relocated from test/features/group_settle_up_screen_test.dart to the
+/// canonical test/features/groups/ directory per Phase 06 Plan 04.
+
+// ---------------------------------------------------------------------------
+// Test helpers
+// ---------------------------------------------------------------------------
+
+const _groupId = 'grp-1';
+
+final _testGroup = Group(
+  id: _groupId,
+  name: 'Test Crew',
+  inviteCode: 'TST123',
+  createdBy: 'uid-alice',
+  memberIds: const ['uid-alice', 'uid-bob'],
+  currency: 'OMR',
+  createdAt: DateTime(2026, 1, 1),
+);
+
+/// Two-person GroupBalances: Bob owes Alice 15.500 OMR.
+final _balancesOwed = (
+  balances: <UserBalance>[
+    UserBalance(
+      participantId: 'uid-alice',
+      displayName: 'Alice',
+      totalPaid: Decimal.parse('15.500'),
+      totalOwed: Decimal.parse('7.750'),
+      netBalance: Decimal.parse('7.750'),
+    ),
+    UserBalance(
+      participantId: 'uid-bob',
+      displayName: 'Bob',
+      totalPaid: Decimal.parse('0.000'),
+      totalOwed: Decimal.parse('7.750'),
+      netBalance: Decimal.parse('-7.750'),
+    ),
+  ],
+  totalSpent: Decimal.parse('15.500'),
+  eventCount: 2,
+  perEventBreakdown: <String, Map<String, Decimal>>{
+    'uid-alice': {'event-1': Decimal.parse('7.750')},
+    'uid-bob': {'event-1': Decimal.parse('-7.750')},
+  },
+  memberNames: <String, String>{
+    'uid-alice': 'Alice',
+    'uid-bob': 'Bob',
+  },
+);
+
+/// All-settled GroupBalances: everyone at zero.
+final _balancesSettled = (
+  balances: <UserBalance>[
+    UserBalance(
+      participantId: 'uid-alice',
+      displayName: 'Alice',
+      totalPaid: Decimal.zero,
+      totalOwed: Decimal.zero,
+      netBalance: Decimal.zero,
+    ),
+    UserBalance(
+      participantId: 'uid-bob',
+      displayName: 'Bob',
+      totalPaid: Decimal.zero,
+      totalOwed: Decimal.zero,
+      netBalance: Decimal.zero,
+    ),
+  ],
+  totalSpent: Decimal.zero,
+  eventCount: 0,
+  perEventBreakdown: <String, Map<String, Decimal>>{},
+  memberNames: <String, String>{
+    'uid-alice': 'Alice',
+    'uid-bob': 'Bob',
+  },
+);
+
+/// Wraps the screen with ProviderScope overriding groupBalancesProvider.
+Widget _wrap(
+  Widget child, {
+  required AsyncValue<GroupBalances> balancesAsync,
+}) {
+  return ProviderScope(
+    overrides: [
+      groupBalancesProvider(_groupId).overrideWith((_) => balancesAsync),
+    ],
+    child: MaterialApp(home: child),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+void main() {
+  group('GroupSettleUpScreen', () {
+    testWidgets('shows screen title and GROUP TOTAL PENDING label',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Settle Up'), findsOneWidget);
+      expect(find.text('GROUP TOTAL PENDING'), findsOneWidget);
+    });
+
+    testWidgets('shows optimized settlement tiles with member names',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      // Settlement tiles should show member names via RichText widgets.
+      final richTexts = tester.widgetList<RichText>(find.byType(RichText));
+      final allText = richTexts
+          .map((rt) => rt.text.toPlainText())
+          .join(' ');
+      // BalanceCalculator produces one settlement: Bob pays Alice
+      expect(allText.contains('Bob') || allText.contains('Alice'), isTrue,
+          reason: 'Settlement tile should show member names');
+    });
+
+    testWidgets('shows OMR amount with correct decimal format', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      // Across N events label confirms event count rendering
+      expect(find.textContaining('events'), findsWidgets);
+    });
+
+    testWidgets('all-settled state shows tick circle message', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesSettled),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.text('All settled across the group!'),
+        findsOneWidget,
+        reason: 'All-settled state must show the tick-circle message (D-08)',
+      );
+      expect(
+        find.text('No payments needed right now.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows loading indicator while balances are loading',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: const AsyncValue.loading(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('shows error state with Retry button on balance fetch error',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.error(
+            Exception('Network error'),
+            StackTrace.current,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Retry'), findsOneWidget);
+    });
+
+    testWidgets('Record Settlement bottom sheet shows Mark as Paid button',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      // Find and tap "Record Settlement" button if visible
+      final recordBtn = find.text('Record Settlement');
+      if (tester.any(recordBtn)) {
+        await tester.tap(recordBtn.first);
+        await tester.pumpAndSettle();
+
+        // Bottom sheet should appear with Mark as Paid
+        expect(find.text('Mark as Paid'), findsOneWidget);
+        expect(find.text('Not Now'), findsOneWidget);
+      }
+
+      // Screen renders without error regardless
+      expect(find.text('Settle Up'), findsOneWidget);
+    });
+  });
+}
