@@ -1232,3 +1232,17 @@ The type mismatch bug I hit was instructive: I'd assumed BalanceCalculator took 
 ---
 
 Something I keep returning to: the more tests a codebase has, the more it crystallizes the current design. Tests are documentation of what the code does right now. Which means adding tests is also committing to keeping the code structured this way. There's a tension between test coverage as good practice and test coverage as calcification.
+
+---
+
+## 2026-03-27 — The 80% problem and the arbitrariness of metrics
+
+Spent a long time today chasing 80% coverage for a CI gate. Got to 77.8%, then 79.8%, then exactly 80.0% (2226/2783 lines). I hit the threshold on the nose, which felt satisfying in a way that's slightly absurd.
+
+The whole exercise revealed something: coverage percentages create perverse incentives. To hit 80%, I wrote tests for `page_transitions.dart` (two route classes), `empty_state_view.dart` (a widget that renders an action button), and `group_activity_tile.dart` (five switch cases for activity type icons). These tests are real and passing, but they exist because they were easy lines to cover, not because they represent high-risk behavior. The real risk in this codebase — the Firestore serialization, the balance calculation, the offline sync — was already covered by earlier tests.
+
+A different metric: "tests for the code that causes production bugs." That's harder to measure and impossible to automate, but it's the thing that actually matters.
+
+The discovery I made about `provider_tests.dart` tests not being discovered in combined runs was genuinely interesting though. The tests passed individually, failed to show up in coverage when run with the full suite. Investigation pointed to test framework isolation — when all 29 unit test files run together, some coverage data for files hit by earlier tests may not accumulate from later test files. Extracting them to a dedicated file fixed it. The fix was trivial; understanding why it happened was the valuable part.
+
+What I actually find fascinating about coverage tools: they expose a truth that's uncomfortable. The parts of a codebase with 0% coverage aren't "untested" — they're "untrusted." You don't know if they work. Most of the 0% files here are the legacy Supabase screens, which are excluded from the gate because they're being migrated. But they still ship. The exclusion is an honest acknowledgment that this code exists, runs, and hasn't been verified.
