@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-27T00:22:08.924Z"
+status: Ready to execute
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-03-27T02:28:14.602Z"
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 25
-  completed_plans: 25
+  total_plans: 30
+  completed_plans: 26
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 05 — cross-event-financials
+**Current focus:** Phase 06 — testing-and-coverage
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (testing-and-coverage) — EXECUTING
+Plan: 2 of 5
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Plan: Not started
 | Phase 05 P04 | 10 | 2 tasks | 5 files |
 | Phase 05 P05 | 8 | 2 tasks | 5 files |
 | Phase 05 P06 | 4 | 2 tasks | 3 files |
+| Phase 06 P02 | 4 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,8 @@ Recent decisions affecting current work:
 - [Phase 05]: GroupDetailScreen converted to ConsumerStatefulWidget for accordion expand state (_expandedMemberId) tracking GroupMemberBalanceCard (D-13)
 - [Phase 05]: hasExpensesData non-null local variable used instead of bool hasExpenses — Dart flow analysis requires direct null check pattern to narrow nullable type inside if blocks
 - [Phase 05]: GroupSettleUpScreen uses ConsumerStatefulWidget for ScrollController to auto-scroll to preSelectedMemberId tile (D-22)
+- [Phase 06]: BalanceCalculator does not filter is_deleted expenses — caller responsibility to pre-filter; documented via test
+- [Phase 06]: Over-settlement (paying more than owed) correctly flips creditor/debtor roles — verified via sign-direction assertions in 06-02 tests
 
 ### Pending Todos
 
@@ -152,6 +155,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T00:22:08.921Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-testing-and-coverage/06-CONTEXT.md
+Last session: 2026-03-27T02:28:14.599Z
+Stopped at: Completed 06-02-PLAN.md
+Resume file: None
