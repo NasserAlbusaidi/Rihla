@@ -6,6 +6,9 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../events/models/event_model.dart';
+import '../../events/models/event_type_config.dart';
+import '../../events/providers/event_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -82,6 +85,15 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   @override
   Widget build(BuildContext context) {
     final balancesAsync = ref.watch(groupBalancesProvider(widget.groupId));
+    final eventsAsync = ref.watch(groupEventsProvider(widget.groupId));
+    final eventNameMap = <String, ({String name, EventType type, DateTime date})>{
+      for (final e in eventsAsync.valueOrNull ?? <Event>[])
+        e.id: (
+          name: e.name,
+          type: e.type,
+          date: e.startDate ?? e.createdAt,
+        ),
+    };
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -97,7 +109,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     balances: balancesData.balances,
                     userNames: balancesData.memberNames,
                   );
-                  return _buildContent(context, optimalSettlements, balancesData);
+                  return _buildContent(context, optimalSettlements, balancesData, eventNameMap);
                 },
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
@@ -179,6 +191,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     BuildContext context,
     List<Map<String, dynamic>> optimalSettlements,
     GroupBalances balancesData,
+    Map<String, ({String name, EventType type, DateTime date})> eventNameMap,
   ) {
     // Get current user UID safely (D-22 test safety pattern)
     String? currentUid;
@@ -250,6 +263,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                 yourActions,
                 orderedSettlements,
                 balancesData,
+                eventNameMap,
                 isYourAction: true,
               ),
               const SizedBox(height: 24),
@@ -262,6 +276,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                 waitingForOthers,
                 orderedSettlements,
                 balancesData,
+                eventNameMap,
                 isYourAction: false,
               ),
               const SizedBox(height: 24),
@@ -274,6 +289,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                 othersSettling,
                 orderedSettlements,
                 balancesData,
+                eventNameMap,
                 isYourAction: false,
               ),
               const SizedBox(height: 24),
@@ -367,7 +383,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     BuildContext context,
     List<Map<String, dynamic>> settlements,
     List<Map<String, dynamic>> orderedSettlements,
-    GroupBalances balancesData, {
+    GroupBalances balancesData,
+    Map<String, ({String name, EventType type, DateTime date})> eventNameMap, {
     required bool isYourAction,
   }) {
     return Container(
@@ -390,6 +407,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             context,
             settlement,
             balancesData,
+            eventNameMap,
             showDivider: !isLast,
             isYourAction: isYourAction,
             isHighlighted: isHighlighted,
@@ -403,7 +421,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   Widget _buildSettlementTile(
     BuildContext context,
     Map<String, dynamic> settlement,
-    GroupBalances balancesData, {
+    GroupBalances balancesData,
+    Map<String, ({String name, EventType type, DateTime date})> eventNameMap, {
     bool showDivider = true,
     required bool isYourAction,
     bool isHighlighted = false,
@@ -420,6 +439,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       fromUserId,
       toUserId,
       balancesData,
+      eventNameMap,
     );
 
     return Container(
@@ -512,13 +532,29 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                   ...breakdown.entries.map(
                     (e) => Padding(
                       padding: const EdgeInsets.only(left: 64, top: 2),
-                      child: Text(
-                        '${e.key}: ${AppFormatters.formatCurrency(e.value, widget.group.currency)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              e.key,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            ': ${AppFormatters.formatCurrency(e.value, widget.group.currency)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -593,6 +629,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     String fromUserId,
     String toUserId,
     GroupBalances balancesData,
+    Map<String, ({String name, EventType type, DateTime date})> eventNameMap,
   ) {
     final result = <String, Decimal>{};
     final fromBreakdown = balancesData.perEventBreakdown[fromUserId] ?? {};
@@ -614,8 +651,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         // Amount attributable: min of what from owes and what to is owed
         final attribution = fromNet.abs() < toNet ? fromNet.abs() : toNet;
         if (attribution > Decimal.zero) {
-          // Use eventId as label (simplified — event name not available here)
-          result[_shortEventLabel(eventId)] = attribution;
+          result[_buildEventLabel(eventId, eventNameMap)] = attribution;
         }
       }
     }
@@ -623,9 +659,38 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     return result;
   }
 
-  String _shortEventLabel(String eventId) {
-    // Use last 8 chars of eventId as a short label when event name not available
-    return 'Event …${eventId.length > 6 ? eventId.substring(eventId.length - 6) : eventId}';
+  /// Builds a human-readable label for an event in the per-event breakdown.
+  ///
+  /// Format per D-01, D-04: "Camping Weekend \u2014 Mar 15"
+  /// Truncation per D-01: names > 30 chars truncated at 27 + "..."
+  /// Fallback per D-02: event type label when event not found in map
+  /// No navigation per D-03: labels are static text
+  String _buildEventLabel(
+    String eventId,
+    Map<String, ({String name, EventType type, DateTime date})> eventMap,
+  ) {
+    final entry = eventMap[eventId];
+    if (entry == null) {
+      // Fallback: event not in map (loading or deleted)
+      // Return a minimal label — will update on next rebuild when data arrives
+      return eventId.length > 8
+          ? 'Event ...${eventId.substring(eventId.length - 6)}'
+          : eventId;
+    }
+
+    // D-02: use event name, fallback to event type label
+    final rawName = entry.name.isNotEmpty
+        ? entry.name
+        : EventTypeConfig.forType(entry.type).label;
+
+    // D-01: truncate names > 30 chars
+    final name = rawName.length > 30
+        ? '${rawName.substring(0, 27)}...'
+        : rawName;
+
+    // D-04: append short date
+    final date = AppFormatters.formatShortMonthDay(entry.date);
+    return '$name \u2014 $date';
   }
 
   Widget _buildAllSettled(BuildContext context) {

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
@@ -27,6 +29,19 @@ final _testGroup = Group(
   memberIds: const ['uid-alice', 'uid-bob'],
   currency: 'OMR',
   createdAt: DateTime(2026, 1, 1),
+);
+
+final _testEvent = Event(
+  id: 'event-1',
+  name: 'Camping Weekend',
+  type: EventType.camping,
+  groupId: _groupId,
+  createdBy: 'uid-alice',
+  participantIds: const ['uid-alice', 'uid-bob'],
+  participantNames: const {'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+  modules: const EventModules(),
+  startDate: DateTime(2026, 3, 15),
+  createdAt: DateTime(2026, 3, 10),
 );
 
 /// Two-person GroupBalances: Bob owes Alice 15.500 OMR.
@@ -90,10 +105,15 @@ final _balancesSettled = (
 Widget _wrap(
   Widget child, {
   required AsyncValue<GroupBalances> balancesAsync,
+  List<Event>? events,
 }) {
   return ProviderScope(
     overrides: [
       groupBalancesProvider(_groupId).overrideWith((_) => balancesAsync),
+      if (events != null)
+        groupEventsProvider(_groupId).overrideWith(
+          (_) => Stream.value(events),
+        ),
     ],
     child: MaterialApp(home: child),
   );
@@ -365,6 +385,48 @@ void main() {
       }
 
       expect(find.text('Settle Up'), findsOneWidget);
+    });
+
+    testWidgets('per-event breakdown shows event name and date (happy path)',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          events: [_testEvent],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // D-01, D-04: event name with short date
+      expect(find.textContaining('Camping Weekend'), findsWidgets);
+      expect(find.textContaining('Mar 15'), findsWidgets);
+    });
+
+    testWidgets(
+        'per-event breakdown falls back to eventId label when event not in map',
+        (tester) async {
+      // Pass empty events list — eventNameMap will be empty, triggering fallback
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          events: const [],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // D-02 fallback: since no events are in the map, the label falls back
+      // to the eventId-based label. The screen still renders the settle up view.
+      expect(find.text('Settle Up'), findsOneWidget);
+      // The per-event breakdown row is rendered (breakdowns are non-empty)
+      expect(find.textContaining('event-1'), findsWidgets);
     });
   });
 }
