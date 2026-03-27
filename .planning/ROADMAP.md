@@ -251,7 +251,10 @@ Plans:
   2. Stale comment in `auth_provider.dart` referencing deleted `firebase_auth_provider.dart` removed
   3. All remaining `trip*` legacy providers documented in CLAUDE.md conventions section
   4. `flutter analyze` and `flutter test` pass after changes
-**Plans**: 0 plans
+**Plans**: 1 plan
+
+Plans:
+- [ ] 13-01-PLAN.md — Remove 3 orphaned providers + stale comment + CLAUDE.md legacy provider mapping table
 
 ## Progress
 
@@ -272,4 +275,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Full Codebase Review | 4/4 | Complete    | 2026-03-27 |
 | 11. Gear Write Mutations | 1/1 | Complete    | 2026-03-27 |
 | 12. Expense & Logistics Provider Rewiring | 2/2 | Complete    | 2026-03-27 |
-| 13. Final Cleanup | 0/0 | Not Started |  |
+| 13. Final Cleanup | 0/1 | Not Started |  |
