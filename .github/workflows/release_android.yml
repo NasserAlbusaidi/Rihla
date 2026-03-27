@@ -1,7 +1,7 @@
 name: Android Release
 
 on:
-    workflow_dispatch:  
+    workflow_dispatch:
     push:
         tags:
             - 'v*' # Triggers only when you push a tag like v1.0.1
@@ -45,8 +45,39 @@ jobs:
       - name: 🔍 Static Analysis
         run: flutter analyze --no-fatal-infos
 
-      - name: 🧪 Run Automated Tests
-        run: flutter test
+      - name: Run Tests with Coverage
+        run: |
+          rm -f coverage/lcov.info
+          flutter test --coverage
+
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+
+      - name: Check Coverage Threshold (80%)
+        run: |
+          lcov --remove coverage/lcov.info \
+            'lib/firebase_options.dart' \
+            'lib/main.dart' \
+            'lib/app.dart' \
+            '*.g.dart' \
+            '*.freezed.dart' \
+            'lib/features/trip/*' \
+            'lib/features/logistics/*' \
+            'lib/features/gear/*' \
+            'lib/features/memories/*' \
+            'lib/features/vault/*' \
+            'lib/features/settings/*' \
+            'lib/core/services/cache_service.dart' \
+            'lib/core/services/lazy_migration_service.dart' \
+            -o coverage/lcov_filtered.info
+          COVERAGE=$(lcov --summary coverage/lcov_filtered.info 2>&1 \
+            | grep -oP '\d+\.\d+(?=%)' | head -1)
+          echo "Coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "::error::Coverage ${COVERAGE}% is below 80% threshold"
+            exit 1
+          fi
+          echo "Coverage ${COVERAGE}% meets 80% threshold"
 
       - name: 🏗️ Build App Bundle (Obfuscated)
         run: |
