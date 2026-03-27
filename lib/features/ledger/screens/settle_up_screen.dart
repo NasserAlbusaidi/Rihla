@@ -15,6 +15,10 @@ import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
+import '../widgets/recent_expenses_section.dart';
+import '../widgets/recorded_settlements_section.dart';
+import '../widgets/settlement_summary_card.dart';
+import '../widgets/settlement_tile.dart';
 
 /// Settle Up Screen - Shows optimized settlements with payment actions
 class SettleUpScreen extends ConsumerWidget {
@@ -183,7 +187,16 @@ class SettleUpScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Premium Bento-style Summary
-          _buildPremiumSummary(context, totalPending, myBalance, myDebts: myDebts, ref: ref)
+          SettlementSummaryCard(
+            netBalance: myBalance.netBalance,
+            totalPending: totalPending,
+            myBalance: myBalance,
+            currency: event.currency,
+            myDebts: myDebts,
+            onSettleUp: myDebts.isNotEmpty
+                ? () => _confirmPayment(context, ref, myDebts.first)
+                : null,
+          )
               .animate()
               .fadeIn(duration: 600.ms)
               .slideX(begin: -0.1, curve: Curves.easeOutCubic),
@@ -195,21 +208,34 @@ class SettleUpScreen extends ConsumerWidget {
             if (myDebts.isNotEmpty) ...[
               _buildSectionHeader('YOUR ACTIONS', Iconsax.wallet_3),
               const SizedBox(height: 12),
-              _buildSettlementGroup(context, ref, myDebts, isUrgent: true),
+              SettlementGroupCard(
+                settlements: myDebts,
+                currency: event.currency,
+                isUrgent: true,
+                onTap: (s) => _confirmPayment(context, ref, s),
+              ),
               const SizedBox(height: 24),
             ],
 
             if (debtToMe.isNotEmpty) ...[
               _buildSectionHeader('WAITING FOR OTHERS', Iconsax.timer_1),
               const SizedBox(height: 12),
-              _buildSettlementGroup(context, ref, debtToMe),
+              SettlementGroupCard(
+                settlements: debtToMe,
+                currency: event.currency,
+                onTap: (s) => _confirmPayment(context, ref, s),
+              ),
               const SizedBox(height: 24),
             ],
 
             if (others.isNotEmpty) ...[
               _buildSectionHeader('OTHERS SETTLING', Iconsax.people),
               const SizedBox(height: 12),
-              _buildSettlementGroup(context, ref, others),
+              SettlementGroupCard(
+                settlements: others,
+                currency: event.currency,
+                onTap: (s) => _confirmPayment(context, ref, s),
+              ),
               const SizedBox(height: 24),
             ],
           ] else if (recordedSettlements.isEmpty) ...[
@@ -221,190 +247,22 @@ class SettleUpScreen extends ConsumerWidget {
 
           // 3. History
           if (recordedSettlements.isNotEmpty)
-            _buildRecordedSettlements(
-              context,
-              recordedSettlements,
-              participantNames,
+            RecordedSettlementsSection(
+              settlements: recordedSettlements,
+              participantNames: participantNames,
+              currency: event.currency,
             ).animate().fadeIn(delay: 200.ms),
 
           const SizedBox(height: 16),
 
           // 4. Recent Expenses
           if (expenses.isNotEmpty)
-            _buildRecentExpenses(
-              context,
-              expenses,
+            RecentExpensesSection(
+              expenses: expenses,
+              currency: event.currency,
             ).animate().fadeIn(delay: 300.ms),
 
           const SizedBox(height: 40),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPremiumSummary(
-    BuildContext context,
-    Decimal totalPending,
-    UserBalance myBalance, {
-    List<Map<String, dynamic>> myDebts = const [],
-    WidgetRef? ref,
-  }) {
-    final isPositive = myBalance.netBalance >= Decimal.zero;
-    final accentColor = isPositive ? AppColors.success : AppColors.error;
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            accentColor.withValues(alpha: 0.15),
-            AppColors.surface.withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1),
-        boxShadow: AppColors.cardShadowLarge,
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isPositive ? 'YOU ARE OWED' : 'YOU OWE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      color: accentColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        AppFormatters.formatCurrency(myBalance.netBalance.abs(), event.currency),
-                        style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isPositive ? Iconsax.receipt_add : Iconsax.receipt_minus,
-                  color: accentColor,
-                  size: 28,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Divider(height: 1, color: AppColors.border),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildSummaryMiniItem(
-                'Trip Total Pending',
-                AppFormatters.formatCurrency(totalPending, event.currency),
-                Iconsax.status_up,
-              ),
-              const SizedBox(width: 32),
-              _buildSummaryMiniItem(
-                'Total Paid by You',
-                AppFormatters.formatCurrency(myBalance.totalPaid, event.currency),
-                Iconsax.wallet_check,
-              ),
-            ],
-          ),
-          if (!isPositive && myBalance.netBalance.abs() > Decimal.zero) ...[
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: myDebts.isNotEmpty && ref != null
-                      ? () => _confirmPayment(context, ref, myDebts.first)
-                      : null,
-                  icon: const Icon(Iconsax.tick_circle, size: 18),
-                  label: const Text('SETTLE UP'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.black,
-                    shadowColor: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryMiniItem(String label, String value, IconData icon) {
-    return Expanded(
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: AppColors.textMuted),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -424,405 +282,6 @@ class SettleUpScreen extends ConsumerWidget {
             letterSpacing: 1.2,
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildSettlementGroup(
-    BuildContext context,
-    WidgetRef ref,
-    List<Map<String, dynamic>> settlements, {
-    bool isUrgent = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isUrgent
-              ? AppColors.rose.withValues(alpha: 0.2)
-              : AppColors.border.withValues(alpha: 0.5),
-        ),
-        boxShadow: isUrgent ? AppColors.cardShadow : null,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: settlements.asMap().entries.map((entry) {
-          final index = entry.key;
-          final settlement = entry.value;
-          final isLast = index == settlements.length - 1;
-          return _buildSettlementTile(
-            context,
-            ref,
-            settlement,
-            showDivider: !isLast,
-            isUrgent: isUrgent,
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildSettlementTile(
-    BuildContext context,
-    WidgetRef ref,
-    Map<String, dynamic> settlement, {
-    bool showDivider = true,
-    bool isUrgent = false,
-  }) {
-    final fromName = settlement['fromUserName'] as String;
-    final toName = settlement['toUserName'] as String;
-    final amount = (settlement['amount'] as Decimal);
-
-    return InkWell(
-      onTap: () => _confirmPayment(context, ref, settlement),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Avatar Visual Stack
-                SizedBox(
-                  width: 52,
-                  height: 32,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        left: 0,
-                        child: _buildSmallAvatar(fromName, isPayer: true),
-                      ),
-                      Positioned(left: 20, child: _buildSmallAvatar(toName)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Text Description
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 14,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: fromName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const TextSpan(
-                              text: ' → ',
-                              style: TextStyle(
-                                color: AppColors.textMuted,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            TextSpan(
-                              text: toName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Text(
-                            AppFormatters.formatCurrency(amount, event.currency),
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: isUrgent ? AppColors.rose : AppColors.mint,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          if (isUrgent)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.rose.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'PAYMENT DUE',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.rose,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Settle Button
-                const Icon(
-                  Iconsax.arrow_right_3,
-                  size: 16,
-                  color: AppColors.textMuted,
-                ),
-              ],
-            ),
-          ),
-          if (showDivider)
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: AppColors.border.withValues(alpha: 0.5),
-              indent: 16,
-              endIndent: 16,
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Recorded settlements section - Collapsible History
-  Widget _buildRecordedSettlements(
-    BuildContext context,
-    List<Settlement> settlements,
-    Map<String, String> participantNames,
-  ) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        initiallyExpanded: false,
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: EdgeInsets.zero,
-        title: const Text(
-          'RECORDED HISTORY',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
-            letterSpacing: 1.0,
-          ),
-        ),
-        trailing: const Icon(
-          Iconsax.arrow_down_1,
-          size: 16,
-          color: AppColors.textMuted,
-        ),
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.5),
-              ),
-            ),
-            child: Column(
-              children: settlements.asMap().entries.map((entry) {
-                final index = entry.key;
-                final s = entry.value;
-                final isLast = index == settlements.length - 1;
-                return _buildHistoryItem(s, participantNames, !isLast);
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryItem(
-    Settlement settlement,
-    Map<String, String> participantNames,
-    bool showDivider,
-  ) {
-    final payerName =
-        participantNames[settlement.payerParticipantId] ?? 'Unknown';
-    final recipientName =
-        participantNames[settlement.recipientParticipantId] ?? 'Unknown';
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              const Icon(
-                Iconsax.tick_circle,
-                size: 18,
-                color: AppColors.success,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: RichText(
-                  text: TextSpan(
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: payerName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const TextSpan(text: ' paid '),
-                      TextSpan(
-                        text: recipientName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    AppFormatters.formatCurrency(settlement.amount, event.currency),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.success,
-                    ),
-                  ),
-                  Text(
-                    AppFormatters.formatRelativeDate(settlement.settledAt),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (showDivider)
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-      ],
-    );
-  }
-
-  /// Recent expenses - Collapsible
-  Widget _buildRecentExpenses(BuildContext context, List<Expense> expenses) {
-    final recentExpenses = expenses.take(5).toList();
-
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        initiallyExpanded: false,
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: EdgeInsets.zero,
-        title: const Text(
-          'RECENT EXPENSES',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
-            letterSpacing: 1.0,
-          ),
-        ),
-        trailing: const Icon(
-          Iconsax.arrow_down_1,
-          size: 16,
-          color: AppColors.textMuted,
-        ),
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.5),
-              ),
-            ),
-            child: Column(
-              children: recentExpenses.asMap().entries.map((entry) {
-                final index = entry.key;
-                final expense = entry.value;
-                final isLast = index == recentExpenses.length - 1;
-                return _buildExpenseItem(expense, !isLast);
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpenseItem(Expense expense, bool showDivider) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    expense.categoryIcon ?? '💰',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      expense.description ?? 'Expense',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      expense.categoryName ?? 'General',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                AppFormatters.formatCurrency(expense.amount, event.currency),
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (showDivider)
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
       ],
     );
   }
@@ -1029,31 +488,5 @@ class SettleUpScreen extends ConsumerWidget {
     if (!context.mounted || confirmed != true) return;
 
     _recordSettlement(context, ref, settlement);
-  }
-
-  Widget _buildSmallAvatar(String name, {bool isPayer = false}) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: isPayer ? AppColors.surface : AppColors.surfaceLight,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isPayer ? AppColors.mint : AppColors.border,
-          width: isPayer ? 2 : 1,
-        ),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: isPayer ? AppColors.textPrimary : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
   }
 }
