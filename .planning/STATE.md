@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Milestone complete
-stopped_at: Phase 8 context gathered
-last_updated: "2026-03-27T14:19:17.153Z"
+status: Ready to execute
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-27T14:56:34.572Z"
 progress:
   total_phases: 10
   completed_phases: 7
-  total_plans: 32
-  completed_plans: 32
+  total_plans: 34
+  completed_plans: 33
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 07 — data-migration-and-supabase-removal
+**Current focus:** Phase 08 — integration-correctness-fixes
 
 ## Current Position
 
-Phase: 07
-Plan: Not started
+Phase: 08 (integration-correctness-fixes) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Plan: Not started
 | Phase 06 P05 | 90 | 2 tasks | 18 files |
 | Phase 07 P01 | 4 | 2 tasks | 11 files |
 | Phase 07-data-migration-and-supabase-removal P02 | 15 | 2 tasks | 20 files |
+| Phase 08-integration-correctness-fixes P02 | 6 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,8 @@ Recent decisions affecting current work:
 - [Phase 07]: firebase_auth.User.uid used everywhere — User.id was Supabase, User.uid is Firebase; three latent bugs fixed in gear_screen, edit_expense_sheet, split_scope_selector
 - [Phase 07]: CategoryProvider hardcoded to 6 defaults — expense_categories Supabase table has no Firestore equivalent; custom categories deferred
 - [Phase 07]: TripService class deleted — only served legacy create/join trip screens deleted in Plan 01; no active consumers remain
+- [Phase 08-integration-correctness-fixes]: groupEventsProvider watched in build() with valueOrNull for non-blocking event name resolution in GroupSettleUpScreen -- empty map on loading/error triggers fallback label
+- [Phase 08-integration-correctness-fixes]: Record type used for eventNameMap values ({name, type, date}) -- avoids creating a new class for a single-method lookup structure in settle-up screen
 
 ### Pending Todos
 
@@ -171,6 +174,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T14:19:17.149Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-integration-correctness-fixes/08-CONTEXT.md
+Last session: 2026-03-27T14:56:34.569Z
+Stopped at: Completed 08-02-PLAN.md
+Resume file: None

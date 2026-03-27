@@ -168,7 +168,7 @@ Plans:
 
 Plans:
 - [ ] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
-- [ ] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
+- [x] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
 
 ### Phase 9: Dead Code Cleanup
 **Goal**: Remove all orphaned providers and dead code identified in milestone audit
