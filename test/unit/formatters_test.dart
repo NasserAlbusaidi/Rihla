@@ -11,6 +11,31 @@ void main() {
       expect(AppFormatters.formatOMR(Decimal.parse('10.5256')), '10.526 OMR');
     });
 
+    test('formatOMR: zero amount formats as 0.000 OMR', () {
+      expect(AppFormatters.formatOMR(Decimal.parse('0')), '0.000 OMR');
+      expect(AppFormatters.formatOMR(Decimal.zero), '0.000 OMR');
+    });
+
+    test('formatOMR: 10.5 formats as 10.500 (3 decimal places for OMR)', () {
+      expect(AppFormatters.formatOMR(Decimal.parse('10.5')), '10.500 OMR');
+    });
+
+    test('formatOMR: large amounts format correctly', () {
+      expect(
+        AppFormatters.formatOMR(Decimal.parse('1000000.001')),
+        '1000000.001 OMR',
+      );
+      expect(
+        AppFormatters.formatOMR(Decimal.parse('999999.999')),
+        '999999.999 OMR',
+      );
+    });
+
+    test('formatOMR: negative amounts format with minus sign', () {
+      expect(AppFormatters.formatOMR(Decimal.parse('-5.500')), '-5.500 OMR');
+      expect(AppFormatters.formatOMR(Decimal.parse('-0.001')), '-0.001 OMR');
+    });
+
     test('formatCurrency: Should format with correct symbol and decimals', () {
       expect(
         AppFormatters.formatCurrency(Decimal.parse('10'), 'OMR'),
