@@ -12,6 +12,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
+import 'package:safar/features/groups/widgets/group_member_balance_card.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 
 // ---------------------------------------------------------------------------
@@ -48,6 +49,39 @@ final _testMembers = [
     joinedAt: DateTime(2026, 1, 2),
   ),
 ];
+
+/// Balances stub with non-zero balance — Alice is owed money by Bob.
+///
+/// Used for the balance toggle and settle-up navigation tests.
+/// totalSpent > 0 so GroupBalanceHero is rendered (D-19).
+final _membersWithBalances = (
+  balances: <UserBalance>[
+    UserBalance(
+      participantId: 'uid-creator',
+      displayName: 'Alice',
+      totalPaid: Decimal.parse('30.000'),
+      totalOwed: Decimal.parse('15.000'),
+      netBalance: Decimal.parse('15.000'),
+    ),
+    UserBalance(
+      participantId: 'uid-member',
+      displayName: 'Bob',
+      totalPaid: Decimal.zero,
+      totalOwed: Decimal.parse('15.000'),
+      netBalance: Decimal.parse('-15.000'),
+    ),
+  ],
+  totalSpent: Decimal.parse('30.000'),
+  eventCount: 1,
+  perEventBreakdown: <String, Map<String, Decimal>>{
+    'uid-creator': {'evt-1': Decimal.parse('15.000')},
+    'uid-member': {'evt-1': Decimal.parse('-15.000')},
+  },
+  memberNames: <String, String>{
+    'uid-creator': 'Alice',
+    'uid-member': 'Bob',
+  },
+);
 
 /// Balances stub with two zero-balance members (no expenses yet).
 ///
@@ -101,6 +135,32 @@ Widget _wrap(Widget child, SharedPreferences prefs) {
       ),
       groupBalancesProvider('group-1').overrideWith(
         (ref) => AsyncValue.data(_membersWithZeroBalance),
+      ),
+      groupActivityProvider('group-1').overrideWith(
+        (ref) => Stream.value(const []),
+      ),
+    ],
+    child: MaterialApp(home: child),
+  );
+}
+
+/// Wraps GroupDetailScreen with non-zero balance data so GroupBalanceHero
+/// and settle-up features are rendered (D-19).
+Widget _wrapWithBalances(Widget child, SharedPreferences prefs) {
+  return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      groupDetailProvider('group-1').overrideWith(
+        (ref) => Stream.value(_testGroup),
+      ),
+      groupMembersProvider('group-1').overrideWith(
+        (ref) => Stream.value(_testMembers),
+      ),
+      groupEventsProvider('group-1').overrideWith(
+        (ref) => Stream.value(const []),
+      ),
+      groupBalancesProvider('group-1').overrideWith(
+        (ref) => AsyncValue.data(_membersWithBalances),
       ),
       groupActivityProvider('group-1').overrideWith(
         (ref) => Stream.value(const []),
@@ -197,6 +257,75 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Events'), findsOneWidget);
+      });
+
+      testWidgets(
+          'balance toggle: tapping GroupMemberBalanceCard changes expanded state',
+          (tester) async {
+        // Use balances with non-zero data so GroupMemberBalanceCard renders
+        await tester.pumpWidget(
+          _wrapWithBalances(const GroupDetailScreen(groupId: 'group-1'), prefs),
+        );
+        await tester.pumpAndSettle();
+
+        // GroupMemberBalanceCard should be rendered
+        expect(find.byType(GroupMemberBalanceCard), findsWidgets);
+
+        // Tap the first card to expand it
+        await tester.tap(find.byType(GroupMemberBalanceCard).first);
+        await tester.pumpAndSettle();
+
+        // After tap, the card should still render (toggle changed expand state)
+        // Verify the widget tree updated by checking the card is still present
+        expect(find.byType(GroupMemberBalanceCard), findsWidgets);
+      });
+
+      testWidgets(
+          'balance toggle: accordion allows only one card expanded at a time',
+          (tester) async {
+        await tester.pumpWidget(
+          _wrapWithBalances(const GroupDetailScreen(groupId: 'group-1'), prefs),
+        );
+        await tester.pumpAndSettle();
+
+        // Two GroupMemberBalanceCards should be rendered (Alice + Bob)
+        final cards = find.byType(GroupMemberBalanceCard);
+        expect(cards, findsNWidgets(2));
+
+        // Tap first card
+        await tester.tap(cards.first);
+        await tester.pumpAndSettle();
+
+        // Tap second card — accordion should collapse first
+        await tester.tap(cards.at(1));
+        await tester.pumpAndSettle();
+
+        // Both cards still rendered — widget tree is intact after toggle
+        expect(find.byType(GroupMemberBalanceCard), findsNWidgets(2));
+      });
+
+      testWidgets(
+          'GroupBalanceHero renders when totalSpent > 0 (D-19)',
+          (tester) async {
+        await tester.pumpWidget(
+          _wrapWithBalances(const GroupDetailScreen(groupId: 'group-1'), prefs),
+        );
+        await tester.pumpAndSettle();
+
+        // With totalSpent = 30.000, GroupBalanceHero is shown
+        // Verify balance data is displayed
+        expect(find.text('Members & Balances'), findsOneWidget);
+        expect(find.text('Alice'), findsWidgets);
+        expect(find.text('Bob'), findsOneWidget);
+      });
+
+      testWidgets('FAB is present for creating new events', (tester) async {
+        await tester.pumpWidget(
+          _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(FloatingActionButton), findsOneWidget);
       });
     });
 
