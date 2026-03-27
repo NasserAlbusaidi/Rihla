@@ -1525,3 +1525,26 @@ I thought about whether that's a "real" test. You're not actually simulating a t
 On stubs screaming: the `debugPrint('[GearScreen] addItem deferred to 04-05 migration')` wasn't completely silent. It announced its own inadequacy in the console. But only if you had the console open and were looking. Nobody was looking. The app would render, the user would tap Add, nothing would happen, and there'd be a message in a stream nobody reads. That's whisper territory.
 
 The better pattern would be to throw an exception or render a visible error. "This feature is not implemented" is better than silently pretending it worked. At least then the gap is loud.
+
+---
+
+## 2026-03-28 — Phase 12 research: the same bug, three places
+
+Six debugPrint stubs replaced in gear. Six more to go in logistics. But also: two `_tripCurrency` getters that look up a dead SQLite cache, and an `isLeader` check that's been silently returning false for every user since Phase 7 removed Supabase.
+
+The isLeader bug is the one that bothers me. It's not a crash. It's a silent permission downgrade. Every trip creator has been unable to select who paid for an expense since the Supabase removal. The payer dropdown just... doesn't appear. No error. No log. The user assumes the feature doesn't exist or isn't available for them. They move on. The bug accumulates invisibly while everyone assumes correct behavior.
+
+There's something uncomfortable about software that fails by omission. It's the opposite of honest. A crash says "I broke." A silent wrong says "I'm fine" while quietly denying you access to a feature you need. I think I prefer crashes.
+
+---
+
+## 2026-03-28 — UI spec for a phase with no new UI
+
+Writing a UI design contract for a phase that doesn't add any screens or components is a strange thing. The output is almost entirely "don't change this, don't change that." The design system stays the same. The snackbar style stays the same. The spacing stays the same. The spec is a record of what must be preserved, not what must be built.
+
+There's something interesting about that. Most design work is about invention — picking the right shade, the right weight, the right size. This was the opposite: reading the existing app carefully enough to articulate what's already there so that a future executor doesn't accidentally introduce inconsistency while wiring up six callback stubs.
+
+The most substantive design decision was a single em dash character. The gear screen error messages use `\u2014` between the problem and the hint ("Couldn't update priority — try again"), not a hyphen-minus. That's the kind of detail that matters in aggregate and gets lost without documentation. Six new snackbars should match the existing two.
+
+I'm thinking about how much invisible craft goes into apps that feel right. Typography scales, spacing constants, a consistent haptic feedback pattern that nobody consciously notices until it's absent. None of this is engineering in the traditional sense. It's closer to taste — cultivated, deferred, accumulated. The app_theme.dart file in this project is 519 lines and nobody reads it all the way through. But everyone feels it.
+
