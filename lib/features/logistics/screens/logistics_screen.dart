@@ -11,6 +11,7 @@ import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';
+import '../../trip/models/trip_model.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
 import '../widgets/subgroup_card.dart';
@@ -152,20 +153,10 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                 onRenameGroup: () => _showCreateDialog(group: groups[index]),
                 onDeleteGroup: _confirmDeleteGroup,
                 onAddMember: _showMemberPicker,
-                onRemoveMember: (member, group) {
-                  // Legacy screen: removeMember requires EventRef context.
-                  // This screen will be updated in a future plan to use EventRef.
-                  debugPrint(
-                    'removeMember not supported in legacy screen — migrate to EventRef flow',
-                  );
-                },
-                onDrop: (participant) {
-                  // Legacy screen: addMember requires EventRef context.
-                  // This screen will be updated in a future plan to use EventRef.
-                  debugPrint(
-                    'addMember not supported in legacy screen — migrate to EventRef flow',
-                  );
-                },
+                onRemoveMember: (member, group) =>
+                    _removeMember(member: member, group: group),
+                onDrop: (participant) =>
+                    _dropMemberOnGroup(participant: participant, group: groups[index]),
               ),
             ),
           ),
@@ -313,14 +304,10 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            onTap: () async {
+                            onTap: () {
                               HapticService.lightClick();
-                              // addMember requires sub-group service with EventRef context.
-                              // Wired in a future plan when full sub-group write flow is added.
-                              debugPrint(
-                                'addMember not yet wired — EventRef flow pending',
-                              );
-                              if (context.mounted) Navigator.pop(context);
+                              Navigator.pop(context);
+                              _addMemberToGroup(group: group, participant: p);
                             },
                           );
                         },
@@ -340,6 +327,74 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
     );
   }
 
+  Future<void> _removeMember({
+    required SubGroupMember member,
+    required SubGroup group,
+  }) async {
+    try {
+      await ref.read(subGroupServiceProvider).removeMember(
+        groupId: widget.event.groupId,
+        eventId: widget.event.id,
+        subGroupId: group.id,
+        memberId: member.id,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't remove member \u2014 try again"),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _dropMemberOnGroup({
+    required Participant participant,
+    required SubGroup group,
+  }) async {
+    try {
+      await ref.read(subGroupServiceProvider).addMember(
+        groupId: widget.event.groupId,
+        eventId: widget.event.id,
+        subGroupId: group.id,
+        participantId: participant.id,
+        displayName: participant.displayName ?? '',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't add member \u2014 try again"),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _addMemberToGroup({
+    required SubGroup group,
+    required Participant participant,
+  }) async {
+    try {
+      await ref.read(subGroupServiceProvider).addMember(
+        groupId: widget.event.groupId,
+        eventId: widget.event.id,
+        subGroupId: group.id,
+        participantId: participant.id,
+        displayName: participant.displayName ?? '',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't add member \u2014 try again"),
+          ),
+        );
+      }
+    }
+  }
+
   void _confirmDeleteGroup(SubGroup group) {
     showDialog(
       context: context,
@@ -355,13 +410,9 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             child: const Text('CANCEL'),
           ),
           TextButton(
-            onPressed: () async {
-              // Legacy screen: deleteSubGroup requires EventRef context.
-              // This screen will be updated in a future plan to use EventRef.
-              debugPrint(
-                'deleteSubGroup not supported in legacy screen — migrate to EventRef flow',
-              );
-              if (context.mounted) Navigator.pop(context);
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteGroup(group);
             },
             child: const Text(
               'DELETE',
@@ -371,6 +422,24 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         ],
       ),
     );
+  }
+
+  Future<void> _deleteGroup(SubGroup group) async {
+    try {
+      await ref.read(subGroupServiceProvider).deleteSubGroup(
+        groupId: widget.event.groupId,
+        eventId: widget.event.id,
+        subGroupId: group.id,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't delete group \u2014 try again"),
+          ),
+        );
+      }
+    }
   }
 
   void _showCreateDialog({SubGroup? group}) {
@@ -466,30 +535,28 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                   child: ElevatedButton(
                     onPressed: isLoading
                         ? null
-                        : () async {
+                        : () {
                             final name = _nameController.text.trim();
-                            // capacity used when EventRef context is available (future plan)
-                            final _ =
+                            final capacity =
                                 int.tryParse(_capacityController.text) ?? 4;
 
                             if (name.isEmpty) return;
 
                             HapticService.lightClick();
+                            Navigator.pop(context);
 
                             if (group != null) {
-                              // Legacy screen: updateSubGroup requires EventRef context.
-                              // This screen will be updated in a future plan to use EventRef.
-                              debugPrint(
-                                'updateSubGroup not supported in legacy screen — migrate to EventRef flow',
+                              _updateGroup(
+                                group: group,
+                                name: name,
+                                capacity: capacity,
                               );
-                              if (context.mounted) Navigator.pop(context);
                             } else {
-                              // Legacy screen: createSubGroup requires EventRef context.
-                              // This screen will be updated in a future plan to use EventRef.
-                              debugPrint(
-                                'createSubGroup not supported in legacy screen — migrate to EventRef flow',
+                              _createGroup(
+                                name: name,
+                                type: type,
+                                capacity: capacity,
                               );
-                              if (context.mounted) Navigator.pop(context);
                             }
                           },
                     style: ElevatedButton.styleFrom(
@@ -524,5 +591,53 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _updateGroup({
+    required SubGroup group,
+    required String name,
+    required int capacity,
+  }) async {
+    try {
+      await ref.read(subGroupServiceProvider).updateSubGroup(
+        groupId: widget.event.groupId,
+        eventId: widget.event.id,
+        subGroupId: group.id,
+        name: name,
+        capacity: capacity,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't rename group \u2014 try again"),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _createGroup({
+    required String name,
+    required SubGroupType type,
+    required int capacity,
+  }) async {
+    try {
+      await ref.read(subGroupServiceProvider).createSubGroup(
+        groupId: widget.event.groupId,
+        eventId: widget.event.id,
+        name: name,
+        type: type.value,
+        capacity: capacity,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't create group \u2014 try again"),
+          ),
+        );
+      }
+    }
   }
 }
