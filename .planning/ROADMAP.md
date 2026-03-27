@@ -127,15 +127,15 @@ Plans:
   1. `flutter test --coverage` reports 80%+ line coverage with no excluded financial calculation files
   2. All BalanceCalculator scenarios (global, subGroup, personal, custom, cross-event aggregation) have passing unit tests
   3. Widget tests for the group dashboard, event creation flow, and balance toggle pass without real Firebase calls (using fake_cloud_firestore)
-  4. An offline scenario test writes an expense while offline, disconnects Firestore, verifies SQLite has the pending value, then reconnects and verifies Firestore receives the write
+  4. An offline scenario test writes an expense via the service, caches it to SQLite via BalanceCacheRepository, and verifies the SQLite record has the correct Decimal amount — confirming the side-write pipeline that keeps SQLite in sync with Firestore writes
 **Plans**: 5 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Fix 9 failing tests (delete dead command_center_test, fix Firebase provider mocks, fix EventCard assertions)
+- [ ] 06-01-PLAN.md — Fix 9 failing tests + audit existing 39 test files for quality (D-07)
 - [ ] 06-02-PLAN.md — Exhaustive BalanceCalculator tests (all 4 scopes, cross-event, edge cases) + settlement optimization extensions
 - [ ] 06-03-PLAN.md — Firestore model round-trip tests + AppFormatters tests + provider isolation tests
 - [ ] 06-04-PLAN.md — Offline scenario integration tests (3 scenarios) + widget tests for 7 key screens
-- [ ] 06-05-PLAN.md — CI coverage enforcement workflow (lcov filtering, 80% threshold, PR comments) + gap closure
+- [ ] 06-05-PLAN.md — CI coverage enforcement inline in release workflow (lcov filtering, 80% threshold) + gap closure
 
 ### Phase 7: Data Migration and Supabase Removal
 **Goal**: Existing user data is accessible in the new Firestore-backed app; the supabase_flutter dependency is gone from the codebase
