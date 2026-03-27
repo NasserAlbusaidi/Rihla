@@ -105,6 +105,25 @@ class GearService extends FirestoreRepository {
     }
   }
 
+  /// Unclaim a gear item by setting assignedTo to null and isPacked to false.
+  ///
+  /// Per D-11: unclaim sets assignedTo to null (not empty string).
+  /// Also resets isPacked since an unclaimed item cannot be packed.
+  Future<void> unclaimGearItem({
+    required String groupId,
+    required String eventId,
+    required String gearItemId,
+  }) async {
+    try {
+      await eventSubcollection(groupId, eventId, 'gear_items')
+          .doc(gearItemId)
+          .update({'assignedTo': null, 'isPacked': false});
+    } on FirebaseException catch (e) {
+      debugPrint('GearService.unclaimGearItem failed: ${e.code} ${e.message}');
+      rethrow;
+    }
+  }
+
   /// Soft-delete a gear item by setting isDeleted=true.
   Future<void> deleteGearItem({
     required String groupId,

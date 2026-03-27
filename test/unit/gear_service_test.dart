@@ -158,5 +158,75 @@ void main() {
         },
       );
     });
+
+    group('unclaimGearItem', () {
+      test(
+        'sets assignedTo to null in Firestore document',
+        () async {
+          final item = await service.addGearItem(
+            groupId: groupId,
+            eventId: eventId,
+            itemName: 'Tent',
+            assignedTo: 'user1',
+          );
+
+          await service.unclaimGearItem(
+            groupId: groupId,
+            eventId: eventId,
+            gearItemId: item.id,
+          );
+
+          final snap = await fakeFirestore
+              .collection('groups')
+              .doc(groupId)
+              .collection('events')
+              .doc(eventId)
+              .collection('gear_items')
+              .doc(item.id)
+              .get();
+
+          expect(snap.data()!['assignedTo'], isNull);
+        },
+      );
+
+      test(
+        'also sets isPacked to false when unclaiming a packed item',
+        () async {
+          final item = await service.addGearItem(
+            groupId: groupId,
+            eventId: eventId,
+            itemName: 'Sleeping Bag',
+            assignedTo: 'user1',
+          );
+
+          // Pack the item first
+          await service.togglePacked(
+            groupId: groupId,
+            eventId: eventId,
+            gearItemId: item.id,
+            isPacked: true,
+          );
+
+          // Unclaim should also reset isPacked
+          await service.unclaimGearItem(
+            groupId: groupId,
+            eventId: eventId,
+            gearItemId: item.id,
+          );
+
+          final snap = await fakeFirestore
+              .collection('groups')
+              .doc(groupId)
+              .collection('events')
+              .doc(eventId)
+              .collection('gear_items')
+              .doc(item.id)
+              .get();
+
+          expect(snap.data()!['assignedTo'], isNull);
+          expect(snap.data()!['isPacked'], isFalse);
+        },
+      );
+    });
   });
 }

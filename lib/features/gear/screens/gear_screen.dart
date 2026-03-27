@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/search_filter_bar.dart';
@@ -33,6 +34,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   bool _isHighPriority = false;
   String _searchQuery = '';
   String? _statusFilter;
+
+  EventRef get _eventRef =>
+      (groupId: widget.event.groupId, eventId: widget.event.id);
 
   @override
   void dispose() {
@@ -569,21 +573,62 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     );
   }
 
-  void _handleMenuAction(String action, GearItem item) {
-    // TODO(04-05): Migrate gear mutations to GearService (Firestore).
-    // These operations are no-ops until screen migration in 04-05.
+  Future<void> _handleMenuAction(String action, GearItem item) async {
     switch (action) {
       case 'priority':
         HapticService.selection();
-        debugPrint('[GearScreen] priority toggle deferred to 04-05 migration');
+        try {
+          await ref.read(gearServiceProvider).updateGearItem(
+                groupId: widget.event.groupId,
+                eventId: widget.event.id,
+                gearItemId: item.id,
+                isHighPriority: !item.isHighPriority,
+              );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text("Couldn't update priority \u2014 try again")),
+            );
+          }
+        }
         break;
       case 'claim':
         HapticService.selection();
-        debugPrint('[GearScreen] claim deferred to 04-05 migration');
+        final uid = ref.read(currentUserProvider)?.uid;
+        if (uid == null) break;
+        try {
+          await ref.read(gearServiceProvider).updateGearItem(
+                groupId: widget.event.groupId,
+                eventId: widget.event.id,
+                gearItemId: item.id,
+                assignedTo: uid,
+              );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text("Couldn't claim item \u2014 try again")),
+            );
+          }
+        }
         break;
       case 'unclaim':
         HapticService.selection();
-        debugPrint('[GearScreen] unclaim deferred to 04-05 migration');
+        try {
+          await ref.read(gearServiceProvider).unclaimGearItem(
+                groupId: widget.event.groupId,
+                eventId: widget.event.id,
+                gearItemId: item.id,
+              );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text("Couldn't unclaim item \u2014 try again")),
+            );
+          }
+        }
         break;
       case 'delete':
         HapticService.warning();
@@ -619,8 +664,20 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     );
 
     if (confirmed == true) {
-      // TODO(04-05): Route delete to GearService (Firestore).
-      debugPrint('[GearScreen] deleteGearItem deferred to 04-05 migration');
+      try {
+        await ref.read(gearServiceProvider).deleteGearItem(
+              groupId: widget.event.groupId,
+              eventId: widget.event.id,
+              gearItemId: item.id,
+            );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text("Couldn't delete item \u2014 try again")),
+          );
+        }
+      }
     }
   }
 
@@ -628,17 +685,62 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final name = _itemController.text.trim();
     if (name.isEmpty) return;
 
-    // TODO(04-05): Route addItem to GearService (Firestore).
-    debugPrint('[GearScreen] addItem deferred to 04-05 migration');
+    // Per D-04: disable add button while write is in flight
+    final isLoading = ref.read(gearLoadingProvider);
+    if (isLoading) return;
+    ref.read(gearLoadingProvider.notifier).state = true;
 
+    // Per D-06: clear immediately
     _itemController.clear();
+    final wasHighPriority = _isHighPriority;
     setState(() => _isHighPriority = false);
+
+    try {
+      // Per D-12/D-13: compute sequenceId from current items
+      final items = ref.read(eventGearItemsProvider(_eventRef)).valueOrNull ?? [];
+      final nextSeqId = items.isEmpty
+          ? 1
+          : items.map((i) => i.sequenceId).reduce((a, b) => a > b ? a : b) + 1;
+
+      await ref.read(gearServiceProvider).addGearItem(
+            groupId: widget.event.groupId,
+            eventId: widget.event.id,
+            itemName: name,
+            isHighPriority: wasHighPriority,
+            sequenceId: nextSeqId,
+          );
+      // Per D-08: haptic on success
+      HapticService.success();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Couldn't add item \u2014 try again")),
+        );
+      }
+    } finally {
+      ref.read(gearLoadingProvider.notifier).state = false;
+    }
   }
 
   void _togglePacked(GearItem item, bool isMine) {
     if (!isMine && item.assignedTo != null) return;
 
-    // TODO(04-05): Route togglePacked to GearService (Firestore).
-    debugPrint('[GearScreen] togglePacked deferred to 04-05 migration');
+    ref
+        .read(gearServiceProvider)
+        .togglePacked(
+          groupId: widget.event.groupId,
+          eventId: widget.event.id,
+          gearItemId: item.id,
+          isPacked: !item.isPacked,
+        )
+        .catchError((e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Couldn't update packed status \u2014 try again")),
+        );
+      }
+    });
   }
 }
