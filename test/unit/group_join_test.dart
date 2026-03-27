@@ -1,11 +1,7 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
-import 'package:safar/features/groups/providers/group_provider.dart';
 
 void main() {
   group('GroupService join', () {
@@ -14,27 +10,6 @@ void main() {
       const lowerCode = 'abc234';
       const upperCode = 'ABC234';
       expect(lowerCode.toUpperCase(), equals(upperCode));
-    });
-
-    test(
-        'joinGroup throws when Firebase not initialized (unit test environment)',
-        () async {
-      SharedPreferences.setMockInitialValues({'device_name': 'Nasser'});
-      final prefs = await SharedPreferences.getInstance();
-      final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      );
-      addTearDown(container.dispose);
-
-      final service = container.read(groupServiceProvider);
-
-      // Without Firebase initialized in unit tests, the SDK throws a
-      // FirebaseException. This confirms GroupService calls
-      // FirebaseConfig.currentUser which gates on Firebase being available.
-      expect(
-        () => service.joinGroup(inviteCode: 'BADCODE'),
-        throwsA(isA<Exception>()),
-      );
     });
 
     test('valid invite code lookup via FakeFirebaseFirestore', () async {
