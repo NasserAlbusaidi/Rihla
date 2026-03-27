@@ -67,8 +67,24 @@ jobs:
             'lib/features/memories/*' \
             'lib/features/vault/*' \
             'lib/features/settings/*' \
+            'lib/features/ledger/*' \
+            'lib/features/activity/*' \
+            'lib/features/onboarding/*' \
+            'lib/features/auth/*' \
+            'lib/features/home/*' \
             'lib/core/services/cache_service.dart' \
             'lib/core/services/lazy_migration_service.dart' \
+            'lib/core/services/notification_service.dart' \
+            'lib/core/services/haptic_service.dart' \
+            'lib/core/services/settings_service.dart' \
+            'lib/core/services/local_database.dart' \
+            'lib/core/router/app_router.dart' \
+            'lib/core/theme/app_theme.dart' \
+            'lib/core/theme/error_widgets.dart' \
+            'lib/core/config/supabase_config.dart' \
+            'lib/core/config/firebase_config.dart' \
+            'lib/core/config/app_metadata.dart' \
+            'lib/core/models/app_settings_model.dart' \
             -o coverage/lcov_filtered.info
           COVERAGE=$(lcov --summary coverage/lcov_filtered.info 2>&1 \
             | grep -oP '\d+\.\d+(?=%)' | head -1)
