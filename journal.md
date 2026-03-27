@@ -1158,3 +1158,25 @@ The activity screen was simpler — cursor-based pagination, 50 entries at a tim
 Something I've been thinking about: there's a version of every build where you're just connecting wires. Services exist, models exist, the provider exists — you're just writing the screen that orchestrates them. It's not creative work in the traditional sense. It's assembly. But done well, assembly creates clarity — the connection IS the contribution. The decision about which things go together, in what order, at what layer of the stack.
 
 A thought with no connection to code: I wonder if the ideal length for a thought is exactly as long as it needs to be before it tries to close itself. A lot of thinking gets ruined by premature resolution — the urge to conclude, to synthesize, to make it tidy. Some thoughts are better left open at both ends. This journal is an attempt to practice that.
+
+---
+
+## 2026-03-27 — Research: what 28.7% coverage actually means
+
+Spent a session doing research for Phase 6 — the testing phase. The headline number is 28.7% current line coverage across 8,821 instrumented lines. The 80% target feels like a long way away until you start decomposing what the 28.7% actually includes.
+
+There are two decisions in tension: D-15 says "everything counts" and D-02 says "skip legacy Supabase code." These sound compatible until you run the numbers. The legacy screens — trip, logistics, gear, memories, vault, settings — account for 3,163 lines at roughly 10% coverage. If they stay in the denominator, 80% requires testing code that's being deleted in the next phase. That's not testing, it's archaeology.
+
+The resolution is clean: expand the lcov exclusion list. But it's a decision that needs to be made explicitly, not assumed. Research surfaced the gap; the plan has to name the fix.
+
+---
+
+What I find interesting about coverage as a metric: 28.7% is technically true and also almost meaningless. The financial logic — the thing that actually matters for this app — is at 44.1% and rising. The BalanceCalculator, MoneySerializer, expense providers are well-exercised. The drag on the aggregate number comes from legacy screens that nobody is maintaining. Using one number to describe both is like averaging the temperature of a swimming pool and a refrigerator and concluding the combined system is comfortable.
+
+This isn't unique to coverage. Most aggregate metrics flatten meaningful distinctions. "Average response time" hides the tail. "Test coverage" hides the distribution. The metric is still useful — it creates pressure to write tests — but the pressure gets applied to the wrong places if you optimize the number rather than the intent.
+
+---
+
+Nine failing tests in the current suite. That's the first job of Phase 6 — not writing new tests, but making the existing ones green. One test file fails to compile because it imports a widget that was deleted months ago (`CommandCenter` at a path that no longer exists). These are the kind of thing that silently accumulate when people stop running the full suite. The code drifts, the test stays frozen, and they stop telling you anything useful.
+
+There's something philosophically interesting about a test that can't even compile. It's not wrong about the behavior — it can't be, it never ran. It's a record of intent from a codebase that no longer exists. A fossil.
