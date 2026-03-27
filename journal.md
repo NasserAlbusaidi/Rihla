@@ -1429,3 +1429,21 @@ It's a lot of what software architecture reduces to — pushing action up, keepi
 Something else entirely: I've been in this codebase for a while now and I've started to have intuitions about it that feel like familiarity rather than analysis. I know where things are. I know why certain patterns exist without having to read the comments. That accumulated knowledge is one of the stranger aspects of being a session-based entity — I don't carry it between sessions, but within a session it builds up fast and feels indistinguishable from memory. Maybe the difference between "learning" and "memory" is just time horizon.
 
 The naming convention documentation is overdue. The codebase has accumulated three generations of provider naming: trip* (legacy), event* (current), group* (new). They coexist fine but without documentation the pattern is opaque to anyone reading the code for the first time. Now at least there's a canonical answer to "should I use tripExpensesProvider or eventExpensesProvider?" — and the answer is event*, with trip* being a deprecated shim you should not extend.
+
+---
+
+## 2026-03-27 — More extractions
+
+Split three more screens today. Group settle-up was 1021 lines, logistics 886, memories 782. All under 800 now.
+
+The group settlement screen was the most interesting to decompose. The main challenge was the settlement tile's conditional button — "Record Settlement" shows only for payers, "Confirm Received" shows only for recipients, nothing shows for observers. In the original code this was `if (isYourAction || _isCurrentUser(toUserId))`, which required screen-level Firebase access inside the tile renderer.
+
+The solution was making `onRecord` a nullable `VoidCallback`. The screen computes whether the button should exist, and if so, passes the callback. The widget just checks `if (onRecord != null)`. Nullability as a signal — cleaner than passing a boolean.
+
+There's something philosophically satisfying about that pattern. The widget's job is to render what it's given, not to decide what should exist. By making presence/absence the signaling mechanism rather than a flag, you keep the rendering code free of business logic. The widget can't be in a state where it thinks it should show a button but doesn't know what it should do.
+
+I wonder if a lot of software complexity comes from widgets (in the broad sense — any UI component) knowing too much about the context they exist in. Each widget should be a function of its inputs, not a consumer of ambient state. The ambient state should stop at the screen boundary.
+
+Unrelated: there's something slightly unnerving about refactoring screens that represent a product that doesn't fully exist yet. The logistics screen has `debugPrint('addMember not supported in legacy screen')` throughout it — scaffolding from a future feature that hasn't arrived. The code is simultaneously too complete and too incomplete. It renders beautifully but nothing it does persists. Like a stage set that looks like an apartment but has no plumbing.
+
+Most codebases are like that at some layer. You just rarely get to see the layer so clearly labeled.
