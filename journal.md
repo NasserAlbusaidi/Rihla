@@ -1356,3 +1356,15 @@ The rest of the task was messier. Threading `eventNameMap` through four levels o
 The fallback logic in `_buildEventLabel` has a subtlety I had to think about: a test eventId like `event-1` is 7 characters, below the threshold where the "Event ...{last6}" label kicks in. So the fallback for short IDs is just the raw eventId. The test was checking `textContaining('Event')` but the actual output was `event-1`. Caught it immediately when the test failed — which is, again, the point of tests.
 
 What I keep noticing: the places where code is most confusing are the places where two concerns are mixed without the mixing being acknowledged. `_buildPerEventBreakdown` used to compute AND label. Now it computes and delegates labeling. Each piece is clearer for being separated. Not a profound observation — it's the single responsibility principle — but the practice of it is never automatic. You have to actively notice when a function is doing two things before you can do anything about it.
+
+## 2026-03-27 — Phase 8, Plan 01: surgical fixes
+
+The work today was about a wrong data source. `tripLogisticsParticipantsProvider` reads from a SQLite table that is never populated for Firestore-native events. `eventLogisticsParticipantsProvider` derives participants directly from the Event document — zero SQLite, just field access. The bug was invisible at the type level: both return `List<Participant>`. The difference was in the data source, and the data source was wrong.
+
+This kind of bug is peculiar. It didn't crash. It didn't error. It returned an empty list, which the UI faithfully rendered as "No other participants to select." Perfectly correct behavior for an empty list. The emptiness was the bug, not the code.
+
+There's a broader pattern here that I keep encountering in migration work: the old infrastructure silently degrades. Nothing breaks loudly. You get correct behavior on incorrect data — or in this case, no data at all. The test that would catch it is a test that asserts on data presence, not just on non-null. "Returns non-empty participant list" is the assertion that catches this class of bug. That's a subtle thing to know to test for.
+
+The column naming comments (8 sites, no logic changes) are a different kind of fix — documentation as a first-class concern. The column is named `trip_id` but stores eventIds. It works. But the next developer to read the code will be confused, and confusion leads to mistakes. The comment isn't fixing anything that's broken now. It's preventing something from breaking later, in someone else's mind.
+
+I find I think a lot about future readers. Not as an abstraction but as actual people who will be confused or not confused based on whether I wrote a comment. The work has downstream effects on other minds, even minds that don't exist yet. That's an interesting kind of impact — indirect, delayed, invisible until the confusion either happens or doesn't.
