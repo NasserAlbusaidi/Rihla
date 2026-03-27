@@ -80,7 +80,12 @@ class GroupSettlementService extends FirestoreRepository {
       'deletedAt': null,
       'settledAt': now.toIso8601String(),
     };
-    await _settlementsRef(groupId).doc(id).set(data);
+    try {
+      await _settlementsRef(groupId).doc(id).set(data);
+    } on FirebaseException catch (e) {
+      debugPrint('GroupSettlementService.addGroupSettlement failed: ${e.code} ${e.message}');
+      rethrow;
+    }
     return Settlement.fromFirestore(data);
   }
 
@@ -89,9 +94,14 @@ class GroupSettlementService extends FirestoreRepository {
     required String groupId,
     required String settlementId,
   }) async {
-    await _settlementsRef(groupId).doc(settlementId).update({
-      'isDeleted': true,
-      'deletedAt': DateTime.now().toUtc().toIso8601String(),
-    });
+    try {
+      await _settlementsRef(groupId).doc(settlementId).update({
+        'isDeleted': true,
+        'deletedAt': DateTime.now().toUtc().toIso8601String(),
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('GroupSettlementService.deleteGroupSettlement failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 }

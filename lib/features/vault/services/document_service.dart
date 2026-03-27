@@ -79,9 +79,14 @@ class DocumentService extends FirestoreRepository {
     final storagePath = 'trip-documents/$eventId/$timestamp-$fileName';
 
     // Upload to Firebase Storage
-    final ref = _storage.ref().child(storagePath);
-    final metadata = SettableMetadata(contentType: mimeType);
-    await ref.putFile(File(filePath), metadata);
+    try {
+      final ref = _storage.ref().child(storagePath);
+      final metadata = SettableMetadata(contentType: mimeType);
+      await ref.putFile(File(filePath), metadata);
+    } on FirebaseException catch (e) {
+      debugPrint('DocumentService.uploadFile storage upload failed: ${e.code} ${e.message}');
+      rethrow;
+    }
 
     // Write metadata to Firestore subcollection
     final now = DateTime.now().toUtc();
@@ -95,7 +100,12 @@ class DocumentService extends FirestoreRepository {
       'mimeType': mimeType,
       'createdAt': now.toIso8601String(),
     };
-    await eventSubcollection(groupId, eventId, 'documents').doc(id).set(data);
+    try {
+      await eventSubcollection(groupId, eventId, 'documents').doc(id).set(data);
+    } on FirebaseException catch (e) {
+      debugPrint('DocumentService.uploadFile Firestore write failed: ${e.code} ${e.message}');
+      rethrow;
+    }
     return Document.fromFirestore(data);
   }
 

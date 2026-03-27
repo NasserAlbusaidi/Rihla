@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -82,7 +83,12 @@ class ExpenseService extends FirestoreRepository {
       'deletedAt': null,
       'createdAt': now.toIso8601String(),
     };
-    await eventSubcollection(groupId, eventId, 'expenses').doc(id).set(data);
+    try {
+      await eventSubcollection(groupId, eventId, 'expenses').doc(id).set(data);
+    } on FirebaseException catch (e) {
+      debugPrint('ExpenseService.addExpense failed: ${e.code} ${e.message}');
+      rethrow;
+    }
     return Expense.fromFirestore(data);
   }
 
@@ -117,9 +123,14 @@ class ExpenseService extends FirestoreRepository {
     }
     if (note != null) updates['note'] = note;
     if (updates.isNotEmpty) {
-      await eventSubcollection(groupId, eventId, 'expenses')
-          .doc(expenseId)
-          .update(updates);
+      try {
+        await eventSubcollection(groupId, eventId, 'expenses')
+            .doc(expenseId)
+            .update(updates);
+      } on FirebaseException catch (e) {
+        debugPrint('ExpenseService.updateExpense failed: ${e.code} ${e.message}');
+        rethrow;
+      }
     }
   }
 
@@ -130,9 +141,14 @@ class ExpenseService extends FirestoreRepository {
     required String eventId,
     required String expenseId,
   }) async {
-    await eventSubcollection(groupId, eventId, 'expenses').doc(expenseId).update({
-      'isDeleted': true,
-      'deletedAt': DateTime.now().toUtc().toIso8601String(),
-    });
+    try {
+      await eventSubcollection(groupId, eventId, 'expenses').doc(expenseId).update({
+        'isDeleted': true,
+        'deletedAt': DateTime.now().toUtc().toIso8601String(),
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('ExpenseService.deleteExpense failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 }

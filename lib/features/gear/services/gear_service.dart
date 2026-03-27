@@ -54,7 +54,12 @@ class GearService extends FirestoreRepository {
       'deletedAt': null,
       'createdAt': now.toIso8601String(),
     };
-    await eventSubcollection(groupId, eventId, 'gear_items').doc(id).set(data);
+    try {
+      await eventSubcollection(groupId, eventId, 'gear_items').doc(id).set(data);
+    } on FirebaseException catch (e) {
+      debugPrint('GearService.addGearItem failed: ${e.code} ${e.message}');
+      rethrow;
+    }
     return GearItem.fromFirestore(data);
   }
 
@@ -65,9 +70,14 @@ class GearService extends FirestoreRepository {
     required String gearItemId,
     required bool isPacked,
   }) async {
-    await eventSubcollection(groupId, eventId, 'gear_items')
-        .doc(gearItemId)
-        .update({'isPacked': isPacked});
+    try {
+      await eventSubcollection(groupId, eventId, 'gear_items')
+          .doc(gearItemId)
+          .update({'isPacked': isPacked});
+    } on FirebaseException catch (e) {
+      debugPrint('GearService.togglePacked failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 
   /// Update editable fields on a gear item.
@@ -84,9 +94,14 @@ class GearService extends FirestoreRepository {
     if (assignedTo != null) updates['assignedTo'] = assignedTo;
     if (isHighPriority != null) updates['isHighPriority'] = isHighPriority;
     if (updates.isNotEmpty) {
-      await eventSubcollection(groupId, eventId, 'gear_items')
-          .doc(gearItemId)
-          .update(updates);
+      try {
+        await eventSubcollection(groupId, eventId, 'gear_items')
+            .doc(gearItemId)
+            .update(updates);
+      } on FirebaseException catch (e) {
+        debugPrint('GearService.updateGearItem failed: ${e.code} ${e.message}');
+        rethrow;
+      }
     }
   }
 
@@ -96,11 +111,16 @@ class GearService extends FirestoreRepository {
     required String eventId,
     required String gearItemId,
   }) async {
-    await eventSubcollection(groupId, eventId, 'gear_items')
-        .doc(gearItemId)
-        .update({
-      'isDeleted': true,
-      'deletedAt': DateTime.now().toUtc().toIso8601String(),
-    });
+    try {
+      await eventSubcollection(groupId, eventId, 'gear_items')
+          .doc(gearItemId)
+          .update({
+        'isDeleted': true,
+        'deletedAt': DateTime.now().toUtc().toIso8601String(),
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('GearService.deleteGearItem failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 }

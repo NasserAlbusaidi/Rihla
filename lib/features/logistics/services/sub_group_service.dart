@@ -49,7 +49,12 @@ class SubGroupService extends FirestoreRepository {
       'capacity': capacity,
       'createdAt': now.toIso8601String(),
     };
-    await eventSubcollection(groupId, eventId, 'sub_groups').doc(id).set(data);
+    try {
+      await eventSubcollection(groupId, eventId, 'sub_groups').doc(id).set(data);
+    } on FirebaseException catch (e) {
+      debugPrint('SubGroupService.createSubGroup failed: ${e.code} ${e.message}');
+      rethrow;
+    }
     return SubGroup.fromFirestore(data);
   }
 
@@ -62,16 +67,21 @@ class SubGroupService extends FirestoreRepository {
     required String displayName,
   }) async {
     final memberId = const Uuid().v4();
-    await eventSubcollection(groupId, eventId, 'sub_groups')
-        .doc(subGroupId)
-        .collection('members')
-        .doc(memberId)
-        .set({
-      'id': memberId,
-      'participantId': participantId,
-      'displayName': displayName,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
-    });
+    try {
+      await eventSubcollection(groupId, eventId, 'sub_groups')
+          .doc(subGroupId)
+          .collection('members')
+          .doc(memberId)
+          .set({
+        'id': memberId,
+        'participantId': participantId,
+        'displayName': displayName,
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('SubGroupService.addMember failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 
   /// Remove a member from a sub-group's members subcollection.
@@ -81,11 +91,16 @@ class SubGroupService extends FirestoreRepository {
     required String subGroupId,
     required String memberId,
   }) async {
-    await eventSubcollection(groupId, eventId, 'sub_groups')
-        .doc(subGroupId)
-        .collection('members')
-        .doc(memberId)
-        .delete();
+    try {
+      await eventSubcollection(groupId, eventId, 'sub_groups')
+          .doc(subGroupId)
+          .collection('members')
+          .doc(memberId)
+          .delete();
+    } on FirebaseException catch (e) {
+      debugPrint('SubGroupService.removeMember failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 
   /// Hard-delete a sub-group document.
@@ -94,8 +109,13 @@ class SubGroupService extends FirestoreRepository {
     required String eventId,
     required String subGroupId,
   }) async {
-    await eventSubcollection(groupId, eventId, 'sub_groups')
-        .doc(subGroupId)
-        .delete();
+    try {
+      await eventSubcollection(groupId, eventId, 'sub_groups')
+          .doc(subGroupId)
+          .delete();
+    } on FirebaseException catch (e) {
+      debugPrint('SubGroupService.deleteSubGroup failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 }

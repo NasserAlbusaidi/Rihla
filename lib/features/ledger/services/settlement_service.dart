@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -73,7 +74,12 @@ class SettlementService extends FirestoreRepository {
       'deletedAt': null,
       'settledAt': now.toIso8601String(),
     };
-    await eventSubcollection(groupId, eventId, 'settlements').doc(id).set(data);
+    try {
+      await eventSubcollection(groupId, eventId, 'settlements').doc(id).set(data);
+    } on FirebaseException catch (e) {
+      debugPrint('SettlementService.addSettlement failed: ${e.code} ${e.message}');
+      rethrow;
+    }
     return Settlement.fromFirestore(data);
   }
 
@@ -84,11 +90,16 @@ class SettlementService extends FirestoreRepository {
     required String eventId,
     required String settlementId,
   }) async {
-    await eventSubcollection(groupId, eventId, 'settlements')
-        .doc(settlementId)
-        .update({
-      'isDeleted': true,
-      'deletedAt': DateTime.now().toUtc().toIso8601String(),
-    });
+    try {
+      await eventSubcollection(groupId, eventId, 'settlements')
+          .doc(settlementId)
+          .update({
+        'isDeleted': true,
+        'deletedAt': DateTime.now().toUtc().toIso8601String(),
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('SettlementService.deleteSettlement failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 }

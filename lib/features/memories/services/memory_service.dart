@@ -81,9 +81,14 @@ class MemoryService extends FirestoreRepository {
     final extension = pickedFile.path.split('.').last.toLowerCase();
     final storagePath = 'trip-memories/$eventId/$timestamp.$extension';
 
-    final ref = _storage.ref().child(storagePath);
-    final metadata = SettableMetadata(contentType: 'image/$extension');
-    await ref.putFile(File(pickedFile.path), metadata);
+    try {
+      final ref = _storage.ref().child(storagePath);
+      final metadata = SettableMetadata(contentType: 'image/$extension');
+      await ref.putFile(File(pickedFile.path), metadata);
+    } on FirebaseException catch (e) {
+      debugPrint('MemoryService.uploadPhoto storage upload failed: ${e.code} ${e.message}');
+      rethrow;
+    }
 
     // 4. Write metadata to Firestore subcollection
     final now = DateTime.now().toUtc();
@@ -95,7 +100,12 @@ class MemoryService extends FirestoreRepository {
       'caption': caption,
       'createdAt': now.toIso8601String(),
     };
-    await eventSubcollection(groupId, eventId, 'memories').doc(id).set(data);
+    try {
+      await eventSubcollection(groupId, eventId, 'memories').doc(id).set(data);
+    } on FirebaseException catch (e) {
+      debugPrint('MemoryService.uploadPhoto Firestore write failed: ${e.code} ${e.message}');
+      rethrow;
+    }
 
     // 5. Return Memory model from the written data
     return Memory.fromFirestore(data);

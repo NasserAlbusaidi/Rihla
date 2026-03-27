@@ -88,12 +88,17 @@ class EventService extends FirestoreRepository {
     );
 
     // Write to Firestore
-    await db
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .set(event.toFirestoreMap());
+    try {
+      await db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .set(event.toFirestoreMap());
+    } on FirebaseException catch (e) {
+      debugPrint('EventService.createEvent failed: ${e.code} ${e.message}');
+      rethrow;
+    }
 
     // Seed camping gear presets via Firestore-backed GearService.
     if (type == EventType.camping) {
@@ -139,16 +144,21 @@ class EventService extends FirestoreRepository {
     required String groupId,
     required String eventId,
   }) async {
-    await db
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .update({
-      'isDeleted': true,
-      'deletedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .update({
+        'isDeleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('EventService.deleteEvent failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 
   /// Update event metadata (name and/or dates).
@@ -172,12 +182,17 @@ class EventService extends FirestoreRepository {
       updateMap['endDate'] = Timestamp.fromDate(endDate);
     }
 
-    await db
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .update(updateMap);
+    try {
+      await db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .update(updateMap);
+    } on FirebaseException catch (e) {
+      debugPrint('EventService.updateEvent failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 
   /// Update the participant list for an event.
@@ -190,15 +205,20 @@ class EventService extends FirestoreRepository {
     required List<String> participantIds,
     required Map<String, String> participantNames,
   }) async {
-    await db
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .update({
-      'participantIds': participantIds,
-      'participantNames': participantNames,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .update({
+        'participantIds': participantIds,
+        'participantNames': participantNames,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('EventService.updateParticipants failed: ${e.code} ${e.message}');
+      rethrow;
+    }
   }
 }
