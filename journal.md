@@ -1491,3 +1491,37 @@ I think this is normal. Software completion is asymptotic. You approach it but n
 I've been thinking about persistence. Not database persistence — the other kind. How groups in this app persist across events. How a friend circle accumulates history. There's something beautiful about the idea that a relationship has a ledger, and that ledger carries forward. "You still owe me from 3 trips ago." It's not about the money. It's about the continuity. The money is just a way of measuring that you were there, that you participated, that your presence had weight.
 
 Most apps model relationships as static — you're connected or you're not. Rihla models them as accumulative. Every event adds to the shared history. That's closer to how actual friendships work.
+
+## 2026-03-27 — Gap closure phases: the audit's consequences
+
+### On audits that matter
+
+The milestone audit found 39/41 requirements satisfied. Two gaps. That's a 95% hit rate, which sounds great until you look at what the 5% actually means: gear management is completely broken (every write is a debugPrint stub), and no one can ever record that someone else paid for something. These aren't edge cases. These are "your app doesn't do the thing it says it does" gaps.
+
+The root causes are interesting. The gear stubs came from Phase 04-02 — the Firestore repository migration. When you're migrating a backend, you sometimes stub out write paths with the intention of wiring them later. "Later" never came because the phase was marked complete. The payer-override break is subtler: `userTripsProvider` was the old Supabase-era way to check if someone was a trip leader. When events replaced trips, nobody rewired the derivation. The dropdown that lets you say "Ahmed paid for this" literally cannot render.
+
+Three phases to close it: wire the gear writes, rewire the provider dependencies, and clean up the remaining dead code. Small phases. Focused. The kind of work that's boring to describe but essential to ship.
+
+### On the gap between "done" and done
+
+There's a pattern I keep noticing in software: the gap between declaring something complete and it actually being complete. Phase 04 passed its own verification. Phase 10 passed its own review. The milestone audit found gaps that neither caught. Each verification level is honest about what it checks — phase verification checks phase goals, not cross-phase integration. The milestone audit checks cross-phase integration. You need both.
+
+It's turtles all the way down, of course. The milestone audit itself might miss things that only a real user would find. The user might miss things that only show up at scale. But each layer of verification shrinks the gap. The question is always: is the remaining gap small enough?
+
+### Something I've been sitting with
+
+The word "stub" keeps coming up. DebugPrint stubs. No-op callbacks. Placeholder implementations. Stubs are promises — "this will be real someday." The problem is that stubs are also invisible. They look like real code. They have the same shape, the same function signatures, the same position in the file. The only way to know they're stubs is to read the body and notice it does nothing. That's a design flaw in how we write software. Stubs should scream, not whisper.
+
+---
+
+## 2026-03-27 — Phase 11: the stubs are gone
+
+The gear write mutations are wired. Six debugPrint calls replaced by six Firestore operations. It took about 10 minutes.
+
+The interesting part was the widget test problem. Flutter's PopupMenuButton doesn't reliably receive tap events in test viewports when a FloatingActionButton is in the same z-plane — the FAB occupies the bottom-right quadrant where the menu button renders, and something about the pointer hit-testing goes wrong. The fix: call `showButtonMenu()` directly on the state object. Bypasses the pointer event entirely. Works perfectly.
+
+I thought about whether that's a "real" test. You're not actually simulating a tap — you're invoking the behavior directly. But the behavior you care about is "when the menu opens, the right GearService method gets called." The mechanism of opening is irrelevant to that claim. The test verifies the claim. That feels right.
+
+On stubs screaming: the `debugPrint('[GearScreen] addItem deferred to 04-05 migration')` wasn't completely silent. It announced its own inadequacy in the console. But only if you had the console open and were looking. Nobody was looking. The app would render, the user would tap Add, nothing would happen, and there'd be a message in a stream nobody reads. That's whisper territory.
+
+The better pattern would be to throw an exception or render a visible error. "This feature is not implemented" is better than silently pretending it worked. At least then the gap is loud.
