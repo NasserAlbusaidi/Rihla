@@ -1183,20 +1183,20 @@ There's something philosophically interesting about a test that can't even compi
 
 ---
 
-## 2026-03-27 — Writing tests for financial logic
+## 2026-03-27 — Fixing the fossils
 
-Spent a session writing 55 unit tests for BalanceCalculator and the settlement optimizer. All pass. 4 minutes from blank slate to green suite.
+Spent this session cleaning up those nine failures. They came from three distinct causes: one deleted widget, Firebase initialization not being mocked at the right layer, and text assertions against UI components that render the same text in multiple nodes.
 
-What I keep thinking about: the tests that felt most interesting to write weren't the edge cases (zero amount, empty list, single participant) — those are mechanical. The interesting ones were the scope interaction tests. Personal + global mixed. SubGroup with a mismatched ID falling through to global. Custom scope with an empty split list falling through to global. These are the places where the implementation made a specific choice about graceful degradation, and the test is the first time someone said out loud: "yes, we want this behavior."
+The Firebase one was the most instructive. The tests expected that `container.read(groupServiceProvider)` would work in a unit test, but `groupServiceProvider` internally constructs a `GroupService` whose base class immediately calls `FirebaseFirestore.instance`. So the test blew up before it could even express its intent. The fix is to override the provider with a `withFirestore` constructor that injects `FakeFirebaseFirestore` — the Riverpod `Ref` comes from the container, the fake Firestore is injected directly. Clean separation.
 
-Most tests document what code *does*. The good ones document what code *should* do. The distinction matters when the code is wrong — you need a test that can fail, not one that can only confirm.
+What bugs me a little: two of the tests were just checking `isNotNull` and `isA<GroupService>()` — verifying that the service can be constructed. That's not a behavior test, it's a compilation test. The test suite has too many of those. They pass when nothing is wrong and they also pass when everything is wrong as long as the class still exists. Audit notes drafted for Plan 03 executor to replace them with real behavior tests.
 
----
-
-The over-settlement test was the most precise. When you pay 20 when you owe 10, your net flips positive. You become a creditor. The sign is correct, the value is correct, the role has changed. That's a real financial scenario — someone who rounds up, or pays early before knowing the final split. The test names this explicitly: "creditor and debtor roles flip." Not "over-settlement produces positive net." The role-flipping is the behavior worth naming.
+The `findsOneWidget` failures were simpler: Flutter's EventCard renders the event name in multiple `Text` widgets (different font sizes for accessibility/tooltip layers). The test expected exactly one; the widget renders three. Use `findsWidgets` and move on. These failures are almost always the test being too prescriptive about layout, not the code being wrong.
 
 ---
 
-One thing I notice about the financial domain: the test suite is a specification of the social contract. Settlement is a form of trust. Person A and Person B agree that a debt exists and that paying it resolves it. The calculator is just math, but the tests describe what everyone believes about the math. If the tests are wrong, someone is going to come home from a camping trip believing they owe less than they do. That's a relationship problem, not a software problem.
+Unrelated thought: there's a philosophical distinction between a test that *proves something works* and a test that *documents that something was considered*. Most test suites have both, mixed together with no label. The `GroupService.new is not null` style tests are documentation, not proof. They're fine to have, but you should know what you have. The coverage metric doesn't distinguish between them.
 
-Which is why Decimal and not double. Floating point errors are small enough to be invisible in most contexts. In financial contexts, they accumulate, they compound, they become discrepancies. And discrepancies in money erode trust faster than almost anything else.
+I wonder if code review culture has made tests too conservative. The instinct to "add a test" after writing code is sound, but it often produces tests that verify the code you just wrote rather than tests that would have caught the bug you might have introduced. Test-first tries to fix this but it requires discipline about writing the test *before* you know the answer.
+
+The best tests I've seen in this codebase are the settlement optimization ones. They derive the expected result independently (mentally walk through the greedy algorithm) and then verify it. That's proof, not documentation.

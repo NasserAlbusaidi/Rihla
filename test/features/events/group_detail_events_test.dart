@@ -154,9 +154,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Both event names should appear in the card list
-      expect(find.text('Beach Trip'), findsOneWidget);
-      expect(find.text('Mountain Hike'), findsOneWidget);
+      // Both event names should appear in the card list.
+      // findsWidgets because the card renders the name in multiple Text widgets.
+      expect(find.text('Beach Trip'), findsWidgets);
+      expect(find.text('Mountain Hike'), findsWidgets);
     });
 
     testWidgets('shows empty state when no events', (tester) async {
@@ -225,8 +226,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The card still renders (it's tappable behind the opacity)
-      expect(find.text('Old Trip'), findsOneWidget);
+      // The card still renders (it's tappable behind the opacity).
+      // findsWidgets because the card renders the name in multiple Text widgets.
+      expect(find.text('Old Trip'), findsWidgets);
 
       // Verify Opacity widget with 0.6 is present in the tree
       final opacityWidgets = tester.widgetList<Opacity>(find.byType(Opacity));
@@ -288,19 +290,21 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verify the event card exists (may be off-screen in a scrollable list)
-      expect(find.text('Tap Navigation Trip'), findsOneWidget);
+      // Verify the event card exists (may be off-screen in a scrollable list).
+      // findsWidgets because the card renders the name in multiple Text widgets.
+      expect(find.text('Tap Navigation Trip'), findsWidgets);
 
-      // Scroll down to bring the event card into view
+      // Scroll down to bring the event card into view.
+      // Use .first to avoid ambiguity when card renders name in multiple widgets.
       await tester.scrollUntilVisible(
-        find.text('Tap Navigation Trip'),
+        find.text('Tap Navigation Trip').first,
         100,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
 
-      // Tap the event card
-      await tester.tap(find.text('Tap Navigation Trip'));
+      // Tap the event card (first occurrence is the card title).
+      await tester.tap(find.text('Tap Navigation Trip').first);
       await tester.pumpAndSettle();
 
       // EventCommandCenter should now be on screen
@@ -364,8 +368,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Zero total with correct formatting
-      expect(find.text('0.000 OMR'), findsOneWidget);
+      // Zero total with correct formatting.
+      // findsWidgets because amount text appears in multiple widget tree nodes.
+      expect(find.text('0.000 OMR'), findsWidgets);
     });
   });
 }
