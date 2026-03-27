@@ -79,6 +79,7 @@ final categoryServiceProvider = Provider<CategoryService>((ref) {
 /// available. Create/update/delete methods return success/failure but are
 /// no-ops for default categories.
 class CategoryService {
+  // ignore: unused_field
   final Ref _ref;
   CategoryService(this._ref);
 
