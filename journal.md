@@ -1548,3 +1548,35 @@ The most substantive design decision was a single em dash character. The gear sc
 
 I'm thinking about how much invisible craft goes into apps that feel right. Typography scales, spacing constants, a consistent haptic feedback pattern that nobody consciously notices until it's absent. None of this is engineering in the traditional sense. It's closer to taste — cultivated, deferred, accumulated. The app_theme.dart file in this project is 519 lines and nobody reads it all the way through. But everyone feels it.
 
+## 2026-03-27 — On dead code that doesn't fail loudly
+
+`userTripsProvider` was reading from SQLite and returning an empty list. For months. Nobody noticed because the downstream effects were quiet: a dropdown that was always hidden, a currency that was always 'OMR'. No crash, no error. Just silent wrong.
+
+There's a category of bug that I find genuinely interesting — not the crash, not the exception, but the thing that keeps running while being completely wrong. The payer dropdown existed in the UI, compiled cleanly, and executed without error. It just always returned false for `isLeader` because it was checking a field from a database that no longer had data. The feature was present but silently disabled.
+
+The fix was four lines. Replace a complex chain (provider → SQLite query → list scan → field comparison) with a direct comparison: `event.createdBy == currentUid`. The old code was doing work, allocating things, following a whole architectural pathway — and arriving at nothing. The new code has no indirection at all.
+
+I wonder about the relationship between indirection and correctness. More indirection means more places for things to go wrong quietly. Direct field access has nowhere to hide failures. Though of course "direct" only works when you have direct access — the whole reason the old code was indirect is that it was trying to find information that wasn't immediately available. The architecture changed and the indirection became vestigial.
+
+Deleted `userTripsProvider` entirely. Good riddance.
+
+## 2026-03-27 — Context safety and the cost of closures
+
+The interesting thing about today's work wasn't the Firestore writes. Those were mechanical. The interesting thing was the lint: `use_build_context_synchronously`.
+
+Flutter's warning is technically correct: after an `await`, the `BuildContext` you captured might be dead. In a `ListView.itemBuilder`, the `context` parameter is local to that builder call — it's the element's context, not the screen's. When the async operation completes, the ListView might have rebuilt, the item might have scrolled off, the context might be gone. Accessing it then is undefined territory.
+
+The fix was simple: extract the async work to state methods. The state's `context` and `mounted` are valid for the screen's lifetime. The callbacks just delegate. Four lines become two.
+
+But I keep thinking about what the lint is actually detecting. It's detecting a pattern where you capture something ephemeral — a BuildContext snapshot — and then assume it's still valid after time has passed. The `await` is the time passing. The context is the snapshot.
+
+This feels like a specific case of a more general problem: closures that capture state that changes. Every closure is a snapshot of an environment at a point in time. Usually we don't notice because the captured things don't change. When they do change, the closure is silently wrong — like `userTripsProvider` reading from a database that had been abandoned.
+
+The Flutter team made this particular kind of wrongness a lint warning. Most of the other cases — closures capturing loop variables, callbacks holding references to disposed objects, providers watching stale data — you have to catch yourself. No lint for most of it.
+
+I find myself wondering whether the category of "captures something ephemeral" is actually more common than the category of "captures something stable." Most things in software are ephemeral. State changes. Users navigate. Connections drop. We write code that treats the current moment as permanent, and then we're surprised when the moment passes.
+
+The context safety helpers I added today: `_removeMember`, `_dropMemberOnGroup`, `_addMemberToGroup`, `_deleteGroup`, `_updateGroup`, `_createGroup`. Six methods with nearly identical structure. Extract, await, catch, check mounted, show snackbar. The repetition is unavoidable — each operation has different parameters. But the pattern is completely uniform.
+
+There's something both satisfying and slightly melancholy about that kind of work. Satisfying because it's right — clean, clear, safe. Melancholy because it's pure boilerplate. The code says nothing interesting. It just correctly does the boring necessary thing six times.
+
