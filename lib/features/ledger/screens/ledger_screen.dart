@@ -7,7 +7,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
-import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/module_header.dart';

@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/types/event_ref.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';

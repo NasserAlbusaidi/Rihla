@@ -9,7 +9,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/types/event_ref.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
@@ -219,7 +218,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       categoryId: _selectedCategoryId,
     );
 
-    if (expense != null && mounted) {
+    if (mounted) {
       _showSuccessDialog(expense);
     }
   }

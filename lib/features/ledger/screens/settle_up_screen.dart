@@ -7,17 +7,14 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
-import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';
-import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
-import '../services/settlement_service.dart';
 
 /// Settle Up Screen - Shows optimized settlements with payment actions
 class SettleUpScreen extends ConsumerWidget {
@@ -872,7 +869,7 @@ class SettleUpScreen extends ConsumerWidget {
   ) async {
     try {
       final eventRef = (groupId: event.groupId, eventId: event.id);
-      final result = await ref
+      await ref
           .read(settlementServiceProvider)
           .addSettlement(
             groupId: event.groupId,
@@ -883,7 +880,7 @@ class SettleUpScreen extends ConsumerWidget {
             currency: event.currency,
           );
 
-      if (result != null && context.mounted) {
+      if (context.mounted) {
         ref.invalidate(eventSettlementsProvider(eventRef));
         ref.invalidate(eventBalancesProvider((eventRef: eventRef, event: event)));
 

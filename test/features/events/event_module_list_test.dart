@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/widgets/event_module_list.dart';
 import 'package:safar/features/gear/models/gear_item_model.dart';
@@ -62,16 +61,6 @@ Expense _makeExpense(String id, Decimal amount) => Expense(
       amount: amount,
       scope: ExpenseScope.global,
       createdAt: DateTime(2026, 1, 1),
-    );
-
-Settlement _makeSettlement(String id) => Settlement(
-      id: id,
-      tripId: 'evt-1',
-      payerParticipantId: 'uid-2',
-      recipientParticipantId: 'uid-1',
-      amount: Decimal.parse('5.000'),
-      settledAt: DateTime(2026, 1, 2),
-      scope: 'event',
     );
 
 GearItem _makeGearItem({String? assignedTo, bool isPacked = false}) => GearItem(

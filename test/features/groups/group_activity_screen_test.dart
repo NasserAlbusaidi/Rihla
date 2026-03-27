@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
-import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/screens/group_activity_screen.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
@@ -22,7 +21,6 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 Widget _buildActivityScreen({
   required String groupId,
   SharedPreferences? prefs,
-  List<GroupActivityLog> activities = const [],
 }) {
   final fakeDb = FakeFirebaseFirestore();
   final activityService = GroupActivityService.withFirestore(fakeDb);

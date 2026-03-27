@@ -6,7 +6,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:safar/core/services/balance_cache_repository.dart';
 import 'package:safar/core/services/local_database.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
-import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/services/expense_service.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';

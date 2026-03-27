@@ -30,7 +30,6 @@ void main() {
 
     testWidgets('renders action button when actionLabel and onAction provided',
         (tester) async {
-      var tapped = false;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -39,7 +38,7 @@ void main() {
               title: 'Nothing Here',
               message: 'Tap below to get started',
               actionLabel: 'Create Event',
-              onAction: () => tapped = true,
+              onAction: () {},
             ),
           ),
         ),

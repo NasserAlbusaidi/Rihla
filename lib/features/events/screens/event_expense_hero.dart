@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/event_model.dart';

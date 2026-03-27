@@ -46,35 +46,6 @@ final _mockEvent = Event(
   createdAt: DateTime(2026, 1, 1),
 );
 
-final _mockEvent2Participants = Event(
-  id: _mockEventId,
-  name: 'Test Event',
-  type: EventType.trip,
-  groupId: _mockGroupId,
-  createdBy: 'uid-creator',
-  participantIds: const ['uid-creator', 'uid-member'],
-  participantNames: const {
-    'uid-creator': 'Test User',
-    'uid-member': 'Other User',
-  },
-  modules: EventModules.forType(EventType.trip),
-  currency: 'OMR',
-  createdAt: DateTime(2026, 1, 1),
-);
-
-final _mockExpense = Expense(
-  id: 'e-1',
-  tripId: _mockEventId,
-  payerParticipantId: 'uid-creator',
-  amount: Decimal.parse('10.0'),
-  description: 'Pizza',
-  scope: ExpenseScope.global,
-  createdAt: DateTime.now(),
-  payerName: 'Test User',
-  categoryName: 'Food',
-  categoryIcon: 'food',
-);
-
 /// Builds a ProviderScope wrapper for LedgerScreen with standard overrides.
 Widget _wrapLedger({
   required Event event,

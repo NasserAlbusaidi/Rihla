@@ -10,8 +10,6 @@ import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
-import 'package:safar/features/groups/services/group_activity_service.dart';
-import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -92,15 +90,6 @@ Settlement _makeSettlement({
     scope: scope,
   );
 }
-
-/// Pump the async event queue so [StreamProvider] values are delivered.
-///
-/// [StreamProvider.family] with [Stream.value] delivers values asynchronously
-/// via microtasks. A [Provider.family] that watches those stream providers
-/// won't see the values until the microtask queue drains. Multiple rounds are
-/// needed when the provider has dependencies that themselves watch other
-/// stream providers (each layer needs one pump round).
-Future<void> _pumpAsync() => Future.microtask(() {});
 
 /// Wait for [groupBalancesProvider] to settle to AsyncData by listening to it
 /// and pumping the async queue until it resolves.

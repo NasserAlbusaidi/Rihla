@@ -4,12 +4,10 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/types/event_ref.dart';
 import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../groups/models/group_model.dart';
-import '../../ledger/providers/expense_provider.dart';
 import '../../ledger/screens/add_expense_screen.dart';
 import '../../ledger/screens/ledger_screen.dart';
 import '../models/event_model.dart';

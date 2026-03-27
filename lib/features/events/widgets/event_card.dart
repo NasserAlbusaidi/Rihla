@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/types/event_ref.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/event_model.dart';
 import '../models/event_type_config.dart';

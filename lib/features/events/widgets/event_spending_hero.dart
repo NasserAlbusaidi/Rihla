@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
@@ -27,7 +26,7 @@ class EventSpendingHero extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final eventRef = (groupId: event.groupId, eventId: event.id) as EventRef;
+    final EventRef eventRef = (groupId: event.groupId, eventId: event.id);
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final balancesAsync = ref.watch(
       eventBalancesProvider((eventRef: eventRef, event: event)),
