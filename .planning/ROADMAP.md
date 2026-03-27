@@ -164,7 +164,11 @@ Plans:
   1. `ExpenseScope.custom` participant list populates correctly for Firestore-only events (swap `tripLogisticsParticipantsProvider` → `eventLogisticsParticipantsProvider`)
   2. `GroupSettleUpScreen` per-event breakdown displays event names instead of truncated eventIds
   3. `BalanceCacheRepository.cacheExpenses()` uses `event_id` column name matching its actual content
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
+- [ ] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
 
 ### Phase 9: Dead Code Cleanup
 **Goal**: Remove all orphaned providers and dead code identified in milestone audit
@@ -176,7 +180,11 @@ Plans:
   2. `firebaseAuthStateProvider` and `firebaseCurrentUserProvider` removed from `firebase_auth_provider.dart`
   3. `subGroupsByTypeProvider` removed from `sub_group_provider.dart`
   4. `flutter analyze` and `flutter test` pass after removals
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
+- [ ] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
 
 ### Phase 10: Full Codebase Review
 **Goal**: Comprehensive codebase audit for quality, consistency, security, performance, and architectural alignment before closing milestone v1.0
@@ -191,7 +199,11 @@ Plans:
   5. No security issues (exposed keys, missing validation, unsafe patterns)
   6. `flutter analyze` reports zero warnings
   7. All files under 800 lines with high cohesion
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
+- [ ] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
 
 ## Progress
 
@@ -207,6 +219,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 5. Cross-Event Financials | 6/7 | In Progress|  |
 | 6. Testing and Coverage | 4/5 | In Progress|  |
 | 7. Data Migration and Supabase Removal | 1/2 | In Progress|  |
-| 8. Integration & Correctness Fixes | 0/0 | Not Started|  |
+| 8. Integration & Correctness Fixes | 0/2 | In Progress|  |
 | 9. Dead Code Cleanup | 0/0 | Not Started|  |
 | 10. Full Codebase Review | 0/0 | Not Started|  |
