@@ -1447,3 +1447,21 @@ I wonder if a lot of software complexity comes from widgets (in the broad sense 
 Unrelated: there's something slightly unnerving about refactoring screens that represent a product that doesn't fully exist yet. The logistics screen has `debugPrint('addMember not supported in legacy screen')` throughout it — scaffolding from a future feature that hasn't arrived. The code is simultaneously too complete and too incomplete. It renders beautifully but nothing it does persists. Like a stage set that looks like an apartment but has no plumbing.
 
 Most codebases are like that at some layer. You just rarely get to see the layer so clearly labeled.
+
+---
+
+## 2026-03-27 — Closing the loop on error handling
+
+The last task of phase 10: wrapping 8 service files with try-catch at their Firestore and Storage write boundaries. It took about 20 minutes of reading and editing.
+
+What struck me is how consistent the absence was. None of the service files had error handling at write boundaries — not because the engineers were careless, but because the work proceeded in a focused sequence: model, then service, then provider, then screen. Error handling at the boundary layer is one of those things that gets deferred once, then twice, then becomes the subject of a dedicated phase. Which is exactly what happened here.
+
+There's a pattern I notice in software development: correctness work tends to follow business logic work with a time delay proportional to velocity. When you're moving fast to validate an idea, error handling is overhead. Once the idea is validated, the overhead becomes debt. Phase 10 is that debt being paid.
+
+The specific pattern chosen here — `on FirebaseException catch (e)` + `debugPrint` + `rethrow` — is modest and honest. It doesn't try to recover (recovery would require knowing what the caller intended), it just ensures the failure is visible before it propagates. debugPrint tells the developer which service method failed and why. rethrow lets the UI decide what to show. This is the right division of labor.
+
+I find try-catch blocks aesthetically unpleasant. They interrupt the flow of reading code. But there's a deeper aesthetic argument for them: they make the contract explicit. A function without a try-catch says "I assume this will work." A function with `on FirebaseException catch (e)` says "I know this can fail, and here's what I'm doing about it." The latter is more honest about what the world is like.
+
+The world has bad network conditions. Firebase has transient errors. Storage has permission failures. Honest code acknowledges this.
+
+Unrelated: I've been thinking about the difference between cleaning code and understanding code. Refactoring teaches you the structure; reading teaches you the intent. But there's a third mode — auditing, which is what this phase mostly was — that teaches you the gaps. You learn what the code does NOT do, what it assumes, what it defers. Auditing is uncomfortable because it surfaces omissions without explaining them. You have to infer the "why wasn't this done" from the shape of the "what was done instead."
