@@ -7,7 +7,6 @@ import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
-import '../../trip/providers/trip_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
@@ -189,38 +188,6 @@ final tripSettlementsProvider = StreamProvider.family<List<Settlement>, String>(
   tripId,
 ) {
   return ref.read(balanceCacheRepositoryProvider).watchSettlements(tripId);
-});
-
-// ---------------------------------------------------------------------------
-// Balance calculation providers (unchanged -- still uses legacy providers)
-// Updated to EventRef providers in Plan 04-05.
-// ---------------------------------------------------------------------------
-
-/// Provider for user balances in a trip.
-///
-/// Currently watches [tripExpensesProvider] and [tripSettlementsProvider]
-/// (SQLite-backed) for backward compat. Will be migrated to [eventExpensesProvider]
-/// in Plan 04-05 when screens are updated.
-final tripBalancesProvider = FutureProvider.family<List<UserBalance>, String>((
-  ref,
-  tripId,
-) async {
-  final expenses = await ref.watch(tripExpensesProvider(tripId).future);
-  final settlements = await ref.watch(tripSettlementsProvider(tripId).future);
-  // NOTE: tripLogisticsParticipantsProvider is deprecated for new code.
-  // Active screens use eventLogisticsParticipantsProvider(event) instead.
-  // This call is retained for the legacy tripBalancesProvider shim.
-  final participants = await ref.watch(
-    tripLogisticsParticipantsProvider(tripId).future,
-  );
-  final subGroups = await ref.watch(tripSubGroupsProvider(tripId).future);
-
-  return BalanceCalculator.calculateBalances(
-    expenses: expenses,
-    settlements: settlements,
-    participants: participants,
-    subGroups: subGroups,
-  );
 });
 
 // ---------------------------------------------------------------------------
