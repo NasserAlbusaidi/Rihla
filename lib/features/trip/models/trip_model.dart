@@ -26,7 +26,7 @@ class Trip {
     this.currency = 'OMR',
   });
 
-  /// Create Trip from Supabase JSON
+  /// Create Trip from JSON (SQLite cache format)
   factory Trip.fromJson(Map<String, dynamic> json) {
     return Trip(
       id: json['id'] as String,
@@ -51,7 +51,7 @@ class Trip {
     );
   }
 
-  /// Convert Trip to JSON for Supabase
+  /// Convert Trip to JSON (SQLite cache format)
   Map<String, dynamic> toJson() {
     return {
       'id': id,

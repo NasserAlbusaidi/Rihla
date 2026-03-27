@@ -229,14 +229,13 @@ void main() {
             ));
       });
 
-      test('createEvent skips bridge when Supabase is not initialized',
+      test('createEvent completes without throwing when Firebase is mocked',
           () async {
-        // This test verifies the service does not throw when Supabase
-        // is unavailable (not initialized). In unit tests, Supabase.instance
-        // throws — the service must catch this and continue.
+        // This test verifies the service does not throw during event creation
+        // in unit test environments where only FakeFirebaseFirestore is used.
         final service = buildService();
 
-        // Should not throw even with Supabase unavailable
+        // Should not throw in the test environment
         expect(
           () => service.createEvent(
             groupId: 'group-1',

@@ -1,8 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -11,12 +11,11 @@ import 'package:safar/core/router/app_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 
-class MockUser extends Mock implements User {}
+class MockFirebaseUser extends Mock implements firebase_auth.User {}
 
 void main() {
-  final mockUser = MockUser();
-  when(() => mockUser.id).thenReturn('user-1');
-  when(() => mockUser.email).thenReturn('test@example.com');
+  final mockUser = MockFirebaseUser();
+  when(() => mockUser.uid).thenReturn('user-1');
 
   final mockGroup = Group(
     id: 'group-1',
@@ -37,7 +36,9 @@ void main() {
       ProviderScope(
         overrides: [
           // Bypass splash by providing a logged-in user
-          authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
+          authStateProvider.overrideWith(
+            (ref) => Stream.value(mockUser),
+          ),
           currentUserProvider.overrideWithValue(mockUser),
 
           // Provide mock groups for the home screen

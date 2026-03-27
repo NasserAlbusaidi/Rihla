@@ -389,7 +389,7 @@ class _PayerSelector extends ConsumerWidget {
     final participants = participantsAsync.valueOrNull ?? [];
 
     // Check if current user is the leader
-    final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.id;
+    final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.uid;
 
     // If not leader or no participants, don't show
     if (!isLeader || participants.isEmpty) {

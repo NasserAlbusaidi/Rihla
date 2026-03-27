@@ -127,7 +127,7 @@ class Expense {
 
   /// Deserialize an [Expense] from a Firestore document map.
   ///
-  /// Field names are camelCase (not snake_case as in Supabase).
+  /// Field names are camelCase.
   /// [tripId] maps to Firestore field `eventId` for backward compatibility
   /// with BalanceCalculator and UI code that passes `trip.id`.
   /// Money is stored as integer fils via [MoneySerializer].
@@ -166,7 +166,7 @@ class Expense {
   /// Serialize this [Expense] to a Firestore document map.
   ///
   /// Field names are camelCase. Money is stored as integer fils via
-  /// [MoneySerializer]. Supabase join artifacts (payerName, categoryName,
+  /// [MoneySerializer]. Legacy join artifacts (payerName, categoryName,
   /// categoryIcon) are intentionally excluded -- they are read-time join
   /// artifacts that do not belong in Firestore.
   Map<String, dynamic> toFirestore() {

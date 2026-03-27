@@ -360,7 +360,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     final participantsAsync = ref.watch(
       tripLogisticsParticipantsProvider(widget.eventId),
     );
-    final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.id;
+    final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.uid;
 
     if (!isLeader) return const SizedBox.shrink();
 

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../core/config/supabase_config.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
@@ -191,7 +191,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         }
       });
       final user = ref.read(currentUserProvider);
-      debugPrint('[EXPENSE] _submit: currentUser supabaseId=${user?.id}');
+      debugPrint('[EXPENSE] _submit: currentUser userId=${user?.uid}');
 
       ref.read(expenseErrorProvider.notifier).state =
           'Could not identify your participant record.';
@@ -246,22 +246,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
   }
 
-  /// Upload receipt to Supabase Storage
+  /// Upload receipt to Firebase Storage.
   Future<String?> _uploadReceipt(String filePath) async {
     try {
       final file = File(filePath);
       final fileName = filePath.split('/').last;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final storagePath = '${widget.eventId}/receipts/$timestamp-$fileName';
-
-      await SupabaseConfig.client.storage
-          .from('trip-documents')
-          .upload(storagePath, file);
-
-      final url = SupabaseConfig.client.storage
-          .from('trip-documents')
-          .getPublicUrl(storagePath);
-
+      final ref = FirebaseStorage.instance.ref().child(storagePath);
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
+      await ref.putFile(file, metadata);
+      final url = await ref.getDownloadURL();
       return url;
     } catch (e) {
       debugPrint('Receipt upload failed: $e');

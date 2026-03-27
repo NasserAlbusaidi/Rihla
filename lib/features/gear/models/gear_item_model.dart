@@ -88,7 +88,7 @@ class GearItem {
 
   /// Serialize this [GearItem] to a Firestore document map.
   ///
-  /// Field names are camelCase. Supabase join artifacts (assignedToName,
+  /// Field names are camelCase. Legacy join artifacts (assignedToName,
   /// assignedToAvatar) are excluded.
   Map<String, dynamic> toFirestore() {
     return {

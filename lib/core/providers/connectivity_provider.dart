@@ -17,8 +17,7 @@ final connectivityProvider =
 /// Connectivity state notifier.
 ///
 /// Checks connectivity by attempting a Firestore server-only read against
-/// the `_health/ping` document. This replaces the previous Supabase
-/// `auth.refreshSession()` check (MIG-03 / D-16 in 04-CONTEXT.md).
+/// the `_health/ping` document.
 ///
 /// Firestore handles offline writes automatically via its persistence layer,
 /// so the offline→online auto-sync trigger is removed — there is no manual
