@@ -11,9 +11,10 @@ import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';
-import '../../trip/models/trip_model.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
+import '../widgets/subgroup_card.dart';
+import '../widgets/unassigned_pool.dart';
 
 /// Logistics Screen - Manage cars, rooms, and teams
 class LogisticsScreen extends ConsumerStatefulWidget {
@@ -71,7 +72,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                     color: AppColors.primary,
                     size: 20,
                   ),
-                  onPressed: () => _showCreateDialog(),
+                  onPressed: _showCreateDialog,
                 ),
               ),
             ],
@@ -83,8 +84,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           ),
           Expanded(
             child: subGroupsAsync.when(
-              data: (groups) => _buildTabContent(groups),
-              loading: () => SkeletonLoader.groupList(),
+              data: _buildTabContent,
+              loading: SkeletonLoader.groupList,
               error: (e, _) => NetworkErrorWidget(
                 onRetry: () => ref.invalidate(
                   eventSubGroupsProvider(
@@ -118,9 +119,22 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   Widget _buildGroupList(List<SubGroup> groups, SubGroupType type) {
     if (groups.isEmpty) return _buildEmptyState(type);
 
+    final participants = ref.watch(
+      eventLogisticsParticipantsProvider(widget.event),
+    );
+
+    final assignedUserIds = groups
+        .expand((g) => g.members)
+        .map((m) => m.participantId)
+        .toSet();
+
+    final unassigned = participants
+        .where((p) => !assignedUserIds.contains(p.id))
+        .toList();
+
     return Column(
       children: [
-        _buildUnassignedPool(groups, type),
+        UnassignedPool(unassigned: unassigned, type: type),
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
@@ -133,137 +147,27 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             child: ListView.builder(
               padding: const EdgeInsets.all(24),
               itemCount: groups.length,
-              itemBuilder: (context, index) => _buildGroupCard(groups[index]),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUnassignedPool(List<SubGroup> groups, SubGroupType type) {
-    final participants = ref.watch(
-      eventLogisticsParticipantsProvider(widget.event),
-    );
-
-    // Find participants not in any group of this type
-    final assignedUserIds = groups
-        .expand((g) => g.members)
-        .map((m) => m.participantId)
-        .toSet();
-
-    final unassigned = participants
-        .where((p) => !assignedUserIds.contains(p.id))
-        .toList();
-
-    if (unassigned.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Row(
-            children: [
-              Text(
-                'UNASSIGNED PERSONNEL',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                  color: AppColors.textMuted,
-                ),
+              itemBuilder: (context, index) => SubgroupCard(
+                group: groups[index],
+                onRenameGroup: () => _showCreateDialog(group: groups[index]),
+                onDeleteGroup: _confirmDeleteGroup,
+                onAddMember: _showMemberPicker,
+                onRemoveMember: (member, group) {
+                  // Legacy screen: removeMember requires EventRef context.
+                  // This screen will be updated in a future plan to use EventRef.
+                  debugPrint(
+                    'removeMember not supported in legacy screen — migrate to EventRef flow',
+                  );
+                },
+                onDrop: (participant) {
+                  // Legacy screen: addMember requires EventRef context.
+                  // This screen will be updated in a future plan to use EventRef.
+                  debugPrint(
+                    'addMember not supported in legacy screen — migrate to EventRef flow',
+                  );
+                },
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${unassigned.length} LEFT',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 90,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: unassigned.length,
-            itemBuilder: (context, index) {
-              final p = unassigned[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Draggable<Participant>(
-                  data: p,
-                  feedback: _buildPoolItem(p, isFeedback: true),
-                  childWhenDragging: Opacity(
-                    opacity: 0.3,
-                    child: _buildPoolItem(p),
-                  ),
-                  onDragStarted: () => HapticService.selection(),
-                  child: _buildPoolItem(p),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPoolItem(Participant p, {bool isFeedback = false}) {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            boxShadow: isFeedback
-                ? AppColors.cardShadowLarge
-                : AppColors.cardShadow,
-            border: Border.all(color: AppColors.surfaceLight, width: 2),
-          ),
-          child: Center(
-            child: p.avatarUrl != null
-                ? ClipOval(
-                    child: Image.network(p.avatarUrl!, fit: BoxFit.cover),
-                  )
-                : Text(
-                    (p.displayName ?? 'U')[0].toUpperCase(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          width: 60,
-          child: Text(
-            (p.displayName?.split(' ')[0] ?? 'UNK').toUpperCase(),
-            style: const TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
             ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -303,7 +207,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
-              onPressed: () => _showCreateDialog(),
+              onPressed: _showCreateDialog,
               icon: const Icon(Iconsax.add, size: 18),
               label: Text('Add ${type.displayName}'),
               style: FilledButton.styleFrom(
@@ -317,268 +221,6 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildGroupCard(SubGroup group) {
-    return DragTarget<Participant>(
-      onWillAcceptWithDetails: (details) => !group.isFull,
-      onAcceptWithDetails: (details) async {
-        HapticService.lightClick();
-        // Legacy screen: addMember requires EventRef context (groupId, eventId).
-        // This screen will be updated in a future plan to use EventRef.
-        debugPrint(
-          'addMember not supported in legacy screen — migrate to EventRef flow',
-        );
-      },
-      builder: (context, candidateData, rejectedData) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 24),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: candidateData.isNotEmpty
-                  ? AppColors.primary
-                  : AppColors.borderLight,
-              width: candidateData.isNotEmpty ? 2 : 1.5,
-            ),
-            boxShadow: candidateData.isNotEmpty
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ]
-                : AppColors.cardShadow,
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: AppColors.borderLight,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Icon(
-                        group.type == SubGroupType.car
-                            ? Iconsax.car
-                            : Iconsax.house,
-                        color: AppColors.primary,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => _showCreateDialog(group: group),
-                        behavior: HitTestBehavior.opaque,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              group.name.toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.3,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: group.isFull
-                                    ? AppColors.warning.withValues(alpha: 0.1)
-                                    : AppColors.primary.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '${group.memberCount} / ${group.capacity} SLOTS FILLED',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w900,
-                                  color: group.isFull
-                                      ? AppColors.warning
-                                      : AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Iconsax.more,
-                        size: 20,
-                        color: AppColors.textMuted,
-                      ),
-                      onPressed: () => _confirmDeleteGroup(group),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                child: Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: List.generate(group.capacity, (index) {
-                    if (index < group.members.length) {
-                      return _buildMemberSlot(group.members[index], group);
-                    }
-                    return _buildEmptySlot(group);
-                  }),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMemberSlot(SubGroupMember member, SubGroup group) {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: () async {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: AppColors.surface,
-                title: const Text(
-                  'REMOVE MEMBER',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-                ),
-                content: Text(
-                  'Remove ${member.displayName?.toUpperCase()} from ${group.name.toUpperCase()}?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('CANCEL'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text(
-                      'REMOVE',
-                      style: TextStyle(
-                        color: AppColors.rose,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-            if (confirm == true) {
-              HapticService.lightClick();
-              // Legacy screen: removeMember requires EventRef context (groupId, eventId, subGroupId).
-              // This screen will be updated in a future plan to use EventRef.
-              debugPrint(
-                'removeMember not supported in legacy screen — migrate to EventRef flow',
-              );
-            }
-          },
-          child: Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            child: Center(
-              child: member.avatarUrl != null
-                  ? ClipOval(
-                      child: Image.network(
-                        member.avatarUrl!,
-                        fit: BoxFit.cover,
-                        width: 60,
-                        height: 60,
-                      ),
-                    )
-                  : Text(
-                      member.initials,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
-                      ),
-                    ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          width: 60,
-          child: Text(
-            (member.displayName?.split(' ')[0] ?? 'UNK').toUpperCase(),
-            style: const TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmptySlot(SubGroup group) {
-    return GestureDetector(
-      onTap: () => _showMemberPicker(group),
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.borderLight,
-                width: 2,
-                style: BorderStyle.solid,
-              ),
-            ),
-            child: const Icon(
-              Iconsax.add,
-              color: AppColors.textMuted,
-              size: 20,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'OPEN',
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -714,7 +356,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           ),
           TextButton(
             onPressed: () async {
-              // Legacy screen: deleteSubGroup requires EventRef context (groupId, eventId).
+              // Legacy screen: deleteSubGroup requires EventRef context.
               // This screen will be updated in a future plan to use EventRef.
               debugPrint(
                 'deleteSubGroup not supported in legacy screen — migrate to EventRef flow',
@@ -835,14 +477,14 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                             HapticService.lightClick();
 
                             if (group != null) {
-                              // Legacy screen: updateSubGroup requires EventRef context (groupId, eventId).
+                              // Legacy screen: updateSubGroup requires EventRef context.
                               // This screen will be updated in a future plan to use EventRef.
                               debugPrint(
                                 'updateSubGroup not supported in legacy screen — migrate to EventRef flow',
                               );
                               if (context.mounted) Navigator.pop(context);
                             } else {
-                              // Legacy screen: createSubGroup requires EventRef context (groupId, eventId).
+                              // Legacy screen: createSubGroup requires EventRef context.
                               // This screen will be updated in a future plan to use EventRef.
                               debugPrint(
                                 'createSubGroup not supported in legacy screen — migrate to EventRef flow',
