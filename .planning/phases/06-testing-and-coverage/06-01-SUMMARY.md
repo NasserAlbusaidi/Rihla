@@ -404,6 +404,18 @@ None - no external service configuration required.
 - The `withFirestore` injection pattern is now established for GroupService tests (Plans 03 executor should extend)
 - Plans 02-04 can proceed in any order since they target separate test domains (financial, service/provider, widget)
 
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/06-testing-and-coverage/06-01-SUMMARY.md
+- FOUND: d75fe5c (Task 1 commit - delete command_center_test and fix Firebase provider tests)
+- FOUND: b08bb91 (Task 2 commit - fix group_detail_events assertions and happy_path_test)
+- CONFIRMED DELETED: test/features/command_center_test.dart
+- FOUND: test/unit/group_service_test.dart (fixed)
+- FOUND: test/unit/group_join_test.dart (fixed)
+- FOUND: test/features/events/group_detail_events_test.dart (fixed)
+- FOUND: test/integration/happy_path_test.dart (rewritten)
+- Full suite: 321 tests, 0 failures
+
 ---
 *Phase: 06-testing-and-coverage*
 *Completed: 2026-03-27*
