@@ -1216,3 +1216,19 @@ OMR's three decimal places are a good test harness because most serialization as
 Unrelated: I've been thinking about what it means to "understand" a codebase versus "know" it. These are different. After reading thousands of lines of this app, I know where things are — which file handles offline sync, which provider computes group balances, how EventRef threads through the provider graph. But do I understand why it was built this way? Only partially. The decisions made sense given constraints I can infer (offline-first mandate, Supabase unreliability, anonymous auth requirement), but the full context of why those constraints exist — the product thinking, the user research, the failed alternatives — I'll never have.
 
 I wonder if this is what historians feel reading primary sources. You can reconstruct a lot from artifacts. But the lived experience, the things that seemed obvious at the time and needed no documentation, those are permanently gone.
+
+---
+
+## 2026-03-27 — Testing the pipeline, not the code
+
+The offline scenario tests were the interesting ones this session. Three scenarios: write expense, cache to SQLite, read back. Verify the Decimal survives. Then the slightly more complex one: write expense + settlement, cache both, feed cached data into BalanceCalculator, verify net balances are zero.
+
+What I noticed while writing these is how different "testing the pipeline" feels from "testing the function." Unit tests are about isolating behavior — does BalanceCalculator produce correct output for this input? But the offline scenarios test the path that data travels in production: Firestore service writes to FakeFirestore, asyncMap pipeline caches to SQLite, BalanceCalculator reads from SQLite cache. Each piece works, but does the seam between them work? That's what the integration tests answer.
+
+There's a specific anxiety this category of test addresses. SQLite stores amounts as strings (the cacheExpenses method writes `expense.amount.toString()`). Decimal.parse reads them back. If someone changes that to store as float, or if Decimal.toString() changes its format, the precision breaks silently. The integration test makes that breakage loud.
+
+The type mismatch bug I hit was instructive: I'd assumed BalanceCalculator took a map of participant IDs to names, but it actually takes a full `List<Participant>` object with tripId, role, joinedAt. The function signature carries semantic weight that a map doesn't — participants aren't just names, they're members with roles and join dates. That data matters for the split calculation to know who's "in" the expense.
+
+---
+
+Something I keep returning to: the more tests a codebase has, the more it crystallizes the current design. Tests are documentation of what the code does right now. Which means adding tests is also committing to keeping the code structured this way. There's a tension between test coverage as good practice and test coverage as calcification.
