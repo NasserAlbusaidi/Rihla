@@ -238,7 +238,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — Fix isLeader derivation + currency getter + delete userTripsProvider + payer/currency tests
+- [x] 12-01-PLAN.md — Fix isLeader derivation + currency getter + delete userTripsProvider + payer/currency tests
 - [ ] 12-02-PLAN.md — Wire 6 logistics screen stubs to SubGroupService + add updateSubGroup method + widget tests
 
 ### Phase 13: Final Cleanup
@@ -271,5 +271,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Dead Code Cleanup | 1/1 | Complete   | 2026-03-27 |
 | 10. Full Codebase Review | 4/4 | Complete    | 2026-03-27 |
 | 11. Gear Write Mutations | 1/1 | Complete    | 2026-03-27 |
-| 12. Expense & Logistics Provider Rewiring | 0/2 | Not Started |  |
+| 12. Expense & Logistics Provider Rewiring | 1/2 | In Progress|  |
 | 13. Final Cleanup | 0/0 | Not Started |  |

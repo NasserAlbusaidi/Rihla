@@ -37,7 +37,7 @@
 
 ### Cross-Event Financials
 
-- [ ] **FIN-01**: Per-event balance shows what each member owes/is owed within that event
+- [x] **FIN-01**: Per-event balance shows what each member owes/is owed within that event
 - [x] **FIN-02**: Group-level balance shows net balance per member across ALL events in the group
 - [x] **FIN-03**: User can toggle between per-event and group-level balance view
 - [x] **FIN-04**: Cross-event settle-up: "You owe Nasser 15.500 across 3 events — settle now?"
@@ -117,7 +117,7 @@
 | MIG-03 | Phase 4 | Complete |
 | MIG-04 | Phase 4 | Complete |
 | MIG-05 | Phase 4 | Complete |
-| FIN-01 | Phase 12 | Pending |
+| FIN-01 | Phase 12 | Complete |
 | FIN-02 | Phase 5 | Complete |
 | FIN-03 | Phase 5 | Complete |
 | FIN-04 | Phase 8 | Complete |
