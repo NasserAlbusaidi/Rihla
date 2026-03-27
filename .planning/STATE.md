@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 10 context gathered
-last_updated: "2026-03-27T16:02:43.530Z"
+status: Ready to execute
+stopped_at: Completed 10-full-codebase-review 10-01-PLAN.md
+last_updated: "2026-03-27T18:04:35.238Z"
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 35
-  completed_plans: 35
+  total_plans: 39
+  completed_plans: 36
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 09 — dead-code-cleanup
+**Current focus:** Phase 10 — full-codebase-review
 
 ## Current Position
 
-Phase: 10
-Plan: Not started
+Phase: 10 (full-codebase-review) — EXECUTING
+Plan: 2 of 4
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Plan: Not started
 | Phase 08-integration-correctness-fixes P02 | 6 | 2 tasks | 4 files |
 | Phase 08-integration-correctness-fixes P01 | 15 | 2 tasks | 7 files |
 | Phase 09-dead-code-cleanup P01 | 8 | 1 tasks | 3 files |
+| Phase 10-full-codebase-review P01 | 10 | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -165,6 +166,8 @@ Recent decisions affecting current work:
 - [Phase 08-integration-correctness-fixes]: Pass Event object (not eventId String) to SplitScopeSelector so provider swap works without inner Firestore fetch
 - [Phase 09-dead-code-cleanup]: firebase_auth_provider.dart deleted entirely — file served no purpose; canonical Firebase auth in auth_provider.dart (D-03)
 - [Phase 09-dead-code-cleanup]: trip_provider.dart import removed from expense_provider.dart — exclusively used by deleted tripBalancesProvider; trip_model.dart kept for Participant/UserBalance types in BalanceCalculator
+- [Phase 10-full-codebase-review]: EventRef implicit cast: use typed variable declaration (final EventRef x = (...)) not as EventRef cast
+- [Phase 10-full-codebase-review]: Non-nullable Future result: drop variable assignment and await directly instead of checking != null
 
 ### Pending Todos
 
@@ -179,6 +182,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T16:02:43.527Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-full-codebase-review/10-CONTEXT.md
+Last session: 2026-03-27T18:04:35.234Z
+Stopped at: Completed 10-full-codebase-review 10-01-PLAN.md
+Resume file: None
