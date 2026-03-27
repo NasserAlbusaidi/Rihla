@@ -149,7 +149,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Remove supabase_flutter dependency, delete dead Supabase-only files, clean boot sequence and router
+- [x] 07-01-PLAN.md — Remove supabase_flutter dependency, delete dead Supabase-only files, clean boot sequence and router
 - [ ] 07-02-PLAN.md — Rewrite remaining Supabase references in active code to Firebase equivalents, verify zero Supabase refs
 
 ## Progress
@@ -165,4 +165,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. Firestore Repository Layer | 6/6 | Complete   | 2026-03-26 |
 | 5. Cross-Event Financials | 6/7 | In Progress|  |
 | 6. Testing and Coverage | 4/5 | In Progress|  |
-| 7. Data Migration and Supabase Removal | 0/2 | Not started | - |
+| 7. Data Migration and Supabase Removal | 1/2 | In Progress|  |
