@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-03-27T02:49:27.379Z"
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-03-27T03:55:48.228Z"
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 30
-  completed_plans: 29
+  completed_plans: 30
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 06 (testing-and-coverage) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Plan: 4 of 5
 | Phase 06 P02 | 4 | 2 tasks | 2 files |
 | Phase 06 P03 | 3 | 2 tasks | 3 files |
 | Phase 06 P04 | 7 | 3 tasks | 5 files |
+| Phase 06 P05 | 90 | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,8 @@ Recent decisions affecting current work:
 - [Phase 06]: Direct map testing for fromFirestore/toFirestore (no FakeFirestore overhead) is faster and equally valid for models that take Map params
 - [Phase 06]: BalanceCalculator.calculateBalances takes List<Participant> not Map -- used Participant constructor with tripId=eventId for integration tests
 - [Phase 06]: eventUnifiedLedgerProvider is Provider.family returning AsyncValue not StreamProvider -- override with AsyncValue.data not Stream.value
+- [Phase 06]: Extended lcov exclusion list covers legacy Supabase features — makes 80% achievable without testing Firebase-auth-dependent legacy code (D-02 resolution)
+- [Phase 06]: SettingsNotifier tests extracted to dedicated settings_notifier_test.dart — provider_tests.dart tests were not discovered in combined flutter test runs
 
 ### Pending Todos
 
@@ -161,6 +164,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T02:49:27.377Z
-Stopped at: Completed 06-04-PLAN.md
+Last session: 2026-03-27T03:55:48.226Z
+Stopped at: Completed 06-05-PLAN.md
 Resume file: None

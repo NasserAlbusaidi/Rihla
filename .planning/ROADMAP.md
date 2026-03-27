@@ -135,7 +135,7 @@ Plans:
 - [x] 06-02-PLAN.md — Exhaustive BalanceCalculator tests (all 4 scopes, cross-event, edge cases) + settlement optimization extensions
 - [x] 06-03-PLAN.md — Firestore model round-trip tests + AppFormatters tests + provider isolation tests
 - [x] 06-04-PLAN.md — Offline scenario integration tests (3 scenarios) + widget tests for 7 key screens
-- [ ] 06-05-PLAN.md — CI coverage enforcement inline in release workflow (lcov filtering, 80% threshold) + gap closure
+- [x] 06-05-PLAN.md — CI coverage enforcement inline in release workflow (lcov filtering, 80% threshold) + gap closure
 
 ### Phase 7: Data Migration and Supabase Removal
 **Goal**: Existing user data is accessible in the new Firestore-backed app; the supabase_flutter dependency is gone from the codebase

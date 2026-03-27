@@ -61,7 +61,7 @@
 - [x] **TST-02**: Widget tests for group dashboard, event creation, balance toggle
 - [x] **TST-03**: Integration tests using `fake_cloud_firestore` — no real Firebase calls in tests
 - [x] **TST-04**: Firestore security rules tested via Firebase Emulator
-- [ ] **TST-05**: 80%+ code coverage enforced
+- [x] **TST-05**: 80%+ code coverage enforced
 - [x] **TST-06**: Offline scenario tests (write while offline, verify sync on reconnect)
 
 ## v2 Requirements
@@ -128,7 +128,7 @@
 | GRP-05 | Phase 5 | Complete |
 | TST-01 | Phase 6 | Complete |
 | TST-02 | Phase 6 | Complete |
-| TST-05 | Phase 6 | Pending |
+| TST-05 | Phase 6 | Complete |
 | TST-06 | Phase 6 | Complete |
 | MIG-06 | Phase 7 | Pending |
 | MIG-07 | Phase 7 | Pending |
