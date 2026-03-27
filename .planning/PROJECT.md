@@ -43,9 +43,22 @@ Groups persist across events and accumulate financial history — friends settle
 - ✓ Cross-event settle-up with optimization — v1.0 Phase 5
 - ✓ Group activity log — v1.0 Phase 5
 
+## Current Milestone: v2.0 Major UI/UX Overhaul
+
+**Goal:** Transform Rihla from a functional but visually barren app into an eye-catching, richly designed experience with flatter navigation and rethought screen layouts.
+
+**Target features:**
+- Design system via Google Stitch — warm, earthy palette (terracotta, sand, olive), light theme only
+- Rich dashboard home — single-scroll with balance summary, inline group cards, recent activity, quick actions
+- Flatter navigation — reduce 3-4 tap depth, key content accessible sooner
+- Full screen redesign — every screen gets the new visual language
+- UX flow rethink — screen layouts, information density, interaction patterns
+- Visual richness — illustrations, color, texture, micro-interactions
+- Stitch-first workflow: design in Stitch → extract design tokens → implement in Flutter
+
 ### Active
 
-(No active requirements — next milestone not yet planned)
+(Requirements being defined — see REQUIREMENTS.md)
 
 ### Out of Scope
 
@@ -108,4 +121,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after v1.0 milestone completion — 13 phases shipped, 41/41 requirements satisfied, 624 tests passing, 80%+ coverage.*
+*Last updated: 2026-03-28 after v2.0 milestone start — Major UI/UX Overhaul*
