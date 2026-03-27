@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-27T21:55:52.314Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-03-27T21:56:49.320Z"
 progress:
   total_phases: 13
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 42
-  completed_plans: 41
+  completed_plans: 42
 ---
 
 # Project State
@@ -86,6 +86,7 @@ Plan: 2 of 2
 | Phase 10-full-codebase-review P04 | 15 | 2 tasks | 8 files |
 | Phase 11-gear-write-mutations P01 | 10 | 2 tasks | 4 files |
 | Phase 12 P01 | 6 | 2 tasks | 5 files |
+| Phase 12-expense-logistics-provider-rewiring P02 | 7 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,8 @@ Recent decisions affecting current work:
 - [Phase 11-gear-write-mutations]: togglePacked uses fire-and-forget .catchError() — no await needed; all other write mutations are async/await for consistent error handling
 - [Phase 12-01]: trip_model.dart kept in split_scope_selector and edit_expense_sheet because Participant type is used in _ParticipantTile/_buildCustomParticipantSelector — cannot remove without breaking compile
 - [Phase 12-01]: currentParticipantProvider removed from split_scope_selector entirely — replaced with direct currentUid since participant IDs are Firebase UIDs matching currentUser.uid
+- [Phase 12-expense-logistics-provider-rewiring]: Helper methods extracted from logistics screen callbacks to _LogisticsScreenState for BuildContext safety across async gaps — avoids use_build_context_synchronously lint
+- [Phase 12-expense-logistics-provider-rewiring]: Logistics screen removeMember uses member.id (Firestore doc ID), not member.participantId — consistent with Research Pitfall 1
 
 ### Pending Todos
 
@@ -196,6 +199,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T21:55:52.311Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-03-27T21:56:49.317Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None

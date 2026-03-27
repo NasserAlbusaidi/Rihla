@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 9: Dead Code Cleanup** - Remove orphaned providers identified in milestone audit (completed 2026-03-27)
 - [x] **Phase 10: Full Codebase Review** - Comprehensive quality, consistency, security, and architecture audit (completed 2026-03-27)
 - [x] **Phase 11: Gear Write Mutations** - Wire gear_screen.dart debugPrint stubs to GearService (gap closure) (completed 2026-03-27)
-- [ ] **Phase 12: Expense & Logistics Provider Rewiring** - Fix payer-override, currency derivation, and logistics removeMember (gap closure)
+- [x] **Phase 12: Expense & Logistics Provider Rewiring** - Fix payer-override, currency derivation, and logistics removeMember (gap closure) (completed 2026-03-27)
 - [ ] **Phase 13: Final Cleanup** - Remove orphaned providers, stale comments, and update CLAUDE.md documentation (gap closure)
 
 ## Phase Details
@@ -239,7 +239,7 @@ Plans:
 
 Plans:
 - [x] 12-01-PLAN.md — Fix isLeader derivation + currency getter + delete userTripsProvider + payer/currency tests
-- [ ] 12-02-PLAN.md — Wire 6 logistics screen stubs to SubGroupService + add updateSubGroup method + widget tests
+- [x] 12-02-PLAN.md — Wire 6 logistics screen stubs to SubGroupService + add updateSubGroup method + widget tests
 
 ### Phase 13: Final Cleanup
 **Goal**: Remove remaining orphaned providers, clean stale comments, and update CLAUDE.md documentation for undocumented trip* providers
@@ -271,5 +271,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Dead Code Cleanup | 1/1 | Complete   | 2026-03-27 |
 | 10. Full Codebase Review | 4/4 | Complete    | 2026-03-27 |
 | 11. Gear Write Mutations | 1/1 | Complete    | 2026-03-27 |
-| 12. Expense & Logistics Provider Rewiring | 1/2 | In Progress|  |
+| 12. Expense & Logistics Provider Rewiring | 2/2 | Complete   | 2026-03-27 |
 | 13. Final Cleanup | 0/0 | Not Started |  |
