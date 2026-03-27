@@ -52,7 +52,7 @@
 - [x] **MIG-03**: Firestore offline persistence replaces manual sync queue (`SyncService` deleted, not ported)
 - [x] **MIG-04**: SQLite retained for fast local reads and balance computation queries
 - [x] **MIG-05**: `FirestoreRepository` is the single Firestore contact point — all access flows through it
-- [ ] **MIG-06**: Existing trip data migrated from Supabase to Firestore via invite-code recovery flow
+- [x] **MIG-06**: Existing trip data migrated from Supabase to Firestore via invite-code recovery flow
 - [x] **MIG-07**: `supabase_flutter` dependency completely removed
 
 ### Testing
@@ -130,7 +130,7 @@
 | TST-02 | Phase 6 | Complete |
 | TST-05 | Phase 6 | Complete |
 | TST-06 | Phase 6 | Complete |
-| MIG-06 | Phase 7 | Pending |
+| MIG-06 | Phase 7 | Complete |
 | MIG-07 | Phase 7 | Complete |
 
 **Coverage:**
