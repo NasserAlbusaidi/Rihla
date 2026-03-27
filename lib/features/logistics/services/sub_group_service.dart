@@ -118,4 +118,26 @@ class SubGroupService extends FirestoreRepository {
       rethrow;
     }
   }
+
+  /// Update a sub-group's name and/or capacity.
+  Future<void> updateSubGroup({
+    required String groupId,
+    required String eventId,
+    required String subGroupId,
+    String? name,
+    int? capacity,
+  }) async {
+    final updates = <String, dynamic>{};
+    if (name != null) updates['name'] = name;
+    if (capacity != null) updates['capacity'] = capacity;
+    if (updates.isEmpty) return;
+    try {
+      await eventSubcollection(groupId, eventId, 'sub_groups')
+          .doc(subGroupId)
+          .update(updates);
+    } on FirebaseException catch (e) {
+      debugPrint('SubGroupService.updateSubGroup failed: ${e.code} ${e.message}');
+      rethrow;
+    }
+  }
 }

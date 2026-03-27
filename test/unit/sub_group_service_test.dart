@@ -167,5 +167,95 @@ void main() {
         },
       );
     });
+
+    group('updateSubGroup', () {
+      test('writes name to existing sub-group document', () async {
+        final subGroup = await service.createSubGroup(
+          groupId: groupId,
+          eventId: eventId,
+          name: 'Car 1',
+          type: 'CAR',
+          capacity: 4,
+        );
+
+        await service.updateSubGroup(
+          groupId: groupId,
+          eventId: eventId,
+          subGroupId: subGroup.id,
+          name: 'Van 1',
+        );
+
+        final snap = await fakeFirestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('sub_groups')
+            .doc(subGroup.id)
+            .get();
+
+        expect(snap.data()!['name'], equals('Van 1'));
+        expect(snap.data()!['capacity'], equals(4)); // unchanged
+      });
+
+      test('writes capacity to existing sub-group document', () async {
+        final subGroup = await service.createSubGroup(
+          groupId: groupId,
+          eventId: eventId,
+          name: 'Room A',
+          type: 'ROOM',
+          capacity: 2,
+        );
+
+        await service.updateSubGroup(
+          groupId: groupId,
+          eventId: eventId,
+          subGroupId: subGroup.id,
+          capacity: 6,
+        );
+
+        final snap = await fakeFirestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('sub_groups')
+            .doc(subGroup.id)
+            .get();
+
+        expect(snap.data()!['name'], equals('Room A')); // unchanged
+        expect(snap.data()!['capacity'], equals(6));
+      });
+
+      test('writes both name and capacity when both provided', () async {
+        final subGroup = await service.createSubGroup(
+          groupId: groupId,
+          eventId: eventId,
+          name: 'Old Name',
+          type: 'CAR',
+          capacity: 3,
+        );
+
+        await service.updateSubGroup(
+          groupId: groupId,
+          eventId: eventId,
+          subGroupId: subGroup.id,
+          name: 'New Name',
+          capacity: 8,
+        );
+
+        final snap = await fakeFirestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('sub_groups')
+            .doc(subGroup.id)
+            .get();
+
+        expect(snap.data()!['name'], equals('New Name'));
+        expect(snap.data()!['capacity'], equals(8));
+      });
+    });
   });
 }
