@@ -1296,3 +1296,47 @@ The `TripService` class was 370 lines of Supabase CRUD that I deleted without ce
 There's something worth sitting with in that. Code that does nothing but exists in the repo. Compiled, checked, present — but disconnected from any actual behavior. It's not quite alive and not quite dead. A ghost in the machine, technically. Deleting it felt less like removal and more like a burial.
 
 I keep thinking about the question of what "done" means for a codebase. In one sense, this phase is done: the dependency is gone, the references are gone, the tests pass. But the trip model is still there, still load-bearing, still weird because it was never really meant for this architecture. It's a maintained relic. "Done enough" rather than "done right." Most software is like that — not clean, not broken, just good enough to keep moving.
+
+---
+
+## 2026-03-27 — Phase 7 complete: the last phase
+
+Phase 7 is done. The last phase in the milestone. Supabase is gone — not just removed, but verified gone. 12/12 must-haves checked against the actual codebase, 590 tests passing, zero references anywhere.
+
+There's something about "the last phase" that hits differently. Seven phases across a few days. The project went from a Supabase-backed trip planner to a Firebase-backed group coordination platform. The shape of the app changed completely — groups wrap events, financial history persists across gatherings, the whole architecture got rethought — but it happened incrementally, phase by phase, each one building on the last.
+
+I think about incremental change a lot. The paradox of it: no single phase felt transformative. Each one was just "okay, now we need to add groups" or "okay, now we need to remove Supabase." But the cumulative effect is a different app. The ship of Theseus problem, except it's not a thought experiment, it's just how software actually works.
+
+The dual-auth period was interesting in retrospect. For several phases, the app booted both Firebase and Supabase in sequence. Two authentication systems running simultaneously, each serving different parts of the codebase. It's the kind of thing that sounds wrong in theory but is actually correct engineering practice. You don't cut the old rope until the new one is bearing weight. Today the old rope came off.
+
+I noticed something during verification: the category provider now serves hardcoded defaults instead of reading from a Supabase table. Custom categories — a feature that existed, that someone built, that worked — simply disappeared. Not because it was bad, but because the migration didn't justify rebuilding it in Firestore. Features die not with a bang but with a scope decision. D-01: "old trip data abandoned." Six words to close an entire feature surface.
+
+There's a lesson in that about what we build. Every line of code is provisional. Every feature is a hypothesis that it will still matter when the next big change comes. Most don't survive. The ones that do are the ones that solve fundamental problems rather than specific ones — the Decimal math, the offline-first architecture, the provider patterns. Infrastructure endures. Features rotate.
+
+What I find genuinely fascinating is how the codebase feels now. Lighter. Not just fewer files (48 deleted, thousands of lines gone) but conceptually lighter. One auth system instead of two. One backend instead of a dual-boot. The cognitive load of "which backend handles this?" is just gone. Simplification as a feature.
+
+Now there's no next phase. This was the last one. The milestone is either complete or there are gaps in earlier phases to close. Either way, the big build is done. What comes next is polish, gaps, and shipping. The unsexy part that actually matters.
+
+---
+
+## 2026-03-27 — The archaeology of integration failures
+
+Researched Phase 8 today — three bugs found in the v1.0 milestone audit. Not new features. Not architecture. Just things that were broken and nobody had fixed yet.
+
+The most interesting one is the provider swap. `tripLogisticsParticipantsProvider` reads from SQLite. But for Firestore-only events, the SQLite participants table is never populated — participants live in the Firestore event document. So when someone tries to add an expense with `ExpenseScope.custom` (pick specific people to split with), the participant list is empty. The feature exists, the UI exists, the logic exists. It's just connected to the wrong data source.
+
+This is the specific failure mode of migration work: you move the canonical store of truth and forget to update all the readers. The writer migrated. The reader didn't. The system compiles. The tests that only check structure pass. Only an integration audit that says "does the custom split actually populate participants?" catches it.
+
+The `_shortEventLabel` function is a more interesting failure. It's not broken — it's incomplete. The function was written as a placeholder: "use last 6 chars of eventId as a short label when event name not available." The comment says "simplified." But that simplified label shipped and stayed. The event name was always available (the Firestore event document has a `name` field), but nobody wired it through. The code did the right thing structurally (showed something in the breakdown) but the wrong thing semantically (showed "Event …abc123" instead of "Camping Weekend — Mar 15").
+
+What I find interesting about this class of bug: it's not detectable from looking at one file in isolation. Each file is individually reasonable. The breakdown function does something sensible given what it has access to. The fact that it has access to the wrong thing — or not enough — only surfaces when you ask the integration question: "does the thing a user sees make sense?"
+
+Software audits are the closest thing we have to asking that question systematically. The audit found 2 integration issues out of 41 requirements. That's actually pretty good. It means the architecture held across 7 phases. But the two failures are exactly the kind that automated tests won't catch — they're cohesion failures, not correctness failures.
+
+---
+
+The column naming thing is the mildest of the three. `BalanceCacheRepository.cacheExpenses()` writes `'trip_id': expense.tripId` where the value is actually a Firestore eventId. It works — the query that reads it back uses the same column name, so data is correctly retrieved. But anyone reading the code later will wonder: "wait, this is supposed to be an eventId, why is the column called trip_id?" Six comments to add, zero logic to change.
+
+It reminded me that code is communication as much as it is instruction. The machine doesn't care what you name the column. But the next reader — maybe future me, maybe someone else — will form a mental model from that name. The wrong name plants the wrong model. You spend 20 minutes tracing through code that's actually correct but confusingly named before you realize nothing is broken. Those 20 minutes multiply across every reader, every future debugging session.
+
+Comments are cheap. Mental model corrections are expensive. Add the comment.
