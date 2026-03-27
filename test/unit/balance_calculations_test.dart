@@ -6,6 +6,73 @@ import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/trip/models/trip_model.dart';
 import 'package:safar/features/logistics/models/sub_group_model.dart';
 
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+Participant _participant(String id, String name) => Participant(
+      id: id,
+      tripId: 't1',
+      role: ParticipantRole.member,
+      joinedAt: DateTime(2026),
+      displayName: name,
+    );
+
+Expense _globalExpense(String id, String payerId, String amount,
+    {String tripId = 't1'}) =>
+    Expense(
+      id: id,
+      tripId: tripId,
+      payerParticipantId: payerId,
+      amount: Decimal.parse(amount),
+      scope: ExpenseScope.global,
+      createdAt: DateTime(2026),
+    );
+
+Expense _personalExpense(String id, String payerId, String amount) => Expense(
+      id: id,
+      tripId: 't1',
+      payerParticipantId: payerId,
+      amount: Decimal.parse(amount),
+      scope: ExpenseScope.personal,
+      createdAt: DateTime(2026),
+    );
+
+Expense _subGroupExpense(
+        String id, String payerId, String amount, String subGroupId) =>
+    Expense(
+      id: id,
+      tripId: 't1',
+      payerParticipantId: payerId,
+      amount: Decimal.parse(amount),
+      scope: ExpenseScope.subGroup,
+      subGroupId: subGroupId,
+      createdAt: DateTime(2026),
+    );
+
+Expense _customExpense(
+        String id, String payerId, String amount, List<String> splitIds) =>
+    Expense(
+      id: id,
+      tripId: 't1',
+      payerParticipantId: payerId,
+      amount: Decimal.parse(amount),
+      scope: ExpenseScope.custom,
+      customSplitParticipants: splitIds,
+      createdAt: DateTime(2026),
+    );
+
+Settlement _settlement(
+        String id, String payerId, String recipientId, String amount) =>
+    Settlement(
+      id: id,
+      tripId: 't1',
+      payerParticipantId: payerId,
+      recipientParticipantId: recipientId,
+      amount: Decimal.parse(amount),
+      settledAt: DateTime(2026),
+    );
+
 void main() {
   group('BalanceCalculator Tests', () {
     final participants = [
@@ -174,7 +241,267 @@ void main() {
     });
   });
 
-  group('Cross-event balance scenarios', () {
+  // ---------------------------------------------------------------------------
+  // Personal scope
+  // ---------------------------------------------------------------------------
+  group('Personal scope', () {
+    final participants = [
+      _participant('p1', 'Alice'),
+      _participant('p2', 'Bob'),
+      _participant('p3', 'Charlie'),
+    ];
+
+    test('Personal expense: only payer charged, others unaffected, net = 0 for all',
+        () {
+      final expenses = [_personalExpense('e1', 'p1', '15.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+
+      // Personal: only payer owes themselves → net = 0
+      expect(b1.netBalance, Decimal.zero,
+          reason: 'Payer net = 0 for personal expense');
+      expect(b2.netBalance, Decimal.zero,
+          reason: 'Non-payer unaffected by personal expense');
+      expect(b3.netBalance, Decimal.zero,
+          reason: 'Non-payer unaffected by personal expense');
+    });
+
+    test('Multiple personal expenses from different payers — each payer net = 0', () {
+      final expenses = [
+        _personalExpense('e1', 'p1', '20.000'),
+        _personalExpense('e2', 'p2', '35.500'),
+      ];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+
+      expect(b1.netBalance, Decimal.zero);
+      expect(b2.netBalance, Decimal.zero);
+      expect(b3.netBalance, Decimal.zero);
+    });
+
+    test('Personal + global mixed: personal does not affect global split', () {
+      // p1 pays 30 global (each owes 10) AND 10 personal (only p1 owes themselves)
+      // Global: p1 net +20, p2 net -10, p3 net -10
+      // Personal: no effect on other participants
+      final expenses = [
+        _globalExpense('e1', 'p1', '30.000'),
+        _personalExpense('e2', 'p1', '10.000'),
+      ];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+
+      // p1: paid 40 (30 global + 10 personal), owed 10 (global share) + 10 (personal) = 20 → net = 20
+      expect(b1.netBalance, Decimal.parse('20.000'),
+          reason: 'Personal does not change global split for others');
+      expect(b2.netBalance, Decimal.parse('-10.000'));
+      expect(b3.netBalance, Decimal.parse('-10.000'));
+    });
+
+    test('ExpenseScope.personal exists and is handled distinctly', () {
+      // Verify ExpenseScope.personal is a valid enum value
+      expect(ExpenseScope.personal, isA<ExpenseScope>());
+      expect(ExpenseScope.personal.value, equals('personal'));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SubGroup scope
+  // ---------------------------------------------------------------------------
+  group('SubGroup scope', () {
+    final participants = [
+      _participant('p1', 'Alice'),
+      _participant('p2', 'Bob'),
+      _participant('p3', 'Charlie'),
+      _participant('p4', 'Diana'),
+    ];
+
+    final subGroups = [
+      SubGroup(
+        id: 'sg1',
+        tripId: 't1',
+        name: 'Car 1',
+        type: SubGroupType.car,
+        members: [
+          SubGroupMember(id: 'm1', subGroupId: 'sg1', participantId: 'p1'),
+          SubGroupMember(id: 'm2', subGroupId: 'sg1', participantId: 'p2'),
+        ],
+      ),
+      SubGroup(
+        id: 'sg2',
+        tripId: 't1',
+        name: 'Car 2',
+        type: SubGroupType.car,
+        members: [
+          SubGroupMember(id: 'm3', subGroupId: 'sg2', participantId: 'p3'),
+          SubGroupMember(id: 'm4', subGroupId: 'sg2', participantId: 'p4'),
+        ],
+      ),
+    ];
+
+    test('SubGroup expense split among subgroup members only — non-members unaffected', () {
+      final expenses = [_subGroupExpense('e1', 'p1', '20.000', 'sg1')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        subGroups: subGroups,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+      final b4 = balances.firstWhere((b) => b.participantId == 'p4');
+
+      // sg1 has p1, p2 — split 20 / 2 = 10 each
+      expect(b1.netBalance, Decimal.parse('10.000'));
+      expect(b2.netBalance, Decimal.parse('-10.000'));
+      // p3, p4 not in sg1 — unaffected
+      expect(b3.netBalance, Decimal.zero);
+      expect(b4.netBalance, Decimal.zero);
+    });
+
+    test('SubGroup with missing subGroups parameter falls through to global', () {
+      // When subGroups param is not provided but expense has subGroupId, fallback = global
+      final expenses = [_subGroupExpense('e1', 'p1', '40.000', 'sg1')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        // intentionally omit subGroups parameter
+      );
+
+      // Without subGroups, fallback is global (all 4 participants)
+      // p1 paid 40, each owes 10 → p1 net = 30, others = -10
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      expect(b1.netBalance, Decimal.parse('30.000'));
+      expect(b2.netBalance, Decimal.parse('-10.000'));
+    });
+
+    test('SubGroup with mismatched subGroupId — graceful fallback to global', () {
+      // subGroupId does not exist in provided subGroups
+      final expenses = [_subGroupExpense('e1', 'p1', '40.000', 'sg-nonexistent')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        subGroups: subGroups,
+      );
+
+      // sg-nonexistent not in map → fallback to global (4 participants)
+      // p1 paid 40, each owes 10 → p1 net = 30, others = -10
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      expect(b1.netBalance, Decimal.parse('30.000'));
+      expect(b2.netBalance, Decimal.parse('-10.000'));
+    });
+
+    test('Multiple subgroups in same trip — each expense split correctly', () {
+      // sg1: p1 pays 20, sg2: p3 pays 30
+      final expenses = [
+        _subGroupExpense('e1', 'p1', '20.000', 'sg1'),
+        _subGroupExpense('e2', 'p3', '30.000', 'sg2'),
+      ];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        subGroups: subGroups,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+      final b4 = balances.firstWhere((b) => b.participantId == 'p4');
+
+      // sg1 (p1, p2): p1 paid 20 → p1 net +10, p2 net -10
+      expect(b1.netBalance, Decimal.parse('10.000'));
+      expect(b2.netBalance, Decimal.parse('-10.000'));
+      // sg2 (p3, p4): p3 paid 30 → p3 net +15, p4 net -15
+      expect(b3.netBalance, Decimal.parse('15.000'));
+      expect(b4.netBalance, Decimal.parse('-15.000'));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Custom scope
+  // ---------------------------------------------------------------------------
+  group('Custom scope', () {
+    final participants = [
+      _participant('p1', 'Alice'),
+      _participant('p2', 'Bob'),
+      _participant('p3', 'Charlie'),
+    ];
+
+    test('Custom scope with splitParticipantIds — only listed participants share cost', () {
+      // p1 pays 20, split only between p1 and p2 (p3 excluded)
+      final expenses = [_customExpense('e1', 'p1', '20.000', ['p1', 'p2'])];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+
+      // 20 / 2 = 10 each for p1, p2
+      expect(b1.netBalance, Decimal.parse('10.000'));
+      expect(b2.netBalance, Decimal.parse('-10.000'));
+      expect(b3.netBalance, Decimal.zero);
+    });
+
+    test('Custom scope with empty splitParticipantIds — falls back to global', () {
+      // When customSplitParticipants is empty, fallback = global (all participants)
+      final expenses = [_customExpense('e1', 'p1', '30.000', [])];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+      );
+
+      // Fallback to global: 30 / 3 = 10 each
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+
+      expect(b1.netBalance, Decimal.parse('20.000'));
+      expect(b2.netBalance, Decimal.parse('-10.000'));
+      expect(b3.netBalance, Decimal.parse('-10.000'));
+    });
+
+    test('Custom scope correctly identifies ExpenseScope.custom enum value', () {
+      expect(ExpenseScope.custom, isA<ExpenseScope>());
+      expect(ExpenseScope.custom.value, equals('custom'));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Cross-event aggregation
+  // ---------------------------------------------------------------------------
+  group('Cross-event aggregation', () {
     // Participants use UID-style IDs (same across events per D-04).
     // tripId on Participant is unused by BalanceCalculator — any value works.
     final participants = [
@@ -537,6 +864,253 @@ void main() {
           reason: 'uid-2 owes 10 from event B');
       expect(b3.netBalance, Decimal.parse('-10.000'),
           reason: 'uid-3 owes 10 from event B');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Edge cases
+  // ---------------------------------------------------------------------------
+  group('Edge cases', () {
+    final participants = [
+      _participant('p1', 'Alice'),
+      _participant('p2', 'Bob'),
+      _participant('p3', 'Charlie'),
+    ];
+
+    test('Zero amount expense — net balance stays 0 for all participants', () {
+      final expenses = [_globalExpense('e1', 'p1', '0.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+      );
+
+      for (final b in balances) {
+        expect(b.netBalance, Decimal.zero,
+            reason: 'Zero-amount expense should not affect any balance');
+      }
+    });
+
+    test('Over-settlement: settlement exceeds debt — creditor and debtor roles flip', () {
+      // p1 pays 30 (global, 3 people → each owes 10)
+      // Initial: p1=+20, p2=-10, p3=-10
+      // p2 pays p1 15 (over-settling — owed 10, pays 15)
+      final expenses = [_globalExpense('e1', 'p1', '30.000')];
+      final settlements = [_settlement('s1', 'p2', 'p1', '15.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        settlements: settlements,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+
+      // p1: (30 + (-15)) - 10 = 5 (reduced from 20 because p2 over-paid)
+      expect(b1.netBalance, Decimal.parse('5.000'),
+          reason: 'p1 reduced from +20 after receiving 15 over-settlement');
+      // p2: (0 + 15) - 10 = +5 (became a creditor after over-settling)
+      expect(b2.netBalance, Decimal.parse('5.000'),
+          reason: 'p2 is now owed 5 after over-settling');
+    });
+
+    test('Over-settlement negative balance: verify sign is correct', () {
+      // p2 owes p1 10, but p2 pays 20 → p2 becomes creditor by 10
+      final expenses = [_globalExpense('e1', 'p1', '30.000')];
+      final settlements = [_settlement('s1', 'p2', 'p1', '20.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        settlements: settlements,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+
+      // p1: (30 + (-20)) - 10 = 0
+      expect(b1.netBalance, Decimal.zero);
+      // p2: (0 + 20) - 10 = +10 (creditor after over-settlement)
+      expect(b2.netBalance, Decimal.parse('10.000'));
+      expect(b2.isOwedMoney, isTrue);
+    });
+
+    test('50+ expenses stress test — Decimal precision maintained', () {
+      // 55 global expenses of 1.001 OMR each, all paid by p1, split 3 ways
+      final expenses = List.generate(
+          55, (i) => _globalExpense('e$i', 'p1', '1.001'));
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+      );
+
+      final total = Decimal.parse('1.001') * Decimal.fromInt(55);
+      final p1 = balances.firstWhere((b) => b.participantId == 'p1');
+      expect(p1.totalPaid, equals(total),
+          reason: '55 * 1.001 = 55.055 OMR, no precision loss');
+    });
+
+    test('Empty expense list — returns zero balances for all participants', () {
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: [],
+        participants: participants,
+      );
+
+      expect(balances, hasLength(3));
+      for (final b in balances) {
+        expect(b.netBalance, Decimal.zero);
+        expect(b.totalPaid, Decimal.zero);
+        expect(b.totalOwed, Decimal.zero);
+      }
+    });
+
+    test('Empty participant list — returns empty list', () {
+      final expenses = [_globalExpense('e1', 'p1', '30.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: [],
+      );
+
+      expect(balances, isEmpty);
+    });
+
+    test('Single participant group — payer owes themselves, net = 0', () {
+      final singleParticipant = [_participant('p1', 'Solo')];
+      final expenses = [_globalExpense('e1', 'p1', '50.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: singleParticipant,
+      );
+
+      expect(balances, hasLength(1));
+      // p1 paid 50, owes 50 (100% of global) → net = 0
+      expect(balances.first.netBalance, Decimal.zero);
+      expect(balances.first.totalPaid, Decimal.parse('50.000'));
+    });
+
+    test('Deleted expenses flag (is_deleted) — verified pre-filtering behavior', () {
+      // BalanceCalculator receives pre-filtered expenses.
+      // A deleted expense passed in would still be counted (pre-filter is caller responsibility).
+      // This test confirms is_deleted field exists and the expense still appears if passed in.
+      final deletedExpense = Expense(
+        id: 'e1',
+        tripId: 't1',
+        payerParticipantId: 'p1',
+        amount: Decimal.parse('30.000'),
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026),
+        isDeleted: true,
+      );
+
+      // When deleted expense is passed (caller should pre-filter):
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: [deletedExpense],
+        participants: participants,
+      );
+
+      // BalanceCalculator does not filter is_deleted — that is the caller's job
+      // So the balance is computed as if the expense were active
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      expect(b1.totalPaid, Decimal.parse('30.000'),
+          reason: 'Caller must pre-filter deleted expenses before passing to BalanceCalculator');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Settlement integration
+  // ---------------------------------------------------------------------------
+  group('Settlement integration', () {
+    final participants = [
+      _participant('p1', 'Alice'),
+      _participant('p2', 'Bob'),
+      _participant('p3', 'Charlie'),
+    ];
+
+    test('Settlement reduces net balance correctly', () {
+      // p1 pays 30 (global) → p1=+20, p2=-10, p3=-10
+      // p3 settles 10 to p1 → p3 = 0, p1 = 10
+      final expenses = [_globalExpense('e1', 'p1', '30.000')];
+      final settlements = [_settlement('s1', 'p3', 'p1', '10.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        settlements: settlements,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+
+      expect(b1.netBalance, Decimal.parse('10.000'));
+      expect(b3.netBalance, Decimal.zero);
+      expect(b3.isSettled, isTrue);
+    });
+
+    test('Multiple settlements — all reduce balances correctly', () {
+      // p1 pays 30 → p1=+20, p2=-10, p3=-10
+      // Both p2 and p3 settle with p1
+      final expenses = [_globalExpense('e1', 'p1', '30.000')];
+      final settlements = [
+        _settlement('s1', 'p2', 'p1', '10.000'),
+        _settlement('s2', 'p3', 'p1', '10.000'),
+      ];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        settlements: settlements,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+      final b3 = balances.firstWhere((b) => b.participantId == 'p3');
+
+      // p1 receives 20 total settlements → (30 - 20) - 10 = 0
+      expect(b1.netBalance, Decimal.zero);
+      expect(b1.isSettled, isTrue);
+      expect(b2.isSettled, isTrue);
+      expect(b3.isSettled, isTrue);
+    });
+
+    test('Partial settlement — balance partially reduced', () {
+      // p1 pays 30, p2 owes 10, p2 pays 5 (partial)
+      final expenses = [_globalExpense('e1', 'p1', '30.000')];
+      final settlements = [_settlement('s1', 'p2', 'p1', '5.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        settlements: settlements,
+      );
+
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+
+      // p2: (0 + 5) - 10 = -5 (still owes 5)
+      expect(b2.netBalance, Decimal.parse('-5.000'));
+      expect(b2.owesMoney, isTrue);
+      expect(b2.isSettled, isFalse);
+    });
+
+    test('Zero-amount settlement — has no effect on balances', () {
+      final expenses = [_globalExpense('e1', 'p1', '30.000')];
+      final settlements = [_settlement('s1', 'p2', 'p1', '0.000')];
+
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        participants: participants,
+        settlements: settlements,
+      );
+
+      final b1 = balances.firstWhere((b) => b.participantId == 'p1');
+      final b2 = balances.firstWhere((b) => b.participantId == 'p2');
+
+      // Zero settlement should not change anything
+      expect(b1.netBalance, Decimal.parse('20.000'));
+      expect(b2.netBalance, Decimal.parse('-10.000'));
     });
   });
 }
