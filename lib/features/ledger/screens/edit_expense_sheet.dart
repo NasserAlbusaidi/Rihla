@@ -7,6 +7,7 @@ import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../events/providers/event_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
@@ -357,63 +358,63 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
       (t) => t!.id == widget.eventId,
       orElse: () => null,
     );
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(widget.eventId),
-    );
     final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.uid;
 
     if (!isLeader) return const SizedBox.shrink();
 
-    return participantsAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (error, stack) => const SizedBox.shrink(),
-      data: (participants) {
-        if (participants.isEmpty) return const SizedBox.shrink();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'PAID BY',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textMuted,
-                letterSpacing: 1.5,
-              ),
+    // Use eventLogisticsParticipantsProvider which derives participants directly
+    // from the Firestore Event document — no SQLite lookup needed.
+    final eventAsync = ref.watch(eventDetailProvider(
+      (groupId: widget.groupId, eventId: widget.eventId),
+    ));
+    final event = eventAsync.valueOrNull;
+    if (event == null) return const SizedBox.shrink();
+    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
+
+    if (participants.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'PAID BY',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textMuted,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedPayerId ?? currentParticipant?.id,
+              isExpanded: true,
+              icon: const Icon(Iconsax.arrow_down_1),
+              items: participants.map((p) {
+                final isMe = p.id == currentParticipant?.id;
+                return DropdownMenuItem(
+                  value: p.id,
+                  child: Text(
+                    isMe
+                        ? '${p.displayName ?? 'Unknown'} (Me)'
+                        : p.displayName ?? 'Unknown',
+                  ),
+                );
+              }).toList(),
+              onChanged: (v) {
+                HapticService.lightClick();
+                setState(() => _selectedPayerId = v);
+              },
             ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedPayerId ?? currentParticipant?.id,
-                  isExpanded: true,
-                  icon: const Icon(Iconsax.arrow_down_1),
-                  items: participants.map((p) {
-                    final isMe = p.id == currentParticipant?.id;
-                    return DropdownMenuItem(
-                      value: p.id,
-                      child: Text(
-                        isMe
-                            ? '${p.displayName ?? 'Unknown'} (Me)'
-                            : p.displayName ?? 'Unknown',
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (v) {
-                    HapticService.lightClick();
-                    setState(() => _selectedPayerId = v);
-                  },
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 

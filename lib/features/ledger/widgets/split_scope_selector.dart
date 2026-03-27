@@ -4,6 +4,8 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../events/models/event_model.dart';
+import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -12,7 +14,7 @@ import '../models/expense_model.dart';
 /// Scope selector (global/subgroup/custom/personal) with custom participant
 /// picker and payer selector for leaders.
 class SplitScopeSelector extends ConsumerWidget {
-  final String tripId;
+  final Event event;
   final ExpenseScope scope;
   final ValueChanged<ExpenseScope> onScopeChanged;
   final Set<String> customSplitParticipants;
@@ -25,7 +27,7 @@ class SplitScopeSelector extends ConsumerWidget {
 
   const SplitScopeSelector({
     super.key,
-    required this.tripId,
+    required this.event,
     required this.scope,
     required this.onScopeChanged,
     required this.customSplitParticipants,
@@ -95,7 +97,7 @@ class SplitScopeSelector extends ConsumerWidget {
         if (scope == ExpenseScope.custom) ...[
           const SizedBox(height: 16),
           _CustomParticipantSelector(
-            tripId: tripId,
+            event: event,
             customSplitParticipants: customSplitParticipants,
             onCustomSplitChanged: onCustomSplitChanged,
           ),
@@ -103,7 +105,7 @@ class SplitScopeSelector extends ConsumerWidget {
         const SizedBox(height: 24),
         // Paid By selector (for leaders only)
         _PayerSelector(
-          tripId: tripId,
+          event: event,
           selectedPayerId: selectedPayerId,
           onPayerChanged: onPayerChanged,
         ),
@@ -179,23 +181,24 @@ class _ScopeTab extends StatelessWidget {
 
 /// Multi-select participant list for custom splits.
 class _CustomParticipantSelector extends ConsumerWidget {
-  final String tripId;
+  final Event event;
   final Set<String> customSplitParticipants;
   final ValueChanged<Set<String>> onCustomSplitChanged;
 
   const _CustomParticipantSelector({
-    required this.tripId,
+    required this.event,
     required this.customSplitParticipants,
     required this.onCustomSplitChanged,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(tripId),
-    );
+    // Use eventLogisticsParticipantsProvider which derives participants directly
+    // from the Firestore Event document — no SQLite lookup needed.
+    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
+    final participantsAsync = AsyncValue.data(participants);
     final currentParticipant = ref.watch(
-      currentParticipantProvider(tripId),
+      currentParticipantProvider(event.id),
     );
 
     return Column(
@@ -360,12 +363,12 @@ class _ParticipantTile extends StatelessWidget {
 
 /// Dropdown to select who paid, visible only to leaders.
 class _PayerSelector extends ConsumerWidget {
-  final String tripId;
+  final Event event;
   final String? selectedPayerId;
   final ValueChanged<String?> onPayerChanged;
 
   const _PayerSelector({
-    required this.tripId,
+    required this.event,
     required this.selectedPayerId,
     required this.onPayerChanged,
   });
@@ -373,20 +376,19 @@ class _PayerSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentParticipant = ref.watch(
-      currentParticipantProvider(tripId),
+      currentParticipantProvider(event.id),
     );
     final trip = ref
         .watch(userTripsProvider)
         .valueOrNull
         ?.cast<Trip?>()
         .firstWhere(
-          (t) => t!.id == tripId,
+          (t) => t!.id == event.id,
           orElse: () => null,
         );
-    final participantsAsync = ref.watch(
-      tripLogisticsParticipantsProvider(tripId),
-    );
-    final participants = participantsAsync.valueOrNull ?? [];
+    // Use eventLogisticsParticipantsProvider which derives participants directly
+    // from the Firestore Event document — no SQLite lookup needed.
+    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
 
     // Check if current user is the leader
     final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.uid;

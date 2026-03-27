@@ -11,6 +11,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/types/event_ref.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../events/models/event_model.dart';
+import '../../events/providers/event_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
@@ -182,14 +184,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           debugPrint('[EXPENSE]   trip: id=${t.id}, name=${t.name}, leaderId=${t.leaderId}');
         }
       }
-      final participantsAsync = ref.read(tripLogisticsParticipantsProvider(widget.eventId));
-      debugPrint('[EXPENSE] _submit: participantsAsync state=${participantsAsync.runtimeType}');
-      participantsAsync.whenData((participants) {
-        debugPrint('[EXPENSE]   participants: ${participants.length}');
-        for (final p in participants) {
-          debugPrint('[EXPENSE]     id=${p.id}, userId=${p.userId}, name=${p.displayName}');
-        }
-      });
+      // Debug: tripLogisticsParticipantsProvider removed — participants now derived from Event model
+      debugPrint('[EXPENSE] _submit: currentParticipant is null, eventId=${widget.eventId}');
       final user = ref.read(currentUserProvider);
       debugPrint('[EXPENSE] _submit: currentUser userId=${user?.uid}');
 
@@ -303,6 +299,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final isLoading = ref.watch(expenseLoadingProvider);
     final error = ref.watch(expenseErrorProvider);
     final categoriesAsync = ref.watch(tripCategoriesProvider(widget.eventId));
+    // Watch the Event object so SplitScopeSelector can use eventLogisticsParticipantsProvider
+    final eventAsync = ref.watch(eventDetailProvider(
+      (groupId: widget.groupId, eventId: widget.eventId),
+    ));
 
     categoriesAsync.when(
       data: (cats) => debugPrint('[EXPENSE] build: ${cats.length} categories for tripId=${widget.eventId}'),
@@ -334,7 +334,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       setState(() => _selectedCategoryId = id);
                     },
                   ),
-                  _buildConfirmStep(error),
+                  _buildConfirmStep(error, eventAsync),
                 ],
               ),
             ),
@@ -403,7 +403,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
-  Widget _buildConfirmStep(String? error) {
+  Widget _buildConfirmStep(String? error, AsyncValue<Event?> eventAsync) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -418,27 +418,34 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          SplitScopeSelector(
-            tripId: widget.eventId,
-            scope: _scope,
-            onScopeChanged: (scope) => setState(() => _scope = scope),
-            customSplitParticipants: _customSplitParticipants,
-            onCustomSplitChanged: (participants) {
-              setState(() {
-                _customSplitParticipants.clear();
-                _customSplitParticipants.addAll(participants);
-              });
-            },
-            selectedSubGroupId: _selectedSubGroupId,
-            onAutoSelectSubGroup: _autoSelectUserSubGroup,
-            onSubGroupIdCleared: (value) {
-              setState(() => _selectedSubGroupId = value);
-            },
-            selectedPayerId: _selectedPayerId,
-            onPayerChanged: (value) {
-              setState(() => _selectedPayerId = value);
-            },
-          ),
+          // Pass Event to SplitScopeSelector for Firestore-native participant lookup
+          if (eventAsync.valueOrNull != null)
+            SplitScopeSelector(
+              event: eventAsync.valueOrNull!,
+              scope: _scope,
+              onScopeChanged: (scope) => setState(() => _scope = scope),
+              customSplitParticipants: _customSplitParticipants,
+              onCustomSplitChanged: (participants) {
+                setState(() {
+                  _customSplitParticipants.clear();
+                  _customSplitParticipants.addAll(participants);
+                });
+              },
+              selectedSubGroupId: _selectedSubGroupId,
+              onAutoSelectSubGroup: _autoSelectUserSubGroup,
+              onSubGroupIdCleared: (value) {
+                setState(() => _selectedSubGroupId = value);
+              },
+              selectedPayerId: _selectedPayerId,
+              onPayerChanged: (value) {
+                setState(() => _selectedPayerId = value);
+              },
+            )
+          else
+            const Center(child: Padding(
+              padding: EdgeInsets.all(16),
+              child: CircularProgressIndicator(),
+            )),
           const SizedBox(height: 24),
           // Note Input
           const Text(

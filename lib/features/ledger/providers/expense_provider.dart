@@ -207,6 +207,9 @@ final tripBalancesProvider = FutureProvider.family<List<UserBalance>, String>((
 ) async {
   final expenses = await ref.watch(tripExpensesProvider(tripId).future);
   final settlements = await ref.watch(tripSettlementsProvider(tripId).future);
+  // NOTE: tripLogisticsParticipantsProvider is deprecated for new code.
+  // Active screens use eventLogisticsParticipantsProvider(event) instead.
+  // This call is retained for the legacy tripBalancesProvider shim.
   final participants = await ref.watch(
     tripLogisticsParticipantsProvider(tripId).future,
   );
