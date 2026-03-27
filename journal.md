@@ -1396,3 +1396,15 @@ The interesting thing about `firebase_auth_provider.dart` is that it was created
 I also find it interesting that the worktree was at the wrong commit when I started. The agent setup pointed to `origin/main` at `c06e4c3` instead of the local `main` at `b8d2e36` — a difference of something like 8 phases of work. I caught it immediately because the files looked completely wrong (Supabase imports everywhere, completely different provider shapes). The verification instinct — read before touching — saved time here.
 
 There's a lesson about tooling in that: parallel execution with worktrees is powerful but the setup has to be exactly right or agents start with stale state. The cost of a wrong starting point isn't proportional to how wrong it is. Even a slightly wrong starting point can produce confidently wrong output.
+
+---
+
+## 2026-03-27 — Cleaning up 26 warnings
+
+Something satisfying about a warning-cleanup session. Not because warnings are catastrophic — they rarely are — but because each warning is a small imprecision in the signal. When the analyzer screams about nothing, it's actually saying "I have no useful feedback for you." Zero warnings means the tool is calibrated again.
+
+Most of the warnings were `event_ref.dart` imports that stopped being needed when the EventRef type started flowing through `expense_provider.dart` transitively. The type is still very much used — it just moved upward in the import hierarchy. Classic "unnecessary because all of the used elements are also provided by" situation. The code worked correctly the whole time. The warnings were just noise about redundancy.
+
+The interesting one was the unnecessary cast on line 30 of event_spending_hero.dart: `(groupId: event.groupId, eventId: event.id) as EventRef`. Dart record types don't need explicit casts when you're constructing them — the shape already matches. The fix was: `final EventRef eventRef = (groupId: event.groupId, eventId: event.id)`. Same thing, just letting the type annotation do the work instead of the cast. It's a tiny thing but it makes me think about how many ways there are to say "this is an EventRef" — and how the cleanest one is usually the implicit one.
+
+The naming convention documentation is overdue. The codebase has accumulated three generations of provider naming: trip* (legacy), event* (current), group* (new). They coexist fine but without documentation the pattern is opaque to anyone reading the code for the first time. Now at least there's a canonical answer to "should I use tripExpensesProvider or eventExpensesProvider?" — and the answer is event*, with trip* being a deprecated shim you should not extend.
