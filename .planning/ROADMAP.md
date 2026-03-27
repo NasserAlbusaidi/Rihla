@@ -128,7 +128,14 @@ Plans:
   2. All BalanceCalculator scenarios (global, subGroup, personal, custom, cross-event aggregation) have passing unit tests
   3. Widget tests for the group dashboard, event creation flow, and balance toggle pass without real Firebase calls (using fake_cloud_firestore)
   4. An offline scenario test writes an expense while offline, disconnects Firestore, verifies SQLite has the pending value, then reconnects and verifies Firestore receives the write
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Fix 9 failing tests (delete dead command_center_test, fix Firebase provider mocks, fix EventCard assertions)
+- [ ] 06-02-PLAN.md — Exhaustive BalanceCalculator tests (all 4 scopes, cross-event, edge cases) + settlement optimization extensions
+- [ ] 06-03-PLAN.md — Firestore model round-trip tests + AppFormatters tests + provider isolation tests
+- [ ] 06-04-PLAN.md — Offline scenario integration tests (3 scenarios) + widget tests for 7 key screens
+- [ ] 06-05-PLAN.md — CI coverage enforcement workflow (lcov filtering, 80% threshold, PR comments) + gap closure
 
 ### Phase 7: Data Migration and Supabase Removal
 **Goal**: Existing user data is accessible in the new Firestore-backed app; the supabase_flutter dependency is gone from the codebase
@@ -152,5 +159,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Events | 5/5 | Complete   | 2026-03-26 |
 | 4. Firestore Repository Layer | 6/6 | Complete   | 2026-03-26 |
 | 5. Cross-Event Financials | 6/7 | In Progress|  |
-| 6. Testing and Coverage | 0/TBD | Not started | - |
+| 6. Testing and Coverage | 0/5 | Not started | - |
 | 7. Data Migration and Supabase Removal | 0/TBD | Not started | - |
