@@ -33,11 +33,11 @@
 - [x] **EVT-05**: Custom events let user pick modules manually with no preset content
 - [x] **EVT-06**: Group members are pre-populated as event participants (user can add/remove)
 - [x] **EVT-07**: Event timeline in group shows chronological list of past and upcoming events with financial totals
-- [x] **EVT-08**: Existing trip functionality (ledger, gear, logistics, vault, activity, memories) works within events
+- [ ] **EVT-08**: Existing trip functionality (ledger, gear, logistics, vault, activity, memories) works within events
 
 ### Cross-Event Financials
 
-- [x] **FIN-01**: Per-event balance shows what each member owes/is owed within that event
+- [ ] **FIN-01**: Per-event balance shows what each member owes/is owed within that event
 - [x] **FIN-02**: Group-level balance shows net balance per member across ALL events in the group
 - [x] **FIN-03**: User can toggle between per-event and group-level balance view
 - [x] **FIN-04**: Cross-event settle-up: "You owe Nasser 15.500 across 3 events — settle now?"
@@ -111,13 +111,13 @@
 | EVT-05 | Phase 3 | Complete |
 | EVT-06 | Phase 3 | Complete |
 | EVT-07 | Phase 3 | Complete |
-| EVT-08 | Phase 3 | Complete |
+| EVT-08 | Phase 11+12 | Pending |
 | MIG-01 | Phase 4 | Complete |
 | MIG-02 | Phase 4 | Complete |
 | MIG-03 | Phase 4 | Complete |
 | MIG-04 | Phase 4 | Complete |
 | MIG-05 | Phase 4 | Complete |
-| FIN-01 | Phase 5 | Complete |
+| FIN-01 | Phase 12 | Pending |
 | FIN-02 | Phase 5 | Complete |
 | FIN-03 | Phase 5 | Complete |
 | FIN-04 | Phase 8 | Complete |
@@ -136,8 +136,8 @@
 **Coverage:**
 - v1 requirements: 41 total
 - Mapped to phases: 41
-- Complete: 40
-- Pending: 1 (FIN-04 — reassigned to Phase 8)
+- Complete: 39
+- Pending: 2 (EVT-08 → Phase 11+12, FIN-01 → Phase 12)
 - Unmapped: 0
 
 ---

@@ -22,6 +22,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 8: Integration & Correctness Fixes** - Fix custom split participants, settle-up labels, and column naming from audit
 - [x] **Phase 9: Dead Code Cleanup** - Remove orphaned providers identified in milestone audit (completed 2026-03-27)
 - [x] **Phase 10: Full Codebase Review** - Comprehensive quality, consistency, security, and architecture audit (completed 2026-03-27)
+- [ ] **Phase 11: Gear Write Mutations** - Wire gear_screen.dart debugPrint stubs to GearService (gap closure)
+- [ ] **Phase 12: Expense & Logistics Provider Rewiring** - Fix payer-override, currency derivation, and logistics removeMember (gap closure)
+- [ ] **Phase 13: Final Cleanup** - Remove orphaned providers, stale comments, and update CLAUDE.md documentation (gap closure)
 
 ## Phase Details
 
@@ -206,10 +209,47 @@ Plans:
 - [x] 10-03-PLAN.md — Split group_settle_up_screen.dart + logistics_screen.dart + memories_screen.dart to under 800 lines
 - [x] 10-04-PLAN.md — Error handling audit at system boundaries + final codebase verification
 
+### Phase 11: Gear Write Mutations
+**Goal**: All gear_screen.dart write mutations (add, delete, toggle packed, set priority) call through to GearService instead of logging to debugPrint
+**Depends on**: Phase 10
+**Requirements**: EVT-08 (gear writes)
+**Gap Closure**: Closes Integration #1 (gear_screen → GearService), Flow #1 (gear item management) from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. Tapping "Add Item" on the gear screen creates a new gear item in Firestore via GearService
+  2. Swiping to delete a gear item removes it from Firestore via GearService
+  3. Toggling the packed checkbox updates the gear item's packed status in Firestore
+  4. Changing priority via the menu updates the gear item's priority in Firestore
+  5. All gear write paths have corresponding tests
+**Plans**: 0 plans
+
+### Phase 12: Expense & Logistics Provider Rewiring
+**Goal**: Fix payer-override selector, currency derivation, and logistics removeMember by replacing userTripsProvider dependencies with event-based equivalents
+**Depends on**: Phase 11
+**Requirements**: FIN-01 (payer-override), EVT-08 (payer/currency/logistics)
+**Gap Closure**: Closes Integration #2 (isLeader derivation), Integration #3 (currency fallback), Integration #4 (removeMember no-op), Flow #2 (payer-override) from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. The payer-override dropdown renders for the event creator (isLeader derived from event.createdBy == currentUser)
+  2. The expense form uses the event's or group's currency instead of hardcoded OMR fallback
+  3. Logistics screen removeMember callback calls SubGroupService to remove the member
+  4. All fixes have corresponding tests
+**Plans**: 0 plans
+
+### Phase 13: Final Cleanup
+**Goal**: Remove remaining orphaned providers, clean stale comments, and update CLAUDE.md documentation for undocumented trip* providers
+**Depends on**: Phase 12
+**Requirements**: None (tech debt)
+**Gap Closure**: Closes tech debt items from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. `tripUnifiedLedgerProvider`, `tripSeedProvider`, `tripSubGroupsProvider` removed from codebase
+  2. Stale comment in `auth_provider.dart` referencing deleted `firebase_auth_provider.dart` removed
+  3. All remaining `trip*` legacy providers documented in CLAUDE.md conventions section
+  4. `flutter analyze` and `flutter test` pass after changes
+**Plans**: 0 plans
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -223,3 +263,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 8. Integration & Correctness Fixes | 0/2 | In Progress|  |
 | 9. Dead Code Cleanup | 1/1 | Complete   | 2026-03-27 |
 | 10. Full Codebase Review | 4/4 | Complete    | 2026-03-27 |
+| 11. Gear Write Mutations | 0/0 | Not Started |  |
+| 12. Expense & Logistics Provider Rewiring | 0/0 | Not Started |  |
+| 13. Final Cleanup | 0/0 | Not Started |  |
