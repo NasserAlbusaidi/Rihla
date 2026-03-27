@@ -101,6 +101,7 @@ class CacheService {
     for (final expense in expenses) {
       batch.insert('expenses', {
         'id': expense.id,
+        // NOTE: 'trip_id' column stores eventId — see BalanceCacheRepository for details.
         'trip_id': expense.tripId,
         'payer_participant_id': expense.payerParticipantId,
         'amount': expense.amount.toString(),
@@ -122,6 +123,7 @@ class CacheService {
   /// Get cached expenses for a trip
   static Future<List<Expense>> getCachedExpenses(String tripId) async {
     final db = await LocalDatabase.database;
+    // NOTE: 'trip_id' column stores eventId — see BalanceCacheRepository for details.
     final maps = await db.query(
       'expenses',
       where: 'trip_id = ? AND is_deleted = 0',
@@ -165,6 +167,7 @@ class CacheService {
     for (final s in settlements) {
       batch.insert('settlements', {
         'id': s.id,
+        // NOTE: 'trip_id' column stores eventId — see BalanceCacheRepository for details.
         'trip_id': s.tripId,
         'payer_participant_id': s.payerParticipantId,
         'recipient_participant_id': s.recipientParticipantId,
@@ -183,6 +186,7 @@ class CacheService {
   /// Get cached settlements for a trip
   static Future<List<Settlement>> getCachedSettlements(String tripId) async {
     final db = await LocalDatabase.database;
+    // NOTE: 'trip_id' column stores eventId — see BalanceCacheRepository for details.
     final maps = await db.query(
       'settlements',
       where: 'trip_id = ? AND is_deleted = 0',

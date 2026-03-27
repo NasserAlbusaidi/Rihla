@@ -64,6 +64,10 @@ class BalanceCacheRepository {
         'expenses',
         {
           'id': expense.id,
+          // NOTE: The SQLite column is named 'trip_id' for historical reasons.
+          // For Firestore-only events this value is the Firestore event document ID.
+          // Do NOT rename without a SQLite schema migration (version bump in
+          // LocalDatabase._createDb and corresponding migration in _onUpgrade).
           'trip_id': expense.tripId,
           'payer_participant_id': expense.payerParticipantId,
           'amount': expense.amount.toString(),
@@ -99,6 +103,7 @@ class BalanceCacheRepository {
         'settlements',
         {
           'id': s.id,
+          // NOTE: 'trip_id' column stores eventId — see cacheExpenses() for details.
           'trip_id': s.tripId,
           'payer_participant_id': s.payerParticipantId,
           'recipient_participant_id': s.recipientParticipantId,
@@ -123,6 +128,7 @@ class BalanceCacheRepository {
   /// Read non-deleted expenses from SQLite for [eventId].
   Future<List<Expense>> getExpenses(String eventId) async {
     final db = await LocalDatabase.database;
+    // NOTE: 'trip_id' column stores eventId — see cacheExpenses() for details.
     final maps = await db.query(
       'expenses',
       where: 'trip_id = ? AND is_deleted = 0',
@@ -158,6 +164,7 @@ class BalanceCacheRepository {
   /// Read non-deleted settlements from SQLite for [eventId].
   Future<List<Settlement>> getSettlements(String eventId) async {
     final db = await LocalDatabase.database;
+    // NOTE: 'trip_id' column stores eventId — see cacheExpenses() for details.
     final maps = await db.query(
       'settlements',
       where: 'trip_id = ? AND is_deleted = 0',
