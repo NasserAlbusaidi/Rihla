@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Testing and Coverage** - 80%+ coverage enforced, offline scenario tests, widget tests, financial unit tests
 - [ ] **Phase 7: Data Migration and Supabase Removal** - Supabase dependency deleted, old trip data abandoned (MIG-06 descoped per D-01)
 - [ ] **Phase 8: Integration & Correctness Fixes** - Fix custom split participants, settle-up labels, and column naming from audit
-- [ ] **Phase 9: Dead Code Cleanup** - Remove orphaned providers identified in milestone audit
+- [x] **Phase 9: Dead Code Cleanup** - Remove orphaned providers identified in milestone audit (completed 2026-03-27)
 - [ ] **Phase 10: Full Codebase Review** - Comprehensive quality, consistency, security, and architecture audit
 
 ## Phase Details
@@ -183,7 +183,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 09-01-PLAN.md — Remove 3 orphaned providers (tripBalancesProvider, firebaseAuthStateProvider/firebaseCurrentUserProvider, subGroupsByTypeProvider) + delete empty file
+- [x] 09-01-PLAN.md — Remove 3 orphaned providers (tripBalancesProvider, firebaseAuthStateProvider/firebaseCurrentUserProvider, subGroupsByTypeProvider) + delete empty file
 
 ### Phase 10: Full Codebase Review
 **Goal**: Comprehensive codebase audit for quality, consistency, security, performance, and architectural alignment before closing milestone v1.0
@@ -215,5 +215,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 6. Testing and Coverage | 4/5 | In Progress|  |
 | 7. Data Migration and Supabase Removal | 1/2 | In Progress|  |
 | 8. Integration & Correctness Fixes | 0/2 | In Progress|  |
-| 9. Dead Code Cleanup | 0/1 | Not Started|  |
+| 9. Dead Code Cleanup | 1/1 | Complete   | 2026-03-27 |
 | 10. Full Codebase Review | 0/0 | Not Started|  |

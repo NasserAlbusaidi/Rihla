@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-27T15:21:33.178Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-03-27T15:47:31.456Z"
 progress:
   total_phases: 10
-  completed_phases: 8
-  total_plans: 34
-  completed_plans: 34
+  completed_phases: 9
+  total_plans: 35
+  completed_plans: 35
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 08 — integration-correctness-fixes
+**Current focus:** Phase 09 — dead-code-cleanup
 
 ## Current Position
 
-Phase: 09
-Plan: Not started
+Phase: 09 (dead-code-cleanup) — EXECUTING
+Plan: 1 of 1
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Plan: Not started
 | Phase 07-data-migration-and-supabase-removal P02 | 15 | 2 tasks | 20 files |
 | Phase 08-integration-correctness-fixes P02 | 6 | 2 tasks | 4 files |
 | Phase 08-integration-correctness-fixes P01 | 15 | 2 tasks | 7 files |
+| Phase 09-dead-code-cleanup P01 | 8 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -162,6 +163,8 @@ Recent decisions affecting current work:
 - [Phase 08-integration-correctness-fixes]: groupEventsProvider watched in build() with valueOrNull for non-blocking event name resolution in GroupSettleUpScreen -- empty map on loading/error triggers fallback label
 - [Phase 08-integration-correctness-fixes]: Record type used for eventNameMap values ({name, type, date}) -- avoids creating a new class for a single-method lookup structure in settle-up screen
 - [Phase 08-integration-correctness-fixes]: Pass Event object (not eventId String) to SplitScopeSelector so provider swap works without inner Firestore fetch
+- [Phase 09-dead-code-cleanup]: firebase_auth_provider.dart deleted entirely — file served no purpose; canonical Firebase auth in auth_provider.dart (D-03)
+- [Phase 09-dead-code-cleanup]: trip_provider.dart import removed from expense_provider.dart — exclusively used by deleted tripBalancesProvider; trip_model.dart kept for Participant/UserBalance types in BalanceCalculator
 
 ### Pending Todos
 
@@ -176,6 +179,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T15:21:33.175Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-dead-code-cleanup/09-CONTEXT.md
+Last session: 2026-03-27T15:47:31.453Z
+Stopped at: Completed 09-01-PLAN.md
+Resume file: None
