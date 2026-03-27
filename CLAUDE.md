@@ -246,7 +246,33 @@ This is an evolution of the existing Rihla trip-planning app, adding a groups la
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
 ## Conventions
 
-Conventions not yet established. Will populate as patterns emerge during development.
+### Provider Naming
+
+- **New code**: Use `event*` prefix for all event-scoped providers (e.g., `eventExpensesProvider`, `eventGearItemsProvider`, `eventSubGroupsProvider`, `eventActivityProvider`, `eventDocumentsProvider`, `eventMemoriesProvider`)
+- **Group-scoped**: Use `group*` prefix (e.g., `groupBalancesProvider`, `groupSettlementsProvider`, `groupActivityProvider`, `userGroupsProvider`)
+- **Legacy shims**: `trip*` prefix providers (`tripExpensesProvider`, `tripSettlementsProvider`, `tripGearProvider`, `tripDocumentsProvider`, `tripMemoriesProvider`, `tripActivityProvider`, `tripLogisticsParticipantsProvider`) are deprecated compatibility aliases. They delegate to the `event*` equivalents. Do NOT create new `trip*` providers. Do NOT remove existing shims while screens still reference them.
+
+### Service Naming
+
+- Services are named after their domain: `ExpenseService`, `GearService`, `EventService`, `GroupSettlementService`, `GroupActivityService`
+- All services extend `FirestoreRepository` (except `ThawaniService`, `OcrService`, `ReceiptService` which are external integrations)
+
+### Model Naming
+
+- Models match their Firestore collection: `Expense`, `Settlement`, `GearItem`, `SubGroup`, `Document`, `Memory`, `Event`, `Group`, `GroupMember`
+- Firestore serialization: `fromFirestore(Map<String, dynamic>)` and `toFirestore()` methods on each model
+- SQLite serialization: `fromMap(Map<String, dynamic>)` and `toMap()` methods where SQLite caching exists
+
+### File Organization
+
+- Feature-first: `lib/features/{feature}/models/`, `providers/`, `screens/`, `services/`, `widgets/`
+- Shared widgets: `lib/shared/widgets/` for cross-feature components
+- Core utilities: `lib/core/` for config, theme, types, services, utils, providers
+- Screen files: one primary screen class per file, private helper widget methods allowed but large widget builders should be extracted to `widgets/` directory
+
+### Type Definitions
+
+- `EventRef` typedef `({String groupId, String eventId})` is the canonical way to identify an event across the app (defined in `lib/core/types/event_ref.dart`, re-exported by `expense_provider.dart`)
 <!-- GSD:conventions-end -->
 
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->
