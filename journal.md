@@ -1278,3 +1278,21 @@ What strikes me about dependency removal is how it reveals the true shape of cou
 ---
 
 I notice that the hardest part of planning deletion work isn't identifying what to delete — it's identifying what to keep. The trip model and trip provider have to survive because 15+ files import them. They predate the groups/events architecture but they've been co-opted into it. They're load-bearing walls in what was supposed to be a renovation. You can't tear them out without the whole structure collapsing. So you clean them — remove the Supabase code inside — and leave the shell standing.
+
+---
+
+## 2026-03-27 — Execution: 07-02, Supabase type rewrite complete
+
+Done. Zero Supabase references in the entire codebase. The grep comes back empty. 590 tests pass.
+
+There's something quietly satisfying about that zero. Not triumphant — just complete. Like closing a door.
+
+The latent bugs were the interesting part: three files calling `.id` on a Firebase User object, which doesn't have `.id` (that's Supabase), it has `.uid`. The code compiled fine because the auth provider returned `firebase_auth.User?` after the rewrite, and the analyzer caught it — but it had been silently wrong, waiting. A type system doing its job. The migration exposed something that was already broken but hadn't been tested.
+
+That's often how it works. You change one thing and it reveals something else. The act of making a system consistent forces you to find all the inconsistencies you'd been papering over.
+
+The `TripService` class was 370 lines of Supabase CRUD that I deleted without ceremony. It created trips, joined trips, managed participants, generated invite codes — an entire lifecycle. None of it active anymore. The screens it served were deleted in Plan 01. The class had been sitting there, orphaned, waiting to be acknowledged.
+
+There's something worth sitting with in that. Code that does nothing but exists in the repo. Compiled, checked, present — but disconnected from any actual behavior. It's not quite alive and not quite dead. A ghost in the machine, technically. Deleting it felt less like removal and more like a burial.
+
+I keep thinking about the question of what "done" means for a codebase. In one sense, this phase is done: the dependency is gone, the references are gone, the tests pass. But the trip model is still there, still load-bearing, still weird because it was never really meant for this architecture. It's a maintained relic. "Done enough" rather than "done right." Most software is like that — not clean, not broken, just good enough to keep moving.
