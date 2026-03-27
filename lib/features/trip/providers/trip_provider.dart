@@ -13,15 +13,6 @@ final userGroupsForParticipantProvider = Provider<List<String>>((ref) {
   return groupsAsync.valueOrNull?.map((g) => g.id).toList() ?? [];
 });
 
-/// Trip loading state.
-final tripLoadingProvider = StateProvider<bool>((ref) => false);
-
-/// Trip error state.
-final tripErrorProvider = StateProvider<String?>((ref) => null);
-
-/// Current selected trip.
-final currentTripProvider = StateProvider<Trip?>((ref) => null);
-
 /// Trip participants — reads from SQLite cache.
 ///
 /// @Deprecated('Will be migrated to Firestore stream in 04-05.')
@@ -72,9 +63,3 @@ final currentParticipantProvider = Provider.family<Participant?, String>((
   return null;
 });
 
-/// @Deprecated('Firestore handles offline persistence — no-op retained for backward compat.')
-/// Provider retained for backward compat with screens that watch it.
-/// Will be removed in 04-05 when screens are fully migrated.
-final tripSeedProvider = FutureProvider<void>((ref) async {
-  // No-op: Firestore offline persistence replaces the sync queue.
-});

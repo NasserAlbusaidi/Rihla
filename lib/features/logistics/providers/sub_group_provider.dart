@@ -18,24 +18,12 @@ final subGroupErrorProvider = StateProvider<String?>((ref) => null);
 final subGroupServiceProvider =
     Provider<SubGroupService>((ref) => SubGroupService());
 
-/// NEW: Firestore-backed stream of sub-groups for an event.
-///
-/// Use this for all new code. Replaces [tripSubGroupsProvider].
+/// Firestore-backed stream of sub-groups for an event.
 final eventSubGroupsProvider =
     StreamProvider.family<List<SubGroup>, EventRef>((ref, eventRef) {
   return ref
       .read(subGroupServiceProvider)
       .watchSubGroups(eventRef.groupId, eventRef.eventId);
-});
-
-/// @Deprecated('Use eventSubGroupsProvider with EventRef. Will be removed in 04-05.')
-///
-/// Legacy sub-groups stream — returns empty list until screens migrate in 04-05.
-final tripSubGroupsProvider = StreamProvider.family<List<SubGroup>, String>((
-  ref,
-  tripId,
-) {
-  return Stream.value([]);
 });
 
 /// Derives a [List<Participant>] from an [Event]'s participantIds/participantNames.

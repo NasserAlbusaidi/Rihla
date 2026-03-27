@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/firebase_config.dart';
 
 /// Auth state provider — listens to Firebase auth changes.
-///
-/// Re-exports from firebase_auth_provider.dart for backward compatibility.
 final authStateProvider = StreamProvider<firebase_auth.User?>((ref) {
   return FirebaseConfig.authStateChanges;
 });
