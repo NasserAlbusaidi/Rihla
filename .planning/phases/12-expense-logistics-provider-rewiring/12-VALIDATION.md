@@ -2,7 +2,7 @@
 phase: 12
 slug: expense-logistics-provider-rewiring
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-03-28
 ---
@@ -38,24 +38,17 @@ created: 2026-03-28
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 12-01-01 | 01 | 1 | FIN-01 | unit | `flutter test test/unit/currency_derivation_test.dart` | ❌ W0 | ⬜ pending |
-| 12-01-02 | 01 | 1 | FIN-01 | unit | `flutter test test/unit/payer_override_test.dart` | ❌ W0 | ⬜ pending |
-| 12-02-01 | 02 | 1 | EVT-08 | unit | `flutter test test/unit/logistics_wiring_test.dart` | ❌ W0 | ⬜ pending |
-| 12-02-02 | 02 | 1 | EVT-08 | unit | `flutter test test/unit/sub_group_service_test.dart` | ❌ W0 | ⬜ pending |
-| 12-03-01 | 03 | 2 | FIN-01 | unit | `flutter test test/unit/` | ✅ | ⬜ pending |
+| 12-01-01 | 01 | 1 | FIN-01 | widget | `flutter test test/features/ledger/payer_currency_rewiring_test.dart` | created by task | pending |
+| 12-02-01 | 02 | 1 | EVT-08 | unit | `flutter test test/unit/sub_group_service_test.dart` | exists (extended by task) | pending |
+| 12-02-02 | 02 | 1 | EVT-08 | widget | `flutter test test/features/logistics_screen_mutations_test.dart` | created by task | pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: pending / green / red / flaky*
 
----
-
-## Wave 0 Requirements
-
-- [ ] `test/unit/currency_derivation_test.dart` — stubs for FIN-01 currency fix
-- [ ] `test/unit/payer_override_test.dart` — stubs for FIN-01 isLeader derivation
-- [ ] `test/unit/logistics_wiring_test.dart` — stubs for EVT-08 logistics stub wiring
-- [ ] `test/unit/sub_group_service_test.dart` — stubs for EVT-08 updateSubGroup method
-
-*Existing test infrastructure covers framework needs — no new dependencies required.*
+**Notes:**
+- Plan 01 Task 1 creates `test/features/ledger/payer_currency_rewiring_test.dart` inline (TDD task — tests written before fixes).
+- Plan 02 Task 1 extends existing `test/unit/sub_group_service_test.dart` with `updateSubGroup` tests.
+- Plan 02 Task 2 creates `test/features/logistics_screen_mutations_test.dart` inline.
+- No Wave 0 stubs required — each task creates its own test files as part of execution.
 
 ---
 
@@ -70,11 +63,11 @@ created: 2026-03-28
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
+- [x] All tasks have `<automated>` verify commands
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] No Wave 0 stubs needed — tests created inline by tasks
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
