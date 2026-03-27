@@ -104,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after Phase 07 (data-migration-and-supabase-removal) completion — supabase_flutter fully removed, 590 tests passing, Firebase-only backend*
+*Last updated: 2026-03-27 after Phase 08 (integration-correctness-fixes) completion — custom split participants fixed (EVT-08), settle-up event names fixed (FIN-04), trip_id column documentation added*
