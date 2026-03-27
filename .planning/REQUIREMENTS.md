@@ -136,8 +136,8 @@
 **Coverage:**
 - v1 requirements: 41 total
 - Mapped to phases: 41
-- Complete: 39
-- Pending: 2 (EVT-08 → Phase 11+12, FIN-01 → Phase 12)
+- Complete: 41
+- Pending: 0
 - Unmapped: 0
 
 ---

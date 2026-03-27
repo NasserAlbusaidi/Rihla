@@ -13,13 +13,13 @@ Rihla v2 evolves the existing Flutter trip-planning app into a persistent group 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Foundation** - Firestore initialized, security rules tested, integer money storage enforced, SQLite schema extended (completed 2026-03-25)
-- [ ] **Phase 2: Groups** - Users can create and join persistent groups; groups appear on home screen
+- [x] **Phase 2: Groups** - Users can create and join persistent groups; groups appear on home screen (completed 2026-03-26)
 - [x] **Phase 3: Events** - Users can create typed events inside groups with template-driven modules and gear presets (completed 2026-03-26)
 - [x] **Phase 4: Firestore Repository Layer** - All per-event module writes routed through Firestore; SyncService retired (completed 2026-03-26)
-- [ ] **Phase 5: Cross-Event Financials** - Group-level running balances, balance toggle, cross-event settle-up, group dashboard
-- [ ] **Phase 6: Testing and Coverage** - 80%+ coverage enforced, offline scenario tests, widget tests, financial unit tests
-- [ ] **Phase 7: Data Migration and Supabase Removal** - Supabase dependency deleted, old trip data abandoned (MIG-06 descoped per D-01)
-- [ ] **Phase 8: Integration & Correctness Fixes** - Fix custom split participants, settle-up labels, and column naming from audit
+- [x] **Phase 5: Cross-Event Financials** - Group-level running balances, balance toggle, cross-event settle-up, group dashboard (completed 2026-03-26)
+- [x] **Phase 6: Testing and Coverage** - 80%+ coverage enforced, offline scenario tests, widget tests, financial unit tests (completed 2026-03-27)
+- [x] **Phase 7: Data Migration and Supabase Removal** - Supabase dependency deleted, old trip data abandoned (MIG-06 descoped per D-01) (completed 2026-03-27)
+- [x] **Phase 8: Integration & Correctness Fixes** - Fix custom split participants, settle-up labels, and column naming from audit (completed 2026-03-27)
 - [x] **Phase 9: Dead Code Cleanup** - Remove orphaned providers identified in milestone audit (completed 2026-03-27)
 - [x] **Phase 10: Full Codebase Review** - Comprehensive quality, consistency, security, and architecture audit (completed 2026-03-27)
 - [x] **Phase 11: Gear Write Mutations** - Wire gear_screen.dart debugPrint stubs to GearService (gap closure) (completed 2026-03-27)
@@ -156,7 +156,7 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — Remove supabase_flutter dependency, delete dead Supabase-only files, clean boot sequence and router
-- [ ] 07-02-PLAN.md — Rewrite remaining Supabase references in active code to Firebase equivalents, verify zero Supabase refs
+- [x] 07-02-PLAN.md — Rewrite remaining Supabase references in active code to Firebase equivalents, verify zero Supabase refs
 
 ### Phase 8: Integration & Correctness Fixes
 **Goal**: Fix functional degradations found in milestone audit — custom expense splits work for new events, settle-up labels show event names, and column naming is corrected
@@ -264,13 +264,13 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete   | 2026-03-25 |
-| 2. Groups | 3/4 | In Progress|  |
+| 2. Groups | 4/4 | Complete   | 2026-03-26 |
 | 3. Events | 5/5 | Complete   | 2026-03-26 |
 | 4. Firestore Repository Layer | 6/6 | Complete   | 2026-03-26 |
-| 5. Cross-Event Financials | 6/7 | In Progress|  |
-| 6. Testing and Coverage | 4/5 | In Progress|  |
-| 7. Data Migration and Supabase Removal | 1/2 | In Progress|  |
-| 8. Integration & Correctness Fixes | 0/2 | In Progress|  |
+| 5. Cross-Event Financials | 7/7 | Complete   | 2026-03-26 |
+| 6. Testing and Coverage | 5/5 | Complete   | 2026-03-27 |
+| 7. Data Migration and Supabase Removal | 2/2 | Complete   | 2026-03-27 |
+| 8. Integration & Correctness Fixes | 2/2 | Complete   | 2026-03-27 |
 | 9. Dead Code Cleanup | 1/1 | Complete   | 2026-03-27 |
 | 10. Full Codebase Review | 4/4 | Complete    | 2026-03-27 |
 | 11. Gear Write Mutations | 1/1 | Complete    | 2026-03-27 |
