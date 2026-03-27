@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-03-27T02:45:19.970Z"
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-03-27T02:49:27.379Z"
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 30
-  completed_plans: 28
+  completed_plans: 29
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 06 (testing-and-coverage) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Plan: 3 of 5
 | Phase 05 P06 | 4 | 2 tasks | 3 files |
 | Phase 06 P02 | 4 | 2 tasks | 2 files |
 | Phase 06 P03 | 3 | 2 tasks | 3 files |
+| Phase 06 P04 | 7 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,8 @@ Recent decisions affecting current work:
 - [Phase 06]: Over-settlement (paying more than owed) correctly flips creditor/debtor roles — verified via sign-direction assertions in 06-02 tests
 - [Phase 06]: Group.fromDoc(DocumentSnapshot) tested via FakeFirebaseFirestore; Group.fromMap/toMap tests the SQLite path — both serialization paths covered
 - [Phase 06]: Direct map testing for fromFirestore/toFirestore (no FakeFirestore overhead) is faster and equally valid for models that take Map params
+- [Phase 06]: BalanceCalculator.calculateBalances takes List<Participant> not Map -- used Participant constructor with tripId=eventId for integration tests
+- [Phase 06]: eventUnifiedLedgerProvider is Provider.family returning AsyncValue not StreamProvider -- override with AsyncValue.data not Stream.value
 
 ### Pending Todos
 
@@ -158,6 +161,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T02:45:19.967Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-03-27T02:49:27.377Z
+Stopped at: Completed 06-04-PLAN.md
 Resume file: None

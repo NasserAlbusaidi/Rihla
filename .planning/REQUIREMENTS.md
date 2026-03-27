@@ -58,11 +58,11 @@
 ### Testing
 
 - [x] **TST-01**: Unit tests for all financial calculations (balance, settlement optimization, cross-event aggregation)
-- [ ] **TST-02**: Widget tests for group dashboard, event creation, balance toggle
+- [x] **TST-02**: Widget tests for group dashboard, event creation, balance toggle
 - [x] **TST-03**: Integration tests using `fake_cloud_firestore` — no real Firebase calls in tests
 - [x] **TST-04**: Firestore security rules tested via Firebase Emulator
 - [ ] **TST-05**: 80%+ code coverage enforced
-- [ ] **TST-06**: Offline scenario tests (write while offline, verify sync on reconnect)
+- [x] **TST-06**: Offline scenario tests (write while offline, verify sync on reconnect)
 
 ## v2 Requirements
 
@@ -127,9 +127,9 @@
 | GRP-04 | Phase 5 | Complete |
 | GRP-05 | Phase 5 | Complete |
 | TST-01 | Phase 6 | Complete |
-| TST-02 | Phase 6 | Pending |
+| TST-02 | Phase 6 | Complete |
 | TST-05 | Phase 6 | Pending |
-| TST-06 | Phase 6 | Pending |
+| TST-06 | Phase 6 | Complete |
 | MIG-06 | Phase 7 | Pending |
 | MIG-07 | Phase 7 | Pending |
 
