@@ -19,6 +19,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Cross-Event Financials** - Group-level running balances, balance toggle, cross-event settle-up, group dashboard
 - [ ] **Phase 6: Testing and Coverage** - 80%+ coverage enforced, offline scenario tests, widget tests, financial unit tests
 - [ ] **Phase 7: Data Migration and Supabase Removal** - Supabase dependency deleted, old trip data abandoned (MIG-06 descoped per D-01)
+- [ ] **Phase 8: Integration & Correctness Fixes** - Fix custom split participants, settle-up labels, and column naming from audit
+- [ ] **Phase 9: Dead Code Cleanup** - Remove orphaned providers identified in milestone audit
+- [ ] **Phase 10: Full Codebase Review** - Comprehensive quality, consistency, security, and architecture audit
 
 ## Phase Details
 
@@ -152,10 +155,48 @@ Plans:
 - [x] 07-01-PLAN.md — Remove supabase_flutter dependency, delete dead Supabase-only files, clean boot sequence and router
 - [ ] 07-02-PLAN.md — Rewrite remaining Supabase references in active code to Firebase equivalents, verify zero Supabase refs
 
+### Phase 8: Integration & Correctness Fixes
+**Goal**: Fix functional degradations found in milestone audit — custom expense splits work for new events, settle-up labels show event names, and column naming is corrected
+**Depends on**: Phase 7
+**Requirements**: FIN-04, EVT-08 (integration fix)
+**Gap Closure**: Closes integration issues #1 and #2 from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. `ExpenseScope.custom` participant list populates correctly for Firestore-only events (swap `tripLogisticsParticipantsProvider` → `eventLogisticsParticipantsProvider`)
+  2. `GroupSettleUpScreen` per-event breakdown displays event names instead of truncated eventIds
+  3. `BalanceCacheRepository.cacheExpenses()` uses `event_id` column name matching its actual content
+**Plans**: TBD
+
+### Phase 9: Dead Code Cleanup
+**Goal**: Remove all orphaned providers and dead code identified in milestone audit
+**Depends on**: Phase 8
+**Requirements**: None (tech debt)
+**Gap Closure**: Closes tech debt items from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. `tripBalancesProvider` removed from `expense_provider.dart`
+  2. `firebaseAuthStateProvider` and `firebaseCurrentUserProvider` removed from `firebase_auth_provider.dart`
+  3. `subGroupsByTypeProvider` removed from `sub_group_provider.dart`
+  4. `flutter analyze` and `flutter test` pass after removals
+**Plans**: TBD
+
+### Phase 10: Full Codebase Review
+**Goal**: Comprehensive codebase audit for quality, consistency, security, performance, and architectural alignment before closing milestone v1.0
+**Depends on**: Phase 9
+**Requirements**: None (quality gate)
+**Gap Closure**: Final quality gate before milestone completion
+**Success Criteria** (what must be TRUE):
+  1. No unused imports or dependencies across the codebase
+  2. Naming conventions consistent across all features (providers, services, models, screens)
+  3. No hardcoded values that should be constants or config
+  4. Error handling is comprehensive at system boundaries (Firestore calls, auth, storage)
+  5. No security issues (exposed keys, missing validation, unsafe patterns)
+  6. `flutter analyze` reports zero warnings
+  7. All files under 800 lines with high cohesion
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -166,3 +207,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 5. Cross-Event Financials | 6/7 | In Progress|  |
 | 6. Testing and Coverage | 4/5 | In Progress|  |
 | 7. Data Migration and Supabase Removal | 1/2 | In Progress|  |
+| 8. Integration & Correctness Fixes | 0/0 | Not Started|  |
+| 9. Dead Code Cleanup | 0/0 | Not Started|  |
+| 10. Full Codebase Review | 0/0 | Not Started|  |

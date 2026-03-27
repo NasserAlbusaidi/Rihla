@@ -40,7 +40,7 @@
 - [x] **FIN-01**: Per-event balance shows what each member owes/is owed within that event
 - [x] **FIN-02**: Group-level balance shows net balance per member across ALL events in the group
 - [x] **FIN-03**: User can toggle between per-event and group-level balance view
-- [x] **FIN-04**: Cross-event settle-up: "You owe Nasser 15.500 across 3 events — settle now?"
+- [ ] **FIN-04**: Cross-event settle-up: "You owe Nasser 15.500 across 3 events — settle now?"
 - [x] **FIN-05**: Group-level balance updates via write-time aggregation when settlements or expenses change
 - [x] **FIN-06**: Group spending stats: total spent across all events, per-member contribution breakdown
 - [x] **FIN-07**: Settlement optimization works at both event and group level
@@ -120,7 +120,7 @@
 | FIN-01 | Phase 5 | Complete |
 | FIN-02 | Phase 5 | Complete |
 | FIN-03 | Phase 5 | Complete |
-| FIN-04 | Phase 5 | Complete |
+| FIN-04 | Phase 8 | Pending |
 | FIN-05 | Phase 5 | Complete |
 | FIN-06 | Phase 5 | Complete |
 | FIN-07 | Phase 5 | Complete |
@@ -136,7 +136,9 @@
 **Coverage:**
 - v1 requirements: 41 total
 - Mapped to phases: 41
-- Unmapped: 0 ✓
+- Complete: 40
+- Pending: 1 (FIN-04 — reassigned to Phase 8)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-26*
