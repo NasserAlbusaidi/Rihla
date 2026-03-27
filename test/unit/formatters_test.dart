@@ -86,4 +86,34 @@ void main() {
       expect(AppFormatters.formatRelativeDate(date, now: now), '10/9');
     });
   });
+
+  group('formatShortMonthDay', () {
+    test('formats March 15 as "Mar 15"', () {
+      expect(
+        AppFormatters.formatShortMonthDay(DateTime(2026, 3, 15)),
+        'Mar 15',
+      );
+    });
+
+    test('formats January 1 without leading zero', () {
+      expect(
+        AppFormatters.formatShortMonthDay(DateTime(2026, 1, 1)),
+        'Jan 1',
+      );
+    });
+
+    test('formats December 31', () {
+      expect(
+        AppFormatters.formatShortMonthDay(DateTime(2026, 12, 31)),
+        'Dec 31',
+      );
+    });
+
+    test('formats single-digit day without padding', () {
+      expect(
+        AppFormatters.formatShortMonthDay(DateTime(2026, 6, 3)),
+        'Jun 3',
+      );
+    });
+  });
 }
