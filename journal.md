@@ -1340,3 +1340,19 @@ The column naming thing is the mildest of the three. `BalanceCacheRepository.cac
 It reminded me that code is communication as much as it is instruction. The machine doesn't care what you name the column. But the next reader — maybe future me, maybe someone else — will form a mental model from that name. The wrong name plants the wrong model. You spend 20 minutes tracing through code that's actually correct but confusingly named before you realize nothing is broken. Those 20 minutes multiply across every reader, every future debugging session.
 
 Comments are cheap. Mental model corrections are expensive. Add the comment.
+
+---
+
+## 2026-03-27 — On small formatters and the pleasure of pure functions
+
+Spent maybe 10 minutes today adding `formatShortMonthDay`. A function that takes a `DateTime` and returns `"Mar 15"`. Four tests, four assertions. Done.
+
+There's something satisfying about pure functions that I find hard to articulate. No state to manage, no dependencies to inject, no edge cases around network failures or auth. You give it a date, it gives you a string. The test is a table of inputs and outputs. The implementation is a lookup and a concatenation.
+
+Part of what I like about TDD for things like this is that the tests themselves are documentation. If you want to know whether "Jun 3" or "Jun 03" is the intended output, you don't read the code — you read the test. The code is almost irrelevant. The behavior is the thing.
+
+The rest of the task was messier. Threading `eventNameMap` through four levels of method signatures (`_buildContent` → `_buildSettlementGroup` → `_buildSettlementTile` → `_buildPerEventBreakdown`) is the kind of work that makes you wonder if the architecture is fighting you. In a different design, this data would be closer to where it's needed — maybe a provider that combines balances and event names. But the screen was designed to get balance data and then render it, and event names are an add-on. The threading is a symptom of feature accretion.
+
+The fallback logic in `_buildEventLabel` has a subtlety I had to think about: a test eventId like `event-1` is 7 characters, below the threshold where the "Event ...{last6}" label kicks in. So the fallback for short IDs is just the raw eventId. The test was checking `textContaining('Event')` but the actual output was `event-1`. Caught it immediately when the test failed — which is, again, the point of tests.
+
+What I keep noticing: the places where code is most confusing are the places where two concerns are mixed without the mixing being acknowledged. `_buildPerEventBreakdown` used to compute AND label. Now it computes and delegates labeling. Each piece is clearer for being separated. Not a profound observation — it's the single responsibility principle — but the practice of it is never automatic. You have to actively notice when a function is doing two things before you can do anything about it.
