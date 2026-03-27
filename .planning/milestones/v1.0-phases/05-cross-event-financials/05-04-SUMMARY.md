@@ -130,6 +130,16 @@ None — all four widgets receive real data via constructor params. Parent (Plan
 - Constructor APIs match the GroupBalances typedef from groupBalancesProvider exactly
 - onSettleUpTap callback wired — Plan 05-05 must pass a handler that navigates to the settle-up flow (D-22)
 
+## Self-Check: PASSED
+
+- FOUND: lib/features/groups/widgets/group_balance_hero.dart
+- FOUND: lib/features/groups/widgets/group_spending_stats.dart
+- FOUND: lib/features/groups/widgets/group_member_balance_card.dart
+- FOUND: lib/features/groups/widgets/group_activity_tile.dart
+- FOUND: .planning/phases/05-cross-event-financials/05-04-SUMMARY.md
+- FOUND: commit f76eb3d (Task 1)
+- FOUND: commit 363a936 (Task 2)
+
 ---
 *Phase: 05-cross-event-financials*
 *Completed: 2026-03-26*

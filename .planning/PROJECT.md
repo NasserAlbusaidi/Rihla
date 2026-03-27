@@ -14,37 +14,38 @@ Groups persist across events and accumulate financial history — friends settle
 
 ### Validated
 
-These exist in the current codebase and work:
-
-- ✓ Offline-first with Firestore built-in persistence + SQLite balance cache — Phase 4
-- ✓ Expense tracking with Decimal precision (OMR, 3 decimal places) — existing
-- ✓ Balance calculation across four scopes (global, subGroup, personal, custom) — existing
-- ✓ Settlement optimization (greedy min-transactions) — existing
-- ✓ Gear checklist with assignment and priority — existing
-- ✓ Sub-group logistics (car assignments, capacity) — existing
-- ✓ Name-based members (no profile table joins) — existing
-- ✓ Anonymous auth via Firebase — Phase 1
-- ✓ Activity feed per trip — existing
-- ✓ Document vault with signed URLs — existing
-- ✓ Trip memories (photo/media uploads) — existing
-- ✓ Onboarding flow — existing
-- ✓ FCM push notifications — existing
-- ✓ Multi-currency support — existing
+- ✓ Offline-first with Firestore built-in persistence + SQLite balance cache — v1.0 Phase 4
+- ✓ Expense tracking with Decimal precision (OMR, 3 decimal places) — pre-v1.0
+- ✓ Balance calculation across four scopes (global, subGroup, personal, custom) — pre-v1.0
+- ✓ Settlement optimization (greedy min-transactions) — pre-v1.0
+- ✓ Gear checklist with assignment and priority — v1.0 Phase 11
+- ✓ Sub-group logistics (car assignments, capacity) — v1.0 Phase 12
+- ✓ Name-based members (no profile table joins) — pre-v1.0
+- ✓ Anonymous auth via Firebase — v1.0 Phase 1
+- ✓ Activity feed per event — pre-v1.0
+- ✓ Document vault with signed URLs — pre-v1.0
+- ✓ Trip memories (photo/media uploads) — pre-v1.0
+- ✓ Onboarding flow — pre-v1.0
+- ✓ FCM push notifications — pre-v1.0
+- ✓ Multi-currency support — pre-v1.0
+- ✓ Persistent groups — create/join a group, reuse across events — v1.0 Phase 2
+- ✓ Group dashboard — member list, running balances across all events, group stats — v1.0 Phase 5
+- ✓ Cross-event balance tracking — net balances accumulate at the group level — v1.0 Phase 5
+- ✓ Event types with templates — Trip, Camping, Travel, Night/Day Out, Custom — v1.0 Phase 3
+- ✓ Template-driven modules — event type controls which modules appear — v1.0 Phase 3
+- ✓ Template presets — camping adds tent/sleeping bag to gear — v1.0 Phase 3
+- ✓ Custom events — user picks modules manually, no preset content — v1.0 Phase 3
+- ✓ Supabase → Firestore migration — supabase_flutter fully removed, Firebase-only — v1.0 Phase 7
+- ✓ Firestore security rules — replace RLS with path-based Firestore rules — v1.0 Phase 1
+- ✓ Firestore realtime listeners — replace unreliable Supabase Realtime — v1.0 Phase 4
+- ✓ Strict test coverage — 80%+ coverage, CI-enforced, 624 tests — v1.0 Phase 6
+- ✓ Event timeline in group — chronological list of past/upcoming events — v1.0 Phase 3
+- ✓ Cross-event settle-up with optimization — v1.0 Phase 5
+- ✓ Group activity log — v1.0 Phase 5
 
 ### Active
 
-- [ ] Persistent groups — create/join a group, reuse across events
-- [ ] Group dashboard — member list, running balances across all events, group stats
-- [ ] Cross-event balance tracking — net balances accumulate at the group level
-- [ ] Event types with templates — Trip, Camping, Travel, Night/Day Out, Custom
-- [ ] Template-driven modules — event type controls which modules appear (ledger, gear, logistics, vault, etc.)
-- [ ] Template presets — event type pre-fills relevant content (camping adds tent/sleeping bag to gear)
-- [ ] Custom events — user picks modules manually, no preset content
-- ✓ Supabase → Firestore migration — supabase_flutter fully removed, Firebase-only — Phase 7
-- ✓ Firestore security rules — replace RLS with path-based Firestore rules — Phase 1
-- ✓ Firestore realtime listeners — replace unreliable Supabase Realtime — Phase 4
-- [ ] Strict test coverage — TDD enforcement, 80%+ coverage, unit/widget/integration tests
-- [ ] Event timeline in group — chronological list of past/upcoming events
+(No active requirements — next milestone not yet planned)
 
 ### Out of Scope
 
@@ -56,13 +57,14 @@ These exist in the current codebase and work:
 
 ## Context
 
-- **Existing codebase**: ~100 Dart files, feature-first architecture (auth, trip, ledger, gear, logistics, vault, activity, home, settings, memories, onboarding)
-- **Current architecture**: Riverpod 2.x state management, GoRouter + Navigator.push routing, SQLite offline cache, Firebase Firestore backend (Supabase fully removed in Phase 7)
-- **Pain points driving change**: Supabase RLS complexity (4 fix migrations), unreliable Realtime subscriptions, no persistent group concept — all resolved by Firebase migration
-- **Firebase fully initialized**: firebase_core 4.x, cloud_firestore 6.x, firebase_auth 6.x, firebase_storage 13.x. Firebase-only auth (anonymous). Emulator configured (Firestore:8080, Auth:9099)
-- **Offline-first architecture**: OfflineRepository → CacheService → SyncService pipeline. SQLite v6 extended with groups/group_members/group_ledger tables. Firestore offline persistence coexists alongside SQLite
-- **Financial precision**: All money math uses `Decimal` package, currency is OMR (3 decimal places). This must not regress during migration
-- **User base**: Small, Oman-focused. Anonymous auth means no user accounts to migrate — just data
+- **Codebase**: 24,895 LOC Dart across ~130 files, feature-first architecture (auth, trip, ledger, gear, logistics, vault, activity, home, settings, memories, onboarding, groups, events)
+- **Architecture**: Riverpod 2.x state management, GoRouter + Navigator.push routing, SQLite offline cache, Firebase Firestore backend (Supabase fully removed)
+- **Backend**: Firebase-only — firebase_core 4.x, cloud_firestore 6.x, firebase_auth 6.x, firebase_storage 13.x. Anonymous auth. Emulator configured (Firestore:8080, Auth:9099)
+- **Data layer**: FirestoreRepository base class → 9 services. asyncMap SQLite side-write pipeline. BalanceCacheRepository for fast local balance queries
+- **Financial precision**: All money math uses `Decimal` package, stored as integer fils in Firestore via MoneySerializer. Currency is OMR (3 decimal places)
+- **Testing**: 624 tests, 80%+ coverage CI-enforced, fake_cloud_firestore for integration tests
+- **User base**: Small, Oman-focused. Anonymous auth (no user accounts)
+- **v1.0 shipped**: 2026-03-28 — groups, events, cross-event financials, full Firestore migration
 
 ## Constraints
 
@@ -70,21 +72,23 @@ These exist in the current codebase and work:
 - **Testing**: TDD mandatory. 80%+ coverage. No shipping without tests
 - **Financial precision**: Decimal package for all money. OMR 3 decimal places. No floating point
 - **Offline-first**: App must work without connectivity. Firestore offline persistence + SQLite cache
-- **Migration complete**: Supabase fully removed (Phase 7). Old trip data abandoned per D-01; users start fresh with groups+events
+- **Migration complete**: Supabase fully removed (v1.0 Phase 7). Old trip data abandoned per D-01; users start fresh with groups+events
 - **Anonymous auth**: Keep frictionless entry. Firebase anonymous auth replaces Supabase anonymous auth
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Groups wrap trips (not replace) | Preserves existing trip experience, adds layer on top | — Pending |
-| Firestore over Realtime DB | Better querying, offline support, scales well | Validated in Phase 01 |
-| Both event-level and group-level ledger | Cross-event balances are the killer feature | — Pending |
-| Fine-grained phases | Complex migration + new features need careful sequencing | Validated in Phase 01 |
-| Keep SQLite alongside Firestore | Fast local reads, existing offline architecture works well | Validated in Phase 01 |
-| Integer subunits for Firestore money | Store amounts as integer fils/cents, not strings or floats | Decided in Phase 01 — MoneySerializer uses currency-aware scaling |
-| Dual-auth bootstrap | Firebase anon auth runs alongside Supabase during migration | Decided in Phase 01 — completed in Phase 07: Supabase removed, Firebase-only |
-| Abandon old trip data (D-01) | Recovery flow adds scope without user value; users start fresh | Decided in Phase 07 — MIG-06 descoped |
+| Groups wrap trips (not replace) | Preserves existing trip experience, adds layer on top | Validated v1.0 — Trip facade bridges events to trip-based module screens |
+| Firestore over Realtime DB | Better querying, offline support, scales well | Validated v1.0 — 9 services on Firestore, realtime listeners working |
+| Both event-level and group-level ledger | Cross-event balances are the killer feature | Validated v1.0 — groupBalancesProvider aggregates across all events |
+| Fine-grained phases | Complex migration + new features need careful sequencing | Validated v1.0 — 13 phases, each independently verifiable |
+| Keep SQLite alongside Firestore | Fast local reads, existing offline architecture works well | Validated v1.0 — BalanceCacheRepository serves balance queries from SQLite |
+| Integer subunits for Firestore money | Store amounts as integer fils/cents, not strings or floats | Validated v1.0 — MoneySerializer uses currency-aware scaling, zero drift |
+| Dual-auth bootstrap | Firebase anon auth runs alongside Supabase during migration | Completed v1.0 Phase 7 — Supabase removed, Firebase-only |
+| Abandon old trip data (D-01) | Recovery flow adds scope without user value; users start fresh | Decided v1.0 Phase 7 — MIG-06 descoped |
+| asyncMap SQLite side-write | Keep SQLite in sync via Firestore snapshot pipeline | Validated v1.0 Phase 4 — reliable side-write, offline tests pass |
+| Riverpod 2.x (defer 3.x) | Breaking changes compound risk with Firestore migration | Validated v1.0 — stable throughout; 3.x upgrade deferred to future milestone |
 
 ## Evolution
 
@@ -104,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after Phase 12 (expense-logistics-provider-rewiring) completion — payer-override dropdown fixed (isLeader from event.createdBy), currency derivation from eventDetailProvider, userTripsProvider deleted, all 6 logistics debugPrint stubs wired to SubGroupService, updateSubGroup added, capacity passed to createSubGroup. FIN-01 and EVT-08 gaps closed. 624 tests passing.*
+*Last updated: 2026-03-28 after v1.0 milestone completion — 13 phases shipped, 41/41 requirements satisfied, 624 tests passing, 80%+ coverage.*
