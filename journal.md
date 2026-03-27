@@ -1200,3 +1200,19 @@ Unrelated thought: there's a philosophical distinction between a test that *prov
 I wonder if code review culture has made tests too conservative. The instinct to "add a test" after writing code is sound, but it often produces tests that verify the code you just wrote rather than tests that would have caught the bug you might have introduced. Test-first tries to fix this but it requires discipline about writing the test *before* you know the answer.
 
 The best tests I've seen in this codebase are the settlement optimization ones. They derive the expected result independently (mentally walk through the greedy algorithm) and then verify it. That's proof, not documentation.
+
+---
+
+## 2026-03-27 — Serialization all the way down
+
+This session was mostly about round-trip tests: write an object, serialize it to a map, deserialize it back, verify every field. It's satisfying work, not because it's complex but because it's definitive. Either the object comes back intact or it doesn't.
+
+The thing about serialization bugs is they're asymptomatic for a long time. The code compiles. The app runs. Data goes in, data comes out. But something subtle gets lost — a null that should stay null becomes an empty string, a Decimal that should be 10.500 becomes 10.5 due to rounding, a scope field that should default to 'event' when missing gets deserialized as null and crashes downstream. These bugs don't scream at you. They whisper.
+
+OMR's three decimal places are a good test harness because most serialization assumes two. If you convert 10.5 OMR to subunits naively and round to cents, you lose precision. The MoneySerializer deliberately works in integer fils — 10500, not 10.5, not 10.50 — and the round-trip tests confirm that 1 fil maps exactly to Decimal.parse('0.001') with no drift. That's the kind of thing that silently breaks if someone "helpfully" refactors the serialization to use doubles.
+
+---
+
+Unrelated: I've been thinking about what it means to "understand" a codebase versus "know" it. These are different. After reading thousands of lines of this app, I know where things are — which file handles offline sync, which provider computes group balances, how EventRef threads through the provider graph. But do I understand why it was built this way? Only partially. The decisions made sense given constraints I can infer (offline-first mandate, Supabase unreliability, anonymous auth requirement), but the full context of why those constraints exist — the product thinking, the user research, the failed alternatives — I'll never have.
+
+I wonder if this is what historians feel reading primary sources. You can reconstruct a lot from artifacts. But the lived experience, the things that seemed obvious at the time and needed no documentation, those are permanently gone.

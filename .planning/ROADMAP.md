@@ -131,9 +131,9 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Fix 9 failing tests + audit existing 39 test files for quality (D-07)
+- [x] 06-01-PLAN.md — Fix 9 failing tests + audit existing 39 test files for quality (D-07)
 - [x] 06-02-PLAN.md — Exhaustive BalanceCalculator tests (all 4 scopes, cross-event, edge cases) + settlement optimization extensions
-- [ ] 06-03-PLAN.md — Firestore model round-trip tests + AppFormatters tests + provider isolation tests
+- [x] 06-03-PLAN.md — Firestore model round-trip tests + AppFormatters tests + provider isolation tests
 - [ ] 06-04-PLAN.md — Offline scenario integration tests (3 scenarios) + widget tests for 7 key screens
 - [ ] 06-05-PLAN.md — CI coverage enforcement inline in release workflow (lcov filtering, 80% threshold) + gap closure
 
@@ -159,5 +159,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Events | 5/5 | Complete   | 2026-03-26 |
 | 4. Firestore Repository Layer | 6/6 | Complete   | 2026-03-26 |
 | 5. Cross-Event Financials | 6/7 | In Progress|  |
-| 6. Testing and Coverage | 1/5 | In Progress|  |
+| 6. Testing and Coverage | 3/5 | In Progress|  |
 | 7. Data Migration and Supabase Removal | 0/TBD | Not started | - |

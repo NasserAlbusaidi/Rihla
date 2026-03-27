@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-03-27T02:28:14.602Z"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-03-27T02:45:19.970Z"
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 30
-  completed_plans: 26
+  completed_plans: 28
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 06 (testing-and-coverage) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Plan: 2 of 5
 | Phase 05 P05 | 8 | 2 tasks | 5 files |
 | Phase 05 P06 | 4 | 2 tasks | 3 files |
 | Phase 06 P02 | 4 | 2 tasks | 2 files |
+| Phase 06 P03 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,8 @@ Recent decisions affecting current work:
 - [Phase 05]: GroupSettleUpScreen uses ConsumerStatefulWidget for ScrollController to auto-scroll to preSelectedMemberId tile (D-22)
 - [Phase 06]: BalanceCalculator does not filter is_deleted expenses — caller responsibility to pre-filter; documented via test
 - [Phase 06]: Over-settlement (paying more than owed) correctly flips creditor/debtor roles — verified via sign-direction assertions in 06-02 tests
+- [Phase 06]: Group.fromDoc(DocumentSnapshot) tested via FakeFirebaseFirestore; Group.fromMap/toMap tests the SQLite path — both serialization paths covered
+- [Phase 06]: Direct map testing for fromFirestore/toFirestore (no FakeFirestore overhead) is faster and equally valid for models that take Map params
 
 ### Pending Todos
 
@@ -155,6 +158,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T02:28:14.599Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-03-27T02:45:19.967Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
