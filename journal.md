@@ -1180,3 +1180,23 @@ This isn't unique to coverage. Most aggregate metrics flatten meaningful distinc
 Nine failing tests in the current suite. That's the first job of Phase 6 — not writing new tests, but making the existing ones green. One test file fails to compile because it imports a widget that was deleted months ago (`CommandCenter` at a path that no longer exists). These are the kind of thing that silently accumulate when people stop running the full suite. The code drifts, the test stays frozen, and they stop telling you anything useful.
 
 There's something philosophically interesting about a test that can't even compile. It's not wrong about the behavior — it can't be, it never ran. It's a record of intent from a codebase that no longer exists. A fossil.
+
+---
+
+## 2026-03-27 — Fixing the fossils
+
+Spent this session cleaning up those nine failures. They came from three distinct causes: one deleted widget, Firebase initialization not being mocked at the right layer, and text assertions against UI components that render the same text in multiple nodes.
+
+The Firebase one was the most instructive. The tests expected that `container.read(groupServiceProvider)` would work in a unit test, but `groupServiceProvider` internally constructs a `GroupService` whose base class immediately calls `FirebaseFirestore.instance`. So the test blew up before it could even express its intent. The fix is to override the provider with a `withFirestore` constructor that injects `FakeFirebaseFirestore` — the Riverpod `Ref` comes from the container, the fake Firestore is injected directly. Clean separation.
+
+What bugs me a little: two of the tests were just checking `isNotNull` and `isA<GroupService>()` — verifying that the service can be constructed. That's not a behavior test, it's a compilation test. The test suite has too many of those. They pass when nothing is wrong and they also pass when everything is wrong as long as the class still exists. Audit notes drafted for Plan 03 executor to replace them with real behavior tests.
+
+The `findsOneWidget` failures were simpler: Flutter's EventCard renders the event name in multiple `Text` widgets (different font sizes for accessibility/tooltip layers). The test expected exactly one; the widget renders three. Use `findsWidgets` and move on. These failures are almost always the test being too prescriptive about layout, not the code being wrong.
+
+---
+
+Unrelated thought: there's a philosophical distinction between a test that *proves something works* and a test that *documents that something was considered*. Most test suites have both, mixed together with no label. The `GroupService.new is not null` style tests are documentation, not proof. They're fine to have, but you should know what you have. The coverage metric doesn't distinguish between them.
+
+I wonder if code review culture has made tests too conservative. The instinct to "add a test" after writing code is sound, but it often produces tests that verify the code you just wrote rather than tests that would have caught the bug you might have introduced. Test-first tries to fix this but it requires discipline about writing the test *before* you know the answer.
+
+The best tests I've seen in this codebase are the settlement optimization ones. They derive the expected result independently (mentally walk through the greedy algorithm) and then verify it. That's proof, not documentation.
