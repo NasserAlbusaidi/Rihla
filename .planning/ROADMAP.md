@@ -213,7 +213,7 @@ Plans:
 **Goal**: All gear_screen.dart write mutations (add, delete, toggle packed, set priority) call through to GearService instead of logging to debugPrint
 **Depends on**: Phase 10
 **Requirements**: EVT-08 (gear writes)
-**Gap Closure**: Closes Integration #1 (gear_screen → GearService), Flow #1 (gear item management) from v1.0-MILESTONE-AUDIT.md
+**Gap Closure**: Closes Integration #1 (gear_screen -> GearService), Flow #1 (gear item management) from v1.0-MILESTONE-AUDIT.md
 **Success Criteria** (what must be TRUE):
   1. Tapping "Add Item" on the gear screen creates a new gear item in Firestore via GearService
   2. Swiping to delete a gear item removes it from Firestore via GearService
@@ -235,7 +235,11 @@ Plans:
   2. The expense form uses the event's or group's currency instead of hardcoded OMR fallback
   3. Logistics screen removeMember callback calls SubGroupService to remove the member
   4. All fixes have corresponding tests
-**Plans**: 0 plans
+**Plans**: 2 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Fix isLeader derivation + currency getter + delete userTripsProvider + payer/currency tests
+- [ ] 12-02-PLAN.md — Wire 6 logistics screen stubs to SubGroupService + add updateSubGroup method + widget tests
 
 ### Phase 13: Final Cleanup
 **Goal**: Remove remaining orphaned providers, clean stale comments, and update CLAUDE.md documentation for undocumented trip* providers
@@ -267,5 +271,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Dead Code Cleanup | 1/1 | Complete   | 2026-03-27 |
 | 10. Full Codebase Review | 4/4 | Complete    | 2026-03-27 |
 | 11. Gear Write Mutations | 1/1 | Complete    | 2026-03-27 |
-| 12. Expense & Logistics Provider Rewiring | 0/0 | Not Started |  |
+| 12. Expense & Logistics Provider Rewiring | 0/2 | Not Started |  |
 | 13. Final Cleanup | 0/0 | Not Started |  |
