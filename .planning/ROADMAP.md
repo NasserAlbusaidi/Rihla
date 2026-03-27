@@ -180,11 +180,10 @@ Plans:
   2. `firebaseAuthStateProvider` and `firebaseCurrentUserProvider` removed from `firebase_auth_provider.dart`
   3. `subGroupsByTypeProvider` removed from `sub_group_provider.dart`
   4. `flutter analyze` and `flutter test` pass after removals
-**Plans**: 2 plans
+**Plans**: 1 plan
 
 Plans:
-- [ ] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
-- [x] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
+- [ ] 09-01-PLAN.md — Remove 3 orphaned providers (tripBalancesProvider, firebaseAuthStateProvider/firebaseCurrentUserProvider, subGroupsByTypeProvider) + delete empty file
 
 ### Phase 10: Full Codebase Review
 **Goal**: Comprehensive codebase audit for quality, consistency, security, performance, and architectural alignment before closing milestone v1.0
@@ -199,11 +198,7 @@ Plans:
   5. No security issues (exposed keys, missing validation, unsafe patterns)
   6. `flutter analyze` reports zero warnings
   7. All files under 800 lines with high cohesion
-**Plans**: 2 plans
-
-Plans:
-- [ ] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
-- [ ] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
+**Plans**: [To be planned]
 
 ## Progress
 
@@ -220,5 +215,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 6. Testing and Coverage | 4/5 | In Progress|  |
 | 7. Data Migration and Supabase Removal | 1/2 | In Progress|  |
 | 8. Integration & Correctness Fixes | 0/2 | In Progress|  |
-| 9. Dead Code Cleanup | 0/0 | Not Started|  |
+| 9. Dead Code Cleanup | 0/1 | Not Started|  |
 | 10. Full Codebase Review | 0/0 | Not Started|  |
