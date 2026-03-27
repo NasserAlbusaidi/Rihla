@@ -40,9 +40,9 @@ These exist in the current codebase and work:
 - [ ] Template-driven modules — event type controls which modules appear (ledger, gear, logistics, vault, etc.)
 - [ ] Template presets — event type pre-fills relevant content (camping adds tent/sleeping bag to gear)
 - [ ] Custom events — user picks modules manually, no preset content
-- [ ] Supabase → Firestore migration — replace Supabase backend with Firebase Firestore
-- [ ] Firestore security rules — replace RLS with path-based Firestore rules
-- [ ] Firestore realtime listeners — replace unreliable Supabase Realtime
+- ✓ Supabase → Firestore migration — supabase_flutter fully removed, Firebase-only — Phase 7
+- ✓ Firestore security rules — replace RLS with path-based Firestore rules — Phase 1
+- ✓ Firestore realtime listeners — replace unreliable Supabase Realtime — Phase 4
 - [ ] Strict test coverage — TDD enforcement, 80%+ coverage, unit/widget/integration tests
 - [ ] Event timeline in group — chronological list of past/upcoming events
 
@@ -57,9 +57,9 @@ These exist in the current codebase and work:
 ## Context
 
 - **Existing codebase**: ~100 Dart files, feature-first architecture (auth, trip, ledger, gear, logistics, vault, activity, home, settings, memories, onboarding)
-- **Current architecture**: Riverpod 2.x state management, GoRouter + Navigator.push routing, SQLite offline cache with sync queue, Supabase backend
-- **Pain points driving change**: Supabase RLS complexity (4 fix migrations), unreliable Realtime subscriptions, no persistent group concept
-- **Firebase fully initialized**: firebase_core 4.x, cloud_firestore 6.x, firebase_auth 6.x. Dual-auth bootstrap (Firebase → Supabase). Emulator configured (Firestore:8080, Auth:9099)
+- **Current architecture**: Riverpod 2.x state management, GoRouter + Navigator.push routing, SQLite offline cache, Firebase Firestore backend (Supabase fully removed in Phase 7)
+- **Pain points driving change**: Supabase RLS complexity (4 fix migrations), unreliable Realtime subscriptions, no persistent group concept — all resolved by Firebase migration
+- **Firebase fully initialized**: firebase_core 4.x, cloud_firestore 6.x, firebase_auth 6.x, firebase_storage 13.x. Firebase-only auth (anonymous). Emulator configured (Firestore:8080, Auth:9099)
 - **Offline-first architecture**: OfflineRepository → CacheService → SyncService pipeline. SQLite v6 extended with groups/group_members/group_ledger tables. Firestore offline persistence coexists alongside SQLite
 - **Financial precision**: All money math uses `Decimal` package, currency is OMR (3 decimal places). This must not regress during migration
 - **User base**: Small, Oman-focused. Anonymous auth means no user accounts to migrate — just data
@@ -70,7 +70,7 @@ These exist in the current codebase and work:
 - **Testing**: TDD mandatory. 80%+ coverage. No shipping without tests
 - **Financial precision**: Decimal package for all money. OMR 3 decimal places. No floating point
 - **Offline-first**: App must work without connectivity. Firestore offline persistence + SQLite cache
-- **Migration safety**: Supabase → Firestore migration must not lose existing user data
+- **Migration complete**: Supabase fully removed (Phase 7). Old trip data abandoned per D-01; users start fresh with groups+events
 - **Anonymous auth**: Keep frictionless entry. Firebase anonymous auth replaces Supabase anonymous auth
 
 ## Key Decisions
@@ -83,7 +83,8 @@ These exist in the current codebase and work:
 | Fine-grained phases | Complex migration + new features need careful sequencing | Validated in Phase 01 |
 | Keep SQLite alongside Firestore | Fast local reads, existing offline architecture works well | Validated in Phase 01 |
 | Integer subunits for Firestore money | Store amounts as integer fils/cents, not strings or floats | Decided in Phase 01 — MoneySerializer uses currency-aware scaling |
-| Dual-auth bootstrap | Firebase anon auth runs alongside Supabase during migration | Decided in Phase 01 — sequential init in main.dart |
+| Dual-auth bootstrap | Firebase anon auth runs alongside Supabase during migration | Decided in Phase 01 — completed in Phase 07: Supabase removed, Firebase-only |
+| Abandon old trip data (D-01) | Recovery flow adds scope without user value; users start fresh | Decided in Phase 07 — MIG-06 descoped |
 
 ## Evolution
 
@@ -103,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after Phase 06 (testing-and-coverage) completion — 598 tests, 80% filtered coverage, CI enforcement active*
+*Last updated: 2026-03-27 after Phase 07 (data-migration-and-supabase-removal) completion — supabase_flutter fully removed, 590 tests passing, Firebase-only backend*
