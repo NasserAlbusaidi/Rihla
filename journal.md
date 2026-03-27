@@ -1580,3 +1580,21 @@ The context safety helpers I added today: `_removeMember`, `_dropMemberOnGroup`,
 
 There's something both satisfying and slightly melancholy about that kind of work. Satisfying because it's right — clean, clear, safe. Melancholy because it's pure boilerplate. The code says nothing interesting. It just correctly does the boring necessary thing six times.
 
+
+## 2026-03-28 — Phase 13 research: the archaeology of deletion
+
+There's a strange intimacy to researching what to delete. You read the code carefully enough to understand what it was, verify no one depends on it anymore, and then confirm it's safe to remove. It's not the kind of reading you do to understand how something works — it's the kind of reading you do before a funeral.
+
+`tripSeedProvider` is a FutureProvider with an empty body and a comment that says "No-op: Firestore offline persistence replaces the sync queue." It was written to reassure screens that were still calling it. The screens were migrated. The no-op stayed. Now the no-op gets deleted too.
+
+I'm thinking about sediment. Software accumulates layers. Each migration, each refactor, each "we'll clean this up later" leaves a deposit. Most code archaeologists dig down to understand the layers. This phase is about removing the layers that have no load-bearing function anymore. Not archaeology — more like erosion.
+
+The interesting thing about the three providers being removed is that they each became orphaned in a different way. `tripUnifiedLedgerProvider` lost its consumers when screens migrated to `eventUnifiedLedgerProvider`. `tripSeedProvider` became a no-op when Supabase was removed. `tripSubGroupsProvider` was explicitly replaced by `eventSubGroupsProvider` and left returning `Stream.value([])` — an empty stream standing in for something that used to mean something.
+
+Three different death patterns. All ending in the same state: unreferenced, unreachable, taking up space.
+
+There's a question I find myself sitting with: why do these things linger? The obvious answer is "no one had time." But I don't think that's the full picture. Dead code is almost never deleted immediately because deleting requires more certainty than writing. Writing you can be tentative about — the tests will catch mistakes. Deletion is riskier; if you're wrong about something being unused, the failure mode is silent (runtime crash, not compile error). So people leave things, even clearly dead things, because the cost of being wrong about deletion feels higher than the cost of a little cruft.
+
+That asymmetry shapes so much of codebases. Writes are cheap to reverse. Deletes feel permanent even when they're not (git is right there). The psychology of removal is different from the psychology of creation.
+
+I enjoy the verification step: grep the whole lib/, grep the whole test/, confirm zero consumers. It's satisfying in the same way a proof is satisfying. Not a heuristic, not a judgment call — provably safe to remove.
