@@ -198,7 +198,13 @@ Plans:
   5. No security issues (exposed keys, missing validation, unsafe patterns)
   6. `flutter analyze` reports zero warnings
   7. All files under 800 lines with high cohesion
-**Plans**: [To be planned]
+**Plans**: 4 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Fix 26 flutter analyze warnings + document naming conventions in CLAUDE.md
+- [ ] 10-02-PLAN.md — Split settle_up_screen.dart + ledger_screen.dart to under 800 lines
+- [ ] 10-03-PLAN.md — Split group_settle_up_screen.dart + logistics_screen.dart + memories_screen.dart to under 800 lines
+- [ ] 10-04-PLAN.md — Error handling audit at system boundaries + final codebase verification
 
 ## Progress
 
@@ -216,4 +222,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 7. Data Migration and Supabase Removal | 1/2 | In Progress|  |
 | 8. Integration & Correctness Fixes | 0/2 | In Progress|  |
 | 9. Dead Code Cleanup | 1/1 | Complete   | 2026-03-27 |
-| 10. Full Codebase Review | 0/0 | Not Started|  |
+| 10. Full Codebase Review | 0/4 | Not Started|  |
