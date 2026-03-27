@@ -10,16 +10,11 @@ import '../../features/groups/screens/join_group_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import '../../features/trip/screens/create_trip_screen.dart';
-import '../../features/trip/screens/join_trip_screen.dart';
-
 /// Route names for type-safe navigation
 class AppRoutes {
   static const String splash = '/';
   static const String onboarding = '/onboarding';
   static const String home = '/home';
-  static const String createTrip = '/create-trip';
-  static const String joinTrip = '/join-trip';
   static const String settings = '/settings';
   // Groups routes (Phase 2)
   static const String createGroup = '/create-group';
@@ -81,54 +76,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const HomeScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      ),
-
-      // Create Trip
-      GoRoute(
-        path: AppRoutes.createTrip,
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const CreateTripScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: const Offset(0, 1),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    ),
-                  ),
-              child: child,
-            );
-          },
-        ),
-      ),
-
-      // Join Trip
-      GoRoute(
-        path: AppRoutes.joinTrip,
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const JoinTripScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: const Offset(0, 1),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    ),
-                  ),
-              child: child,
-            );
           },
         ),
       ),

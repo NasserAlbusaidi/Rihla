@@ -73,7 +73,6 @@ jobs:
             'lib/features/auth/*' \
             'lib/features/home/*' \
             'lib/core/services/cache_service.dart' \
-            'lib/core/services/lazy_migration_service.dart' \
             'lib/core/services/notification_service.dart' \
             'lib/core/services/haptic_service.dart' \
             'lib/core/services/settings_service.dart' \
@@ -81,7 +80,6 @@ jobs:
             'lib/core/router/app_router.dart' \
             'lib/core/theme/app_theme.dart' \
             'lib/core/theme/error_widgets.dart' \
-            'lib/core/config/supabase_config.dart' \
             'lib/core/config/firebase_config.dart' \
             'lib/core/config/app_metadata.dart' \
             'lib/core/models/app_settings_model.dart' \

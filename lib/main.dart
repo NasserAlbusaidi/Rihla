@@ -5,7 +5,6 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/config/firebase_config.dart';
-import 'core/config/supabase_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/settings_provider.dart';
@@ -23,12 +22,8 @@ void main() async {
     appRunner: () async {
       // Initialize Firebase (includes Firestore offline persistence settings)
       await FirebaseConfig.initialize();
-      // Establish Firebase anonymous auth before Supabase (D-06)
+      // Establish Firebase anonymous auth
       await FirebaseConfig.ensureAnonymousSession();
-
-      // Initialize Supabase (dual auth — existing features still use Supabase)
-      await SupabaseConfig.initialize();
-      await SupabaseConfig.ensureAnonymousSession();
 
       // Initialize SharedPreferences
       final prefs = await SharedPreferences.getInstance();
