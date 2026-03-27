@@ -104,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after Phase 08 (integration-correctness-fixes) completion — custom split participants fixed (EVT-08), settle-up event names fixed (FIN-04), trip_id column documentation added*
+*Last updated: 2026-03-27 after Phase 09 (dead-code-cleanup) completion — 3 orphaned providers removed (tripBalancesProvider, firebaseAuthStateProvider/firebaseCurrentUserProvider, subGroupsByTypeProvider), firebase_auth_provider.dart deleted*
