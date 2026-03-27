@@ -22,13 +22,6 @@ final tripErrorProvider = StateProvider<String?>((ref) => null);
 /// Current selected trip.
 final currentTripProvider = StateProvider<Trip?>((ref) => null);
 
-/// User's trips — reads from SQLite cache.
-///
-/// @Deprecated('Will be migrated to Firestore stream in 04-05.')
-final userTripsProvider = StreamProvider<List<Trip>>((ref) async* {
-  yield await CacheService.getCachedTrips();
-});
-
 /// Trip participants — reads from SQLite cache.
 ///
 /// @Deprecated('Will be migrated to Firestore stream in 04-05.')

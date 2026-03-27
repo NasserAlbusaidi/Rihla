@@ -14,7 +14,6 @@ import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
-import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
@@ -59,19 +58,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String? _receiptPath;
   bool _isUploadingReceipt = false;
 
-  /// Get the trip's currency code
+  /// Get the event's currency code
   String get _tripCurrency {
-    final trips = ref.read(userTripsProvider).valueOrNull;
-    debugPrint('[EXPENSE] _tripCurrency: tripId=${widget.eventId}, '
-        'userTrips=${trips?.length ?? 0}');
-    if (trips == null) return 'OMR';
-    final trip = trips.cast<Trip?>().firstWhere(
-      (t) => t!.id == widget.eventId,
-      orElse: () => null,
-    );
-    debugPrint('[EXPENSE] _tripCurrency: found=${trip != null}, '
-        'currency=${trip?.currency ?? "OMR (default)"}');
-    return trip?.currency ?? 'OMR';
+    return ref
+        .read(eventDetailProvider(
+          (groupId: widget.groupId, eventId: widget.eventId),
+        ))
+        .valueOrNull
+        ?.currency ?? 'OMR';
   }
 
   @override
@@ -175,15 +169,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
     debugPrint('[EXPENSE] _submit: currentParticipant=${currentParticipant?.id ?? "NULL"}');
     if (currentParticipant == null) {
-      // Log additional context to diagnose
-      final trips = ref.read(userTripsProvider).valueOrNull;
-      debugPrint('[EXPENSE] _submit: userTrips count=${trips?.length ?? 0}');
-      if (trips != null) {
-        for (final t in trips) {
-          debugPrint('[EXPENSE]   trip: id=${t.id}, name=${t.name}, leaderId=${t.leaderId}');
-        }
-      }
-      // Debug: tripLogisticsParticipantsProvider removed — participants now derived from Event model
       debugPrint('[EXPENSE] _submit: currentParticipant is null, eventId=${widget.eventId}');
       final user = ref.read(currentUserProvider);
       debugPrint('[EXPENSE] _submit: currentUser userId=${user?.uid}');

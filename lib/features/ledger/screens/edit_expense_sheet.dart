@@ -47,15 +47,14 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   // Payer selection (for leaders)
   String? _selectedPayerId;
 
-  /// Get the trip's currency code
+  /// Get the event's currency code
   String get _tripCurrency {
-    final trips = ref.read(userTripsProvider).valueOrNull;
-    if (trips == null) return 'OMR';
-    final trip = trips.cast<Trip?>().firstWhere(
-      (t) => t!.id == widget.eventId,
-      orElse: () => null,
-    );
-    return trip?.currency ?? 'OMR';
+    return ref
+        .read(eventDetailProvider(
+          (groupId: widget.groupId, eventId: widget.eventId),
+        ))
+        .valueOrNull
+        ?.currency ?? 'OMR';
   }
 
   @override
@@ -353,22 +352,20 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     final currentParticipant = ref.watch(
       currentParticipantProvider(widget.eventId),
     );
-    final trips = ref.watch(userTripsProvider).valueOrNull;
-    final trip = trips?.cast<Trip?>().firstWhere(
-      (t) => t!.id == widget.eventId,
-      orElse: () => null,
-    );
-    final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.uid;
-
-    if (!isLeader) return const SizedBox.shrink();
-
-    // Use eventLogisticsParticipantsProvider which derives participants directly
-    // from the Firestore Event document — no SQLite lookup needed.
+    // Derive isLeader from event.createdBy — no SQLite/Trip lookup needed
     final eventAsync = ref.watch(eventDetailProvider(
       (groupId: widget.groupId, eventId: widget.eventId),
     ));
     final event = eventAsync.valueOrNull;
     if (event == null) return const SizedBox.shrink();
+
+    final currentUid = ref.watch(currentUserProvider)?.uid;
+    final isLeader = currentUid != null && event.createdBy == currentUid;
+
+    if (!isLeader) return const SizedBox.shrink();
+
+    // Use eventLogisticsParticipantsProvider which derives participants directly
+    // from the Firestore Event document — no SQLite lookup needed.
     final participants = ref.watch(eventLogisticsParticipantsProvider(event));
 
     if (participants.isEmpty) return const SizedBox.shrink();

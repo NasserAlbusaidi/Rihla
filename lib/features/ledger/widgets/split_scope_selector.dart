@@ -7,7 +7,6 @@ import '../../../core/services/haptic_service.dart';
 import '../../events/models/event_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
-import '../../trip/providers/trip_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/expense_model.dart';
 
@@ -197,9 +196,8 @@ class _CustomParticipantSelector extends ConsumerWidget {
     // from the Firestore Event document — no SQLite lookup needed.
     final participants = ref.watch(eventLogisticsParticipantsProvider(event));
     final participantsAsync = AsyncValue.data(participants);
-    final currentParticipant = ref.watch(
-      currentParticipantProvider(event.id),
-    );
+    // Use currentUid directly — participant IDs are Firebase UIDs
+    final currentUid = ref.watch(currentUserProvider)?.uid;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,13 +245,13 @@ class _CustomParticipantSelector extends ConsumerWidget {
             },
             data: (participants) {
               debugPrint('[SPLIT] _CustomParticipantSelector: ${participants.length} participants, '
-                  'currentParticipant=${currentParticipant?.id}');
+                  'currentUid=$currentUid');
               for (final p in participants) {
                 debugPrint('[SPLIT]   p: id=${p.id}, userId=${p.userId}, name=${p.displayName}');
               }
               // Exclude current user from selection (they're auto-included)
               final otherParticipants = participants
-                  .where((p) => p.id != currentParticipant?.id)
+                  .where((p) => p.id != currentUid)
                   .toList();
               debugPrint('[SPLIT]   otherParticipants: ${otherParticipants.length}');
 
@@ -375,31 +373,22 @@ class _PayerSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentParticipant = ref.watch(
-      currentParticipantProvider(event.id),
-    );
-    final trip = ref
-        .watch(userTripsProvider)
-        .valueOrNull
-        ?.cast<Trip?>()
-        .firstWhere(
-          (t) => t!.id == event.id,
-          orElse: () => null,
-        );
     // Use eventLogisticsParticipantsProvider which derives participants directly
     // from the Firestore Event document — no SQLite lookup needed.
     final participants = ref.watch(eventLogisticsParticipantsProvider(event));
 
-    // Check if current user is the leader
-    final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.uid;
+    // Check if current user is the event creator (leader)
+    final currentUid = ref.watch(currentUserProvider)?.uid;
+    final isLeader = currentUid != null && event.createdBy == currentUid;
 
     // If not leader or no participants, don't show
     if (!isLeader || participants.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // Default to current participant if not set
-    final effectivePayerId = selectedPayerId ?? currentParticipant?.id;
+    // Default to current user if no explicit payer set
+    // Participant IDs are Firebase UIDs, so currentUid works directly
+    final effectivePayerId = selectedPayerId ?? currentUid;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,7 +418,7 @@ class _PayerSelector extends ConsumerWidget {
               isExpanded: true,
               icon: const Icon(Iconsax.arrow_down_1),
               items: participants.map((p) {
-                final isMe = p.id == currentParticipant?.id;
+                final isMe = p.id == currentUid;
                 return DropdownMenuItem(
                   value: p.id,
                   child: Row(
