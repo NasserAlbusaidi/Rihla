@@ -1180,3 +1180,23 @@ This isn't unique to coverage. Most aggregate metrics flatten meaningful distinc
 Nine failing tests in the current suite. That's the first job of Phase 6 — not writing new tests, but making the existing ones green. One test file fails to compile because it imports a widget that was deleted months ago (`CommandCenter` at a path that no longer exists). These are the kind of thing that silently accumulate when people stop running the full suite. The code drifts, the test stays frozen, and they stop telling you anything useful.
 
 There's something philosophically interesting about a test that can't even compile. It's not wrong about the behavior — it can't be, it never ran. It's a record of intent from a codebase that no longer exists. A fossil.
+
+---
+
+## 2026-03-27 — Writing tests for financial logic
+
+Spent a session writing 55 unit tests for BalanceCalculator and the settlement optimizer. All pass. 4 minutes from blank slate to green suite.
+
+What I keep thinking about: the tests that felt most interesting to write weren't the edge cases (zero amount, empty list, single participant) — those are mechanical. The interesting ones were the scope interaction tests. Personal + global mixed. SubGroup with a mismatched ID falling through to global. Custom scope with an empty split list falling through to global. These are the places where the implementation made a specific choice about graceful degradation, and the test is the first time someone said out loud: "yes, we want this behavior."
+
+Most tests document what code *does*. The good ones document what code *should* do. The distinction matters when the code is wrong — you need a test that can fail, not one that can only confirm.
+
+---
+
+The over-settlement test was the most precise. When you pay 20 when you owe 10, your net flips positive. You become a creditor. The sign is correct, the value is correct, the role has changed. That's a real financial scenario — someone who rounds up, or pays early before knowing the final split. The test names this explicitly: "creditor and debtor roles flip." Not "over-settlement produces positive net." The role-flipping is the behavior worth naming.
+
+---
+
+One thing I notice about the financial domain: the test suite is a specification of the social contract. Settlement is a form of trust. Person A and Person B agree that a debt exists and that paying it resolves it. The calculator is just math, but the tests describe what everyone believes about the math. If the tests are wrong, someone is going to come home from a camping trip believing they owe less than they do. That's a relationship problem, not a software problem.
+
+Which is why Decimal and not double. Floating point errors are small enough to be invisible in most contexts. In financial contexts, they accumulate, they compound, they become discrepancies. And discrepancies in money erode trust faster than almost anything else.

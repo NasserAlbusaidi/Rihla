@@ -104,6 +104,14 @@ None - no external service configuration required.
 - Decimal precision confirmed for 55+ expenses (stress test)
 - Phase 06 plans 03+ can proceed with high confidence in financial layer correctness
 
+## Self-Check: PASSED
+
+- FOUND: test/unit/balance_calculations_test.dart
+- FOUND: test/unit/settlement_optimization_test.dart
+- FOUND: .planning/phases/06-testing-and-coverage/06-02-SUMMARY.md
+- FOUND: bcc5075 (Task 1 commit)
+- FOUND: b096b6f (Task 2 commit)
+
 ---
 *Phase: 06-testing-and-coverage*
 *Completed: 2026-03-27*
