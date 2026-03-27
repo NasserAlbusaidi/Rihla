@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Milestone complete
-stopped_at: Phase 11 context gathered
-last_updated: "2026-03-27T20:04:05.232Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 11-gear-write-mutations/11-01-PLAN.md
+last_updated: "2026-03-27T20:43:51.663Z"
 progress:
   total_phases: 13
-  completed_phases: 10
-  total_plans: 39
-  completed_plans: 39
+  completed_phases: 11
+  total_plans: 40
+  completed_plans: 40
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 10 — full-codebase-review
+**Current focus:** Phase 11 — gear-write-mutations
 
 ## Current Position
 
-Phase: 10
-Plan: Not started
+Phase: 11 (gear-write-mutations) — EXECUTING
+Plan: 1 of 1
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Plan: Not started
 | Phase 10-full-codebase-review P02 | 7 | 2 tasks | 9 files |
 | Phase 10-full-codebase-review P03 | 9 | 2 tasks | 9 files |
 | Phase 10-full-codebase-review P04 | 15 | 2 tasks | 8 files |
+| Phase 11-gear-write-mutations P01 | 10 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,8 @@ Recent decisions affecting current work:
 - [Phase 10-full-codebase-review]: GroupSettlementTile.onRecord is nullable VoidCallback — no button rendered when null (avoids isYourAction/isCurrentUser logic in extracted widget)
 - [Phase 10-full-codebase-review]: UnassignedPool is StatelessWidget receiving pre-computed unassigned list — screen computes list from provider, avoids nested ref.watch in widget
 - [Phase Phase 10-full-codebase-review]: FirebaseException catch used (not generic catch) at Firestore/Storage boundaries — catches only Firebase errors, lets programming errors propagate uncaught
+- [Phase 11-gear-write-mutations]: showButtonMenu() used in widget tests for PopupMenuButton — direct tap unreliable due to FAB z-ordering in test viewport
+- [Phase 11-gear-write-mutations]: togglePacked uses fire-and-forget .catchError() — no await needed; all other write mutations are async/await for consistent error handling
 
 ### Pending Todos
 
@@ -190,6 +193,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T20:04:05.228Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-gear-write-mutations/11-CONTEXT.md
+Last session: 2026-03-27T20:43:51.660Z
+Stopped at: Completed 11-gear-write-mutations/11-01-PLAN.md
+Resume file: None
