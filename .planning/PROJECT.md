@@ -104,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after Phase 11 (gear-write-mutations) completion — all 6 gear debugPrint stubs wired to GearService Firestore methods, unclaimGearItem added, snackbar error handling on all write paths, 15 tests passing. EVT-08 gear writes gap closed.*
+*Last updated: 2026-03-28 after Phase 12 (expense-logistics-provider-rewiring) completion — payer-override dropdown fixed (isLeader from event.createdBy), currency derivation from eventDetailProvider, userTripsProvider deleted, all 6 logistics debugPrint stubs wired to SubGroupService, updateSubGroup added, capacity passed to createSubGroup. FIN-01 and EVT-08 gaps closed. 624 tests passing.*
