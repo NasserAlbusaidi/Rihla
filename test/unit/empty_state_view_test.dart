@@ -1,0 +1,95 @@
+// Tests for EmptyStateView widget.
+//
+// Covers the action button path (lines 64-69 in empty_state_view.dart).
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:iconsax/iconsax.dart';
+
+import 'package:safar/shared/widgets/empty_state_view.dart';
+
+void main() {
+  group('EmptyStateView', () {
+    testWidgets('renders title and message', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: EmptyStateView(
+              icon: Iconsax.calendar,
+              title: 'No Events',
+              message: 'Start by creating your first event',
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('No Events'), findsOneWidget);
+      expect(find.text('Start by creating your first event'), findsOneWidget);
+    });
+
+    testWidgets('renders action button when actionLabel and onAction provided',
+        (tester) async {
+      var tapped = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EmptyStateView(
+              icon: Iconsax.add_circle,
+              title: 'Nothing Here',
+              message: 'Tap below to get started',
+              actionLabel: 'Create Event',
+              onAction: () => tapped = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('Create Event'), findsOneWidget);
+      expect(find.byType(ElevatedButton), findsOneWidget);
+    });
+
+    testWidgets('action button onPressed calls onAction callback',
+        (tester) async {
+      var tapped = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EmptyStateView(
+              icon: Iconsax.add_circle,
+              title: 'Nothing Here',
+              message: 'Tap below to get started',
+              actionLabel: 'Create Event',
+              onAction: () => tapped = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pump();
+
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('does NOT render action button when actionLabel is null',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: EmptyStateView(
+              icon: Iconsax.calendar,
+              title: 'No Events',
+              message: 'No action here',
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(ElevatedButton), findsNothing);
+    });
+  });
+}

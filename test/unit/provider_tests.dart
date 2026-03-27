@@ -1,11 +1,19 @@
 import 'dart:async';
 
 import 'package:decimal/decimal.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/models/app_settings_model.dart';
+import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/services/settings_service.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/groups/models/group_member_model.dart';
+import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -446,6 +454,528 @@ void main() {
 
       final result = container.read(eventSettlementsProvider(eventRef));
       expect(result, isA<AsyncLoading<List<Settlement>>>());
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // groupDetailProvider isolation tests
+  // ---------------------------------------------------------------------------
+
+  group('groupDetailProvider', () {
+    const groupId = 'grp-1';
+
+    Group _makeGroup({required String id, String name = 'Test Group'}) {
+      return Group(
+        id: id,
+        name: name,
+        inviteCode: 'ABC123',
+        createdBy: 'uid-1',
+        memberIds: const ['uid-1'],
+        currency: 'OMR',
+        createdAt: DateTime(2026, 1, 1),
+      );
+    }
+
+    test('emits group from stream override', () async {
+      final testGroup = _makeGroup(id: groupId, name: 'Adventure Crew');
+
+      final container = ProviderContainer(
+        overrides: [
+          groupDetailProvider(groupId).overrideWith(
+            (_) => Stream.value(testGroup),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        groupDetailProvider(groupId),
+        (_, __) {},
+        fireImmediately: true,
+      );
+      await _pumpAsync();
+
+      final result = container.read(groupDetailProvider(groupId));
+      expect(result, isA<AsyncData<Group?>>());
+      expect(result.value?.name, equals('Adventure Crew'));
+      expect(result.value?.id, equals(groupId));
+    });
+
+    test('emits null when group does not exist', () async {
+      final container = ProviderContainer(
+        overrides: [
+          groupDetailProvider(groupId).overrideWith(
+            (_) => Stream<Group?>.value(null),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        groupDetailProvider(groupId),
+        (_, __) {},
+        fireImmediately: true,
+      );
+      await _pumpAsync();
+
+      final result = container.read(groupDetailProvider(groupId));
+      expect(result, isA<AsyncData<Group?>>());
+      expect(result.value, isNull);
+    });
+
+    test('different group IDs are isolated', () async {
+      final group1 = _makeGroup(id: 'grp-a', name: 'Group A');
+      final group2 = _makeGroup(id: 'grp-b', name: 'Group B');
+
+      final container = ProviderContainer(
+        overrides: [
+          groupDetailProvider('grp-a').overrideWith(
+            (_) => Stream.value(group1),
+          ),
+          groupDetailProvider('grp-b').overrideWith(
+            (_) => Stream.value(group2),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(groupDetailProvider('grp-a'), (_, __) {}, fireImmediately: true);
+      container.listen(groupDetailProvider('grp-b'), (_, __) {}, fireImmediately: true);
+      await _pumpAsync();
+
+      final resultA = container.read(groupDetailProvider('grp-a'));
+      final resultB = container.read(groupDetailProvider('grp-b'));
+      expect(resultA.value?.name, equals('Group A'));
+      expect(resultB.value?.name, equals('Group B'));
+    });
+
+    test('returns AsyncLoading before stream emits', () {
+      final controller = StreamController<Group?>.broadcast();
+
+      final container = ProviderContainer(
+        overrides: [
+          groupDetailProvider(groupId).overrideWith(
+            (_) => controller.stream,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      addTearDown(controller.close);
+
+      final result = container.read(groupDetailProvider(groupId));
+      expect(result, isA<AsyncLoading<Group?>>());
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // groupMembersProvider isolation tests
+  // ---------------------------------------------------------------------------
+
+  group('groupMembersProvider', () {
+    const groupId = 'grp-1';
+
+    GroupMember _makeMember({
+      required String id,
+      required String userId,
+      required String displayName,
+      String role = 'MEMBER',
+    }) {
+      return GroupMember(
+        id: id,
+        groupId: groupId,
+        userId: userId,
+        displayName: displayName,
+        role: role,
+        joinedAt: DateTime(2026, 1, 1),
+      );
+    }
+
+    test('emits member list from stream override', () async {
+      final testMembers = [
+        _makeMember(id: 'm1', userId: 'uid-1', displayName: 'Alice', role: 'CREATOR'),
+        _makeMember(id: 'm2', userId: 'uid-2', displayName: 'Bob'),
+      ];
+
+      final container = ProviderContainer(
+        overrides: [
+          groupMembersProvider(groupId).overrideWith(
+            (_) => Stream.value(testMembers),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        groupMembersProvider(groupId),
+        (_, __) {},
+        fireImmediately: true,
+      );
+      await _pumpAsync();
+
+      final result = container.read(groupMembersProvider(groupId));
+      expect(result, isA<AsyncData<List<GroupMember>>>());
+      expect(result.value, hasLength(2));
+      expect(result.value!.first.displayName, equals('Alice'));
+      expect(result.value!.first.role, equals('CREATOR'));
+    });
+
+    test('emits empty list when group has no members', () async {
+      final container = ProviderContainer(
+        overrides: [
+          groupMembersProvider(groupId).overrideWith(
+            (_) => Stream.value(<GroupMember>[]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        groupMembersProvider(groupId),
+        (_, __) {},
+        fireImmediately: true,
+      );
+      await _pumpAsync();
+
+      final result = container.read(groupMembersProvider(groupId));
+      expect(result, isA<AsyncData<List<GroupMember>>>());
+      expect(result.value, isEmpty);
+    });
+
+    test('different group IDs use independent streams', () async {
+      final membersG1 = [
+        _makeMember(id: 'm-g1', userId: 'uid-1', displayName: 'Alice'),
+      ];
+      final membersG2 = [
+        _makeMember(id: 'm-g2a', userId: 'uid-2', displayName: 'Bob'),
+        _makeMember(id: 'm-g2b', userId: 'uid-3', displayName: 'Charlie'),
+      ];
+
+      final container = ProviderContainer(
+        overrides: [
+          groupMembersProvider('grp-1').overrideWith(
+            (_) => Stream.value(membersG1),
+          ),
+          groupMembersProvider('grp-2').overrideWith(
+            (_) => Stream.value(membersG2),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(groupMembersProvider('grp-1'), (_, __) {}, fireImmediately: true);
+      container.listen(groupMembersProvider('grp-2'), (_, __) {}, fireImmediately: true);
+      await _pumpAsync();
+
+      final result1 = container.read(groupMembersProvider('grp-1'));
+      final result2 = container.read(groupMembersProvider('grp-2'));
+      expect(result1.value, hasLength(1));
+      expect(result2.value, hasLength(2));
+    });
+
+    test('returns AsyncLoading before stream emits', () {
+      final controller = StreamController<List<GroupMember>>.broadcast();
+
+      final container = ProviderContainer(
+        overrides: [
+          groupMembersProvider(groupId).overrideWith(
+            (_) => controller.stream,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      addTearDown(controller.close);
+
+      final result = container.read(groupMembersProvider(groupId));
+      expect(result, isA<AsyncLoading<List<GroupMember>>>());
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // userGroupsProvider isolation tests
+  // ---------------------------------------------------------------------------
+
+  group('userGroupsProvider', () {
+    Group _makeGroup(String id, String name) {
+      return Group(
+        id: id,
+        name: name,
+        inviteCode: 'ABC123',
+        createdBy: 'uid-1',
+        memberIds: const ['uid-1'],
+        currency: 'OMR',
+        createdAt: DateTime(2026, 1, 1),
+      );
+    }
+
+    test('emits group list from stream override', () async {
+      final testGroups = [
+        _makeGroup('grp-1', 'Beach Trip'),
+        _makeGroup('grp-2', 'Camping Squad'),
+      ];
+
+      final container = ProviderContainer(
+        overrides: [
+          userGroupsProvider.overrideWith(
+            (_) => Stream.value(testGroups),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        userGroupsProvider,
+        (_, __) {},
+        fireImmediately: true,
+      );
+      await _pumpAsync();
+
+      final result = container.read(userGroupsProvider);
+      expect(result, isA<AsyncData<List<Group>>>());
+      expect(result.value, hasLength(2));
+      expect(result.value!.first.name, equals('Beach Trip'));
+    });
+
+    test('emits empty list when user has no groups', () async {
+      final container = ProviderContainer(
+        overrides: [
+          userGroupsProvider.overrideWith(
+            (_) => Stream.value(<Group>[]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        userGroupsProvider,
+        (_, __) {},
+        fireImmediately: true,
+      );
+      await _pumpAsync();
+
+      final result = container.read(userGroupsProvider);
+      expect(result, isA<AsyncData<List<Group>>>());
+      expect(result.value, isEmpty);
+    });
+
+    test('returns AsyncLoading before stream emits', () {
+      final controller = StreamController<List<Group>>.broadcast();
+
+      final container = ProviderContainer(
+        overrides: [
+          userGroupsProvider.overrideWith(
+            (_) => controller.stream,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      addTearDown(controller.close);
+
+      final result = container.read(userGroupsProvider);
+      expect(result, isA<AsyncLoading<List<Group>>>());
+    });
+
+    test('delivers multiple sequential updates from stream', () async {
+      final controller = StreamController<List<Group>>();
+      final updatesReceived = <int>[];
+
+      final container = ProviderContainer(
+        overrides: [
+          userGroupsProvider.overrideWith(
+            (_) => controller.stream,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      addTearDown(controller.close);
+
+      container.listen(
+        userGroupsProvider,
+        (_, next) {
+          if (next is AsyncData<List<Group>>) {
+            updatesReceived.add(next.value.length);
+          }
+        },
+        fireImmediately: true,
+      );
+
+      controller.add([_makeGroup('grp-1', 'Group A')]);
+      await _pumpAsync();
+
+      controller.add([
+        _makeGroup('grp-1', 'Group A'),
+        _makeGroup('grp-2', 'Group B'),
+      ]);
+      await _pumpAsync();
+
+      expect(updatesReceived, contains(1));
+      expect(updatesReceived, contains(2));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SettingsNotifier tests
+  // ---------------------------------------------------------------------------
+
+  group('SettingsNotifier', () {
+    Future<ProviderContainer> _makeContainer() async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    test('initial state has default AppSettings', () async {
+      final container = await _makeContainer();
+      final settings = container.read(settingsProvider);
+      expect(settings.deviceName, equals(''));
+      expect(settings.currencyCode, equals('OMR'));
+      expect(settings.languageCode, equals('en'));
+      expect(settings.themeMode, equals(AppThemeMode.system));
+      expect(settings.pushNotificationsEnabled, isFalse);
+    });
+
+    test('setDeviceName updates deviceName in state', () async {
+      final container = await _makeContainer();
+      final notifier = container.read(settingsProvider.notifier);
+      await notifier.setDeviceName('Alice');
+      expect(container.read(settingsProvider).deviceName, equals('Alice'));
+    });
+
+    test('setCurrency updates currencyCode in state', () async {
+      final container = await _makeContainer();
+      final notifier = container.read(settingsProvider.notifier);
+      await notifier.setCurrency('USD');
+      expect(container.read(settingsProvider).currencyCode, equals('USD'));
+    });
+
+    test('setLanguage updates languageCode in state', () async {
+      final container = await _makeContainer();
+      final notifier = container.read(settingsProvider.notifier);
+      await notifier.setLanguage('ar');
+      expect(container.read(settingsProvider).languageCode, equals('ar'));
+    });
+
+    test('setThemeMode updates themeMode in state', () async {
+      final container = await _makeContainer();
+      final notifier = container.read(settingsProvider.notifier);
+      await notifier.setThemeMode(AppThemeMode.dark);
+      expect(container.read(settingsProvider).themeMode, equals(AppThemeMode.dark));
+    });
+
+    test('setPushNotificationsEnabled updates pushNotificationsEnabled', () async {
+      final container = await _makeContainer();
+      final notifier = container.read(settingsProvider.notifier);
+      await notifier.setPushNotificationsEnabled(true);
+      expect(container.read(settingsProvider).pushNotificationsEnabled, isTrue);
+    });
+
+    test('settingsServiceProvider returns SettingsService instance', () async {
+      final container = await _makeContainer();
+      final service = container.read(settingsServiceProvider);
+      expect(service, isA<SettingsService>());
+    });
+
+    test('loadSettings reads stored deviceName from SharedPreferences', () async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Bob'});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      final settings = container.read(settingsProvider);
+      expect(settings.deviceName, equals('Bob'));
+    });
+
+    test('AppSettings.theme returns ThemeMode.dark for dark mode', () {
+      const settings = AppSettings(themeMode: AppThemeMode.dark);
+      expect(settings.theme, equals(ThemeMode.dark));
+    });
+
+    test('AppSettings.theme returns ThemeMode.light for light mode', () {
+      const settings = AppSettings(themeMode: AppThemeMode.light);
+      expect(settings.theme, equals(ThemeMode.light));
+    });
+
+    test('AppSettings.theme returns ThemeMode.system for system mode', () {
+      const settings = AppSettings(themeMode: AppThemeMode.system);
+      expect(settings.theme, equals(ThemeMode.system));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // eventDetailProvider isolation tests
+  // ---------------------------------------------------------------------------
+
+  group('eventDetailProvider', () {
+    const groupId = 'grp-1';
+    const eventId = 'evt-1';
+    const params = (groupId: groupId, eventId: eventId);
+
+    test('emits event from stream override', () async {
+      final testEvent = _makeEvent(id: eventId, groupId: groupId);
+
+      final container = ProviderContainer(
+        overrides: [
+          eventDetailProvider(params).overrideWith(
+            (_) => Stream.value(testEvent),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        eventDetailProvider(params),
+        (_, __) {},
+        fireImmediately: true,
+      );
+      await _pumpAsync();
+
+      final result = container.read(eventDetailProvider(params));
+      expect(result, isA<AsyncData<Event?>>());
+      expect(result.value?.id, equals(eventId));
+    });
+
+    test('emits null when event does not exist', () async {
+      final container = ProviderContainer(
+        overrides: [
+          eventDetailProvider(params).overrideWith(
+            (_) => Stream<Event?>.value(null),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        eventDetailProvider(params),
+        (_, __) {},
+        fireImmediately: true,
+      );
+      await _pumpAsync();
+
+      final result = container.read(eventDetailProvider(params));
+      expect(result, isA<AsyncData<Event?>>());
+      expect(result.value, isNull);
+    });
+
+    test('returns AsyncLoading before stream emits', () {
+      final controller = StreamController<Event?>.broadcast();
+
+      final container = ProviderContainer(
+        overrides: [
+          eventDetailProvider(params).overrideWith(
+            (_) => controller.stream,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      addTearDown(controller.close);
+
+      final result = container.read(eventDetailProvider(params));
+      expect(result, isA<AsyncLoading<Event?>>());
     });
   });
 }

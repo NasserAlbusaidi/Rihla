@@ -289,6 +289,133 @@ void main() {
     });
 
     // ---------------------------------------------------------------------------
+    // updateEvent
+    // ---------------------------------------------------------------------------
+
+    group('updateEvent', () {
+      test('updates name field in Firestore document', () async {
+        final service = buildService();
+
+        final event = await service.createEvent(
+          groupId: 'group-1',
+          name: 'Original Name',
+          type: EventType.trip,
+          participantIds: ['uid-1'],
+          participantNames: {'uid-1': 'Nasser'},
+          currency: 'OMR',
+          createdBy: 'uid-1',
+        );
+
+        await service.updateEvent(
+          groupId: 'group-1',
+          eventId: event.id,
+          name: 'Updated Name',
+        );
+
+        final docSnap = await fakeDb
+            .collection('groups')
+            .doc('group-1')
+            .collection('events')
+            .doc(event.id)
+            .get();
+
+        expect(docSnap.data()!['name'], equals('Updated Name'));
+        expect(docSnap.data()!['updatedAt'], isNotNull);
+      });
+
+      test('updates startDate when provided', () async {
+        final service = buildService();
+
+        final event = await service.createEvent(
+          groupId: 'group-1',
+          name: 'Dated Trip',
+          type: EventType.trip,
+          participantIds: ['uid-1'],
+          participantNames: {'uid-1': 'Nasser'},
+          currency: 'OMR',
+          createdBy: 'uid-1',
+        );
+
+        final startDate = DateTime(2026, 5, 1);
+        await service.updateEvent(
+          groupId: 'group-1',
+          eventId: event.id,
+          startDate: startDate,
+        );
+
+        final docSnap = await fakeDb
+            .collection('groups')
+            .doc('group-1')
+            .collection('events')
+            .doc(event.id)
+            .get();
+
+        expect(docSnap.data()!['startDate'], isNotNull);
+      });
+
+      test('updates endDate when provided', () async {
+        final service = buildService();
+
+        final event = await service.createEvent(
+          groupId: 'group-1',
+          name: 'Dated Trip',
+          type: EventType.trip,
+          participantIds: ['uid-1'],
+          participantNames: {'uid-1': 'Nasser'},
+          currency: 'OMR',
+          createdBy: 'uid-1',
+        );
+
+        final endDate = DateTime(2026, 5, 10);
+        await service.updateEvent(
+          groupId: 'group-1',
+          eventId: event.id,
+          endDate: endDate,
+        );
+
+        final docSnap = await fakeDb
+            .collection('groups')
+            .doc('group-1')
+            .collection('events')
+            .doc(event.id)
+            .get();
+
+        expect(docSnap.data()!['endDate'], isNotNull);
+      });
+
+      test('updateEvent with no optional fields only sets updatedAt', () async {
+        final service = buildService();
+
+        final event = await service.createEvent(
+          groupId: 'group-1',
+          name: 'No Update Trip',
+          type: EventType.trip,
+          participantIds: ['uid-1'],
+          participantNames: {'uid-1': 'Nasser'},
+          currency: 'OMR',
+          createdBy: 'uid-1',
+        );
+
+        // Call with no optional fields — only updatedAt should be written
+        await service.updateEvent(
+          groupId: 'group-1',
+          eventId: event.id,
+        );
+
+        final docSnap = await fakeDb
+            .collection('groups')
+            .doc('group-1')
+            .collection('events')
+            .doc(event.id)
+            .get();
+
+        // name should be unchanged
+        expect(docSnap.data()!['name'], equals('No Update Trip'));
+        expect(docSnap.data()!['updatedAt'], isNotNull);
+      });
+    });
+
+    // ---------------------------------------------------------------------------
     // updateParticipants
     // ---------------------------------------------------------------------------
 

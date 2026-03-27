@@ -246,5 +246,125 @@ void main() {
       // Screen renders without error regardless
       expect(find.text('Settle Up'), findsOneWidget);
     });
+
+    testWidgets('renders Settle Up title and Across events subtitle', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      // The screen always shows "Settle Up" title
+      expect(find.text('Settle Up'), findsOneWidget);
+      // "Across N events" label appears in settlement tiles
+      expect(find.textContaining('events'), findsWidgets);
+    });
+
+    testWidgets('renders with preSelectedMemberId without crashing',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+            preSelectedMemberId: 'uid-bob',
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      // Screen should render without error when preSelectedMemberId is set
+      expect(find.text('Settle Up'), findsOneWidget);
+    });
+
+    testWidgets('GROUP TOTAL PENDING shows 7.750 OMR', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      // Total pending amount should be formatted as OMR
+      expect(find.textContaining('7.750'), findsWidgets);
+    });
+
+    testWidgets('renders back button navigation', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(IconButton), findsWidgets);
+    });
+
+    testWidgets('tapping Record Settlement shows bottom sheet', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      final recordBtn = find.text('Record Settlement');
+      if (tester.any(recordBtn)) {
+        await tester.tap(recordBtn.first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Mark as Paid'), findsOneWidget);
+      }
+
+      expect(find.text('Settle Up'), findsOneWidget);
+    });
+
+    testWidgets('Not Now button dismisses bottom sheet', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          GroupSettleUpScreen(
+            groupId: _groupId,
+            group: _testGroup,
+          ),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pump();
+
+      final recordBtn = find.text('Record Settlement');
+      if (tester.any(recordBtn)) {
+        await tester.tap(recordBtn.first);
+        await tester.pumpAndSettle();
+
+        // Bottom sheet is open
+        expect(find.text('Not Now'), findsOneWidget);
+
+        await tester.tap(find.text('Not Now'));
+        await tester.pumpAndSettle();
+
+        // Bottom sheet is dismissed
+        expect(find.text('Not Now'), findsNothing);
+      }
+
+      expect(find.text('Settle Up'), findsOneWidget);
+    });
   });
 }

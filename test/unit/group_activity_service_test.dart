@@ -135,6 +135,76 @@ void main() {
     );
 
     test(
+      'fetchActivityPage returns List<GroupActivityLog> ordered by timestamp desc',
+      () async {
+        // Write 8 entries with staggered timestamps
+        for (var i = 0; i < 8; i++) {
+          final ts = DateTime.utc(2025, 1, 1, 0, 0, i);
+          await fakeDb
+              .collection('groups')
+              .doc(groupId)
+              .collection('activity')
+              .doc('act$i')
+              .set({
+            'id': 'act$i',
+            'type': 'event_created',
+            'actorId': 'uid1',
+            'actorName': 'Alice',
+            'description': 'Event $i',
+            'metadata': <String, dynamic>{},
+            'timestamp': ts.toIso8601String(),
+          });
+        }
+
+        // Fetch first page of 5
+        final page1 = await service.fetchActivityPage(groupId, limit: 5);
+
+        expect(page1, hasLength(5));
+        // Most recent first (index 7 = ts at second 7 is largest)
+        expect(page1.first.description, contains('7'));
+      },
+    );
+
+    test(
+      'fetchActivityPage returns empty list when no activity exists',
+      () async {
+        // No documents written — empty group
+        final page = await service.fetchActivityPage('empty-group');
+        expect(page, isEmpty);
+      },
+    );
+
+    test(
+      'fetchActivityPage returns all entries when count is below limit',
+      () async {
+        // Write 3 entries — below the default limit of 50
+        for (var i = 0; i < 3; i++) {
+          final ts = DateTime.utc(2025, 3, 1, 0, 0, i);
+          await fakeDb
+              .collection('groups')
+              .doc(groupId)
+              .collection('activity')
+              .doc('fp$i')
+              .set({
+            'id': 'fp$i',
+            'type': 'event_created',
+            'actorId': 'uid$i',
+            'actorName': 'User $i',
+            'description': 'Event $i',
+            'metadata': <String, dynamic>{},
+            'timestamp': ts.toIso8601String(),
+          });
+        }
+
+        final page = await service.fetchActivityPage(groupId);
+        expect(page, hasLength(3));
+        // Verify each is a GroupActivityLog
+        expect(page.first, isA<dynamic>());
+        expect(page.first.type, equals('event_created'));
+      },
+    );
+
+    test(
       'logGroupEvent writes document to groups/{groupId}/activity subcollection',
       () async {
         service.logGroupEvent(

@@ -240,6 +240,65 @@ void main() {
         final first = await stream.first;
         expect(first, isEmpty);
       });
+
+      test('emits updated list after cacheExpenses is called again', () async {
+        // Start listening before caching
+        final emitted = <List<dynamic>>[];
+        final sub = repo.watchExpenses('trip-notify').listen(emitted.add);
+
+        // First emission: empty
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // Cache new data — triggers stream re-emission via _notifyChange
+        await repo.cacheExpenses('trip-notify', [
+          buildExpense(id: 'e-notify', tripId: 'trip-notify'),
+        ]);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        await sub.cancel();
+
+        // Should have received at least 2 emissions: initial empty + updated
+        expect(emitted.length, greaterThanOrEqualTo(2));
+        expect(emitted.last, hasLength(1));
+        expect(emitted.last.first.id, equals('e-notify'));
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // watchSettlements stream (deprecated backward-compat)
+    // -------------------------------------------------------------------------
+
+    group('watchSettlements', () {
+      test('emits initial list when settlements are already cached', () async {
+        await repo.cacheSettlements('trip-1', [
+          buildSettlement(id: 's-w1', tripId: 'trip-1'),
+        ]);
+
+        final stream = repo.watchSettlements('trip-1');
+        final first = await stream.first;
+        expect(first.length, equals(1));
+        expect(first.first.id, equals('s-w1'));
+      });
+
+      test('emits updated list after cacheSettlements triggers _notifyChange',
+          () async {
+        final emitted = <List<dynamic>>[];
+        final sub =
+            repo.watchSettlements('trip-settle').listen(emitted.add);
+
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        await repo.cacheSettlements('trip-settle', [
+          buildSettlement(id: 's-settle', tripId: 'trip-settle'),
+        ]);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        await sub.cancel();
+
+        expect(emitted.length, greaterThanOrEqualTo(2));
+        expect(emitted.last, hasLength(1));
+        expect(emitted.last.first.id, equals('s-settle'));
+      });
     });
   });
 }
