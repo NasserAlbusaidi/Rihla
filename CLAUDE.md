@@ -250,7 +250,19 @@ This is an evolution of the existing Rihla trip-planning app, adding a groups la
 
 - **New code**: Use `event*` prefix for all event-scoped providers (e.g., `eventExpensesProvider`, `eventGearItemsProvider`, `eventSubGroupsProvider`, `eventActivityProvider`, `eventDocumentsProvider`, `eventMemoriesProvider`)
 - **Group-scoped**: Use `group*` prefix (e.g., `groupBalancesProvider`, `groupSettlementsProvider`, `groupActivityProvider`, `userGroupsProvider`)
-- **Legacy shims**: `trip*` prefix providers (`tripExpensesProvider`, `tripSettlementsProvider`, `tripGearProvider`, `tripDocumentsProvider`, `tripMemoriesProvider`, `tripActivityProvider`, `tripLogisticsParticipantsProvider`) are deprecated compatibility aliases. They delegate to the `event*` equivalents. Do NOT create new `trip*` providers. Do NOT remove existing shims while screens still reference them.
+- **Legacy shims**: `trip*` prefix providers are deprecated compatibility aliases. See the table below for the full mapping. Do NOT create new `trip*` providers. Do NOT remove existing shims while screens still reference them.
+
+| trip* Provider | Delegates To | Used By | Status |
+|----------------|-------------|---------|--------|
+| `tripExpensesProvider` | `eventExpensesProvider` (via SQLite `BalanceCacheRepository`) | `tripUnifiedLedgerProvider` (deleted) | Deprecated shim |
+| `tripSettlementsProvider` | `eventSettlementsProvider` (via SQLite `BalanceCacheRepository`) | `tripUnifiedLedgerProvider` (deleted) | Deprecated shim |
+| `tripGearProvider` | Returns `Stream.value([])` | `gearByStatusProvider` | Deprecated shim |
+| `tripDocumentsProvider` | Returns `Stream.empty()` | None (no active consumers) | Deprecated shim |
+| `tripMemoriesProvider` | Returns `[]` | None (no active consumers) | Deprecated shim |
+| `tripActivityProvider` | Returns `Stream.value([])` | None (no active consumers) | Deprecated shim |
+| `tripTransactionActivityProvider` | Returns `Stream.value([])` | None (no active consumers) | Deprecated shim |
+| `tripLogisticsParticipantsProvider` | SQLite `CacheService.getCachedParticipants` | None (no active consumers) | Deprecated shim |
+| `tripCategoriesProvider` | Hardcoded 6 default categories | `add_expense_screen.dart`, `edit_expense_sheet.dart` | Active (not a shim) |
 
 ### Service Naming
 
