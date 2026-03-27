@@ -167,7 +167,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
+- [x] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
 - [x] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
 
 ### Phase 9: Dead Code Cleanup
@@ -184,7 +184,7 @@ Plans:
 
 Plans:
 - [ ] 08-01-PLAN.md — Column naming comments (Fix #3) + provider swap for custom split participants (Fix #1)
-- [ ] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
+- [x] 08-02-PLAN.md — Settle-up event name labels with date format (Fix #2) + formatShortMonthDay formatter
 
 ### Phase 10: Full Codebase Review
 **Goal**: Comprehensive codebase audit for quality, consistency, security, performance, and architectural alignment before closing milestone v1.0

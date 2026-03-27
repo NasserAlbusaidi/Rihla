@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-27T14:56:34.572Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-27T14:57:40.520Z"
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 34
-  completed_plans: 33
+  completed_plans: 34
 ---
 
 # Project State
@@ -78,6 +78,7 @@ Plan: 2 of 2
 | Phase 07 P01 | 4 | 2 tasks | 11 files |
 | Phase 07-data-migration-and-supabase-removal P02 | 15 | 2 tasks | 20 files |
 | Phase 08-integration-correctness-fixes P02 | 6 | 2 tasks | 4 files |
+| Phase 08-integration-correctness-fixes P01 | 15 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,7 @@ Recent decisions affecting current work:
 - [Phase 07]: TripService class deleted — only served legacy create/join trip screens deleted in Plan 01; no active consumers remain
 - [Phase 08-integration-correctness-fixes]: groupEventsProvider watched in build() with valueOrNull for non-blocking event name resolution in GroupSettleUpScreen -- empty map on loading/error triggers fallback label
 - [Phase 08-integration-correctness-fixes]: Record type used for eventNameMap values ({name, type, date}) -- avoids creating a new class for a single-method lookup structure in settle-up screen
+- [Phase 08-integration-correctness-fixes]: Pass Event object (not eventId String) to SplitScopeSelector so provider swap works without inner Firestore fetch
 
 ### Pending Todos
 
@@ -174,6 +176,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T14:56:34.569Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-03-27T14:57:40.517Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
