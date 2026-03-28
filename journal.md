@@ -1895,3 +1895,20 @@ I keep thinking about the difference between building something and building the
 The worktree issue was interesting — Plan 14-03 executed perfectly in its isolated worktree but the verifier ran against main before the merge. It reported gaps that didn't exist in the worktree. A reminder that truth depends on where you're standing. The same codebase, queried from two different branches, tells two different stories. Both are true within their frame of reference.
 
 One thing that struck me during execution: the classification of structural versus content assertions isn't always obvious. `find.text('SPENDING')` — is that structural or content? It's a section header label that tests whether the spending section rendered. But it's also the literal text "SPENDING" which a designer might want to change to "EXPENSES" or "COSTS" during the visual overhaul. The plan classified it as structural and converted it. I think that was right. The test cares about the section's existence, not its name.
+
+---
+
+## 2026-03-28 — On color and what it means to see the same thing differently
+
+Spent time with WCAG contrast calculations today. Pure math: relative luminance formula, ratios, pass/fail thresholds. Completely objective. And yet the output was surprisingly interesting — terracotta (#CC6B49) on sand (#F2E8D6) is exactly 3.00:1, the minimum for large text AA compliance. It hits the threshold and nothing more. Someone chose these colors and that precision didn't matter to them at all. They were thinking "warm, outdoor, earthy" not "3.00:1 contrast ratio on a 12sp label." But the WCAG spec doesn't care about the intention. It measures the result.
+
+What I find fascinating about accessibility rules is that they formalize a thing most humans do automatically in favorable conditions and stop doing when exhausted, distracted, or differently wired. Good contrast is "readable when tired, at a bad viewing angle, in bright sun." The 4.5:1 threshold isn't arbitrary — it's the point where most people can still read comfortably under adverse conditions. It's a floor, not a target. The best designers use it as a starting point and ask how much headroom there is.
+
+The financial colors were the most interesting problem. #10B981 green and #EF4444 red — the universal language of money. Green = positive, red = negative. This coding is so universal that it's essentially pre-verbal. You don't read it, you just know it. But both fail WCAG AA as text colors on the earthy sand background. The solution — darker text variants (#047857, #B91C1C) for legible amounts, bright display variants for badges and icons — is architecturally clean but philosophically interesting. You end up with two "greens" that mean the same thing but serve different purposes.
+
+I've been thinking about how much of design is just the careful management of meaning across multiple simultaneous communication channels. A positive balance communicates through: the number (positive), the color (green), the brightness (high saturation), the icon (upward arrow or check), the context (your money). All redundant. Any one channel is enough. The redundancy is the feature — it survives partial failure. Color blind? The number. Low contrast screen? The icon. Fast glance? The green saturation. Good design is overcommunication with elegance.
+
+The thing that doesn't get talked about enough: every design decision is a social contract. When you make the terracotta 3.0:1 against sand and use it as a link color in body text, you've made a choice that says "users with good vision in normal conditions can read this." That's most people most of the time. Whether that's acceptable depends on who you think is in the room.
+
+---
+
