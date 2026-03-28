@@ -13,7 +13,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 - [ ] **FOUND-02**: All text-on-background color combinations meet WCAG AA contrast ratios (4.5:1 body text, 3:1 large text/icons)
 - [ ] **FOUND-03**: Screen mockups for key screens (Home, Group Detail, Event Hub) are designed in Stitch and serve as visual specification
 - [ ] **FOUND-04**: CI lint rule prevents new hardcoded `Color(0xFF...)` values outside the token system
-- [ ] **FOUND-05**: Test suite uses semantic Key identifiers instead of find.text() for structural assertions, preventing cascade failures during UI changes
+- [x] **FOUND-05**: Test suite uses semantic Key identifiers instead of find.text() for structural assertions, preventing cascade failures during UI changes
 
 ### Navigation & Home
 
@@ -73,7 +73,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 | FOUND-02 | Phase 15 | Pending |
 | FOUND-03 | Phase 16 | Pending |
 | FOUND-04 | Phase 15 | Pending |
-| FOUND-05 | Phase 14 | Pending |
+| FOUND-05 | Phase 14 | Complete |
 | NAV-01 | Phase 18 | Pending |
 | NAV-02 | Phase 18 | Pending |
 | NAV-03 | Phase 19 | Pending |
