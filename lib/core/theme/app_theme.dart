@@ -311,7 +311,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusLarge + 4)),
       ),
       extensions: <ThemeExtension>[
-        AppColorTokens.earthyLight,
+        AppColorTokens.light,
         AppSpacingTokens.standard,
         AppShadowTokens.standard,
       ],

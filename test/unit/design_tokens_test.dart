@@ -41,7 +41,7 @@ double _contrastRatio(Color foreground, Color background) {
 ThemeData _testTheme() {
   return ThemeData.light(useMaterial3: true).copyWith(
     extensions: <ThemeExtension>[
-      AppColorTokens.earthyLight,
+      AppColorTokens.light,
       AppSpacingTokens.standard,
       AppShadowTokens.standard,
     ],
@@ -59,56 +59,56 @@ void main() {
   // AppColorTokens
   // ---------------------------------------------------------------------------
   group('AppColorTokens', () {
-    test('earthyLight.primary equals terracotta #CC6B49', () {
+    test('light.primary equals teal #0D7B74', () {
       expect(
-        AppColorTokens.earthyLight.primary,
-        equals(const Color(0xFFCC6B49)),
+        AppColorTokens.light.primary,
+        equals(const Color(0xFF0D7B74)),
       );
     });
 
-    test('earthyLight.scaffoldBackground equals sand #F2E8D6', () {
+    test('light.scaffoldBackground equals white #FFFFFF', () {
       expect(
-        AppColorTokens.earthyLight.scaffoldBackground,
-        equals(const Color(0xFFF2E8D6)),
+        AppColorTokens.light.scaffoldBackground,
+        equals(const Color(0xFFFFFFFF)),
       );
     });
 
-    test('earthyLight.successText equals dark emerald #047857', () {
+    test('light.successText equals dark emerald #047857', () {
       expect(
-        AppColorTokens.earthyLight.successText,
+        AppColorTokens.light.successText,
         equals(const Color(0xFF047857)),
       );
     });
 
-    test('earthyLight.errorText equals dark red #B91C1C', () {
+    test('light.errorText equals dark red #B91C1C', () {
       expect(
-        AppColorTokens.earthyLight.errorText,
+        AppColorTokens.light.errorText,
         equals(const Color(0xFFB91C1C)),
       );
     });
 
-    test('earthyLight.textOnPrimary equals white #FFFFFF', () {
+    test('light.textOnPrimary equals white #FFFFFF', () {
       expect(
-        AppColorTokens.earthyLight.textOnPrimary,
+        AppColorTokens.light.textOnPrimary,
         equals(const Color(0xFFFFFFFF)),
       );
     });
 
     test('copyWith returns new instance with changed primary', () {
       const newPrimary = Color(0xFF000000);
-      final modified = AppColorTokens.earthyLight.copyWith(primary: newPrimary);
+      final modified = AppColorTokens.light.copyWith(primary: newPrimary);
       expect(modified.primary, equals(newPrimary));
       // Other fields remain unchanged
       expect(
         modified.scaffoldBackground,
-        equals(AppColorTokens.earthyLight.scaffoldBackground),
+        equals(AppColorTokens.light.scaffoldBackground),
       );
     });
 
     test('copyWith does not mutate original instance', () {
-      final original = AppColorTokens.earthyLight;
+      final original = AppColorTokens.light;
       original.copyWith(primary: const Color(0xFF000000));
-      expect(original.primary, equals(const Color(0xFFCC6B49)));
+      expect(original.primary, equals(const Color(0xFF0D7B74)));
     });
 
     test('lerp at t=0.0 returns this', () {
@@ -145,8 +145,8 @@ void main() {
         headerGradientStart: Color(0xFF000000),
         headerGradientEnd: Color(0xFF000000),
       );
-      final lerped = AppColorTokens.earthyLight.lerp(other, 0.0);
-      expect(lerped.primary, equals(AppColorTokens.earthyLight.primary));
+      final lerped = AppColorTokens.light.lerp(other, 0.0);
+      expect(lerped.primary, equals(AppColorTokens.light.primary));
     });
 
     test('lerp at t=1.0 returns other values', () {
@@ -183,17 +183,17 @@ void main() {
         headerGradientStart: Color(0xFF000000),
         headerGradientEnd: Color(0xFF000000),
       );
-      final lerped = AppColorTokens.earthyLight.lerp(other, 1.0);
+      final lerped = AppColorTokens.light.lerp(other, 1.0);
       expect(lerped.primary, equals(const Color(0xFF000000)));
     });
 
     test('lerp at t=0.5 produces intermediate color', () {
       // Lerping from white (0xFFFFFFFF) to black (0xFF000000) at t=0.5
       // should produce gray (0xFF808080 approximately)
-      final white = AppColorTokens.earthyLight.copyWith(
+      final white = AppColorTokens.light.copyWith(
         primary: const Color(0xFFFFFFFF),
       );
-      final black = AppColorTokens.earthyLight.copyWith(
+      final black = AppColorTokens.light.copyWith(
         primary: const Color(0xFF000000),
       );
       final lerped = white.lerp(black, 0.5);
@@ -224,9 +224,9 @@ void main() {
 
     test('standard has correct border radii', () {
       final s = AppSpacingTokens.standard;
-      expect(s.radiusSmall, equals(12.0));
-      expect(s.radiusMedium, equals(16.0));
-      expect(s.radiusLarge, equals(20.0));
+      expect(s.radiusSmall, equals(8.0));
+      expect(s.radiusMedium, equals(12.0));
+      expect(s.radiusLarge, equals(16.0));
     });
 
     test('standard.buttonHeight equals 52.0', () {
@@ -250,13 +250,13 @@ void main() {
       expect(AppShadowTokens.standard.flat, isEmpty);
     });
 
-    test('raised shadows use warm brown base #2C1A0E', () {
+    test('raised shadows use neutral gray-900 base #111827', () {
       final raised = AppShadowTokens.standard.raised;
-      // Both shadows should use the warm brown color base
+      // Both shadows should use the neutral gray-900 color base
       for (final shadow in raised) {
-        expect(shadow.color.r, closeTo(const Color(0xFF2C1A0E).r, 0.01));
-        expect(shadow.color.g, closeTo(const Color(0xFF2C1A0E).g, 0.01));
-        expect(shadow.color.b, closeTo(const Color(0xFF2C1A0E).b, 0.01));
+        expect(shadow.color.r, closeTo(const Color(0xFF111827).r, 0.01));
+        expect(shadow.color.g, closeTo(const Color(0xFF111827).g, 0.01));
+        expect(shadow.color.b, closeTo(const Color(0xFF111827).b, 0.01));
       }
     });
   });
@@ -286,7 +286,7 @@ void main() {
 
     test('AppColorTokens from test theme has correct primary color', () {
       final tokens = _testTheme().extension<AppColorTokens>()!;
-      expect(tokens.primary, equals(const Color(0xFFCC6B49)));
+      expect(tokens.primary, equals(const Color(0xFF0D7B74)));
     });
 
     testWidgets('AppTheme.lightTheme registers all three extensions', (tester) async {
@@ -325,7 +325,7 @@ void main() {
           }),
         ),
       );
-      expect(colors.primary, equals(const Color(0xFFCC6B49)));
+      expect(colors.primary, equals(const Color(0xFF0D7B74)));
     });
 
     testWidgets('context.spacing returns AppSpacingTokens', (tester) async {
@@ -361,42 +361,42 @@ void main() {
   // WCAG AA contrast compliance
   // ---------------------------------------------------------------------------
   group('WCAG AA contrast compliance', () {
-    const sand = Color(0xFFF2E8D6); // scaffold background
+    const white = Color(0xFFFFFFFF); // scaffold background
 
-    test('primary text (#2C1A0E) on scaffold (#F2E8D6) >= 4.5:1', () {
-      const textPrimary = Color(0xFF2C1A0E);
-      final ratio = _contrastRatio(textPrimary, sand);
+    test('textPrimary (#111827) on white (#FFFFFF) >= 4.5:1', () {
+      const textPrimary = Color(0xFF111827);
+      final ratio = _contrastRatio(textPrimary, white);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'Primary text contrast: ${ratio.toStringAsFixed(2)}:1');
     });
 
-    test('secondary text (#6B5B4E) on scaffold (#F2E8D6) >= 4.5:1', () {
-      const textSecondary = Color(0xFF6B5B4E);
-      final ratio = _contrastRatio(textSecondary, sand);
+    test('textSecondary (#6B7280) on white (#FFFFFF) >= 4.5:1', () {
+      const textSecondary = Color(0xFF6B7280);
+      final ratio = _contrastRatio(textSecondary, white);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'Secondary text contrast: ${ratio.toStringAsFixed(2)}:1');
     });
 
-    test('successText (#047857) on scaffold (#F2E8D6) >= 4.5:1', () {
+    test('successText (#047857) on white (#FFFFFF) >= 4.5:1', () {
       const successText = Color(0xFF047857);
-      final ratio = _contrastRatio(successText, sand);
+      final ratio = _contrastRatio(successText, white);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'Success text contrast: ${ratio.toStringAsFixed(2)}:1');
     });
 
-    test('errorText (#B91C1C) on scaffold (#F2E8D6) >= 4.5:1', () {
+    test('errorText (#B91C1C) on white (#FFFFFF) >= 4.5:1', () {
       const errorText = Color(0xFFB91C1C);
-      final ratio = _contrastRatio(errorText, sand);
+      final ratio = _contrastRatio(errorText, white);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'Error text contrast: ${ratio.toStringAsFixed(2)}:1');
     });
 
-    test('white (#FFFFFF) on terracotta (#CC6B49) >= 3.0:1 (AA large text)', () {
-      const white = Color(0xFFFFFFFF);
-      const terracotta = Color(0xFFCC6B49);
-      final ratio = _contrastRatio(white, terracotta);
-      expect(ratio, greaterThanOrEqualTo(3.0),
-          reason: 'White on terracotta contrast: ${ratio.toStringAsFixed(2)}:1');
+    test('white (#FFFFFF) on teal (#0D7B74) >= 4.5:1 (AA normal text)', () {
+      const whiteText = Color(0xFFFFFFFF);
+      const teal = Color(0xFF0D7B74);
+      final ratio = _contrastRatio(whiteText, teal);
+      expect(ratio, greaterThanOrEqualTo(4.5),
+          reason: 'White on teal contrast: ${ratio.toStringAsFixed(2)}:1');
     });
   });
 
@@ -404,24 +404,24 @@ void main() {
   // AppColors facade
   // ---------------------------------------------------------------------------
   group('AppColors facade', () {
-    test('AppColors.primary equals terracotta #CC6B49', () {
-      expect(AppColors.primary, equals(const Color(0xFFCC6B49)));
+    test('AppColors.primary equals teal #0D7B74', () {
+      expect(AppColors.primary, equals(const Color(0xFF0D7B74)));
     });
 
     test('AppColors.textOnPrimary equals white #FFFFFF (not black)', () {
       expect(AppColors.textOnPrimary, equals(const Color(0xFFFFFFFF)));
     });
 
-    test('AppColors.background equals sand #F2E8D6', () {
-      expect(AppColors.background, equals(const Color(0xFFF2E8D6)));
+    test('AppColors.background equals white #FFFFFF', () {
+      expect(AppColors.background, equals(const Color(0xFFFFFFFF)));
     });
 
-    test('AppColors.textPrimary equals dark brown #2C1A0E', () {
-      expect(AppColors.textPrimary, equals(const Color(0xFF2C1A0E)));
+    test('AppColors.textPrimary equals gray-900 #111827', () {
+      expect(AppColors.textPrimary, equals(const Color(0xFF111827)));
     });
 
-    test('AppColors.surface equals warm white #FFF9F2', () {
-      expect(AppColors.surface, equals(const Color(0xFFFFF9F2)));
+    test('AppColors.surface equals cool gray #F8F9FA', () {
+      expect(AppColors.surface, equals(const Color(0xFFF8F9FA)));
     });
   });
 }

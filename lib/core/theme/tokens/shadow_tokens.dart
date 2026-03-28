@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Typed shadow token set — elevation shadow levels using warm brown base.
+/// Typed shadow token set — elevation shadow levels using neutral gray-900 base.
 ///
 /// Note: [List<BoxShadow>] is not const-constructable, so this class does NOT
 /// use a const constructor. Use [AppShadowTokens.standard] for the default instance.
@@ -20,29 +20,29 @@ final class AppShadowTokens extends ThemeExtension<AppShadowTokens> {
   /// Floating/modal elevation — two warm-brown shadows at higher opacity.
   final List<BoxShadow> floating;
 
-  /// Default standard shadow instance using warm brown base (#2C1A0E).
+  /// Default standard shadow instance using neutral gray-900 base (#111827).
   static AppShadowTokens get standard => AppShadowTokens(
         flat: const [],
         raised: [
           BoxShadow(
-            color: const Color(0xFF2C1A0E).withValues(alpha: 0.03),
+            color: const Color(0xFF111827).withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
           BoxShadow(
-            color: const Color(0xFF2C1A0E).withValues(alpha: 0.02),
+            color: const Color(0xFF111827).withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
         floating: [
           BoxShadow(
-            color: const Color(0xFF2C1A0E).withValues(alpha: 0.06),
+            color: const Color(0xFF111827).withValues(alpha: 0.07),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: const Color(0xFF2C1A0E).withValues(alpha: 0.03),
+            color: const Color(0xFF111827).withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

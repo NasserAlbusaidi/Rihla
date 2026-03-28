@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// Typed color token set for the warm earthy palette.
+/// Typed color token set for the neutral + teal palette.
 ///
 /// All fields are final Color values. Gradient tokens are computed getters
 /// (LinearGradient is not const-constructable, so they cannot be fields).
 ///
-/// Use [AppColorTokens.earthyLight] for the default light palette instance.
+/// Use [AppColorTokens.light] for the default light palette instance.
 final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   const AppColorTokens({
     required this.primary,
@@ -41,97 +41,97 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     required this.headerGradientEnd,
   });
 
-  /// Terracotta — primary action color (buttons, FABs, focused inputs, links)
+  /// Teal — primary action color (buttons, FABs, focused inputs, links)
   final Color primary;
 
-  /// Sand — scaffold/page background (#F2E8D6)
+  /// White — scaffold/page background (#FFFFFF)
   final Color scaffoldBackground;
 
-  /// Warm white — card surface (#FFF9F2)
+  /// Gray-50 — card surface (#F8F9FA)
   final Color cardSurface;
 
-  /// Sand light — input fill (#F5EDE1)
+  /// Gray-100 — input fill (#F3F4F6)
   final Color inputFill;
 
-  /// Warm gray — dividers and borders (#E5D5C0)
+  /// Gray-200 — dividers and borders (#E5E7EB)
   final Color border;
 
-  /// Dark brown — primary body text, 13.71:1 on sand (#2C1A0E)
+  /// Gray-900 — primary body text, 17.15:1 on white (#111827)
   final Color textPrimary;
 
-  /// Warm gray — secondary text, 5.35:1 on sand (#6B5B4E)
+  /// Gray-500 — secondary text, 5.74:1 on white (#6B7280)
   final Color textSecondary;
 
-  /// Decorative use only — 2.30:1 contrast, below AA. Use textSecondary for functional labels.
+  /// Gray-400 — decorative use only, below AA. Use textSecondary for functional labels.
   final Color textMuted;
 
-  /// White on terracotta — 3.64:1 AA large (#FFFFFF)
+  /// White on teal — AA large (#FFFFFF)
   final Color textOnPrimary;
 
   /// Display only (badges, icons). For text use [successText].
   final Color success;
 
-  /// Dark emerald — WCAG-safe success text, 4.51:1 on sand (#047857)
+  /// Dark emerald — WCAG-safe success text, 4.56:1 on white (#047857)
   final Color successText;
 
   /// Display only (badges, icons). For text use [errorText].
   final Color error;
 
-  /// Dark red — WCAG-safe error text, 5.33:1 on sand (#B91C1C)
+  /// Dark red — WCAG-safe error text, 5.92:1 on white (#B91C1C)
   final Color errorText;
 
-  /// Warm beige — disabled control background (#E5D5C0)
+  /// Gray-200 — disabled control background (#E5E7EB)
   final Color disabled;
 
-  /// Sand gray — disabled text (#A89888)
+  /// Gray-400 — disabled text (#9CA3AF)
   final Color disabledText;
 
-  /// Terracotta focus ring — matches primary (#CC6B49)
+  /// Teal focus ring — matches primary (#0D7B74)
   final Color focusRing;
 
-  /// Terracotta 15% tint — selected chip/item background (#F5DDD3)
+  /// Teal 10% tint — selected chip/item background (#E6F5F3)
   final Color selectionFill;
 
-  /// Ledger module accent — terracotta (#CC6B49)
+  /// Ledger module accent — teal (#0D7B74)
   final Color moduleLedger;
 
-  /// Ledger module light tint (#ECD5C0)
+  /// Ledger module light tint (#E6F5F3)
   final Color moduleLedgerLight;
 
-  /// Gear module accent — olive (#7A8C5E)
+  /// Gear module accent — gray-500 (#6B7280)
   final Color moduleGear;
 
-  /// Gear module light tint (#E0DAC4)
+  /// Gear module light tint (#F3F4F6)
   final Color moduleGearLight;
 
-  /// Logistics module accent — dusty teal (#5B7B8C)
+  /// Logistics module accent — gray-500 (#6B7280)
   final Color moduleLogistics;
 
-  /// Logistics module light tint (#DBD7CA)
+  /// Logistics module light tint (#F3F4F6)
   final Color moduleLogisticsLight;
 
-  /// Vault module accent — warm bronze (#8B7355)
+  /// Vault module accent — gray-500 (#6B7280)
   final Color moduleVault;
 
-  /// Vault module light tint (#E2D6C2)
+  /// Vault module light tint (#F3F4F6)
   final Color moduleVaultLight;
 
-  /// Activity module accent — caramel (#A67C5B)
+  /// Activity module accent — gray-500 (#6B7280)
   final Color moduleActivity;
 
-  /// Activity module light tint (#E6D7C3)
+  /// Activity module light tint (#F3F4F6)
   final Color moduleActivityLight;
 
-  /// Memories module accent — desert sand (#9B7A5C)
+  /// Memories module accent — gray-500 (#6B7280)
   final Color moduleMemories;
 
-  /// Memories module light tint (#E4D7C3)
+  /// Memories module light tint (#F3F4F6)
   final Color moduleMemoriesLight;
 
-  /// Header gradient start — dark brown (#2C1A0E)
+  /// Header gradient start — gray-900 (#111827)
   final Color headerGradientStart;
 
-  /// Header gradient end — slightly lighter dark brown (#3D2B1E)
+  /// Header gradient end — gray-800 (#1F2937)
   final Color headerGradientEnd;
 
   /// Computed dark header gradient (not const — LinearGradient is not const-constructable).
@@ -141,39 +141,39 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
         colors: [headerGradientStart, headerGradientEnd],
       );
 
-  /// Default earthy light palette instance.
-  static const AppColorTokens earthyLight = AppColorTokens(
-    primary: Color(0xFFCC6B49),
-    scaffoldBackground: Color(0xFFF2E8D6),
-    cardSurface: Color(0xFFFFF9F2),
-    inputFill: Color(0xFFF5EDE1),
-    border: Color(0xFFE5D5C0),
-    textPrimary: Color(0xFF2C1A0E),
-    textSecondary: Color(0xFF6B5B4E),
-    textMuted: Color(0xFFA89888),
+  /// Default neutral + teal light palette instance.
+  static const AppColorTokens light = AppColorTokens(
+    primary: Color(0xFF0D7B74),
+    scaffoldBackground: Color(0xFFFFFFFF),
+    cardSurface: Color(0xFFF8F9FA),
+    inputFill: Color(0xFFF3F4F6),
+    border: Color(0xFFE5E7EB),
+    textPrimary: Color(0xFF111827),
+    textSecondary: Color(0xFF6B7280),
+    textMuted: Color(0xFF9CA3AF),
     textOnPrimary: Color(0xFFFFFFFF),
     success: Color(0xFF10B981),
     successText: Color(0xFF047857),
     error: Color(0xFFEF4444),
     errorText: Color(0xFFB91C1C),
-    disabled: Color(0xFFE5D5C0),
-    disabledText: Color(0xFFA89888),
-    focusRing: Color(0xFFCC6B49),
-    selectionFill: Color(0xFFF5DDD3),
-    moduleLedger: Color(0xFFCC6B49),
-    moduleLedgerLight: Color(0xFFECD5C0),
-    moduleGear: Color(0xFF7A8C5E),
-    moduleGearLight: Color(0xFFE0DAC4),
-    moduleLogistics: Color(0xFF5B7B8C),
-    moduleLogisticsLight: Color(0xFFDBD7CA),
-    moduleVault: Color(0xFF8B7355),
-    moduleVaultLight: Color(0xFFE2D6C2),
-    moduleActivity: Color(0xFFA67C5B),
-    moduleActivityLight: Color(0xFFE6D7C3),
-    moduleMemories: Color(0xFF9B7A5C),
-    moduleMemoriesLight: Color(0xFFE4D7C3),
-    headerGradientStart: Color(0xFF2C1A0E),
-    headerGradientEnd: Color(0xFF3D2B1E),
+    disabled: Color(0xFFE5E7EB),
+    disabledText: Color(0xFF9CA3AF),
+    focusRing: Color(0xFF0D7B74),
+    selectionFill: Color(0xFFE6F5F3),
+    moduleLedger: Color(0xFF0D7B74),
+    moduleLedgerLight: Color(0xFFE6F5F3),
+    moduleGear: Color(0xFF6B7280),
+    moduleGearLight: Color(0xFFF3F4F6),
+    moduleLogistics: Color(0xFF6B7280),
+    moduleLogisticsLight: Color(0xFFF3F4F6),
+    moduleVault: Color(0xFF6B7280),
+    moduleVaultLight: Color(0xFFF3F4F6),
+    moduleActivity: Color(0xFF6B7280),
+    moduleActivityLight: Color(0xFFF3F4F6),
+    moduleMemories: Color(0xFF6B7280),
+    moduleMemoriesLight: Color(0xFFF3F4F6),
+    headerGradientStart: Color(0xFF111827),
+    headerGradientEnd: Color(0xFF1F2937),
   );
 
   @override

@@ -41,13 +41,13 @@ final class AppSpacingTokens extends ThemeExtension<AppSpacingTokens> {
   /// 32dp spacing unit
   final double space32;
 
-  /// Small border radius — 12dp (chips, tags)
+  /// Small border radius — 8dp (chips, tags)
   final double radiusSmall;
 
-  /// Medium border radius — 16dp (buttons, inputs)
+  /// Medium border radius — 12dp (buttons, inputs)
   final double radiusMedium;
 
-  /// Large border radius — 20dp (cards, sheets)
+  /// Large border radius — 16dp (cards, sheets)
   final double radiusLarge;
 
   /// Standard button height — 52dp
@@ -62,9 +62,9 @@ final class AppSpacingTokens extends ThemeExtension<AppSpacingTokens> {
     space20: 20,
     space24: 24,
     space32: 32,
-    radiusSmall: 12,
-    radiusMedium: 16,
-    radiusLarge: 20,
+    radiusSmall: 8,
+    radiusMedium: 12,
+    radiusLarge: 16,
     buttonHeight: 52,
   );
 
