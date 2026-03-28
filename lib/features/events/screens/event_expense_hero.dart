@@ -36,14 +36,10 @@ class EventExpenseHero extends ConsumerWidget {
         height: 140,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-          ),
+          gradient: AppColors.darkHeaderGradient,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.2),
+              color: AppColors.surfaceDark.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),

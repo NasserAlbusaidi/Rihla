@@ -53,7 +53,7 @@ class GroupBalanceHero extends StatelessWidget {
           gradient: AppColors.darkHeaderGradient,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.2),
+              color: AppColors.surfaceDark.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),

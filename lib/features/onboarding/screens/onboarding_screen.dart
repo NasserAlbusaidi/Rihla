@@ -90,7 +90,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: OnboardingKeys.screen,
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: AppColors.surfaceDark,
       body: Stack(
         children: [
           // Animated background
@@ -151,11 +151,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         // Dark gradient base
         Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-            ),
+            gradient: AppColors.darkHeaderGradient,
           ),
         ),
         // Accent blob
@@ -187,7 +183,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             width: 300,
             height: 300,
             decoration: BoxDecoration(
-              color: const Color(0xFF334155).withValues(alpha: 0.15),
+              color: AppColors.textSecondary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: BackdropFilter(

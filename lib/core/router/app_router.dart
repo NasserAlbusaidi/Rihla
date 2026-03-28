@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_theme.dart';
+
 import '../../features/groups/screens/create_group_screen.dart';
 import '../../features/groups/screens/group_detail_screen.dart';
 import '../../features/groups/screens/group_settings_screen.dart';
@@ -205,7 +207,7 @@ class _SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: AppColors.surfaceDark,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -215,18 +217,18 @@ class _SplashScreen extends StatelessWidget {
               height: 80,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF13EC92), Color(0xFF0BAE6B)],
+                  colors: [AppColors.primary, AppColors.primaryDark],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF13EC92).withAlpha(100),
+                    color: AppColors.primary.withAlpha(100),
                     blurRadius: 32,
                     offset: const Offset(0, 12),
                   ),
                 ],
               ),
-              child: const Icon(Icons.explore_rounded, size: 40, color: Colors.black),
+              child: const Icon(Icons.explore_rounded, size: 40, color: Colors.white),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -244,7 +246,7 @@ class _SplashScreen extends StatelessWidget {
               height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2.5,
-                color: Color(0xFF13EC92),
+                color: AppColors.primary,
               ),
             ),
           ],
