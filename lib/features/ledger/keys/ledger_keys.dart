@@ -7,6 +7,10 @@ abstract final class LedgerKeys {
   static const editExpenseSheet = Key('ledger_edit_expense_sheet');
   static const settleUpScreen = Key('ledger_settle_up_screen');
 
+  // Section label keys
+  static const spendingLabel = Key('ledger_spending_label');
+  static const payerSectionLabel = Key('ledger_payer_section_label');
+
   // Parameterized keys for list items
   static Key expenseCard(String id) => Key('ledger_expense_card_$id');
 }

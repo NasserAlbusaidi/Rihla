@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 
 /// Spending summary section showing total spend and optional category breakdown.
@@ -80,6 +81,7 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
+                key: LedgerKeys.spendingLabel,
                 'SPENDING',
                 style: TextStyle(
                   fontSize: 11,

@@ -8,6 +8,7 @@ import '../../events/models/event_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 
 /// Scope selector (global/subgroup/custom/personal) with custom participant
@@ -394,6 +395,7 @@ class _PayerSelector extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
+          key: LedgerKeys.payerSectionLabel,
           'PAID BY',
           style: TextStyle(
             fontSize: 12,

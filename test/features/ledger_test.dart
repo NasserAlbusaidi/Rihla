@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/models/transaction_model.dart';
@@ -287,6 +288,6 @@ void main() {
     await tester.pumpAndSettle();
 
     // SPENDING label from balance header confirms render
-    expect(find.text('SPENDING'), findsOneWidget);
+    expect(find.byKey(LedgerKeys.spendingLabel), findsOneWidget);
   });
 }

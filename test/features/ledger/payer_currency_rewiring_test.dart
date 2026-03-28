@@ -7,11 +7,12 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/ledger/keys/ledger_keys.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/widgets/split_scope_selector.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 import 'package:safar/features/trip/models/trip_model.dart';
 import 'package:safar/features/trip/providers/trip_provider.dart';
-import 'package:safar/features/ledger/widgets/split_scope_selector.dart';
-import 'package:safar/features/ledger/models/expense_model.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -132,7 +133,7 @@ void main() {
       await tester.pump(); // let providers settle
 
       // The payer selector header is 'PAID BY'
-      expect(find.text('PAID BY'), findsOneWidget);
+      expect(find.byKey(LedgerKeys.payerSectionLabel), findsOneWidget);
     });
 
     testWidgets(
@@ -149,7 +150,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('PAID BY'), findsNothing);
+      expect(find.byKey(LedgerKeys.payerSectionLabel), findsNothing);
     });
 
     testWidgets('hides PAID BY label when currentUser is null', (tester) async {
@@ -161,7 +162,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('PAID BY'), findsNothing);
+      expect(find.byKey(LedgerKeys.payerSectionLabel), findsNothing);
     });
   });
 
@@ -213,7 +214,7 @@ void main() {
       await tester.pump();
 
       // PAID BY section should be visible
-      expect(find.text('PAID BY'), findsOneWidget);
+      expect(find.byKey(LedgerKeys.payerSectionLabel), findsOneWidget);
 
       // Alice (Me) should appear in the dropdown — it's the default selected value
       expect(find.textContaining('Alice'), findsWidgets);
