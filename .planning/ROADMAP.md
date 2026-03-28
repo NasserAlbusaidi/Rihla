@@ -31,7 +31,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 ### v2.0 Major UI/UX Overhaul (Phases 14-22)
 
 - [x] **Phase 14: Test Hardening** - Convert structural test assertions to semantic Key identifiers to prevent cascade failures during visual changes (3/3 plans — completed 2026-03-28)
-- [ ] **Phase 15: Design Token System** - Build the ThemeExtension-based warm earthy token layer that all subsequent screen work depends on
+- [x] **Phase 15: Design Token System** - Build the ThemeExtension-based warm earthy token layer that all subsequent screen work depends on (completed 2026-03-28)
 - [ ] **Phase 16: Stitch Workflow & Design Reference** - Establish Stitch as specification source, finalize palette, and add CI lint rule blocking hardcoded color values
 - [ ] **Phase 17: Animation Library & Loading States** - Build shared animation components and skeleton loading variants before any screen uses them
 - [ ] **Phase 18: Home Dashboard Redesign** - Deliver the single-scroll dashboard with balance hero, group cards, quick-action tray, and activity strip
@@ -69,7 +69,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 15-01-PLAN.md — Token classes (AppColorTokens, AppSpacingTokens, AppShadowTokens) + AppColors facade palette swap + ThemeData registration + WCAG tests
-- [ ] 15-02-PLAN.md — Migrate 15 hardcoded Color(0xFF...) in 6 files to AppColors + CI lint step
+- [x] 15-02-PLAN.md — Migrate 15 hardcoded Color(0xFF...) in 6 files to AppColors + CI lint step
 **UI hint**: yes
 
 ### Phase 16: Stitch Workflow & Design Reference
@@ -162,7 +162,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 14. Test Hardening | 3/3 | Complete    | 2026-03-28 |
-| 15. Design Token System | 1/2 | In Progress|  |
+| 15. Design Token System | 2/2 | Complete   | 2026-03-28 |
 | 16. Stitch Workflow & Design Reference | 0/? | Not started | - |
 | 17. Animation Library & Loading States | 0/? | Not started | - |
 | 18. Home Dashboard Redesign | 0/? | Not started | - |
