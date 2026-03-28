@@ -54,7 +54,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 **Plans**: 3 plans
 Plans:
 - [x] 14-01-PLAN.md — Key infrastructure + migrate 4 heaviest test files (108 calls)
-- [ ] 14-02-PLAN.md — Migrate 8 medium-priority test files (115 calls)
+- [x] 14-02-PLAN.md — Migrate 8 medium-priority test files (115 calls)
 - [ ] 14-03-PLAN.md — Migrate remaining test files + CI warning + rename verification
 
 ### Phase 15: Design Token System
@@ -158,7 +158,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 14. Test Hardening | 1/3 | In Progress|  |
+| 14. Test Hardening | 2/3 | In Progress|  |
 | 15. Design Token System | 0/? | Not started | - |
 | 16. Stitch Workflow & Design Reference | 0/? | Not started | - |
 | 17. Animation Library & Loading States | 0/? | Not started | - |
