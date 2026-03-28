@@ -8,6 +8,7 @@ abstract final class LogisticsKeys {
   static const createGroupButton = Key('logistics_create_group_button');
   static const removeButton = Key('logistics_remove_button');
   static const deleteButton = Key('logistics_delete_button');
+  static const createGroupTitle = Key('logistics_create_group_title');
 
   // Sections
   static const unassignedPool = Key('logistics_unassigned_pool');

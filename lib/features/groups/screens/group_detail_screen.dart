@@ -534,6 +534,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       children: [
         Text(
           'Recent Activity',
+          key: GroupKeys.recentActivitySection,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: AppColors.space8),
@@ -581,6 +582,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           ),
         ),
         TextButton(
+          key: GroupKeys.seeAllActivityButton,
           onPressed: () => Navigator.of(context).push(
             AppPageRoute(
               builder: (_) => GroupActivityScreen(groupId: groupId),

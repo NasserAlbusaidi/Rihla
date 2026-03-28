@@ -412,6 +412,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             child: const Text('CANCEL'),
           ),
           TextButton(
+            key: LogisticsKeys.deleteButton,
             onPressed: () {
               Navigator.pop(context);
               _deleteGroup(group);
@@ -478,6 +479,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           children: [
             Text(
               group != null ? 'EDIT GROUP' : 'NEW GROUP',
+              key: group != null ? null : LogisticsKeys.createGroupTitle,
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
@@ -535,6 +537,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                 return SizedBox(
                   height: 64,
                   child: ElevatedButton(
+                    key: group != null ? null : LogisticsKeys.createGroupButton,
                     onPressed: isLoading
                         ? null
                         : () {

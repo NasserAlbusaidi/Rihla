@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/keys/shared_keys.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../keys/group_keys.dart';
 
 /// Dark gradient hero card showing total group spending and the current
 /// user's net position, with a Settle Up CTA.
@@ -87,6 +88,7 @@ class GroupBalanceHero extends StatelessWidget {
                     children: [
                       const Text(
                         'GROUP BALANCES',
+                        key: GroupKeys.groupBalancesLabel,
                         style: TextStyle(
                           color: Colors.white54,
                           fontSize: 11,

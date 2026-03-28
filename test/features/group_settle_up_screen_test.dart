@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
@@ -114,10 +115,10 @@ void main() {
       await tester.pump();
 
       // The screen title should be present
-      expect(find.text('Settle Up'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpTitle), findsOneWidget);
 
       // Summary card should show the GROUP TOTAL PENDING label
-      expect(find.text('GROUP TOTAL PENDING'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpGroupTotalLabel), findsOneWidget);
 
       // Settlement tiles should show member names via RichText widgets.
       // find.textContaining may miss RichText — check by widget text or
@@ -144,7 +145,7 @@ void main() {
       await tester.pump();
 
       // Summary card should show the GROUP TOTAL PENDING label
-      expect(find.text('GROUP TOTAL PENDING'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpGroupTotalLabel), findsOneWidget);
 
       // Across N events label
       expect(find.textContaining('events'), findsWidgets);
@@ -174,7 +175,7 @@ void main() {
 
       // The OTHERS SETTLING section should be visible (since currentUid=null)
       // Settlement info should be present
-      expect(find.text('Settle Up'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpTitle), findsOneWidget);
     });
 
     testWidgets('Record settlement shows confirmation bottom sheet',
@@ -199,18 +200,18 @@ void main() {
       await tester.pump();
 
       // Find and tap "Record Settlement" button if visible
-      final recordBtn = find.text('Record Settlement');
+      final recordBtn = find.byKey(GroupKeys.recordSettlementButton);
       if (tester.any(recordBtn)) {
         await tester.tap(recordBtn.first);
         await tester.pumpAndSettle();
 
         // Bottom sheet should appear with Mark as Paid
-        expect(find.text('Mark as Paid'), findsOneWidget);
-        expect(find.text('Not Now'), findsOneWidget);
+        expect(find.byKey(GroupKeys.markAsPaidButton), findsOneWidget);
+        expect(find.byKey(GroupKeys.notNowButton), findsOneWidget);
       }
 
       // Screen is intact
-      expect(find.text('Settle Up'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpTitle), findsOneWidget);
     });
 
     testWidgets('all-settled state shows tick circle and message',
@@ -228,7 +229,7 @@ void main() {
 
       // All-settled state shows the required message
       expect(
-        find.text('All settled across the group!'),
+        find.byKey(GroupKeys.settleUpAllSettledMessage),
         findsOneWidget,
         reason: 'All-settled state must show the tick-circle message (D-08)',
       );
@@ -259,7 +260,7 @@ void main() {
 
       // If Record Settlement button is visible (e.g. future auth injection),
       // tap and verify pre-fill. Otherwise just ensure screen loads.
-      final recordBtn = find.text('Record Settlement');
+      final recordBtn = find.byKey(GroupKeys.recordSettlementButton);
       if (tester.any(recordBtn)) {
         await tester.tap(recordBtn.first);
         await tester.pumpAndSettle();
@@ -277,7 +278,7 @@ void main() {
       }
 
       // Screen renders without error
-      expect(find.text('Settle Up'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpTitle), findsOneWidget);
     });
 
     testWidgets('shows loading indicator while balances are loading',

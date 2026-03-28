@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../trip/models/trip_model.dart';
+import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
 
 /// A card that renders a single [SubGroup] with its member slots and drag-drop
@@ -190,6 +191,7 @@ class SubgroupCard extends StatelessWidget {
                     child: const Text('CANCEL'),
                   ),
                   TextButton(
+                    key: LogisticsKeys.removeButton,
                     onPressed: () => Navigator.pop(context, true),
                     child: const Text(
                       'REMOVE',

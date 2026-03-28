@@ -41,6 +41,15 @@ abstract final class GroupKeys {
   // Section header keys (for GroupDetailScreen)
   static const recentActivitySection = Key('group_recent_activity_section');
   static const eventsCountChip = Key('group_events_count_chip');
+  static const groupBalancesLabel = Key('group_balances_label');
+  static const seeAllActivityButton = Key('group_see_all_activity_button');
+
+  // Settle Up screen keys
+  static const settleUpTitle = Key('group_settle_up_title');
+  static const settleUpSummaryCard = Key('group_settle_up_summary_card');
+  static const settleUpGroupTotalLabel = Key('group_settle_up_total_label');
+  static const settleUpAllSettledMessage = Key('group_settle_up_all_settled');
+  static const settleUpRecordSheetTitle = Key('group_settle_up_record_title');
 
   // Parameterized keys for list items
   static Key groupCard(String groupId) => Key('group_card_$groupId');

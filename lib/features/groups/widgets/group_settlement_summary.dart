@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../keys/group_keys.dart';
 
 /// Summary card displayed at the top of the Group Settle-Up screen.
 ///
@@ -45,6 +46,7 @@ class GroupSettlementSummaryCard extends StatelessWidget {
         children: [
           const Text(
             'GROUP TOTAL PENDING',
+            key: GroupKeys.settleUpGroupTotalLabel,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,

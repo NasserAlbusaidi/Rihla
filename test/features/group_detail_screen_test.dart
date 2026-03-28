@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -175,7 +176,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // GroupBalanceHero renders "GROUP BALANCES" label
-      expect(find.text('GROUP BALANCES'), findsOneWidget);
+      expect(find.byKey(GroupKeys.groupBalancesLabel), findsOneWidget);
     });
 
     testWidgets('hides GroupBalanceHero when no expenses exist (D-19)',
@@ -190,7 +191,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // GroupBalanceHero must NOT be shown when totalSpent == 0
-      expect(find.text('GROUP BALANCES'), findsNothing);
+      expect(find.byKey(GroupKeys.groupBalancesLabel), findsNothing);
     });
 
     testWidgets('shows Members & Balances section with GroupMemberBalanceCard tiles',
@@ -205,7 +206,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Section header renamed from "Members" to "Members & Balances"
-      expect(find.text('Members & Balances'), findsOneWidget);
+      expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
 
       // Member names rendered via GroupMemberBalanceCard header rows
       expect(find.text('Alice'), findsWidgets);
@@ -238,7 +239,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Recent Activity'), findsOneWidget);
+      expect(find.byKey(GroupKeys.recentActivitySection), findsOneWidget);
     });
 
     testWidgets('shows See all activity button', (tester) async {
@@ -251,7 +252,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('See all activity'), findsOneWidget);
+      expect(find.byKey(GroupKeys.seeAllActivityButton), findsOneWidget);
     });
 
     testWidgets('invite code section appears below events section (D-30)',
@@ -266,15 +267,15 @@ void main() {
       await tester.pumpAndSettle();
 
       // Both "Events" and "Invite Code" headers should be visible
-      expect(find.text('Events'), findsOneWidget);
-      expect(find.text('Invite Code'), findsOneWidget);
+      expect(find.byKey(GroupKeys.eventsSection), findsOneWidget);
+      expect(find.byKey(GroupKeys.inviteCodeSection), findsOneWidget);
 
       // Verify layout order: Events appears before Invite Code in the widget tree.
       // We find their positions via renderObject coordinates.
       final eventsOffset =
-          tester.getTopLeft(find.text('Events').first);
+          tester.getTopLeft(find.byKey(GroupKeys.eventsSection).first);
       final inviteOffset =
-          tester.getTopLeft(find.text('Invite Code').first);
+          tester.getTopLeft(find.byKey(GroupKeys.inviteCodeSection).first);
 
       // Invite Code section must be below the Events section (higher Y coordinate)
       expect(inviteOffset.dy, greaterThan(eventsOffset.dy));

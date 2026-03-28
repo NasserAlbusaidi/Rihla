@@ -176,6 +176,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           ),
           const Text(
             'Settle Up',
+            key: GroupKeys.settleUpTitle,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -448,6 +449,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           const SizedBox(height: 16),
           const Text(
             'All settled across the group!',
+            key: GroupKeys.settleUpAllSettledMessage,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -512,6 +514,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               const SizedBox(height: 24),
               const Text(
                 'Record Settlement',
+                key: GroupKeys.settleUpRecordSheetTitle,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,

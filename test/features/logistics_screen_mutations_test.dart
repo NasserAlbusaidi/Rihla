@@ -8,6 +8,7 @@ import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/logistics/keys/logistics_keys.dart';
 import 'package:safar/features/logistics/models/sub_group_model.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 import 'package:safar/features/logistics/screens/logistics_screen.dart';
@@ -188,8 +189,8 @@ void main() {
         await tester.pumpAndSettle();
 
         // Confirm removal
-        expect(find.text('REMOVE'), findsOneWidget);
-        await tester.tap(find.text('REMOVE'));
+        expect(find.byKey(LogisticsKeys.removeButton), findsOneWidget);
+        await tester.tap(find.byKey(LogisticsKeys.removeButton));
         await tester.pumpAndSettle();
 
         verify(
@@ -222,8 +223,8 @@ void main() {
         await tester.pumpAndSettle();
 
         // Confirm the delete dialog
-        expect(find.text('DELETE'), findsOneWidget);
-        await tester.tap(find.text('DELETE'));
+        expect(find.byKey(LogisticsKeys.deleteButton), findsOneWidget);
+        await tester.tap(find.byKey(LogisticsKeys.deleteButton));
         await tester.pumpAndSettle();
 
         verify(
@@ -254,7 +255,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Dialog should be open
-        expect(find.text('NEW GROUP'), findsOneWidget);
+        expect(find.byKey(LogisticsKeys.createGroupTitle), findsOneWidget);
 
         // Enter name
         final nameField = find.widgetWithText(
@@ -268,7 +269,7 @@ void main() {
         await tester.enterText(capacityField, '6');
 
         // Tap CREATE GROUP
-        await tester.tap(find.text('CREATE GROUP'));
+        await tester.tap(find.byKey(LogisticsKeys.createGroupButton));
         await tester.pumpAndSettle();
 
         verify(
@@ -308,7 +309,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Confirm the delete dialog
-        await tester.tap(find.text('DELETE'));
+        await tester.tap(find.byKey(LogisticsKeys.deleteButton));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
 
@@ -348,7 +349,7 @@ void main() {
         await tester.tap(find.byType(IconButton).first);
         await tester.pumpAndSettle();
 
-        expect(find.text('NEW GROUP'), findsOneWidget);
+        expect(find.byKey(LogisticsKeys.createGroupTitle), findsOneWidget);
 
         final nameField = find.widgetWithText(
           TextField,
@@ -356,7 +357,7 @@ void main() {
         );
         await tester.enterText(nameField, 'Test Car');
 
-        await tester.tap(find.text('CREATE GROUP'));
+        await tester.tap(find.byKey(LogisticsKeys.createGroupButton));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
 
@@ -395,7 +396,7 @@ void main() {
         await tester.tap(find.text('A'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('REMOVE'));
+        await tester.tap(find.byKey(LogisticsKeys.removeButton));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
 
