@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/models/expense_model.dart';
+import '../keys/group_keys.dart';
 
 /// Expandable card showing a group member's net balance and per-event breakdown.
 ///
@@ -150,6 +151,7 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                       ),
                       const SizedBox(width: AppColors.space8),
                       Container(
+                        key: GroupKeys.settledBadge,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
                           vertical: 2,
@@ -287,6 +289,7 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
             child: Align(
               alignment: Alignment.centerRight,
               child: TextButton(
+                key: GroupKeys.settleButton,
                 onPressed: widget.onSettleUpTap,
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primary,

@@ -51,6 +51,10 @@ abstract final class GroupKeys {
   static const settleUpAllSettledMessage = Key('group_settle_up_all_settled');
   static const settleUpRecordSheetTitle = Key('group_settle_up_record_title');
 
+  // MemberBalanceCard keys
+  static const settledBadge = Key('group_member_settled_badge');
+  static const settleButton = Key('group_member_settle_button');
+
   // Parameterized keys for list items
   static Key groupCard(String groupId) => Key('group_card_$groupId');
   static Key memberBalanceCard(String memberId) =>

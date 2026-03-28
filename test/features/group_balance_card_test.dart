@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/widgets/group_member_balance_card.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 
@@ -125,7 +126,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Settled'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settledBadge), findsOneWidget);
     });
 
     testWidgets('tap expands to show per-event breakdown', (tester) async {
@@ -151,7 +152,7 @@ void main() {
       );
 
       // Initially collapsed — no Settle button
-      expect(find.text('Settle'), findsNothing);
+      expect(find.byKey(GroupKeys.settleButton), findsNothing);
 
       // Tap the card header to expand
       await tester.tap(find.text('Alice'));
@@ -191,10 +192,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Settle button should be visible in expanded state with non-zero balance
-      expect(find.text('Settle'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleButton), findsOneWidget);
 
       // Tap Settle button
-      await tester.tap(find.text('Settle'));
+      await tester.tap(find.byKey(GroupKeys.settleButton));
       await tester.pump();
 
       expect(settleUpCalled, isTrue,
@@ -219,7 +220,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Settle button should NOT appear for settled member
-      expect(find.text('Settle'), findsNothing);
+      expect(find.byKey(GroupKeys.settleButton), findsNothing);
     });
   });
 }
