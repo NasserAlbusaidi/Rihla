@@ -334,10 +334,12 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                     const SizedBox(height: AppColors.space24),
                     Text(
                       'Modules',
+                      key: EventKeys.modulesSection,
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     const SizedBox(height: AppColors.space8),
                     _ModuleToggleRow(
+                      key: EventKeys.moduleLedgerToggle,
                       icon: Iconsax.dollar_circle,
                       label: 'Ledger',
                       color: AppColors.emerald,
@@ -347,6 +349,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       ),
                     ),
                     _ModuleToggleRow(
+                      key: EventKeys.moduleGearToggle,
                       icon: Iconsax.bag,
                       label: 'Gear',
                       color: AppColors.amber,
@@ -356,6 +359,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       ),
                     ),
                     _ModuleToggleRow(
+                      key: EventKeys.moduleLogisticsToggle,
                       icon: Iconsax.car,
                       label: 'Logistics',
                       color: AppColors.sky,
@@ -365,6 +369,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       ),
                     ),
                     _ModuleToggleRow(
+                      key: EventKeys.moduleVaultToggle,
                       icon: Iconsax.folder,
                       label: 'Vault',
                       color: AppColors.indigo,
@@ -374,6 +379,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       ),
                     ),
                     _ModuleToggleRow(
+                      key: EventKeys.moduleMemoriesToggle,
                       icon: Iconsax.image,
                       label: 'Memories',
                       color: AppColors.mint,
@@ -388,6 +394,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
                   // --- Submit button ---
                   LoadingButton(
+                    key: EventKeys.createEventButton,
                     label:
                         isLoading ? 'Creating\u2026' : 'Create Event',
                     isLoading: isLoading,
@@ -481,6 +488,7 @@ class _ModuleToggleRow extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   const _ModuleToggleRow({
+    super.key,
     required this.icon,
     required this.label,
     required this.color,

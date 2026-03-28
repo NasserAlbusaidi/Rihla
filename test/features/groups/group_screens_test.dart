@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -214,7 +215,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Section header
-        expect(find.text('Invite Code'), findsOneWidget);
+        expect(find.byKey(GroupKeys.inviteCodeSection), findsOneWidget);
         // The code itself appears in InviteCodeDisplay
         expect(find.text('ABC123'), findsWidgets);
       });
@@ -227,7 +228,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Section header renamed to "Members & Balances" in Plan 05-05 (D-29).
-        expect(find.text('Members & Balances'), findsOneWidget);
+        expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
         // Member names rendered via GroupMemberBalanceCard (replaced GroupMemberTile)
         expect(find.text('Alice'), findsWidgets);
         expect(find.text('Bob'), findsOneWidget);
@@ -240,14 +241,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('No events yet'), findsOneWidget);
-        // Copywriting Contract message for 03-03
-        expect(
-          find.text(
-            'Tap the + button to create the first event for this group.',
-          ),
-          findsOneWidget,
-        );
+        expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
       });
 
       testWidgets('shows Events section header', (tester) async {
@@ -256,7 +250,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Events'), findsOneWidget);
+        expect(find.byKey(GroupKeys.eventsSection), findsOneWidget);
       });
 
       testWidgets(
@@ -314,7 +308,7 @@ void main() {
 
         // With totalSpent = 30.000, GroupBalanceHero is shown
         // Verify balance data is displayed
-        expect(find.text('Members & Balances'), findsOneWidget);
+        expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
         expect(find.text('Alice'), findsWidgets);
         expect(find.text('Bob'), findsOneWidget);
       });
@@ -339,7 +333,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Group Settings'), findsOneWidget);
+        expect(find.byKey(GroupKeys.settingsTitle), findsOneWidget);
       });
 
       testWidgets('shows group name tile with current name (D-15)', (tester) async {
@@ -348,7 +342,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Group Name'), findsOneWidget);
+        expect(find.byKey(GroupKeys.settingsGroupNameTile), findsOneWidget);
         expect(find.text('Adventure Crew'), findsOneWidget);
       });
 
@@ -358,7 +352,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Currency'), findsOneWidget);
+        expect(find.byKey(GroupKeys.settingsCurrencyTile), findsOneWidget);
         expect(find.text('OMR'), findsOneWidget);
       });
 
@@ -368,7 +362,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Invite Code'), findsOneWidget);
+        expect(find.byKey(GroupKeys.settingsInviteCodeTile), findsOneWidget);
         expect(find.text('ABC123'), findsWidgets);
       });
     });

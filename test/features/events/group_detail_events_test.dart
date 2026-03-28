@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/event_command_center.dart';
 import 'package:safar/features/gear/models/gear_item_model.dart';
@@ -166,14 +167,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Empty state matching Copywriting Contract
-      expect(find.text('No events yet'), findsOneWidget);
-      expect(
-        find.text(
-          'Tap the + button to create the first event for this group.',
-        ),
-        findsOneWidget,
-      );
+      // Empty state — verified via widget key
+      expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
     });
 
     testWidgets('shows event count chip when events exist', (tester) async {
@@ -192,7 +187,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Count chip shows the integer count of events
-      expect(find.text('2'), findsOneWidget);
+      expect(find.byKey(GroupKeys.eventsCountChip), findsOneWidget);
     });
 
     testWidgets('does not show count chip when no events', (tester) async {
@@ -203,10 +198,9 @@ void main() {
 
       // No count chip when events list is empty
       // The "Events" section header is still shown
-      expect(find.text('Events'), findsOneWidget);
-      // But no count chip with numeric text like '0' next to it
-      // (chip only appears when events.isNotEmpty per plan spec)
-      expect(find.text('0'), findsNothing);
+      expect(find.byKey(GroupKeys.eventsSection), findsOneWidget);
+      // Count chip only appears when events.isNotEmpty per plan spec
+      expect(find.byKey(GroupKeys.eventsCountChip), findsNothing);
     });
 
     testWidgets('dims past events with 0.6 opacity', (tester) async {

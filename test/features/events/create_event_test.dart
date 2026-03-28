@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/models/event_type_config.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -116,7 +117,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Choose Event Type'), findsOneWidget);
+      expect(find.byKey(EventKeys.eventTypePickerTitle), findsOneWidget);
     });
 
     testWidgets('shows 5 type descriptions', (tester) async {
@@ -156,7 +157,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap the first card (Trip)
-      await tester.tap(find.text('Trip'));
+      await tester.tap(find.byKey(EventKeys.eventTypeCard('Trip')));
       await tester.pumpAndSettle();
 
       // Should now see the CreateEventScreen AppBar
@@ -222,14 +223,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // "Modules" section label should appear for Custom type
-      expect(find.text('Modules'), findsOneWidget);
+      expect(find.byKey(EventKeys.modulesSection), findsOneWidget);
 
-      // All 5 module rows should appear
-      expect(find.text('Ledger'), findsOneWidget);
-      expect(find.text('Gear'), findsOneWidget);
-      expect(find.text('Logistics'), findsOneWidget);
-      expect(find.text('Vault'), findsOneWidget);
-      expect(find.text('Memories'), findsOneWidget);
+      // All 5 module toggle rows should appear
+      expect(find.byKey(EventKeys.moduleLedgerToggle), findsOneWidget);
+      expect(find.byKey(EventKeys.moduleGearToggle), findsOneWidget);
+      expect(find.byKey(EventKeys.moduleLogisticsToggle), findsOneWidget);
+      expect(find.byKey(EventKeys.moduleVaultToggle), findsOneWidget);
+      expect(find.byKey(EventKeys.moduleMemoriesToggle), findsOneWidget);
 
       // Switch widgets should be present
       expect(find.byType(Switch), findsWidgets);
@@ -275,7 +276,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // "Modules" section label should NOT appear for Trip type
-      expect(find.text('Modules'), findsNothing);
+      expect(find.byKey(EventKeys.modulesSection), findsNothing);
       expect(find.byType(Switch), findsNothing);
     });
 
@@ -292,7 +293,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap submit without entering a name
-      await tester.tap(find.text('Create Event'));
+      await tester.tap(find.byKey(EventKeys.createEventButton));
       await tester.pumpAndSettle();
 
       // Validator error message should appear

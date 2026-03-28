@@ -30,7 +30,7 @@ class EventTypePickerScreen extends StatelessWidget {
       key: EventKeys.eventTypePickerScreen,
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Choose Event Type'),
+        title: const Text('Choose Event Type', key: EventKeys.eventTypePickerTitle),
         leading: CloseButton(
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -49,6 +49,7 @@ class EventTypePickerScreen extends StatelessWidget {
                 '${config.label}: ${config.description}. Modules: ${enabledModuleNames.join(", ")}',
             button: true,
             child: _PressableCard(
+              key: EventKeys.eventTypeCard(config.label),
               onTap: () => Navigator.of(context).push(
                 AppPageRoute(
                   builder: (_) => CreateEventScreen(
@@ -191,7 +192,7 @@ class _PressableCard extends StatefulWidget {
   final VoidCallback onTap;
   final Widget child;
 
-  const _PressableCard({required this.onTap, required this.child});
+  const _PressableCard({super.key, required this.onTap, required this.child});
 
   @override
   State<_PressableCard> createState() => _PressableCardState();

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/widgets/event_module_list.dart';
 import 'package:safar/features/gear/models/gear_item_model.dart';
@@ -146,7 +147,7 @@ void main() {
       // Pump past flutter_animate's 400ms animations (delay up to 400ms + 400ms duration)
       await tester.pump(const Duration(seconds: 2));
 
-      expect(find.text('Ledger'), findsOneWidget);
+      expect(find.byKey(EventKeys.ledgerCard), findsOneWidget);
     });
 
     testWidgets('shows expense count summary text when expenses exist', (tester) async {
@@ -183,7 +184,7 @@ void main() {
       await tester.pumpWidget(_buildList(event: event));
       await tester.pump(const Duration(seconds: 2));
 
-      expect(find.text('Gear'), findsOneWidget);
+      expect(find.byKey(EventKeys.gearCard), findsOneWidget);
     });
 
     testWidgets('shows unclaimed gear action text when items exist without assignee', (tester) async {
@@ -222,7 +223,7 @@ void main() {
       await tester.pumpWidget(_buildList(event: event));
       await tester.pump(const Duration(seconds: 2));
 
-      expect(find.text('Logistics'), findsOneWidget);
+      expect(find.byKey(EventKeys.logisticsCard), findsOneWidget);
     });
 
     testWidgets('shows car count in logistics summary', (tester) async {
@@ -260,7 +261,7 @@ void main() {
       await tester.pumpWidget(_buildList(event: event));
       await tester.pump(const Duration(seconds: 2));
 
-      expect(find.text('Vault'), findsOneWidget);
+      expect(find.byKey(EventKeys.vaultCard), findsOneWidget);
     });
 
     testWidgets('shows document count in vault summary', (tester) async {
@@ -282,7 +283,7 @@ void main() {
       await tester.pumpWidget(_buildList(event: event));
       await tester.pump(const Duration(seconds: 2));
 
-      expect(find.text('Memories'), findsOneWidget);
+      expect(find.byKey(EventKeys.memoriesCard), findsOneWidget);
     });
 
     testWidgets('renders all 5 module cards for a trip event', (tester) async {
@@ -298,11 +299,11 @@ void main() {
       await tester.pumpWidget(_buildList(event: event));
       await tester.pump(const Duration(seconds: 2));
 
-      expect(find.text('Ledger'), findsOneWidget);
-      expect(find.text('Gear'), findsOneWidget);
-      expect(find.text('Logistics'), findsOneWidget);
-      expect(find.text('Vault'), findsOneWidget);
-      expect(find.text('Memories'), findsOneWidget);
+      expect(find.byKey(EventKeys.ledgerCard), findsOneWidget);
+      expect(find.byKey(EventKeys.gearCard), findsOneWidget);
+      expect(find.byKey(EventKeys.logisticsCard), findsOneWidget);
+      expect(find.byKey(EventKeys.vaultCard), findsOneWidget);
+      expect(find.byKey(EventKeys.memoriesCard), findsOneWidget);
     });
 
     testWidgets('renders only Ledger card when only ledger is enabled', (tester) async {
@@ -312,11 +313,11 @@ void main() {
       await tester.pumpWidget(_buildList(event: event));
       await tester.pump(const Duration(seconds: 2));
 
-      expect(find.text('Ledger'), findsOneWidget);
-      expect(find.text('Gear'), findsNothing);
-      expect(find.text('Logistics'), findsNothing);
-      expect(find.text('Vault'), findsNothing);
-      expect(find.text('Memories'), findsNothing);
+      expect(find.byKey(EventKeys.ledgerCard), findsOneWidget);
+      expect(find.byKey(EventKeys.gearCard), findsNothing);
+      expect(find.byKey(EventKeys.logisticsCard), findsNothing);
+      expect(find.byKey(EventKeys.vaultCard), findsNothing);
+      expect(find.byKey(EventKeys.memoriesCard), findsNothing);
     });
   });
 }

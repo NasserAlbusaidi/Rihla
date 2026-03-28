@@ -156,7 +156,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
       key: GroupKeys.settingsScreen,
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Group Settings'),
+        title: const Text('Group Settings', key: GroupKeys.settingsTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -177,6 +177,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
             children: [
               // ---- Group Name ----
               ListTile(
+                key: GroupKeys.settingsGroupNameTile,
                 title: Text(
                   'Group Name',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -235,6 +236,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
 
               // ---- Currency ----
               ListTile(
+                key: GroupKeys.settingsCurrencyTile,
                 title: Text(
                   'Currency',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -260,6 +262,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
 
               // ---- Invite Code ----
               ListTile(
+                key: GroupKeys.settingsInviteCodeTile,
                 title: Text(
                   'Invite Code',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(

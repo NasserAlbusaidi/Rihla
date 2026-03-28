@@ -34,6 +34,13 @@ abstract final class GroupKeys {
   static const noGroupsEmpty = Key('group_no_groups_empty');
   static const noEventsEmpty = Key('group_no_events_empty');
   static const settingsTitle = Key('group_settings_title');
+  static const settingsGroupNameTile = Key('group_settings_group_name_tile');
+  static const settingsCurrencyTile = Key('group_settings_currency_tile');
+  static const settingsInviteCodeTile = Key('group_settings_invite_code_tile');
+
+  // Section header keys (for GroupDetailScreen)
+  static const recentActivitySection = Key('group_recent_activity_section');
+  static const eventsCountChip = Key('group_events_count_chip');
 
   // Parameterized keys for list items
   static Key groupCard(String groupId) => Key('group_card_$groupId');

@@ -283,6 +283,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       children: [
         Text(
           'Members & Balances',
+          key: GroupKeys.membersAndBalancesSection,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: AppColors.space12),
@@ -377,11 +378,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             children: [
               Text(
                 'Events',
+                key: GroupKeys.eventsSection,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
               if (events.isNotEmpty)
                 Container(
+                  key: GroupKeys.eventsCountChip,
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppColors.space8,
                     vertical: AppColors.space4,
@@ -411,6 +414,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           data: (events) {
             if (events.isEmpty) {
               return const EmptyStateView(
+                key: GroupKeys.noEventsEmpty,
                 icon: Iconsax.calendar_add,
                 title: 'No events yet',
                 message:
@@ -458,6 +462,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       children: [
         Text(
           'Invite Code',
+          key: GroupKeys.inviteCodeSection,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: AppColors.space12),
