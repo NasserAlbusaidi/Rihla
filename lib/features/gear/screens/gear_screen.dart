@@ -655,6 +655,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             child: const Text('CANCEL'),
           ),
           TextButton(
+            key: GearKeys.deleteConfirmButton,
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
               'DELETE',

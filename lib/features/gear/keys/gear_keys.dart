@@ -6,6 +6,7 @@ abstract final class GearKeys {
 
   // Actions
   static const addButton = Key('gear_add_button');
+  static const deleteConfirmButton = Key('gear_delete_confirm_button');
 
   // Parameterized keys for list items
   static Key gearItem(String id) => Key('gear_item_$id');

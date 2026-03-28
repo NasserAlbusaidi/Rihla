@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/gear/keys/gear_keys.dart';
 import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/gear/screens/gear_screen.dart';
@@ -245,7 +246,7 @@ void main() {
       await _openMenuAndTap(tester, 'Delete');
 
       // Confirm the dialog
-      await tester.tap(find.text('DELETE'));
+      await tester.tap(find.byKey(GearKeys.deleteConfirmButton));
       await tester.pumpAndSettle();
 
       verify(

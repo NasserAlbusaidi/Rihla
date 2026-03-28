@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/core/router/app_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
@@ -68,6 +69,6 @@ void main() {
     );
 
     // HomeScreen has a FAB for creating/joining groups
-    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byKey(HomeKeys.createGroupFab), findsOneWidget);
   });
 }
