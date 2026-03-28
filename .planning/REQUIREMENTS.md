@@ -69,34 +69,34 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | — | Pending |
-| FOUND-02 | — | Pending |
-| FOUND-03 | — | Pending |
-| FOUND-04 | — | Pending |
-| FOUND-05 | — | Pending |
-| NAV-01 | — | Pending |
-| NAV-02 | — | Pending |
-| NAV-03 | — | Pending |
-| NAV-04 | — | Pending |
-| NAV-05 | — | Pending |
-| NAV-06 | — | Pending |
-| SCRN-01 | — | Pending |
-| SCRN-02 | — | Pending |
-| SCRN-03 | — | Pending |
-| SCRN-04 | — | Pending |
-| SCRN-05 | — | Pending |
-| SCRN-06 | — | Pending |
-| PLSH-01 | — | Pending |
-| PLSH-02 | — | Pending |
-| PLSH-03 | — | Pending |
-| PLSH-04 | — | Pending |
-| PLSH-05 | — | Pending |
+| FOUND-01 | Phase 15 | Pending |
+| FOUND-02 | Phase 15 | Pending |
+| FOUND-03 | Phase 16 | Pending |
+| FOUND-04 | Phase 15 | Pending |
+| FOUND-05 | Phase 14 | Pending |
+| NAV-01 | Phase 18 | Pending |
+| NAV-02 | Phase 18 | Pending |
+| NAV-03 | Phase 19 | Pending |
+| NAV-04 | Phase 18 | Pending |
+| NAV-05 | Phase 17 | Pending |
+| NAV-06 | Phase 18 | Pending |
+| SCRN-01 | Phase 20 | Pending |
+| SCRN-02 | Phase 20 | Pending |
+| SCRN-03 | Phase 21 | Pending |
+| SCRN-04 | Phase 21 | Pending |
+| SCRN-05 | Phase 21 | Pending |
+| SCRN-06 | Phase 21 | Pending |
+| PLSH-01 | Phase 22 | Pending |
+| PLSH-02 | Phase 22 | Pending |
+| PLSH-03 | Phase 17 | Pending |
+| PLSH-04 | Phase 22 | Pending |
+| PLSH-05 | Phase 22 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22
+- Mapped to phases: 22
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-28*
-*Last updated: 2026-03-28 after initial definition*
+*Last updated: 2026-03-28 — traceability mapped after roadmap creation (Phases 14-22)*
