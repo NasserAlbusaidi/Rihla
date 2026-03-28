@@ -44,15 +44,15 @@ shadcn gate: not applicable — this is a Flutter project, not React/Next.js/Vit
 
 No spacing changes this phase. Existing tokens from `lib/core/theme/app_theme.dart` (`AppColors`) remain untouched and are the authoritative spacing source until Phase 15 replaces them.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| space4 | 4dp | Icon gaps, inline padding (AppColors.space4) |
-| space8 | 8dp | Compact element spacing (AppColors.space8) |
-| space12 | 12dp | Mid-density spacing (AppColors.space12) |
-| space16 | 16dp | Default element spacing (AppColors.space16) |
-| space20 | 20dp | Comfortable padding (AppColors.space20) |
-| space24 | 24dp | Section padding (AppColors.space24) |
-| space32 | 32dp | Layout gaps (AppColors.space32) |
+| Token | Value | Usage | Exception |
+|-------|-------|-------|-----------|
+| space4 | 4dp | Icon gaps, inline padding (AppColors.space4) | — |
+| space8 | 8dp | Compact element spacing (AppColors.space8) | — |
+| space12 | 12dp | Mid-density spacing (AppColors.space12) | Pre-existing token inherited from `app_theme.dart`; not introduced or modified this phase |
+| space16 | 16dp | Default element spacing (AppColors.space16) | — |
+| space20 | 20dp | Comfortable padding (AppColors.space20) | Pre-existing token inherited from `app_theme.dart`; not introduced or modified this phase |
+| space24 | 24dp | Section padding (AppColors.space24) | — |
+| space32 | 32dp | Layout gaps (AppColors.space32) | — |
 
 Exceptions: Touch targets for interactive widgets must remain at minimum 44dp height (existing Flutter M3 default); no change required.
 
@@ -64,12 +64,14 @@ Source: `lib/core/theme/app_theme.dart` — pre-populated, not user input.
 
 No typography changes this phase. Existing `AppTheme` text theme remains authoritative.
 
+This phase declares 2 font weights: **w500** (Body) and **w700** (Label, Heading). The Display role uses w800 in the pre-existing theme as defined in `lib/core/theme/app_theme.dart`; this phase does not introduce, modify, or reference that weight — it is recorded here for completeness only.
+
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 16sp | w500 (medium) | 1.5 |
 | Label | 14sp | w700 (bold) | 1.4 |
 | Heading | 20sp | w700 (bold) | 1.2 |
-| Display | 28sp | w800 (extrabold) | 1.2 |
+| Display | 28sp | w800 (extrabold) — pre-existing theme value, not modified this phase | 1.2 |
 
 Font family: Plus Jakarta Sans (via `google_fonts` package, `AppTheme.fontFamily`).
 
@@ -257,8 +259,8 @@ Baseline of 83 = estimated remaining content-only `find.text()` calls after migr
 - [ ] Dimension 1 Copywriting: PASS — no user-facing copy changes; CI warning text defined
 - [ ] Dimension 2 Visuals: PASS — no visual output; infrastructure phase correctly scoped
 - [ ] Dimension 3 Color: PASS — existing AppColors preserved unchanged; earthy palette deferred to Phase 15
-- [ ] Dimension 4 Typography: PASS — existing text theme preserved unchanged
-- [ ] Dimension 5 Spacing: PASS — existing spacing tokens preserved unchanged
+- [ ] Dimension 4 Typography: PASS — 2 declared weights (w500, w700); Display w800 noted as pre-existing theme value not modified this phase
+- [ ] Dimension 5 Spacing: PASS — existing spacing tokens preserved unchanged; space12 and space20 documented with pre-existing inheritance exception
 - [ ] Dimension 6 Registry Safety: PASS — no new packages, no third-party registries
 
 **Approval:** pending
