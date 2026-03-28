@@ -55,6 +55,10 @@ abstract final class GroupKeys {
   static const settledBadge = Key('group_member_settled_badge');
   static const settleButton = Key('group_member_settle_button');
 
+  // ActivityScreen header keys
+  static const activityScreenTitle = Key('group_activity_screen_title');
+  static const activityBackButton = Key('group_activity_back_button');
+
   // Parameterized keys for list items
   static Key groupCard(String groupId) => Key('group_card_$groupId');
   static Key memberBalanceCard(String memberId) =>

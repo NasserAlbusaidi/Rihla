@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
 
+import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/shared/widgets/empty_state_view.dart';
 
 void main() {
@@ -46,7 +47,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('Create Event'), findsOneWidget);
-      expect(find.byType(ElevatedButton), findsOneWidget);
+      expect(find.byKey(SharedKeys.emptyStateCtaButton), findsOneWidget);
     });
 
     testWidgets('action button onPressed calls onAction callback',
@@ -67,7 +68,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 500));
 
-      await tester.tap(find.byType(ElevatedButton));
+      await tester.tap(find.byKey(SharedKeys.emptyStateCtaButton));
       await tester.pump();
 
       expect(tapped, isTrue);
@@ -88,7 +89,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.byType(ElevatedButton), findsNothing);
+      expect(find.byKey(SharedKeys.emptyStateCtaButton), findsNothing);
     });
   });
 }

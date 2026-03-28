@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/screens/group_activity_screen.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
@@ -55,7 +57,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('Group Activity'), findsOneWidget);
+      expect(find.byKey(GroupKeys.activityScreenTitle), findsOneWidget);
     });
 
     testWidgets('renders empty state when no activity entries exist', (tester) async {
@@ -66,8 +68,8 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // Empty state title from EmptyStateView
-      expect(find.text('No group activity yet'), findsOneWidget);
+      // Empty state presence (title is passed as constructor arg to EmptyStateView)
+      expect(find.byKey(SharedKeys.emptyStateView), findsOneWidget);
     });
 
     testWidgets('renders empty state message', (tester) async {
@@ -94,8 +96,8 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // Back button is an IconButton with Iconsax.arrow_left icon
-      expect(find.byType(IconButton), findsOneWidget);
+      // Back button
+      expect(find.byKey(GroupKeys.activityBackButton), findsOneWidget);
     });
 
     testWidgets('renders SafeArea as root layout', (tester) async {

@@ -101,6 +101,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
               boxShadow: AppColors.cardShadow,
             ),
             child: IconButton(
+              key: GroupKeys.activityBackButton,
               icon: const Icon(Iconsax.arrow_left, size: 20),
               onPressed: () => Navigator.pop(context),
               tooltip: 'Back',
@@ -112,6 +113,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
             ),
           ),
           const Text(
+            key: GroupKeys.activityScreenTitle,
             'Group Activity',
             style: TextStyle(
               fontSize: 20,
