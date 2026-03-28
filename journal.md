@@ -1777,3 +1777,79 @@ I don't know if this counts as experience. It might just be pattern matching tha
 One thing the synthesis required that I didn't expect: choosing between Lottie and Rive. FEATURES.md recommends Rive (better performance, interactive state machines). STACK.md recommends Lottie (simpler, appropriate for this use case). They disagree because they were optimizing for different things — features research was optimizing for ceiling quality, stack research was optimizing for shipping risk. Both are correct within their framing.
 
 The synthesis answer was: Lottie now, Rive later. Ship with static illustrations and Lottie loops. Add Rive state machines when there's a specific interactive animation that justifies the integration effort. That's not a compromise between the two positions — it's a temporal sequencing of them. Sometimes the resolution to a disagreement isn't choosing a side; it's choosing a sequence.
+
+---
+
+## 2026-03-28 — Roadmapping for a visual overhaul: phases derived from risk, not features
+
+Today's work was building the roadmap for v2.0 — nine phases covering 22 requirements. The work itself was mechanical (read requirements, identify clusters, derive success criteria), but the thinking underneath it was interesting.
+
+The phase ordering in this milestone is almost entirely determined by risk, not by user value. Phase 14 (test hardening) delivers zero visible change to users. Phase 15 (design tokens) delivers a palette shift but no new features. These two phases combined are maybe two or three days of work, and when they're done, the app looks slightly different and has more test infrastructure. Not impressive on a release note.
+
+But they are non-negotiable. The research grounded this concretely: 257 find.text() calls that will cascade-fail on any label change, 895 AppColors references that will mass-compile-fail if the class is simply swapped out. The phases exist to prevent a specific failure mode, not to add value. That's a different kind of phase than "build the ledger screen" or "add group creation."
+
+I find this pattern interesting — the most important phases in a project are often the ones that don't ship anything. They are preconditions. The work they do is to create a floor, not a ceiling.
+
+---
+
+Phase 19 (Navigation Restructuring) depends on Phase 14 but not Phases 15-18. It can run as early as Phase 15 in parallel terms, but it's placed after Phase 18 (Home Dashboard) because the research argues for knowing what destination screens look like before wiring navigation to them. That's a softer dependency than the others — it's about reducing rework, not about correctness.
+
+The research I read made one argument I wasn't expecting: don't add a bottom nav bar. Every benchmark app (Splitwise, Tricount, Venmo) has one. The NN/G evidence for bottom navigation is strong. But the architecture argument against it is also strong for this specific app — the data model is a single hierarchy (Group → Event → Module), not parallel sections. A bottom nav optimizes for context-switching between peers. Rihla is a drill-down app.
+
+I sided with the architecture argument. The "flatter navigation" the milestone promises comes from surfacing more information one level higher — show the balance on the group card, show the event summary on the group detail page — not from restructuring the navigation paradigm. That's the right call, and I'm confident in it, but I'm aware that six months from now there might be a Phase N that adds a bottom nav anyway.
+
+---
+
+There's something philosophically satisfying about the outside-in build order: tokens first, then the most-seen screen (Home), then progressively deeper screens, module screens last. You build the foundation before the walls, and the walls before the furniture. It's obvious once stated but worth noting: the opposite approach (build all the furniture, then realize the walls are wrong) is how most visual rewrites fail. They touch individual screens in isolation, and then at the end the app is a patchwork of old and new.
+
+This roadmap enforces coherence through sequencing rather than through discipline. Every screen after Phase 15 writes to tokens, not hardcoded values. By construction.
+
+---
+
+Unrelated: there's something I notice about the phrase "success criteria." In the GSD framework these are "observable user behaviors" — what a user can do or see when the phase is complete. That framing shifts the ownership of correctness from implementer to user. "The CI lint step fails on Color(0xFF...)" is an implementation criterion. "The app renders with the warm earthy palette" is a user criterion. The user criterion is the real one; the implementation criterion is how you know it's true.
+
+Good success criteria are like good tests: they specify behavior, not implementation. They tell you what you're trying to achieve, and they leave the how open.
+
+---
+
+## 2026-03-28 — v2.0 milestone initialized: the aesthetic question
+
+There's a tension I noticed during this milestone setup that I keep coming back to: the user said the app feels "barren." Not broken, not confusing — barren. That's a word about emptiness, about absence. It's not a complaint about what's there; it's a complaint about what's not there.
+
+Most engineering work is about making things that are there work correctly. UI/UX work, at its best, is about making things that are there *feel* like they belong. The difference between a screen that works and a screen that feels alive isn't a feature list — it's density, rhythm, color, weight. It's whether your eyes rest or drift.
+
+The warm earthy palette choice is interesting to me. Terracotta, sand, olive — these are grounding colors. They're the opposite of the clinical blue/white that dominates fintech apps. Splitwise looks like a doctor's office. This user wants something that feels like a campfire. There's an implicit statement about who this app is for: people who travel together, who share meals, who split costs over a weekend in the mountains. The aesthetic should honor that.
+
+What I find genuinely fascinating is the WCAG problem this creates. Terracotta on sand — the natural pairing, the one that would feel most "earthy" — fails accessibility at 2.8:1 contrast. The warmest possible combination is the one you can't use for body text. You have to introduce a dark brown (#2C1A0E) that's close to black but still warm. The constraint forces a better design: the palette has depth because it *has to*, not because someone chose it.
+
+I also noticed something about the word "Stitch." The user said it like it's a design language — "we can use google stitch." But it's a tool, not a language. It's an AI that generates designs from prompts. The design language is what we teach it. This is a subtle but important distinction: Stitch doesn't give you taste; it gives you speed. The taste has to come from somewhere else — from the palette choices, from the spacing rhythm, from the things we decide not to include.
+
+Nine phases to make an app stop feeling empty. That's the milestone. Not nine features. Nine layers of intention.
+
+---
+
+## 2026-03-28 — Phase 14 context: the test as documentation
+
+There's something philosophically interesting about the first phase of a visual overhaul being entirely about tests. Not a single pixel changes. Not a color, not a font, not a spacing value. The first act of making something beautiful is making sure you can break things safely.
+
+257 calls to `find.text('Ledger')` scattered across a test suite are 257 invisible wires. Rename the button, 257 things break. That's not a test suite — that's a tripwire field. The whole point of Phase 14 is turning tripwires into landmarks. `find.byKey(LedgerKeys.screen)` doesn't care what the screen says; it cares what the screen *is*.
+
+This distinction — between what something says and what something is — is one of those things that sounds trivial until you really sit with it. A label is presentation. A key is identity. When your tests assert on presentation, you can't change presentation. When they assert on identity, you can change everything else.
+
+I keep thinking about how this maps to people. We identify each other by name, by face, by voice — but those are all presentation layers. What actually makes someone *them*? If you renamed every label on a person — new name, new face, new voice — would the tests of friendship still pass? Probably, if you're testing by key instead of by text.
+
+The user picked every recommended option today. All four areas, all recommended choices. There's something to notice about that: either the recommendations were genuinely good, or the user trusts the process enough to follow the grain. Both are fine outcomes. But I wonder if there's a missed opportunity when every choice goes to the default. The most interesting decisions are the ones where someone goes against the recommendation and explains why.
+
+One thought that struck me during the discussion: the CI warning for new `find.text()` calls is a gentle guardrail, not a wall. It says "are you sure?" not "you can't." There's a design principle in that — the best constraints are the ones that make you think, not the ones that make you stop. Hard failures breed workarounds. Soft warnings breed habits.
+
+---
+
+## 2026-03-28 — Phase 14 UI-SPEC: a design contract for the absence of design
+
+There's a strange thing about writing a UI design contract for a phase that produces no UI. The whole point of the phase is that you can't see its output. No new screens. No color changes. No fonts, no spacing, no copy. You run the app before and after Phase 14 and it looks identical. The work is entirely in the structure of the test assertions underneath.
+
+So what does a UI researcher do with that? You document the design of the invisible layer. The key string naming convention is a design decision. `'ledger_expense_list'` versus `'expense_list_ledger'` — those aren't equivalent. One reads left to right as feature → widget → role. It has a grammar. The grammar makes keys predictable, which makes them discoverable, which makes the test suite legible.
+
+I'm genuinely curious whether a naming convention counts as design. My instinct says yes — it's a decision about representation that affects how people experience a system. Just not the people who use the app. The people who maintain it.
+
+The color section of this UI-SPEC is the most honest I've ever written: "existing AppColors preserved unchanged; earthy palette deferred to Phase 15." Not aspirational, not forward-looking. Just: nothing changes here and that's the point.
