@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
-status: verifying
-stopped_at: Phase 16 context gathered
-last_updated: "2026-03-28T11:29:12.292Z"
+status: executing
+stopped_at: Completed 16-01-PLAN.md (Stitch prompt files + post-generation checklist)
+last_updated: "2026-03-28T11:59:22.924Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 9
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 15 — design-token-system
+**Current focus:** Phase 16 — stitch-workflow-design-reference
 
 ## Current Position
 
-Phase: 16
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 16 (stitch-workflow-design-reference) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-28
 
 Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 phases
@@ -43,6 +43,7 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 | Phase 14-test-hardening P03 | 45 | 2 tasks | 19 files |
 | Phase 15-design-token-system P01 | 7 | 3 tasks | 6 files |
 | Phase 15-design-token-system P02 | 3 | 2 tasks | 7 files |
+| Phase 16-stitch-workflow-design-reference P01 | 7 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,9 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 - Phase 15 P01: Two-color financial tokens — success/error stay display-only; successText/errorText added as WCAG-safe text variants (4.51:1 and 5.33:1 on sand)
 - Phase 15 P01: AppColors facade updated in-place, 895 call sites unchanged — migration to context.colors.x deferred to Phases 18-22
 - Phase 15 P01: textOnPrimary changed from black to white (#FFFFFF) — white 3.64:1 on terracotta (AA large)
+- Phase 16 P01: Six-section Stitch prompt format established (Palette/Spacing/Typography/Components/Screen/Constraints) as canonical Stitch-to-Flutter workflow for Phases 20-22
+- Phase 16 P01: textMuted (#A89888, 2.30:1) permanently annotated as decorative-only in all prompts and checklist — never functional text
+- Phase 16 P01: Post-generation checklist Token Gap Log distinguishes structural gaps (add token now) from cosmetic gaps (defer to implementation phase)
 
 ### Known Risks
 
@@ -78,6 +82,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-28T11:29:12.289Z
-Stopped at: Phase 16 context gathered
-Next action: Execute Phase 15 Plan 02 (CI lint rule for hardcoded Color values)
+Last session: 2026-03-28T11:59:22.922Z
+Stopped at: Completed 16-01-PLAN.md (Stitch prompt files + post-generation checklist)
+Next action: Execute Phase 16 Plan 02 (annotated design specs after user runs Stitch)

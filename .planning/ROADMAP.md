@@ -83,7 +83,7 @@ Plans:
   4. CLAUDE.md documents the Stitch-to-Flutter workflow including the post-generation token replacement step
 **Plans**: 2 plans
 Plans:
-- [ ] 16-01-PLAN.md — Stitch input prompts (3 screens) + post-generation checklist
+- [x] 16-01-PLAN.md — Stitch input prompts (3 screens) + post-generation checklist
 - [ ] 16-02-PLAN.md — User runs Stitch + annotated design specs (3 screens) + CLAUDE.md workflow section
 
 ### Phase 17: Animation Library & Loading States
@@ -166,7 +166,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 14. Test Hardening | 3/3 | Complete    | 2026-03-28 |
 | 15. Design Token System | 2/2 | Complete    | 2026-03-28 |
-| 16. Stitch Workflow & Design Reference | 0/2 | Planning complete | - |
+| 16. Stitch Workflow & Design Reference | 1/2 | In Progress|  |
 | 17. Animation Library & Loading States | 0/? | Not started | - |
 | 18. Home Dashboard Redesign | 0/? | Not started | - |
 | 19. Navigation Restructuring | 0/? | Not started | - |
