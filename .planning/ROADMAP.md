@@ -51,7 +51,11 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
   2. All structural navigation assertions in the test suite use find.byKey() instead of find.text()
   3. Renaming any UI label in the codebase causes zero test failures outside the one test that directly validates that label
   4. The full test suite (624 tests) passes without modification after Keys are added
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 14-01-PLAN.md — Key infrastructure + migrate 4 heaviest test files (108 calls)
+- [ ] 14-02-PLAN.md — Migrate 8 medium-priority test files (115 calls)
+- [ ] 14-03-PLAN.md — Migrate remaining test files + CI warning + rename verification
 
 ### Phase 15: Design Token System
 **Goal**: Every color and spacing value in the app flows from a single typed token system; no screen can reference a hardcoded color value
@@ -154,7 +158,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 14. Test Hardening | 0/? | Not started | - |
+| 14. Test Hardening | 0/3 | Planned | - |
 | 15. Design Token System | 0/? | Not started | - |
 | 16. Stitch Workflow & Design Reference | 0/? | Not started | - |
 | 17. Animation Library & Loading States | 0/? | Not started | - |
