@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
 
+import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/shared/widgets/app_tab_bar.dart';
 import 'package:safar/shared/widgets/loading_button.dart';
@@ -95,7 +96,7 @@ void main() {
       await tester.pumpWidget(_buildTabBar(tabs: ['A', 'B', 'C']));
       await tester.pump();
 
-      await tester.tap(find.text('B'));
+      await tester.tap(find.byKey(SharedKeys.appTabBarTab('B')));
       await tester.pump();
 
       expect(find.text('B'), findsOneWidget);
@@ -278,8 +279,8 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Copy Code'), findsNothing);
-      expect(find.text('Share'), findsNothing);
+      expect(find.byKey(SharedKeys.inviteCodeCopyButton), findsNothing);
+      expect(find.byKey(SharedKeys.inviteCodeShareButton), findsNothing);
     });
 
     testWidgets('renders Copy Code button when onCopy is provided', (tester) async {
@@ -291,7 +292,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Copy Code'), findsOneWidget);
+      expect(find.byKey(SharedKeys.inviteCodeCopyButton), findsOneWidget);
     });
 
     testWidgets('renders Share button when onShare is provided', (tester) async {
@@ -303,7 +304,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Share'), findsOneWidget);
+      expect(find.byKey(SharedKeys.inviteCodeShareButton), findsOneWidget);
     });
 
     testWidgets('renders both Copy Code and Share when both callbacks provided', (tester) async {
@@ -316,8 +317,8 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Copy Code'), findsOneWidget);
-      expect(find.text('Share'), findsOneWidget);
+      expect(find.byKey(SharedKeys.inviteCodeCopyButton), findsOneWidget);
+      expect(find.byKey(SharedKeys.inviteCodeShareButton), findsOneWidget);
     });
 
     testWidgets('tapping Copy Code calls onCopy', (tester) async {
@@ -330,7 +331,7 @@ void main() {
       );
       await tester.pump();
 
-      await tester.tap(find.text('Copy Code'));
+      await tester.tap(find.byKey(SharedKeys.inviteCodeCopyButton));
       await tester.pump();
 
       expect(copied, isTrue);
@@ -346,7 +347,7 @@ void main() {
       );
       await tester.pump();
 
-      await tester.tap(find.text('Share'));
+      await tester.tap(find.byKey(SharedKeys.inviteCodeShareButton));
       await tester.pump();
 
       expect(shared, isTrue);
@@ -457,7 +458,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Settle Up'), findsOneWidget);
+      expect(find.byKey(SharedKeys.groupBalanceSettleUpButton), findsOneWidget);
     });
 
     testWidgets('calls onSettleUp when card is tapped', (tester) async {
@@ -474,7 +475,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Settle Up'));
+      await tester.tap(find.byKey(SharedKeys.groupBalanceSettleUpButton));
       await tester.pump();
 
       expect(tapped, isTrue);
