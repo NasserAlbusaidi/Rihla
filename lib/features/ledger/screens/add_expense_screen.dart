@@ -15,6 +15,7 @@ import '../../events/providers/event_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
+import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
@@ -295,6 +296,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
 
     return Scaffold(
+      key: LedgerKeys.addExpenseScreen,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(

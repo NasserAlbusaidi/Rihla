@@ -11,6 +11,7 @@ import '../../../core/theme/app_theme.dart';
 // AppFormatters not needed for settings
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/app_settings_model.dart';
+import '../keys/settings_keys.dart';
 
 /// Settings Screen with profile, theme, and about sections
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -272,6 +273,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ref.watch(appMetadataProvider).valueOrNull ?? AppMetadata.fallback();
 
     return Scaffold(
+      key: SettingsKeys.screen,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: CustomScrollView(

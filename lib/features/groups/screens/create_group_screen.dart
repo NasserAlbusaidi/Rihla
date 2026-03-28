@@ -8,6 +8,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
 import '../widgets/invite_code_display.dart';
@@ -117,6 +118,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     }
 
     return Scaffold(
+      key: GroupKeys.createScreen,
       appBar: AppBar(
         title: const Text('New Group'),
         leading: CloseButton(
@@ -141,6 +143,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
               // Group Name input
               TextFormField(
+                key: GroupKeys.groupNameInput,
                 controller: _nameController,
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
@@ -197,6 +200,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
               // Submit button
               LoadingButton(
+                key: GroupKeys.createGroupButton,
                 isLoading: isLoading,
                 onPressed: _createGroup,
                 label: isLoading ? 'Creating\u2026' : 'Create Group',

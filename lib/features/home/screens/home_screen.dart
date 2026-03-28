@@ -13,6 +13,7 @@ import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/widgets/group_card.dart';
+import '../keys/home_keys.dart';
 
 /// Groups-first home screen (D-01).
 ///
@@ -26,6 +27,7 @@ class HomeScreen extends ConsumerWidget {
     final groupsAsync = ref.watch(userGroupsProvider);
 
     return Scaffold(
+      key: HomeKeys.screen,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
@@ -65,6 +67,7 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        key: HomeKeys.createGroupFab,
         onPressed: () => _showFabBottomSheet(context),
         backgroundColor: AppColors.primary,
         child: const Icon(Iconsax.add, color: AppColors.textOnPrimary),
@@ -157,6 +160,7 @@ class HomeScreen extends ConsumerWidget {
           children: [
             // Create a Group
             ListTile(
+              key: HomeKeys.createGroupOption,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppColors.space16,
               ),
@@ -173,6 +177,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             // Join a Group
             ListTile(
+              key: HomeKeys.joinGroupOption,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppColors.space16,
               ),

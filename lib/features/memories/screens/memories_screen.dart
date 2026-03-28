@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';
+import '../keys/memories_keys.dart';
 import '../models/memory_model.dart';
 import '../providers/memory_provider.dart';
 import '../widgets/full_screen_photo.dart';
@@ -178,6 +179,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     final connectivity = ref.watch(connectivityProvider);
     if (connectivity == ConnectivityStatus.offline) {
       return Scaffold(
+        key: MemoriesKeys.screen,
         backgroundColor: AppColors.background,
         body: SafeArea(
           child: Column(
@@ -198,6 +200,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     }
 
     return Scaffold(
+      key: MemoriesKeys.screen,
       backgroundColor: AppColors.background,
       floatingActionButton: FloatingActionButton(
         onPressed: _isUploading ? null : _showSourcePicker,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/keys/shared_keys.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/haptic_service.dart';
 
@@ -56,7 +57,9 @@ class AppTabBar extends StatelessWidget {
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
-        tabs: tabs.map((t) => Tab(text: t)).toList(),
+        tabs: tabs
+            .map((t) => Tab(key: SharedKeys.appTabBarTab(t), text: t))
+            .toList(),
       ),
     );
   }

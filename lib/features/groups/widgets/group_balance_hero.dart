@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/keys/shared_keys.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 
@@ -41,6 +42,7 @@ class GroupBalanceHero extends StatelessWidget {
     final isSettled = userNetBalance == Decimal.zero;
 
     return GestureDetector(
+      key: SharedKeys.groupBalanceHero,
       onTap: onSettleUp,
       child: Container(
         constraints: const BoxConstraints(minHeight: 140),
@@ -196,6 +198,7 @@ class GroupBalanceHero extends StatelessWidget {
                             ),
                           )
                         : GestureDetector(
+                            key: SharedKeys.groupBalanceSettleUpButton,
                             onTap: onSettleUp,
                             child: Container(
                               padding: const EdgeInsets.symmetric(

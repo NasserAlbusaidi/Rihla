@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../keys/group_keys.dart';
 
 /// A single settlement row showing payer → payee and amount.
 ///
@@ -163,6 +164,9 @@ class GroupSettlementTile extends StatelessWidget {
                             BorderRadius.circular(AppColors.radiusMedium),
                       ),
                       child: ElevatedButton(
+                        key: isYourAction
+                            ? GroupKeys.recordSettlementButton
+                            : null,
                         onPressed: onRecord,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,

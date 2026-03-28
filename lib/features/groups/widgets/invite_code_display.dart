@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/keys/shared_keys.dart';
 import '../../../core/theme/app_theme.dart';
 
 /// Widget that displays a formatted invite code in a mintSurface pill.
@@ -23,6 +24,7 @@ class InviteCodeDisplay extends StatelessWidget {
     final hasActions = onCopy != null || onShare != null;
 
     return Column(
+      key: SharedKeys.inviteCodeDisplay,
       children: [
         // Code pill
         Container(
@@ -56,6 +58,7 @@ class InviteCodeDisplay extends StatelessWidget {
                   child: SizedBox(
                     height: AppColors.buttonHeight,
                     child: ElevatedButton(
+                      key: SharedKeys.inviteCodeCopyButton,
                       onPressed: onCopy,
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
@@ -73,6 +76,7 @@ class InviteCodeDisplay extends StatelessWidget {
                   child: SizedBox(
                     height: AppColors.buttonHeight,
                     child: OutlinedButton(
+                      key: SharedKeys.inviteCodeShareButton,
                       onPressed: onShare,
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(

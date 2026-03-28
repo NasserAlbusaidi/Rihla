@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/keys/shared_keys.dart';
 import '../../core/providers/connectivity_provider.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -17,6 +18,7 @@ class OfflineBanner extends ConsumerWidget {
       curve: Curves.easeInOut,
       child: isOffline
           ? Container(
+              key: SharedKeys.offlineBanner,
               width: double.infinity,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppColors.space16,

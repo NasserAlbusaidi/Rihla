@@ -10,6 +10,7 @@ import '../../../shared/widgets/offline_banner.dart';
 import '../../groups/models/group_model.dart';
 import '../../ledger/screens/add_expense_screen.dart';
 import '../../ledger/screens/ledger_screen.dart';
+import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../models/event_type_config.dart';
 import '../widgets/event_module_list.dart';
@@ -36,8 +37,10 @@ class EventCommandCenter extends ConsumerWidget {
     final config = EventTypeConfig.forType(event.type);
 
     return Scaffold(
+      key: EventKeys.screen,
       backgroundColor: AppColors.background,
       floatingActionButton: FloatingActionButton(
+        key: EventKeys.addExpenseFab,
         onPressed: () {
           HapticService.medium();
           Navigator.of(context).push(

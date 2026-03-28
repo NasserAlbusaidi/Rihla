@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../keys/group_keys.dart';
 import '../providers/group_provider.dart';
 
 /// Screen for joining a group via a 6-character invite code.
@@ -96,6 +97,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     }
 
     return Scaffold(
+      key: GroupKeys.joinScreen,
       appBar: AppBar(
         title: const Text('Join a Group'),
         leading: const BackButton(),
@@ -164,6 +166,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
             const SizedBox(height: 48),
 
             LoadingButton(
+              key: GroupKeys.joinGroupButton,
               isLoading: isLoading,
               onPressed: _codeController.text.length == 6 ? _joinGroup : null,
               label: isLoading ? 'Joining\u2026' : 'Join Group',

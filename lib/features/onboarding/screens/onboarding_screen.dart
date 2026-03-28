@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../keys/onboarding_keys.dart';
 
 /// Onboarding screen shown to first-time users
 class OnboardingScreen extends StatefulWidget {
@@ -88,6 +89,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: OnboardingKeys.screen,
       backgroundColor: const Color(0xFF0F172A),
       body: Stack(
         children: [

@@ -12,6 +12,7 @@ import '../../../shared/widgets/search_filter_bar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';
+import '../keys/vault_keys.dart';
 import '../models/document_model.dart';
 import '../providers/document_provider.dart';
 
@@ -38,6 +39,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
     if (connectivity == ConnectivityStatus.offline) {
       return Scaffold(
+        key: VaultKeys.screen,
         backgroundColor: AppColors.background,
         body: Column(
           children: [
@@ -59,6 +61,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     }
 
     return Scaffold(
+      key: VaultKeys.screen,
       backgroundColor: AppColors.background,
       body: Column(
         children: [

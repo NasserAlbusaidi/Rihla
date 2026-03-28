@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import '../../core/keys/shared_keys.dart';
 import '../../core/theme/app_theme.dart';
 
 class ModuleHeader extends StatelessWidget {
@@ -150,6 +151,7 @@ class _LightBackButton extends StatelessWidget {
       label: 'Go back',
       button: true,
       child: GestureDetector(
+        key: SharedKeys.moduleHeaderBackButton,
         onTap: onTap,
         child: Container(
           width: 44,
@@ -176,6 +178,7 @@ class _DarkBackButton extends StatelessWidget {
       label: 'Go back',
       button: true,
       child: GestureDetector(
+        key: SharedKeys.moduleHeaderBackButton,
         onTap: onTap,
         child: Container(
           width: 44,

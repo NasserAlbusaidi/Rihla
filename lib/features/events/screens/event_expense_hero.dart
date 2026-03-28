@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/providers/expense_provider.dart';
+import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 
 /// Dark hero card showing total event spending.
@@ -29,6 +30,7 @@ class EventExpenseHero extends ConsumerWidget {
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
 
     return GestureDetector(
+      key: EventKeys.spendingHero,
       onTap: onTap,
       child: Container(
         height: 140,

@@ -19,6 +19,7 @@ import '../../events/widgets/event_card.dart';
 import '../../events/models/event_model.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/screens/ledger_screen.dart';
+import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
@@ -58,6 +59,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
 
     return Scaffold(
+      key: GroupKeys.detailScreen,
       backgroundColor: AppColors.background,
       floatingActionButton: Semantics(
         label: 'Create event',

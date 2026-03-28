@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../keys/group_keys.dart';
 import '../../events/models/event_model.dart';
 import '../../events/models/event_type_config.dart';
 import '../../events/providers/event_provider.dart';
@@ -96,6 +97,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     };
 
     return Scaffold(
+      key: GroupKeys.settleUpScreen,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
@@ -569,6 +571,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                         BorderRadius.circular(AppColors.radiusMedium),
                   ),
                   child: ElevatedButton(
+                    key: GroupKeys.markAsPaidButton,
                     onPressed: () {
                       Navigator.pop(sheetContext, true);
                     },
@@ -595,6 +598,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               ),
               const SizedBox(height: 8),
               TextButton(
+                key: GroupKeys.notNowButton,
                 onPressed: () => Navigator.pop(sheetContext),
                 child: const Text(
                   'Not Now',

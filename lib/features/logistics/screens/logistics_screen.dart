@@ -12,6 +12,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';
 import '../../trip/models/trip_model.dart';
+import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
 import '../widgets/subgroup_card.dart';
@@ -54,6 +55,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
     final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
 
     return Scaffold(
+      key: LogisticsKeys.screen,
       backgroundColor: AppColors.background,
       body: Column(
         children: [

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/keys/shared_keys.dart';
 import '../../core/theme/app_theme.dart';
 
 class EmptyStateView extends StatelessWidget {
@@ -26,6 +27,7 @@ class EmptyStateView extends StatelessWidget {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     Widget result = Center(
+      key: SharedKeys.emptyStateView,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppColors.space32),
         child: Column(
@@ -65,6 +67,7 @@ class EmptyStateView extends StatelessWidget {
               SizedBox(
                 height: AppColors.buttonHeight,
                 child: ElevatedButton(
+                  key: SharedKeys.emptyStateCtaButton,
                   onPressed: onAction,
                   child: Text(actionLabel!),
                 ),

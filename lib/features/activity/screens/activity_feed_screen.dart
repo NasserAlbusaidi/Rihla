@@ -9,6 +9,7 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';
+import '../keys/activity_keys.dart';
 import '../services/activity_service.dart';
 import '../widgets/timeline_card.dart';
 
@@ -24,6 +25,7 @@ class ActivityFeedScreen extends ConsumerWidget {
     final activityAsync = ref.watch(eventActivityProvider(eventRef));
 
     return Scaffold(
+      key: ActivityKeys.screen,
       backgroundColor: AppColors.background,
       body: Column(
         children: [

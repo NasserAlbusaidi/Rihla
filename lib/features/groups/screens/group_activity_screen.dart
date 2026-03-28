@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../keys/group_keys.dart';
 import '../models/group_activity_log_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../widgets/group_activity_tile.dart';
@@ -73,6 +74,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: GroupKeys.activityScreen,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(

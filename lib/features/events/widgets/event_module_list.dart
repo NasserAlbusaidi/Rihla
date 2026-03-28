@@ -9,6 +9,7 @@ import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/smart_module_card.dart';
+import '../keys/event_keys.dart';
 import '../../gear/models/gear_item_model.dart';
 import '../../gear/providers/gear_provider.dart';
 import '../../gear/screens/gear_screen.dart';
@@ -98,6 +99,7 @@ class EventModuleList extends ConsumerWidget {
         for (int i = 0; i < cards.length; i++) ...[
           if (i > 0) const SizedBox(height: 10),
           SmartModuleCard(
+            key: cards[i].widgetKey,
             icon: cards[i].icon,
             title: cards[i].title,
             description: cards[i].description,
@@ -146,6 +148,7 @@ class EventModuleList extends ConsumerWidget {
     }
 
     cards.add(_ModuleCardConfig(
+      widgetKey: EventKeys.ledgerCard,
       icon: Iconsax.wallet_3,
       title: 'Ledger',
       description: 'Track shared expenses and split costs fairly',
@@ -186,6 +189,7 @@ class EventModuleList extends ConsumerWidget {
     }
 
     cards.add(_ModuleCardConfig(
+      widgetKey: EventKeys.gearCard,
       icon: Iconsax.bag_2,
       title: 'Gear',
       description: 'Create a shared packing list and claim items',
@@ -219,6 +223,7 @@ class EventModuleList extends ConsumerWidget {
     }
 
     cards.add(_ModuleCardConfig(
+      widgetKey: EventKeys.logisticsCard,
       icon: Iconsax.car,
       title: 'Logistics',
       description: 'Organize cars, rooms, and teams for your group',
@@ -247,6 +252,7 @@ class EventModuleList extends ConsumerWidget {
     }
 
     cards.add(_ModuleCardConfig(
+      widgetKey: EventKeys.vaultCard,
       icon: Iconsax.document_text,
       title: 'Vault',
       description: 'Store tickets, permits, and trip documents',
@@ -263,6 +269,7 @@ class EventModuleList extends ConsumerWidget {
     BuildContext context,
   ) {
     cards.add(_ModuleCardConfig(
+      widgetKey: EventKeys.memoriesCard,
       icon: Iconsax.gallery,
       title: 'Memories',
       description: 'Capture and share photos from your event',
@@ -316,6 +323,7 @@ class EventModuleList extends ConsumerWidget {
 
 /// Internal config for building module cards with priority sorting.
 class _ModuleCardConfig {
+  final Key? widgetKey;
   final IconData icon;
   final String title;
   final String description;
@@ -327,6 +335,7 @@ class _ModuleCardConfig {
   final bool isEmpty;
 
   const _ModuleCardConfig({
+    this.widgetKey,
     required this.icon,
     required this.title,
     required this.description,

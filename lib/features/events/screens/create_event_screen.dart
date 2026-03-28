@@ -10,6 +10,7 @@ import '../../../shared/widgets/loading_button.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_provider.dart';
 import '../models/event_model.dart';
+import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
 import 'event_command_center.dart';
@@ -180,6 +181,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
 
     return Scaffold(
+      key: EventKeys.createEventScreen,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text('New ${typeConfig.label} Event'),

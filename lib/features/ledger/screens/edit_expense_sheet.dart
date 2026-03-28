@@ -12,6 +12,7 @@ import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
+import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
 import '../providers/category_provider.dart';
@@ -420,6 +421,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     final categoriesAsync = ref.watch(tripCategoriesProvider(widget.eventId));
 
     return Container(
+      key: LedgerKeys.editExpenseSheet,
       padding: EdgeInsets.only(
         left: 24,
         right: 24,

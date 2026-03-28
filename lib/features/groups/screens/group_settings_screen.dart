@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../keys/group_keys.dart';
 import '../providers/group_provider.dart';
 
 /// Screen for managing group settings — name (creator-only), currency, and
@@ -152,6 +153,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
     } catch (_) {}
 
     return Scaffold(
+      key: GroupKeys.settingsScreen,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Group Settings'),

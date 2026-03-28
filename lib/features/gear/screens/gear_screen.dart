@@ -14,6 +14,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/models/group_model.dart';
+import '../keys/gear_keys.dart';
 import '../models/gear_item_model.dart';
 import '../providers/gear_provider.dart';
 
@@ -51,6 +52,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final currentUserId = ref.watch(currentUserProvider)?.uid;
 
     return Scaffold(
+      key: GearKeys.screen,
       backgroundColor: AppColors.background,
       body: Column(
         children: [

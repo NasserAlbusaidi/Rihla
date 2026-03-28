@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/page_transitions.dart';
 import '../models/event_model.dart';
+import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
 import 'create_event_screen.dart';
 
@@ -26,6 +27,7 @@ class EventTypePickerScreen extends StatelessWidget {
     final types = EventTypeConfig.allTypes;
 
     return Scaffold(
+      key: EventKeys.eventTypePickerScreen,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Choose Event Type'),

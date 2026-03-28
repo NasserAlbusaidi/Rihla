@@ -26,6 +26,7 @@ import '../widgets/spending_summary_section.dart';
 import '../widgets/transaction_list.dart';
 import 'add_expense_screen.dart';
 import 'edit_expense_sheet.dart';
+import '../keys/ledger_keys.dart';
 import 'settle_up_screen.dart';
 
 /// Ledger Screen - Event Settlement with dark header, debt tabs, and actions
@@ -81,6 +82,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         : null;
 
     return Scaffold(
+      key: LedgerKeys.screen,
       backgroundColor: AppColors.background,
       body: expensesAsync.when(
         data: (expenses) => settlementsAsync.when(

@@ -17,6 +17,7 @@ import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/recent_expenses_section.dart';
 import '../widgets/recorded_settlements_section.dart';
+import '../keys/ledger_keys.dart';
 import '../widgets/settlement_summary_card.dart';
 import '../widgets/settlement_tile.dart';
 
@@ -46,6 +47,7 @@ class SettleUpScreen extends ConsumerWidget {
     }).toList();
 
     return Scaffold(
+      key: LedgerKeys.settleUpScreen,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
