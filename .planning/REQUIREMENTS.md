@@ -9,8 +9,8 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 
 ### Design Foundation
 
-- [ ] **FOUND-01**: App uses a ThemeExtension-based design token system with warm earthy palette (terracotta, sand, olive) replacing all hardcoded AppColors references
-- [ ] **FOUND-02**: All text-on-background color combinations meet WCAG AA contrast ratios (4.5:1 body text, 3:1 large text/icons)
+- [x] **FOUND-01**: App uses a ThemeExtension-based design token system with warm earthy palette (terracotta, sand, olive) replacing all hardcoded AppColors references
+- [x] **FOUND-02**: All text-on-background color combinations meet WCAG AA contrast ratios (4.5:1 body text, 3:1 large text/icons)
 - [ ] **FOUND-03**: Screen mockups for key screens (Home, Group Detail, Event Hub) are designed in Stitch and serve as visual specification
 - [ ] **FOUND-04**: CI lint rule prevents new hardcoded `Color(0xFF...)` values outside the token system
 - [x] **FOUND-05**: Test suite uses semantic Key identifiers instead of find.text() for structural assertions, preventing cascade failures during UI changes
@@ -69,8 +69,8 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 15 | Pending |
-| FOUND-02 | Phase 15 | Pending |
+| FOUND-01 | Phase 15 | Complete |
+| FOUND-02 | Phase 15 | Complete |
 | FOUND-03 | Phase 16 | Pending |
 | FOUND-04 | Phase 15 | Pending |
 | FOUND-05 | Phase 14 | Complete |

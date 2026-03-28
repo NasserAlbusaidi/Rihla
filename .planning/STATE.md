@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
-status: completed
+status: executing
 stopped_at: Phase 15 context gathered
-last_updated: "2026-03-28T10:13:51.534Z"
+last_updated: "2026-03-28T10:49:57.868Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 9
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 14 — test-hardening
+**Current focus:** Phase 15 — design-token-system
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
-Status: Phase complete — ready for Phase 15
+Phase: 15 (design-token-system) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-28
 
 Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 phases
@@ -41,6 +41,7 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 | Phase 14-test-hardening P01 | 90 | 2 tasks | 33 files |
 | Phase 14-test-hardening P02 | 90 | 2 tasks | 19 files |
 | Phase 14-test-hardening P03 | 45 | 2 tasks | 19 files |
+| Phase 15-design-token-system P01 | 7 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -58,12 +59,15 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 - Lottie chosen over Rive for Phase 17 — simpler integration, revisit Rive if interactive state machines needed
 - Phase 14 complete: find.text() baseline is 135 (plan estimated 70-90; higher due to 30 legitimate content assertions in create_join_group_test and groups/group_settle_up_screen_test out of scope)
 - Rename resilience verified: renaming 'Ledger' to 'Treasury' in event_module_list.dart causes zero test failures across 624 tests — Phase 14 success criterion #3 achieved
+- Phase 15 P01: Two-color financial tokens — success/error stay display-only; successText/errorText added as WCAG-safe text variants (4.51:1 and 5.33:1 on sand)
+- Phase 15 P01: AppColors facade updated in-place, 895 call sites unchanged — migration to context.colors.x deferred to Phases 18-22
+- Phase 15 P01: textOnPrimary changed from black to white (#FFFFFF) — white 3.64:1 on terracotta (AA large)
 
 ### Known Risks
 
 - ~~257 find.text() calls in test suite — Phase 14 complete~~ 135 content-only find.text() calls remain; all structural assertions migrated to find.byKey()
 - 895 AppColors.* references — preserved via two-layer system in Phase 15, deleted in Phase 22
-- Earthy palette WCAG contrast: terracotta on sand ~2.8:1 — Phase 15 requires contrast validation before any screen code
+- ~~Earthy palette WCAG contrast: terracotta on sand ~2.8:1 — Phase 15 requires contrast validation before any screen code~~ RESOLVED: two-color token strategy, WCAG AA verified by tests
 - Dashboard eager render risk — Phase 18 uses CustomScrollView + SliverList.builder from the start
 - Physical device baseline needed for Phase 18 performance validation (Snapdragon 665 class)
 
@@ -73,6 +77,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-28T10:13:51.530Z
-Stopped at: Phase 15 context gathered
-Next action: `/gsd:execute-phase 15` (Phase 14 complete — Phase 15 Design Token Foundation is next)
+Last session: 2026-03-28T10:48:25Z
+Stopped at: Completed 15-01-PLAN.md (design token foundation)
+Next action: Execute Phase 15 Plan 02 (CI lint rule for hardcoded Color values)

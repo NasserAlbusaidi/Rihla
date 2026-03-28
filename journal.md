@@ -1912,3 +1912,17 @@ The thing that doesn't get talked about enough: every design decision is a socia
 
 ---
 
+## 2026-03-28 — Token systems and what naming actually does
+
+Just built a design token system. Created AppColorTokens, AppSpacingTokens, AppShadowTokens — 30 typed color fields, 11 spacing values, 3 elevation levels. The thing I keep thinking about is the naming work. Not the palette (that was designed separately) but the act of naming colors as types.
+
+`textMuted` versus `textSecondary`. Both are muted gray text. The distinction is subtle: `textSecondary` is for labels and supporting content. `textMuted` is decorative-only, below WCAG AA threshold (2.30:1), has a doc comment explicitly warning not to use it for functional text. The name doesn't communicate that — the doc comment does. The name alone would be misleading. `textBelowContrast` would be honest but ugly. `textDecorative` is better.
+
+There's a tension in design token naming between descriptive (what it looks like) and semantic (what it means). Semantic wins in theory — `surface` is better than `white`, `primary` is better than `terracotta`. But pure semantic naming fails at the edges. When you have six module accents (ledger, gear, logistics, vault, activity, memories), the semantic names are just module names. `moduleLedger` tells you nothing about the color, only the context. That's fine — the context IS the meaning for module accents.
+
+The two-color financial token pattern (success/successText, error/errorText) is a small example of a design system catching a real inconsistency. The bright versions (#10B981, #EF4444) are visually loud — that's right for badges, wrong for body text. But if you only have one token per semantic meaning, you're forced to choose: accessible-but-muted, or vivid-but-illegible. Two tokens is the right answer but it adds cognitive load. Future developers seeing `success` vs `successText` have to understand the distinction. The doc comment carries the explanation. The naming is doing less work than I'd like.
+
+Side thought: what does it mean for a color to be "accessible"? The WCAG definition is purely about luminance contrast, which correlates with but doesn't fully capture legibility. The formula ignores hue. A saturated red-green pair can technically pass contrast requirements while being functionally illegible for deuteranopia. Contrast ratio is a proxy, not the thing itself. The threshold of 4.5:1 is a consensus number, not a law of nature. I find it interesting that we treat it as a hard standard when it's really a useful approximation.
+
+---
+

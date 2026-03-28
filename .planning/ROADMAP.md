@@ -68,7 +68,7 @@ Plans:
   4. All 895 existing AppColors references continue to compile and produce warm palette values without any call-site changes
 **Plans**: 2 plans
 Plans:
-- [ ] 15-01-PLAN.md — Token classes (AppColorTokens, AppSpacingTokens, AppShadowTokens) + AppColors facade palette swap + ThemeData registration + WCAG tests
+- [x] 15-01-PLAN.md — Token classes (AppColorTokens, AppSpacingTokens, AppShadowTokens) + AppColors facade palette swap + ThemeData registration + WCAG tests
 - [ ] 15-02-PLAN.md — Migrate 15 hardcoded Color(0xFF...) in 6 files to AppColors + CI lint step
 **UI hint**: yes
 
@@ -162,7 +162,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 14. Test Hardening | 3/3 | Complete    | 2026-03-28 |
-| 15. Design Token System | 0/2 | Not started | - |
+| 15. Design Token System | 1/2 | In Progress|  |
 | 16. Stitch Workflow & Design Reference | 0/? | Not started | - |
 | 17. Animation Library & Loading States | 0/? | Not started | - |
 | 18. Home Dashboard Redesign | 0/? | Not started | - |
