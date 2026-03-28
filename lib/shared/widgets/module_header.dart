@@ -28,9 +28,9 @@ class ModuleHeader extends StatelessWidget {
   Widget _buildLight(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 1),
+          bottom: BorderSide(color: AppColors.border, width: 0.5),
         ),
       ),
       child: SafeArea(
@@ -156,11 +156,7 @@ class _LightBackButton extends StatelessWidget {
         child: Container(
           width: 44,
           height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
-            border: Border.all(color: AppColors.border),
-          ),
+          alignment: Alignment.center,
           child: const Icon(Iconsax.arrow_left, color: AppColors.textPrimary, size: 20),
         ),
       ),

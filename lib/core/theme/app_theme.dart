@@ -5,45 +5,45 @@ import 'tokens/color_tokens.dart';
 import 'tokens/shadow_tokens.dart';
 import 'tokens/spacing_tokens.dart';
 
-/// App color palette - Warm earthy theme (terracotta, sand, olive)
+/// App color palette - Neutral + teal theme
 class AppColors {
-  // Named palette colors — values updated to earthy palette, names preserved for compat
-  static const Color mint = Color(0xFFCC6B49); // was 0xFF13EC92 — now terracotta
-  static const Color rose = Color(0xFFEF4444); // unchanged — red for debt/warning
-  static const Color emerald = Color(0xFF10B981); // unchanged — success/income
-  static const Color amber = Color(0xFFF59E0B); // unchanged — priority gear
-  static const Color indigo = Color(0xFF8B7355); // was 0xFF6366F1 — now warm bronze (Vault accent)
-  static const Color sky = Color(0xFF5B7B8C); // was 0xFF0EA5E9 — now dusty teal (Logistics accent)
+  // Named palette colors
+  static const Color mint = Color(0xFF0D7B74); // teal
+  static const Color rose = Color(0xFFEF4444); // unchanged
+  static const Color emerald = Color(0xFF10B981); // unchanged
+  static const Color amber = Color(0xFFF59E0B); // unchanged
+  static const Color indigo = Color(0xFF6B7280); // gray-500
+  static const Color sky = Color(0xFF6B7280); // gray-500
 
-  // Primary - Terracotta
-  static const Color primary = Color(0xFFCC6B49); // was mint reference — direct terracotta
-  static const Color primaryLight = Color(0xFFF5DDD3); // was 0xFFD1FAE5 — terracotta 15%
-  static const Color primaryDark = Color(0xFFB85E3D); // was 0xFF0BAE6B — darkened terracotta
+  // Primary - Teal
+  static const Color primary = Color(0xFF0D7B74);
+  static const Color primaryLight = Color(0xFFE6F5F3); // teal-50
+  static const Color primaryDark = Color(0xFF0A6B65); // dark teal
 
   // Accent colors
-  static const Color accent = Color(0xFFCC6B49); // was mint
-  static const Color accentSecondary = Color(0xFF7A8C5E); // was 0xFF14B8A6 teal — now olive
+  static const Color accent = Color(0xFF0D7B74);
+  static const Color accentSecondary = Color(0xFF6B7280); // gray-500
   static const Color warning = Color(0xFFF59E0B); // unchanged
   static const Color error = Color(0xFFEF4444); // unchanged
-  static const Color info = Color(0xFF8B7355); // was indigo — now warm bronze
+  static const Color info = Color(0xFF6B7280); // gray-500
   static const Color success = Color(0xFF10B981); // unchanged
 
-  // Backgrounds (per D-04)
-  static const Color background = Color(0xFFF2E8D6); // was 0xFFEFF2F7 — sand
-  static const Color surface = Color(0xFFFFF9F2); // was 0xFFFFFFFF — warm white
-  static const Color surfaceLight = Color(0xFFF5EDE1); // was 0xFFF1F5F9 — sand light
-  static const Color surfaceCard = Color(0xFFFFF9F2); // was 0xFFFFFFFF — warm white
-  static const Color surfaceDark = Color(0xFF2C1A0E); // was 0xFF0F172A — dark brown
+  // Backgrounds
+  static const Color background = Color(0xFFFFFFFF); // white
+  static const Color surface = Color(0xFFF8F9FA); // cool gray
+  static const Color surfaceLight = Color(0xFFF3F4F6); // gray-100
+  static const Color surfaceCard = Color(0xFFF8F9FA); // cool gray
+  static const Color surfaceDark = Color(0xFF111827); // gray-900
 
-  // Text (per D-05)
-  static const Color textPrimary = Color(0xFF2C1A0E); // was 0xFF0F172A — dark brown
-  static const Color textSecondary = Color(0xFF6B5B4E); // was 0xFF475569 — warm gray
-  static const Color textMuted = Color(0xFFA89888); // was 0xFF94A3B8 — sand gray
-  static const Color textOnPrimary = Color(0xFFFFFFFF); // was 0xFF000000 — WHITE (critical fix)
+  // Text
+  static const Color textPrimary = Color(0xFF111827); // gray-900
+  static const Color textSecondary = Color(0xFF6B7280); // gray-500
+  static const Color textMuted = Color(0xFF9CA3AF); // gray-400
+  static const Color textOnPrimary = Color(0xFFFFFFFF); // white
 
-  // Borders (per D-04)
-  static const Color border = Color(0xFFE5D5C0); // was 0xFFE2E8F0 — warm gray
-  static const Color borderLight = Color(0xFFF0E4D3); // was 0xFFF1F5F9 — sand light
+  // Borders
+  static const Color border = Color(0xFFE5E7EB); // gray-200
+  static const Color borderLight = Color(0xFFF3F4F6); // gray-100
 
   // Spacing scale
   static const double space4 = 4;
@@ -55,21 +55,21 @@ class AppColors {
   static const double space32 = 32;
 
   // Border radius scale
-  static const double radiusSmall = 12;
-  static const double radiusMedium = 16;
-  static const double radiusLarge = 20;
+  static const double radiusSmall = 8;
+  static const double radiusMedium = 12;
+  static const double radiusLarge = 16;
 
   // Elevation levels
   static List<BoxShadow> get shadowFlat => [];
 
   static List<BoxShadow> get shadowRaised => [
     BoxShadow(
-      color: const Color(0xFF2C1A0E).withValues(alpha: 0.03), // warm brown base (per D-07)
+      color: const Color(0xFF111827).withValues(alpha: 0.04),
       blurRadius: 10,
       offset: const Offset(0, 4),
     ),
     BoxShadow(
-      color: const Color(0xFF2C1A0E).withValues(alpha: 0.02), // warm brown base (per D-07)
+      color: const Color(0xFF111827).withValues(alpha: 0.02),
       blurRadius: 4,
       offset: const Offset(0, 2),
     ),
@@ -77,12 +77,12 @@ class AppColors {
 
   static List<BoxShadow> get shadowFloating => [
     BoxShadow(
-      color: const Color(0xFF2C1A0E).withValues(alpha: 0.06), // warm brown base (per D-07)
+      color: const Color(0xFF111827).withValues(alpha: 0.07),
       blurRadius: 24,
       offset: const Offset(0, 8),
     ),
     BoxShadow(
-      color: const Color(0xFF2C1A0E).withValues(alpha: 0.03), // warm brown base (per D-07)
+      color: const Color(0xFF111827).withValues(alpha: 0.03),
       blurRadius: 10,
       offset: const Offset(0, 4),
     ),
@@ -93,31 +93,30 @@ class AppColors {
 
   static List<BoxShadow> get cardShadowLarge => shadowFloating;
 
-  // Mint surface aliases — updated to earthy palette
-  static const Color mintSurface = Color(0xFFF5DDD3); // was 0xFFECFDF5 — terracotta tint
-  static const Color mintSurfaceDark = Color(0xFFB85E3D); // was 0xFF064E3B — dark terracotta
+  // Surface aliases
+  static const Color mintSurface = Color(0xFFE6F5F3); // teal tint
+  static const Color mintSurfaceDark = Color(0xFF0A6B65); // dark teal
 
   // Standard button height
   static const double buttonHeight = 52;
 
-  // Dark header gradient (per D-06)
+  // Gradients
   static const LinearGradient darkHeaderGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2C1A0E), Color(0xFF3D2B1E)], // was slate 900 + 800
+    colors: [Color(0xFF111827), Color(0xFF1F2937)],
   );
 
-  // Gradients (per D-06)
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFCC6B49), Color(0xFFB85E3D)], // terracotta gradient
+    colors: [Color(0xFF0D7B74), Color(0xFF0A6B65)],
   );
 
   static const LinearGradient backgroundGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFFFF9F2), Color(0xFFF2E8D6)], // warm white to sand
+    colors: [Color(0xFFF8F9FA), Color(0xFFFFFFFF)],
   );
 
   // Glassmorphism Utilities
@@ -146,14 +145,14 @@ class AppTheme {
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,        // now terracotta
-        secondary: AppColors.accentSecondary, // now olive
-        surface: AppColors.surface,         // now warm white
-        error: AppColors.error,             // stays red
-        onPrimary: AppColors.textOnPrimary, // now WHITE (was black)
-        onSecondary: Color(0xFFFFFFFF),     // white on olive
-        onSurface: AppColors.textPrimary,   // now dark brown
-        onError: Color(0xFFFFFFFF),         // white on red
+        primary: AppColors.primary,
+        secondary: AppColors.accentSecondary,
+        surface: AppColors.surface,
+        error: AppColors.error,
+        onPrimary: AppColors.textOnPrimary,
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: AppColors.textPrimary,
+        onError: Color(0xFFFFFFFF),
       ),
       textTheme: _buildTextTheme(Brightness.light),
       appBarTheme: AppBarTheme(
@@ -303,12 +302,12 @@ class AppTheme {
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusLarge + 4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       extensions: <ThemeExtension>[
         AppColorTokens.light,
@@ -429,98 +428,98 @@ class AppTheme {
     return TextTheme(
       displayLarge: GoogleFonts.getFont(
         fontFamily,
-        fontSize: 48,
-        fontWeight: FontWeight.w900,
+        fontSize: 44,
+        fontWeight: FontWeight.w800,
         color: color,
-        letterSpacing: -1.5,
+        letterSpacing: -1.0,
       ),
       displayMedium: GoogleFonts.getFont(
         fontFamily,
-        fontSize: 40,
-        fontWeight: FontWeight.w800,
+        fontSize: 36,
+        fontWeight: FontWeight.w700,
         color: color,
-        letterSpacing: -1,
+        letterSpacing: -0.5,
       ),
       displaySmall: GoogleFonts.getFont(
         fontFamily,
-        fontSize: 32,
-        fontWeight: FontWeight.w800,
+        fontSize: 28,
+        fontWeight: FontWeight.w700,
         color: color,
-        letterSpacing: -0.5,
+        letterSpacing: -0.3,
       ),
       headlineLarge: GoogleFonts.getFont(
-        fontFamily,
-        fontSize: 28,
-        fontWeight: FontWeight.w800,
-        color: color,
-        letterSpacing: -0.5,
-      ),
-      headlineMedium: GoogleFonts.getFont(
         fontFamily,
         fontSize: 24,
         fontWeight: FontWeight.w700,
         color: color,
+        letterSpacing: -0.3,
+      ),
+      headlineMedium: GoogleFonts.getFont(
+        fontFamily,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: color,
       ),
       headlineSmall: GoogleFonts.getFont(
         fontFamily,
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
         color: color,
       ),
       titleLarge: GoogleFonts.getFont(
         fontFamily,
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
         color: color,
       ),
       titleMedium: GoogleFonts.getFont(
         fontFamily,
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
         color: color,
       ),
       titleSmall: GoogleFonts.getFont(
         fontFamily,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
         color: color,
       ),
       bodyLarge: GoogleFonts.getFont(
         fontFamily,
         fontSize: 16,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w400,
         color: secondaryColor,
       ),
       bodyMedium: GoogleFonts.getFont(
         fontFamily,
         fontSize: 14,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w400,
         color: secondaryColor,
       ),
       bodySmall: GoogleFonts.getFont(
         fontFamily,
         fontSize: 12,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w400,
         color: AppColors.textMuted,
       ),
       labelLarge: GoogleFonts.getFont(
         fontFamily,
         fontSize: 14,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         color: color,
       ),
       labelMedium: GoogleFonts.getFont(
         fontFamily,
         fontSize: 12,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         color: secondaryColor,
       ),
       labelSmall: GoogleFonts.getFont(
         fontFamily,
-        fontSize: 10,
-        fontWeight: FontWeight.w600,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
         color: AppColors.textMuted,
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
       ),
     );
   }

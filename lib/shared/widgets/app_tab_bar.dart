@@ -33,13 +33,11 @@ class AppTabBar extends StatelessWidget {
         controller: controller,
         onTap: (_) => HapticService.selection(),
         indicator: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color, color.withValues(alpha: 0.85)],
-          ),
+          color: color,
           borderRadius: BorderRadius.circular(AppColors.radiusSmall),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.3),
+              color: color.withValues(alpha: 0.2),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

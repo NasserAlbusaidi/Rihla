@@ -22,17 +22,11 @@ class LoadingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
+      height: AppColors.buttonHeight,
       decoration: BoxDecoration(
-        gradient: gradient ?? AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        gradient: gradient,
+        color: gradient == null ? AppColors.primary : null,
+        borderRadius: BorderRadius.circular(AppColors.radiusMedium),
       ),
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
@@ -40,7 +34,7 @@ class LoadingButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppColors.radiusMedium),
           ),
         ),
         child: isLoading
@@ -74,13 +68,13 @@ class GlassCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding,
-    this.borderRadius = 20,
+    this.borderRadius = 16,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: padding ?? const EdgeInsets.all(20),
+      padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(borderRadius),
@@ -103,13 +97,13 @@ class GradientContainer extends StatelessWidget {
     required this.child,
     this.gradient,
     this.padding,
-    this.borderRadius = 20,
+    this.borderRadius = 16,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: padding ?? const EdgeInsets.all(20),
+      padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: gradient ?? AppColors.primaryGradient,
         borderRadius: BorderRadius.circular(borderRadius),
