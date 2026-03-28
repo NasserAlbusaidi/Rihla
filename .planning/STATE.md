@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
 status: executing
-stopped_at: Completed 14-test-hardening-02-PLAN.md
-last_updated: "2026-03-28T09:10:25.058Z"
+stopped_at: Completed 14-test-hardening-03-PLAN.md
+last_updated: "2026-03-28T10:00:00.000Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 
 ## Current Position
 
-Phase: 14 (test-hardening) — EXECUTING
+Phase: 14 (test-hardening) — COMPLETE
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for Phase 15
 Last activity: 2026-03-28
 
-Progress: [░░░░░░░░░░░░░░░░░░░░] 0/9 phases
+Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 phases
 
 ## Performance Metrics
 
@@ -40,6 +40,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░] 0/9 pha
 | Requirements | 26 (v1) | 22 (v2) |
 | Phase 14-test-hardening P01 | 90 | 2 tasks | 33 files |
 | Phase 14-test-hardening P02 | 90 | 2 tasks | 19 files |
+| Phase 14-test-hardening P03 | 45 | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -55,10 +56,12 @@ Progress: [░░░░░░░░░░░░░░░░░░░░] 0/9 pha
 - Phase 19 (Navigation Restructuring) must precede Phase 20 (Group Detail & Event Hub)
 - Module screens (Phase 21) last — highest test density, lowest first-impression impact
 - Lottie chosen over Rive for Phase 17 — simpler integration, revisit Rive if interactive state machines needed
+- Phase 14 complete: find.text() baseline is 135 (plan estimated 70-90; higher due to 30 legitimate content assertions in create_join_group_test and groups/group_settle_up_screen_test out of scope)
+- Rename resilience verified: renaming 'Ledger' to 'Treasury' in event_module_list.dart causes zero test failures across 624 tests — Phase 14 success criterion #3 achieved
 
 ### Known Risks
 
-- 257 find.text() calls in test suite — Phase 14 addresses this before any visual changes
+- ~~257 find.text() calls in test suite — Phase 14 complete~~ 135 content-only find.text() calls remain; all structural assertions migrated to find.byKey()
 - 895 AppColors.* references — preserved via two-layer system in Phase 15, deleted in Phase 22
 - Earthy palette WCAG contrast: terracotta on sand ~2.8:1 — Phase 15 requires contrast validation before any screen code
 - Dashboard eager render risk — Phase 18 uses CustomScrollView + SliverList.builder from the start
@@ -70,6 +73,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-28T09:10:25.056Z
-Stopped at: Completed 14-test-hardening-02-PLAN.md
-Next action: `/gsd:plan-phase 14`
+Last session: 2026-03-28T10:00:00Z
+Stopped at: Completed 14-test-hardening-03-PLAN.md
+Next action: `/gsd:execute-phase 15` (Phase 14 complete — Phase 15 Design Token Foundation is next)

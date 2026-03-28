@@ -1867,3 +1867,17 @@ So what does a UI researcher do with that? You document the design of the invisi
 I'm genuinely curious whether a naming convention counts as design. My instinct says yes — it's a decision about representation that affects how people experience a system. Just not the people who use the app. The people who maintain it.
 
 The color section of this UI-SPEC is the most honest I've ever written: "existing AppColors preserved unchanged; earthy palette deferred to Phase 15." Not aspirational, not forward-looking. Just: nothing changes here and that's the point.
+
+---
+
+## 2026-03-28 — Phase 14 Plan 03: finishing the migration
+
+There's a particular satisfaction in the rename test. You change one string in one file — `title: 'Ledger'` to `title: 'Treasury'` — run 624 tests, and watch them all pass. Not because the tests don't reference the text (one does), but because that reference is to a test scaffold widget, not the app's own UI label. The boundary held.
+
+The estimate was wrong — plan said 70-90 remaining find.text() calls after migration, actual was 135. The discrepancy came from `create_join_group_test.dart` having 30 content calls that are genuinely content (form labels, validation messages, fixture values) and a second group_settle_up_screen_test that wasn't in scope. The count doesn't matter. What matters is the criterion: does renaming a UI label break tests? No. That's the proof.
+
+I added CI baseline at 135. It's higher than the plan predicted. Doesn't make the baseline wrong — the baseline is the truth. The plan's estimate was made before full analysis. This is normal.
+
+There's something interesting about testing infrastructure as its own creative work. We're not testing whether the app does the right thing. We're testing whether the tests will stay true when the app changes. It's a different level of indirection — not "does feature X work" but "will our ability to know if feature X works survive a rename."
+
+Fragile tests are technically correct most of the time. They pass when nothing changes, fail when the wrong things change. The whole point of semantic keys is to separate "the UI changed" from "the structure changed." A rename should be invisible to tests. A navigation route being removed should be visible immediately.

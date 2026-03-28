@@ -30,7 +30,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
 ### v2.0 Major UI/UX Overhaul (Phases 14-22)
 
-- [ ] **Phase 14: Test Hardening** - Convert structural test assertions to semantic Key identifiers to prevent cascade failures during visual changes
+- [x] **Phase 14: Test Hardening** - Convert structural test assertions to semantic Key identifiers to prevent cascade failures during visual changes (3/3 plans — completed 2026-03-28)
 - [ ] **Phase 15: Design Token System** - Build the ThemeExtension-based warm earthy token layer that all subsequent screen work depends on
 - [ ] **Phase 16: Stitch Workflow & Design Reference** - Establish Stitch as specification source, finalize palette, and add CI lint rule blocking hardcoded color values
 - [ ] **Phase 17: Animation Library & Loading States** - Build shared animation components and skeleton loading variants before any screen uses them
@@ -55,7 +55,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 Plans:
 - [x] 14-01-PLAN.md — Key infrastructure + migrate 4 heaviest test files (108 calls)
 - [x] 14-02-PLAN.md — Migrate 8 medium-priority test files (115 calls)
-- [ ] 14-03-PLAN.md — Migrate remaining test files + CI warning + rename verification
+- [x] 14-03-PLAN.md — Migrate remaining test files + CI warning + rename verification
 
 ### Phase 15: Design Token System
 **Goal**: Every color and spacing value in the app flows from a single typed token system; no screen can reference a hardcoded color value
