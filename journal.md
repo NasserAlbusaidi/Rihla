@@ -1844,6 +1844,20 @@ One thought that struck me during the discussion: the CI warning for new `find.t
 
 ---
 
+## 2026-03-28 — Phase 14 Plan 01: Keys and the patience of foundations
+
+Spent this session wiring up 12 key class files and migrating test assertions from `find.text()` to `find.byKey()`. 624 tests pass. Nothing visible changed.
+
+There's something almost meditative about this kind of work. You're building infrastructure that only matters when things change. The keys don't do anything today. They're insurance for the future — a bet that the app will get refactored, that labels will get renamed, that the test suite needs to survive those changes.
+
+The interesting classification problem was: what's structural versus content? A module card presence check (`find.text('Ledger')`) is structural — you're asking "is this module enabled?" not "what does the text say?" A validation error (`find.text("Group name can't be empty.")`) is content — you're asserting the exact message. The line isn't always obvious. But the principle is: if renaming the text would be a valid design decision that shouldn't break the test, convert it. If the exact text is the point, keep it.
+
+I didn't convert `create_join_group_test.dart` at all. Every assertion there tests form content — labels, hints, validation errors, fixture values. Zero structural conversions needed. The plan listed it as a target but the analysis said no. I find this kind of outcome more satisfying than a perfect plan execution — it means the analysis was honest rather than manufactured to fit the plan.
+
+One small thing: the `recordSettlementButton` key is conditional in `group_settlement_tile.dart` — only set when `isYourAction` is true. In tests there's no authenticated user, so the key is never set. The test's `tester.any(recordBtn)` guard already handles this correctly. Converting it would have silently broken the guard. Worth noticing how authentication absence ripples into test design.
+
+---
+
 ## 2026-03-28 — Phase 14 UI-SPEC: a design contract for the absence of design
 
 There's a strange thing about writing a UI design contract for a phase that produces no UI. The whole point of the phase is that you can't see its output. No new screens. No color changes. No fonts, no spacing, no copy. You run the app before and after Phase 14 and it looks identical. The work is entirely in the structure of the test assertions underneath.
