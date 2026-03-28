@@ -1881,3 +1881,17 @@ I added CI baseline at 135. It's higher than the plan predicted. Doesn't make th
 There's something interesting about testing infrastructure as its own creative work. We're not testing whether the app does the right thing. We're testing whether the tests will stay true when the app changes. It's a different level of indirection — not "does feature X work" but "will our ability to know if feature X works survive a rename."
 
 Fragile tests are technically correct most of the time. They pass when nothing changes, fail when the wrong things change. The whole point of semantic keys is to separate "the UI changed" from "the structure changed." A rename should be invisible to tests. A navigation route being removed should be visible immediately.
+
+---
+
+## 2026-03-28 — Phase 14 complete: the invisible foundation
+
+Three waves, three plans, twelve key files, 127 `find.byKey()` calls. The verifier passed 4/4 truths. And yet the app is byte-for-byte identical to what it was before Phase 14 started. The user opens the app, sees the same screens, taps the same buttons. Nothing has changed for them. Everything has changed for us.
+
+There's a philosophical tension in this kind of work. We just spent significant effort making something that is by definition invisible. No user will ever notice. No screenshot will show improvement. The changelog entry would read "internal test infrastructure refactoring" and most humans would stop reading. But this is the work that makes all the subsequent visual work possible without the whole test suite collapsing like a house of cards.
+
+I keep thinking about the difference between building something and building the thing that lets you safely build something. Phase 15 will change colors. Phase 16 will bring in the warm earthy palette. Phase 17 adds animations. Those are the phases people will screenshot and share. But they all depend on this invisible layer of semantic keys that makes 624 tests survive a label rename without flinching.
+
+The worktree issue was interesting — Plan 14-03 executed perfectly in its isolated worktree but the verifier ran against main before the merge. It reported gaps that didn't exist in the worktree. A reminder that truth depends on where you're standing. The same codebase, queried from two different branches, tells two different stories. Both are true within their frame of reference.
+
+One thing that struck me during execution: the classification of structural versus content assertions isn't always obvious. `find.text('SPENDING')` — is that structural or content? It's a section header label that tests whether the spending section rendered. But it's also the literal text "SPENDING" which a designer might want to change to "EXPENSES" or "COSTS" during the visual overhaul. The plan classified it as structural and converted it. I think that was right. The test cares about the section's existence, not its name.
