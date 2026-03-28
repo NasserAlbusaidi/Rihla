@@ -1,47 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// App color palette - Clean light theme with green accents
-class AppColors {
-  // Safar "Neo-Outdoor" Palette
-  static const Color mint = Color(0xFF13EC92); // Neon Mint
-  static const Color rose = Color(0xFFEF4444); // Red for debt/warning
-  static const Color emerald = Color(0xFF10B981); // Success/Income
-  static const Color amber = Color(0xFFF59E0B); // Priority Gear
-  static const Color indigo = Color(0xFF6366F1); // Vault/Docs
-  static const Color sky = Color(0xFF0EA5E9); // Logistics/Blue
+import 'tokens/color_tokens.dart';
+import 'tokens/shadow_tokens.dart';
+import 'tokens/spacing_tokens.dart';
 
-  // Primary - Safar Mint
-  static const Color primary = mint;
-  static const Color primaryLight = Color(0xFFD1FAE5);
-  static const Color primaryDark = Color(0xFF0BAE6B);
+/// App color palette - Warm earthy theme (terracotta, sand, olive)
+class AppColors {
+  // Named palette colors — values updated to earthy palette, names preserved for compat
+  static const Color mint = Color(0xFFCC6B49); // was 0xFF13EC92 — now terracotta
+  static const Color rose = Color(0xFFEF4444); // unchanged — red for debt/warning
+  static const Color emerald = Color(0xFF10B981); // unchanged — success/income
+  static const Color amber = Color(0xFFF59E0B); // unchanged — priority gear
+  static const Color indigo = Color(0xFF8B7355); // was 0xFF6366F1 — now warm bronze (Vault accent)
+  static const Color sky = Color(0xFF5B7B8C); // was 0xFF0EA5E9 — now dusty teal (Logistics accent)
+
+  // Primary - Terracotta
+  static const Color primary = Color(0xFFCC6B49); // was mint reference — direct terracotta
+  static const Color primaryLight = Color(0xFFF5DDD3); // was 0xFFD1FAE5 — terracotta 15%
+  static const Color primaryDark = Color(0xFFB85E3D); // was 0xFF0BAE6B — darkened terracotta
 
   // Accent colors
-  static const Color accent = mint;
-  static const Color accentSecondary = Color(0xFF14B8A6); // Teal
-  static const Color warning = amber;
-  static const Color error = rose;
-  static const Color info = indigo;
-  static const Color success = emerald;
+  static const Color accent = Color(0xFFCC6B49); // was mint
+  static const Color accentSecondary = Color(0xFF7A8C5E); // was 0xFF14B8A6 teal — now olive
+  static const Color warning = Color(0xFFF59E0B); // unchanged
+  static const Color error = Color(0xFFEF4444); // unchanged
+  static const Color info = Color(0xFF8B7355); // was indigo — now warm bronze
+  static const Color success = Color(0xFF10B981); // unchanged
 
-  // Backgrounds - Neo-Outdoor (Light & Dark compatible)
-  static const Color background = Color(0xFFEFF2F7); // Slate 100/200 blend
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceLight = Color(0xFFF1F5F9); // Slate 100
-  static const Color surfaceCard = Color(0xFFFFFFFF);
-  static const Color surfaceDark = Color(0xFF0F172A); // Slate 900
+  // Backgrounds (per D-04)
+  static const Color background = Color(0xFFF2E8D6); // was 0xFFEFF2F7 — sand
+  static const Color surface = Color(0xFFFFF9F2); // was 0xFFFFFFFF — warm white
+  static const Color surfaceLight = Color(0xFFF5EDE1); // was 0xFFF1F5F9 — sand light
+  static const Color surfaceCard = Color(0xFFFFF9F2); // was 0xFFFFFFFF — warm white
+  static const Color surfaceDark = Color(0xFF2C1A0E); // was 0xFF0F172A — dark brown
 
-  // Text colors
-  static const Color textPrimary = Color(0xFF0F172A); // Slate 900
-  static const Color textSecondary = Color(0xFF475569); // Slate 600
-  static const Color textMuted = Color(0xFF94A3B8); // Slate 400
-  static const Color textOnPrimary = Color(
-    0xFF000000,
-  ); // Black text on neon mint
+  // Text (per D-05)
+  static const Color textPrimary = Color(0xFF2C1A0E); // was 0xFF0F172A — dark brown
+  static const Color textSecondary = Color(0xFF6B5B4E); // was 0xFF475569 — warm gray
+  static const Color textMuted = Color(0xFFA89888); // was 0xFF94A3B8 — sand gray
+  static const Color textOnPrimary = Color(0xFFFFFFFF); // was 0xFF000000 — WHITE (critical fix)
 
-  // Borders
-  static const Color border = Color(0xFFE2E8F0); // Slate 200
-  static const Color borderLight = Color(0xFFF1F5F9); // Slate 100
+  // Borders (per D-04)
+  static const Color border = Color(0xFFE5D5C0); // was 0xFFE2E8F0 — warm gray
+  static const Color borderLight = Color(0xFFF0E4D3); // was 0xFFF1F5F9 — sand light
 
   // Spacing scale
   static const double space4 = 4;
@@ -62,12 +64,12 @@ class AppColors {
 
   static List<BoxShadow> get shadowRaised => [
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+      color: const Color(0xFF2C1A0E).withValues(alpha: 0.03), // warm brown base (per D-07)
       blurRadius: 10,
       offset: const Offset(0, 4),
     ),
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+      color: const Color(0xFF2C1A0E).withValues(alpha: 0.02), // warm brown base (per D-07)
       blurRadius: 4,
       offset: const Offset(0, 2),
     ),
@@ -75,12 +77,12 @@ class AppColors {
 
   static List<BoxShadow> get shadowFloating => [
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+      color: const Color(0xFF2C1A0E).withValues(alpha: 0.06), // warm brown base (per D-07)
       blurRadius: 24,
       offset: const Offset(0, 8),
     ),
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+      color: const Color(0xFF2C1A0E).withValues(alpha: 0.03), // warm brown base (per D-07)
       blurRadius: 10,
       offset: const Offset(0, 4),
     ),
@@ -91,31 +93,31 @@ class AppColors {
 
   static List<BoxShadow> get cardShadowLarge => shadowFloating;
 
-  // Muted mint for surfaces
-  static const Color mintSurface = Color(0xFFECFDF5);
-  static const Color mintSurfaceDark = Color(0xFF064E3B);
+  // Mint surface aliases — updated to earthy palette
+  static const Color mintSurface = Color(0xFFF5DDD3); // was 0xFFECFDF5 — terracotta tint
+  static const Color mintSurfaceDark = Color(0xFFB85E3D); // was 0xFF064E3B — dark terracotta
 
   // Standard button height
   static const double buttonHeight = 52;
 
-  // Dark header gradient
+  // Dark header gradient (per D-06)
   static const LinearGradient darkHeaderGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+    colors: [Color(0xFF2C1A0E), Color(0xFF3D2B1E)], // was slate 900 + 800
   );
 
-  // Gradients
+  // Gradients (per D-06)
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [mint, Color(0xFF0BAE6B)],
+    colors: [Color(0xFFCC6B49), Color(0xFFB85E3D)], // terracotta gradient
   );
 
   static const LinearGradient backgroundGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFC)],
+    colors: [Color(0xFFFFF9F2), Color(0xFFF2E8D6)], // warm white to sand
   );
 
   // Glassmorphism Utilities
@@ -144,14 +146,14 @@ class AppTheme {
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,
-        secondary: AppColors.accentSecondary,
-        surface: AppColors.surface,
-        error: AppColors.error,
-        onPrimary: AppColors.textOnPrimary,
-        onSecondary: AppColors.textOnPrimary,
-        onSurface: AppColors.textPrimary,
-        onError: AppColors.textOnPrimary,
+        primary: AppColors.primary,        // now terracotta
+        secondary: AppColors.accentSecondary, // now olive
+        surface: AppColors.surface,         // now warm white
+        error: AppColors.error,             // stays red
+        onPrimary: AppColors.textOnPrimary, // now WHITE (was black)
+        onSecondary: Color(0xFFFFFFFF),     // white on olive
+        onSurface: AppColors.textPrimary,   // now dark brown
+        onError: Color(0xFFFFFFFF),         // white on red
       ),
       textTheme: _buildTextTheme(Brightness.light),
       appBarTheme: AppBarTheme(
@@ -308,9 +310,16 @@ class AppTheme {
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusLarge + 4)),
       ),
+      extensions: <ThemeExtension>[
+        AppColorTokens.earthyLight,
+        AppSpacingTokens.standard,
+        AppShadowTokens.standard,
+      ],
     );
   }
 
+  /// Dark theme — deferred (DARK-01, DARK-02). Values left as-is.
+  /// Will be updated with earthy dark variant in a future milestone.
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
