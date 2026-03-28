@@ -50,6 +50,15 @@ jobs:
           rm -f coverage/lcov.info
           flutter test --coverage
 
+      - name: find.text() regression warning
+        run: |
+          BASELINE=135
+          CURRENT=$(grep -rn "find\.text(" test/ | wc -l | tr -d ' ')
+          if [ "$CURRENT" -gt "$BASELINE" ]; then
+            echo "::warning::find.text() calls increased from $BASELINE to $CURRENT. New structural assertions should use find.byKey() instead."
+          fi
+          echo "find.text() calls: $CURRENT (baseline: $BASELINE)"
+
       - name: Install lcov
         run: sudo apt-get install -y lcov
 
