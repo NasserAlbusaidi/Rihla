@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/widgets/group_card.dart';
+import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -72,7 +74,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Your Groups'), findsOneWidget);
+      expect(find.byKey(HomeKeys.yourGroupsHeader), findsOneWidget);
     });
 
     testWidgets('shows GroupCard for each group from userGroupsProvider',
@@ -112,13 +114,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('No groups yet'), findsOneWidget);
-      expect(
-        find.text(
-          'Create a group with friends or enter an invite code to join one.',
-        ),
-        findsOneWidget,
-      );
+      expect(find.byKey(SharedKeys.emptyStateView), findsOneWidget);
     });
 
     testWidgets('FAB opens bottom sheet with Create and Join options',
@@ -135,11 +131,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(HomeKeys.createGroupFab));
       await tester.pumpAndSettle();
 
-      expect(find.text('Create a Group'), findsOneWidget);
-      expect(find.text('Join a Group'), findsOneWidget);
+      expect(find.byKey(HomeKeys.createGroupOption), findsOneWidget);
+      expect(find.byKey(HomeKeys.joinGroupOption), findsOneWidget);
     });
 
     testWidgets('tapping GroupCard navigates to group detail', (tester) async {

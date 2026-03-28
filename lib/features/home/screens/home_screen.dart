@@ -86,6 +86,7 @@ class HomeScreen extends ConsumerWidget {
         AppColors.space8,
       ),
       child: Text(
+        key: HomeKeys.yourGroupsHeader,
         'Your Groups',
         style: Theme.of(context).textTheme.headlineLarge,
       ),
