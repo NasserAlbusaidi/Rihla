@@ -8,6 +8,7 @@ import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 
 /// Widget tests for GroupSettleUpScreen (FIN-04, D-22).
@@ -258,9 +259,9 @@ void main() {
         await tester.tap(recordBtn.first);
         await tester.pumpAndSettle();
 
-        // Bottom sheet should appear with Mark as Paid
-        expect(find.text('Mark as Paid'), findsOneWidget);
-        expect(find.text('Not Now'), findsOneWidget);
+        // Bottom sheet should appear with Mark as Paid and Not Now
+        expect(find.byKey(GroupKeys.markAsPaidButton), findsOneWidget);
+        expect(find.byKey(GroupKeys.notNowButton), findsOneWidget);
       }
 
       // Screen renders without error regardless
@@ -351,7 +352,7 @@ void main() {
         await tester.tap(recordBtn.first);
         await tester.pumpAndSettle();
 
-        expect(find.text('Mark as Paid'), findsOneWidget);
+        expect(find.byKey(GroupKeys.markAsPaidButton), findsOneWidget);
       }
 
       expect(find.text('Settle Up'), findsOneWidget);
@@ -375,13 +376,13 @@ void main() {
         await tester.pumpAndSettle();
 
         // Bottom sheet is open
-        expect(find.text('Not Now'), findsOneWidget);
+        expect(find.byKey(GroupKeys.notNowButton), findsOneWidget);
 
-        await tester.tap(find.text('Not Now'));
+        await tester.tap(find.byKey(GroupKeys.notNowButton));
         await tester.pumpAndSettle();
 
         // Bottom sheet is dismissed
-        expect(find.text('Not Now'), findsNothing);
+        expect(find.byKey(GroupKeys.notNowButton), findsNothing);
       }
 
       expect(find.text('Settle Up'), findsOneWidget);

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/types/event_ref.dart';
+import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/models/event_type_config.dart';
 import 'package:safar/features/events/screens/event_command_center.dart';
@@ -149,11 +150,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Ledger'), findsOneWidget);
-      expect(find.text('Gear'), findsOneWidget);
-      expect(find.text('Logistics'), findsOneWidget);
-      expect(find.text('Vault'), findsOneWidget);
-      expect(find.text('Memories'), findsOneWidget);
+      expect(find.byKey(EventKeys.ledgerCard), findsOneWidget);
+      expect(find.byKey(EventKeys.gearCard), findsOneWidget);
+      expect(find.byKey(EventKeys.logisticsCard), findsOneWidget);
+      expect(find.byKey(EventKeys.vaultCard), findsOneWidget);
+      expect(find.byKey(EventKeys.memoriesCard), findsOneWidget);
     });
 
     testWidgets('shows only Ledger card for Night/Day Out type', (tester) async {
@@ -165,11 +166,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Ledger'), findsOneWidget);
-      expect(find.text('Gear'), findsNothing);
-      expect(find.text('Logistics'), findsNothing);
-      expect(find.text('Vault'), findsNothing);
-      expect(find.text('Memories'), findsNothing);
+      expect(find.byKey(EventKeys.ledgerCard), findsOneWidget);
+      expect(find.byKey(EventKeys.gearCard), findsNothing);
+      expect(find.byKey(EventKeys.logisticsCard), findsNothing);
+      expect(find.byKey(EventKeys.vaultCard), findsNothing);
+      expect(find.byKey(EventKeys.memoriesCard), findsNothing);
     });
 
     testWidgets(
@@ -183,11 +184,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Ledger'), findsOneWidget);
-      expect(find.text('Gear'), findsOneWidget);
-      expect(find.text('Logistics'), findsOneWidget);
-      expect(find.text('Memories'), findsOneWidget);
-      expect(find.text('Vault'), findsNothing);
+      expect(find.byKey(EventKeys.ledgerCard), findsOneWidget);
+      expect(find.byKey(EventKeys.gearCard), findsOneWidget);
+      expect(find.byKey(EventKeys.logisticsCard), findsOneWidget);
+      expect(find.byKey(EventKeys.memoriesCard), findsOneWidget);
+      expect(find.byKey(EventKeys.vaultCard), findsNothing);
     });
 
     testWidgets(
@@ -210,8 +211,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Ledger'), findsNothing);
-      expect(find.text('Gear'), findsOneWidget);
+      expect(find.byKey(EventKeys.ledgerCard), findsNothing);
+      expect(find.byKey(EventKeys.gearCard), findsOneWidget);
     });
 
     testWidgets('FAB is visible on screen', (tester) async {
@@ -222,7 +223,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byKey(EventKeys.addExpenseFab), findsOneWidget);
     });
 
     testWidgets(
@@ -267,7 +268,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap the floating action button — covers lines 43-49 (onPressed body)
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(EventKeys.addExpenseFab));
       // Just pump one frame — the navigation will fail since AddExpenseScreen
       // needs more overrides, but we only need the onPressed code path hit.
       await tester.pump();
