@@ -91,7 +91,7 @@ Plans:
 **Depends on**: Phase 15
 **Requirements**: PLSH-03, NAV-05
 **Success Criteria** (what must be TRUE):
-  1. All data-fetching screens show a layout-matching skeleton instead of a spinner or blank screen while loading
+  1. Skeleton variant factories (dashboardHero, eventCard, groupList, expenseList, gearList, generic) are tested and ready for drop-in use in the AsyncValue loading: callback of any data-fetching screen
   2. Shared animation components (fade-in list, staggered grid, tap bounce) are available in lib/shared/animations/ with correct AnimationController dispose() calls verified by tests
   3. No AnimationController is instantiated directly inside a screen widget — all animation logic flows through shared components
   4. Skeleton variants (dashboard hero, event card, group list) exist as named constructors and render without data
