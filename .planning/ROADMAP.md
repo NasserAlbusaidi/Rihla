@@ -95,7 +95,10 @@ Plans:
   2. Shared animation components (fade-in list, staggered grid, tap bounce) are available in lib/shared/animations/ with correct AnimationController dispose() calls verified by tests
   3. No AnimationController is instantiated directly inside a screen widget — all animation logic flows through shared components
   4. Skeleton variants (dashboard hero, event card, group list) exist as named constructors and render without data
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 17-01-PLAN.md — Skeleton primitives (SkeletonCircle, SkeletonBar, SkeletonBlock, SkeletonRow, SkeletonCard) + 6 named variant factories on SkeletonLoader
+- [ ] 17-02-PLAN.md — Animation components (TapBounce, FadeInList, StaggeredGrid) + migrate 3 duplicate pressable patterns
 **UI hint**: yes
 
 ### Phase 18: Home Dashboard Redesign
@@ -167,7 +170,7 @@ Plans:
 | 14. Test Hardening | 3/3 | Complete    | 2026-03-28 |
 | 15. Design Token System | 2/2 | Complete    | 2026-03-28 |
 | 16. Stitch Workflow & Design Reference | 2/2 | Complete    | 2026-03-29 |
-| 17. Animation Library & Loading States | 0/? | Not started | - |
+| 17. Animation Library & Loading States | 0/2 | Planned | - |
 | 18. Home Dashboard Redesign | 0/? | Not started | - |
 | 19. Navigation Restructuring | 0/? | Not started | - |
 | 20. Group Detail & Event Hub Redesign | 0/? | Not started | - |
