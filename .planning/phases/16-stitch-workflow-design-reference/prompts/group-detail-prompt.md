@@ -4,62 +4,43 @@ Copy everything below this line and paste directly into Google Stitch.
 
 ---
 
-Design a high-fidelity mobile UI mockup for the **Group Detail Screen** of a group trip planning app called Rihla. Target width ~390px (iPhone 14 / Pixel 7). Single breakpoint only. Dense dashboard layout — all key data visible without scrolling on a standard phone (~844dp tall viewport).
+Design a high-fidelity mobile UI mockup for the **Group Detail Screen** of a group coordination app called Rihla. Target width ~390px (iPhone 14 / Pixel 7). Single breakpoint only. Dense dashboard layout — balance data and member list visible without scrolling. Financial sections are compact and scannable (Notion-style), navigation sections breathe (Airbnb-style).
 
 ## A — Palette
 
-Use these exact hex values. Do not approximate or modify any color.
+Use these exact hex values. Do not approximate or modify any color. Near-monochrome with single teal accent.
 
 ```
-Primary (terracotta): #CC6B49
-Background (sand): #F2E8D6
-Card surface (warm white): #FFF9F2
-Input fill: #F5EDE1
-Border / divider: #E5D5C0
-Text primary (dark brown): #2C1A0E
-Text secondary: #6B5B4E
-Text muted: #A89888  ← DECORATIVE ONLY — do not use for functional text, labels, amounts, or actions
+Primary (teal): #0D7B74
+Background (white): #FFFFFF
+Card surface (cool gray): #F8F9FA
+Input fill (gray-100): #F3F4F6
+Border / divider (gray-200): #E5E7EB
+Text primary (gray-900): #111827
+Text secondary (gray-500): #6B7280
+Text muted (gray-400): #9CA3AF  ← DECORATIVE ONLY — do not use for functional text, labels, amounts, or actions
 Text on primary (white): #FFFFFF
 Success display (badge/icon only): #10B981
 Success text (WCAG-safe, readable): #047857
 Error display (badge/icon only): #EF4444
 Error text (WCAG-safe, readable): #B91C1C
-Selection fill (terracotta 15% tint): #F5DDD3
-Disabled background: #E5D5C0
-Disabled text: #A89888
+Selection fill (teal 10% tint): #E6F5F3
+Disabled background: #E5E7EB
+Disabled text: #9CA3AF
 
-Module accent colors (for event type chips and event cards):
-  Trip / Ledger: #CC6B49  |  Trip light: #ECD5C0
-  Gear / Camping: #7A8C5E  |  Camping light: #E0DAC4
-  Logistics / Day Out: #5B7B8C | Day Out light: #DBD7CA
-  Vault / Dinner: #8B7355  |  Dinner light: #E2D6C2
-  Activity: #A67C5B | Activity light: #E6D7C3
-  Memories: #9B7A5C | Memories light: #E4D7C3
-
-Header gradient start: #2C1A0E  |  end: #3D2B1E
+Header gradient start: #111827  |  end: #1F2937
 ```
 
-Event type color mapping for event type chips and cards:
-- Trip → terracotta #CC6B49 / #ECD5C0
-- Camping → olive #7A8C5E / #E0DAC4
-- Day Out → dusty teal #5B7B8C / #DBD7CA
-- Dinner → warm bronze #8B7355 / #E2D6C2
-- Custom → caramel #A67C5B / #E6D7C3
+CRITICAL: Monochrome neutral palette. Only teal #0D7B74 for interactive elements.
 
 ## B — Spacing Scale
 
-All padding, gaps, and margins must align to this scale. Do not use non-scale values (e.g., 6dp, 10dp, 15dp).
+All padding, gaps, and margins must align to this scale.
 
 ```
-4dp (space4)
-8dp (space8)
-12dp (space12)
-16dp (space16) ← base/default
-20dp (space20)
-24dp (space24)
-32dp (space32)
+4dp, 8dp, 12dp, 16dp (base), 20dp, 24dp, 32dp
 
-Border radii: 12dp (chips/tags), 16dp (buttons/inputs), 20dp (cards/sheets)
+Border radii: 8dp (chips/tags), 12dp (buttons/inputs), 16dp (cards/sheets)
 Button height: 52dp
 Touch targets: minimum 48dp
 ```
@@ -68,169 +49,148 @@ Touch targets: minimum 48dp
 
 Font: **Plus Jakarta Sans**
 
-Weight hierarchy:
-- 800 — screen headings, large numbers (balance amounts)
-- 700 — card titles, section headers, button labels
-- 600 — body emphasis, labels, chips
-- 400 — body text, secondary descriptions
+Weight hierarchy (restrained):
+- 700 — display headings, large balance numbers
+- 600 — section headers, card titles, button labels
+- 400 — body text, descriptions
 
 ## D — Component Inventory
 
-The following shared components already exist in the app. Use these patterns in your design — do not invent new variants when an existing component covers the use case.
-
 ```
-ModuleHeader
-  — Dark gradient header (#2C1A0E → #3D2B1E, left-to-right)
-  — White title (weight 800) + optional white subtitle (weight 400)
-  — Back arrow icon (left side, 48dp touch target) + optional right action icons (settings gear, 48dp)
-  — Used for: this screen (Group Detail header)
+ModuleHeader (Elevated variant — dark)
+  — Dark gradient header (#111827 → #1F2937)
+  — White title (weight 700) + white subtitle (weight 400)
+  — Back arrow + settings gear (white, 48dp touch targets)
+  — Used for: this screen's header
 
 AppTabBar
-  — Horizontal tab row with gradient pill indicator on active tab
-  — Active pill uses primary terracotta (#CC6B49)
-  — Tab label: weight 600, 14sp
-  — Used for: optional tab layout (Events / Members / Activity)
+  — Solid teal pill indicator (#0D7B74), white text on active
+  — Inactive: #6B7280 text
+  — Background: #F3F4F6 container
 
 EmptyStateView
-  — Vertically centered layout: icon placeholder + heading + body message + optional CTA button
-  — Heading: weight 700, text primary (#2C1A0E)
-  — Body: weight 400, text secondary (#6B5B4E)
-  — CTA button: 52dp height, primary terracotta fill (#CC6B49), white text (#FFFFFF), 16dp radius
-  — Used for: empty events section
-
-SmartModuleCard
-  — List-style card with: 44×44 circle icon container (colored background), title (weight 700), subtitle/summary text (weight 400), right-side chevron
-  — Card surface: #FFF9F2, 20dp radius, subtle shadow
-  — Not primary use on this screen (used in Event Hub)
+  — Icon 48dp #9CA3AF + heading #111827 w600 + body #6B7280 w400
+  — CTA: 52dp, teal #0D7B74, white text, 12dp radius
 
 OfflineBanner
-  — Thin strip immediately below ModuleHeader indicating connectivity loss
-  — Background: error display (#EF4444) or muted tone
-  — Text: short message, weight 600
-  — Used for: error state
+  — Amber #F59E0B strip, white text
 
 SkeletonLoader
-  — Rounded grey placeholder blocks, pulsing animation
-  — Matches the shape and size of the content being loaded
-  — Used for: loading state
+  — #F3F4F6 base, #E5E7EB shapes, pulsing
 ```
 
 ## E — Screen Description: Group Detail Screen
 
-Design all 4 states of the Group Detail Screen.
+Design all 4 states.
 
 ### State 1: Loaded (Primary State)
 
-The Group Detail Screen is a dense dashboard. All key data should be visible without scrolling on a ~844dp tall phone screen. Background: sand (#F2E8D6).
+Dense dashboard. Balance data and member list visible without scrolling. Background: white (#FFFFFF).
 
 **Layout (top to bottom):**
 
-1. **ModuleHeader** (full-width, dark gradient #2C1A0E → #3D2B1E):
+1. **ModuleHeader** (elevated, dark gradient #111827 → #1F2937):
    - Back arrow (left, white, 48dp)
-   - Title: "Group A" — white, weight 800, 20sp
+   - Title: "Weekend Crew" — white, weight 700, 20sp
    - Subtitle: "4 members · OMR 125.500 total" — white, weight 400, 13sp
    - Right: settings gear icon (white, 48dp)
 
-2. **Summary Strip** (horizontal row, 16dp horizontal padding, 12dp vertical padding):
-   - "4 members" chip: 12dp radius, fill #F5EDE1, text #6B5B4E, weight 600, 12sp
+2. **Summary Strip** (horizontal row, 16dp horizontal padding, 12dp vertical padding, white bg):
+   - "4 members" chip: 8dp radius, fill #F3F4F6, text #6B7280, weight 600, 12sp
    - Gap: 8dp
-   - "OMR" chip (currency indicator): same style
-   - Right side: "Invite Code: ABC123" — small chip, fill #F5DDD3 (selection fill), text #CC6B49, weight 600, 12sp, tap to copy
+   - "OMR" chip: same style
+   - Right side: "Invite: ABC123" — chip, fill #E6F5F3 (teal tint), text #0D7B74, weight 600, 12sp, tap to copy
 
-3. **Balance Hero Card** (full-width minus 16dp horizontal margin, 20dp radius, card surface #FFF9F2, shadow):
-   - Row: "Your Balance" label (weight 600, 12sp, text secondary) aligned left | "Settle Up" CTA button aligned right
-     - "Settle Up" button: 36dp height, 16dp radius, primary #CC6B49 fill, white text (#FFFFFF), weight 700, 13sp
-   - Large balance: "You owe OMR 10.000" — weight 800, 22sp, error text (#B91C1C)
-     OR "You are owed OMR 5.500" — weight 800, 22sp, success text (#047857)
-     OR "All settled" — weight 700, 18sp, text secondary (#6B5B4E)
-   - Divider (#E5D5C0)
-   - "Group total: OMR 125.500" — weight 400, 13sp, text secondary (#6B5B4E)
-   - Card padding: 12dp all sides
+3. **Balance Card** (full-width minus 24dp horizontal margin, 16dp radius, #F8F9FA surface, 1px #E5E7EB border, soft shadow):
+   - Row: "Your Balance" label (weight 600, 12sp, #6B7280) | "Settle Up" button (36dp height, 12dp radius, teal #0D7B74, white text, weight 600, 13sp)
+   - Large balance: "You owe OMR 10.000" — weight 700, 22sp, teal (#0D7B74)
+     OR "You are owed OMR 5.500" — weight 700, 22sp, success text (#047857)
+     OR "All settled" — weight 600, 18sp, text secondary (#6B7280)
+   - Hairline divider (#E5E7EB)
+   - "Group total: OMR 125.500" — weight 400, 13sp, #6B7280
+   - Card padding: 16dp
 
-4. **Member Balances section** (compact, no section label needed — inline below balance card):
-   Gap: 8dp below balance card.
-   Horizontal scroll row OR compact vertical list (2–3 members visible):
-   Each member balance item (horizontal row, 12dp vertical padding, 16dp horizontal padding):
-   - Left: member initial avatar (32dp circle, fill #F5EDE1, text #6B5B4E, weight 700, 14sp)
-   - Center: "User 1" name (weight 600, 14sp, text primary) + small balance line below (weight 400, 12sp)
-     - "owes OMR 10.000" in error text (#B91C1C)
+4. **Member Balances** (compact flat list, Notion-style — NO cards, just rows with dividers):
+   Gap: 12dp below balance card.
+   Each member row (12dp vertical padding, 24dp horizontal padding):
+   - Left: member initial (32dp circle, #F3F4F6 fill, #111827 text, weight 600, 14sp)
+   - Center: "User 1" (weight 600, 14sp, #111827) + balance below (weight 400, 12sp):
+     - "owes OMR 10.000" in teal (#0D7B74)
      - "owed OMR 5.500" in success text (#047857)
-     - "settled" in text secondary (#6B5B4E)
-   - Divider between items (#E5D5C0)
-   - Show: User 1, User 2, User 3 (max 3 visible, "+1 more" link if 4+)
+     - "settled" in #6B7280
+   - Hairline divider between rows (#E5E7EB)
+   - Show: User 1, User 2, User 3 (max 3, "+1 more" link if 4+)
 
-5. **Events section** (labeled "Events", weight 700, 16sp, text primary):
+5. **Events section** (label "Events", weight 600, 13sp, #6B7280, uppercase tracking 0.5):
+   Hairline divider below label.
    Gap: 12dp.
-   Vertical list of event cards (each card: full-width minus 16dp horizontal margin, 20dp radius, 12dp padding):
+   Event cards (16dp radius, #F8F9FA, 1px border #E5E7EB, soft shadow, 16dp padding):
 
-   **Upcoming event card** (full color):
-   - Left: event type chip pill (12dp radius, accent fill e.g., #ECD5C0, accent text e.g., #CC6B49) showing "Trip"
-   - Title: "Trip A" — weight 700, 15sp, text primary (#2C1A0E)
-   - Date: "Mar 30–Apr 2, 2026" — weight 400, 12sp, text secondary (#6B5B4E)
-   - Expense summary: "OMR 45.500 · 3 expenses" — weight 600, 13sp, text primary
-   - Right: chevron icon, text secondary
-   - Card surface: #FFF9F2, subtle shadow
+   **Upcoming event card:**
+   - Event type text: "Trip" — weight 600, 12sp, teal (#0D7B74)
+   - Title: "Trip A" — weight 600, 15sp, #111827
+   - Date: "Mar 30–Apr 2, 2026" — weight 400, 12sp, #6B7280
+   - Expense summary: "OMR 45.500 · 3 expenses" — weight 600, 13sp, #111827
+   - Right: chevron icon, #6B7280
 
-   **Past event card** (muted/desaturated):
-   - Same structure, but card surface tinted slightly muted — border color #E5D5C0, no shadow
-   - Title in text secondary (#6B5B4E) instead of text primary
-   - Date: "Jan 15–18, 2026" — weight 400, 12sp, text muted (#A89888) — this is purely decorative metadata, acceptable use for date labels
+   **Past event card** (muted):
+   - Same structure, border #E5E7EB, no shadow
+   - Title in #6B7280 instead of #111827
+   - Date in #9CA3AF (decorative)
 
-6. **Recent Activity strip** (bottom, 3 items, compact):
-   Section label: "Recent Activity" — weight 700, 14sp, text secondary
-   Each item: small colored dot (8dp, module accent color) + description (weight 400, 13sp, text primary) + date (weight 400, 11sp, text muted — decorative)
-   Examples: "User 1 added OMR 10.000", "User 2 joined", "Trip A created"
+   Show 1 upcoming + 1 past event. Gap 8dp between cards.
+
+6. **Recent Activity** (compact, bottom):
+   Section label: "Recent Activity" — weight 600, 13sp, #6B7280, uppercase
+   Hairline divider.
+   Each item: description (weight 400, 13sp, #111827) + right-aligned date (#9CA3AF, decorative)
+   Hairline dividers between items. No icons, no dots.
+   3 items: "User 1 added OMR 10.000", "User 2 joined", "Trip A created"
 
 ### State 2: Empty (No Events Yet)
 
-ModuleHeader — identical to loaded state (real, not skeleton).
-Summary strip — identical to loaded state (shows members, currency, invite code).
-Balance hero card — shows "All settled" or "OMR 0.000" with disabled settle-up button.
+ModuleHeader — identical to loaded.
+Summary strip — identical (members, currency, invite code).
+Balance card — "All settled" or "OMR 0.000", settle-up button disabled (#E5E7EB fill, #9CA3AF text).
 Member balances — shows member list (members exist even with no events).
 
-Events section — uses EmptyStateView:
-- Icon: calendar-plus or similar, 40dp, color #CC6B49
-- Heading: "Create your first event" — weight 700, 18sp, text primary
-- Body: "Add a trip, dinner, or any occasion to track together" — weight 400, 14sp, text secondary
-- CTA: "Create Event" — 52dp height, primary terracotta (#CC6B49), white text, 16dp radius, full width minus 32dp margin
+Events section — EmptyStateView:
+- Icon: calendar-plus, 48dp, #9CA3AF
+- Heading: "Create your first event" — weight 600, 18sp, #111827
+- Body: "Add a trip, dinner, or any occasion to track together" — weight 400, 14sp, #6B7280
+- CTA: "Create Event" — 52dp, full width minus 48dp margin, teal #0D7B74, white text, 12dp radius
 
-Recent activity strip: "No activity yet" in text secondary, centered.
+Activity: "No activity yet" centered, #6B7280.
 
 ### State 3: Loading / Skeleton
 
-ModuleHeader — real (dark gradient, shows "Group A").
-OfflineBanner: hidden in loading state.
-
+ModuleHeader — real (dark gradient, "Weekend Crew").
 Below header:
-- Summary strip skeleton: 2 rectangle placeholders (12dp radius, #E5D5C0, height 28dp, width 80dp each)
-- Balance hero card skeleton: full card shape, 20dp radius, 2 grey lines inside
-- Member balance row skeletons: 3 rows, each with circle placeholder (32dp) + 2 line placeholders
-- Events section header skeleton: rectangle (width 60dp, height 14dp)
-- 2 event card skeletons: full-width shape (20dp radius, height 72dp)
-
-All skeleton blocks: color #E5D5C0, pulsing opacity animation.
+- Summary strip skeleton: 2 pills (#E5E7EB, 8dp radius, 80dp width, 28dp height)
+- Balance card skeleton: 16dp radius card, 2 gray lines
+- 3 member row skeletons: circle (32dp) + 2 lines
+- Events section label skeleton + 2 card skeletons (16dp radius, 72dp height)
+All: #E5E7EB on #F3F4F6, pulsing.
 
 ### State 4: Error
 
-- ModuleHeader — real (dark gradient, shows "Group A", back arrow, settings)
-- OfflineBanner immediately below header: "No connection — showing cached data"
-- EmptyStateView in remaining space:
-  - Error icon (cloud-off or wifi-off), 48dp, color #EF4444
-  - Heading: "Couldn't load group" — weight 700, 20sp, text primary (#2C1A0E)
-  - Body: "Check your connection and try again" — weight 400, 14sp, text secondary (#6B5B4E)
-  - CTA button: "Retry" — 52dp height, 200dp width (centered), primary terracotta (#CC6B49), white text
+- ModuleHeader — real
+- OfflineBanner: amber #F59E0B, "No connection — showing cached data"
+- EmptyStateView:
+  - Icon: cloud-off, 48dp, #EF4444
+  - Heading: "Couldn't load group" — weight 600, 20sp, #111827
+  - Body: "Check your connection and try again" — weight 400, 14sp, #6B7280
+  - CTA: "Retry" — 52dp, 200dp width centered, teal #0D7B74, white text, 12dp radius
 
 ## F — Constraints
 
 ```
 Target width: ~390px (iPhone 14 / Pixel 7)
-Single breakpoint only — no responsive variants
-Generic placeholder data only:
-  Names: "User 1", "User 2", "User 3"
-  Groups: "Group A"
-  Events: "Trip A"
-  Amounts: "OMR 10.000", "OMR 45.500", "OMR 125.500", "OMR 5.500"
-  Invite code: "ABC123"
-Dense dashboard layout: all key data visible without scrolling on standard phone (~844dp)
-Light theme only — no dark mode variant
+Single breakpoint only
+Generic placeholder data: "User 1-3", "Weekend Crew", "Trip A", "OMR 10.000/45.500/125.500/5.500", "ABC123"
+Dense dashboard: balance + members + events visible without scrolling
+Cards: border + shadow hybrid (1px #E5E7EB + soft shadow)
+Financial rows: flat list with hairline dividers (Notion table style), NOT cards
+Light theme only
+Aesthetic: Notion (dense data) meets Airbnb (breathing room on navigation)
 ```
