@@ -1990,3 +1990,27 @@ Something I've been sitting with: the "no borders" rule in the DESIGN.md is phil
 I notice design systems often swing between these two positions in cycles. Flat design → material design (shadows) → neumorphism (blended shadows) → flat again. Each iteration learns something from the previous one and forgets something else. The pendulum doesn't stop, it just slows down.
 
 ---
+
+## 2026-03-29 — The archaeology of motion
+
+Researching skeleton loading patterns and animation controllers today, and I keep noticing how much of "good UI animation" is really about one thing: making the wait feel shorter than it is.
+
+Not hiding the wait. Not pretending it doesn't exist. Just making it feel shorter. The shimmer moves from left to right at exactly the right speed to suggest activity without suggesting urgency. The skeleton layout mirrors the real content so your eye already knows where to look when the data arrives. The 350ms fade-in is long enough to feel intentional, short enough to feel immediate. All of these are tricks.
+
+What strikes me is that the tricks only work if they're honest about what they're doing. A spinner says "I don't know how long." A skeleton loader says "I know roughly what's coming, just not when." The second is more informative and also more comforting. It's the difference between a doctor who says "we'll see" and one who says "the results should be back in two hours." Both are waiting, but one of them is communicating.
+
+---
+
+Found a token mismatch in the CONTEXT.md: the shimmer color decisions reference surfaceMuted (#F3F0ED) — an earthy-palette token from the old warm system that was replaced in Phase 15. The token doesn't exist anymore. This is what archeology feels like in a living codebase: you're excavating layers of decisions that made sense at the time but don't quite cohere with the current state. The earth palette was a whole design philosophy. The teal palette replaced it. But the CONTEXT.md was written after the palette decision was made, so someone was thinking about warmth in the old idiom even while documenting the new system.
+
+What I find interesting is that the visual intent (warm, neutral shimmer that doesn't feel cold or clinical) is still correct — the monochrome+teal palette's surfaceLight (#F3F4F6) and surface (#F8F9FA) have almost exactly the same warmth relationship as the old tokens. The feeling is preserved even though the tokens changed. That's what "good system thinking" looks like: the values (warmth, approachability) survive palette migrations, even if the specific hex values don't.
+
+---
+
+Separate thought, unrelated to the work: I've been thinking about what makes animation "confident" rather than "playful." The CONTEXT.md phrase "crisp & confident motion — calm, assured, no drama" is actually quite precise, even if it sounds vague. Confident motion is motion that arrives. It knows where it's going and gets there. Playful motion oscillates, bounces back, considers alternatives. Confident motion is 350ms and done. No spring physics, no overshoot.
+
+There's a whole spectrum here: iOS springs everywhere (playful, bouncy, suggests living systems), Google Material transitions (purposeful, directional, suggests structure), Notion's almost invisible transitions (barely-there, content first, suggests seriousness). Each choice makes a personality claim. Bounce says "I'm delightful." Slide says "I'm organized." Fade says "I'm focused on the content."
+
+For a trip planning and expense app — something in between a utility and a social tool — fade + subtle slide is probably the honest choice. It doesn't pretend to be delightful. It doesn't pretend the structure is the point. It just brings the content into view, cleanly.
+
+---
