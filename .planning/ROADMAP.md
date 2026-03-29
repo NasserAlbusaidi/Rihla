@@ -166,7 +166,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 14. Test Hardening | 3/3 | Complete    | 2026-03-28 |
 | 15. Design Token System | 2/2 | Complete    | 2026-03-28 |
-| 16. Stitch Workflow & Design Reference | 2/2 | Complete   | 2026-03-29 |
+| 16. Stitch Workflow & Design Reference | 2/2 | Complete    | 2026-03-29 |
 | 17. Animation Library & Loading States | 0/? | Not started | - |
 | 18. Home Dashboard Redesign | 0/? | Not started | - |
 | 19. Navigation Restructuring | 0/? | Not started | - |
