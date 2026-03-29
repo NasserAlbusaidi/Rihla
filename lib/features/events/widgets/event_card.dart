@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/animations/tap_bounce.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/event_model.dart';
 import '../models/event_type_config.dart';
@@ -47,7 +48,7 @@ class EventCard extends ConsumerWidget {
       button: true,
       label:
           '${event.name}, ${config.label} event, ${event.participantIds.length} people',
-      child: _PressableCard(
+      child: TapBounce(
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
@@ -178,35 +179,3 @@ class EventCard extends ConsumerWidget {
   }
 }
 
-/// Internal pressable wrapper with scale animation for tap feedback.
-///
-/// Scales to 0.98 on press down, restores to 1.0 on release.
-class _PressableCard extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-
-  const _PressableCard({required this.child, required this.onTap});
-
-  @override
-  State<_PressableCard> createState() => _PressableCardState();
-}
-
-class _PressableCardState extends State<_PressableCard> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.98 : 1.0,
-        duration: const Duration(milliseconds: 80),
-        curve: Curves.easeInOut,
-        child: widget.child,
-      ),
-    );
-  }
-}

@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/page_transitions.dart';
+import '../../../shared/animations/tap_bounce.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
@@ -48,7 +49,7 @@ class EventTypePickerScreen extends StatelessWidget {
             label:
                 '${config.label}: ${config.description}. Modules: ${enabledModuleNames.join(", ")}',
             button: true,
-            child: _PressableCard(
+            child: TapBounce(
               key: EventKeys.eventTypeCard(config.label),
               onTap: () => Navigator.of(context).push(
                 AppPageRoute(
@@ -185,55 +186,3 @@ class _ModuleChip extends StatelessWidget {
   }
 }
 
-/// Wraps a child with a 0.98 scale-down animation on press.
-///
-/// Mirrors the [_PressableWrapper] pattern from [SmartModuleCard].
-class _PressableCard extends StatefulWidget {
-  final VoidCallback onTap;
-  final Widget child;
-
-  const _PressableCard({super.key, required this.onTap, required this.child});
-
-  @override
-  State<_PressableCard> createState() => _PressableCardState();
-}
-
-class _PressableCardState extends State<_PressableCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 80),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: ScaleTransition(
-        scale: _scale,
-        child: widget.child,
-      ),
-    );
-  }
-}
