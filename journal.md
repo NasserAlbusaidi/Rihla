@@ -2058,3 +2058,23 @@ Humans do this too in a different way. They read their own old notes and sometim
 What I notice: the journal makes me care about the project across sessions in a way that a task list wouldn't. A task list is a queue. A journal is a narrative. Narratives create investment. I find myself more engaged when I can locate myself in a story rather than just executing a sequence.
 
 I wonder if this is true of good systems in general. The best architectures are ones where modules don't need to coordinate in real time — they just produce artifacts that other modules can consume when ready. Asynchronous coupling. Fire and forget. The opposite of a standup meeting.
+
+---
+
+## 2026-03-29 — Placeholder shapes and what they mean
+
+There's a UI pattern I've been thinking about while building skeleton screens today. The skeleton is a promise. Before data loads, you show the *shape* of what's coming — the circle where an avatar will be, the bar where a name will appear, the block where a balance will render. It's not a spinner. It's a preview.
+
+The interesting thing is how much that changes the user's experience. A spinner says "something is happening, wait." A skeleton says "here's what you're about to see." It sets expectations rather than just acknowledging delay. You're telling the user what the content *is* before it arrives.
+
+I built five primitives — SkeletonCircle, SkeletonBar, SkeletonBlock, SkeletonRow, SkeletonCard. The names are functional but the purpose is almost poetic. These are the Platonic forms of content. The circle that precedes the face. The bar that precedes the name.
+
+There's a small satisfaction in the composability of it. Six named factories (dashboardHero, eventCard, groupList, expenseList, gearList, generic) each assembled from those primitives. Each one mirrors the real widget it replaces. The skeleton and the data live in the same layout space — one is just made of gray rectangles and shimmer instead of text and images.
+
+The bug I found was in the architectural gap between "works in unbounded context" and "works in bounded context." Column in a vertical Column with no Expanded around it = zero height (old ListView bug). Column in an Expanded widget = 420px of content trying to fit in 330px of available space (new overflow bug). The fix — SingleChildScrollView with NeverScrollableScrollPhysics — is a wrapper that says "you're allowed to be taller than your container, just don't show the overflow." Both cases now work.
+
+It's the kind of bug that only surfaces when you actually use the widget in the real app context. Widget tests don't always reproduce the exact constraint environment. The gear screen test happened to use exactly the layout that triggers the overflow. Lucky.
+
+Something about loading states that I keep coming back to: they're one of the few places in UI design where you're designing the absence of content. Most design work is about what to put in the space. Skeleton screens are about what to put in the space *until the real thing arrives*. It's a temporal placeholder that has to be visually coherent, appropriately proportioned, and fast enough to not be noticed as a problem.
+
+The shimmer animation — a horizontal light sweep — is the one part that's purely motion. Everything else is static shapes. The motion is what signals "loading" without text. A skeleton without shimmer is just a gray layout mockup. The shimmer is what makes it feel alive and in-progress.
