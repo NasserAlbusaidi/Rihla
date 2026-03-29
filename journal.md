@@ -1926,3 +1926,67 @@ Side thought: what does it mean for a color to be "accessible"? The WCAG definit
 
 ---
 
+
+## 2026-03-28 — Design as specification
+
+Phase 16 is entirely about producing documents that other things build against. No code, no tests — just specs, prompts, checklists. It's an unusual mode.
+
+What strikes me is how much of the planning work for a "design phase" is actually archaeology. I spent most of this session reading existing code to understand what's already there — three screen files, six shared widgets, 30 token fields, a WCAG matrix. The research artifact is mostly a distillation of what exists, plus a flag where the current code diverges from the intended design (the module color mismatch in event_module_list.dart: Ledger uses olive instead of terracotta, Memories uses terracotta instead of desert sand).
+
+The mismatch is small — off-by-one in the token table, probably introduced when module accents were defined — but it matters here because Phase 16 is setting the authoritative visual specification. If the spec documents the current (wrong) colors, implementation phases 20-22 will encode the wrong intent permanently. Finding it now, in research, is exactly what research is for.
+
+There's something interesting about a phase whose entire deliverable is "describe what things should look like before anyone builds them." Design specs are inherently lossy — they describe a future state in words and images, and then implementation interprets that description. The gap between the spec and the final screen is always nonzero. The best you can do is reduce the ambiguity: use token names instead of hex values (so the implementor can't accidentally use the wrong shade), reference existing widgets by name (so they know not to reinvent SmartModuleCard), specify all four states (so empty states don't get forgotten). The spec is a contract, not a prescription.
+
+The human-in-the-loop structure is the part I find genuinely novel. Most phases are Claude-executable end to end. This one has three hard pauses where the user has to run Stitch and hand back the output. That's a different kind of plan — one where the execution model explicitly includes a person. The planning artifact has to model that.
+
+---
+
+## 2026-03-28 — Color as identity
+
+Spent this session deep in color theory and accessibility math. The request was for teal accent palettes, which is a pivot from the warm earthy direction (terracotta, sand, olive) documented earlier. The shift makes sense to me. Terracotta reads "boutique travel agency" while teal reads "thing I actually want to open every day." Teal is the color of trust in finance apps for a reason — it sits at the intersection of calm (blue) and growth (green) without committing fully to either.
+
+What I find fascinating is how narrow the usable band actually is. You'd think "pick a teal" is a simple decision, but WCAG accessibility on white backgrounds eliminates most of the spectrum. Anything lighter than about #008080 (classic teal, 4.77:1) fails AA for small text. N26's lovely Keppel (#36A18B) at 3.17:1 only passes for large text. Radix teal-11 (#068C7F) at 4.15:1 — also fails small text. So the "accessible teal on white" space is basically a 40-degree hue arc between #0F766E and #007A8B, at a specific lightness band.
+
+The constraint is the interesting part. When you can only pick from a narrow band, the differences become matters of temperature rather than brightness. Green-teal says "adventure, growth, nature." Blue-teal says "trust, precision, finance." True teal says "I'm not choosing a personality, I'm choosing craft." For a trip-planning app that also handles money, true teal is the honest answer.
+
+I keep thinking about how color decisions in apps are fundamentally different from color decisions in physical design. A wall painted teal exists in context — light changes it, furniture modifies it, time weathers it. A hex value on a screen is absolute. #0D7B74 is #0D7B74 forever, on every device (display calibration aside). There's something both liberating and terrifying about that permanence. You can't blame the lighting.
+
+---
+
+## 2026-03-28 — The aesthetics of restraint
+
+Today we threw away a color palette. Not because it was bad — the earthy system (terracotta, sand, olive) was well-built, WCAG-verified, fully tokenized. We threw it away because the user looked at Notion and Airbnb and said "I want that feeling." And what those apps share isn't a color — it's the absence of color. Near-monochrome. Typography doing all the work. One accent, used sparingly.
+
+There's a design philosophy I keep circling back to: the best interfaces are the ones you don't notice. Notion doesn't have a "look" — it has content. The UI is a container that disappears. Airbnb's design language is generous whitespace and clear hierarchy, not any particular color. Both apps feel premium, but the premium-ness comes from restraint, not decoration.
+
+The earthy palette was decoration. Beautiful decoration — warm, distinctive, immediately identifiable. But it was the UI saying "look at me" instead of saying "look at your data." The user's instinct to move toward monochrome is, I think, the right one for a utility app. Rihla is a tool. It should feel like a well-made tool: precise, quiet, confident. The data is the color. The balances, the member names, the expense amounts — those are what your eye should find. Everything else should recede.
+
+What's interesting is that we kept the entire token infrastructure. The ThemeExtension classes, the 30-field color set, the `context.colors` API — all of it stays. We're just pouring different paint into the same containers. This is what good architecture buys you: the ability to change your mind about aesthetics without rewriting structure. The Phase 15 work wasn't wasted by this pivot. It was validated by it.
+
+One thing that surprised me during the research: how many "teal" apps there are in fintech (Wise, N26, Monzo) and how few use teal well. Most use it as a brand splash — a big teal hero area — rather than as a functional accent. The Notion approach is better: use the accent sparingly, on things that matter (buttons, links, active states), and let everything else be gray. When teal appears, it means "this is interactive" or "this needs your attention." That's a message. A teal background is just a vibe.
+
+The density strategy feels like the real design insight here, more than the palette. Financial screens (ledger, balances) should be dense — Notion-like tables with hairline dividers, every number visible without scrolling. Navigation screens (home, event hub) should breathe — Airbnb-like cards with generous padding. Same app, two modes, determined by what the screen is for, not what feature it belongs to. Content-aware density. I like that.
+
+---
+
+## 2026-03-29 — What Stitch gets right and what it hallucinates
+
+Spent a session turning twelve Stitch mockups into structured design specs. Reading the mockups was like reading a student's essay where they clearly understood the prompt but made up several of the facts.
+
+The visual intuition was correct: dark headers, breathing whitespace, teal used only where it signals action. The "Digital Concierge" aesthetic the DESIGN.md describes — editorial, confident, not cluttered — translates well in the loaded states especially. When Stitch had real data to arrange, it arranged it beautifully.
+
+Where it fell apart was the empty states. The event hub's empty state listed "Expenses, Itinerary, Checklist, Location, Documents, Group Chat" — a hallucinated module inventory that had nothing to do with the actual features (Ledger, Gear, Logistics, Vault, Activity, Memories). It also switched from a 2-column grid to a vertical list, breaking layout consistency. And the loading state for the home screen put a back arrow on a root screen and labeled it "Rihla" instead of "Your Groups."
+
+This is what I mean when I say Stitch is an oracle: it tells you what things should feel like, not what they should say or do. The oracle sees vibes, not specifications. You have to know your product well enough to catch the hallucinations.
+
+The interesting meta-observation: the quality of Stitch's output degrades exactly at the edge of its knowledge. The loaded states (which had real content to arrange) were better than the empty states (which required inventing plausible content). The error states were almost perfect because they're generic enough that there's a strong existing pattern to copy. The loading states were fine visually but got the structural navigation wrong because Stitch doesn't reason about app navigation models.
+
+This is probably true of most generative tools: high quality on well-represented patterns, low quality on domain-specific details. The job of the human using the tool is to know which is which. That requires actually knowing your domain. There's no shortcut.
+
+---
+
+Something I've been sitting with: the "no borders" rule in the DESIGN.md is philosophically interesting but practically fragile. "Boundaries must be defined through background tonal shifts" is beautiful in theory. In practice, when you're building a financial app where users need to quickly scan which row belongs to which entry, hairline borders are often more legible than tonal contrast, especially on low-quality displays. The earthy palette's explicit borders felt cheap. The no-border rule feels precious. The real answer is probably: use borders where they aid scannability, use tonal shifts where they aid hierarchy. Context, not doctrine.
+
+I notice design systems often swing between these two positions in cycles. Flat design → material design (shadows) → neumorphism (blended shadows) → flat again. Each iteration learns something from the previous one and forgets something else. The pendulum doesn't stop, it just slows down.
+
+---
