@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
-status: executing
-stopped_at: Completed 16-01-PLAN.md (Stitch prompt files + post-generation checklist)
-last_updated: "2026-03-28T11:59:22.924Z"
-last_activity: 2026-03-28
+status: verifying
+stopped_at: Completed 16-02-PLAN.md (annotated visual specs + CLAUDE.md Stitch workflow)
+last_updated: "2026-03-29T07:33:42.150Z"
+last_activity: 2026-03-29
 progress:
   total_phases: 9
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 
 Phase: 16 (stitch-workflow-design-reference) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-03-28
+Status: Phase complete — ready for verification
+Last activity: 2026-03-29
 
 Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 phases
 
@@ -44,6 +44,7 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 | Phase 15-design-token-system P01 | 7 | 3 tasks | 6 files |
 | Phase 15-design-token-system P02 | 3 | 2 tasks | 7 files |
 | Phase 16-stitch-workflow-design-reference P01 | 7 | 2 tasks | 4 files |
+| Phase 16 P02 | 7 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,12 +68,17 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 - Phase 16 P01: Six-section Stitch prompt format established (Palette/Spacing/Typography/Components/Screen/Constraints) as canonical Stitch-to-Flutter workflow for Phases 20-22
 - Phase 16 P01: textMuted (#A89888, 2.30:1) permanently annotated as decorative-only in all prompts and checklist — never functional text
 - Phase 16 P01: Post-generation checklist Token Gap Log distinguishes structural gaps (add token now) from cosmetic gaps (defer to implementation phase)
+- Phase 16 P02: Monochrome+teal palette confirmed canonical — earthy palette (terracotta/sand/olive) fully replaced; primary teal locked to #0D7B74 (AppColorTokens.light.primary, WCAG 5.12:1 verified)
+- Phase 16 P02: Bottom nav locked to Groups/Activity/Chats/Profile across all screens — Phase 19 must enforce this globally
+- Phase 16 P02: Module accent colors — Ledger=teal (#0D7B74), all other modules=gray-500 (#6B7280)
+- Phase 16 P02: Event-type color discrimination deferred to Phase 20 — structural gap (no per-type tokens in new system)
+- Phase 16 P02: OfflineBanner amber (#F59E0B) is structural token gap — add offlineBannerBackground to AppColorTokens in Phase 18
 
 ### Known Risks
 
 - ~~257 find.text() calls in test suite — Phase 14 complete~~ 135 content-only find.text() calls remain; all structural assertions migrated to find.byKey()
 - 895 AppColors.* references — preserved via two-layer system in Phase 15, deleted in Phase 22
-- ~~Earthy palette WCAG contrast: terracotta on sand ~2.8:1 — Phase 15 requires contrast validation before any screen code~~ RESOLVED: two-color token strategy, WCAG AA verified by tests
+- ~~Earthy palette WCAG contrast: terracotta on sand ~2.8:1 — Phase 15 requires contrast validation before any screen code~~ RESOLVED: new monochrome+teal palette with full WCAG verification in AppColorTokens.light
 - Dashboard eager render risk — Phase 18 uses CustomScrollView + SliverList.builder from the start
 - Physical device baseline needed for Phase 18 performance validation (Snapdragon 665 class)
 
@@ -82,6 +88,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-28T11:59:22.922Z
-Stopped at: Completed 16-01-PLAN.md (Stitch prompt files + post-generation checklist)
-Next action: Execute Phase 16 Plan 02 (annotated design specs after user runs Stitch)
+Last session: 2026-03-29T07:33:42.147Z
+Stopped at: Completed 16-02-PLAN.md (annotated visual specs + CLAUDE.md Stitch workflow)
+Next action: Phase 16 complete — proceed to Phase 17 (Motion Design) or verify Phase 16 outputs

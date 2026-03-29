@@ -32,7 +32,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
 - [x] **Phase 14: Test Hardening** - Convert structural test assertions to semantic Key identifiers to prevent cascade failures during visual changes (3/3 plans — completed 2026-03-28)
 - [x] **Phase 15: Design Token System** - Build the ThemeExtension-based warm earthy token layer that all subsequent screen work depends on (completed 2026-03-28)
-- [ ] **Phase 16: Stitch Workflow & Design Reference** - Establish Stitch as specification source, finalize palette, and add CI lint rule blocking hardcoded color values
+- [x] **Phase 16: Stitch Workflow & Design Reference** - Establish Stitch as specification source, finalize palette, and add CI lint rule blocking hardcoded color values (completed 2026-03-29)
 - [ ] **Phase 17: Animation Library & Loading States** - Build shared animation components and skeleton loading variants before any screen uses them
 - [ ] **Phase 18: Home Dashboard Redesign** - Deliver the single-scroll dashboard with balance hero, group cards, quick-action tray, and activity strip
 - [ ] **Phase 19: Navigation Restructuring** - Migrate 22 Navigator.push calls to GoRouter subroutes so all event-level screens are reachable within 2 taps
@@ -84,7 +84,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 16-01-PLAN.md — Stitch input prompts (3 screens) + post-generation checklist
-- [ ] 16-02-PLAN.md — User runs Stitch + annotated design specs (3 screens) + CLAUDE.md workflow section
+- [x] 16-02-PLAN.md — User runs Stitch + annotated design specs (3 screens) + CLAUDE.md workflow section
 
 ### Phase 17: Animation Library & Loading States
 **Goal**: Reusable animation components and skeleton loading variants exist as tested shared widgets, ready for any screen to import without reimplementing lifecycle management
@@ -166,7 +166,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 14. Test Hardening | 3/3 | Complete    | 2026-03-28 |
 | 15. Design Token System | 2/2 | Complete    | 2026-03-28 |
-| 16. Stitch Workflow & Design Reference | 1/2 | In Progress|  |
+| 16. Stitch Workflow & Design Reference | 2/2 | Complete   | 2026-03-29 |
 | 17. Animation Library & Loading States | 0/? | Not started | - |
 | 18. Home Dashboard Redesign | 0/? | Not started | - |
 | 19. Navigation Restructuring | 0/? | Not started | - |
