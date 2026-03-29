@@ -34,10 +34,8 @@ Declared values (all multiples of 4dp — source: `AppSpacingTokens.standard`):
 | Token | Value | Usage |
 |-------|-------|-------|
 | space4 | 4dp | Inline element gaps, between name and member count in GroupCard |
-| space8 | 8dp | Between title bar and group list, activity overline bottom margin, between skeleton bars within card |
-| space12 | 12dp | Between group cards (vertical list), between activity rows, between "Retry" CTA and secondary link |
-| space16 | 16dp | Card horizontal margin, card internal padding, OfflineBanner horizontal padding, screen horizontal padding |
-| space20 | 20dp | Icon container to title gap in EmptyStateView |
+| space8 | 8dp | Between group cards (vertical list), between activity rows, between "Retry" CTA and secondary link, between title bar and group list, activity overline bottom margin, between skeleton bars within card |
+| space16 | 16dp | Card horizontal margin, card internal padding, OfflineBanner horizontal padding, screen horizontal padding, icon container to title gap in EmptyStateView |
 | space24 | 24dp | Title horizontal padding, activity section top padding, EmptyStateView outer padding (all sides), message to CTA gap |
 | space32 | 32dp | Title vertical top padding (from safe area) |
 
@@ -57,15 +55,16 @@ Exceptions:
 
 Source: `AppTheme._buildTextTheme()` in `lib/core/theme/app_theme.dart`. Font: Plus Jakarta Sans.
 
+**Scale: 4 sizes. Weights: exactly 2 (w400 regular, w700 bold).**
+
 | Role | Size | Weight | Line Height | Token | Usage |
 |------|------|--------|-------------|-------|-------|
-| Display | 28sp | 800 | 1.2 | `headlineLarge` (overridden to w800) | "Your Groups" screen title |
-| Heading | 20sp | 700 | 1.2 | `headlineMedium` | Balance hero amount ("OMR X.XXX"), section sub-headings |
-| Body | 14sp | 400 | 1.5 | `bodyMedium` | Group card member count, activity row action text, error body, spending card body |
-| Label | 12sp | 600 | 1.4 | `labelMedium` | Quick-action button labels, group name tag in activity row |
-| Overline | 11sp | 600 | 1.0 | `labelSmall` | "RECENT ACTIVITY" section label (all-caps, decorative only, textMuted) |
+| Display | 28sp | 700 | 1.2 | `headlineLarge` | "Your Groups" screen title |
+| Heading | 20sp | 700 | 1.2 | `headlineMedium` | Balance hero amount ("OMR X.XXX"), section sub-headings, empty/error state headings |
+| Body | 14sp | 400 | 1.5 | `bodyMedium` | Group card member count, activity row action text, error body, spending card body, placeholder tab copy |
+| Label | 12sp | 400 | 1.4 | `labelMedium` | Quick-action button labels, group name tag in activity row, "RECENT ACTIVITY" overline (all-caps + letterSpacing: 1.2 style variant — decorative only, textMuted) |
 
-Two weights in use: 400 (regular body) and 600–800 (semibold/extrabold headings). No weight outside this range is introduced in Phase 18.
+No weight outside w400 and w700 is introduced in Phase 18.
 
 ---
 
@@ -88,7 +87,7 @@ Accent (#0D7B74) is used ONLY on these specific elements:
 - "Create Group" CTA button background (EmptyStateView)
 - "Retry" CTA button background (error state)
 - "View Offline Data" secondary link text
-- Quick-action tray icon color (Add Expense, Settle Up, Invite, Activity)
+- Quick-action tray icon color (Add Expense, Settle Up, Invite Friend, Activity)
 - Bottom nav active tab icon and label (Groups tab)
 - Chart bars in weekly spending card
 - Focus ring on interactive inputs (bottom nav, if focusable)
@@ -139,7 +138,7 @@ New components introduced in this phase:
 | Component | Location | Notes |
 |-----------|----------|-------|
 | `BalanceHeroCard` | `lib/features/home/widgets/balance_hero_card.dart` | Cross-group net balance display — color-coded |
-| `QuickActionTray` | `lib/features/home/widgets/quick_action_tray.dart` | 4-icon horizontal row (Add Expense, Settle Up, Invite, Activity) |
+| `QuickActionTray` | `lib/features/home/widgets/quick_action_tray.dart` | 4-icon horizontal row (Add Expense, Settle Up, Invite Friend, Activity) |
 | `ActivityRow` | `lib/features/home/widgets/activity_row.dart` | Single activity feed row (avatar + text + group tag + timestamp) |
 | `WeeklySpendingCard` | `lib/features/home/widgets/weekly_spending_card.dart` | Teal bar chart with current-week daily spend |
 | `BottomNavShell` | `lib/features/home/widgets/bottom_nav_shell.dart` | 4-tab nav bar (Groups/Activity/Chats/Profile) — visual-only in this phase |
@@ -159,7 +158,7 @@ Scaffold(key: HomeKeys.screen, backgroundColor: AppColors.background)
         ├── SafeArea
         │     └── Padding(h: space24, v: space16)
         │           └── Row(mainAxisAlignment: spaceBetween)
-        │                 ├── Text("Your Groups", 28sp, w800, textPrimary)
+        │                 ├── Text("Your Groups", 28sp, w700, textPrimary)
         │                 └── FloatingActionButton.small(primary)
         └── Expanded
               └── CustomScrollView
@@ -169,7 +168,7 @@ Scaffold(key: HomeKeys.screen, backgroundColor: AppColors.background)
                     │     └── SliverList.builder → FadeInList        [D-22]
                     │           └── TapBounce → GroupCard            [D-08, D-09, D-23]
                     ├── SliverToBoxAdapter → ActivitySection         [D-13 through D-15]
-                    │     ├── Text("RECENT ACTIVITY", overline, textMuted)
+                    │     ├── Text("RECENT ACTIVITY", 12sp, w400, all-caps, letterSpacing 1.2, textMuted)
                     │     └── Column → ActivityRow × 5
                     └── SliverToBoxAdapter → WeeklySpendingCard      [D-16, D-17]
   └── BottomNavigationBar (bottomNavShell)                           [D-10, D-11, D-12]
@@ -193,7 +192,7 @@ Card is always visible — does not hide when settled (D-02).
 |--------|------|-------|--------|
 | Add Expense | Iconsax.receipt_add | "Add Expense" | Opens group picker bottom sheet → routes to add expense for selected group's active event |
 | Settle Up | Iconsax.money_recive | "Settle Up" | Opens group picker bottom sheet → routes to settle up for selected group |
-| Invite | Iconsax.user_add | "Invite" | Opens existing invite code flow |
+| Invite Friend | Iconsax.user_add | "Invite Friend" | Opens existing invite code flow |
 | Activity | Iconsax.activity | "Activity" | Scrolls to activity section |
 
 Entire tray must be on-screen without scrolling on a ~390px width phone (D-07).
@@ -230,30 +229,32 @@ State transitions: `AsyncValue.when(data:, loading:, error:)` pattern.
 
 Source: 18-CONTEXT.md decisions D-01–D-20 and home-screen-spec.md.
 
+All inline sizes use only the 4 declared typography sizes: 12sp, 14sp, 20sp, 28sp. All weights use only w400 or w700.
+
 | Element | Copy | Notes |
 |---------|------|-------|
-| Screen title | "Your Groups" | 28sp, w800, textPrimary — rendered immediately in all states |
+| Screen title | "Your Groups" | 28sp, w700, textPrimary — rendered immediately in all states |
 | Balance hero — owe | "You owe OMR {amount} across {N} groups" | errorText; amount formatted via `AppFormatters.formatCurrency()` |
 | Balance hero — owed | "You are owed OMR {amount} across {N} groups" | successText |
 | Balance hero — settled | "All settled up" | textSecondary; sub-line shows "OMR 0.000" |
-| Quick-action label — Add Expense | "Add Expense" | 12sp, w600 |
-| Quick-action label — Settle Up | "Settle Up" | 12sp, w600 |
-| Quick-action label — Invite | "Invite" | 12sp, w600 |
-| Quick-action label — Activity | "Activity" | 12sp, w600 |
+| Quick-action label — Add Expense | "Add Expense" | 12sp, w400 |
+| Quick-action label — Settle Up | "Settle Up" | 12sp, w400 |
+| Quick-action label — Invite Friend | "Invite Friend" | 12sp, w400 |
+| Quick-action label — Activity | "Activity" | 12sp, w400 |
 | Group card — owe | "You owe OMR {amount}" | errorText (replaces totalSpent display, D-08/D-09) |
 | Group card — owed | "You are owed OMR {amount}" | successText |
 | Group card — settled | "Settled" | textSecondary |
-| Activity section overline | "RECENT ACTIVITY" | 11sp, w600, all-caps, textMuted — DECORATIVE ONLY |
+| Activity section overline | "RECENT ACTIVITY" | 12sp, w400, all-caps, letterSpacing 1.2, textMuted — DECORATIVE ONLY |
 | Primary CTA (empty state) | "Create Group" | teal button, 52dp, w700 — opens create group flow |
-| Empty state heading | "Create your first group" | 18sp, w700, textPrimary |
+| Empty state heading | "Create your first group" | 20sp, w700, textPrimary |
 | Empty state body | "Plan trips, track expenses, and settle up with friends" | 14sp, w400, textSecondary |
-| Error state heading | "Something went wrong" | 18sp, w700, textPrimary |
+| Error state heading | "Something went wrong" | 20sp, w700, textPrimary |
 | Error state body | "Check your connection and try again. Your travel groups are safely synced, but we need the internet to fetch latest updates." | 14sp, w400, textSecondary |
 | Error state primary CTA | "Retry" | teal button — calls `ref.refresh(userGroupsProvider)` |
 | Error state secondary CTA | "View Offline Data" | TextButton, teal text, no background — navigates to cached data view |
 | Placeholder tab screens | "Coming soon" | 14sp, w400, textSecondary, vertically centered |
-| Group picker bottom sheet title | "Choose a group" | 17sp, w600, textPrimary |
-| Weekly spending card title | "This Week" | 15sp, w600, textPrimary |
+| Group picker bottom sheet title | "Choose a group" | 14sp, w700, textPrimary |
+| Weekly spending card title | "This Week" | 14sp, w700, textPrimary |
 
 Destructive actions in this phase: none. Phase 18 is read + navigate only — no delete, no remove actions.
 
@@ -267,7 +268,7 @@ Destructive actions in this phase: none. Phase 18 is read + navigate only — no
 | Tap FAB (+) | Open Create/Join Group bottom sheet | `AppBottomSheetRoute` (slide-up) |
 | Tap "Add Expense" quick-action | Open group picker bottom sheet | `AppBottomSheetRoute` (slide-up) |
 | Tap "Settle Up" quick-action | Open group picker bottom sheet | `AppBottomSheetRoute` (slide-up) |
-| Tap "Invite" quick-action | Open invite code flow | `AppBottomSheetRoute` (slide-up) |
+| Tap "Invite Friend" quick-action | Open invite code flow | `AppBottomSheetRoute` (slide-up) |
 | Tap "Activity" quick-action | Scroll to activity section | Animated scroll, no navigation |
 | Tap activity row | Navigate to the referenced group | `AppPageRoute` (slide-right) |
 | Pull to refresh | `ref.invalidate(userGroupsProvider)` | Standard `RefreshIndicator` |
