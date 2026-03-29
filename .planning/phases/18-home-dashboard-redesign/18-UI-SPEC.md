@@ -42,7 +42,7 @@ Declared values (all multiples of 4dp — source: `AppSpacingTokens.standard`):
 Exceptions:
 - Quick-action button touch targets: 48dp minimum height (WCAG 2.1 AA tap target)
 - Activity row height: 48dp minimum (WCAG tap target)
-- OfflineBanner height: 44dp fixed
+- OfflineBanner height: 40dp fixed (4dp-grid aligned, non-interactive banner)
 - Bottom navigation bar height: 56dp (OS standard)
 - FAB border radius: 28dp (circular)
 - Balance hero card border radius: `radiusLarge` (16dp)
@@ -159,7 +159,7 @@ Scaffold(key: HomeKeys.screen, backgroundColor: AppColors.background)
         │     └── Padding(h: space24, v: space16)
         │           └── Row(mainAxisAlignment: spaceBetween)
         │                 ├── Text("Your Groups", 28sp, w700, textPrimary)
-        │                 └── FloatingActionButton.small(primary)
+        │                 └── FloatingActionButton.small(primary, semanticLabel: "Create or join a group")
         └── Expanded
               └── CustomScrollView
                     ├── SliverToBoxAdapter → BalanceHeroCard         [D-01, D-02, D-03]
