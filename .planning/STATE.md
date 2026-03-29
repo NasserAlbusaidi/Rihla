@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
 status: verifying
-stopped_at: Completed 16-02-PLAN.md (annotated visual specs + CLAUDE.md Stitch workflow)
-last_updated: "2026-03-29T07:41:29.181Z"
+stopped_at: Completed 17-02-PLAN.md (animation components + pressable migration)
+last_updated: "2026-03-29T11:08:01.484Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 9
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 4
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 16 — stitch-workflow-design-reference
+**Current focus:** Phase 17 — animation-library-loading-states
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
+Phase: 17 (animation-library-loading-states) — EXECUTING
+Plan: 2 of 2
 Status: Phase complete — ready for verification
 Last activity: 2026-03-29
 
@@ -45,6 +45,8 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 | Phase 15-design-token-system P02 | 3 | 2 tasks | 7 files |
 | Phase 16-stitch-workflow-design-reference P01 | 7 | 2 tasks | 4 files |
 | Phase 16 P02 | 7 | 2 tasks | 4 files |
+| Phase 17-animation-library-loading-states P01 | 8 | 2 tasks | 3 files |
+| Phase 17-animation-library-loading-states P02 | 8 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -73,6 +75,9 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 - Phase 16 P02: Module accent colors — Ledger=teal (#0D7B74), all other modules=gray-500 (#6B7280)
 - Phase 16 P02: Event-type color discrimination deferred to Phase 20 — structural gap (no per-type tokens in new system)
 - Phase 16 P02: OfflineBanner amber (#F59E0B) is structural token gap — add offlineBannerBackground to AppColorTokens in Phase 18
+- Phase 17 P01: Column over ListView.builder in SkeletonLoader.build() — ListView inside unbounded parent produces zero-height; Column is the correct pattern
+- Phase 17 P01: Shimmer 3.0.0 does not expose baseColor/highlightColor as public getters — tests verify via gradient.colors list
+- Phase 17 P01: Skeleton primitives pattern — SkeletonCircle/Bar/Block/Row/Card are atoms; named loader factories are molecules assembled from atoms
 
 ### Known Risks
 
@@ -88,6 +93,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-29T07:33:42.147Z
-Stopped at: Completed 16-02-PLAN.md (annotated visual specs + CLAUDE.md Stitch workflow)
+Last session: 2026-03-29T11:08:01.481Z
+Stopped at: Completed 17-02-PLAN.md (animation components + pressable migration)
 Next action: Phase 16 complete — proceed to Phase 17 (Motion Design) or verify Phase 16 outputs

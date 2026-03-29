@@ -37,7 +37,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 
 - [ ] **PLSH-01**: Primary write actions (add expense, record settlement, join group) provide haptic feedback
 - [ ] **PLSH-02**: Screen transitions use M3 motion patterns (ContainerTransform, SharedAxis) instead of basic slide animations
-- [ ] **PLSH-03**: Reusable animation components (fade-in lists, staggered grids, tap bounce) exist as shared library widgets
+- [x] **PLSH-03**: Reusable animation components (fade-in lists, staggered grids, tap bounce) exist as shared library widgets
 - [ ] **PLSH-04**: Balance amounts animate on update with smooth counter transitions
 - [ ] **PLSH-05**: Cards and surfaces use subtle grain/texture overlays and soft gradients for visual warmth
 
@@ -88,7 +88,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 | SCRN-06 | Phase 21 | Pending |
 | PLSH-01 | Phase 22 | Pending |
 | PLSH-02 | Phase 22 | Pending |
-| PLSH-03 | Phase 17 | Pending |
+| PLSH-03 | Phase 17 | Complete |
 | PLSH-04 | Phase 22 | Pending |
 | PLSH-05 | Phase 22 | Pending |
 

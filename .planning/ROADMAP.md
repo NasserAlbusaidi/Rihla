@@ -33,7 +33,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **Phase 14: Test Hardening** - Convert structural test assertions to semantic Key identifiers to prevent cascade failures during visual changes (3/3 plans — completed 2026-03-28)
 - [x] **Phase 15: Design Token System** - Build the ThemeExtension-based warm earthy token layer that all subsequent screen work depends on (completed 2026-03-28)
 - [x] **Phase 16: Stitch Workflow & Design Reference** - Establish Stitch as specification source, finalize palette, and add CI lint rule blocking hardcoded color values (completed 2026-03-29)
-- [ ] **Phase 17: Animation Library & Loading States** - Build shared animation components and skeleton loading variants before any screen uses them
+- [x] **Phase 17: Animation Library & Loading States** - Build shared animation components and skeleton loading variants before any screen uses them (completed 2026-03-29)
 - [ ] **Phase 18: Home Dashboard Redesign** - Deliver the single-scroll dashboard with balance hero, group cards, quick-action tray, and activity strip
 - [ ] **Phase 19: Navigation Restructuring** - Migrate 22 Navigator.push calls to GoRouter subroutes so all event-level screens are reachable within 2 taps
 - [ ] **Phase 20: Group Detail & Event Hub Redesign** - Redesign the group gateway and event hub with earthy tokens, type-specific color accents, and M3 transitions
@@ -97,8 +97,8 @@ Plans:
   4. Skeleton variants (dashboard hero, event card, group list) exist as named constructors and render without data
 **Plans**: 2 plans
 Plans:
-- [ ] 17-01-PLAN.md — Skeleton primitives (SkeletonCircle, SkeletonBar, SkeletonBlock, SkeletonRow, SkeletonCard) + 6 named variant factories on SkeletonLoader
-- [ ] 17-02-PLAN.md — Animation components (TapBounce, FadeInList, StaggeredGrid) + migrate 3 duplicate pressable patterns
+- [x] 17-01-PLAN.md — Skeleton primitives (SkeletonCircle, SkeletonBar, SkeletonBlock, SkeletonRow, SkeletonCard) + 6 named variant factories on SkeletonLoader
+- [x] 17-02-PLAN.md — Animation components (TapBounce, FadeInList, StaggeredGrid) + migrate 3 duplicate pressable patterns
 **UI hint**: yes
 
 ### Phase 18: Home Dashboard Redesign
@@ -170,7 +170,7 @@ Plans:
 | 14. Test Hardening | 3/3 | Complete    | 2026-03-28 |
 | 15. Design Token System | 2/2 | Complete    | 2026-03-28 |
 | 16. Stitch Workflow & Design Reference | 2/2 | Complete    | 2026-03-29 |
-| 17. Animation Library & Loading States | 0/2 | Planned | - |
+| 17. Animation Library & Loading States | 2/2 | Complete   | 2026-03-29 |
 | 18. Home Dashboard Redesign | 0/? | Not started | - |
 | 19. Navigation Restructuring | 0/? | Not started | - |
 | 20. Group Detail & Event Hub Redesign | 0/? | Not started | - |
