@@ -232,10 +232,17 @@ class SkeletonLoader extends StatelessWidget {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceLight, // #F3F4F6 — warm-neutral base
       highlightColor: AppColors.surface, // #F8F9FA — warm-neutral highlight
-      child: Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: Column(
-          children: List.generate(itemCount, (index) => itemBuilder(context, index)),
+      child: SingleChildScrollView(
+        // NeverScrollableScrollPhysics prevents user scroll while keeping
+        // Column items clipped to bounded parent height (e.g. inside Expanded).
+        // Column avoids zero-height that ListView.builder produces in
+        // unbounded parents (e.g. inside a vertical Column without Expanded).
+        physics: const NeverScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            children: List.generate(itemCount, (index) => itemBuilder(context, index)),
+          ),
         ),
       ),
     );
