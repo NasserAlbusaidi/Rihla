@@ -1,36 +1,59 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/error_widgets.dart';
-import '../../../core/utils/formatters.dart';
+import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
-import '../../trip/models/trip_model.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
+import '../../trip/models/trip_model.dart';
+import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
-import '../models/transaction_model.dart';
 import '../providers/expense_provider.dart';
-import '../providers/ledger_provider.dart';
-import '../widgets/member_balances_section.dart';
-import '../widgets/spending_summary_section.dart';
-import '../widgets/transaction_list.dart';
-import '../keys/ledger_keys.dart';
+import '../widgets/expense_card.dart';
+import '../widgets/ledger_hero_card.dart';
+import '../widgets/settlement_row.dart';
 
-/// Ledger Screen - Event Settlement with dark header, debt tabs, and actions.
+/// Sealed type for a merged timeline item (expense or settlement).
+sealed class _TimelineItem {
+  DateTime get date;
+}
+
+final class _ExpenseItem extends _TimelineItem {
+  final Expense expense;
+  _ExpenseItem(this.expense);
+
+  @override
+  DateTime get date => expense.createdAt;
+}
+
+final class _SettlementItem extends _TimelineItem {
+  final Settlement settlement;
+  _SettlementItem(this.settlement);
+
+  @override
+  DateTime get date => settlement.settledAt;
+}
+
+/// Ledger Screen — single-scroll layout with hero card and timeline.
 ///
-/// Takes string IDs per D-14 and D-08. Uses [eventDetailProvider] to load
-/// event data. Shows a not-found error state per D-11 when event is null.
-class LedgerScreen extends ConsumerStatefulWidget {
+/// Implements the unified module template per D-04, D-08:
+/// - Dark ModuleHeader with event name
+/// - LedgerHeroCard with YOUR BALANCE, EVENT TOTAL, Add Expense, Settle Up
+/// - TRANSACTIONS overline
+/// - FadeInList of ExpenseCard / SettlementRow items (sorted by date desc)
+///
+/// Removes all tabs (AppTabBar/TabBarView), MemberBalancesSection,
+/// SpendingSummarySection, TransactionList, and CircularProgressIndicator.
+class LedgerScreen extends ConsumerWidget {
   final String groupId;
   final String eventId;
 
@@ -41,26 +64,21 @@ class LedgerScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<LedgerScreen> createState() => _LedgerScreenState();
-}
-
-class _LedgerScreenState extends ConsumerState<LedgerScreen> {
-  void _openSettleUp(BuildContext context) {
-    context.push(
-        '/group/${widget.groupId}/event/${widget.eventId}/ledger/settle-up');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final eventRef =
-        (groupId: widget.groupId, eventId: widget.eventId);
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventRef = (groupId: groupId, eventId: eventId);
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
 
-    // Loading state
+    // Loading: show skeleton while event loads
     if (eventAsync.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        key: LedgerKeys.screen,
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Ledger', useDarkTheme: true),
+            Expanded(child: SkeletonLoader.expenseList()),
+          ],
+        ),
       );
     }
 
@@ -69,6 +87,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
+        key: LedgerKeys.screen,
         backgroundColor: AppColors.background,
         body: Column(
           children: [
@@ -89,14 +108,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       );
     }
 
-    // Watch raw streams for Balance Calculation using EventRef-based providers
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
 
-    // Watch Unified Ledger for Transaction List
-    final ledgerAsync = ref.watch(eventUnifiedLedgerProvider(eventRef));
-
-    // Derive participants from event data (no SQLite lookup needed)
+    // Derive participants from event data
     final participants = event.participantIds.map((id) {
       return Participant(
         id: id,
@@ -107,56 +122,108 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       );
     }).toList();
 
-    // Sub-groups from Firestore
     final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
     final subGroups = subGroupsAsync.valueOrNull ?? [];
 
-    // Current participant: match device name to event participant
+    // Use the first participant as current user (matches existing behaviour)
     final currentParticipantId =
         participants.isNotEmpty ? participants.first.id : null;
+
+    // --- Loading state for expenses/settlements ---
+    if (expensesAsync.isLoading || settlementsAsync.isLoading) {
+      if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
+        return Scaffold(
+          key: LedgerKeys.screen,
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              ModuleHeader(
+                title: 'Ledger',
+                subtitle: event.name.toUpperCase(),
+                useDarkTheme: true,
+              ),
+              Expanded(child: SkeletonLoader.expenseList()),
+            ],
+          ),
+        );
+      }
+    }
+
+    // --- Error state ---
+    if (expensesAsync.hasError || settlementsAsync.hasError) {
+      return Scaffold(
+        key: LedgerKeys.screen,
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            ModuleHeader(
+              title: 'Ledger',
+              subtitle: event.name.toUpperCase(),
+              useDarkTheme: true,
+            ),
+            Expanded(
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: "Couldn't load Ledger",
+                message: 'Check your connection and try again.',
+                actionLabel: 'Reload',
+                onAction: () {
+                  ref.invalidate(eventExpensesProvider(eventRef));
+                  ref.invalidate(eventSettlementsProvider(eventRef));
+                },
+                iconColor: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final expenses = expensesAsync.valueOrNull ?? [];
+    final settlements = settlementsAsync.valueOrNull ?? [];
 
     return Scaffold(
       key: LedgerKeys.screen,
       backgroundColor: AppColors.background,
-      body: expensesAsync.when(
-        data: (expenses) => settlementsAsync.when(
-          data: (settlements) {
-            final transactions = ledgerAsync.valueOrNull ?? [];
-            return _buildContent(
-              context,
-              event,
-              expenses,
-              settlements,
-              transactions,
-              participants,
-              currentParticipantId,
-              subGroups,
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => NetworkErrorWidget(
-            onRetry: () =>
-                ref.invalidate(eventSettlementsProvider(eventRef)),
-          ),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => NetworkErrorWidget(
-          onRetry: () => ref.invalidate(eventExpensesProvider(eventRef)),
-        ),
+      body: _LedgerBody(
+        groupId: groupId,
+        eventId: eventId,
+        event: event,
+        expenses: expenses,
+        settlements: settlements,
+        participants: participants,
+        currentParticipantId: currentParticipantId,
+        subGroups: subGroups,
       ),
     );
   }
+}
 
-  Widget _buildContent(
-    BuildContext context,
-    event,
-    List<Expense> expenses,
-    List<Settlement> settlements,
-    List<Transaction> transactions,
-    List<Participant> participants,
-    String? currentParticipantId,
-    List<SubGroup> subGroups,
-  ) {
+/// Inner body extracted for clarity.
+class _LedgerBody extends StatelessWidget {
+  final String groupId;
+  final String eventId;
+  final dynamic event;
+  final List<Expense> expenses;
+  final List<Settlement> settlements;
+  final List<Participant> participants;
+  final String? currentParticipantId;
+  final List<SubGroup> subGroups;
+
+  const _LedgerBody({
+    required this.groupId,
+    required this.eventId,
+    required this.event,
+    required this.expenses,
+    required this.settlements,
+    required this.participants,
+    required this.currentParticipantId,
+    required this.subGroups,
+  });
+
+  Decimal _computeNetBalance() {
+    // BalanceCalculator: compute net balance for currentParticipantId from
+    // expenses and settlements.
     final balances = BalanceCalculator.calculateBalances(
       expenses: expenses,
       settlements: settlements,
@@ -175,243 +242,160 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       ),
     );
 
-    final netBalance = myBalance.netBalance;
-    final participantCount =
-        participants.length > 1 ? participants.length : 1;
+    return myBalance.netBalance;
+  }
+
+  Decimal _computeEventTotal() {
+    return expenses.fold(
+      Decimal.zero,
+      (sum, e) => sum + e.amount,
+    );
+  }
+
+  /// Compute the current user's balance for a single expense.
+  ///
+  /// Positive = owed to user (user paid for others)
+  /// Negative = user owes (user didn't pay but is in split)
+  /// Zero = user not involved
+  Decimal _expenseUserBalance(Expense expense) {
+    final participantCount = participants.length;
+    if (participantCount == 0) return Decimal.zero;
+
+    final isPayer = expense.payerParticipantId == currentParticipantId;
+
+    // Determine who is in the split
+    final splitIds = expense.customSplitParticipants;
+    final isInSplit = splitIds != null
+        ? splitIds.contains(currentParticipantId)
+        : true; // global = all participants
+
+    final splitCount =
+        splitIds != null ? splitIds.length : participantCount;
+    if (splitCount == 0) return Decimal.zero;
+
+    final share = (expense.amount / Decimal.fromInt(splitCount))
+        .toDecimal(scaleOnInfinitePrecision: 3);
+
+    if (isPayer && isInSplit) {
+      // Paid for everyone incl self: net = amount - own share
+      return expense.amount - share;
+    } else if (isPayer && !isInSplit) {
+      // Paid but not in split (edge case): net = full amount owed back
+      return expense.amount;
+    } else if (!isPayer && isInSplit) {
+      // Did not pay but owes a share
+      return -share;
+    } else {
+      // Not involved at all
+      return Decimal.zero;
+    }
+  }
+
+  List<_TimelineItem> _buildTimeline() {
+    final items = <_TimelineItem>[
+      ...expenses.map(_ExpenseItem.new),
+      ...settlements.map(_SettlementItem.new),
+    ];
+    items.sort((a, b) => b.date.compareTo(a.date));
+    return items;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final netBalance = _computeNetBalance();
+    final eventTotal = _computeEventTotal();
+    final timeline = _buildTimeline();
+    final currency = event.currency as String? ?? 'OMR';
+    final isEmpty = expenses.isEmpty && settlements.isEmpty;
 
     return CustomScrollView(
       slivers: [
+        // 1. Dark ModuleHeader
         SliverToBoxAdapter(
-          child: _buildBalanceHeader(
-            context,
-            event,
-            netBalance,
-            participantCount,
-          ).animate().fadeIn().slideY(begin: -0.2),
+          child: ModuleHeader(
+            title: 'Ledger',
+            subtitle: event.name.toUpperCase(),
+            useDarkTheme: true,
+          ),
         ),
+
+        // Offline banner
         const SliverToBoxAdapter(child: OfflineBanner()),
-        // Member balances
-        SliverToBoxAdapter(
-          child: MemberBalancesSection(
-            balances: balances,
-            currentParticipantId: currentParticipantId,
-            currency: event.currency,
-          ).animate().fadeIn(delay: 100.ms),
-        ),
-        // Spending summary toggle
-        SliverToBoxAdapter(
-          child: SpendingSummarySection(
-            expenses: expenses,
-            currency: event.currency,
-          ).animate().fadeIn(delay: 150.ms),
-        ),
-        // Transactions
-        SliverToBoxAdapter(
-          child: TransactionList(
-            transactions: transactions,
-            currentParticipantId: currentParticipantId,
-            currency: event.currency,
-            onEditExpense: (expense) => _editExpense(context, expense),
-            onAddExpense: () => _addExpense(context),
-          ).animate().fadeIn(delay: 200.ms),
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: 100)),
-      ],
-    );
-  }
 
-  Widget _buildBalanceHeader(
-    BuildContext context,
-    event,
-    Decimal netBalance,
-    int participantCount,
-  ) {
-    final isPositive = netBalance >= Decimal.zero;
-    final absBalance = netBalance.abs();
-
-    return ModuleHeader(
-      title: 'Ledger',
-      subtitle: event.name.toUpperCase(),
-      useDarkTheme: true,
-      actions: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius:
-                BorderRadius.circular(AppColors.radiusSmall + 2),
-            border:
-                Border.all(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-          child: IconButton(
-            icon: const Icon(
-              Iconsax.money_send,
-              color: AppColors.primary,
-              size: 20,
+        // 2. LedgerHeroCard
+        SliverToBoxAdapter(
+          child: LedgerHeroCard(
+            netBalance: netBalance,
+            eventTotal: eventTotal,
+            expenseCount: expenses.length,
+            settlementCount: settlements.length,
+            currency: currency,
+            onAddExpense: () => context.push(
+              '/group/$groupId/event/$eventId/ledger/add',
             ),
-            onPressed: () => _openSettleUp(context),
-          ),
-        ),
-      ],
-      bottom: Column(
-        children: [
-          // Balance summary
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(20),
-              border:
-                  Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            isPositive ? '+' : '-',
-                            style: TextStyle(
-                              color: isPositive
-                                  ? AppColors.primary
-                                  : AppColors.error,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            absBalance.toStringAsFixed(
-                              AppFormatters.currencyConfig[event.currency]
-                                      ?.decimals ??
-                                  3,
-                            ),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -1,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            event.currency,
-                            style: TextStyle(
-                              color:
-                                  Colors.white.withValues(alpha: 0.5),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isPositive ? 'You are owed' : 'You owe others',
-                        style: TextStyle(
-                          color: isPositive
-                              ? AppColors.primary.withValues(alpha: 0.8)
-                              : AppColors.error.withValues(alpha: 0.8),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            onSettleUp: () => context.push(
+              '/group/$groupId/event/$eventId/ledger/settle-up',
             ),
           ),
-          const SizedBox(height: 16),
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: _buildHeaderAction(
-                  'ADD EXPENSE',
-                  Iconsax.add,
-                  AppColors.primary,
-                  () => _addExpense(context),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildHeaderAction(
-                  'SETTLE UP',
-                  Iconsax.money_send,
-                  AppColors.emerald,
-                  () => _openSettleUp(context),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderAction(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    final isPrimary = color == AppColors.primary;
-    return GestureDetector(
-      onTap: () {
-        HapticService.medium();
-        onTap();
-      },
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: isPrimary
-              ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : null,
-          border: isPrimary
-              ? null
-              : Border.all(
-                  color: Colors.white.withValues(alpha: 0.1)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 10),
-            Text(
-              label,
+
+        // 3. TRANSACTIONS overline
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(
+              'TRANSACTIONS',
+              key: LedgerKeys.spendingLabel,
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textMuted,
                 letterSpacing: 0.5,
               ),
             ),
-          ],
+          ),
         ),
-      ),
+
+        // 4. Timeline or empty state
+        SliverToBoxAdapter(
+          child: isEmpty
+              ? EmptyStateView(
+                  icon: Iconsax.receipt_item,
+                  title: 'No expenses yet',
+                  message:
+                      'Add your first expense to start tracking who paid what.',
+                  actionLabel: 'Add Expense',
+                  onAction: () => context.push(
+                    '/group/$groupId/event/$eventId/ledger/add',
+                  ),
+                  accentGradient: const LinearGradient(
+                    colors: [Color(0xFFCC6B49), Color(0xFFE0896A)],
+                  ),
+                )
+              : FadeInList(
+                  children: timeline.map((item) {
+                    return switch (item) {
+                      _ExpenseItem(:final expense) => ExpenseCard(
+                          key: LedgerKeys.expenseCard(expense.id),
+                          expense: expense,
+                          userBalance: _expenseUserBalance(expense),
+                          currency: currency,
+                          onTap: () => context.push(
+                            '/group/$groupId/event/$eventId/ledger/edit/${expense.id}',
+                          ),
+                        ),
+                      _SettlementItem(:final settlement) => SettlementRow(
+                          key: Key('settlement_row_${settlement.id}'),
+                          settlement: settlement,
+                          currency: currency,
+                        ),
+                    };
+                  }).toList(),
+                ),
+        ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      ],
     );
-  }
-
-  void _editExpense(BuildContext context, Expense expense) {
-    context.push(
-        '/group/${widget.groupId}/event/${widget.eventId}/ledger/edit/${expense.id}');
-  }
-
-  void _addExpense(BuildContext context) {
-    context.push(
-        '/group/${widget.groupId}/event/${widget.eventId}/ledger/add');
   }
 }
