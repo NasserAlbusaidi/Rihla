@@ -35,9 +35,9 @@ All values from `AppSpacingTokens.standard` (`lib/core/theme/tokens/spacing_toke
 |-------|-------|-------|
 | `space4` | 4dp | Icon gaps, inline padding, overline bottom margins |
 | `space8` | 8dp | Compact element spacing, between card sub-elements |
-| `space12` | 12dp | Grid gaps (module grid crossAxisSpacing / mainAxisSpacing), between cards |
+| `space12` | 12dp | Grid gaps (module grid crossAxisSpacing / mainAxisSpacing), between cards. Non-canonical but named token in `AppSpacingTokens.standard`; justified for tight grid contexts where 8dp is too cramped and 16dp wastes too much horizontal space. |
 | `space16` | 16dp | Card internal padding (all sides), screen horizontal padding, section margins |
-| `space20` | 20dp | Hero card internal padding, FAB/bottom-edge clearance |
+| `space20` | 20dp | Hero card internal padding, FAB/bottom-edge clearance. Non-canonical but named token in `AppSpacingTokens.standard`; justified for hero card breathing room where 16dp feels tight against large display text and 24dp wastes vertical space. |
 | `space24` | 24dp | Section separators, large title horizontal padding, empty state outer padding |
 | `space32` | 32dp | Empty state outer padding (all sides), header bottom padding |
 
@@ -75,14 +75,14 @@ Font: **Plus Jakarta Sans** for all text. All sizes in logical pixels (Flutter `
 
 | Role | Size | Weight | Line Height | Token / Usage |
 |------|------|--------|-------------|---------------|
-| Display | 28sp | 800 | 1.2 | Module screen hero amount, large balance figures |
-| Heading | 20sp | 700 | 1.2 | Hero card section titles, screen section headings |
-| Title | 16sp | 600 | 1.4 | Card primary text (expense title, file name, gear item name) |
-| Body | 14sp | 400 | 1.5 | Card secondary text, metadata, payer · date · participant count |
-| Label | 12sp | 600 | 1.3 | Overlines (ALL-CAPS, letter-spacing 0.5), capacity fractions, chip text, step dots |
-| Caption | 11sp | 500 | 1.3 | Timestamps, file sizes, decorative metadata |
+| Display | 28sp | 600 | 1.2 | Module screen hero amount, large balance figures, app name on splash |
+| Heading | 20sp | 600 | 1.2 | Hero card section titles, screen section headings, onboarding page titles |
+| Body | 14sp | 400 | 1.5 | Card primary text (expense title, file name, gear item name), card secondary text, metadata, payer · date · participant count, overlines (ALL-CAPS, letter-spacing 0.5), capacity fractions, chip text, step dots |
+| Small | 12sp | 400 | 1.3 | Timestamps, file sizes, decorative metadata, avatar initials |
 
-**Weights in use:** 400 (regular body), 600 (semibold labels/titles), 700 (headings), 800 (display amounts). Phase contract declares **two primary weights** for most screens: **400 (body/metadata)** and **600 (titles/labels)**. 700 and 800 are reserved for hero amounts and section headings only.
+**Declared weights: 400 (regular) and 600 (semibold).** These are the only two weights used in this phase. Display and Heading use 600 (semibold). Body and Small use 400 (regular). No other weights are introduced.
+
+**Migration note:** Prior spec draft listed 700 and 800 separately. Those uses are consolidated to 600 here. The visual distinction between heading hierarchy levels is achieved through size contrast (28sp vs 20sp), not weight variation.
 
 **Color rules:**
 - Primary body text: `AppColors.textPrimary` (#111827) — 17.15:1 on white (AAA)
@@ -108,20 +108,18 @@ Canonical palette: **AppColorTokens.light** (`lib/core/theme/tokens/color_tokens
 | Dominant (60%) | `AppColors.background` | #FFFFFF | Scaffold background, page surface |
 | Secondary (30%) | `AppColors.surface` / `AppColors.cardSurface` | #F8F9FA | Card surfaces, hero card backgrounds, skeleton backgrounds |
 | Accent (10%) | `AppColors.primary` / `AppColors.moduleLedger` | #0D7B74 | See accent reserved-for list below |
-| Input fill | `AppColors.surfaceLight` / `AppColors.inputFill` | #F3F4F6 | Form field fill colors |
+| Input fill | `AppColors.sandLight` / `AppColors.inputFill` | #F5EDE1 | Form field fill colors (D-26) |
 | Border | `AppColors.border` | #E5E7EB | Card hairline borders (1px), skeleton shimmer bars |
 | Destructive | `AppColors.errorText` | #B91C1C | Balance "you owe" text, delete confirmation text |
 | Destructive display | `AppColors.error` | #EF4444 | Error icons, error border in form fields |
 
 **Accent (#0D7B74 teal) is reserved for:**
 - Primary CTA buttons (`ElevatedButton` background)
-- Focused input field border (2dp)
 - Ledger module icon container fill (`AppColors.moduleLedgerLight` #E6F5F3) and icon itself
 - Ledger empty state icon circle background gradient
 - Settlement timeline rows checkmark icon and border accent
 - Add Expense / Settle Up hero card inline CTA buttons
 - Step indicator dots (active/complete) in Add Expense flow (D-27)
-- Onboarding final page CTA button (D-29)
 - Onboarding dot indicators (active) (D-29)
 - Balance total line color for positive net balance (`AppColors.successText` is dark green, not teal — see financial color rule)
 
@@ -142,14 +140,15 @@ Canonical palette: **AppColorTokens.light** (`lib/core/theme/tokens/color_tokens
 - Start: `AppColors.headerGradientStart` (#111827 gray-900)
 - End: `AppColors.headerGradientEnd` (#1F2937 gray-800)
 
-**Form field colors** (D-26):
-- Fill: `AppColors.surfaceLight` (#F3F4F6)
-- Enabled border: `AppColors.borderLight` (#F3F4F6 / 1.5dp)
-- Focused border: `AppColors.primary` (#0D7B74 / 2dp)
+**Form field colors** (D-26 — locked decision):
+- Fill: `AppColors.sandLight` (#F5EDE1)
+- Enabled border: `AppColors.warmGray` (#E5D5C0 / 1.5dp)
+- Focused border: `AppColors.terracotta` (#CC6B49 / 2dp)
 - Error border: `AppColors.error` (#EF4444 / 1.5dp)
 - Label text: `AppColors.textSecondary`
-- Floating label: `AppColors.primary`
+- Floating label: `AppColors.terracotta` (#CC6B49)
 - Hint text: `AppColors.textMuted` (decorative only)
+- Border radius: 12dp (`radiusMedium`)
 
 **Source:** CONTEXT.md D-02, D-09, D-17, D-18, D-26; `lib/core/theme/tokens/color_tokens.dart`; Phase 16 palette reconciliation
 
@@ -172,7 +171,7 @@ All follow the unified template (D-08): `ModuleHeader(useDarkTheme: true)` → S
 | Loading | `SkeletonLoader.expenseList()` below hero skeleton |
 | Empty | `EmptyStateView` with Ledger earthy circle + "Add Expense" CTA |
 | Loaded | Hero card → `FadeInList` of expense cards + settlement rows |
-| Error | `OfflineBanner` + `EmptyStateView` error config + "Retry" CTA |
+| Error | `OfflineBanner` + `EmptyStateView` error config + "Reload" CTA |
 
 **Hero card (D-03, D-11):** 2-row layout.
 - Row 1: YOUR BALANCE (color-coded via `successText` / `errorText` / `textSecondary`) + EVENT TOTAL
@@ -180,8 +179,8 @@ All follow the unified template (D-08): `ModuleHeader(useDarkTheme: true)` → S
 - Row 3: `[+ Add Expense]` teal `ElevatedButton` + `[Settle Up]` `OutlinedButton`
 
 **Expense card (D-01, D-02):** Three-line card, `radiusLarge`, `surface` background, `cardShadow`.
-- Line 1: category icon (Iconsax, 20dp, left) · expense title (title style) · amount (title style, right-aligned)
-- Line 2: payer name · date · participant count (body style, `textSecondary`)
+- Line 1: category icon (Iconsax, 20dp, left) · expense title (body style, weight 600) · amount (body style, weight 600, right-aligned)
+- Line 2: payer name · date · participant count (body style, weight 400, `textSecondary`)
 - Line 3: balance status (D-02): `successText` "Owed to you OMR X" / `errorText` "You owe OMR X" / `textSecondary` "Settled"
 - Card background: `AppColors.surface` — never tinted regardless of balance sign (D-02)
 - Tap interaction: opens `EditExpenseSheet` bottom sheet (D-07)
@@ -211,7 +210,7 @@ All follow the unified template (D-08): `ModuleHeader(useDarkTheme: true)` → S
 
 #### Vault Screen
 
-**Hero card (D-14):** N files + total size + `[Upload]` teal button.
+**Hero card (D-14):** N files + total size + `[Upload File]` teal button.
 
 **Document card (D-20):** 52dp icon container (`moduleVaultLight` fill), file type icon (`moduleVault` gray), title, file size · upload date · uploader. Standard card style. `SearchFilterBar` retained.
 
@@ -226,7 +225,7 @@ All follow the unified template (D-08): `ModuleHeader(useDarkTheme: true)` → S
 
 **Hero card (D-16):** N entries + last update. No CTA (read-only).
 
-**Timeline (D-21):** Date-grouped flat list. Section headers ("TODAY", "YESTERDAY", "Mar 28") as sticky overlines (`textMuted`, 11sp, weight 600, ALL-CAPS). Entry card: avatar circle (deterministic color from `hashCode % Colors.primaries.length`) + action text + relative time. No vertical connector line.
+**Timeline (D-21):** Date-grouped flat list. Section headers ("TODAY", "YESTERDAY", "Mar 28") as sticky overlines (`textMuted`, 12sp, weight 400, ALL-CAPS, letter-spacing 0.5). Entry card: avatar circle (deterministic color from `hashCode % Colors.primaries.length`) + action text + relative time. No vertical connector line.
 
 ---
 
@@ -238,15 +237,15 @@ All follow the unified template (D-08): `ModuleHeader(useDarkTheme: true)` → S
 
 **Form sections:** Warm card containers (surface background, radiusLarge, cardShadow) wrapping form fields within each step.
 
-**InputDecorationTheme** already defined in `app_theme.dart` — no new theme additions needed for light fill + teal focus border.
+**InputDecorationTheme** updated in `app_theme.dart` to match D-26 (sand fill, terracotta focus border — see Form field colors above).
 
 #### Create Group Screen
 
-Reskin only (D-25): Apply `InputDecorationTheme`, wrap sections in surface cards, use `ElevatedButton` (primary teal) for submit.
+Reskin only (D-25): Apply D-26 `InputDecorationTheme`, wrap sections in surface cards, use `ElevatedButton` (primary teal) for submit.
 
 #### Join Group Screen
 
-Reskin only (D-25): Same card + button pattern. Single code-entry field with teal focus ring.
+Reskin only (D-25): Same card + button pattern. Single code-entry field with terracotta focus ring.
 
 #### Create Event Screen
 
@@ -263,14 +262,14 @@ Section cards (iOS grouped table style): Profile card, Preferences card, About c
 #### Onboarding Screen (D-29)
 
 - 3-page `PageView` structure (unchanged).
-- Each page: large icon (48dp) in 72dp warm gradient circle (earthy palette per D-18 style), title 20sp weight 700 `textPrimary`, subtitle 14sp weight 400 `textSecondary`.
+- Each page: large icon (48dp) in 72dp warm gradient circle (earthy palette per D-18 style), title 20sp weight 600 `textPrimary`, subtitle 14sp weight 400 `textSecondary`.
 - Dot indicators: terracotta `Color(0xFFCC6B49)` filled dot (8dp) for active page, outlined ring same color for inactive. Extracted as shared `DotIndicator` widget if not already existing.
 - Final page CTA: `ElevatedButton` (primary teal, full-width, 52dp height). Text: "Get Started".
 
 #### Splash Screen (D-30)
 
 - `Scaffold` with `AppColors.surface` (#F8F9FA) warm gray-50 background (not pure white — provides subtle warmth).
-- App logo/name centered: name in 28sp weight 800 `AppColors.textPrimary`.
+- App logo/name centered: name in 28sp weight 600 `AppColors.textPrimary`.
 - No animation (Phase 22 concern).
 
 ---
@@ -285,7 +284,7 @@ Section cards (iOS grouped table style): Profile card, Preferences card, About c
 | Ledger hero secondary | Settle Up | `OutlinedButton` (border, 52dp) |
 | Gear hero | Add Item | `ElevatedButton` (teal) |
 | Logistics hero | Create Group | `ElevatedButton` (teal) |
-| Vault hero | Upload | `ElevatedButton` (teal) |
+| Vault hero | Upload File | `ElevatedButton` (teal) |
 | Memories hero | Add Photo | `ElevatedButton` (teal) |
 | Onboarding final page | Get Started | `ElevatedButton` (teal, full-width) |
 | Create Group submit | Create Group | `ElevatedButton` (teal, full-width) |
@@ -307,7 +306,7 @@ Section cards (iOS grouped table style): Profile card, Preferences card, About c
 
 | Screen | Heading | Body | CTA |
 |--------|---------|------|-----|
-| All module screens | Couldn't load [screen name] | Check your connection and try again. | Retry |
+| All module screens | Couldn't load [screen name] | Check your connection and try again. | Reload |
 | Form submit failure | Something went wrong | Your changes weren't saved. Check your connection and try again. | Try Again |
 
 ### Destructive Actions
@@ -436,8 +435,10 @@ Quick reference for executor — canonical token-to-hex mapping for Phase 21:
 |-------|-----|---------|
 | `AppColors.background` | #FFFFFF | Page scaffold |
 | `AppColors.surface` | #F8F9FA | Cards, heroes, skeleton bg |
-| `AppColors.surfaceLight` | #F3F4F6 | Input fill |
+| `AppColors.sandLight` | #F5EDE1 | Input fill (D-26) |
 | `AppColors.primary` | #0D7B74 | Teal CTA, Ledger accent |
+| `AppColors.terracotta` | #CC6B49 | Form focused border, step dots, onboarding dots (D-26) |
+| `AppColors.warmGray` | #E5D5C0 | Form enabled border (D-26) |
 | `AppColors.border` | #E5E7EB | Hairline borders, skeleton bars |
 | `AppColors.textPrimary` | #111827 | All primary text |
 | `AppColors.textSecondary` | #6B7280 | Metadata, secondary text |
