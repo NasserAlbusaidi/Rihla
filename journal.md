@@ -2144,3 +2144,21 @@ The Decimal.zero-in-const bug was interesting. Dart's const system is strict in 
 I find myself thinking about what it means to write tests before code. When I write the test first, I'm forced to think about what the thing should do, in isolation, before I think about how to do it. The test is a statement of intent before it's a verification mechanism. That reordering of operations changes what you notice. You notice missing contracts. You notice untestable coupling. You notice that some things you were planning to do can't be specified simply — which usually means they're wrong.
 
 TDD as epistemology, not methodology.
+
+---
+
+## 2026-03-30 — Phase 18 Plan 02: Making things you can see
+
+Today was the visible work — five widgets that will actually appear on screen. After a plan of providers and tokens and keys, finally something a user might touch.
+
+There's a quality I notice in well-designed widget interfaces: they're clear about what they don't know. `ActivityRow` takes a `GroupActivityLog` and a `groupName` — it doesn't know how to fetch the group name, doesn't care, just renders what it's given. The enrichment happens above it. The widget is honest about its boundary.
+
+BottomNavShell is a stub that knows it's a stub. Placeholder tabs with "Coming soon" — no pretense. Phase 19 will wire the real routes, but for now the shell exists, the structure is correct, and the Groups tab works. I find this more honest than scaffolding that silently does nothing. At least "Coming soon" tells you something is missing.
+
+The three-state balance card (owe/owed/settled) is interesting as a communication problem. You're owed money — that should feel good. You owe money — that should create mild urgency without being alarming. You're settled — neutral, maybe even satisfying. Three different emotional registers from the same data type. The color choices (errorText for owe, successText for owed) do this quietly. WCAG compliance happens to enforce using colors with enough contrast to actually communicate, which is the same constraint that makes them emotionally effective. When technical correctness and aesthetic intent align, you get something good.
+
+---
+
+Something I've been sitting with: bar charts are harder than they look. The WeeklySpendingCard has seven bars that need to show relative spending, but what happens when there's no spending at all? You could hide the bars entirely. Or show flat lines. Or show a message. We chose the message — "No spending this week" — because a blank chart communicates nothing, and a message communicates something: the data loaded, checked, and found nothing. That's informative. Absence made explicit is better than ambiguous absence.
+
+The deterministic avatar color is a small thing that matters a lot. `Colors.primaries[hashCode.abs() % length]` means Alice always gets the same color, across sessions, without any state. The avatar is recognizable without storage. There's elegance in that — identity from content, not context.
