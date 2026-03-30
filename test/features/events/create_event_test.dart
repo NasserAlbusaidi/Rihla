@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -137,6 +138,34 @@ void main() {
 
     testWidgets('tapping type card navigates to CreateEventScreen',
         (tester) async {
+      // EventTypePickerScreen uses context.push so we need MaterialApp.router
+      final router = GoRouter(
+        initialLocation: '/group/group-1/create-event',
+        routes: [
+          GoRoute(
+            path: '/group/:gid',
+            builder: (_, state) => Scaffold(
+              body: Text('GroupDetail:${state.pathParameters['gid']}'),
+            ),
+            routes: [
+              GoRoute(
+                path: 'create-event',
+                builder: (_, state) => const EventTypePickerScreen(groupId: 'group-1'),
+              ),
+              GoRoute(
+                path: 'create-event/:type',
+                builder: (_, state) => CreateEventScreen(
+                  groupId: 'group-1',
+                  eventType: EventType.fromString(
+                    state.pathParameters['type'] ?? 'custom',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -149,9 +178,7 @@ void main() {
             ),
             eventLoadingProvider.overrideWith((ref) => false),
           ],
-          child: MaterialApp(
-            home: const EventTypePickerScreen(groupId: 'group-1'),
-          ),
+          child: MaterialApp.router(routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();

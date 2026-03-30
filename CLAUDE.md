@@ -57,19 +57,41 @@ Providers are defined manually (not code-gen). Key provider patterns:
 
 Every major data stream follows **cache-on-success + fallback-to-cache-on-error**: data is cached to SQLite on fetch, and served from cache when offline.
 
-### Routing: Mixed
+### Routing: GoRouter (Declarative)
 
-- **GoRouter** handles top-level routes: `/home`, `/create-trip`, `/join-trip`, `/settings`, `/onboarding`. Join-trip has a two-step flow: enter code → pick unclaimed name.
-- **CommandCenter** (the per-trip hub) and all feature screens below it use `Navigator.push` — they are NOT in GoRouter. This is intentional but means deep linking doesn't reach trip sub-screens.
+All navigation uses GoRouter declarative routing. No imperative Navigator.push calls remain (except FullScreenPhoto overlay in MemoriesScreen which uses opaque:false PageRouteBuilder).
 
-### Navigation Flow
+Route tree:
 
 ```
-HomeScreen (/home, GoRouter)
-  → tap trip card → Navigator.push(CommandCenter)
-    → CommandCenter shows module cards: Ledger, Gear, Logistics, Vault, Activity, Memories
-      → each module pushed via Navigator.push (using AppPageRoute for slide transitions)
+/ (splash -> redirect to /home or /onboarding)
+/onboarding
+/home
+/settings
+/create-group
+/join-group
+/group/:gid (GroupDetailScreen)
+  /settings (GroupSettingsScreen)
+  /settle-up (GroupSettleUpScreen, optional ?memberId query param)
+  /activity (GroupActivityScreen)
+  /create-event (EventTypePickerScreen)
+  /create-event/:type (CreateEventScreen)
+  /event/:eid (EventCommandCenter)
+    /ledger (LedgerScreen)
+      /add (AddExpenseScreen)
+      /edit/:expId (EditExpenseScreen)
+      /settle-up (SettleUpScreen)
+    /gear (GearScreen)
+    /logistics (LogisticsScreen)
+    /vault (VaultScreen)
+    /memories (MemoriesScreen)
+      /:memId (MemoryDetailScreen placeholder)
+    /activity (EventActivityScreen placeholder)
 ```
+
+All routes use CustomTransitionPage with slide-right transition (SlideTransition, Offset(1,0)->Offset.zero, Curves.easeOutCubic). Exception: /onboarding and /home use FadeTransition; /create-group and /join-group use slide-up.
+
+Screens receive groupId/eventId as strings from GoRouter path parameters. Data is fetched via ref.watch(groupDetailProvider(groupId)) and ref.watch(eventDetailProvider((groupId: groupId, eventId: eventId))) inside the screen. No state.extra — deep links work without pre-loaded objects.
 
 ### Offline / Sync
 
@@ -96,9 +118,9 @@ Reusable UI components used across features:
 ### Design Tokens (`lib/core/theme/app_theme.dart`)
 
 Spacing constants (`space4`–`space32`), border radii (`radiusSmall=12`, `radiusMedium=16`, `radiusLarge=20`), elevation shadows (`shadowFlat`, `shadowRaised`, `shadowFloating`), and `buttonHeight=52`. 
-### Page Transitions (`lib/core/utils/page_transitions.dart`)
+### Page Transitions
 
-`AppPageRoute` (slide-right) and `AppBottomSheetRoute` (slide-up) replace raw `MaterialPageRoute` across all navigation.
+Transitions are handled by `CustomTransitionPage` in `lib/core/router/app_router.dart`. The shared `_slideRightTransition` function provides slide-right (Offset(1,0) → zero) for all module-level routes. Slide-up is used for /create-group and /join-group. `lib/core/utils/page_transitions.dart` was deleted in Phase 19 — `AppPageRoute` and `AppBottomSheetRoute` no longer exist.
 
 ### Financial Calculations
 

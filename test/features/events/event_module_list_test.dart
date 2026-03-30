@@ -18,7 +18,6 @@ import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/widgets/event_module_list.dart';
 import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
-import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -30,16 +29,6 @@ import 'package:safar/features/vault/providers/document_provider.dart';
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-final _testGroup = Group(
-  id: 'group-1',
-  name: 'Test Crew',
-  inviteCode: 'TST001',
-  createdBy: 'uid-1',
-  memberIds: const ['uid-1', 'uid-2'],
-  currency: 'OMR',
-  createdAt: DateTime(2026, 1, 1),
-);
 
 Event _makeEvent({EventModules? modules, String id = 'evt-1'}) {
   return Event(
@@ -88,6 +77,8 @@ Document _makeDocument() => Document(
     );
 
 /// Wraps EventModuleList in ProviderScope + MaterialApp with provider overrides.
+///
+/// Uses the new D-14 string ID constructor: EventModuleList(groupId:, eventId:, modules:)
 Widget _buildList({
   required Event event,
   List<Expense> expenses = const [],
@@ -123,9 +114,9 @@ Widget _buildList({
       home: Scaffold(
         body: SingleChildScrollView(
           child: EventModuleList(
-            event: event,
-            group: _testGroup,
-            eventRef: eventRef,
+            groupId: event.groupId,
+            eventId: event.id,
+            modules: event.modules,
           ),
         ),
       ),

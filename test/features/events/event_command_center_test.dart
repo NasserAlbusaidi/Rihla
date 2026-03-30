@@ -2,15 +2,18 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/models/event_type_config.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/event_command_center.dart';
 import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -62,8 +65,17 @@ Event _makeEvent({
 List<Override> _providerOverrides(
   EventRef eventRef, {
   List<Expense> expenses = const [],
+  required Event event,
+  Group? group,
 }) {
   return [
+    // D-14: screens now watch eventDetailProvider + groupDetailProvider internally
+    eventDetailProvider(eventRef).overrideWith(
+      (ref) => Stream.value(event),
+    ),
+    groupDetailProvider(eventRef.groupId).overrideWith(
+      (ref) => Stream.value(group ?? _testGroup),
+    ),
     // Core expense/settlement providers (watched by EventModuleList + EventExpenseHero)
     eventExpensesProvider(eventRef).overrideWith(
       (ref) => Stream.value(expenses),
@@ -85,18 +97,92 @@ List<Override> _providerOverrides(
   ];
 }
 
-/// Wraps [EventCommandCenter] in a minimal ProviderScope+MaterialApp.
+/// Wraps [EventCommandCenter] in a ProviderScope + MaterialApp.router so that
+/// context.push calls resolve without throwing.
 Widget _wrapEventHub({
   required Event event,
-  required Group group,
+  Group? group,
   List<Expense> expenses = const [],
 }) {
   final eventRef = (groupId: event.groupId, eventId: event.id);
+  final router = GoRouter(
+    initialLocation: '/group/${event.groupId}/event/${event.id}',
+    routes: [
+      GoRoute(
+        path: '/group/:gid',
+        builder: (_, state) => Scaffold(
+          body: Text('GroupDetail:${state.pathParameters['gid']}'),
+        ),
+        routes: [
+          GoRoute(
+            path: 'event/:eid',
+            builder: (_, state) => ProviderScope(
+              overrides: _providerOverrides(
+                (groupId: state.pathParameters['gid']!, eventId: state.pathParameters['eid']!),
+                expenses: expenses,
+                event: event,
+                group: group,
+              ),
+              child: EventCommandCenter(
+                groupId: state.pathParameters['gid']!,
+                eventId: state.pathParameters['eid']!,
+              ),
+            ),
+            routes: [
+              GoRoute(
+                path: 'ledger',
+                builder: (_, state) => Scaffold(
+                  body: Text('Ledger:${state.pathParameters['eid']}'),
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'add',
+                    builder: (_, state) => Scaffold(
+                      body: Text('AddExpense:${state.pathParameters['eid']}'),
+                    ),
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'gear',
+                builder: (_, state) => Scaffold(
+                  body: Text('Gear:${state.pathParameters['eid']}'),
+                ),
+              ),
+              GoRoute(
+                path: 'logistics',
+                builder: (_, state) => Scaffold(
+                  body: Text('Logistics:${state.pathParameters['eid']}'),
+                ),
+              ),
+              GoRoute(
+                path: 'vault',
+                builder: (_, state) => Scaffold(
+                  body: Text('Vault:${state.pathParameters['eid']}'),
+                ),
+              ),
+              GoRoute(
+                path: 'memories',
+                builder: (_, state) => Scaffold(
+                  body: Text('Memories:${state.pathParameters['eid']}'),
+                ),
+              ),
+              GoRoute(
+                path: 'activity',
+                builder: (_, state) => Scaffold(
+                  body: Text('EventActivity:${state.pathParameters['eid']}'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+
   return ProviderScope(
-    overrides: _providerOverrides(eventRef, expenses: expenses),
-    child: MaterialApp(
-      home: EventCommandCenter(event: event, group: group),
-    ),
+    overrides: _providerOverrides(eventRef, expenses: expenses, event: event, group: group),
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 
@@ -110,7 +196,7 @@ void main() {
       final event = _makeEvent(name: 'Desert Camping Weekend');
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -122,7 +208,7 @@ void main() {
       final config = EventTypeConfig.forType(EventType.camping);
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -134,7 +220,7 @@ void main() {
       final event = _makeEvent(type: EventType.trip);
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -146,7 +232,7 @@ void main() {
       final event = _makeEvent(type: EventType.trip);
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -162,7 +248,7 @@ void main() {
       final event = _makeEvent(type: EventType.nightDayOut);
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -180,7 +266,7 @@ void main() {
       final event = _makeEvent(type: EventType.camping);
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -207,7 +293,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -219,7 +305,7 @@ void main() {
       final event = _makeEvent();
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -244,7 +330,6 @@ void main() {
       await tester.pumpWidget(
         _wrapEventHub(
           event: event,
-          group: _testGroup,
           expenses: [testExpense],
         ),
       );
@@ -263,7 +348,7 @@ void main() {
       final event = _makeEvent(name: 'FAB Test Trip');
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 
@@ -280,7 +365,7 @@ void main() {
       final event = _makeEvent(name: 'Hero Tap Trip');
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       // Pump one frame to render, then advance time to complete animations
       await tester.pump();
@@ -298,7 +383,7 @@ void main() {
       final event = _makeEvent(name: 'Options Test Trip');
 
       await tester.pumpWidget(
-        _wrapEventHub(event: event, group: _testGroup),
+        _wrapEventHub(event: event),
       );
       await tester.pumpAndSettle();
 

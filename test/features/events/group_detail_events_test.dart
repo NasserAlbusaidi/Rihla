@@ -2,27 +2,20 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
-import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
-import 'package:safar/features/events/screens/event_command_center.dart';
-import 'package:safar/features/gear/models/gear_item_model.dart';
-import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
-import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
-import 'package:safar/features/logistics/models/sub_group_model.dart';
-import 'package:safar/features/logistics/providers/sub_group_provider.dart';
-import 'package:safar/features/vault/models/document_model.dart';
-import 'package:safar/features/vault/providers/document_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -91,6 +84,59 @@ Event _makeEvent({
 EventRef _eventRef(Event event) =>
     (groupId: event.groupId, eventId: event.id);
 
+/// Creates a GoRouter for GroupDetailScreen tests with stub event hub route.
+GoRouter _makeRouter({
+  required String groupId,
+}) {
+  return GoRouter(
+    initialLocation: '/group/$groupId',
+    routes: [
+      GoRoute(
+        path: '/group/:gid',
+        builder: (_, state) => const GroupDetailScreen(groupId: _groupId),
+        routes: [
+          GoRoute(
+            path: 'settings',
+            builder: (_, state) => Scaffold(
+              body: Text('GroupSettings:${state.pathParameters['gid']}'),
+            ),
+          ),
+          GoRoute(
+            path: 'settle-up',
+            builder: (_, state) => Scaffold(
+              body: Text('GroupSettleUp:${state.pathParameters['gid']}'),
+            ),
+          ),
+          GoRoute(
+            path: 'activity',
+            builder: (_, state) => Scaffold(
+              body: Text('GroupActivity:${state.pathParameters['gid']}'),
+            ),
+          ),
+          GoRoute(
+            path: 'create-event',
+            builder: (_, state) => Scaffold(
+              body: Text('CreateEvent:${state.pathParameters['gid']}'),
+            ),
+          ),
+          GoRoute(
+            path: 'create-event/:type',
+            builder: (_, state) => Scaffold(
+              body: Text('CreateEventTyped:${state.pathParameters['type']}'),
+            ),
+          ),
+          GoRoute(
+            path: 'event/:eid',
+            builder: (_, state) => Scaffold(
+              body: Text('EventHub:${state.pathParameters['eid']}'),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 /// Wraps widget in ProviderScope with all required provider overrides.
 ///
 /// Overrides:
@@ -99,11 +145,14 @@ EventRef _eventRef(Event event) =>
 /// - [groupMembersProvider] returns [_testMembers]
 /// - [groupEventsProvider] returns the supplied [events]
 /// - [eventExpensesProvider] returns an empty list for all event IDs
+/// - [groupBalancesProvider] returns zero balances
+/// - [groupActivityProvider] returns empty list
 Widget _wrap(
   Widget child,
   SharedPreferences prefs, {
   List<Event> events = const [],
 }) {
+  final router = _makeRouter(groupId: _groupId);
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
@@ -116,6 +165,18 @@ Widget _wrap(
       groupEventsProvider(_groupId).overrideWith(
         (ref) => Stream.value(events),
       ),
+      groupBalancesProvider(_groupId).overrideWith(
+        (ref) => AsyncValue.data((
+          balances: const <UserBalance>[],
+          totalSpent: Decimal.zero,
+          eventCount: 0,
+          perEventBreakdown: const <String, Map<String, Decimal>>{},
+          memberNames: const <String, String>{},
+        )),
+      ),
+      groupActivityProvider(_groupId).overrideWith(
+        (ref) => Stream.value(const []),
+      ),
       // Override eventExpensesProvider for every event so
       // EventCard does not try to open real Firestore.
       for (final event in events)
@@ -123,7 +184,7 @@ Widget _wrap(
           (ref) => Stream.value(const []),
         ),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 
@@ -248,6 +309,8 @@ void main() {
       final event = _makeEvent(id: 'evt-tap', name: 'Tap Navigation Trip');
       final eventRef = _eventRef(event);
 
+      // GroupDetailScreen uses context.push so we need MaterialApp.router
+      final router = _makeRouter(groupId: _groupId);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -261,25 +324,24 @@ void main() {
             groupEventsProvider(_groupId).overrideWith(
               (ref) => Stream.value([event]),
             ),
+            groupBalancesProvider(_groupId).overrideWith(
+              (ref) => AsyncValue.data((
+                balances: const <UserBalance>[],
+                totalSpent: Decimal.zero,
+                eventCount: 0,
+                perEventBreakdown: const <String, Map<String, Decimal>>{},
+                memberNames: const <String, String>{},
+              )),
+            ),
+            groupActivityProvider(_groupId).overrideWith(
+              (ref) => Stream.value(const []),
+            ),
             // EventCard reads eventExpensesProvider for financial totals
             eventExpensesProvider(eventRef).overrideWith(
               (ref) => Stream.value(const []),
             ),
-            // EventCommandCenter (pushed on tap) needs all module providers
-            eventSettlementsProvider(eventRef).overrideWith(
-              (ref) => Stream.value(const <Settlement>[]),
-            ),
-            eventGearItemsProvider(eventRef).overrideWith(
-              (ref) => Stream.value(const <GearItem>[]),
-            ),
-            eventSubGroupsProvider(eventRef).overrideWith(
-              (ref) => Stream.value(const <SubGroup>[]),
-            ),
-            eventDocumentsProvider(eventRef).overrideWith(
-              (ref) => Stream.value(const <Document>[]),
-            ),
           ],
-          child: MaterialApp(home: const GroupDetailScreen(groupId: _groupId)),
+          child: MaterialApp.router(routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();
@@ -301,10 +363,8 @@ void main() {
       await tester.tap(find.text('Tap Navigation Trip').first);
       await tester.pumpAndSettle();
 
-      // EventCommandCenter should now be on screen
-      expect(find.byType(EventCommandCenter), findsOneWidget);
-      // Header still shows event name (ModuleHeader in EventCommandCenter)
-      expect(find.text('Tap Navigation Trip'), findsAtLeastNWidgets(1));
+      // After navigation, testRouter renders stub text 'EventHub:evt-tap'
+      expect(find.text('EventHub:evt-tap'), findsOneWidget);
     });
   });
 
@@ -323,6 +383,7 @@ void main() {
         createdAt: DateTime(2026, 3, 1),
       );
 
+      final router = _makeRouter(groupId: _groupId);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -336,11 +397,23 @@ void main() {
             groupEventsProvider(_groupId).overrideWith(
               (ref) => Stream.value([event]),
             ),
+            groupBalancesProvider(_groupId).overrideWith(
+              (ref) => AsyncValue.data((
+                balances: const <UserBalance>[],
+                totalSpent: Decimal.zero,
+                eventCount: 0,
+                perEventBreakdown: const <String, Map<String, Decimal>>{},
+                memberNames: const <String, String>{},
+              )),
+            ),
+            groupActivityProvider(_groupId).overrideWith(
+              (ref) => Stream.value(const []),
+            ),
             eventExpensesProvider(eventRef).overrideWith(
               (ref) => Stream.value([testExpense]),
             ),
           ],
-          child: MaterialApp(home: const GroupDetailScreen(groupId: _groupId)),
+          child: MaterialApp.router(routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();

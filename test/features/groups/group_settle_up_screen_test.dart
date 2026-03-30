@@ -7,6 +7,7 @@ import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -103,6 +104,9 @@ final _balancesSettled = (
 );
 
 /// Wraps the screen with ProviderScope overriding groupBalancesProvider.
+///
+/// Also overrides [groupDetailProvider] since GroupSettleUpScreen now
+/// watches it internally per D-14.
 Widget _wrap(
   Widget child, {
   required AsyncValue<GroupBalances> balancesAsync,
@@ -110,6 +114,9 @@ Widget _wrap(
 }) {
   return ProviderScope(
     overrides: [
+      groupDetailProvider(_groupId).overrideWith(
+        (_) => Stream.value(_testGroup),
+      ),
       groupBalancesProvider(_groupId).overrideWith((_) => balancesAsync),
       if (events != null)
         groupEventsProvider(_groupId).overrideWith(
@@ -132,7 +139,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -149,7 +155,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -171,7 +176,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -187,7 +191,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesSettled),
         ),
@@ -211,7 +214,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: const AsyncValue.loading(),
         ),
@@ -227,7 +229,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.error(
             Exception('Network error'),
@@ -246,7 +247,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -273,7 +273,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -292,7 +291,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
             preSelectedMemberId: 'uid-bob',
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
@@ -309,7 +307,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -325,7 +322,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -340,7 +336,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -363,7 +358,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
@@ -394,7 +388,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
           events: [_testEvent],
@@ -415,7 +408,6 @@ void main() {
         _wrap(
           GroupSettleUpScreen(
             groupId: _groupId,
-            group: _testGroup,
           ),
           balancesAsync: AsyncValue.data(_balancesOwed),
           events: const [],
