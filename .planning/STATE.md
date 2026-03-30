@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
-status: executing
-stopped_at: Completed 20-01-PLAN.md
-last_updated: "2026-03-30T15:23:10.757Z"
+status: verifying
+stopped_at: Completed 20-02-PLAN.md
+last_updated: "2026-03-30T15:34:33.068Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
   percent: 100
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 
 Phase: 20 (group-detail-event-hub-redesign) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-30
 
 Progress: [██████████] 100% (Phase 18 complete — 5 of 9 phases done)
@@ -55,6 +55,7 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 | Phase 19-navigation-restructuring P02 | 65 | 3 tasks | 13 files |
 | Phase 19-navigation-restructuring P03 | 45 | 2 tasks | 17 files |
 | Phase 20-group-detail-event-hub-redesign P01 | 13 | 3 tasks | 8 files |
+| Phase 20 P02 | 404 | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,9 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 - Phase 20 P01: Stats grid (GroupStatsGrid) always visible per D-08 — no conditional on totalSpent unlike old GroupBalanceHero; zero-state shows zeros
 - Phase 20 P01: EventCard accent bar (IntrinsicHeight Row + 3dp Container) replaces 48x48 icon container and type badge chip; teal=active, gray=past
 - Phase 20 P01: Dart 3 switch expression for three-state balance color: &lt; 0 =&gt; errorText, &gt; 0 =&gt; successText, _ =&gt; textPrimary
+- Phase 20 P02: Activity card always shown in module grid (position 5), regardless of EventModules flags — timeline is a universal event feature
+- Phase 20 P02: OpenContainer replaces TapBounce+context.push for GroupCard — ContainerTransform wired, URL desync accepted per D-06
+- Phase 20 P02: Module colors use AppColorTokens.light.* directly (no AppColors facade aliases for module* tokens)
 
 ### Known Risks
 
@@ -119,6 +123,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-30T15:23:10.754Z
-Stopped at: Completed 20-01-PLAN.md
+Last session: 2026-03-30T15:34:33.065Z
+Stopped at: Completed 20-02-PLAN.md
 Next action: Phase 19 complete — proceed to Phase 20 (Group Detail & Event Hub screens with new GoRouter-declarative navigation)

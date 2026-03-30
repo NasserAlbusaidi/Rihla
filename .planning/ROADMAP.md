@@ -36,7 +36,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **Phase 17: Animation Library & Loading States** - Build shared animation components and skeleton loading variants before any screen uses them (completed 2026-03-29)
 - [x] **Phase 18: Home Dashboard Redesign** - Deliver the single-scroll dashboard with balance hero, group cards, quick-action tray, and activity strip (completed 2026-03-30)
 - [x] **Phase 19: Navigation Restructuring** - Migrate 22 Navigator.push calls to GoRouter subroutes so all event-level screens are reachable within 2 taps (completed 2026-03-30)
-- [ ] **Phase 20: Group Detail & Event Hub Redesign** - Redesign the group gateway and event hub with earthy tokens, type-specific color accents, and M3 transitions
+- [x] **Phase 20: Group Detail & Event Hub Redesign** - Redesign the group gateway and event hub with earthy tokens, type-specific color accents, and M3 transitions (completed 2026-03-30)
 - [ ] **Phase 21: Module Screens Redesign** - Apply the new design language to all six module screens with card-style layouts and illustrated empty states
 - [ ] **Phase 22: Polish Pass & Token Cleanup** - Add haptic feedback, animated balance counters, texture overlays, M3 motion, and delete legacy AppColors
 
@@ -145,7 +145,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 20-01-PLAN.md — Group detail redesign: stats grid, event card accent bars + inline balance, section reorder, settle-up CTA, skeleton loading
-- [ ] 20-02-PLAN.md — Event hub redesign: 2x3 module grid with corrected colors, light expense hero, Activity card + OpenContainer ContainerTransform on HomeScreen
+- [x] 20-02-PLAN.md — Event hub redesign: 2x3 module grid with corrected colors, light expense hero, Activity card + OpenContainer ContainerTransform on HomeScreen
 **UI hint**: yes
 
 ### Phase 21: Module Screens Redesign
@@ -184,6 +184,6 @@ Plans:
 | 17. Animation Library & Loading States | 2/2 | Complete    | 2026-03-29 |
 | 18. Home Dashboard Redesign | 3/3 | Complete    | 2026-03-30 |
 | 19. Navigation Restructuring | 3/3 | Complete    | 2026-03-30 |
-| 20. Group Detail & Event Hub Redesign | 1/2 | In Progress|  |
+| 20. Group Detail & Event Hub Redesign | 2/2 | Complete   | 2026-03-30 |
 | 21. Module Screens Redesign | 0/? | Not started | - |
 | 22. Polish Pass & Token Cleanup | 0/? | Not started | - |
