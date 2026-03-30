@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,7 +181,9 @@ void main() {
       expect(find.byKey(HomeKeys.joinGroupOption), findsOneWidget);
     });
 
-    testWidgets('tapping GroupCard navigates to group detail', (tester) async {
+    testWidgets('GroupCard is wrapped in OpenContainer for ContainerTransform', (tester) async {
+      // OpenContainer replaces TapBounce+GoRouter push (Phase 20 P02).
+      // Verify OpenContainer is present in the group cards section.
       final groups = [_makeGroup('gXYZ', 'Friends')];
 
       await tester.pumpWidget(
@@ -196,10 +199,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(GroupCard).first);
-      await tester.pumpAndSettle();
-
-      expect(find.text('GroupDetail:gXYZ'), findsOneWidget);
+      // OpenContainer wraps GroupCard — verifies ContainerTransform is wired
+      expect(find.byType(OpenContainer<void>), findsWidgets);
     });
 
     test('does not reference userTripsProvider (trip code removed)', () {

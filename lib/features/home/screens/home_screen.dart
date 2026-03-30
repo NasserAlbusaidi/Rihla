@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,11 +7,12 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/animations/fade_in_list.dart';
-import '../../../shared/animations/tap_bounce.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_provider.dart';
+import '../../groups/screens/group_detail_screen.dart';
 import '../../groups/widgets/group_card.dart';
 import '../keys/home_keys.dart';
 import '../providers/dashboard_providers.dart';
@@ -159,11 +161,24 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 children: groups.map((group) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppColors.space8),
-                    child: TapBounce(
-                      onTap: () => context.push('/group/${group.id}'),
-                      child: GroupCard(
+                    child: OpenContainer<void>(
+                      closedColor: Colors.transparent,
+                      openColor: AppColors.background,
+                      closedElevation: 0,
+                      openElevation: 0,
+                      closedShape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+                      ),
+                      openShape: const RoundedRectangleBorder(),
+                      transitionDuration: const Duration(milliseconds: 400),
+                      transitionType: ContainerTransitionType.fade,
+                      useRootNavigator: false,
+                      closedBuilder: (context, openContainer) => GroupCard(
                         group: group,
-                        onTap: () => context.push('/group/${group.id}'),
+                        onTap: openContainer,
+                      ),
+                      openBuilder: (context, closeContainer) => GroupDetailScreen(
+                        groupId: group.id,
                       ),
                     ),
                   );

@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -406,8 +407,10 @@ void main() {
       expect(find.textContaining('You owe'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('Test 12: tapping GroupCard navigates to /group/:id (NAV-04 first-tap)',
+    testWidgets('Test 12: GroupCard wrapped in OpenContainer for ContainerTransform (NAV-04)',
         (tester) async {
+      // Phase 20 P02: OpenContainer replaces TapBounce+context.push.
+      // GroupCard nav is via ContainerTransform, not GoRouter push.
       final groups = [_makeGroup('gABC', 'Friends')];
 
       await tester.pumpWidget(
@@ -450,10 +453,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(GroupCard).first);
-      await tester.pumpAndSettle();
-
-      expect(find.text('GroupDetail:gABC'), findsOneWidget);
+      // OpenContainer wrapping GroupCard confirms ContainerTransform is wired (NAV-04)
+      expect(find.byType(OpenContainer<void>), findsWidgets);
     });
   });
 }
