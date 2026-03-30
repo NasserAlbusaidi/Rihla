@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
 status: executing
-stopped_at: Completed 18-01-PLAN.md
-last_updated: "2026-03-30T06:34:26.178Z"
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-03-30T06:43:25.143Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 ## Current Position
 
 Phase: 18 (home-dashboard-redesign) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-03-30
 
@@ -48,6 +48,7 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 | Phase 17-animation-library-loading-states P01 | 8 | 2 tasks | 3 files |
 | Phase 17-animation-library-loading-states P02 | 8 | 2 tasks | 10 files |
 | Phase 18-home-dashboard-redesign P01 | 8 | 2 tasks | 9 files |
+| Phase 18 P02 | 10 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,10 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 - Phase 17 P01: Column over ListView.builder in SkeletonLoader.build() — ListView inside unbounded parent produces zero-height; Column is the correct pattern
 - Phase 17 P01: Shimmer 3.0.0 does not expose baseColor/highlightColor as public getters — tests verify via gradient.colors list
 - Phase 17 P01: Skeleton primitives pattern — SkeletonCircle/Bar/Block/Row/Card are atoms; named loader factories are molecules assembled from atoms
+- Phase 18 P02: BalanceHeroCard uses Dart 3 switch expression on net.compareTo(Decimal.zero) for clean three-state balance rendering (owe/owed/settled)
+- Phase 18 P02: BottomNavShell uses IndexedStack with BottomNavigationBarType.fixed (not GoRouter) for 4-tab navigation — Phase 19 will wire real routes for Activity/Chats/Profile tabs
+- Phase 18 P02: WeeklySpendingCard renders 2dp stub bar for zero-amount days to prevent chart column collapse
+- Phase 18 P02: ActivityRow avatar uses deterministic color from hashCode % Colors.primaries.length — same actor always gets same color
 
 ### Known Risks
 
@@ -94,6 +99,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-30T06:34:26.175Z
-Stopped at: Completed 18-01-PLAN.md
-Next action: Phase 16 complete — proceed to Phase 17 (Motion Design) or verify Phase 16 outputs
+Last session: 2026-03-30T06:43:25.141Z
+Stopped at: Completed 18-02-PLAN.md
+Next action: Phase 18 Plan 02 complete — proceed to Plan 03 (HomeScreen integration: assemble widgets into final screen)
