@@ -141,6 +141,7 @@ GoRouter _makeRouter({
 ///
 /// Overrides:
 /// - [sharedPreferencesProvider] for settings
+/// - [currentUserIdProvider] returns null to avoid Firebase initialization
 /// - [groupDetailProvider] returns [_testGroup]
 /// - [groupMembersProvider] returns [_testMembers]
 /// - [groupEventsProvider] returns the supplied [events]
@@ -156,6 +157,7 @@ Widget _wrap(
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      currentUserIdProvider.overrideWithValue(null),
       groupDetailProvider(_groupId).overrideWith(
         (ref) => Stream.value(_testGroup),
       ),
@@ -315,6 +317,7 @@ void main() {
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            currentUserIdProvider.overrideWithValue(null),
             groupDetailProvider(_groupId).overrideWith(
               (ref) => Stream.value(_testGroup),
             ),
@@ -388,6 +391,7 @@ void main() {
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            currentUserIdProvider.overrideWithValue(null),
             groupDetailProvider(_groupId).overrideWith(
               (ref) => Stream.value(_testGroup),
             ),

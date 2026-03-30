@@ -125,17 +125,22 @@ final _testActivity = [
 /// Wraps a widget with ProviderScope + MaterialApp.
 ///
 /// Overrides groupDetailProvider, groupMembersProvider, groupEventsProvider,
-/// groupBalancesProvider, and groupActivityProvider to prevent Firestore calls
-/// in widget tests.
+/// groupBalancesProvider, groupActivityProvider, and currentUserIdProvider to
+/// prevent Firestore calls in widget tests.
+///
+/// [currentUid] defaults to 'uid-creator' so settle-up CTA tests work without
+/// a real Firebase Auth instance.
 Widget _wrap(
   Widget child,
   SharedPreferences prefs, {
   required AsyncValue<GroupBalances> balancesAsync,
   List<GroupActivityLog> activities = const [],
+  String? currentUid = 'uid-creator',
 }) {
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      currentUserIdProvider.overrideWithValue(currentUid),
       groupDetailProvider(_groupId).overrideWith(
         (ref) => Stream.value(_testGroup),
       ),

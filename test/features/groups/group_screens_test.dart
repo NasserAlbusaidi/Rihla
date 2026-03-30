@@ -119,12 +119,13 @@ final _membersWithZeroBalance = (
 ///
 /// Also overrides [groupEventsProvider] so GroupDetailScreen does not attempt
 /// to open a real Firestore stream.
-/// Overrides [groupBalancesProvider] and [groupActivityProvider] for the
-/// new financial sections added in Plan 05-05.
+/// Overrides [groupBalancesProvider], [groupActivityProvider], and
+/// [currentUserIdProvider] for the Phase 20 redesigned GroupDetailScreen.
 Widget _wrap(Widget child, SharedPreferences prefs) {
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      currentUserIdProvider.overrideWithValue(null),
       groupDetailProvider('group-1').overrideWith(
         (ref) => Stream.value(_testGroup),
       ),
@@ -145,12 +146,13 @@ Widget _wrap(Widget child, SharedPreferences prefs) {
   );
 }
 
-/// Wraps GroupDetailScreen with non-zero balance data so GroupBalanceHero
-/// and settle-up features are rendered (D-19).
+/// Wraps GroupDetailScreen with non-zero balance data so stats grid
+/// and settle-up features are rendered (Phase 20 redesign).
 Widget _wrapWithBalances(Widget child, SharedPreferences prefs) {
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      currentUserIdProvider.overrideWithValue('uid-creator'),
       groupDetailProvider('group-1').overrideWith(
         (ref) => Stream.value(_testGroup),
       ),
@@ -198,13 +200,15 @@ void main() {
         expect(find.text('Adventure Crew'), findsWidgets);
       });
 
-      testWidgets('shows member count chip', (tester) async {
+      testWidgets('shows active members count in stats grid', (tester) async {
         await tester.pumpWidget(
           _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
         );
         await tester.pumpAndSettle();
 
-        expect(find.textContaining('2 members'), findsOneWidget);
+        // Stats grid replaces the old member count chip (Phase 20 redesign)
+        expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
+        expect(find.byKey(GroupKeys.statActiveMembers), findsOneWidget);
       });
 
       testWidgets('shows invite code section header and code display',
