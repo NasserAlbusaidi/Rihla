@@ -418,50 +418,17 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surfaceDark,
+    return const Scaffold(
+      backgroundColor: Color(0xFFF2E8D6), // warm sand per D-30
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withAlpha(100),
-                    blurRadius: 32,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.explore_rounded, size: 40, color: Colors.white),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Rihla',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1,
-              ),
-            ),
-            const SizedBox(height: 40),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: AppColors.primary,
-              ),
-            ),
-          ],
+        child: Text(
+          'Rihla',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            fontFamily: 'Plus Jakarta Sans',
+          ),
         ),
       ),
     );
