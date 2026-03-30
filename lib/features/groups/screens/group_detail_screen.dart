@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
@@ -9,16 +10,11 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../events/providers/event_provider.dart';
-import '../../events/screens/event_command_center.dart';
-import '../../events/screens/event_type_picker_screen.dart';
 import '../../events/widgets/event_card.dart';
-import '../../events/models/event_model.dart';
 import '../../ledger/models/expense_model.dart';
-import '../../ledger/screens/ledger_screen.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -28,9 +24,6 @@ import '../widgets/group_balance_hero.dart';
 import '../widgets/group_member_balance_card.dart';
 import '../widgets/group_spending_stats.dart';
 import '../widgets/invite_code_display.dart';
-import 'group_activity_screen.dart';
-import 'group_settings_screen.dart';
-import 'group_settle_up_screen.dart';
 
 /// Group dashboard screen — restructured per D-27 layout contract.
 ///
@@ -65,11 +58,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         label: 'Create event',
         button: true,
         child: FloatingActionButton(
-          onPressed: () => Navigator.of(context).push(
-            AppPageRoute(
-              builder: (_) => EventTypePickerScreen(groupId: groupId),
-            ),
-          ),
+          onPressed: () => context.push('/group/$groupId/create-event'),
           backgroundColor: AppColors.primary,
           shape: const CircleBorder(),
           child: const Icon(Iconsax.add, color: Colors.black),
@@ -132,11 +121,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 color: Colors.white,
                 size: 22,
               ),
-              onPressed: () => Navigator.of(context).push(
-                AppPageRoute(
-                  builder: (_) => GroupSettingsScreen(groupId: group.id),
-                ),
-              ),
+              onPressed: () => context.push('/group/$groupId/settings'),
             ),
           ],
           useDarkTheme: true,
@@ -162,14 +147,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                     userNetBalance:
                         currentUserBalance?.netBalance ?? Decimal.zero,
                     currency: group.currency,
-                    onSettleUp: () => Navigator.of(context).push(
-                      AppPageRoute(
-                        builder: (_) => GroupSettleUpScreen(
-                          groupId: groupId,
-                          group: group,
-                        ),
-                      ),
-                    ),
+                    onSettleUp: () => context.push('/group/$groupId/settle-up'),
                   ),
                   const SizedBox(height: AppColors.space16),
                   GroupSpendingStats(
@@ -321,15 +299,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                         _navigateToEventLedger(context, eventId, group),
                     onSettleUpTap:
                         balancesData.balances[i].netBalance != Decimal.zero
-                            ? () => Navigator.of(context).push(
-                                  AppPageRoute(
-                                    builder: (_) => GroupSettleUpScreen(
-                                      groupId: groupId,
-                                      group: group,
-                                      preSelectedMemberId: balancesData
-                                          .balances[i].participantId,
-                                    ),
-                                  ),
+                            ? () => context.push(
+                                  '/group/$groupId/settle-up?memberId=${balancesData.balances[i].participantId}',
                                 )
                             : null,
                   ),
@@ -427,16 +398,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   if (i > 0) const SizedBox(height: AppColors.space12),
                   EventCard(
                     event: events[i],
-                    onTap: () {
-                      Navigator.of(context).push(
-                        AppPageRoute(
-                          builder: (_) => EventCommandCenter(
-                            event: events[i],
-                            group: group,
-                          ),
-                        ),
-                      );
-                    },
+                    onTap: () => context.push(
+                      '/group/$groupId/event/${events[i].id}',
+                    ),
                   ),
                 ],
               ],
@@ -583,11 +547,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         ),
         TextButton(
           key: GroupKeys.seeAllActivityButton,
-          onPressed: () => Navigator.of(context).push(
-            AppPageRoute(
-              builder: (_) => GroupActivityScreen(groupId: groupId),
-            ),
-          ),
+          onPressed: () => context.push('/group/$groupId/activity'),
           child: const Text(
             'See all activity',
             style: TextStyle(
@@ -644,19 +604,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     String eventId,
     Group group,
   ) {
-    final eventsAsync = ref.read(groupEventsProvider(groupId));
-    Event? event;
-    try {
-      event = eventsAsync.valueOrNull?.firstWhere((e) => e.id == eventId);
-    } catch (_) {
-      event = null;
-    }
-    if (event != null) {
-      Navigator.of(context).push(
-        AppPageRoute(
-          builder: (_) => LedgerScreen(event: event!, group: group),
-        ),
-      );
-    }
+    context.push('/group/$groupId/event/$eventId/ledger');
   }
 }

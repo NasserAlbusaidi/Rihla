@@ -5,13 +5,26 @@ import 'package:go_router/go_router.dart';
 
 import '../theme/app_theme.dart';
 
+import '../../features/events/models/event_model.dart';
+import '../../features/events/screens/create_event_screen.dart';
+import '../../features/events/screens/event_command_center.dart';
+import '../../features/events/screens/event_type_picker_screen.dart';
+import '../../features/gear/screens/gear_screen.dart';
 import '../../features/groups/screens/create_group_screen.dart';
+import '../../features/groups/screens/group_activity_screen.dart';
 import '../../features/groups/screens/group_detail_screen.dart';
 import '../../features/groups/screens/group_settings_screen.dart';
+import '../../features/groups/screens/group_settle_up_screen.dart';
 import '../../features/groups/screens/join_group_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/ledger/screens/add_expense_screen.dart';
+import '../../features/ledger/screens/ledger_screen.dart';
+import '../../features/ledger/screens/settle_up_screen.dart';
+import '../../features/logistics/screens/logistics_screen.dart';
+import '../../features/memories/screens/memories_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/vault/screens/vault_screen.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
@@ -181,76 +194,67 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
 
-          // Group settle-up (Phase 19 — placeholder)
+          // Group settle-up
           GoRoute(
             path: 'settle-up',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: Scaffold(
-                body: Center(
-                  child: Text(
-                      'GroupSettleUp:${state.pathParameters['gid']}'),
-                ),
+              child: GroupSettleUpScreen(
+                groupId: state.pathParameters['gid']!,
+                preSelectedMemberId:
+                    state.uri.queryParameters['memberId'],
               ),
               transitionsBuilder: _slideRightTransition,
             ),
           ),
 
-          // Group activity (Phase 19 — placeholder)
+          // Group activity
           GoRoute(
             path: 'activity',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: Scaffold(
-                body: Center(
-                  child: Text(
-                      'GroupActivity:${state.pathParameters['gid']}'),
-                ),
+              child: GroupActivityScreen(
+                groupId: state.pathParameters['gid']!,
               ),
               transitionsBuilder: _slideRightTransition,
             ),
           ),
 
-          // Create event — type selector (Phase 19 — placeholder)
+          // Create event — type selector
           GoRoute(
             path: 'create-event',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: Scaffold(
-                body: Center(
-                  child: Text(
-                      'CreateEvent:${state.pathParameters['gid']}'),
-                ),
+              child: EventTypePickerScreen(
+                groupId: state.pathParameters['gid']!,
               ),
               transitionsBuilder: _slideRightTransition,
             ),
           ),
 
-          // Create event — typed (Phase 19 — placeholder)
+          // Create event — typed (EventType parsed from path param)
           GoRoute(
             path: 'create-event/:type',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: Scaffold(
-                body: Center(
-                  child: Text(
-                      'CreateEventTyped:${state.pathParameters['type']}'),
+              child: CreateEventScreen(
+                groupId: state.pathParameters['gid']!,
+                eventType: EventType.fromString(
+                  state.pathParameters['type'] ?? 'custom',
                 ),
               ),
               transitionsBuilder: _slideRightTransition,
             ),
           ),
 
-          // Event hub and module sub-tree (Phase 19)
+          // Event hub
           GoRoute(
             path: 'event/:eid',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: Scaffold(
-                body: Center(
-                  child: Text(
-                      'EventHub:${state.pathParameters['eid']}'),
-                ),
+              child: EventCommandCenter(
+                groupId: state.pathParameters['gid']!,
+                eventId: state.pathParameters['eid']!,
               ),
               transitionsBuilder: _slideRightTransition,
             ),
@@ -260,11 +264,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'ledger',
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
-                  child: Scaffold(
-                    body: Center(
-                      child: Text(
-                          'Ledger:${state.pathParameters['eid']}'),
-                    ),
+                  child: LedgerScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
                   ),
                   transitionsBuilder: _slideRightTransition,
                 ),
@@ -273,15 +275,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'add',
                     pageBuilder: (context, state) => CustomTransitionPage(
                       key: state.pageKey,
-                      child: Scaffold(
-                        body: Center(
-                          child: Text(
-                              'AddExpense:${state.pathParameters['eid']}'),
-                        ),
+                      child: AddExpenseScreen(
+                        groupId: state.pathParameters['gid']!,
+                        eventId: state.pathParameters['eid']!,
                       ),
                       transitionsBuilder: _slideRightTransition,
                     ),
                   ),
+                  // edit/:expId — Plan 03 will convert EditExpenseSheet -> GoRouter route
                   GoRoute(
                     path: 'edit/:expId',
                     pageBuilder: (context, state) => CustomTransitionPage(
@@ -295,16 +296,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                       transitionsBuilder: _slideRightTransition,
                     ),
                   ),
-                  // Event-level settle-up (per D-07)
+                  // Event-level settle-up (GoRouter route per D-07)
                   GoRoute(
                     path: 'settle-up',
                     pageBuilder: (context, state) => CustomTransitionPage(
                       key: state.pageKey,
-                      child: Scaffold(
-                        body: Center(
-                          child: Text(
-                              'EventSettleUp:${state.pathParameters['eid']}'),
-                        ),
+                      child: SettleUpScreen(
+                        groupId: state.pathParameters['gid']!,
+                        eventId: state.pathParameters['eid']!,
                       ),
                       transitionsBuilder: _slideRightTransition,
                     ),
@@ -317,11 +316,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'gear',
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
-                  child: Scaffold(
-                    body: Center(
-                      child:
-                          Text('Gear:${state.pathParameters['eid']}'),
-                    ),
+                  child: GearScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
                   ),
                   transitionsBuilder: _slideRightTransition,
                 ),
@@ -332,11 +329,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'logistics',
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
-                  child: Scaffold(
-                    body: Center(
-                      child: Text(
-                          'Logistics:${state.pathParameters['eid']}'),
-                    ),
+                  child: LogisticsScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
                   ),
                   transitionsBuilder: _slideRightTransition,
                 ),
@@ -347,11 +342,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'vault',
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
-                  child: Scaffold(
-                    body: Center(
-                      child: Text(
-                          'Vault:${state.pathParameters['eid']}'),
-                    ),
+                  child: VaultScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
                   ),
                   transitionsBuilder: _slideRightTransition,
                 ),
@@ -362,15 +355,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'memories',
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
-                  child: Scaffold(
-                    body: Center(
-                      child: Text(
-                          'Memories:${state.pathParameters['eid']}'),
-                    ),
+                  child: MemoriesScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
                   ),
                   transitionsBuilder: _slideRightTransition,
                 ),
                 routes: [
+                  // Memory detail — Plan 03 scope (no MemoryDetailScreen yet)
                   GoRoute(
                     path: ':memId',
                     pageBuilder: (context, state) => CustomTransitionPage(
@@ -387,7 +379,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ],
               ),
 
-              // Activity module
+              // Activity module — ActivityFeedScreen migration deferred to Plan 03
               GoRoute(
                 path: 'activity',
                 pageBuilder: (context, state) => CustomTransitionPage(

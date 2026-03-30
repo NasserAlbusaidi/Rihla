@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_provider.dart';
@@ -13,7 +13,6 @@ import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
-import 'event_command_center.dart';
 
 /// Event creation form — Step 2 of the event creation flow.
 ///
@@ -117,20 +116,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
           );
       if (!mounted) return;
       ref.read(eventLoadingProvider.notifier).state = false;
-      // Retrieve the Group object from cache (already watched elsewhere in widget)
-      final group = ref.read(groupDetailProvider(widget.groupId)).valueOrNull;
-      // Pop both CreateEventScreen and EventTypePickerScreen (D-05)
-      Navigator.of(context)
-        ..pop()
-        ..pop();
-      // Push EventCommandCenter for the newly created event
-      if (group != null) {
-        Navigator.of(context).push(
-          AppPageRoute(
-            builder: (_) => EventCommandCenter(event: event, group: group),
-          ),
-        );
-      }
+      // context.go replaces the entire creation stack, navigating to the new
+      // event hub. Back button returns to group detail, not the form (D-06/Pitfall 2).
+      context.go('/group/${widget.groupId}/event/${event.id}');
     } catch (e) {
       debugPrint('[CreateEventScreen] Create event error: $e');
       if (!mounted) return;

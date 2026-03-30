@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/page_transitions.dart';
 import '../../../shared/animations/tap_bounce.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
-import 'create_event_screen.dart';
 
 /// Full-screen event type picker — Step 1 of the event creation flow.
 ///
@@ -33,7 +32,7 @@ class EventTypePickerScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Choose Event Type', key: EventKeys.eventTypePickerTitle),
         leading: CloseButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
         ),
       ),
       body: ListView.separated(
@@ -51,13 +50,8 @@ class EventTypePickerScreen extends StatelessWidget {
             button: true,
             child: TapBounce(
               key: EventKeys.eventTypeCard(config.label),
-              onTap: () => Navigator.of(context).push(
-                AppPageRoute(
-                  builder: (_) => CreateEventScreen(
-                    groupId: groupId,
-                    eventType: config.type,
-                  ),
-                ),
+              onTap: () => context.push(
+                '/group/$groupId/create-event/${config.type.value}',
               ),
               child: Container(
                 decoration: BoxDecoration(
