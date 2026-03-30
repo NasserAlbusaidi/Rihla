@@ -28,10 +28,10 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 
 - [x] **SCRN-01**: Group detail screen shows event cards with type-specific color accents, inline financial summaries, and past/upcoming visual distinction
 - [x] **SCRN-02**: Event hub (CommandCenter) uses the new design language with earthy palette and improved information density
-- [ ] **SCRN-03**: Ledger screen uses card-style expense rows with color-coded balance displays
-- [ ] **SCRN-04**: Gear, Logistics, Vault, Memories, and Activity screens are redesigned with the new design tokens
-- [ ] **SCRN-05**: Create/join group, create event, add expense, and settings flows use the new design language
-- [ ] **SCRN-06**: Onboarding flow and splash screen reflect the new visual identity with warm earthy aesthetics
+- [x] **SCRN-03**: Ledger screen uses card-style expense rows with color-coded balance displays
+- [x] **SCRN-04**: Gear, Logistics, Vault, Memories, and Activity screens are redesigned with the new design tokens
+- [x] **SCRN-05**: Create/join group, create event, add expense, and settings flows use the new design language
+- [x] **SCRN-06**: Onboarding flow and splash screen reflect the new visual identity with warm earthy aesthetics
 
 ### Visual Polish
 
@@ -82,10 +82,10 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 | NAV-06 | Phase 18 | Complete |
 | SCRN-01 | Phase 20 | Complete |
 | SCRN-02 | Phase 20 | Complete |
-| SCRN-03 | Phase 21 | Pending |
-| SCRN-04 | Phase 21 | Pending |
-| SCRN-05 | Phase 21 | Pending |
-| SCRN-06 | Phase 21 | Pending |
+| SCRN-03 | Phase 21 | Complete |
+| SCRN-04 | Phase 21 | Complete |
+| SCRN-05 | Phase 21 | Complete |
+| SCRN-06 | Phase 21 | Complete |
 | PLSH-01 | Phase 22 | Pending |
 | PLSH-02 | Phase 22 | Pending |
 | PLSH-03 | Phase 17 | Complete |

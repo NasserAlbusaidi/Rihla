@@ -160,7 +160,7 @@ Plans:
   5. Onboarding flow and splash screen reflect the warm earthy visual identity
 **Plans**: 6 plans
 Plans:
-- [ ] 21-01-PLAN.md — Shared foundation: missing tokens (sandLight, terracotta, warmGray), module color facade aliases, InputDecorationTheme update, EmptyStateView gradient circle, SkeletonLoader.photoGrid, DotStepIndicator widget
+- [x] 21-01-PLAN.md — Shared foundation: missing tokens (sandLight, terracotta, warmGray), module color facade aliases, InputDecorationTheme update, EmptyStateView gradient circle, SkeletonLoader.photoGrid, DotStepIndicator widget
 - [ ] 21-02-PLAN.md — Ledger screen redesign: LedgerHeroCard, ExpenseCard, SettlementRow, single-scroll timeline (no tabs)
 - [ ] 21-03-PLAN.md — Gear, Logistics, Vault screen redesign: hero cards, SubGroupCard, Logistics tab removal, unified module template
 - [ ] 21-04-PLAN.md — Memories + Activity screen redesign: photo grid, ModuleHeader migration, date-grouped activity timeline
@@ -192,5 +192,5 @@ Plans:
 | 18. Home Dashboard Redesign | 3/3 | Complete    | 2026-03-30 |
 | 19. Navigation Restructuring | 3/3 | Complete    | 2026-03-30 |
 | 20. Group Detail & Event Hub Redesign | 2/2 | Complete    | 2026-03-30 |
-| 21. Module Screens Redesign | 0/6 | Not started | - |
+| 21. Module Screens Redesign | 1/6 | In Progress|  |
 | 22. Polish Pass & Token Cleanup | 0/? | Not started | - |
