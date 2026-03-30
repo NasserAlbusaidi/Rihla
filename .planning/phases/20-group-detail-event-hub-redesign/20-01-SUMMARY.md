@@ -154,3 +154,14 @@ None - no external service configuration required.
 - animations package added — Plan 02 can use OpenContainer for event card transitions
 - All 749 tests pass — no regressions
 - Plan 02 (EventCommandCenter redesign) ready to proceed
+
+## Self-Check: PASSED
+
+- `lib/features/groups/widgets/group_stats_grid.dart` — FOUND
+- `lib/features/events/widgets/event_card.dart` — FOUND
+- `lib/features/groups/screens/group_detail_screen.dart` — FOUND
+- `lib/features/groups/keys/group_keys.dart` — FOUND
+- Commit `693aca3` — FOUND
+- Commit `dc27ff1` — FOUND
+- Commit `3ef75ec` — FOUND
+- Commit `89239c9` (metadata) — FOUND

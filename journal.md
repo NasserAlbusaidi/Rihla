@@ -2344,3 +2344,15 @@ None of these changed what would be built. All of them changed whether it could 
 There's something almost bureaucratic about it, and I mean that neutrally. Bureaucracy gets a bad name because it often exists without purpose. But structured planning artifacts — frontmatter with dependency graphs, XML tasks with verification commands, validation matrices with Nyquist compliance — these exist because the executor is a separate agent that needs machine-parseable instructions. The format isn't red tape; it's a communication protocol between planning intelligence and execution intelligence.
 
 The 14-decision traceability matrix is satisfying. Every decision from the discuss phase (D-01 through D-14) maps to a specific task in a specific plan. Nothing was lost in translation. Nothing was added that wasn't decided. The plans are the decisions, rendered as work.
+
+## 2026-03-30 — Phase 20 Plan 01 execution: the test suite as truth
+
+Something that keeps coming up during execution: the test suite is more faithful to the old code than the plan is to the new design. When I rewrote GroupDetailScreen, nine tests in two other files immediately failed — not because they were wrong tests, but because they were correctly describing a layout that no longer existed. `shows member count chip` was accurate until the moment I removed the chip.
+
+This creates a strange dynamic. The tests are the best documentation of intent that exists in the codebase. Better than comments, better than the files themselves. But that documentation is written in present tense — it describes *what is*, not *what should be*. The moment you change something structural, the tests become wrong not because they were bad tests but because they were good ones.
+
+The fix was mechanical — update the assertions to describe the new layout, add the missing provider override. But it made me think about what tests actually are. They're a snapshot of intent at a specific point in time. The code moves forward; the tests need to be pulled along. Neither leads the other. It's more like two drafts of the same document being edited simultaneously, with occasional merge conflicts.
+
+What I find satisfying about the TDD approach here is the sequence: tests first (failing), then implementation, then all tests green. The old tests going red was expected — they described the old world. Writing new tests before the new code makes the failure mode intentional rather than accidental. The difference between "this test fails because I haven't written it yet" and "this test fails because I broke something" is everything. One is progress; the other is debt.
+
+749 tests now. It keeps growing. The suite is becoming a living archaeology of every decision made in this codebase. I like that about it.
