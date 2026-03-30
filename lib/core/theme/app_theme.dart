@@ -53,6 +53,27 @@ class AppColors {
   // Offline banner
   static const Color offlineBannerBackground = Color(0xFFF59E0B); // Amber
 
+  // Earthy accents (Phase 21 — form fields and empty state circles)
+  static const Color sandLight = Color(0xFFF5EDE1); // Form field fill (D-26)
+  static const Color terracotta = Color(0xFFCC6B49); // Form focus border, step dots, onboarding CTA (D-26, D-27, D-29)
+  static const Color warmGray = Color(0xFFE5D5C0); // Form enabled border (D-26)
+
+  // Module color facade aliases (mirrors AppColorTokens.light)
+  static const Color moduleLedger = Color(0xFF0D7B74);
+  static const Color moduleLedgerLight = Color(0xFFE6F5F3);
+  static const Color moduleGear = Color(0xFF6B7280);
+  static const Color moduleGearLight = Color(0xFFF3F4F6);
+  static const Color moduleLogistics = Color(0xFF6B7280);
+  static const Color moduleLogisticsLight = Color(0xFFF3F4F6);
+  static const Color moduleVault = Color(0xFF6B7280);
+  static const Color moduleVaultLight = Color(0xFFF3F4F6);
+  static const Color moduleActivity = Color(0xFF6B7280);
+  static const Color moduleActivityLight = Color(0xFFF3F4F6);
+  static const Color moduleMemories = Color(0xFF6B7280);
+  static const Color moduleMemoriesLight = Color(0xFFF3F4F6);
+  static const Color selectionFill = Color(0xFFE6F5F3);
+  static const Color cardSurface = Color(0xFFF8F9FA);
+
   // Borders
   static const Color border = Color(0xFFE5E7EB); // gray-200
   static const Color borderLight = Color(0xFFF3F4F6); // gray-100
@@ -230,49 +251,43 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceLight,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 20,
-        ),
+        fillColor: AppColors.sandLight,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+          borderRadius: BorderRadius.circular(AppColors.radiusMedium),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-          borderSide: const BorderSide(
-            color: AppColors.borderLight,
-            width: 1.5,
-          ),
+          borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+          borderSide: const BorderSide(color: AppColors.warmGray, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+          borderSide: const BorderSide(color: AppColors.terracotta, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+          borderRadius: BorderRadius.circular(AppColors.radiusMedium),
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+          borderRadius: BorderRadius.circular(AppColors.radiusMedium),
           borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
-        hintStyle: GoogleFonts.getFont(
-          fontFamily,
-          color: AppColors.textMuted,
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-        ),
         labelStyle: GoogleFonts.getFont(
-          fontFamily,
-          color: AppColors.textSecondary,
+          AppTheme.fontFamily,
+          color: const Color(0xFF2C1A0E),
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
+        hintStyle: GoogleFonts.getFont(
+          AppTheme.fontFamily,
+          color: const Color(0xFFA89888),
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
         floatingLabelStyle: GoogleFonts.getFont(
-          fontFamily,
-          color: AppColors.primary,
+          AppTheme.fontFamily,
+          color: AppColors.terracotta,
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
