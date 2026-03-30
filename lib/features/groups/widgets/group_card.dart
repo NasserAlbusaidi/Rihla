@@ -1,16 +1,19 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/formatters.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 
 /// A card widget for displaying a group summary in the home screen list.
 ///
-/// Shows the group name, member count badge, and total group spending
-/// from [groupBalancesProvider].
+/// Shows the group name, member count badge, and the current user's personal
+/// net balance in this group (D-08/D-09). Uses [AppColors.errorText] for
+/// negative (owes), [AppColors.successText] for positive (owed), and
+/// [AppColors.textSecondary] for zero (settled).
 class GroupCard extends ConsumerWidget {
   final Group group;
   final VoidCallback onTap;
@@ -79,24 +82,44 @@ class GroupCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: AppColors.space8),
-            // Group total spending from groupBalancesProvider
+            // Personal balance for current user (D-08/D-09)
             balancesAsync.when(
-              data: (balances) => Text(
-                AppFormatters.formatCurrency(balances.totalSpent, group.currency),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+              data: (balances) {
+                final uid = FirebaseConfig.currentUser?.uid;
+                final userBalance = balances.balances
+                    .where((b) => b.participantId == uid)
+                    .firstOrNull;
+                final net = userBalance?.netBalance ?? Decimal.zero;
+                final (String label, Color color) =
+                    switch (net.compareTo(Decimal.zero)) {
+                  < 0 => (
+                      'You owe OMR ${net.abs().toStringAsFixed(3)}',
+                      AppColors.errorText,
                     ),
-              ),
+                  > 0 => (
+                      'You are owed OMR ${net.toStringAsFixed(3)}',
+                      AppColors.successText,
+                    ),
+                  _ => ('Settled', AppColors.textSecondary),
+                };
+                return Text(
+                  label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: color),
+                );
+              },
               loading: () => Text(
                 '...',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.textMuted,
                     ),
               ),
-              error: (_, __) => Text(
-                '0.000 ${group.currency}',
+              error: (e, _) => Text(
+                'Settled',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                      color: AppColors.textSecondary,
                     ),
               ),
             ),
