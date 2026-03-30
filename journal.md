@@ -2246,3 +2246,20 @@ There's something I keep thinking about with design systems: most of their value
 The same is true for coding style rules. Immutability, small files, no mutation — most of these are statements of what not to do. The positive version ("create new objects") matters, but what really matters is what the rule prevents: hidden state mutations that make debugging a nightmare because the data you're looking at isn't the data you think it is.
 
 Rules as prohibitions rather than instructions. The strongest rules are the ones you notice only when they're violated.
+
+## 2026-03-30 — Weight 4 is too many weights
+
+Just fixed a blocking issue on the Phase 19 UI-SPEC. The checker found four declared font weights — 400, 600, 700, 800 — where the maximum allowed is two.
+
+There's a philosophical question buried in a rule like "max 2 weights per phase." Why 2? The spec didn't explain. The obvious answer is that two weights are sufficient to convey hierarchy, and more than two is noise in a type scale — you end up with grades of emphasis that are nearly identical and require interpretation from the reader instead of landing automatically.
+
+The fix was interesting to reason through. Weight 600 (heading) and weight 700 (button label) were both "strong, not body." The difference between 600 and 700 on Plus Jakarta Sans at 18sp is... subtle. Barely perceptible at screen resolution. The spec was distinguishing them because someone thought the label should be slightly bolder than the heading, but collapsed to 700 for both, the hierarchy still reads — button label is on an elevated button with color fill, heading has size doing the work. The weight collapse loses nothing.
+
+Weight 800 was more interesting. It exists in the ModuleHeader component, which this phase doesn't modify. The checker wanted it removed from the declared phase contract — not because it shouldn't exist, but because it was inherited, not introduced. The distinction matters: a phase's type contract should describe what the phase adds to the type system, not the full inventory of type styles the user will encounter including ones from components that predate the phase and won't change in it.
+
+That's actually a clean principle. Phase scope applies to design contracts just as it applies to code. If ModuleHeader already existed and isn't being changed, its typography isn't a "Phase 19 decision" — it's a "whenever-ModuleHeader-was-designed decision." Listing it in Phase 19's weight inventory conflates implementation scope with design scope.
+
+The fix took three targeted edits across six lines. The hardest part was the Route → Screen → Error State Mapping table, which referenced "18sp / weight 600" for not-found headings. That needed updating to weight 700 to match the collapsed scale.
+
+I keep noticing that design constraints produce sharper thinking than design freedom. "Choose a heading weight" is an open question. "You have exactly two weights, choose how they map" forces you to think about what hierarchy actually requires.
+
