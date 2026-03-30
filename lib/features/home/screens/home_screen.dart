@@ -1,151 +1,327 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/animations/fade_in_list.dart';
+import '../../../shared/animations/tap_bounce.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/widgets/group_card.dart';
 import '../keys/home_keys.dart';
+import '../providers/dashboard_providers.dart';
+import '../widgets/activity_row.dart';
+import '../widgets/balance_hero_card.dart';
+import '../widgets/bottom_nav_shell.dart';
+import '../widgets/quick_action_tray.dart';
+import '../widgets/weekly_spending_card.dart';
 
-/// Groups-first home screen (D-01).
+/// Groups-first home dashboard (Phase 18).
 ///
-/// Replaces the legacy trip-based home screen. Displays the current user's
-/// groups via [userGroupsProvider], with a FAB for create/join actions.
+/// Full dashboard layout with balance hero card, quick-action tray,
+/// group cards with personal balance, activity strip, weekly spending chart,
+/// and a 4-tab bottom navigation shell.
+///
+/// Returns [BottomNavShell] wrapping [_DashboardContent]. This separation
+/// keeps the nav shell stateful while the content adapts to provider state.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return BottomNavShell(
+      scaffoldKey: HomeKeys.screen,
+      child: _DashboardContent(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _DashboardContent — private ConsumerStatefulWidget
+// ---------------------------------------------------------------------------
+
+/// Dashboard content for the Groups tab inside [BottomNavShell].
+///
+/// Holds a [GlobalKey] for scroll-to-activity and delegates rendering to
+/// state-specific build methods based on [userGroupsProvider].
+class _DashboardContent extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends ConsumerState<_DashboardContent> {
+  final _activitySectionKey = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
     final groupsAsync = ref.watch(userGroupsProvider);
 
-    return Scaffold(
-      key: HomeKeys.screen,
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            const OfflineBanner(),
-            Expanded(
-              child: groupsAsync.when(
-                data: (groups) => RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(userGroupsProvider);
-                    // Wait briefly for the new stream to emit its first value
-                    await ref.read(userGroupsProvider.future);
-                  },
-                  color: AppColors.primary,
-                  child: groups.isEmpty
-                      ? const EmptyStateView(
-                          icon: Iconsax.people,
-                          title: 'No groups yet',
-                          message:
-                              'Create a group with friends or enter an invite code to join one.',
-                        )
-                      : _buildGroupList(context, groups),
-                ),
-                loading: _buildSkeletonCards,
-                error: (e, st) {
-                  debugPrint('Groups load error: $e');
-                  return EmptyStateView(
-                    icon: Iconsax.warning_2,
-                    title: "Couldn't load groups",
-                    message: e.toString(),
-                  );
-                },
+    return SizedBox.expand(
+      child: Column(
+        children: [
+          // Fixed header (always visible across all states)
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppColors.space24,
+                AppColors.space16,
+                AppColors.space16,
+                0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Your Groups',
+                    key: HomeKeys.yourGroupsHeader,
+                    style:
+                        Theme.of(context).textTheme.headlineLarge?.copyWith(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                            ),
+                  ),
+                  FloatingActionButton.small(
+                    key: HomeKeys.createGroupFab,
+                    onPressed: () => _showFabBottomSheet(context),
+                    backgroundColor: AppColors.primary,
+                    heroTag: 'home_fab',
+                    child: const Icon(Iconsax.add, color: AppColors.textOnPrimary),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        key: HomeKeys.createGroupFab,
-        onPressed: () => _showFabBottomSheet(context),
-        backgroundColor: AppColors.primary,
-        child: const Icon(Iconsax.add, color: AppColors.textOnPrimary),
+          ),
+          // Content area (state-dependent)
+          Expanded(
+            child: groupsAsync.when(
+              data: (groups) => groups.isEmpty
+                  ? _buildEmptyState(context)
+                  : _buildLoadedDashboard(context, groups),
+              loading: _buildSkeletonState,
+              error: (e, st) => _buildErrorState(context),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
+  // ---------------------------------------------------------------------------
+  // Loaded state
+  // ---------------------------------------------------------------------------
 
-    Widget header = Padding(
+  Widget _buildLoadedDashboard(BuildContext context, List groups) {
+    final activityAsync = ref.watch(crossGroupActivityProvider);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(userGroupsProvider);
+        await ref.read(userGroupsProvider.future);
+      },
+      color: AppColors.primary,
+      child: CustomScrollView(
+        // Large cache extent ensures all slivers are built even when
+        // off-screen, which is required for widget tests to find them.
+        cacheExtent: 2000,
+        slivers: [
+          // 1. Balance Hero Card
+          const SliverToBoxAdapter(
+            child: SizedBox(height: AppColors.space16),
+          ),
+          const SliverToBoxAdapter(child: BalanceHeroCard()),
+
+          // 2. Quick Action Tray
+          SliverToBoxAdapter(
+            child: QuickActionTray(
+              onAddExpense: () => _showGroupPicker(context, 'expense'),
+              onSettleUp: () => _showGroupPicker(context, 'settle'),
+              onInviteFriend: () => context.push('/join-group'),
+              onActivity: _scrollToActivity,
+            ),
+          ),
+
+          // 3. Group Cards
+          // D-22 (FadeInList staggered animation) takes precedence over D-21
+          // (SliverList.builder) for this section. FadeInList wraps a Column,
+          // not a Sliver, so SliverToBoxAdapter bridges the gap.
+          // This is safe for typical group counts (<20 groups per user).
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppColors.space16,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: FadeInList(
+                children: groups.map((group) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppColors.space8),
+                    child: TapBounce(
+                      onTap: () => context.push('/group/${group.id}'),
+                      child: GroupCard(
+                        group: group,
+                        onTap: () => context.push('/group/${group.id}'),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+
+          // 4. Activity Section
+          SliverToBoxAdapter(
+            child: _buildActivitySection(context, activityAsync),
+          ),
+
+          // 5. Weekly Spending Card
+          const SliverToBoxAdapter(child: WeeklySpendingCard()),
+
+          // Bottom padding for scroll clearance above bottom nav
+          const SliverToBoxAdapter(
+            child: SizedBox(height: AppColors.space32),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivitySection(
+    BuildContext context,
+    AsyncValue<List<CrossGroupActivityEntry>> activityAsync,
+  ) {
+    return Padding(
+      key: _activitySectionKey,
       padding: const EdgeInsets.fromLTRB(
+        AppColors.space16,
         AppColors.space24,
-        AppColors.space32,
-        AppColors.space24,
+        AppColors.space16,
         AppColors.space8,
       ),
-      child: Text(
-        key: HomeKeys.yourGroupsHeader,
-        'Your Groups',
-        style: Theme.of(context).textTheme.headlineLarge,
-      ),
-    );
-
-    if (!reduceMotion) {
-      header = header
-          .animate()
-          .fadeIn(duration: 600.ms)
-          .slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic);
-    }
-
-    return header;
-  }
-
-  Widget _buildGroupList(BuildContext context, List groups) {
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
-
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppColors.space24,
-        vertical: AppColors.space16,
-      ),
-      itemCount: groups.length,
-      itemBuilder: (context, index) {
-        final group = groups[index];
-        Widget card = Padding(
-          padding: const EdgeInsets.only(bottom: AppColors.space16),
-          child: GroupCard(
-            group: group,
-            onTap: () => _navigateToGroupDetail(context, group),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'RECENT ACTIVITY',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              // textMuted (#9CA3AF) is DECORATIVE ONLY here — section overline label.
+              // Functional text (descriptions, names) uses textSecondary.
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
           ),
-        );
-
-        if (!reduceMotion) {
-          card = card
-              .animate()
-              .fadeIn(duration: 400.ms)
-              .slideY(
-                begin: 0.05,
-                end: 0,
-                curve: Curves.easeOutCubic,
-                delay: Duration(milliseconds: 50 * min(index, 5)),
-              );
-        }
-
-        return card;
-      },
+          const SizedBox(height: AppColors.space8),
+          activityAsync.when(
+            data: (entries) => entries.isEmpty
+                ? const Text(
+                    'No activity yet',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  )
+                : Column(
+                    children: entries
+                        .map(
+                          (entry) => ActivityRow(
+                            activity: entry.log,
+                            groupName: entry.groupName,
+                            groupId: entry.groupId,
+                            onTap: () => context.push('/group/${entry.groupId}'),
+                          ),
+                        )
+                        .toList(),
+                  ),
+            loading: () => const SizedBox.shrink(),
+            error: (e, _) => const SizedBox.shrink(),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSkeletonCards() {
-    return SkeletonLoader.groupList(count: 3);
+  // ---------------------------------------------------------------------------
+  // Empty state
+  // ---------------------------------------------------------------------------
+
+  Widget _buildEmptyState(BuildContext context) {
+    return EmptyStateView(
+      icon: Iconsax.people,
+      title: 'Create your first group',
+      message:
+          'Plan trips, track expenses, and settle up with friends',
+      actionLabel: 'Create Group',
+      onAction: () => context.push('/create-group'),
+    );
   }
 
-  void _navigateToGroupDetail(BuildContext context, dynamic group) {
-    context.push('/group/${group.id}');
+  // ---------------------------------------------------------------------------
+  // Error state
+  // ---------------------------------------------------------------------------
+
+  Widget _buildErrorState(BuildContext context) {
+    return Column(
+      children: [
+        const OfflineBanner(),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppColors.space24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  EmptyStateView(
+                    icon: Iconsax.warning_2,
+                    title: 'Something went wrong',
+                    message:
+                        'Check your connection and try again. Your travel groups are safely synced, but we need the internet to fetch latest updates.',
+                    actionLabel: 'Retry',
+                    onAction: () => ref.refresh(userGroupsProvider),
+                  ),
+                  TextButton(
+                    // Phase 19 will wire offline data view
+                    onPressed: () {},
+                    child: const Text(
+                      'View Offline Data',
+                      style: TextStyle(color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
+
+  // ---------------------------------------------------------------------------
+  // Skeleton / loading state
+  // ---------------------------------------------------------------------------
+
+  Widget _buildSkeletonState() {
+    // SingleChildScrollView with NeverScrollableScrollPhysics prevents overflow
+    // while keeping the skeleton visible within bounded parent height.
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
+        children: [
+          SkeletonLoader.dashboardHero(),
+          const SizedBox(height: AppColors.space16),
+          SkeletonLoader.groupList(count: 3),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // FAB bottom sheet
+  // ---------------------------------------------------------------------------
 
   void _showFabBottomSheet(BuildContext context) {
     HapticFeedback.lightImpact();
@@ -200,5 +376,76 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Quick-action group picker
+  // ---------------------------------------------------------------------------
+
+  void _showGroupPicker(BuildContext context, String action) {
+    final groups = ref.read(userGroupsProvider).valueOrNull ?? [];
+    if (groups.isEmpty) return;
+    if (groups.length == 1) {
+      context.push('/group/${groups.first.id}');
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppColors.space16,
+                AppColors.space16,
+                AppColors.space16,
+                AppColors.space8,
+              ),
+              child: Text(
+                'Choose a group',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            ...groups.map(
+              (group) => ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppColors.space16,
+                ),
+                title: Text(group.name),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push('/group/${group.id}');
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scroll to activity section
+  // ---------------------------------------------------------------------------
+
+  void _scrollToActivity() {
+    final ctx = _activitySectionKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 }

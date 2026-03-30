@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -27,6 +26,7 @@ class GroupCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final balancesAsync = ref.watch(groupBalancesProvider(group.id));
+    final uid = ref.watch(currentUserIdProvider);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -85,7 +85,6 @@ class GroupCard extends ConsumerWidget {
             // Personal balance for current user (D-08/D-09)
             balancesAsync.when(
               data: (balances) {
-                final uid = FirebaseConfig.currentUser?.uid;
                 final userBalance = balances.balances
                     .where((b) => b.participantId == uid)
                     .firstOrNull;

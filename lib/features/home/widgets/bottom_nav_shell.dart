@@ -20,7 +20,10 @@ class BottomNavShell extends StatefulWidget {
   /// The dashboard content shown on the Groups tab.
   final Widget child;
 
-  const BottomNavShell({super.key, required this.child});
+  /// Optional key forwarded to the inner [Scaffold] for widget testing.
+  final Key? scaffoldKey;
+
+  const BottomNavShell({super.key, required this.child, this.scaffoldKey});
 
   @override
   State<BottomNavShell> createState() => _BottomNavShellState();
@@ -32,6 +35,8 @@ class _BottomNavShellState extends State<BottomNavShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: widget.scaffoldKey,
+      backgroundColor: AppColors.background,
       body: _buildBody(),
       bottomNavigationBar: _buildNavBar(),
     );

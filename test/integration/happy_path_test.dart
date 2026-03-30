@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,9 +7,12 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
+import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/core/router/app_router.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 
@@ -49,6 +53,36 @@ void main() {
 
           onboardingCompleteProvider.overrideWith((ref) => true),
           sharedPreferencesProvider.overrideWithValue(prefs),
+
+          // Dashboard providers required by Phase 18 HomeScreen widgets
+          crossGroupBalanceProvider.overrideWith(
+            (ref) => AsyncValue.data((
+              net: Decimal.zero,
+              groupCount: 1,
+              isLoading: false,
+            )),
+          ),
+          crossGroupActivityProvider.overrideWith(
+            (ref) => const AsyncValue.data([]),
+          ),
+          weeklyGroupSpendingProvider.overrideWith(
+            (ref) => AsyncValue.data(
+              List.generate(7, (i) {
+                final date = DateTime(2026, 3, 24).add(Duration(days: i));
+                return (date: date, amount: Decimal.zero);
+              }),
+            ),
+          ),
+          groupBalancesProvider.overrideWith(
+            (ref, groupId) => AsyncValue.data((
+              balances: <UserBalance>[],
+              totalSpent: Decimal.zero,
+              eventCount: 0,
+              perEventBreakdown: <String, Map<String, Decimal>>{},
+              memberNames: <String, String>{},
+            )),
+          ),
+          currentUserIdProvider.overrideWithValue('user-1'),
         ],
         child: Consumer(
           builder: (context, ref, _) {
