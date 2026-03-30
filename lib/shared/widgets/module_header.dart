@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/keys/shared_keys.dart';
 import '../../core/theme/app_theme.dart';
@@ -48,7 +49,7 @@ class ModuleHeader extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _LightBackButton(onTap: () => Navigator.of(context).pop()),
+                  _LightBackButton(onTap: () => context.pop()),
                   if (actions != null) Row(children: actions!),
                 ],
               ),
@@ -103,7 +104,7 @@ class ModuleHeader extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _DarkBackButton(onTap: () => Navigator.of(context).pop()),
+                  _DarkBackButton(onTap: () => context.pop()),
                   if (actions != null) Row(children: actions!),
                 ],
               ),
