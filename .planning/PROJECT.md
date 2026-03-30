@@ -106,6 +106,7 @@ Groups persist across events and accumulate financial history — friends settle
 | Earthy palette (terracotta/sand/olive) | Warm, distinctive identity replacing generic neon-mint | Validated v2.0 Phase 15 — WCAG AA compliant, CI lint enforces token usage |
 | Dashboard-first home screen | Single-scroll dashboard with balance hero, quick actions, group cards, activity, spending chart | Validated v2.0 Phase 18 — NAV-01, NAV-02, NAV-04, NAV-06 satisfied, 743 tests |
 | Group detail stats grid + event hub grid | Scannable dashboards: 2x2 stats grid on group detail, 2x3 module grid on event hub, corrected module colors | Validated v2.0 Phase 20 — SCRN-01, SCRN-02 satisfied, 752 tests |
+| Module screens unified redesign | Every module screen gets dark ModuleHeader, summary hero card, earthy empty states, card-based content | Validated v2.0 Phase 21 — SCRN-03, SCRN-04, SCRN-05, SCRN-06 satisfied, 752 tests |
 
 ## Evolution
 
@@ -125,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 — Phase 14 (Test Hardening) complete. 12 key class files, 127 find.byKey() calls, CI regression gate. Ready for Phase 15 (Design Token System).*
+*Last updated: 2026-03-31 — Phase 21 (Module Screens Redesign) complete. All module screens, form flows, onboarding, and splash redesigned with unified design language. 752 tests. Ready for Phase 22 (Polish Pass & Token Cleanup).*
