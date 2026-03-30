@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
@@ -7,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/search_filter_bar.dart';
@@ -15,11 +15,13 @@ import '../../events/providers/event_provider.dart';
 import '../keys/vault_keys.dart';
 import '../models/document_model.dart';
 import '../providers/document_provider.dart';
+import '../widgets/vault_hero_card.dart';
 
-/// Vault Screen - Document management with upload/download.
+/// Vault Screen — unified module template (D-08, D-14, D-20).
 ///
-/// Takes string IDs per D-14. Uses [eventDetailProvider] for event data.
-/// Shows a not-found error state per D-11 when event is null.
+/// Layout: dark ModuleHeader → VaultHeroCard → SearchFilterBar →
+/// section overline → FadeInList of document cards.
+/// Loading: SkeletonLoader. Empty: EmptyStateView with warm bronze gradient.
 class VaultScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String eventId;
@@ -42,13 +44,19 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
     final documentsAsync = ref.watch(eventDocumentsProvider(eventRef));
-    final isLoading = ref.watch(documentLoadingProvider);
+    final isUploading = ref.watch(documentLoadingProvider);
     final connectivity = ref.watch(connectivityProvider);
 
-    // Loading state
+    // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Vault', useDarkTheme: true),
+            Expanded(child: SkeletonLoader.documentList()),
+          ],
+        ),
       );
     }
 
@@ -60,7 +68,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         backgroundColor: AppColors.background,
         body: Column(
           children: [
-            const ModuleHeader(title: 'Not Found'),
+            const ModuleHeader(title: 'Not Found', useDarkTheme: true),
             Expanded(
               child: EmptyStateView(
                 icon: Iconsax.warning_2,
@@ -77,6 +85,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       );
     }
 
+    // Offline state — documents require connectivity
     if (connectivity == ConnectivityStatus.offline) {
       return Scaffold(
         key: VaultKeys.screen,
@@ -86,6 +95,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             ModuleHeader(
               title: 'Vault',
               subtitle: event.name.toUpperCase(),
+              useDarkTheme: true,
             ),
             const Expanded(
               child: EmptyStateView(
@@ -108,93 +118,40 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           ModuleHeader(
             title: 'Vault',
             subtitle: event.name.toUpperCase(),
-            actions: [
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const IconButton(
-                  icon: Icon(
-                    Iconsax.lock,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                  onPressed: null,
-                ),
-              ),
-            ],
+            useDarkTheme: true,
           ),
-          SearchFilterBar(
-            onSearchChanged: (q) => setState(() => _searchQuery = q),
-            hintText: 'Search documents...',
-          ),
-          const SizedBox(height: 12),
           Expanded(
             child: documentsAsync.when(
-              data: (docs) => docs.isEmpty
-                  ? _buildEmptyState(context, ref)
-                  : _buildDocumentList(context, ref, docs),
-              loading: () => SkeletonLoader.documentList(),
-              error: (e, _) => _buildErrorState(context, e.toString()),
+              data: (docs) => _buildContent(context, docs, isUploading),
+              loading: SkeletonLoader.documentList,
+              error: (e, _) => EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: "Couldn't load Vault",
+                message: 'Check your connection and try again.',
+                actionLabel: 'Reload',
+                onAction: () => ref.invalidate(
+                  eventDocumentsProvider(
+                    (groupId: widget.groupId, eventId: widget.eventId),
+                  ),
+                ),
+                iconColor: AppColors.textSecondary,
+              ),
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: isLoading ? null : () => _uploadDocument(context, ref),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : const Icon(Iconsax.document_upload),
-        label: Text(isLoading ? 'Uploading...' : 'Upload'),
-      ).animate().fadeIn(delay: 300.ms).slideY(begin: 1),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
-    return EmptyStateView(
-      icon: Iconsax.document,
-      title: 'No documents yet',
-      message: 'Upload tickets, bookings, or any trip files',
-      actionLabel: 'Upload',
-      onAction: () => _uploadDocument(context, ref),
-      iconColor: AppColors.indigo,
-    );
-  }
-
-  Widget _buildErrorState(BuildContext context, String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Iconsax.warning_2, size: 48, color: AppColors.error),
-            const SizedBox(height: 16),
-            const Text('Error loading documents'),
-            const SizedBox(height: 8),
-            Text(error, style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDocumentList(
+  Widget _buildContent(
     BuildContext context,
-    WidgetRef ref,
     List<Document> docs,
+    bool isUploading,
   ) {
+    final totalBytes =
+        docs.fold<int>(0, (sum, doc) => sum + (doc.fileSize ?? 0));
+    final totalSize = _formatTotalSize(totalBytes);
+
     final filteredDocs = docs.where((doc) {
       if (_searchQuery.isNotEmpty) {
         return doc.fileName.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -202,52 +159,99 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       return true;
     }).toList();
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(
-          eventDocumentsProvider(
-            (groupId: widget.groupId, eventId: widget.eventId),
+    return CustomScrollView(
+      slivers: [
+        // Hero card
+        SliverToBoxAdapter(
+          child: VaultHeroCard(
+            fileCount: docs.length,
+            totalSize: totalSize,
+            onUpload: isUploading ? () {} : () => _uploadDocument(context),
           ),
-        );
-      },
-      child: ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: filteredDocs.length,
-        itemBuilder: (context, index) {
-          final doc = filteredDocs[index];
-          return _buildDocumentItem(context, ref, doc, index)
-              .animate()
-              .fadeIn(delay: Duration(milliseconds: (50 * index).clamp(0, 500)), duration: 300.ms)
-              .slideY(begin: 0.05, end: 0, delay: Duration(milliseconds: (50 * index).clamp(0, 500)));
-        },
-      ),
+        ),
+        // Search filter bar
+        SliverToBoxAdapter(
+          child: SearchFilterBar(
+            onSearchChanged: (q) => setState(() => _searchQuery = q),
+            hintText: 'Search documents...',
+          ),
+        ),
+        if (docs.isEmpty)
+          SliverFillRemaining(
+            child: EmptyStateView(
+              icon: Iconsax.document,
+              title: 'No documents yet',
+              message:
+                  'Upload tickets, booking confirmations, or any trip files.',
+              actionLabel: 'Upload Document',
+              onAction: () => _uploadDocument(context),
+              accentGradient: const LinearGradient(
+                colors: [Color(0xFF8B7355), Color(0xFFA89372)],
+              ),
+            ),
+          )
+        else ...[
+          const SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              AppColors.space16,
+              AppColors.space12,
+              AppColors.space16,
+              AppColors.space4,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                'FILES',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppColors.space16,
+              0,
+              AppColors.space16,
+              AppColors.space32,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: FadeInList(
+                children: filteredDocs.map((doc) {
+                  return Padding(
+                    padding:
+                        const EdgeInsets.only(bottom: AppColors.space8),
+                    child: _buildDocumentCard(context, doc),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
-  Widget _buildDocumentItem(
-    BuildContext context,
-    WidgetRef ref,
-    Document doc,
-    int index,
-  ) {
+  Widget _buildDocumentCard(BuildContext context, Document doc) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
         border: Border.all(color: AppColors.borderLight, width: 1.5),
         boxShadow: AppColors.cardShadow,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
         child: Dismissible(
           key: Key(doc.id),
           direction: DismissDirection.endToStart,
           background: Container(
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 24),
-            color: AppColors.rose.withValues(alpha: 0.1),
-            child: const Icon(Iconsax.trash, color: AppColors.rose),
+            color: AppColors.error.withValues(alpha: 0.1),
+            child: const Icon(Iconsax.trash, color: AppColors.errorText),
           ),
           confirmDismiss: (direction) async {
             return await showDialog<bool>(
@@ -256,103 +260,80 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 backgroundColor: AppColors.surface,
                 title: const Text(
                   'DELETE FILE',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w900, fontSize: 16),
                 ),
-                content: Text(
-                  'Permanently remove "${doc.fileName.toUpperCase()}"?',
+                content: const Text(
+                  'Delete this document? It will be permanently removed.',
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context, false),
-                    child: const Text('KEEP'),
+                    child: const Text('Cancel'),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
                     child: const Text(
-                      'DELETE',
-                      style: TextStyle(
-                        color: AppColors.rose,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      'Delete',
+                      style: TextStyle(color: AppColors.errorText),
                     ),
                   ),
                 ],
               ),
             );
           },
-          onDismissed: (_) => _deleteDocument(ref, doc),
+          onDismissed: (_) => _deleteDocument(doc),
           child: InkWell(
-            onTap: () => _openDocument(context, ref, doc),
+            onTap: () => _openDocument(context, doc),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppColors.space16),
               child: Row(
                 children: [
+                  // Icon container — 52dp, moduleVaultLight bg (D-20)
                   Container(
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: _getTypeColor(doc.type).withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: _getTypeColor(doc.type).withValues(alpha: 0.1),
-                        width: 1.5,
-                      ),
+                      color: AppColors.moduleVaultLight,
+                      borderRadius: BorderRadius.circular(
+                          AppColors.radiusMedium),
                     ),
                     child: Icon(
                       _getTypeIcon(doc.type),
-                      color: _getTypeColor(doc.type),
+                      color: AppColors.moduleVault,
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppColors.space16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          doc.fileName.toUpperCase(),
+                          doc.fileName,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                            letterSpacing: -0.2,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              doc.formattedSize,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textMuted,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (doc.uploaderName != null) ...[
-                              const Text(
-                                ' • ',
-                                style: TextStyle(color: AppColors.textMuted),
-                              ),
-                              Flexible(
-                                child: Text(
-                                  doc.uploaderName!.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ],
+                        Text(
+                          _buildMetadata(doc),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppColors.space12),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -360,13 +341,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius:
+                          BorderRadius.circular(AppColors.radiusSmall),
                     ),
                     child: Text(
                       doc.extension.toUpperCase(),
                       style: const TextStyle(
                         fontSize: 10,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -380,37 +362,40 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     );
   }
 
+  String _buildMetadata(Document doc) {
+    final parts = <String>[];
+    parts.add(doc.formattedSize);
+    if (doc.createdAt != null) {
+      final d = doc.createdAt!;
+      parts.add('${d.day}/${d.month}/${d.year}');
+    }
+    if (doc.uploaderName != null) {
+      parts.add(doc.uploaderName!);
+    }
+    return parts.join(' · ');
+  }
+
+  String _formatTotalSize(int bytes) {
+    if (bytes == 0) return '0 KB';
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  }
+
   IconData _getTypeIcon(DocumentType type) {
-    switch (type) {
-      case DocumentType.image:
-        return Iconsax.image;
-      case DocumentType.pdf:
-        return Iconsax.document_text;
-      case DocumentType.document:
-        return Iconsax.document_1;
-      case DocumentType.spreadsheet:
-        return Iconsax.chart_1;
-      case DocumentType.other:
-        return Iconsax.document;
-    }
+    return switch (type) {
+      DocumentType.image => Iconsax.image,
+      DocumentType.pdf => Iconsax.document_text,
+      DocumentType.document => Iconsax.document_1,
+      DocumentType.spreadsheet => Iconsax.chart_1,
+      DocumentType.other => Iconsax.document,
+    };
   }
 
-  Color _getTypeColor(DocumentType type) {
-    switch (type) {
-      case DocumentType.image:
-        return AppColors.info;
-      case DocumentType.pdf:
-        return AppColors.error;
-      case DocumentType.document:
-        return AppColors.primary;
-      case DocumentType.spreadsheet:
-        return AppColors.accentSecondary;
-      case DocumentType.other:
-        return AppColors.textSecondary;
-    }
-  }
-
-  Future<void> _deleteDocument(WidgetRef ref, Document doc) async {
+  Future<void> _deleteDocument(Document doc) async {
     final service = ref.read(documentServiceProvider);
     await service.deleteDocument(
       groupId: widget.groupId,
@@ -420,7 +405,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     );
   }
 
-  void _uploadDocument(BuildContext context, WidgetRef ref) async {
+  void _uploadDocument(BuildContext context) async {
     final service = ref.read(documentServiceProvider);
     final result = await service.pickAndUpload(
       groupId: widget.groupId,
@@ -462,10 +447,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     }
   }
 
-  void _openDocument(BuildContext context, WidgetRef ref, Document doc) async {
+  void _openDocument(BuildContext context, Document doc) async {
     try {
       final service = ref.read(documentServiceProvider);
-      // fileUrl holds the Firebase Storage path after migration
       final url = await service.getDownloadUrl(doc.fileUrl);
       if (url == null) throw Exception('Could not generate access link');
 
@@ -477,7 +461,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           content: Text('Could not open file: $e'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
         ));
       }
     }

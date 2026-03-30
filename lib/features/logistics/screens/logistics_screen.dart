@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/app_tab_bar.dart';
+import '../../../core/theme/error_widgets.dart';
+import '../../../shared/animations/fade_in_list.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
-import '../../../core/theme/error_widgets.dart';
-import '../../../core/services/haptic_service.dart';
-import 'package:go_router/go_router.dart';
-import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
-import '../widgets/subgroup_card.dart';
-import '../widgets/unassigned_pool.dart';
+import '../widgets/sub_group_card.dart';
 
-/// Logistics Screen - Manage cars, rooms, and teams.
+/// Logistics Screen — unified module template (D-08, D-23).
 ///
-/// Takes string IDs per D-14. Uses [eventDetailProvider] for event data.
-/// Shows a not-found error state per D-11 when event is null.
+/// Tab bar removed (D-23). Layout: dark ModuleHeader → LogisticsHeroCard →
+/// section overline → FadeInList of SubGroupCard.
+/// Loading: SkeletonLoader. Empty: EmptyStateView with dusty-teal gradient.
 class LogisticsScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String eventId;
@@ -38,21 +38,12 @@ class LogisticsScreen extends ConsumerStatefulWidget {
   ConsumerState<LogisticsScreen> createState() => _LogisticsScreenState();
 }
 
-class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
   final _nameController = TextEditingController();
   final _capacityController = TextEditingController(text: '4');
 
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
   void dispose() {
-    _tabController.dispose();
     _nameController.dispose();
     _capacityController.dispose();
     super.dispose();
@@ -64,10 +55,16 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
     final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
 
-    // Loading state
+    // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Logistics', useDarkTheme: true),
+            Expanded(child: SkeletonLoader.groupList()),
+          ],
+        ),
       );
     }
 
@@ -79,7 +76,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         backgroundColor: AppColors.background,
         body: Column(
           children: [
-            const ModuleHeader(title: 'Not Found'),
+            const ModuleHeader(title: 'Not Found', useDarkTheme: true),
             Expanded(
               child: EmptyStateView(
                 icon: Iconsax.warning_2,
@@ -104,17 +101,20 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           ModuleHeader(
             title: 'Logistics',
             subtitle: event.name.toUpperCase(),
+            useDarkTheme: true,
             actions: [
               Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
+                  color: Colors.white.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
                 ),
                 child: IconButton(
                   icon: const Icon(
                     Iconsax.add,
-                    color: AppColors.primary,
+                    color: Colors.white,
                     size: 20,
                   ),
                   onPressed: _showCreateDialog,
@@ -122,14 +122,10 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
               ),
             ],
           ),
-          AppTabBar(
-            controller: _tabController,
-            tabs: const ['Cars', 'Rooms'],
-            activeColor: AppColors.sky,
-          ),
           Expanded(
             child: subGroupsAsync.when(
-              data: _buildTabContentWithEvent(event),
+              data: (subGroups) =>
+                  _buildContent(event, subGroups),
               loading: SkeletonLoader.groupList,
               error: (e, _) => NetworkErrorWidget(
                 onRetry: () => ref.invalidate(
@@ -145,126 +141,155 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
     );
   }
 
-  Widget Function(List<SubGroup>) _buildTabContentWithEvent(Event event) {
-    return (List<SubGroup> allGroups) => TabBarView(
-      controller: _tabController,
-      children: [
-        _buildGroupList(
-          event,
-          allGroups.where((g) => g.type == SubGroupType.car).toList(),
-          SubGroupType.car,
-        ),
-        _buildGroupList(
-          event,
-          allGroups.where((g) => g.type == SubGroupType.room).toList(),
-          SubGroupType.room,
-        ),
-      ],
-    );
-  }
+  Widget _buildContent(Event event, List<SubGroup> subGroups) {
+    final memberCount = subGroups
+        .expand((g) => g.members)
+        .map((m) => m.participantId)
+        .toSet()
+        .length;
 
-  Widget _buildGroupList(Event event, List<SubGroup> groups, SubGroupType type) {
-    if (groups.isEmpty) return _buildEmptyState(type);
-
-    final participants = ref.watch(
-      eventLogisticsParticipantsProvider(event),
-    );
-
-    final assignedUserIds = groups
+    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
+    final assignedIds = subGroups
         .expand((g) => g.members)
         .map((m) => m.participantId)
         .toSet();
+    final unassignedCount =
+        participants.where((p) => !assignedIds.contains(p.id)).length;
 
-    final unassigned = participants
-        .where((p) => !assignedUserIds.contains(p.id))
-        .toList();
+    return CustomScrollView(
+      slivers: [
+        // Hero card with stats
+        SliverToBoxAdapter(
+          child: _buildHeroCard(
+            groupCount: subGroups.length,
+            memberCount: memberCount,
+            unassignedCount: unassignedCount,
+          ),
+        ),
 
-    return Column(
-      children: [
-        UnassignedPool(unassigned: unassigned, type: type),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(
-                eventSubGroupsProvider(
-                  (groupId: widget.groupId, eventId: widget.eventId),
+        if (subGroups.isEmpty)
+          SliverFillRemaining(
+            child: EmptyStateView(
+              icon: Iconsax.people,
+              title: 'No sub-groups yet',
+              message:
+                  'Create sub-groups to organize transport, accommodation, or activities.',
+              actionLabel: 'Create Sub-group',
+              onAction: _showCreateDialog,
+              accentGradient: const LinearGradient(
+                colors: [Color(0xFF5B7B8C), Color(0xFF7B9BAC)],
+              ),
+            ),
+          )
+        else ...[
+          const SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              AppColors.space16,
+              AppColors.space12,
+              AppColors.space16,
+              AppColors.space4,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                'SUB-GROUPS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.5,
                 ),
-              );
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(24),
-              itemCount: groups.length,
-              itemBuilder: (context, index) => SubgroupCard(
-                group: groups[index],
-                onRenameGroup: () => _showCreateDialog(group: groups[index]),
-                onDeleteGroup: _confirmDeleteGroup,
-                onAddMember: _showMemberPicker,
-                onRemoveMember: (member, group) =>
-                    _removeMember(member: member, group: group),
-                onDrop: (participant) =>
-                    _dropMemberOnGroup(participant: participant, group: groups[index]),
               ),
             ),
           ),
+          SliverToBoxAdapter(
+            child: FadeInList(
+              children: subGroups.map((subGroup) {
+                return SubGroupCard(
+                  subGroup: subGroup,
+                  onDeleteGroup: _confirmDeleteGroup,
+                  onAddMember: _showMemberPicker,
+                  onRemoveMember: (member, group) =>
+                      _removeMember(member: member, group: group),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+
+        const SliverPadding(
+          padding: EdgeInsets.only(bottom: AppColors.space32),
+          sliver: SliverToBoxAdapter(child: SizedBox()),
         ),
       ],
     );
   }
 
-  Widget _buildEmptyState(SubGroupType type) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Icon(
-                type == SubGroupType.car ? Iconsax.car : Iconsax.house,
-                size: 48,
-                color: AppColors.primary,
-              ),
+  Widget _buildHeroCard({
+    required int groupCount,
+    required int memberCount,
+    required int unassignedCount,
+  }) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppColors.space16,
+        AppColors.space16,
+        AppColors.space16,
+        AppColors.space8,
+      ),
+      padding: const EdgeInsets.all(AppColors.space20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ORGANIZATION',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textMuted,
+              letterSpacing: 0.5,
             ),
-            const SizedBox(height: 24),
+          ),
+          const SizedBox(height: AppColors.space8),
+          Text(
+            '$groupCount groups · $memberCount members',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          if (unassignedCount > 0) ...[
+            const SizedBox(height: AppColors.space8),
             Text(
-              'No ${type.pluralName} Yet',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add your first ${type.displayName.toLowerCase()} to start\norganizing your group',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _showCreateDialog,
-              icon: const Icon(Iconsax.add, size: 18),
-              label: Text('Add ${type.displayName}'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+              '$unassignedCount unassigned',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: AppColors.errorText,
               ),
             ),
           ],
-        ),
+          const SizedBox(height: AppColors.space16),
+          SizedBox(
+            width: double.infinity,
+            height: AppColors.buttonHeight,
+            child: ElevatedButton(
+              onPressed: _showCreateDialog,
+              child: const Text('Create Group'),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   void _showMemberPicker(SubGroup group) {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
-    // Read event synchronously from already-watched provider
     final event = ref.read(eventDetailProvider(eventRef)).valueOrNull;
 
     showModalBottomSheet(
@@ -335,15 +360,14 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                                       p.avatarUrl!.startsWith('http')
                                   ? NetworkImage(p.avatarUrl!)
                                   : null,
-                              child:
-                                  p.avatarUrl == null ||
+                              child: p.avatarUrl == null ||
                                       !p.avatarUrl!.startsWith('http')
                                   ? Text(
                                       p.displayName?[0] ?? 'U',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.mint,
+                                        color: AppColors.moduleLedger,
                                       ),
                                     )
                                   : null,
@@ -357,15 +381,25 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                             onTap: () {
                               HapticService.lightClick();
                               Navigator.pop(context);
-                              _addMemberToGroup(group: group, participant: p);
+                              _addMemberToGroup(
+                                group: group,
+                                participant: p,
+                              );
                             },
                           );
                         },
                       ),
                     );
                   },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        'Loading...',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
+                    ),
+                  ),
                   error: (e, _) =>
                       const InlineErrorWidget(message: 'Unable to load'),
                 ),
@@ -393,29 +427,6 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Couldn't remove member \u2014 try again"),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _dropMemberOnGroup({
-    required Participant participant,
-    required SubGroup group,
-  }) async {
-    try {
-      await ref.read(subGroupServiceProvider).addMember(
-        groupId: widget.groupId,
-        eventId: widget.eventId,
-        subGroupId: group.id,
-        participantId: participant.id,
-        displayName: participant.displayName ?? '',
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Couldn't add member \u2014 try again"),
           ),
         );
       }
@@ -467,7 +478,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             },
             child: const Text(
               'DELETE',
-              style: TextStyle(color: AppColors.rose),
+              style: TextStyle(color: AppColors.errorText),
             ),
           ),
         ],
@@ -494,10 +505,6 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }
 
   void _showCreateDialog({SubGroup? group}) {
-    final type =
-        group?.type ??
-        (_tabController.index == 0 ? SubGroupType.car : SubGroupType.room);
-
     if (group != null) {
       _nameController.text = group.name;
       _capacityController.text = group.capacity.toString();
@@ -536,9 +543,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 24),
-
             TextField(
               controller: _nameController,
               autofocus: true,
@@ -548,14 +553,9 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                 fontWeight: FontWeight.w900,
                 color: AppColors.textPrimary,
               ),
-              decoration: InputDecoration(
-                hintText: type == SubGroupType.car
-                    ? 'CAR NAME (e.g. DEFENDER 1)'
-                    : 'ROOM NAME (e.g. TENT 01)',
-                prefixIcon: Icon(
-                  type == SubGroupType.car ? Iconsax.car : Iconsax.house,
-                  color: AppColors.textMuted,
-                ),
+              decoration: const InputDecoration(
+                hintText: 'CAR NAME (e.g. DEFENDER 1)',
+                prefixIcon: Icon(Iconsax.car, color: AppColors.textMuted),
               ),
             ),
             const SizedBox(height: 16),
@@ -573,19 +573,19 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
               ),
               decoration: const InputDecoration(
                 hintText: 'CAPACITY',
-                prefixIcon: Icon(Iconsax.people, color: AppColors.textMuted),
+                prefixIcon:
+                    Icon(Iconsax.people, color: AppColors.textMuted),
               ),
             ),
-
             const SizedBox(height: 24),
-
             Consumer(
               builder: (context, ref, _) {
                 final isLoading = ref.watch(subGroupLoadingProvider);
                 return SizedBox(
                   height: 64,
                   child: ElevatedButton(
-                    key: group != null ? null : LogisticsKeys.createGroupButton,
+                    key:
+                        group != null ? null : LogisticsKeys.createGroupButton,
                     onPressed: isLoading
                         ? null
                         : () {
@@ -607,26 +607,17 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
                             } else {
                               _createGroup(
                                 name: name,
-                                type: type,
+                                type: SubGroupType.car,
                                 capacity: capacity,
                               );
                             }
                           },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.mint,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      elevation: 0,
-                    ),
                     child: isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                        ? const Text(
+                            'SAVING...',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1,
                             ),
                           )
                         : Text(

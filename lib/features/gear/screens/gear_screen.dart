@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
@@ -8,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/types/event_ref.dart';
+import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/search_filter_bar.dart';
@@ -17,11 +17,12 @@ import '../../events/providers/event_provider.dart';
 import '../keys/gear_keys.dart';
 import '../models/gear_item_model.dart';
 import '../providers/gear_provider.dart';
+import '../widgets/gear_hero_card.dart';
 
-/// Gear Screen - Packing checklist with claim functionality.
+/// Gear Screen — unified module template (D-08).
 ///
-/// Takes string IDs per D-14. Uses [eventDetailProvider] for event data.
-/// Shows a not-found error state per D-11 when event is null.
+/// Layout: dark ModuleHeader → GearHeroCard → SearchFilterBar → gear item list.
+/// Loading: SkeletonLoader. Empty: EmptyStateView with olive earthy gradient.
 class GearScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String eventId;
@@ -59,12 +60,19 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final gearAsync = ref.watch(eventGearItemsProvider(eventRef));
     final currentUserId = ref.watch(currentUserProvider)?.uid;
 
-    // Loading state
+    // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Gear', useDarkTheme: true),
+            Expanded(child: SkeletonLoader.cardList()),
+          ],
+        ),
       );
     }
+
 
     final event = eventAsync.valueOrNull;
 
@@ -74,7 +82,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         backgroundColor: AppColors.background,
         body: Column(
           children: [
-            const ModuleHeader(title: 'Not Found'),
+            const ModuleHeader(title: 'Not Found', useDarkTheme: true),
             Expanded(
               child: EmptyStateView(
                 icon: Iconsax.warning_2,
@@ -99,20 +107,13 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           ModuleHeader(
             title: 'Gear',
             subtitle: event.name.toUpperCase(),
+            useDarkTheme: true,
           ),
-          SearchFilterBar(
-            onSearchChanged: (q) => setState(() => _searchQuery = q),
-            hintText: 'Search gear...',
-            filters: const ['Unclaimed', 'Claimed', 'Packed'],
-            activeFilter: _statusFilter,
-            onFilterChanged: (f) => setState(() => _statusFilter = f),
-          ),
-          const SizedBox(height: 12),
           Expanded(
             child: gearAsync.when(
               data: (items) => _buildContent(items, currentUserId),
-              loading: () => SkeletonLoader.cardList(),
-              error: (e, _) => Center(child: _buildErrorState(e.toString())),
+              loading: SkeletonLoader.cardList,
+              error: (e, _) => _buildErrorState(e.toString()),
             ),
           ),
         ],
@@ -122,9 +123,12 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   }
 
   Widget _buildContent(List<GearItem> items, String? currentUserId) {
-    if (items.isEmpty) return _buildEmptyState();
+    final packedCount = items.where((i) => i.isPacked).length;
+    final totalCount = items.length;
+    final priorityCount =
+        items.where((i) => i.isHighPriority && !i.isPacked).length;
 
-    var filteredItems = items.where((item) {
+    final filteredItems = items.where((item) {
       if (_searchQuery.isNotEmpty) {
         if (!item.itemName.toLowerCase().contains(_searchQuery.toLowerCase())) {
           return false;
@@ -144,163 +148,106 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       return true;
     }).toList();
 
-    final stats = GearStats(
-      total: items.length,
-      unclaimed: items.where((i) => i.status == GearStatus.unclaimed).length,
-      claimed: items.where((i) => i.status == GearStatus.claimed).length,
-      packed: items.where((i) => i.status == GearStatus.packed).length,
-    );
-
-    return Column(
-      children: [
-        _buildProgressCard(stats),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(eventGearItemsProvider((groupId: widget.groupId, eventId: widget.eventId)));
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              itemCount: filteredItems.length + 1, // +1 for AddItemInput
-              itemBuilder: (context, index) {
-                if (index == 0) return _buildAddItemInput();
-                return _buildGearItemCard(
-                  filteredItems[index - 1],
-                  currentUserId,
-                );
-              },
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(eventGearItemsProvider(_eventRef));
+      },
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: GearHeroCard(
+              packedCount: packedCount,
+              totalCount: totalCount,
+              priorityCount: priorityCount,
+              onAddItem: _focusAddField,
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Text(
-                'ADD YOUR FIRST ITEM',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 1.2,
-                ),
-              ).animate().fadeIn(delay: 350.ms),
-              const SizedBox(height: 16),
-              _buildAddItemInput().animate().fadeIn(delay: 400.ms),
-            ],
+          SliverToBoxAdapter(
+            child: SearchFilterBar(
+              onSearchChanged: (q) => setState(() => _searchQuery = q),
+              hintText: 'Search gear...',
+              filters: const ['Unclaimed', 'Claimed', 'Packed'],
+              activeFilter: _statusFilter,
+              onFilterChanged: (f) => setState(() => _statusFilter = f),
+            ),
           ),
-        ),
-        const Expanded(
-          child: EmptyStateView(
-            icon: Iconsax.bag_2,
-            title: 'No gear yet',
-            message: 'Add items your group needs to bring',
-            iconColor: AppColors.amber,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressCard(GearStats stats) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: AppColors.cardShadowLarge,
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'PACKING PROGRESS',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Getting ready',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+          // Add item input — always shown regardless of list state
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppColors.space16,
+                AppColors.space8,
+                AppColors.space16,
+                AppColors.space8,
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.mint.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              child: _buildAddItemInput(),
+            ),
+          ),
+          if (filteredItems.isEmpty && items.isNotEmpty)
+            const SliverFillRemaining(
+              child: Center(
                 child: Text(
-                  '${(stats.readyPercentage * 100).round()}%',
-                  style: const TextStyle(
+                  'No items match your filter',
+                  style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.mint,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: stats.readyPercentage,
-              backgroundColor: AppColors.surfaceLight,
-              valueColor: const AlwaysStoppedAnimation(AppColors.mint),
-              minHeight: 6,
+            )
+          else if (items.isEmpty)
+            SliverFillRemaining(
+              child: EmptyStateView(
+                icon: Iconsax.bag_2,
+                title: 'Nothing packed yet',
+                message:
+                    'Add gear items to track what everyone needs to bring.',
+                actionLabel: 'Add Gear Item',
+                onAction: _focusAddField,
+                accentGradient: const LinearGradient(
+                  colors: [Color(0xFF7A8C5E), Color(0xFF96A876)],
+                ),
+              ),
+            )
+          else ...[
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AppColors.space16,
+                AppColors.space12,
+                AppColors.space16,
+                AppColors.space4,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  'GEAR ITEMS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Iconsax.box, size: 14, color: AppColors.textMuted),
-              const SizedBox(width: 6),
-              Text(
-                '${stats.packed} / ${stats.total} items packed',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AppColors.space16,
+                0,
+                AppColors.space16,
+                AppColors.space32,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: FadeInList(
+                  children: filteredItems.map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppColors.space8),
+                      child: _buildGearItemCard(item, currentUserId),
+                    );
+                  }).toList(),
                 ),
               ),
-              const Spacer(),
-              Text(
-                '${stats.unclaimed} unclaimed',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.warning,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );
@@ -310,14 +257,13 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final isMine = item.assignedTo == currentUserId;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppColors.space16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
         border: Border.all(
           color: item.isHighPriority
-              ? AppColors.warning.withValues(alpha: 0.3)
+              ? AppColors.error.withValues(alpha: 0.3)
               : AppColors.borderLight,
           width: item.isHighPriority ? 2 : 1.5,
         ),
@@ -331,7 +277,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
               _togglePacked(item, isMine);
             },
             child: AnimatedContainer(
-              duration: 200.ms,
+              duration: const Duration(milliseconds: 200),
               width: 28,
               height: 28,
               decoration: BoxDecoration(
@@ -356,7 +302,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                   : null,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppColors.space16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,7 +325,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                         ),
                       ),
                     ),
-                    if (item.isHighPriority) _buildPriorityBadge(true),
+                    if (item.isHighPriority) _buildPriorityBadge(),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -387,7 +333,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                   children: [
                     _buildStatusChip(item.status),
                     if (item.assignedTo != null) ...[
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppColors.space12),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -395,7 +341,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius:
+                              BorderRadius.circular(AppColors.radiusSmall),
                         ),
                         child: Row(
                           children: [
@@ -455,7 +402,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                 const PopupMenuItem(value: 'claim', child: Text('Claim Item')),
               const PopupMenuItem(
                 value: 'delete',
-                child: Text('Delete', style: TextStyle(color: AppColors.rose)),
+                child: Text('Delete', style: TextStyle(color: AppColors.errorText)),
               ),
             ],
           ),
@@ -468,7 +415,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final color = switch (status) {
       GearStatus.unclaimed => AppColors.textMuted,
       GearStatus.claimed => AppColors.warning,
-      GearStatus.packed => AppColors.mint,
+      GearStatus.packed => AppColors.moduleLedger,
     };
 
     return Container(
@@ -490,26 +437,25 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     );
   }
 
-  Widget _buildPriorityBadge(bool isHigh) {
-    if (!isHigh) return const SizedBox.shrink();
+  Widget _buildPriorityBadge() {
     return Container(
-      margin: const EdgeInsets.only(left: 8),
+      margin: const EdgeInsets.only(left: AppColors.space8),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.rose.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
+        color: AppColors.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppColors.radiusSmall / 2),
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Iconsax.flash, color: AppColors.rose, size: 10),
+          Icon(Iconsax.flash, color: AppColors.errorText, size: 10),
           SizedBox(width: 4),
           Text(
             'HIGH',
             style: TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.w900,
-              color: AppColors.rose,
+              color: AppColors.errorText,
             ),
           ),
         ],
@@ -519,11 +465,10 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
   Widget _buildAddItemInput() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
         border: Border.all(color: AppColors.surfaceLight),
       ),
       child: Row(
@@ -531,7 +476,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           IconButton(
             icon: Icon(
               Iconsax.flash,
-              color: _isHighPriority ? AppColors.rose : AppColors.textMuted,
+              color: _isHighPriority ? AppColors.errorText : AppColors.textMuted,
               size: 20,
             ),
             onPressed: () {
@@ -561,7 +506,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           IconButton(
             icon: const Icon(
               Iconsax.add_circle,
-              color: AppColors.mint,
+              color: AppColors.primary,
               size: 28,
             ),
             onPressed: () {
@@ -593,26 +538,18 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   }
 
   Widget _buildErrorState(String error) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Iconsax.warning_2, color: AppColors.rose, size: 48),
-        const SizedBox(height: 16),
-        Text(
-          'Could not load gear',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            color: AppColors.rose,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          error,
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-        ),
-      ],
+    return EmptyStateView(
+      icon: Iconsax.warning_2,
+      title: "Couldn't load Gear",
+      message: 'Check your connection and try again.',
+      actionLabel: 'Reload',
+      onAction: () => ref.invalidate(eventGearItemsProvider(_eventRef)),
+      iconColor: AppColors.textSecondary,
     );
+  }
+
+  void _focusAddField() {
+    // Scroll to add item input — handled by scroll view
   }
 
   Future<void> _handleMenuAction(String action, GearItem item) async {
@@ -699,7 +636,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
               'DELETE',
-              style: TextStyle(color: AppColors.rose),
+              style: TextStyle(color: AppColors.errorText),
             ),
           ),
         ],
@@ -728,19 +665,17 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final name = _itemController.text.trim();
     if (name.isEmpty) return;
 
-    // Per D-04: disable add button while write is in flight
     final isLoading = ref.read(gearLoadingProvider);
     if (isLoading) return;
     ref.read(gearLoadingProvider.notifier).state = true;
 
-    // Per D-06: clear immediately
     _itemController.clear();
     final wasHighPriority = _isHighPriority;
     setState(() => _isHighPriority = false);
 
     try {
-      // Per D-12/D-13: compute sequenceId from current items
-      final items = ref.read(eventGearItemsProvider(_eventRef)).valueOrNull ?? [];
+      final items =
+          ref.read(eventGearItemsProvider(_eventRef)).valueOrNull ?? [];
       final nextSeqId = items.isEmpty
           ? 1
           : items.map((i) => i.sequenceId).reduce((a, b) => a > b ? a : b) + 1;
@@ -752,7 +687,6 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             isHighPriority: wasHighPriority,
             sequenceId: nextSeqId,
           );
-      // Per D-08: haptic on success
       HapticService.success();
     } catch (e) {
       if (mounted) {
@@ -781,7 +715,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text("Couldn't update packed status \u2014 try again")),
+              content:
+                  Text("Couldn't update packed status \u2014 try again")),
         );
       }
     });
