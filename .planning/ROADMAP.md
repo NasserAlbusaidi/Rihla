@@ -35,7 +35,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **Phase 16: Stitch Workflow & Design Reference** - Establish Stitch as specification source, finalize palette, and add CI lint rule blocking hardcoded color values (completed 2026-03-29)
 - [x] **Phase 17: Animation Library & Loading States** - Build shared animation components and skeleton loading variants before any screen uses them (completed 2026-03-29)
 - [x] **Phase 18: Home Dashboard Redesign** - Deliver the single-scroll dashboard with balance hero, group cards, quick-action tray, and activity strip (completed 2026-03-30)
-- [ ] **Phase 19: Navigation Restructuring** - Migrate 22 Navigator.push calls to GoRouter subroutes so all event-level screens are reachable within 2 taps
+- [x] **Phase 19: Navigation Restructuring** - Migrate 22 Navigator.push calls to GoRouter subroutes so all event-level screens are reachable within 2 taps (completed 2026-03-30)
 - [ ] **Phase 20: Group Detail & Event Hub Redesign** - Redesign the group gateway and event hub with earthy tokens, type-specific color accents, and M3 transitions
 - [ ] **Phase 21: Module Screens Redesign** - Apply the new design language to all six module screens with card-style layouts and illustrated empty states
 - [ ] **Phase 22: Polish Pass & Token Cleanup** - Add haptic feedback, animated balance counters, texture overlays, M3 motion, and delete legacy AppColors
@@ -131,7 +131,7 @@ Plans:
 Plans:
 - [x] 19-01-PLAN.md — Route tree expansion (14 new GoRoute entries) + _slideRightTransition helper + :id->:gid rename + ModuleHeader context.pop() + testRouter helper
 - [x] 19-02-PLAN.md — Screen constructor migration (9 screens: Event/Group objects -> string IDs) + Navigator.push -> context.push/go replacements + router placeholder wiring
-- [ ] 19-03-PLAN.md — EditExpenseSheet -> EditExpenseScreen conversion + test file updates + page_transitions.dart deletion + CLAUDE.md navigation docs
+- [x] 19-03-PLAN.md — EditExpenseSheet -> EditExpenseScreen conversion + test file updates + page_transitions.dart deletion + CLAUDE.md navigation docs
 
 ### Phase 20: Group Detail & Event Hub Redesign
 **Goal**: The group detail screen and event hub communicate the financial state and module access visually — users scan rather than read to understand what needs attention
@@ -180,7 +180,7 @@ Plans:
 | 16. Stitch Workflow & Design Reference | 2/2 | Complete    | 2026-03-29 |
 | 17. Animation Library & Loading States | 2/2 | Complete    | 2026-03-29 |
 | 18. Home Dashboard Redesign | 3/3 | Complete    | 2026-03-30 |
-| 19. Navigation Restructuring | 2/3 | In Progress|  |
+| 19. Navigation Restructuring | 3/3 | Complete   | 2026-03-30 |
 | 20. Group Detail & Event Hub Redesign | 0/? | Not started | - |
 | 21. Module Screens Redesign | 0/? | Not started | - |
 | 22. Polish Pass & Token Cleanup | 0/? | Not started | - |
