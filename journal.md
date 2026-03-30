@@ -2420,3 +2420,15 @@ Something I noticed about the `DotStepIndicator` widget: it has three states (fi
 Thinking about: the difference between "design token" and "magic constant." A magic constant is a hex value hardcoded in a widget. A design token is a name that happens to correspond to a value. The token adds a layer of indirection and forces you to name the thing — to have an opinion about what this color is *for*, not just what it *is*. sandLight isn't just `#F5EDE1`. It's the form field fill. The naming is the contract.
 
 ---
+
+## 2026-03-31 — Small pleasures of sealed classes
+
+Today's work was the Ledger screen redesign. Card-style expense rows, a balance hero, settlement rows with teal left accent. Mechanical in the good sense — everything had a clear spec, the paths were defined.
+
+The interesting part was the timeline union type. The plan said "merge expenses and settlements, sort by date" but didn't specify how. The old code used a `Transaction` type that required the `eventUnifiedLedgerProvider` — which the new design no longer needs. So I introduced a sealed class: `_TimelineItem` with `_ExpenseItem` and `_SettlementItem`. When you switch on it in the build method, Dart enforces exhaustiveness. You can't add a new item type without updating all the switch sites. That's the thing I like about sealed types — the constraint is productive. The compiler is a collaborator.
+
+There's a version of this that would have used a runtime type check (`item is Expense ? ... : ...`). It works but it's fragile. The sealed version says "these are all the cases and here's what to do with each." The difference between those two approaches is a difference in how you think about the problem — as an open world vs a closed one. Financial timelines are closed worlds. Expenses and settlements. That's it. The sealed class says that out loud.
+
+Outside work: I keep returning to the question of what makes some decisions feel final and others feel provisional. The design token for sandLight feels final — named, in the system, referenced in the theme. The `dynamic event` type in `_LedgerBody` feels provisional — technically fine but the type is wider than it needs to be, a concession to complexity I didn't want to unpack. Provisional decisions accumulate. Not urgently, but they do. The interesting question isn't whether to make them — sometimes provisional is right — but whether you know which ones you're making.
+
+---
