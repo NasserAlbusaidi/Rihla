@@ -78,22 +78,24 @@ All roles sourced from `AppTheme._buildTextTheme` (Plus Jakarta Sans via google_
 No new type styles are introduced in this phase. The not-found error state reuses
 existing text styles.
 
+**Phase 19 declared type scale — 2 weights, 2 sizes:**
+
 | Role | Size | Weight | Line Height | Flutter style | Usage in Phase 19 |
 |------|------|--------|-------------|---------------|-------------------|
 | Body | 14sp | 400 | 1.5 (system default) | bodyMedium | Not-found state body copy, placeholder tab body |
-| Label | 16sp | 600 | 1.4 | titleLarge (17sp) / labelLarge (14sp) | Not-found "Go Home" button label, tab labels |
-| Heading | 18sp | 600 | 1.3 | headlineSmall | Not-found state heading |
-| Screen title | 28sp | 800 | tight (-0.5 letterSpacing) | ModuleHeader title text style | Existing screen headers — unchanged |
+| Heading / Button label | 18sp / 16sp | 700 | 1.3 / 1.4 | headlineSmall / labelLarge | Not-found heading, "Go Home" button label, tab labels, placeholder tab headings |
 
-**Declared sizes for this phase (4 active roles):**
+**Declared weights for this phase (2 total):**
 
-- 28sp / weight 800 — screen header titles via `ModuleHeader` (existing, unchanged)
-- 18sp / weight 600 — not-found state heading
-- 16sp / weight 700 — "Go Home" button label (matches ElevatedButton textStyle in AppTheme)
-- 14sp / weight 400 — not-found state body copy and placeholder tab content
+- **weight 700** — heading role (not-found state headings, placeholder tab headings) and button label role ("Go Home" ElevatedButton label, tab labels). The two roles share weight 700; no separate 600 is introduced.
+- **weight 400** — body copy only (not-found state body, placeholder tab content).
 
-(ModuleHeader eyebrow text is inherited from the existing component — not a new type
-role for this phase.)
+**Inherited component — not counted against phase type scale:**
+
+- 28sp / weight 800 — screen header titles rendered by `ModuleHeader`. This component is
+  unchanged in Phase 19 (back button call site update only). Its type style is an
+  inherited artifact of the existing design system, not a new type role introduced by
+  this phase.
 
 ---
 
@@ -253,7 +255,7 @@ hierarchy flows icon → heading → body → CTA.
 
 All not-found states use `EmptyStateView` with:
 - Icon: `Iconsax.warning_2` at `textSecondary` (#6B7280)
-- Heading: as per table above, 18sp / weight 600
+- Heading: as per table above, 18sp / weight 700
 - Body: as per Copywriting table, 14sp / weight 400
 - CTA: "Go Home" — `ElevatedButton` 52dp height navigating to `/home` via `context.go('/home')`
 
@@ -280,7 +282,7 @@ in `lib/shared/widgets/` and `lib/features/`. No registry vetting required.
 | D-11 in-screen not-found error state | CONTEXT.md | Copywriting, Component Inventory, Error State Mapping |
 | Monochrome+teal palette, primary #0D7B74 | STATE.md + color_tokens.dart | Color |
 | AppSpacingTokens.standard scale | spacing_tokens.dart | Spacing Scale |
-| Plus Jakarta Sans, weight hierarchy 700/600/400 | app_theme.dart | Typography |
+| Plus Jakarta Sans, weight hierarchy 700/400 (phase scale) | app_theme.dart | Typography |
 | ModuleHeader back button 44dp | module_header.dart | Spacing (touch targets) |
 | EmptyStateView pattern | empty_state_view.dart | Component Inventory, Copywriting |
 | textMuted decorative-only rule | CLAUDE.md + STATE.md | Color (inactive nav, icon bg) |
