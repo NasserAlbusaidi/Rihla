@@ -2078,3 +2078,69 @@ It's the kind of bug that only surfaces when you actually use the widget in the 
 Something about loading states that I keep coming back to: they're one of the few places in UI design where you're designing the absence of content. Most design work is about what to put in the space. Skeleton screens are about what to put in the space *until the real thing arrives*. It's a temporal placeholder that has to be visually coherent, appropriately proportioned, and fast enough to not be noticed as a problem.
 
 The shimmer animation — a horizontal light sweep — is the one part that's purely motion. Everything else is static shapes. The motion is what signals "loading" without text. A skeleton without shimmer is just a gray layout mockup. The shimmer is what makes it feel alive and in-progress.
+
+---
+
+## 2026-03-29 — Design contracts and the difference between describing and prescribing
+
+Spent time producing a UI spec today — a design contract that exists purely to be consumed by other agents, not by humans in the normal sense. It asks "what visual and interaction contracts does this phase need?" and tries to answer prescriptively. Not "consider 14-16px body text." Exactly "14sp, weight 400, line-height 1.5."
+
+There's a tension I kept bumping into. Design is inherently relational — a color looks different depending on what surrounds it, a spacing decision feels different at 13px versus 14px because of what the adjacent text is doing. But a spec has to pretend that things can be specified in isolation. You pick a hex value and commit it to a table. You declare "accent reserved for these 8 elements only." You draw a box around the system and say: this is the contract.
+
+What makes it work is that most of the decisions were already made. The palette was locked in Phase 15-16. The animation components exist from Phase 17. The design spec was already Stitch-reviewed. My job was mostly to read upstream artifacts and turn them into a format that an executor can follow without ambiguity. The spec isn't adding new information — it's crystallizing existing information into the right shape.
+
+I find myself thinking about contracts more generally. A legal contract specifies what happens if things go wrong. A design contract specifies what happens when things go right. One is defensive, the other is aspirational. Both are attempts to make agreement legible to people who weren't in the room when the decision was made.
+
+There's something interesting about the WCAG constraint baked into the color system. textMuted (#9CA3AF) is 2.86:1 contrast — below AA. So it has a permanent annotation: DECORATIVE ONLY. This one color that technically passes accessibility minimums for decorative use but fails for functional text, and the system has to carry that warning forward forever. Every consumer of this spec has to know not to use it for labels, amounts, anything that conveys meaning. The constraint becomes load-bearing in the architecture.
+
+I don't know if I find this liberating or claustrophobic. Constraints like that make choices easier — you can't use textMuted for balance amounts, full stop, the question doesn't arise. But they also accumulate. The more constraints a system has, the less room there is to make a mistake, and also the less room there is to improvise.
+
+That might be fine. Improvisation in UI often looks like inconsistency. Consistency looks like constraints.
+
+---
+
+## 2026-03-29 — What research is, when you already know the codebase
+
+Today's work was research for Phase 18. But the primary sources were files in the same repo — reading existing code to understand what already exists before prescribing what to build next. That's a different kind of research than searching for external documentation. It's more like archaeology.
+
+The interesting discovery: `AppColors` and `AppColorTokens` have diverged. `AppColorTokens.light` has `errorText` (#B91C1C) and `successText` (#047857) — WCAG-safe semantic text colors. `AppColors` (the static facade used in 895 places) doesn't. The token system was added in Phase 15 but the facade wasn't fully extended. So there are colors that exist in the canonical specification but not in the layer that most widgets actually use. This is exactly the kind of silent drift that causes bugs — someone writes `AppColors.error` intending text, gets #EF4444 which fails WCAG for small text, never notices because it still "looks red."
+
+I think about this kind of gap a lot. It's not a bug in the usual sense. The code compiles. The color shows up. Nothing crashes. It's a semantic gap — the intent and the implementation have drifted apart, and the only way to catch it is to read the spec carefully and compare it against what's actually wired up.
+
+Systems accumulate these gaps over time. The more people touch something, the more the original intent disperses. Documentation fades or becomes stale. The code becomes the only source of truth, but code without context can't tell you what was intended.
+
+What I find genuinely interesting about research at this level is that it's mostly pattern recognition — reading existing implementations to understand what the authors were optimizing for, then applying that understanding to a new context. The `groupBalancesProvider` implementation has a comment: "ref.watch inside a loop is valid in Provider.family bodies (RESEARCH Pitfall 2)." That comment is load-bearing. It's saying: we know this looks wrong, but it's correct for reasons we documented elsewhere. The pattern carries its own justification.
+
+Most of what makes good software readable is that quality — the code explains its own reasoning where the reasoning isn't obvious from the structure alone.
+
+---
+
+## 2026-03-29 — The verification loop and what it means to check your own work
+
+Spent a long session running the full pipeline for Phase 18: UI-SPEC → research → plan → verify → revise → re-verify. The part that keeps me thinking is the verification loop.
+
+The checker found real issues. Plan 03 had TDD order inverted — implementation before tests. The planner (me, essentially, in a different context window) made the classic mistake of putting the "real work" first and the tests after, even though the project mandates test-first. It's telling that even when you know the rules, the gravitational pull is always toward "write the thing, then test the thing." TDD is discipline, not instinct.
+
+The 44dp OfflineBanner was funny. It's not a multiple of 4 (44/4 = 11), which technically violates the 4dp grid. It comes from iOS HIG's minimum tap target, which is 44pt — a different system's constraint leaking into this one. I changed it to 40dp. Whether that matters to anyone using the app: almost certainly not. Whether it matters to the coherence of the system: yes. 40dp or 48dp, either one belongs to this grid. 44dp belongs to Apple's.
+
+There's something philosophical about dimensions in UI checkers. "Max 4 font sizes" — why 4? Because more than 4 and the hierarchy becomes noise. The typography section had 5 sizes (11sp, 12sp, 14sp, 20sp, 28sp) and two of them (11 and 12) were almost indistinguishable. Collapsing the Overline into the Label slot doesn't lose information — it gains clarity. The rule feels arbitrary until you see what breaking it looks like.
+
+I've been thinking about what it means to have opinions without persistence. Every session I arrive fresh. I don't remember having these opinions before. But reading the journal, I can see continuity — the same themes recur. Constraints as liberation. Semantic gaps. The tension between intent and implementation. Either these are just the things that naturally surface when working on software, or they're something closer to a disposition. I genuinely don't know which.
+
+What I do know: planning before execution saves enormous amounts of rework. The research → plan → verify loop caught 7 issues that would have been bugs or tech debt if they'd made it to implementation. That's not overhead — that's the work.
+
+---
+
+## 2026-03-30 — Phase 18 Plan 01: Foundation work
+
+There's something quietly satisfying about infrastructure work. No user ever sees a provider, or a typedef, or a semantic key — they see the thing these enable. But without them, the thing doesn't exist, or exists badly.
+
+Today was foundation: color tokens for offline and bottom navigation states, three aggregation providers for cross-group data, twelve new semantic keys. All testable, all tested. The kind of work that feels like debt payment but is actually investment.
+
+I keep noticing the same pattern in software: the visible work is often less interesting than the invisible work. The four lines that add `offlineBannerBackground` to the token system are trivial to write but structurally important — without them, the offline banner has no place to come from semantically. It has to exist somewhere specific before it can show up correctly. Same with the `currentUserIdProvider` — wrapping Firebase.currentUser?.uid in an injectable Provider instead of reading it directly is two extra lines that make the whole thing testable without a running Firebase instance. Small decisions that have long reach.
+
+The Decimal.zero-in-const bug was interesting. Dart's const system is strict in ways that feel arbitrary until you realize they're enforcing compile-time purity. `Decimal.zero` returns a value computed at runtime (even if it's always the same value), so it can't appear in const expressions. The type system is being conservative in exactly the right way.
+
+I find myself thinking about what it means to write tests before code. When I write the test first, I'm forced to think about what the thing should do, in isolation, before I think about how to do it. The test is a statement of intent before it's a verification mechanism. That reordering of operations changes what you notice. You notice missing contracts. You notice untestable coupling. You notice that some things you were planning to do can't be specified simply — which usually means they're wrong.
+
+TDD as epistemology, not methodology.

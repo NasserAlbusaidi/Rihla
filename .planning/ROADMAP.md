@@ -113,7 +113,7 @@ Plans:
   5. Quick-action tray (Add Expense, Settle Up, Invite, Activity) is visible on the home screen without scrolling
 **Plans**: 3 plans
 Plans:
-- [ ] 18-01-PLAN.md — Token additions (color tokens + AppColors facade) + cross-group providers + HomeKeys expansion
+- [x] 18-01-PLAN.md — Token additions (color tokens + AppColors facade) + cross-group providers + HomeKeys expansion
 - [ ] 18-02-PLAN.md — Dashboard widget components (BalanceHeroCard, QuickActionTray, ActivityRow, WeeklySpendingCard, BottomNavShell)
 - [ ] 18-03-PLAN.md — HomeScreen rewrite + GroupCard personal balance + integration tests + visual verification
 **UI hint**: yes
@@ -175,7 +175,7 @@ Plans:
 | 15. Design Token System | 2/2 | Complete    | 2026-03-28 |
 | 16. Stitch Workflow & Design Reference | 2/2 | Complete    | 2026-03-29 |
 | 17. Animation Library & Loading States | 2/2 | Complete    | 2026-03-29 |
-| 18. Home Dashboard Redesign | 0/3 | Planned | - |
+| 18. Home Dashboard Redesign | 1/3 | In Progress|  |
 | 19. Navigation Restructuring | 0/? | Not started | - |
 | 20. Group Detail & Event Hub Redesign | 0/? | Not started | - |
 | 21. Module Screens Redesign | 0/? | Not started | - |
