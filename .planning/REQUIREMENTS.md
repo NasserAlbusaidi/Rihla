@@ -19,7 +19,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 
 - [x] **NAV-01**: Home screen shows a single-scroll dashboard with balance hero, inline group cards, quick-action tray, and recent activity
 - [x] **NAV-02**: User can see their net cross-group balance (color-coded green/red/gray) on the home screen without tapping into any group
-- [ ] **NAV-03**: All event-level screens are accessible via GoRouter subroutes, replacing Navigator.push with context.push
+- [x] **NAV-03**: All event-level screens are accessible via GoRouter subroutes, replacing Navigator.push with context.push
 - [x] **NAV-04**: User can reach any module screen within 2 taps from the home dashboard
 - [x] **NAV-05**: All data-fetching screens show skeleton loading states instead of spinners or blank screens
 - [x] **NAV-06**: All empty screens show contextual illustrations with a single clear CTA explaining what to do next
@@ -76,7 +76,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 | FOUND-05 | Phase 14 | Complete |
 | NAV-01 | Phase 18 | Complete |
 | NAV-02 | Phase 18 | Complete |
-| NAV-03 | Phase 19 | Pending |
+| NAV-03 | Phase 19 | Complete |
 | NAV-04 | Phase 18 | Complete |
 | NAV-05 | Phase 17 | Complete |
 | NAV-06 | Phase 18 | Complete |
