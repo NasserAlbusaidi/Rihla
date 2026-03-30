@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
-status: verifying
-stopped_at: Completed 18-03-PLAN.md — awaiting human-verify checkpoint (Task 4)
-last_updated: "2026-03-30T07:06:01.529Z"
+status: complete
+stopped_at: Completed 18-03-PLAN.md — Phase 18 complete
+last_updated: "2026-03-30T08:18:24.999Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 9
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 18 — home-dashboard-redesign
+**Current focus:** Phase 19 — navigation-restructuring (next)
 
 ## Current Position
 
-Phase: 18 (home-dashboard-redesign) — EXECUTING
+Phase: 18 (home-dashboard-redesign) — COMPLETE
 Plan: 3 of 3
-Status: Phase complete — ready for verification
+Status: Phase 18 complete — ready for Phase 19
 Last activity: 2026-03-30
 
-Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 phases
+Progress: [██████████] 100% (Phase 18 complete — 5 of 9 phases done)
 
 ## Performance Metrics
 
@@ -49,7 +49,7 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 | Phase 17-animation-library-loading-states P02 | 8 | 2 tasks | 10 files |
 | Phase 18-home-dashboard-redesign P01 | 8 | 2 tasks | 9 files |
 | Phase 18 P02 | 10 | 2 tasks | 8 files |
-| Phase 18 P03 | 17 | 3 tasks | 6 files |
+| Phase 18-home-dashboard-redesign P03 | 17 | 4 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -85,14 +85,19 @@ Progress: [██░░░░░░░░░░░░░░░░░░] 1/9 pha
 - Phase 18 P02: BottomNavShell uses IndexedStack with BottomNavigationBarType.fixed (not GoRouter) for 4-tab navigation — Phase 19 will wire real routes for Activity/Chats/Profile tabs
 - Phase 18 P02: WeeklySpendingCard renders 2dp stub bar for zero-amount days to prevent chart column collapse
 - Phase 18 P02: ActivityRow avatar uses deterministic color from hashCode % Colors.primaries.length — same actor always gets same color
+- Phase 18 P03: GroupCard uses ref.watch(currentUserIdProvider) instead of FirebaseConfig.currentUser directly — testable via Riverpod overrides
+- Phase 18 P03: FadeInList (D-22) takes precedence over SliverList.builder (D-21) for group cards section — FadeInList is a Column, not a Sliver; wrapped in SliverToBoxAdapter per RESEARCH Pitfall 4
+- Phase 18 P03: cacheExtent: 2000 on CustomScrollView ensures WeeklySpendingCard always built for widget test discoverability
+- Phase 18 P03: BottomNavShell gets scaffoldKey param to allow HomeKeys.screen on outer Scaffold without nesting two Scaffolds
+- Phase 18 P03: 743 tests pass after HomeScreen integration — 12 new dashboard tests, 0 regressions
 
 ### Known Risks
 
 - ~~257 find.text() calls in test suite — Phase 14 complete~~ 135 content-only find.text() calls remain; all structural assertions migrated to find.byKey()
 - 895 AppColors.* references — preserved via two-layer system in Phase 15, deleted in Phase 22
 - ~~Earthy palette WCAG contrast: terracotta on sand ~2.8:1 — Phase 15 requires contrast validation before any screen code~~ RESOLVED: new monochrome+teal palette with full WCAG verification in AppColorTokens.light
-- Dashboard eager render risk — Phase 18 uses CustomScrollView + SliverList.builder from the start
-- Physical device baseline needed for Phase 18 performance validation (Snapdragon 665 class)
+- ~~Dashboard eager render risk~~ RESOLVED: Phase 18 uses CustomScrollView + Slivers with cacheExtent:2000; human-verified on device at 60fps
+- ~~Physical device baseline needed for Phase 18 performance validation~~ RESOLVED: Phase 18 Task 4 human-verify checkpoint passed
 
 ### Blockers
 
@@ -100,6 +105,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-30T07:06:01.527Z
-Stopped at: Completed 18-03-PLAN.md — awaiting human-verify checkpoint (Task 4)
-Next action: Phase 18 Plan 02 complete — proceed to Plan 03 (HomeScreen integration: assemble widgets into final screen)
+Last session: 2026-03-30T08:18:24.996Z
+Stopped at: Completed 18-03-PLAN.md — Phase 18 complete
+Next action: Phase 18 complete — proceed to Phase 19 (Navigation Restructuring: migrate 22 Navigator.push calls to GoRouter subroutes)
