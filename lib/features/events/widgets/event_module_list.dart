@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 import '../keys/event_keys.dart';
@@ -20,13 +20,12 @@ import '../../vault/models/document_model.dart';
 import '../../vault/providers/document_provider.dart';
 import '../models/event_model.dart';
 
-/// Priority-sorted list of module cards for an event hub.
+/// 2x3 grid of module cards for an event hub.
 ///
-/// Uses string IDs + EventRef-based Firestore providers for all data.
-/// Receives [EventModules?] from [EventCommandCenter] which already has the
-/// event from its provider lookup — no redundant provider watch here.
-/// If [modules] is null, all modules are shown.
-/// Part of the D-14 big-bang constructor migration.
+/// Fixed order: Ledger, Gear, Logistics, Vault, Activity, Memories.
+/// Activity card always appears (position 5).
+/// Uses AppColorTokens.light for corrected module accent colors.
+/// Part of Phase 20 P02 redesign (D-11, D-12, D-13, D-14).
 class EventModuleList extends ConsumerWidget {
   final String groupId;
   final String eventId;
@@ -62,41 +61,38 @@ class EventModuleList extends ConsumerWidget {
     final docsAsync =
         showVault ? ref.watch(eventDocumentsProvider(eventRef)) : null;
 
-    // Build module card configs.
+    // Build module card configs in fixed order (D-13: no priority sorting).
     final cards = <_ModuleCardConfig>[];
 
-    // --- Ledger ---
+    // Fixed order: Ledger → Gear → Logistics → Vault → Activity → Memories
     if (showLedger) {
       _addLedgerCard(cards, expensesAsync, settlementsAsync, context, eventRef);
     }
-
-    // --- Gear ---
     if (showGear) {
       _addGearCard(cards, gearAsync, context);
     }
-
-    // --- Logistics ---
     if (showLogistics) {
       _addLogisticsCard(cards, subGroupsAsync, context);
     }
-
-    // --- Vault ---
     if (showVault) {
       _addVaultCard(cards, docsAsync, context);
     }
-
-    // --- Memories ---
+    // Activity card always appears (position 5)
+    _addActivityCard(cards, context);
     if (showMemories) {
       _addMemoriesCard(cards, context);
     }
 
-    // Sort by priority (highest first).
-    cards.sort((a, b) => b.priority.compareTo(a.priority));
-
-    return Column(
+    return GridView.count(
+      key: EventKeys.moduleGrid,
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 2.0,
       children: [
-        for (int i = 0; i < cards.length; i++) ...[
-          if (i > 0) const SizedBox(height: 10),
+        for (int i = 0; i < cards.length; i++)
           SmartModuleCard(
             key: cards[i].widgetKey,
             icon: cards[i].icon,
@@ -106,18 +102,16 @@ class EventModuleList extends ConsumerWidget {
             onTap: cards[i].onTap,
             summaryText: cards[i].summaryText,
             actionText: cards[i].actionText,
-            priority: cards[i].priority,
             isEmpty: cards[i].isEmpty,
           )
               .animate()
-              .fadeIn(delay: (100 * i).ms, duration: 400.ms)
+              .fadeIn(delay: (80 * i).ms, duration: 400.ms)
               .slideY(
                 begin: 0.1,
                 end: 0,
-                delay: (100 * i).ms,
+                delay: (80 * i).ms,
                 duration: 400.ms,
               ),
-        ],
       ],
     );
   }
@@ -131,27 +125,18 @@ class EventModuleList extends ConsumerWidget {
   ) {
     final expenses = expensesAsync.valueOrNull ?? [];
 
-    // We need the currency — derive from event ref via a default.
-    // The currency is displayed in the summary but we don't have direct access
-    // here; use a placeholder that the parent could pass, but for now we'll
-    // just show count as the summary without currency formatting.
-    // A null-safe fallback: show expense count only.
     final totalSpent = expenses.fold<Decimal>(
       Decimal.zero,
       (sum, e) => sum + e.amount,
     );
 
     String? ledgerSummary;
-    String? ledgerAction;
-    int ledgerPriority = 10;
     final bool ledgerEmpty = expenses.isEmpty;
 
     if (expenses.isNotEmpty) {
       final count = expenses.length;
-      // Use OMR as default currency display for module card summary
       ledgerSummary =
           '$count expense${count != 1 ? "s" : ""} \u00b7 ${AppFormatters.formatCurrency(totalSpent, 'OMR')}';
-      ledgerPriority = 50;
     }
 
     cards.add(_ModuleCardConfig(
@@ -159,11 +144,9 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.wallet_3,
       title: 'Ledger',
       description: 'Track shared expenses and split costs fairly',
-      color: AppColors.accentSecondary,
+      color: AppColorTokens.light.moduleLedger,
       onTap: () => _openLedger(context),
       summaryText: ledgerSummary,
-      actionText: ledgerAction,
-      priority: ledgerPriority,
       isEmpty: ledgerEmpty,
     ));
   }
@@ -177,7 +160,6 @@ class EventModuleList extends ConsumerWidget {
     final gearEmpty = gearItems.isEmpty;
     String? gearSummary;
     String? gearAction;
-    int gearPriority = 10;
 
     if (gearItems.isNotEmpty) {
       final total = gearItems.length;
@@ -188,10 +170,8 @@ class EventModuleList extends ConsumerWidget {
       if (unclaimed > 0) {
         gearAction =
             '$unclaimed item${unclaimed != 1 ? "s" : ""} still need someone';
-        gearPriority = 80;
       } else {
         gearSummary = '$total items \u00b7 $packed packed';
-        gearPriority = 50;
       }
     }
 
@@ -200,11 +180,10 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.bag_2,
       title: 'Gear',
       description: 'Create a shared packing list and claim items',
-      color: (gearAction != null) ? AppColors.amber : AppColors.accentSecondary,
+      color: AppColorTokens.light.moduleGear,
       onTap: () => _openGear(context),
       summaryText: gearSummary,
       actionText: gearAction,
-      priority: gearPriority,
       isEmpty: gearEmpty,
     ));
   }
@@ -217,7 +196,6 @@ class EventModuleList extends ConsumerWidget {
     final subGroups = subGroupsAsync?.valueOrNull ?? [];
     final logisticsEmpty = subGroups.isEmpty;
     String? logisticsSummary;
-    int logisticsPriority = 10;
 
     if (subGroups.isNotEmpty) {
       final cars = subGroups.where((g) => g.type == SubGroupType.car).length;
@@ -226,7 +204,6 @@ class EventModuleList extends ConsumerWidget {
       if (cars > 0) parts.add('$cars car${cars != 1 ? "s" : ""}');
       if (rooms > 0) parts.add('$rooms room${rooms != 1 ? "s" : ""}');
       logisticsSummary = parts.join(' \u00b7 ');
-      logisticsPriority = 50;
     }
 
     cards.add(_ModuleCardConfig(
@@ -234,10 +211,9 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.car,
       title: 'Logistics',
       description: 'Organize cars, rooms, and teams for your group',
-      color: AppColors.sky,
+      color: AppColorTokens.light.moduleLogistics,
       onTap: () => _openLogistics(context),
       summaryText: logisticsSummary,
-      priority: logisticsPriority,
       isEmpty: logisticsEmpty,
     ));
   }
@@ -250,12 +226,10 @@ class EventModuleList extends ConsumerWidget {
     final docs = docsAsync?.valueOrNull ?? [];
     final vaultEmpty = docs.isEmpty;
     String? vaultSummary;
-    int vaultPriority = 10;
 
     if (docs.isNotEmpty) {
       vaultSummary =
           '${docs.length} document${docs.length != 1 ? "s" : ""} uploaded';
-      vaultPriority = 50;
     }
 
     cards.add(_ModuleCardConfig(
@@ -263,11 +237,25 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.document_text,
       title: 'Vault',
       description: 'Store tickets, permits, and trip documents',
-      color: AppColors.indigo,
+      color: AppColorTokens.light.moduleVault,
       onTap: () => _openVault(context),
       summaryText: vaultSummary,
-      priority: vaultPriority,
       isEmpty: vaultEmpty,
+    ));
+  }
+
+  void _addActivityCard(
+    List<_ModuleCardConfig> cards,
+    BuildContext context,
+  ) {
+    cards.add(_ModuleCardConfig(
+      widgetKey: EventKeys.activityCard,
+      icon: Iconsax.activity,
+      title: 'Activity',
+      description: 'Timeline logs',
+      color: AppColorTokens.light.moduleActivity,
+      onTap: () => _openActivity(context),
+      isEmpty: true,
     ));
   }
 
@@ -280,9 +268,8 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.gallery,
       title: 'Memories',
       description: 'Capture and share photos from your event',
-      color: AppColors.mint,
+      color: AppColorTokens.light.moduleMemories,
       onTap: () => _openMemories(context),
-      priority: 10,
       isEmpty: true,
     ));
   }
@@ -303,12 +290,16 @@ class EventModuleList extends ConsumerWidget {
     context.push('/group/$groupId/event/$eventId/vault');
   }
 
+  void _openActivity(BuildContext context) {
+    context.push('/group/$groupId/event/$eventId/activity');
+  }
+
   void _openMemories(BuildContext context) {
     context.push('/group/$groupId/event/$eventId/memories');
   }
 }
 
-/// Internal config for building module cards with priority sorting.
+/// Internal config for building module cards in fixed-order grid.
 class _ModuleCardConfig {
   final Key? widgetKey;
   final IconData icon;
@@ -318,7 +309,6 @@ class _ModuleCardConfig {
   final VoidCallback onTap;
   final String? summaryText;
   final String? actionText;
-  final int priority;
   final bool isEmpty;
 
   const _ModuleCardConfig({
@@ -330,7 +320,6 @@ class _ModuleCardConfig {
     required this.onTap,
     this.summaryText,
     this.actionText,
-    this.priority = 10,
     this.isEmpty = true,
   });
 }
