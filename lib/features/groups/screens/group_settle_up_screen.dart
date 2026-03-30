@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import 'package:go_router/go_router.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/module_header.dart';
 import '../keys/group_keys.dart';
 import '../../events/models/event_model.dart';
 import '../../events/models/event_type_config.dart';
@@ -13,18 +16,18 @@ import '../../events/providers/event_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
+import '../providers/group_provider.dart';
 import '../widgets/group_settlement_summary.dart';
 import '../widgets/group_settlement_tile.dart';
 
 /// Full-screen cross-event settlement UI (FIN-04, D-22).
 ///
-/// Shows optimized settlement tiles computed from group-level balances
-/// via [BalanceCalculator.calculateOptimalSettlements]. Supports
-/// [preSelectedMemberId] for D-22 entry point 2 (auto-scroll to or highlight
-/// the tile involving a specific member).
+/// Takes string IDs per D-14. Uses [groupDetailProvider] for group data.
+/// Shows a not-found error state per D-11 when group is null.
+/// Supports [preSelectedMemberId] for D-22 entry point 2 (auto-scroll to or
+/// highlight the tile involving a specific member).
 class GroupSettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
-  final Group group;
 
   /// D-22 entry point 2: pre-select a specific member to settle with.
   final String? preSelectedMemberId;
@@ -32,7 +35,6 @@ class GroupSettleUpScreen extends ConsumerStatefulWidget {
   const GroupSettleUpScreen({
     super.key,
     required this.groupId,
-    required this.group,
     this.preSelectedMemberId,
   });
 
@@ -85,6 +87,40 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
+
+    // Loading state
+    if (groupAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final group = groupAsync.valueOrNull;
+
+    // Not-found state per D-11
+    if (group == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Not Found', useDarkTheme: true),
+            Expanded(
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: 'This group is no longer available',
+                message:
+                    'You may have been removed. Tap below to go back home.',
+                actionLabel: 'Go Home',
+                onAction: () => context.go('/home'),
+                iconColor: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final balancesAsync = ref.watch(groupBalancesProvider(widget.groupId));
     final eventsAsync = ref.watch(groupEventsProvider(widget.groupId));
     final eventNameMap = <String, ({String name, EventType type, DateTime date})>{
@@ -111,7 +147,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     balances: balancesData.balances,
                     userNames: balancesData.memberNames,
                   );
-                  return _buildContent(context, optimalSettlements, balancesData, eventNameMap);
+                  return _buildContent(context, group, optimalSettlements, balancesData, eventNameMap);
                 },
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
@@ -192,6 +228,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
   Widget _buildContent(
     BuildContext context,
+    Group group,
     List<Map<String, dynamic>> optimalSettlements,
     GroupBalances balancesData,
     Map<String, ({String name, EventType type, DateTime date})> eventNameMap,
@@ -242,7 +279,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         children: [
           GroupSettlementSummaryCard(
             totalPending: totalPending,
-            currency: widget.group.currency,
+            currency: group.currency,
             eventCount: balancesData.eventCount,
           ),
           const SizedBox(height: 32),
@@ -258,6 +295,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               const SizedBox(height: 12),
               _buildSettlementGroup(
                 context,
+                group,
                 yourActions,
                 orderedSettlements,
                 balancesData,
@@ -271,6 +309,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               const SizedBox(height: 12),
               _buildSettlementGroup(
                 context,
+                group,
                 waitingForOthers,
                 orderedSettlements,
                 balancesData,
@@ -284,6 +323,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               const SizedBox(height: 12),
               _buildSettlementGroup(
                 context,
+                group,
                 othersSettling,
                 orderedSettlements,
                 balancesData,
@@ -319,6 +359,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
   Widget _buildSettlementGroup(
     BuildContext context,
+    Group group,
     List<Map<String, dynamic>> settlements,
     List<Map<String, dynamic>> orderedSettlements,
     GroupBalances balancesData,
@@ -350,7 +391,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         fromName: fromName,
         toName: toName,
         amount: amount,
-        currency: widget.group.currency,
+        currency: group.currency,
         breakdown: breakdown,
         showDivider: !isLast,
         isYourAction: isYourAction,
@@ -359,6 +400,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         onRecord: showButton
             ? () => _showSettlementConfirmation(
                   context,
+                  group: group,
                   settlement: settlement,
                   fromName: fromName,
                   toName: toName,
@@ -474,6 +516,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
   Future<void> _showSettlementConfirmation(
     BuildContext context, {
+    required Group group,
     required Map<String, dynamic> settlement,
     required String fromName,
     required String toName,
@@ -524,7 +567,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '$fromName paid ${AppFormatters.formatCurrency(suggestedAmount, widget.group.currency)} to $toName. '
+                '$fromName paid ${AppFormatters.formatCurrency(suggestedAmount, group.currency)} to $toName. '
                 'Record this as settled? (via cash, bank transfer, or other method)',
                 style: const TextStyle(
                   fontSize: 14,
@@ -538,7 +581,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
-                  labelText: 'Amount (${widget.group.currency})',
+                  labelText: 'Amount (${group.currency})',
                   border: OutlineInputBorder(
                     borderRadius:
                         BorderRadius.circular(AppColors.radiusMedium),
@@ -628,6 +671,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
     await _recordSettlement(
       context,
+      group: group,
       fromUserId: fromUserId,
       toUserId: toUserId,
       fromName: fromName,
@@ -639,6 +683,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
   Future<void> _recordSettlement(
     BuildContext context, {
+    required Group group,
     required String fromUserId,
     required String toUserId,
     required String fromName,
@@ -661,7 +706,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             payerParticipantId: fromUserId,
             recipientParticipantId: toUserId,
             amount: amount,
-            currency: widget.group.currency,
+            currency: group.currency,
             note: note,
             payerName: fromName,
             recipientName: toName,
@@ -680,7 +725,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             actorId: currentUid,
             actorName: actorName,
             description:
-                'settled ${AppFormatters.formatCurrency(amount, widget.group.currency)} with $toName',
+                'settled ${AppFormatters.formatCurrency(amount, group.currency)} with $toName',
             metadata: {
               'amount': amount.toString(),
               'recipientId': toUserId,

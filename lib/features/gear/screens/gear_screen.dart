@@ -2,28 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/types/event_ref.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/search_filter_bar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
-import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../events/models/event_model.dart';
-import '../../groups/models/group_model.dart';
+import '../../events/providers/event_provider.dart';
 import '../keys/gear_keys.dart';
 import '../models/gear_item_model.dart';
 import '../providers/gear_provider.dart';
 
-/// Gear Screen - Packing checklist with claim functionality
+/// Gear Screen - Packing checklist with claim functionality.
+///
+/// Takes string IDs per D-14. Uses [eventDetailProvider] for event data.
+/// Shows a not-found error state per D-11 when event is null.
 class GearScreen extends ConsumerStatefulWidget {
-  final Event event;
-  final Group group;
+  final String groupId;
+  final String eventId;
 
-  const GearScreen({super.key, required this.event, required this.group});
+  const GearScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   @override
   ConsumerState<GearScreen> createState() => _GearScreenState();
@@ -37,7 +44,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
   String? _statusFilter;
 
   EventRef get _eventRef =>
-      (groupId: widget.event.groupId, eventId: widget.event.id);
+      (groupId: widget.groupId, eventId: widget.eventId);
 
   @override
   void dispose() {
@@ -47,9 +54,42 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id);
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final eventAsync = ref.watch(eventDetailProvider(eventRef));
     final gearAsync = ref.watch(eventGearItemsProvider(eventRef));
     final currentUserId = ref.watch(currentUserProvider)?.uid;
+
+    // Loading state
+    if (eventAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final event = eventAsync.valueOrNull;
+
+    // Not-found state per D-11
+    if (event == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Not Found'),
+            Expanded(
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: 'This event no longer exists',
+                message:
+                    'It may have been deleted. Tap below to go back to your groups.',
+                actionLabel: 'Go Home',
+                onAction: () => context.go('/home'),
+                iconColor: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       key: GearKeys.screen,
@@ -58,7 +98,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         children: [
           ModuleHeader(
             title: 'Gear',
-            subtitle: widget.event.name.toUpperCase(),
+            subtitle: event.name.toUpperCase(),
           ),
           SearchFilterBar(
             onSearchChanged: (q) => setState(() => _searchQuery = q),
@@ -117,7 +157,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(eventGearItemsProvider((groupId: widget.event.groupId, eventId: widget.event.id)));
+              ref.invalidate(eventGearItemsProvider((groupId: widget.groupId, eventId: widget.eventId)));
             },
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -581,8 +621,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         HapticService.selection();
         try {
           await ref.read(gearServiceProvider).updateGearItem(
-                groupId: widget.event.groupId,
-                eventId: widget.event.id,
+                groupId: widget.groupId,
+                eventId: widget.eventId,
                 gearItemId: item.id,
                 isHighPriority: !item.isHighPriority,
               );
@@ -601,8 +641,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         if (uid == null) break;
         try {
           await ref.read(gearServiceProvider).updateGearItem(
-                groupId: widget.event.groupId,
-                eventId: widget.event.id,
+                groupId: widget.groupId,
+                eventId: widget.eventId,
                 gearItemId: item.id,
                 assignedTo: uid,
               );
@@ -619,8 +659,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         HapticService.selection();
         try {
           await ref.read(gearServiceProvider).unclaimGearItem(
-                groupId: widget.event.groupId,
-                eventId: widget.event.id,
+                groupId: widget.groupId,
+                eventId: widget.eventId,
                 gearItemId: item.id,
               );
         } catch (e) {
@@ -669,8 +709,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     if (confirmed == true) {
       try {
         await ref.read(gearServiceProvider).deleteGearItem(
-              groupId: widget.event.groupId,
-              eventId: widget.event.id,
+              groupId: widget.groupId,
+              eventId: widget.eventId,
               gearItemId: item.id,
             );
       } catch (e) {
@@ -706,8 +746,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           : items.map((i) => i.sequenceId).reduce((a, b) => a > b ? a : b) + 1;
 
       await ref.read(gearServiceProvider).addGearItem(
-            groupId: widget.event.groupId,
-            eventId: widget.event.id,
+            groupId: widget.groupId,
+            eventId: widget.eventId,
             itemName: name,
             isHighPriority: wasHighPriority,
             sequenceId: nextSeqId,
@@ -732,8 +772,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     ref
         .read(gearServiceProvider)
         .togglePacked(
-          groupId: widget.event.groupId,
-          eventId: widget.event.id,
+          groupId: widget.groupId,
+          eventId: widget.eventId,
           gearItemId: item.id,
           isPacked: !item.isPacked,
         )

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,18 +11,24 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/search_filter_bar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
-import '../../events/models/event_model.dart';
-import '../../groups/models/group_model.dart';
+import '../../events/providers/event_provider.dart';
 import '../keys/vault_keys.dart';
 import '../models/document_model.dart';
 import '../providers/document_provider.dart';
 
-/// Vault Screen - Document management with upload/download
+/// Vault Screen - Document management with upload/download.
+///
+/// Takes string IDs per D-14. Uses [eventDetailProvider] for event data.
+/// Shows a not-found error state per D-11 when event is null.
 class VaultScreen extends ConsumerStatefulWidget {
-  final Event event;
-  final Group group;
+  final String groupId;
+  final String eventId;
 
-  const VaultScreen({super.key, required this.event, required this.group});
+  const VaultScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   @override
   ConsumerState<VaultScreen> createState() => _VaultScreenState();
@@ -32,10 +39,43 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id,);
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final eventAsync = ref.watch(eventDetailProvider(eventRef));
     final documentsAsync = ref.watch(eventDocumentsProvider(eventRef));
     final isLoading = ref.watch(documentLoadingProvider);
     final connectivity = ref.watch(connectivityProvider);
+
+    // Loading state
+    if (eventAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final event = eventAsync.valueOrNull;
+
+    // Not-found state per D-11
+    if (event == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Not Found'),
+            Expanded(
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: 'This event no longer exists',
+                message:
+                    'It may have been deleted. Tap below to go back to your groups.',
+                actionLabel: 'Go Home',
+                onAction: () => context.go('/home'),
+                iconColor: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (connectivity == ConnectivityStatus.offline) {
       return Scaffold(
@@ -45,7 +85,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           children: [
             ModuleHeader(
               title: 'Vault',
-              subtitle: widget.event.name.toUpperCase(),
+              subtitle: event.name.toUpperCase(),
             ),
             const Expanded(
               child: EmptyStateView(
@@ -67,7 +107,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         children: [
           ModuleHeader(
             title: 'Vault',
-            subtitle: widget.event.name.toUpperCase(),
+            subtitle: event.name.toUpperCase(),
             actions: [
               Container(
                 decoration: BoxDecoration(
@@ -166,7 +206,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       onRefresh: () async {
         ref.invalidate(
           eventDocumentsProvider(
-            (groupId: widget.event.groupId, eventId: widget.event.id),
+            (groupId: widget.groupId, eventId: widget.eventId),
           ),
         );
       },
@@ -373,8 +413,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   Future<void> _deleteDocument(WidgetRef ref, Document doc) async {
     final service = ref.read(documentServiceProvider);
     await service.deleteDocument(
-      groupId: widget.event.groupId,
-      eventId: widget.event.id,
+      groupId: widget.groupId,
+      eventId: widget.eventId,
       documentId: doc.id,
       storagePath: doc.fileUrl,
     );
@@ -383,8 +423,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   void _uploadDocument(BuildContext context, WidgetRef ref) async {
     final service = ref.read(documentServiceProvider);
     final result = await service.pickAndUpload(
-      groupId: widget.event.groupId,
-      eventId: widget.event.id,
+      groupId: widget.groupId,
+      eventId: widget.eventId,
     );
 
     if (!context.mounted) return;

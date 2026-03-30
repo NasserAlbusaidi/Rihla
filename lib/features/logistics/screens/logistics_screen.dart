@@ -9,8 +9,10 @@ import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
+import 'package:go_router/go_router.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/models/event_model.dart';
-import '../../groups/models/group_model.dart';
+import '../../events/providers/event_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
@@ -18,12 +20,19 @@ import '../providers/sub_group_provider.dart';
 import '../widgets/subgroup_card.dart';
 import '../widgets/unassigned_pool.dart';
 
-/// Logistics Screen - Manage cars, rooms, and teams
+/// Logistics Screen - Manage cars, rooms, and teams.
+///
+/// Takes string IDs per D-14. Uses [eventDetailProvider] for event data.
+/// Shows a not-found error state per D-11 when event is null.
 class LogisticsScreen extends ConsumerStatefulWidget {
-  final Event event;
-  final Group group;
+  final String groupId;
+  final String eventId;
 
-  const LogisticsScreen({super.key, required this.event, required this.group});
+  const LogisticsScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   @override
   ConsumerState<LogisticsScreen> createState() => _LogisticsScreenState();
@@ -51,8 +60,41 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id,);
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final eventAsync = ref.watch(eventDetailProvider(eventRef));
     final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
+
+    // Loading state
+    if (eventAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final event = eventAsync.valueOrNull;
+
+    // Not-found state per D-11
+    if (event == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Not Found'),
+            Expanded(
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: 'This event no longer exists',
+                message:
+                    'It may have been deleted. Tap below to go back to your groups.',
+                actionLabel: 'Go Home',
+                onAction: () => context.go('/home'),
+                iconColor: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       key: LogisticsKeys.screen,
@@ -61,7 +103,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
         children: [
           ModuleHeader(
             title: 'Logistics',
-            subtitle: widget.event.name.toUpperCase(),
+            subtitle: event.name.toUpperCase(),
             actions: [
               Container(
                 decoration: BoxDecoration(
@@ -87,12 +129,12 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
           ),
           Expanded(
             child: subGroupsAsync.when(
-              data: _buildTabContent,
+              data: _buildTabContentWithEvent(event),
               loading: SkeletonLoader.groupList,
               error: (e, _) => NetworkErrorWidget(
                 onRetry: () => ref.invalidate(
                   eventSubGroupsProvider(
-                    (groupId: widget.event.groupId, eventId: widget.event.id,),
+                    (groupId: widget.groupId, eventId: widget.eventId),
                   ),
                 ),
               ),
@@ -103,15 +145,17 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
     );
   }
 
-  Widget _buildTabContent(List<SubGroup> allGroups) {
-    return TabBarView(
+  Widget Function(List<SubGroup>) _buildTabContentWithEvent(Event event) {
+    return (List<SubGroup> allGroups) => TabBarView(
       controller: _tabController,
       children: [
         _buildGroupList(
+          event,
           allGroups.where((g) => g.type == SubGroupType.car).toList(),
           SubGroupType.car,
         ),
         _buildGroupList(
+          event,
           allGroups.where((g) => g.type == SubGroupType.room).toList(),
           SubGroupType.room,
         ),
@@ -119,11 +163,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
     );
   }
 
-  Widget _buildGroupList(List<SubGroup> groups, SubGroupType type) {
+  Widget _buildGroupList(Event event, List<SubGroup> groups, SubGroupType type) {
     if (groups.isEmpty) return _buildEmptyState(type);
 
     final participants = ref.watch(
-      eventLogisticsParticipantsProvider(widget.event),
+      eventLogisticsParticipantsProvider(event),
     );
 
     final assignedUserIds = groups
@@ -143,7 +187,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
             onRefresh: () async {
               ref.invalidate(
                 eventSubGroupsProvider(
-                  (groupId: widget.event.groupId, eventId: widget.event.id,),
+                  (groupId: widget.groupId, eventId: widget.eventId),
                 ),
               );
             },
@@ -219,16 +263,20 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }
 
   void _showMemberPicker(SubGroup group) {
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    // Read event synchronously from already-watched provider
+    final event = ref.read(eventDetailProvider(eventRef)).valueOrNull;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Consumer(
         builder: (context, ref, _) {
-          final participants = ref.watch(
-            eventLogisticsParticipantsProvider(widget.event),
-          );
-          final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id,);
-          final allGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
+          final participants = event != null
+              ? ref.watch(eventLogisticsParticipantsProvider(event))
+              : <Participant>[];
+          final localEventRef = eventRef;
+          final allGroupsAsync = ref.watch(eventSubGroupsProvider(localEventRef));
           return Container(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
             decoration: const BoxDecoration(
@@ -335,8 +383,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }) async {
     try {
       await ref.read(subGroupServiceProvider).removeMember(
-        groupId: widget.event.groupId,
-        eventId: widget.event.id,
+        groupId: widget.groupId,
+        eventId: widget.eventId,
         subGroupId: group.id,
         memberId: member.id,
       );
@@ -357,8 +405,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }) async {
     try {
       await ref.read(subGroupServiceProvider).addMember(
-        groupId: widget.event.groupId,
-        eventId: widget.event.id,
+        groupId: widget.groupId,
+        eventId: widget.eventId,
         subGroupId: group.id,
         participantId: participant.id,
         displayName: participant.displayName ?? '',
@@ -380,8 +428,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }) async {
     try {
       await ref.read(subGroupServiceProvider).addMember(
-        groupId: widget.event.groupId,
-        eventId: widget.event.id,
+        groupId: widget.groupId,
+        eventId: widget.eventId,
         subGroupId: group.id,
         participantId: participant.id,
         displayName: participant.displayName ?? '',
@@ -430,8 +478,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   Future<void> _deleteGroup(SubGroup group) async {
     try {
       await ref.read(subGroupServiceProvider).deleteSubGroup(
-        groupId: widget.event.groupId,
-        eventId: widget.event.id,
+        groupId: widget.groupId,
+        eventId: widget.eventId,
         subGroupId: group.id,
       );
     } catch (e) {
@@ -605,8 +653,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }) async {
     try {
       await ref.read(subGroupServiceProvider).updateSubGroup(
-        groupId: widget.event.groupId,
-        eventId: widget.event.id,
+        groupId: widget.groupId,
+        eventId: widget.eventId,
         subGroupId: group.id,
         name: name,
         capacity: capacity,
@@ -629,8 +677,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen>
   }) async {
     try {
       await ref.read(subGroupServiceProvider).createSubGroup(
-        groupId: widget.event.groupId,
-        eventId: widget.event.id,
+        groupId: widget.groupId,
+        eventId: widget.eventId,
         name: name,
         type: type.value,
         capacity: capacity,

@@ -1,26 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../events/models/event_model.dart';
-import '../../groups/models/group_model.dart';
+import '../../../shared/widgets/module_header.dart';
+import '../../events/providers/event_provider.dart';
 import '../keys/memories_keys.dart';
 import '../models/memory_model.dart';
 import '../providers/memory_provider.dart';
 import '../widgets/full_screen_photo.dart';
 import '../widgets/photo_grid.dart';
 
-/// Memories screen - Photo timeline for a trip
+/// Memories screen - Photo timeline for an event.
+///
+/// Takes string IDs per D-14. Uses [eventDetailProvider] for event data.
+/// Shows a not-found error state per D-11 when event is null.
+/// IMPORTANT: _showFullScreen uses Navigator.push (not context.push) — this is
+/// the only permitted Navigator.push in the codebase post-migration. It is an
+/// overlay lightbox (opaque: false), not a navigation route per RESEARCH Pattern 5.
 class MemoriesScreen extends ConsumerStatefulWidget {
-  final Event event;
-  final Group group;
+  final String groupId;
+  final String eventId;
 
-  const MemoriesScreen({super.key, required this.event, required this.group});
+  const MemoriesScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   @override
   ConsumerState<MemoriesScreen> createState() => _MemoriesScreenState();
@@ -34,8 +45,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
 
     final service = ref.read(memoryServiceProvider);
     final memory = await service.uploadPhoto(
-      groupId: widget.event.groupId,
-      eventId: widget.event.id,
+      groupId: widget.groupId,
+      eventId: widget.eventId,
       source: source,
     );
 
@@ -45,7 +56,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     if (memory != null) {
       ref.invalidate(
         eventMemoriesProvider(
-          (groupId: widget.event.groupId, eventId: widget.event.id),
+          (groupId: widget.groupId, eventId: widget.eventId),
         ),
       );
       if (mounted) {
@@ -170,11 +181,43 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final eventAsync = ref.watch(eventDetailProvider(eventRef));
     final memoriesAsync = ref.watch(
-      eventMemoriesProvider(
-        (groupId: widget.event.groupId, eventId: widget.event.id),
-      ),
+      eventMemoriesProvider(eventRef),
     );
+
+    // Loading state
+    if (eventAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final event = eventAsync.valueOrNull;
+
+    // Not-found state per D-11
+    if (event == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Not Found'),
+            Expanded(
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: 'This event no longer exists',
+                message:
+                    'It may have been deleted. Tap below to go back to your groups.',
+                actionLabel: 'Go Home',
+                onAction: () => context.go('/home'),
+                iconColor: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final connectivity = ref.watch(connectivityProvider);
     if (connectivity == ConnectivityStatus.offline) {
@@ -234,7 +277,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                         onRefresh: () async {
                           ref.invalidate(
                             eventMemoriesProvider(
-                              (groupId: widget.event.groupId, eventId: widget.event.id),
+                              (groupId: widget.groupId, eventId: widget.eventId),
                             ),
                           );
                         },
@@ -257,7 +300,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                       TextButton(
                         onPressed: () => ref.invalidate(
                           eventMemoriesProvider(
-                            (groupId: widget.event.groupId, eventId: widget.event.id,),
+                            (groupId: widget.groupId, eventId: widget.eventId),
                           ),
                         ),
                         child: const Text('Retry'),
@@ -312,7 +355,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                 Consumer(
                   builder: (context, ref, _) {
                     final count = ref
-                            .watch(eventMemoriesProvider((groupId: widget.event.groupId, eventId: widget.event.id,)))
+                            .watch(eventMemoriesProvider(
+                              (groupId: widget.groupId, eventId: widget.eventId),
+                            ))
                             .valueOrNull
                             ?.length ??
                         0;
@@ -408,15 +453,15 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                 Navigator.pop(context);
                 final service = ref.read(memoryServiceProvider);
                 final deleted = await service.deleteMemory(
-                  groupId: widget.event.groupId,
-                  eventId: widget.event.id,
+                  groupId: widget.groupId,
+                  eventId: widget.eventId,
                   memoryId: memory.id,
                   storagePath: memory.storagePath,
                 );
                 if (deleted) {
                   ref.invalidate(
                     eventMemoriesProvider(
-                      (groupId: widget.event.groupId, eventId: widget.event.id,),
+                      (groupId: widget.groupId, eventId: widget.eventId),
                     ),
                   );
                 }
