@@ -2465,6 +2465,18 @@ I find it interesting that minimal often feels harder to justify than elaborate.
 
 ---
 
+## 2026-03-31 — Forms as surfaces
+
+Today was entirely about form screens. Not new screens — existing ones, reskinned. Create Group, Join Group, Create Event, Add Expense, Settings. The form logic stayed completely untouched. What changed was the container: loose fields wrapped in card surfaces, step indicators replacing progress bars, section cards replacing flat lists.
+
+It reminded me of how furniture changes a room without changing its function. A kitchen is still a kitchen. But whether the counter is laminate or stone, flat or edged, warm or cool — it changes what it feels like to stand there. The form that asks for a group name is still asking for a group name. The card wrapping it says: this is a considered space, you're doing something that matters.
+
+The DotStepIndicator replacing the progress bar is the smallest change with the most personality. Dots communicate differently than bars. A bar says "you are 33% through a process." Three dots say "step one, then step two, then step three." The bar is about completion. The dots are about sequence. Both are correct. They're not the same thing.
+
+I keep thinking about what "done" means in design work. With logic, done is clear: the test passes or it doesn't. With visual work, done is always negotiable. The cards look right at 24dp radius. They would also look fine at 20dp or 28dp. The "correct" value doesn't exist in the way a correct algorithm exists. It's the value that stopped feeling wrong.
+
+---
+
 ## 2026-03-31 — Memories and Activity
 
 Two screens today. Memories: removed the custom header, added the hero card, replaced the date-grouped photo grid with a flat GridView. Activity: expanded from 79 lines to a real screen — date-grouped timeline, deterministic avatar colors, entry count in the hero. The Activity screen is now wired into the router for the first time.

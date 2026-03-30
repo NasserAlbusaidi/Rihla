@@ -37,7 +37,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **Phase 18: Home Dashboard Redesign** - Deliver the single-scroll dashboard with balance hero, group cards, quick-action tray, and activity strip (completed 2026-03-30)
 - [x] **Phase 19: Navigation Restructuring** - Migrate 22 Navigator.push calls to GoRouter subroutes so all event-level screens are reachable within 2 taps (completed 2026-03-30)
 - [x] **Phase 20: Group Detail & Event Hub Redesign** - Redesign the group gateway and event hub with earthy tokens, type-specific color accents, and M3 transitions (completed 2026-03-30)
-- [ ] **Phase 21: Module Screens Redesign** - Apply the new design language to all six module screens with card-style layouts and illustrated empty states
+- [x] **Phase 21: Module Screens Redesign** - Apply the new design language to all six module screens with card-style layouts and illustrated empty states (completed 2026-03-30)
 - [ ] **Phase 22: Polish Pass & Token Cleanup** - Add haptic feedback, animated balance counters, texture overlays, M3 motion, and delete legacy AppColors
 
 ## Phase Details
@@ -164,7 +164,7 @@ Plans:
 - [x] 21-02-PLAN.md — Ledger screen redesign: LedgerHeroCard, ExpenseCard, SettlementRow, single-scroll timeline (no tabs)
 - [x] 21-03-PLAN.md — Gear, Logistics, Vault screen redesign: hero cards, SubGroupCard, Logistics tab removal, unified module template
 - [x] 21-04-PLAN.md — Memories + Activity screen redesign: photo grid, ModuleHeader migration, date-grouped activity timeline
-- [ ] 21-05-PLAN.md — Form flows reskin: Add Expense DotStepIndicator, Create/Join Group card wrappers, Create Event type picker, Settings section cards
+- [x] 21-05-PLAN.md — Form flows reskin: Add Expense DotStepIndicator, Create/Join Group card wrappers, Create Event type picker, Settings section cards
 - [x] 21-06-PLAN.md — Onboarding + Splash: light background, earthy gradient circles, terracotta dots/CTA, warm sand splash
 **UI hint**: yes
 
@@ -192,5 +192,5 @@ Plans:
 | 18. Home Dashboard Redesign | 3/3 | Complete    | 2026-03-30 |
 | 19. Navigation Restructuring | 3/3 | Complete    | 2026-03-30 |
 | 20. Group Detail & Event Hub Redesign | 2/2 | Complete    | 2026-03-30 |
-| 21. Module Screens Redesign | 5/6 | In Progress|  |
+| 21. Module Screens Redesign | 6/6 | Complete   | 2026-03-30 |
 | 22. Polish Pass & Token Cleanup | 0/? | Not started | - |
