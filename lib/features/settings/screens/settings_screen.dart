@@ -285,41 +285,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ).animate().fadeIn().slideY(begin: -0.2),
             ),
 
-            // Preferences Header
+            // Profile Section
             SliverToBoxAdapter(
-              child: _buildSectionHeader('PREFERENCES')
+              child: _buildProfileSection(settings)
                   .animate()
-                  .fadeIn(delay: 150.ms),
+                  .fadeIn(delay: 150.ms)
+                  .slideY(begin: 0.1),
             ),
 
             // Preferences Section
             SliverToBoxAdapter(
-              child: _buildPreferencesSection(settings)
+              child: _buildPreferencesSection(settings, notificationStatus)
                   .animate()
-                  .fadeIn(delay: 200.ms)
+                  .fadeIn(delay: 250.ms)
                   .slideY(begin: 0.1),
-            ),
-
-            // Notifications Section
-            SliverToBoxAdapter(
-              child: _buildNotificationsSection(settings, notificationStatus)
-                  .animate()
-                  .fadeIn(delay: 300.ms)
-                  .slideY(begin: 0.1),
-            ),
-
-            // About Header
-            SliverToBoxAdapter(
-              child: _buildSectionHeader('ABOUT')
-                  .animate()
-                  .fadeIn(delay: 350.ms),
             ),
 
             // About Section
             SliverToBoxAdapter(
               child: _buildAboutSection(appMetadata)
                   .animate()
-                  .fadeIn(delay: 400.ms)
+                  .fadeIn(delay: 350.ms)
                   .slideY(begin: 0.1),
             ),
 
@@ -337,7 +323,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     letterSpacing: 0.5,
                   ),
                 ),
-              ).animate().fadeIn(delay: 600.ms),
+              ).animate().fadeIn(delay: 500.ms),
             ),
           ],
         ),
@@ -345,17 +331,93 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String label) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textMuted,
-          letterSpacing: 1,
-        ),
+  Widget _buildProfileSection(AppSettings settings) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                Icon(Iconsax.user, size: 16, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text(
+                  'PROFILE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textMuted,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Iconsax.user_edit,
+                  size: 18, color: AppColors.primary),
+            ),
+            title: const Text(
+              'Your Name',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Text(
+              settings.deviceName.isEmpty ? 'Not set' : settings.deviceName,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            trailing: const Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColors.textMuted),
+            onTap: _showDeviceNameDialog,
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16,
+              color: AppColors.border),
+          ListTile(
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Iconsax.profile_circle,
+                  size: 18, color: AppColors.primary),
+            ),
+            title: const Text(
+              'App Version',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: const Text(
+              AppMetadata.visibleAppName,
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
@@ -396,111 +458,157 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildPreferencesSection(AppSettings settings) {
+  Widget _buildPreferencesSection(
+      AppSettings settings, NotificationStatus notificationStatus) {
+    final isNotifEnabled = notificationStatus == NotificationStatus.enabled;
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(24, 4, 24, 0),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
         boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Iconsax.setting_2, size: 18, color: AppColors.primary),
-              const SizedBox(width: 12),
-              const Text(
-                'PREFERENCES',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.5,
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                Icon(Iconsax.setting_2, size: 16, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text(
+                  'PREFERENCES',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textMuted,
+                    letterSpacing: 1.5,
+                  ),
                 ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(10),
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildSettingsItem(
-            icon: Iconsax.user,
-            title: 'Your Name',
-            subtitle: settings.deviceName.isEmpty ? 'Not set' : settings.deviceName,
-            onTap: () => _showDeviceNameDialog(),
-          ),
-          _buildSettingsItem(
-            icon: Iconsax.money,
-            title: 'Currency',
-            subtitle: settings.currencyCode,
-            onTap: () => _showCurrencyDialog(),
-          ),
-          _buildSettingsItem(
-            icon: Iconsax.global,
-            title: 'Language',
-            subtitle: settings.languageCode == 'en' ? 'English' : 'العربية',
-            onTap: () => _showLanguageDialog(),
-          ),
-          _buildSettingsItem(
-            icon: Iconsax.moon,
-            title: 'Theme',
-            subtitle: settings.themeMode == AppThemeMode.system
-                ? 'Follow system'
-                : (settings.themeMode == AppThemeMode.light
-                      ? 'Light'
-                      : 'Dark'),
-            onTap: () => _showThemeDialog(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationsSection(
-    AppSettings settings,
-    NotificationStatus notificationStatus,
-  ) {
-    final isEnabled = notificationStatus == NotificationStatus.enabled;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Iconsax.notification_bing,
-                size: 18,
-                color: AppColors.primary,
+              child: const Icon(Iconsax.money,
+                  size: 18, color: AppColors.primary),
+            ),
+            title: const Text(
+              'Currency',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
               ),
-              const SizedBox(width: 12),
-              const Text(
-                'NOTIFICATIONS',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ],
+            ),
+            subtitle: Text(
+              settings.currencyCode,
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+            trailing: const Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColors.textMuted),
+            onTap: _showCurrencyDialog,
           ),
-          const SizedBox(height: 24),
-          _buildSettingsToggle(
-            icon: Iconsax.notification,
-            title: 'Push Notifications',
-            subtitle: _notificationSubtitle(notificationStatus),
-            value: isEnabled,
+          const Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          ListTile(
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Iconsax.global,
+                  size: 18, color: AppColors.primary),
+            ),
+            title: const Text(
+              'Language',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Text(
+              settings.languageCode == 'en' ? 'English' : 'العربية',
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+            trailing: const Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColors.textMuted),
+            onTap: _showLanguageDialog,
+          ),
+          const Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          ListTile(
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child:
+                  const Icon(Iconsax.moon, size: 18, color: AppColors.primary),
+            ),
+            title: const Text(
+              'Theme',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Text(
+              settings.themeMode == AppThemeMode.system
+                  ? 'Follow system'
+                  : (settings.themeMode == AppThemeMode.light ? 'Light' : 'Dark'),
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+            trailing: const Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColors.textMuted),
+            onTap: _showThemeDialog,
+          ),
+          const Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          SwitchListTile(
+            secondary: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Iconsax.notification,
+                  size: 18, color: AppColors.primary),
+            ),
+            title: const Text(
+              'Push Notifications',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Text(
+              _notificationSubtitle(notificationStatus),
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+            value: isNotifEnabled,
+            activeThumbColor: AppColors.primary,
+            activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
             onChanged: (value) async {
               final notifService = ref.read(notificationServiceProvider);
               if (value) {
@@ -520,6 +628,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               }
             },
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -527,176 +636,100 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildAboutSection(AppMetadata appMetadata) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
         boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Iconsax.info_circle,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'ABOUT',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          _buildSettingsItem(
-            icon: Iconsax.document_text,
-            title: 'Privacy Policy',
-            onTap: () => _showPrivacyPolicy(),
-          ),
-          _buildSettingsItem(
-            icon: Iconsax.document,
-            title: 'Terms of Service',
-            onTap: () => _showTermsOfService(),
-          ),
-          const SizedBox(height: 16),
-          // Version + Build Number
-          Center(
-            child: Text(
-              'Version ${appMetadata.version} (${appMetadata.buildNumber})',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textMuted,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsItem({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.primary),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const Icon(
-              Iconsax.arrow_right_3,
-              size: 16,
-              color: AppColors.textMuted,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsToggle({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, size: 20, color: AppColors.primary),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
               children: [
+                Icon(Iconsax.info_circle, size: 16, color: AppColors.primary),
+                SizedBox(width: 8),
                 Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  subtitle,
+                  'ABOUT',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
                     color: AppColors.textMuted,
-                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.5,
                   ),
                 ),
               ],
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: AppColors.primary.withValues(alpha: 0.2),
-            activeThumbColor: AppColors.primary,
+          ListTile(
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Iconsax.document_text,
+                  size: 18, color: AppColors.primary),
+            ),
+            title: const Text(
+              'Privacy Policy',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            trailing: const Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColors.textMuted),
+            onTap: _showPrivacyPolicy,
+          ),
+          const Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          ListTile(
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Iconsax.document,
+                  size: 18, color: AppColors.primary),
+            ),
+            title: const Text(
+              'Terms of Service',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            trailing: const Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColors.textMuted),
+            onTap: _showTermsOfService,
+          ),
+          const Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text(
+                'Version ${appMetadata.version} (${appMetadata.buildNumber})',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textMuted,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+
 }

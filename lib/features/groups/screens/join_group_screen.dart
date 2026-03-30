@@ -103,67 +103,79 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
         leading: const BackButton(),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: AppColors.space24),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppColors.space16, vertical: AppColors.space16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: AppColors.space32),
-
-            // Your name
-            Text(
-              'Your name',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: AppColors.space8),
-            TextFormField(
-              controller: _nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                hintText: 'Enter your name',
+            // Form fields card
+            Container(
+              margin: const EdgeInsets.only(bottom: AppColors.space16),
+              padding: const EdgeInsets.all(AppColors.space16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: AppColors.cardShadow,
               ),
-            ),
-            const SizedBox(height: AppColors.space24),
-
-            Text(
-              'Invite code',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: AppColors.space8),
-            Text(
-              'Ask a group member for their 6-character code',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Your name
+                  Text(
+                    'Your name',
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-            ),
-            const SizedBox(height: AppColors.space16),
+                  const SizedBox(height: AppColors.space8),
+                  TextFormField(
+                    controller: _nameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter your name',
+                    ),
+                  ),
+                  const SizedBox(height: AppColors.space24),
 
-            // Invite code input — uppercase, max 6 chars, spaced display
-            TextFormField(
-              controller: _codeController,
-              textCapitalization: TextCapitalization.characters,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                letterSpacing: 8,
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-              ),
-              decoration: const InputDecoration(
-                hintText: 'ABC123',
-                counterText: '',
-              ),
-              maxLength: 6,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
-                LengthLimitingTextInputFormatter(6),
-                _UpperCaseTextFormatter(),
-              ],
-              onChanged: (value) {
-                setState(() {}); // rebuild to enable/disable button
-                if (value.length == 6) _joinGroup();
-              },
-            ),
+                  Text(
+                    'Invite code',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: AppColors.space8),
+                  Text(
+                    'Ask a group member for their 6-character code',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                  const SizedBox(height: AppColors.space16),
 
-            const SizedBox(height: 48),
+                  // Invite code input — uppercase, max 6 chars, spaced display
+                  TextFormField(
+                    controller: _codeController,
+                    textCapitalization: TextCapitalization.characters,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      letterSpacing: 8,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'ABC123',
+                      counterText: '',
+                    ),
+                    maxLength: 6,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                      LengthLimitingTextInputFormatter(6),
+                      _UpperCaseTextFormatter(),
+                    ],
+                    onChanged: (value) {
+                      setState(() {}); // rebuild to enable/disable button
+                      if (value.length == 6) _joinGroup();
+                    },
+                  ),
+                ],
+              ),
+            ),
 
             LoadingButton(
               key: GroupKeys.joinGroupButton,

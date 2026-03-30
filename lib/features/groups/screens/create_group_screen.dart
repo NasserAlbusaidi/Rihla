@@ -126,77 +126,90 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: AppColors.space24),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppColors.space16, vertical: AppColors.space16),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: AppColors.space32),
-
-              // Group Name label
-              Text(
-                'Group Name',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: AppColors.space8),
-
-              // Group Name input
-              TextFormField(
-                key: GroupKeys.groupNameInput,
-                controller: _nameController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  hintText: 'Enter group name',
+              // Form fields card
+              Container(
+                margin: const EdgeInsets.only(bottom: AppColors.space16),
+                padding: const EdgeInsets.all(AppColors.space16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: AppColors.cardShadow,
                 ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? "Group name can't be empty."
-                        : null,
-              ),
-              const SizedBox(height: AppColors.space24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Group Name label
+                    Text(
+                      'Group Name',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: AppColors.space8),
 
-              // Currency label
-              Text(
-                'Currency',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: AppColors.space8),
+                    // Group Name input
+                    TextFormField(
+                      key: GroupKeys.groupNameInput,
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter group name',
+                      ),
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty
+                              ? "Group name can't be empty."
+                              : null,
+                    ),
+                    const SizedBox(height: AppColors.space24),
 
-              // Currency selector
-              DropdownButtonFormField<String>(
-                initialValue: _selectedCurrency,
-                decoration: const InputDecoration(),
-                items: _currencies
-                    .map(
-                      (c) => DropdownMenuItem(value: c, child: Text(c)),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) setState(() => _selectedCurrency = v);
-                },
-              ),
-              const SizedBox(height: AppColors.space32),
+                    // Currency label
+                    Text(
+                      'Currency',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: AppColors.space8),
 
-              // Your name label
-              Text(
-                'Your name in this group',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: AppColors.space8),
+                    // Currency selector
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedCurrency,
+                      decoration: const InputDecoration(),
+                      items: _currencies
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) setState(() => _selectedCurrency = v);
+                      },
+                    ),
+                    const SizedBox(height: AppColors.space24),
 
-              // Editable display name — saved to settings on group creation
-              TextFormField(
-                controller: _displayNameController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  hintText: 'Enter your name',
+                    // Your name label
+                    Text(
+                      'Your name in this group',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: AppColors.space8),
+
+                    // Editable display name — saved to settings on group creation
+                    TextFormField(
+                      controller: _displayNameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter your name',
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Enter your name so others know who you are.'
+                          : null,
+                    ),
+                  ],
                 ),
-                validator: (v) => v == null || v.trim().isEmpty
-                    ? 'Enter your name so others know who you are.'
-                    : null,
               ),
-              const SizedBox(height: 48),
 
               // Submit button
               LoadingButton(
