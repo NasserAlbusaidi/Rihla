@@ -24,6 +24,7 @@ import '../widgets/category_selection_step.dart';
 import '../widgets/expense_success_dialog.dart';
 import '../widgets/receipt_picker_section.dart';
 import '../widgets/split_scope_selector.dart';
+import '../../../shared/widgets/dot_step_indicator.dart';
 
 /// Omni-Splitter (Add Expense Screen) - Redesigned with 3-step flow
 class AddExpenseScreen extends ConsumerStatefulWidget {
@@ -307,18 +308,38 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 index: _currentStep,
                 children: [
                   SingleChildScrollView(
-                    child: AmountInputSection(
-                      amount: _amount,
-                      currency: _tripCurrency,
-                      onKeyPress: _onKeyPress,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: AppColors.cardShadow,
+                      ),
+                      child: AmountInputSection(
+                        amount: _amount,
+                        currency: _tripCurrency,
+                        onKeyPress: _onKeyPress,
+                      ),
                     ),
                   ),
-                  CategorySelectionStep(
-                    categoriesAsync: categoriesAsync,
-                    selectedCategoryId: _selectedCategoryId,
-                    onCategorySelected: (id) {
-                      setState(() => _selectedCategoryId = id);
-                    },
+                  Container(
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: AppColors.cardShadow,
+                    ),
+                    child: CategorySelectionStep(
+                      categoriesAsync: categoriesAsync,
+                      selectedCategoryId: _selectedCategoryId,
+                      onCategorySelected: (id) {
+                        setState(() => _selectedCategoryId = id);
+                      },
+                    ),
                   ),
                   _buildConfirmStep(error, eventAsync),
                 ],
@@ -364,24 +385,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          // Progress Bar
+          // DotStepIndicator (D-27)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: List.generate(3, (index) {
-                return Expanded(
-                  child: Container(
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: index <= _currentStep
-                          ? AppColors.mint
-                          : AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                );
-              }),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: DotStepIndicator(
+              stepCount: 3,
+              currentStep: _currentStep,
+              activeColor: AppColors.terracotta,
+              showCheckmarks: true,
             ),
           ),
         ],
@@ -391,81 +402,110 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   Widget _buildConfirmStep(String? error, AsyncValue<Event?> eventAsync) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Split Details',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+          // Split Details card
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Split Details',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Pass Event to SplitScopeSelector for Firestore-native participant lookup
+                if (eventAsync.valueOrNull != null)
+                  SplitScopeSelector(
+                    event: eventAsync.valueOrNull!,
+                    scope: _scope,
+                    onScopeChanged: (scope) => setState(() => _scope = scope),
+                    customSplitParticipants: _customSplitParticipants,
+                    onCustomSplitChanged: (participants) {
+                      setState(() {
+                        _customSplitParticipants.clear();
+                        _customSplitParticipants.addAll(participants);
+                      });
+                    },
+                    selectedSubGroupId: _selectedSubGroupId,
+                    onAutoSelectSubGroup: _autoSelectUserSubGroup,
+                    onSubGroupIdCleared: (value) {
+                      setState(() => _selectedSubGroupId = value);
+                    },
+                    selectedPayerId: _selectedPayerId,
+                    onPayerChanged: (value) {
+                      setState(() => _selectedPayerId = value);
+                    },
+                  )
+                else
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          // Pass Event to SplitScopeSelector for Firestore-native participant lookup
-          if (eventAsync.valueOrNull != null)
-            SplitScopeSelector(
-              event: eventAsync.valueOrNull!,
-              scope: _scope,
-              onScopeChanged: (scope) => setState(() => _scope = scope),
-              customSplitParticipants: _customSplitParticipants,
-              onCustomSplitChanged: (participants) {
-                setState(() {
-                  _customSplitParticipants.clear();
-                  _customSplitParticipants.addAll(participants);
-                });
-              },
-              selectedSubGroupId: _selectedSubGroupId,
-              onAutoSelectSubGroup: _autoSelectUserSubGroup,
-              onSubGroupIdCleared: (value) {
-                setState(() => _selectedSubGroupId = value);
-              },
-              selectedPayerId: _selectedPayerId,
-              onPayerChanged: (value) {
-                setState(() => _selectedPayerId = value);
-              },
-            )
-          else
-            const Center(child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            )),
-          const SizedBox(height: 24),
-          // Note Input
-          const Text(
-            'NOTE',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
-              letterSpacing: 1.5,
+          // Note & Receipt card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppColors.cardShadow,
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _noteController,
-            maxLines: 2,
-            decoration: InputDecoration(
-              hintText: 'e.g. Lunch at trailhead...',
-              fillColor: AppColors.surfaceLight,
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'NOTE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textMuted,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _noteController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Lunch at trailhead...',
+                    fillColor: AppColors.surfaceLight,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ReceiptPickerSection(
+                  receiptPath: _receiptPath,
+                  isUploading: _isUploadingReceipt,
+                  onPick: _pickReceipt,
+                  onRemove: () => setState(() => _receiptPath = null),
+                ),
+              ],
             ),
-          ),
-          // Receipt Capture
-          const SizedBox(height: 24),
-          ReceiptPickerSection(
-            receiptPath: _receiptPath,
-            isUploading: _isUploadingReceipt,
-            onPick: _pickReceipt,
-            onRemove: () => setState(() => _receiptPath = null),
           ),
           if (error != null) _buildErrorBanner(error),
+          const SizedBox(height: 8),
         ],
       ),
     );
