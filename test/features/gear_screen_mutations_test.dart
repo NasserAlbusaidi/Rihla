@@ -7,11 +7,11 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/gear/keys/gear_keys.dart';
 import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/gear/screens/gear_screen.dart';
-import 'package:safar/features/groups/models/group_model.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -24,16 +24,6 @@ class MockUser extends Mock implements firebase_auth.User {}
 // ---------------------------------------------------------------------------
 // Test fixtures
 // ---------------------------------------------------------------------------
-
-final _testGroup = Group(
-  id: 'group-1',
-  name: 'Adventure Crew',
-  inviteCode: 'ABC123',
-  createdBy: 'uid-creator',
-  memberIds: const ['uid-creator', 'test-user-uid'],
-  currency: 'OMR',
-  createdAt: DateTime(2026, 1, 1),
-);
 
 final _testEvent = Event(
   id: 'event-1',
@@ -91,6 +81,9 @@ Widget _wrapGearScreen({
   return ProviderScope(
     overrides: [
       gearServiceProvider.overrideWithValue(mockService),
+      eventDetailProvider(_testEventRef).overrideWith(
+        (ref) => Stream.value(_testEvent),
+      ),
       eventGearItemsProvider(_testEventRef).overrideWith(
         (ref) => Stream.value(items),
       ),
@@ -98,7 +91,7 @@ Widget _wrapGearScreen({
       gearLoadingProvider.overrideWith((ref) => false),
     ],
     child: MaterialApp(
-      home: GearScreen(event: _testEvent, group: _testGroup),
+      home: GearScreen(groupId: _testEvent.groupId, eventId: _testEvent.id),
     ),
   );
 }

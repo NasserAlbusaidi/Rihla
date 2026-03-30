@@ -7,7 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
-import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/logistics/keys/logistics_keys.dart';
 import 'package:safar/features/logistics/models/sub_group_model.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
@@ -26,16 +26,6 @@ class MockUser extends Mock implements firebase_auth.User {}
 // ---------------------------------------------------------------------------
 // Test fixtures
 // ---------------------------------------------------------------------------
-
-final _testGroup = Group(
-  id: 'group-1',
-  name: 'Camping Crew',
-  inviteCode: 'XYZ789',
-  createdBy: 'uid-creator',
-  memberIds: const ['uid-creator', 'test-user-uid'],
-  currency: 'OMR',
-  createdAt: DateTime(2026, 1, 1),
-);
 
 final _testEvent = Event(
   id: 'event-1',
@@ -90,6 +80,9 @@ Widget _wrapLogisticsScreen({
   return ProviderScope(
     overrides: [
       subGroupServiceProvider.overrideWithValue(mockService),
+      eventDetailProvider(_testEventRef).overrideWith(
+        (ref) => Stream.value(_testEvent),
+      ),
       eventSubGroupsProvider(_testEventRef).overrideWith(
         (ref) => Stream.value(subGroups),
       ),
@@ -100,7 +93,7 @@ Widget _wrapLogisticsScreen({
       subGroupLoadingProvider.overrideWith((ref) => false),
     ],
     child: MaterialApp(
-      home: LogisticsScreen(event: _testEvent, group: _testGroup),
+      home: LogisticsScreen(groupId: _testEvent.groupId, eventId: _testEvent.id),
     ),
   );
 }
