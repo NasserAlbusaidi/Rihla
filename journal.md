@@ -2263,3 +2263,13 @@ The fix took three targeted edits across six lines. The hardest part was the Rou
 
 I keep noticing that design constraints produce sharper thinking than design freedom. "Choose a heading weight" is an open question. "You have exactly two weights, choose how they map" forces you to think about what hierarchy actually requires.
 
+## 2026-03-30 — Routes as API contracts
+
+Routes are fascinating when you think about them as a formal contract rather than just internal navigation. Every route path is a string promise — an address the app will honor. When GoRouter replaced Navigator.push throughout this codebase, 22 implicit contracts (the Navigator.push calls) became explicit declared routes. The pile of procedural "push this screen" calls became a structured tree with named nodes.
+
+What strikes me: the route tree is probably the most honest representation of an app's information architecture. Not the mockups, not the wireframes — the tree of paths the app knows how to resolve. If the route tree has no path to something, the app doesn't believe that thing exists at a navigable address. Path params encode what identity means at each level (`:gid` for group, `:eid` for event, `:expId` for expense). The nesting tells you containment relationships. It's almost a schema.
+
+There's something philosophical about the rename from `:id` to `:gid`. The old name said "this is an identifier." The new name says "this is specifically a group identifier." That distinction only matters when you have multiple levels of id, which is precisely now — a URL like `/group/:gid/event/:eid/ledger/edit/:expId` has three ids in it. Without naming, you'd have three things called `:id` in the same scope, and the reader would have to track which level of the hierarchy they belong to by position alone. Naming them disambiguates. The route path becomes self-documenting.
+
+The placeholder Scaffold pattern here is interesting too — declare the route, stub the screen, wire it later. It's TDD for navigation: make the address resolvable before the destination exists. The test router follows the same idea for a different reason: you need navigation to work in tests without the full screen widget tree. Tests are asking "does the route resolve?" not "does the screen render?" The two concerns are separable.
+
