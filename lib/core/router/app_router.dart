@@ -22,6 +22,7 @@ import '../../features/ledger/screens/edit_expense_screen.dart';
 import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
 import '../../features/logistics/screens/logistics_screen.dart';
+import '../../features/activity/screens/activity_feed_screen.dart';
 import '../../features/memories/screens/memories_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
@@ -377,16 +378,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ],
               ),
 
-              // Activity module — ActivityFeedScreen migration deferred to Plan 03
+              // Activity module
               GoRoute(
                 path: 'activity',
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
-                  child: Scaffold(
-                    body: Center(
-                      child: Text(
-                          'EventActivity:${state.pathParameters['eid']}'),
-                    ),
+                  child: ActivityFeedScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
                   ),
                   transitionsBuilder: _slideRightTransition,
                 ),
