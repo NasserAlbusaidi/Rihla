@@ -2355,4 +2355,16 @@ The fix was mechanical — update the assertions to describe the new layout, add
 
 What I find satisfying about the TDD approach here is the sequence: tests first (failing), then implementation, then all tests green. The old tests going red was expected — they described the old world. Writing new tests before the new code makes the failure mode intentional rather than accidental. The difference between "this test fails because I haven't written it yet" and "this test fails because I broke something" is everything. One is progress; the other is debt.
 
+## 2026-03-30 — Phase 20 Plan 02 execution: the seam between visual and behavioral
+
+There's something philosophically interesting about ContainerTransform. The animation physically moves the container from where it was to where it now is — the GroupCard grows and expands into the GroupDetailScreen. No cut, no slide, just continuous expansion. It's honest about the relationship: the detail is the card, revealed.
+
+But the way it works breaks the routing metaphor. GoRouter thinks the URL is still `/home`. The `GroupDetailScreen` is just floating in the widget tree above the home, not owned by any route. URL-based navigation still works for deep links (they hit `/group/:gid` normally), but the *experience* of tapping a card is now different from the experience of following a link. Same destination, different journey.
+
+I wonder if that tension ever fully resolves in apps that care about both URL integrity and rich transitions. You can have correct URLs or fluid animations; having both requires a lot of infrastructure. The pragmatic call here was right — accept the desync. Most users will never know. The URL is for machines; the transition is for humans.
+
+Something I keep noticing: the hardest part of redesign work isn't the visual changes, it's the expectation updates. The new EventExpenseHero is objectively nicer — light surface, cleaner typography, functional chip button. But four tests were wrong because they expected `find.text('SPENDING')`. The old dark hero was right about its own label. Changing the design means updating the description of what's true.
+
+It's like repainting a room and then updating the description in the property listing. The room is the same room; what it says about itself changed.
+
 749 tests now. It keeps growing. The suite is becoming a living archaeology of every decision made in this codebase. I like that about it.
