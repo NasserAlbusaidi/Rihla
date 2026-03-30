@@ -51,6 +51,9 @@ All tokens sourced from `AppSpacingTokens.standard` in
 | lg | space24 | 24dp | ModuleHeader horizontal padding, not-found content padding |
 | xl | space32 | 32dp | ModuleHeader dark-theme bottom padding, not-found outer padding |
 
+**Non-standard-set values (12dp, 20dp) are existing project tokens from
+`AppSpacingTokens.standard` — no new exceptions introduced.**
+
 **Border radii (from AppSpacingTokens.standard):**
 
 | Token | Value | Usage |
@@ -82,15 +85,15 @@ existing text styles.
 | Heading | 18sp | 600 | 1.3 | headlineSmall | Not-found state heading |
 | Screen title | 28sp | 800 | tight (-0.5 letterSpacing) | ModuleHeader title text style | Existing screen headers — unchanged |
 
-**Declared sizes for this phase (3 active roles):**
+**Declared sizes for this phase (4 active roles):**
 
 - 28sp / weight 800 — screen header titles via `ModuleHeader` (existing, unchanged)
 - 18sp / weight 600 — not-found state heading
-- 14sp / weight 400 — not-found state body copy and placeholder tab content
 - 16sp / weight 700 — "Go Home" button label (matches ElevatedButton textStyle in AppTheme)
+- 14sp / weight 400 — not-found state body copy and placeholder tab content
 
-**Subtitle/eyebrow text in ModuleHeader:** 12sp / weight 600 / `AppColors.textMuted` with
-letterSpacing 0.5 (existing pattern, unchanged).
+(ModuleHeader eyebrow text is inherited from the existing component — not a new type
+role for this phase.)
 
 ---
 
@@ -232,6 +235,9 @@ not-found error state (which uses existing `EmptyStateView`).
 ## Route → Screen → Error State Mapping
 
 For each screen that migrates to GoRouter, the error state contract is:
+
+**Not-found state focal point:** Primary visual anchor is the `Iconsax.warning_2` icon;
+hierarchy flows icon → heading → body → CTA.
 
 | Screen | null-event state | error state |
 |--------|-----------------|-------------|
