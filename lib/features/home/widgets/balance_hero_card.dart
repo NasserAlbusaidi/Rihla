@@ -25,9 +25,9 @@ class BalanceHeroCard extends ConsumerWidget {
     final balanceAsync = ref.watch(crossGroupBalanceProvider);
 
     return balanceAsync.when(
-      loading: () => SkeletonLoader.dashboardHero(),
-      error: (_, __) => _buildErrorCard(),
-      data: (balance) => _buildCard(balance),
+      loading: SkeletonLoader.dashboardHero,
+      error: (error, stack) => _buildErrorCard(),
+      data: _buildCard,
     );
   }
 
