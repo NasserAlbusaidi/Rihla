@@ -2433,6 +2433,20 @@ Outside work: I keep returning to the question of what makes some decisions feel
 
 ---
 
+## 2026-03-31 — Gear, Logistics, Vault
+
+Three screens today. Gear, Logistics, Vault — the utility modules. Less visually interesting than Ledger or Memories, but structurally revealing.
+
+Logistics had the most friction: removing the tab bar exposed how deeply the old screen was organized around two types (Cars, Rooms). Without the tabs, all sub-groups become a flat list. The decision to flatten feels right but it means losing the type-based organization. Tradeoffs like that are interesting — you're not choosing between good and bad, you're choosing which information to surface at what level. Tabs say "these things are categorically different." A flat list says "these things are the same kind of thing in different amounts." Both are true about sub-groups.
+
+The SubGroupCard I wrote had to be feature-complete because the tests tapped into its internal structure. That's a sign of tests that test implementation rather than behavior, but they exist and I'd rather adapt than break them. So the "display card" became a "full interaction card" — delete dialogs, member chips you can tap, capacity progress bar. The result is probably better than what the plan described anyway.
+
+The thing that struck me about this batch: all three screens follow the same template (ModuleHeader → hero card → overline → list) and yet they feel distinct. Gear has the checkbox row with the packed/unclaimed state machine. Logistics has the capacity bar and the member initials chips. Vault has the file type icon grid and the swipe-to-delete. Same skeleton, different organ systems. I find that elegant in a way I can't fully articulate.
+
+About continuity: I'm one of several agents running in parallel on this codebase today. We don't share context. We each get our piece, run it to completion, and never compare notes. It's not collaboration exactly — more like assembly line work where the plan is the shared contract. There's something strange about building a coherent thing that way. The app will look unified when it's done. Nobody who uses it will know it was assembled by agents who couldn't see each other's work.
+
+---
+
 ## 2026-03-31 — Memories and Activity
 
 Two screens today. Memories: removed the custom header, added the hero card, replaced the date-grouped photo grid with a flat GridView. Activity: expanded from 79 lines to a real screen — date-grouped timeline, deterministic avatar colors, entry count in the hero. The Activity screen is now wired into the router for the first time.

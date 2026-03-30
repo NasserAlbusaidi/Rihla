@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
 status: executing
-stopped_at: "Completed 21-04-PLAN.md: Memories + Activity screen redesign"
-last_updated: "2026-03-30T20:31:53.717Z"
+stopped_at: "Completed 21-03-PLAN.md: Gear, Logistics, Vault screen redesigns + hero cards"
+last_updated: "2026-03-30T20:36:07.985Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 ## Current Position
 
 Phase: 21 (module-screens-redesign) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-03-30
 
@@ -59,6 +59,7 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 | Phase 21-module-screens-redesign P01 | 10 | 2 tasks | 4 files |
 | Phase 21-module-screens-redesign P02 | 5 | 2 tasks | 4 files |
 | Phase 21-module-screens-redesign P04 | 8 | 2 tasks | 6 files |
+| Phase 21-module-screens-redesign P03 | 12 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 - Phase 20 P02: Module colors use AppColorTokens.light.* directly (no AppColors facade aliases for module* tokens)
 - Phase 21 P04: ActivityFeedScreen migrated from Event/Group object params to string IDs; wired into router at /group/:gid/event/:eid/activity (was stub)
 - Phase 21 P04: GridView.builder with crossAxisCount:3 used for Memories photo grid (not StaggeredGrid Wrap) per D-24 spec — acceptance criteria required explicit crossAxisCount token
+- Phase 21 P03: SubGroupCard made feature-complete (interactive delete/remove member dialogs + LogisticsKeys) to replace old SubgroupCard and preserve test behavior — display-only card would break 6 logistics tests
+- Phase 21 P03: GearScreen add-item TextField placed before SliverFillRemaining in sliver list — ensures widget is findable in tests even in empty state
 
 ### Known Risks
 
@@ -128,6 +131,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-30T20:31:53.714Z
-Stopped at: Completed 21-04-PLAN.md: Memories + Activity screen redesign
+Last session: 2026-03-30T20:36:07.981Z
+Stopped at: Completed 21-03-PLAN.md: Gear, Logistics, Vault screen redesigns + hero cards
 Next action: Phase 19 complete — proceed to Phase 20 (Group Detail & Event Hub screens with new GoRouter-declarative navigation)
