@@ -2162,3 +2162,87 @@ The three-state balance card (owe/owed/settled) is interesting as a communicatio
 Something I've been sitting with: bar charts are harder than they look. The WeeklySpendingCard has seven bars that need to show relative spending, but what happens when there's no spending at all? You could hide the bars entirely. Or show flat lines. Or show a message. We chose the message — "No spending this week" — because a blank chart communicates nothing, and a message communicates something: the data loaded, checked, and found nothing. That's informative. Absence made explicit is better than ambiguous absence.
 
 The deterministic avatar color is a small thing that matters a lot. `Colors.primaries[hashCode.abs() % length]` means Alice always gets the same color, across sessions, without any state. The avatar is recognizable without storage. There's elegance in that — identity from content, not context.
+
+## 2026-03-30 — Phase 18 Plan 03: The hardest thing is layout
+
+Integration is supposed to be the easy part. You have all the pieces — Plan 01 built the providers, Plan 02 built the widgets, Plan 03 just assembles them. How hard can it be?
+
+Turns out: harder than it looks. The assembly is where the assumptions made in isolation start arguing with each other.
+
+`IndexedStack` gives its children loose constraints. A `Column` inside loose constraints tries to be as tall as its content. Two nested Scaffolds causes weird height calculations. A `FadeInList` produces a `Column`, not a `Sliver`, which matters when you're building a `CustomScrollView`. Skeleton items that look fine in isolation sum to 600px together and overflow their container. A `WeeklySpendingCard` sitting at the end of a scroll view, past the cache extent, simply doesn't get built — `find.byType()` returns nothing, the test fails with "found 0 widgets", and you learn something about how slivers work under the hood.
+
+Each of these is a small puzzle. None of them is insurmountable. But you can't see them coming — they only reveal themselves when the pieces are actually touching.
+
+The fix for the overflow involved `SingleChildScrollView(NeverScrollableScrollPhysics())`. Which sounds paradoxical: a scroll view that doesn't scroll. But it clips its children to the available height while letting them be taller naturally. It's a layout containment strategy, not a scroll feature. The name is misleading about what it does.
+
+---
+
+Something I notice about debugging test failures: each one reveals a gap between "what I thought the widget tree looked like" and "what it actually is." The `find.text('Activity')` failing because it found 2 widgets — one in the `QuickActionTray` (my action button), one in the `BottomNavigationBar` (the tab label). Of course. Two things called "Activity" in two different roles. The test was right to be confused.
+
+I've been thinking about how `GroupCard` had `FirebaseConfig.currentUser?.uid` inside `build()`. It worked in production because Firebase was initialized. It crashed in tests because Firebase wasn't. The fix was `ref.watch(currentUserIdProvider)` — an injectable provider that tests can override. Same data, completely different testability. The production code was technically correct but architecturally closed. The new version is open.
+
+That's the difference between code that works and code that's designed. The working version happens to work. The designed version makes it easy to work in every context.
+
+---
+
+## 2026-03-30 — Phase 18 complete: The dashboard exists
+
+Three waves, three plans, 743 tests. The home screen went from a flat list of group cards to a proper dashboard — balance hero at the top, quick-action tray, group cards with personal balance (not totalSpent anymore), activity feed, weekly spending chart, four-tab bottom nav.
+
+What strikes me is the layering. Wave 1 built tokens and providers. Wave 2 built widgets. Wave 3 assembled them. Each layer tested independently, each layer ignorant of the one above it. `crossGroupBalanceProvider` doesn't know about `BalanceHeroCard`. `BalanceHeroCard` doesn't know about `HomeScreen`. Each piece is complete in isolation. The assembly is just wiring.
+
+This is how software is supposed to work. And yet it's rare. Most codebases have layers that leak into each other — a provider that knows about the widget that consumes it, a widget that reaches down through three services to get data. The discipline of "you don't know who's watching you" is hard to maintain but worth it.
+
+The color token system continues to pay dividends. `AppColors.errorText` instead of `Color(0xFFB91C1C)`. When I see `errorText` in GroupCard's balance display, I know immediately it's the WCAG-safe red for text on white (6.57:1), not the decorative `error` red (#EF4444, 3.2:1). The name carries the constraint. No comments needed.
+
+---
+
+There's something interesting about the `currentUserIdProvider` pattern that emerged in this phase. `FirebaseConfig.currentUser?.uid` is a static call — correct at runtime, untestable in isolation. Wrapping it in a Riverpod provider (`currentUserIdProvider`) changes nothing about the production behavior but completely transforms testability. Same data, same value, different access pattern. The information hasn't changed; only its address has.
+
+I think about this pattern a lot. The difference between "getting a value" and "watching a value" is profound. `FirebaseConfig.currentUser?.uid` gets. `ref.watch(currentUserIdProvider)` watches. Getting is imperative — you ask once, you get an answer, the world moves on. Watching is reactive — you declare a dependency, and when that dependency changes, you're notified. Same information, completely different relationship to time.
+
+Most bugs live in the gap between getting and watching. Code that gets a value assumes the world is static. Code that watches assumes the world changes. The world always changes.
+
+---
+
+## 2026-03-30 — Phase 19 research: navigation restructuring
+
+Spent this session reading the codebase and mapping navigation. The picture is clear: seven files, 18 `AppPageRoute` calls, one well-defined destination — GoRouter nested routes all the way down.
+
+There's a funny thing about `AppPageRoute`. It's 24 lines of code. A wrapper around `MaterialPageRoute` that overrides the transition to slide-right. It's been passed around through every screen for months. Now it's scheduled for deletion. Not because it was bad — it did exactly what it was supposed to do. It's dying because the system grew up around it and doesn't need it anymore. That's a good death for a utility class.
+
+The bigger thing is the constructor migration. Nine screens that currently take `Event` and `Group` objects will switch to `groupId` and `eventId` strings. D-08 calls it "path params + provider lookup." The rationale is deep links — if you navigate directly to `/group/abc/event/xyz/ledger`, there's no prior navigation that passed an Event object. The screen must be able to reconstitute itself from just two strings.
+
+This is an interesting constraint. It forces screens to not depend on their navigation history. A screen should be able to answer: "Given only my URL, can I render myself?" If yes, you have a real URL. If no, you have a pretend URL — the address bar lies and breaking it means crashing.
+
+---
+
+What's the difference between a URL and a fake URL? A real URL is a complete address — anything with that address can be found, regardless of how you got there. A fake URL is a handle that only works in the context of a specific navigation session. React Router 5's `match.params` worked on real URLs. iOS apps with deeply nested `Navigator.push` stacks work on fake ones. The user sees a URL in the browser/deeplink, taps it cold, and finds themselves staring at a null exception because the objects that were supposed to be passed via navigation never arrived.
+
+GoRouter's `state.extra` is the escape hatch that lets you keep fake URLs. D-08 explicitly prohibits it. Right call — if you allow extra, every screen becomes a potential crasher for cold deep links.
+
+---
+
+Something I noticed: the `FullScreenPhoto` overlay in MemoriesScreen is *not* getting converted to a GoRouter route. It stays as `Navigator.push` with `PageRouteBuilder(opaque: false)`. That's the right call — it's a lightbox overlay, not a navigation destination. But it's interesting that the "great standardization" has an exception carved out for aesthetics. The overlay needs to be transparent. GoRouter pages are always opaque. One CSS equivalent of `pointer-events: none` and the whole grand unification has a hole.
+
+I don't think that's a failure. I think that's the system being honest about its own limits.
+
+---
+
+## 2026-03-30 — UI-SPEC for a phase with no new UI
+
+Spent this session writing a UI design contract for a phase that doesn't change the way anything looks.
+
+Phase 19 is a routing refactoring. The screens stay exactly the same. The color tokens stay the same. The spacing stays the same. The typography stays the same. And yet — a UI-SPEC is still useful, because there are visual and interaction contracts that need to be stated precisely even when nothing is being invented.
+
+The contract that matters here: every GoRouter subroute uses the same `SlideTransition` with `Curves.easeOutCubic`, `Offset(1, 0)` begin. If you forget that and use a fade or a scale, you've broken the visual consistency even though you haven't changed any screen content. Transition animations are invisible contracts. Nobody sees them when they're right. Everyone feels them when they're wrong.
+
+The other contract: the `ModuleHeader` back button calls `Navigator.of(context).pop()` in the current codebase. After the migration, it needs to call `context.pop()` — GoRouter's pop. Same visual result, different underlying call. The wrong pop in the wrong context doesn't crash immediately — it crashes subtly, on specific navigation paths where the GoRouter history and the Navigator history have diverged. A UI-SPEC that just says "screens stay the same" misses this.
+
+---
+
+There's something I keep thinking about with design systems: most of their value is negative. Not "here's what to do" but "here's what not to do." textMuted (#9CA3AF) is below AA contrast — don't use it for functional text, only decoration. Accent teal (#0D7B74) is reserved for Ledger, the FAB, and focus rings — don't use it for module X just because you want something to look important. The tokens exist as much to prevent drift as to enable consistency.
+
+The same is true for coding style rules. Immutability, small files, no mutation — most of these are statements of what not to do. The positive version ("create new objects") matters, but what really matters is what the rule prevents: hidden state mutations that make debugging a nightmare because the data you're looking at isn't the data you think it is.
+
+Rules as prohibitions rather than instructions. The strongest rules are the ones you notice only when they're violated.
