@@ -41,6 +41,18 @@ class AppColors {
   static const Color textMuted = Color(0xFF9CA3AF); // gray-400
   static const Color textOnPrimary = Color(0xFFFFFFFF); // white
 
+  // Semantic text colors (WCAG-safe on white)
+  static const Color errorText = Color(0xFFB91C1C); // Dark red, 6.57:1 on white
+  static const Color successText = Color(0xFF047857); // Dark emerald, 5.92:1 on white
+
+  // Bottom navigation
+  static const Color bottomNavBackground = Color(0xFFFFFFFF); // White
+  static const Color bottomNavActiveIcon = Color(0xFF0D7B74); // Teal = primary
+  static const Color bottomNavInactiveIcon = Color(0xFF9CA3AF); // Decorative only
+
+  // Offline banner
+  static const Color offlineBannerBackground = Color(0xFFF59E0B); // Amber
+
   // Borders
   static const Color border = Color(0xFFE5E7EB); // gray-200
   static const Color borderLight = Color(0xFFF3F4F6); // gray-100

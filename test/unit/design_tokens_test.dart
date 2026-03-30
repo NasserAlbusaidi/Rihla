@@ -144,6 +144,10 @@ void main() {
         moduleMemoriesLight: Color(0xFF000000),
         headerGradientStart: Color(0xFF000000),
         headerGradientEnd: Color(0xFF000000),
+        offlineBannerBackground: Color(0xFF000000),
+        bottomNavBackground: Color(0xFF000000),
+        bottomNavActiveIcon: Color(0xFF000000),
+        bottomNavInactiveIcon: Color(0xFF000000),
       );
       final lerped = AppColorTokens.light.lerp(other, 0.0);
       expect(lerped.primary, equals(AppColorTokens.light.primary));
@@ -182,6 +186,10 @@ void main() {
         moduleMemoriesLight: Color(0xFF000000),
         headerGradientStart: Color(0xFF000000),
         headerGradientEnd: Color(0xFF000000),
+        offlineBannerBackground: Color(0xFF000000),
+        bottomNavBackground: Color(0xFF000000),
+        bottomNavActiveIcon: Color(0xFF000000),
+        bottomNavInactiveIcon: Color(0xFF000000),
       );
       final lerped = AppColorTokens.light.lerp(other, 1.0);
       expect(lerped.primary, equals(const Color(0xFF000000)));

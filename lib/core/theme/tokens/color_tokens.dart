@@ -39,6 +39,10 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     required this.moduleMemoriesLight,
     required this.headerGradientStart,
     required this.headerGradientEnd,
+    required this.offlineBannerBackground,
+    required this.bottomNavBackground,
+    required this.bottomNavActiveIcon,
+    required this.bottomNavInactiveIcon,
   });
 
   /// Teal — primary action color (buttons, FABs, focused inputs, links)
@@ -134,6 +138,18 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// Header gradient end — gray-800 (#1F2937)
   final Color headerGradientEnd;
 
+  /// Amber offline indicator (#F59E0B)
+  final Color offlineBannerBackground;
+
+  /// Bottom nav bar surface (#FFFFFF)
+  final Color bottomNavBackground;
+
+  /// Active tab icon — matches primary (#0D7B74)
+  final Color bottomNavActiveIcon;
+
+  /// Inactive tab icon — decorative only (#9CA3AF)
+  final Color bottomNavInactiveIcon;
+
   /// Computed dark header gradient (not const — LinearGradient is not const-constructable).
   LinearGradient get headerGradient => LinearGradient(
         begin: Alignment.topLeft,
@@ -174,6 +190,10 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     moduleMemoriesLight: Color(0xFFF3F4F6),
     headerGradientStart: Color(0xFF111827),
     headerGradientEnd: Color(0xFF1F2937),
+    offlineBannerBackground: Color(0xFFF59E0B),
+    bottomNavBackground: Color(0xFFFFFFFF),
+    bottomNavActiveIcon: Color(0xFF0D7B74),
+    bottomNavInactiveIcon: Color(0xFF9CA3AF),
   );
 
   @override
@@ -209,6 +229,10 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     Color? moduleMemoriesLight,
     Color? headerGradientStart,
     Color? headerGradientEnd,
+    Color? offlineBannerBackground,
+    Color? bottomNavBackground,
+    Color? bottomNavActiveIcon,
+    Color? bottomNavInactiveIcon,
   }) {
     return AppColorTokens(
       primary: primary ?? this.primary,
@@ -242,6 +266,10 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       moduleMemoriesLight: moduleMemoriesLight ?? this.moduleMemoriesLight,
       headerGradientStart: headerGradientStart ?? this.headerGradientStart,
       headerGradientEnd: headerGradientEnd ?? this.headerGradientEnd,
+      offlineBannerBackground: offlineBannerBackground ?? this.offlineBannerBackground,
+      bottomNavBackground: bottomNavBackground ?? this.bottomNavBackground,
+      bottomNavActiveIcon: bottomNavActiveIcon ?? this.bottomNavActiveIcon,
+      bottomNavInactiveIcon: bottomNavInactiveIcon ?? this.bottomNavInactiveIcon,
     );
   }
 
@@ -280,6 +308,10 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       moduleMemoriesLight: Color.lerp(moduleMemoriesLight, other.moduleMemoriesLight, t)!,
       headerGradientStart: Color.lerp(headerGradientStart, other.headerGradientStart, t)!,
       headerGradientEnd: Color.lerp(headerGradientEnd, other.headerGradientEnd, t)!,
+      offlineBannerBackground: Color.lerp(offlineBannerBackground, other.offlineBannerBackground, t)!,
+      bottomNavBackground: Color.lerp(bottomNavBackground, other.bottomNavBackground, t)!,
+      bottomNavActiveIcon: Color.lerp(bottomNavActiveIcon, other.bottomNavActiveIcon, t)!,
+      bottomNavInactiveIcon: Color.lerp(bottomNavInactiveIcon, other.bottomNavInactiveIcon, t)!,
     );
   }
 }
