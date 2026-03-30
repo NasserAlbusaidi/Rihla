@@ -184,6 +184,6 @@ Plans:
 | 17. Animation Library & Loading States | 2/2 | Complete    | 2026-03-29 |
 | 18. Home Dashboard Redesign | 3/3 | Complete    | 2026-03-30 |
 | 19. Navigation Restructuring | 3/3 | Complete    | 2026-03-30 |
-| 20. Group Detail & Event Hub Redesign | 2/2 | Complete   | 2026-03-30 |
+| 20. Group Detail & Event Hub Redesign | 2/2 | Complete    | 2026-03-30 |
 | 21. Module Screens Redesign | 0/? | Not started | - |
 | 22. Polish Pass & Token Cleanup | 0/? | Not started | - |
