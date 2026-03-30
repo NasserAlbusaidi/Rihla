@@ -130,7 +130,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 19-01-PLAN.md — Route tree expansion (14 new GoRoute entries) + _slideRightTransition helper + :id->:gid rename + ModuleHeader context.pop() + testRouter helper
-- [ ] 19-02-PLAN.md — Screen constructor migration (9 screens: Event/Group objects -> string IDs) + Navigator.push -> context.push/go replacements + router placeholder wiring
+- [x] 19-02-PLAN.md — Screen constructor migration (9 screens: Event/Group objects -> string IDs) + Navigator.push -> context.push/go replacements + router placeholder wiring
 - [ ] 19-03-PLAN.md — EditExpenseSheet -> EditExpenseScreen conversion + test file updates + page_transitions.dart deletion + CLAUDE.md navigation docs
 
 ### Phase 20: Group Detail & Event Hub Redesign
@@ -180,7 +180,7 @@ Plans:
 | 16. Stitch Workflow & Design Reference | 2/2 | Complete    | 2026-03-29 |
 | 17. Animation Library & Loading States | 2/2 | Complete    | 2026-03-29 |
 | 18. Home Dashboard Redesign | 3/3 | Complete    | 2026-03-30 |
-| 19. Navigation Restructuring | 1/3 | In Progress|  |
+| 19. Navigation Restructuring | 2/3 | In Progress|  |
 | 20. Group Detail & Event Hub Redesign | 0/? | Not started | - |
 | 21. Module Screens Redesign | 0/? | Not started | - |
 | 22. Polish Pass & Token Cleanup | 0/? | Not started | - |
