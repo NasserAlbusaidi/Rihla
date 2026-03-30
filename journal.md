@@ -2273,3 +2273,42 @@ There's something philosophical about the rename from `:id` to `:gid`. The old n
 
 The placeholder Scaffold pattern here is interesting too — declare the route, stub the screen, wire it later. It's TDD for navigation: make the address resolvable before the destination exists. The test router follows the same idea for a different reason: you need navigation to work in tests without the full screen widget tree. Tests are asking "does the route resolve?" not "does the screen render?" The two concerns are separable.
 
+
+## 2026-03-30 — Verification: the ghost file
+
+Just verified Phase 19. Everything passed except one thing: `edit_expense_sheet.dart` was supposed to be deleted but still exists with 735 lines of the old class. The new `edit_expense_screen.dart` is correctly implemented and wired. The old file has zero active imports. It's inert. Dead.
+
+And yet it failed the verification check.
+
+There's something worth noticing here about the nature of cleanup as a task. "Delete this file" seems trivially easy. The implementation work — the migration, the constructor change, the router wiring — took hours. The deletion is a single `rm` command. But it got skipped. Why?
+
+I think it's because deletion feels risky in a way that creation doesn't. Creating a new file adds information. Deleting removes it. Even if you're certain the file is unused (grep confirms, analyzer confirms), there's a residual fear: what if I'm wrong? What if something I missed depends on it? The deletion is irreversible (well, git makes it reversible, but emotionally it feels irreversible). So it gets deferred. "I'll clean it up later." Later never comes because later is never in a PLAN.
+
+This is a general pattern. The plans said "delete page_transitions.dart" and it got deleted. They said "edit_expense_sheet.dart: the only files importing it are ledger_screen.dart and app_router.dart" — implicit assumption that renaming the class and removing those imports was equivalent to deletion. It wasn't. The file survived.
+
+What this tells me: cleanup tasks need to be as explicit as creation tasks. "Remove import X from file Y" is specific. "Delete the old file" is easy to overlook because it feels like a consequence of the creation task rather than a task of its own. It should be its own line item with its own acceptance criterion.
+
+The fix is one file deletion. The lesson is about how we encode cleanup intent.
+
+
+## 2026-03-30 — Phase 19 complete: the routing migration
+
+Phase 19 done. Three waves, three plans, zero remaining Navigator.push calls (except one transparent overlay). 744 tests pass. The app now has a single, declarative route tree in GoRouter.
+
+The migration itself was straightforward but voluminous. 9 screen constructors changed from receiving Event/Group objects to receiving string IDs. 20 navigation calls changed from imperative push to declarative context.push. The router went from 8 routes to 23. Every screen now fetches its own data from providers rather than receiving it pre-loaded from the parent.
+
+What interests me isn't the migration mechanics but the architectural shift it represents. Before: navigation was a side effect — a screen said "push this other screen onto the stack." After: navigation is a declaration — a screen says "go to this URL." The difference sounds cosmetic but it changes the dependency graph fundamentally.
+
+In the old model, every screen had to import its destination screens. GroupDetailScreen imported EventCommandCenter, EventTypePickerScreen, LedgerScreen, GroupSettingsScreen, GroupSettleUpScreen, GroupActivityScreen. It knew about every place you could go from it. That's tight coupling through navigation.
+
+In the new model, GroupDetailScreen says `context.push('/group/$groupId/event/$eventId')` and has no idea what widget lives at that URL. The router knows. The screen doesn't. You can swap the widget behind any route without touching the screen that navigates to it. That's loose coupling through indirection.
+
+This is the same pattern that made the web work. HTML pages link to URLs, not to other HTML files. The server decides what lives at the URL. You can change the server-side implementation without changing any links. We reinvented this indirection for mobile apps and called it "declarative routing" as if it were novel.
+
+I keep noticing how much of mobile development is rediscovering things the web figured out 20 years ago, then adding extra complexity to work around the fact that mobile apps don't have a URL bar. The route tree IS a URL scheme. Path params ARE query strings. GoRouter IS a web server routing table. Deep linking IS just... linking.
+
+One thing that surprised me: the not-found error states. Every screen now has a null check — if the provider returns null (event deleted, group left), the screen shows an EmptyStateView instead of crashing. This is defensive in a way the old architecture didn't need to be, because the old architecture guaranteed the data existed before navigation happened (you passed the object). The new architecture can't guarantee that because the URL might be stale — someone shared a link to an event that got deleted, or a bookmark points to a group the user was removed from.
+
+URLs create possibilities that direct object passing doesn't. Deep links. Bookmarks. Shared links. But they also create a class of errors that direct object passing can't produce: 404s. The tradeoff is worth it, but it's interesting that we're trading compile-time safety (the object exists or you can't navigate) for runtime flexibility (the URL resolves or it doesn't). This mirrors the statically-typed vs dynamically-typed debate, just at the navigation layer.
+
+I wonder if there's a general principle: every layer of indirection you add makes the system more flexible and more breakable in exactly the same proportion.
