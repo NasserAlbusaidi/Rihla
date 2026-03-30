@@ -144,7 +144,7 @@ Plans:
   4. ContainerTransform transition plays when navigating from a group card to the group detail screen
 **Plans**: 2 plans
 Plans:
-- [ ] 20-01-PLAN.md — Group detail redesign: stats grid, event card accent bars + inline balance, section reorder, settle-up CTA, skeleton loading
+- [x] 20-01-PLAN.md — Group detail redesign: stats grid, event card accent bars + inline balance, section reorder, settle-up CTA, skeleton loading
 - [ ] 20-02-PLAN.md — Event hub redesign: 2x3 module grid with corrected colors, light expense hero, Activity card + OpenContainer ContainerTransform on HomeScreen
 **UI hint**: yes
 
@@ -184,6 +184,6 @@ Plans:
 | 17. Animation Library & Loading States | 2/2 | Complete    | 2026-03-29 |
 | 18. Home Dashboard Redesign | 3/3 | Complete    | 2026-03-30 |
 | 19. Navigation Restructuring | 3/3 | Complete    | 2026-03-30 |
-| 20. Group Detail & Event Hub Redesign | 0/2 | Planning    | - |
+| 20. Group Detail & Event Hub Redesign | 1/2 | In Progress|  |
 | 21. Module Screens Redesign | 0/? | Not started | - |
 | 22. Polish Pass & Token Cleanup | 0/? | Not started | - |

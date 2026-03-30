@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
-status: verifying
-stopped_at: Phase 20 context gathered
-last_updated: "2026-03-30T12:08:57.219Z"
+status: executing
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-03-30T15:23:10.757Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 9
   completed_phases: 6
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 17
+  completed_plans: 16
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 19 — navigation-restructuring
+**Current focus:** Phase 20 — group-detail-event-hub-redesign
 
 ## Current Position
 
-Phase: 20
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 20 (group-detail-event-hub-redesign) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-30
 
 Progress: [██████████] 100% (Phase 18 complete — 5 of 9 phases done)
@@ -54,6 +54,7 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 | Phase 19-navigation-restructuring P01 | 174 | 2 tasks | 3 files |
 | Phase 19-navigation-restructuring P02 | 65 | 3 tasks | 13 files |
 | Phase 19-navigation-restructuring P03 | 45 | 2 tasks | 17 files |
+| Phase 20-group-detail-event-hub-redesign P01 | 13 | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,10 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 - Phase 19 P03: EditExpenseSheet → EditExpenseScreen with expenseId string constructor; showModalBottomSheet removed; deferred controller init pattern (_initialized guard) handles async expense lookup
 - Phase 19 P03: page_transitions.dart deleted — all transitions now use CustomTransitionPage + _slideRightTransition in app_router.dart; AppPageRoute/AppBottomSheetRoute gone
 - Phase 19 P03: Tests wrapping screens that call context.push must use MaterialApp.router (not MaterialApp(home:)) — applied across 9 test files; 744 tests pass
+- Phase 20 P01: currentUserIdProvider used in GroupDetailScreen instead of FirebaseConfig.currentUser directly — enables test isolation via Riverpod override without Firebase init
+- Phase 20 P01: Stats grid (GroupStatsGrid) always visible per D-08 — no conditional on totalSpent unlike old GroupBalanceHero; zero-state shows zeros
+- Phase 20 P01: EventCard accent bar (IntrinsicHeight Row + 3dp Container) replaces 48x48 icon container and type badge chip; teal=active, gray=past
+- Phase 20 P01: Dart 3 switch expression for three-state balance color: &lt; 0 =&gt; errorText, &gt; 0 =&gt; successText, _ =&gt; textPrimary
 
 ### Known Risks
 
@@ -114,6 +119,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-30T12:08:57.215Z
-Stopped at: Phase 20 context gathered
+Last session: 2026-03-30T15:23:10.754Z
+Stopped at: Completed 20-01-PLAN.md
 Next action: Phase 19 complete — proceed to Phase 20 (Group Detail & Event Hub screens with new GoRouter-declarative navigation)

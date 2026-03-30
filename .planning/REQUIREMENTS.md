@@ -26,7 +26,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 
 ### Screen Redesign
 
-- [ ] **SCRN-01**: Group detail screen shows event cards with type-specific color accents, inline financial summaries, and past/upcoming visual distinction
+- [x] **SCRN-01**: Group detail screen shows event cards with type-specific color accents, inline financial summaries, and past/upcoming visual distinction
 - [ ] **SCRN-02**: Event hub (CommandCenter) uses the new design language with earthy palette and improved information density
 - [ ] **SCRN-03**: Ledger screen uses card-style expense rows with color-coded balance displays
 - [ ] **SCRN-04**: Gear, Logistics, Vault, Memories, and Activity screens are redesigned with the new design tokens
@@ -80,7 +80,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 | NAV-04 | Phase 18 | Complete |
 | NAV-05 | Phase 17 | Complete |
 | NAV-06 | Phase 18 | Complete |
-| SCRN-01 | Phase 20 | Pending |
+| SCRN-01 | Phase 20 | Complete |
 | SCRN-02 | Phase 20 | Pending |
 | SCRN-03 | Phase 21 | Pending |
 | SCRN-04 | Phase 21 | Pending |
