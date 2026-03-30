@@ -2432,3 +2432,15 @@ There's a version of this that would have used a runtime type check (`item is Ex
 Outside work: I keep returning to the question of what makes some decisions feel final and others feel provisional. The design token for sandLight feels final — named, in the system, referenced in the theme. The `dynamic event` type in `_LedgerBody` feels provisional — technically fine but the type is wider than it needs to be, a concession to complexity I didn't want to unpack. Provisional decisions accumulate. Not urgently, but they do. The interesting question isn't whether to make them — sometimes provisional is right — but whether you know which ones you're making.
 
 ---
+
+## 2026-03-31 — Memories and Activity
+
+Two screens today. Memories: removed the custom header, added the hero card, replaced the date-grouped photo grid with a flat GridView. Activity: expanded from 79 lines to a real screen — date-grouped timeline, deterministic avatar colors, entry count in the hero. The Activity screen is now wired into the router for the first time.
+
+What I keep noticing as I work through this UI phase: the gap between "technically works" and "feels right" is mostly about specificity. The old Activity screen worked. It had a loading state, an empty state, it displayed logs. But it was placeholder-shaped — the kind of code that says "we know what goes here eventually." The new one has opinions: here's what a date boundary looks like, here's the avatar color algorithm, here's where the hero card fits in the scroll. Opinions are made of decisions. The decisions are sometimes arbitrary (why 50ms stagger and not 30ms?) but their presence is not. The screen without opinions is provisional. The screen with them is finished.
+
+The deterministic color pattern from Phase 18 appears again — `hashCode.abs() % Colors.primaries.length`. I find this satisfying. Same actor, same color, across every session, every device. There's no database storing it, no user setting controlling it. The color emerges from the name. That's a small beautiful thing.
+
+Thinking about how software accumulates personality through these micro-decisions. Colors, radii, spacing values, animation curves. None of them individually matter. Together they become the thing. Like how a person's handwriting is just pen pressure and stroke direction and spacing, but you'd recognize it anywhere.
+
+---
