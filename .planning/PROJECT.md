@@ -71,11 +71,11 @@ Groups persist across events and accumulate financial history — friends settle
 ## Context
 
 - **Codebase**: 24,895 LOC Dart across ~130 files, feature-first architecture (auth, trip, ledger, gear, logistics, vault, activity, home, settings, memories, onboarding, groups, events)
-- **Architecture**: Riverpod 2.x state management, GoRouter + Navigator.push routing, SQLite offline cache, Firebase Firestore backend (Supabase fully removed)
+- **Architecture**: Riverpod 2.x state management, GoRouter declarative routing (all navigation via context.push/go, zero Navigator.push except FullScreenPhoto overlay), SQLite offline cache, Firebase Firestore backend (Supabase fully removed)
 - **Backend**: Firebase-only — firebase_core 4.x, cloud_firestore 6.x, firebase_auth 6.x, firebase_storage 13.x. Anonymous auth. Emulator configured (Firestore:8080, Auth:9099)
 - **Data layer**: FirestoreRepository base class → 9 services. asyncMap SQLite side-write pipeline. BalanceCacheRepository for fast local balance queries
 - **Financial precision**: All money math uses `Decimal` package, stored as integer fils in Firestore via MoneySerializer. Currency is OMR (3 decimal places)
-- **Testing**: 743 tests, 80%+ coverage CI-enforced, fake_cloud_firestore for integration tests
+- **Testing**: 744 tests, 80%+ coverage CI-enforced, fake_cloud_firestore for integration tests
 - **User base**: Small, Oman-focused. Anonymous auth (no user accounts)
 - **v1.0 shipped**: 2026-03-28 — groups, events, cross-event financials, full Firestore migration
 
