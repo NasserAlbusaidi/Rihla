@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../ledger/models/expense_model.dart';
@@ -248,3 +249,97 @@ Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
 
   return breakdown;
 }
+
+// ---------------------------------------------------------------------------
+// currentUserIdProvider — injectable UID for testability
+// ---------------------------------------------------------------------------
+
+/// Provides the current Firebase user's UID, or null if not authenticated.
+///
+/// Using a Provider instead of reading [FirebaseConfig.currentUser] directly
+/// makes [crossGroupBalanceProvider] testable via Riverpod overrides without
+/// requiring a real Firebase Auth instance.
+final currentUserIdProvider = Provider<String?>((ref) {
+  return FirebaseConfig.currentUser?.uid;
+});
+
+// ---------------------------------------------------------------------------
+// CrossGroupBalance typedef
+// ---------------------------------------------------------------------------
+
+/// Record type for cross-group balance aggregation displayed in the balance
+/// hero card.
+///
+/// Fields:
+/// - [net]: The current user's net balance across ALL groups (positive = owed
+///   money, negative = owes money).
+/// - [groupCount]: Total number of groups the user belongs to.
+/// - [isLoading]: True if some group balance data is still loading (UI can
+///   show partial data with a loading indicator).
+typedef CrossGroupBalance = ({Decimal net, int groupCount, bool isLoading});
+
+// ---------------------------------------------------------------------------
+// crossGroupBalanceProvider
+// ---------------------------------------------------------------------------
+
+/// Aggregates the current user's personal net balance across ALL groups.
+///
+/// Uses `Provider` (NOT `Provider.family` or `StreamProvider`) because there
+/// is only one current user. Reads UID from [currentUserIdProvider] (injectable
+/// for tests).
+///
+/// Pattern: identical to [groupBalancesProvider] — `ref.watch` in a loop over
+/// variable-length groups list, which is safe in Provider bodies
+/// (RESEARCH Pitfall 2).
+///
+/// Returns:
+/// - [AsyncValue.loading] while [userGroupsProvider] has no value
+/// - [AsyncValue.error] if [userGroupsProvider] errors
+/// - [AsyncValue.data] with [CrossGroupBalance] containing net sum, group
+///   count, and loading flag
+final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((ref) {
+  final uid = ref.watch(currentUserIdProvider);
+  if (uid == null) {
+    return AsyncValue.data(
+      (net: Decimal.zero, groupCount: 0, isLoading: false),
+    );
+  }
+
+  final groupsAsync = ref.watch(userGroupsProvider);
+  if (groupsAsync.isLoading && !groupsAsync.hasValue) {
+    return const AsyncValue.loading();
+  }
+  if (groupsAsync.hasError) {
+    return AsyncValue.error(groupsAsync.error!, groupsAsync.stackTrace!);
+  }
+  final groups = groupsAsync.valueOrNull ?? [];
+  if (groups.isEmpty) {
+    return AsyncValue.data(
+      (net: Decimal.zero, groupCount: 0, isLoading: false),
+    );
+  }
+
+  var net = Decimal.zero;
+  var anyLoading = false;
+
+  for (final group in groups) {
+    final balancesAsync = ref.watch(groupBalancesProvider(group.id));
+    if (balancesAsync.isLoading && !balancesAsync.hasValue) {
+      anyLoading = true;
+      continue;
+    }
+    final balances = balancesAsync.valueOrNull;
+    if (balances == null) continue;
+    final userBalance = balances.balances
+        .where((b) => b.participantId == uid)
+        .firstOrNull;
+    net = net + (userBalance?.netBalance ?? Decimal.zero);
+  }
+
+  if (anyLoading && net == Decimal.zero) return const AsyncValue.loading();
+  return AsyncValue.data((
+    net: net,
+    groupCount: groups.length,
+    isLoading: anyLoading,
+  ));
+});
