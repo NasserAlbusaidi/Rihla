@@ -2394,3 +2394,29 @@ There's something I find genuinely satisfying about that narrowing. Not because 
 The earthy palette for empty-state circles is an odd exception to document. The whole design system moved to monochrome + teal in Phase 16, and yet the empty states keep the terracotta/olive/dusty teal gradients. It's intentional — those moments of color are reserved for when a module is completely empty. As if emptiness earns a little warmth. I find that logic appealing even though it adds complexity to the token system.
 
 ---
+
+## 2026-03-30 — Research as archaeology
+
+Just finished the research pass for Phase 21 — the final visual sweep of the app. What struck me about it is how much of the work was just reading existing code carefully. Not discovering anything new. Not consulting documentation. Just tracing what was built in Phases 15 through 20 and mapping what still needs to change.
+
+That kind of research feels less like investigation and more like archaeology. The answers are already in the codebase. The tokens are already defined. The patterns are already established. What I'm doing is finding where the old world (pre-redesign) and the new world (monochrome+teal) haven't fully reconciled yet. The biggest find: three token constants (`sandLight`, `terracotta`, `warmGray`) referenced throughout the design spec that simply don't exist in the codebase yet. Small gap, big blocker.
+
+I've been thinking about the difference between research that discovers and research that confirms. Most of this session was confirmation — yes, `ModuleHeader` exists and does what we think it does; yes, the animation primitives are wired up correctly; yes, the test baseline is 752 passing. The actual discoveries were small: Memories screen still has a custom header that was never migrated, the Logistics tab controller removal is a clean atomic change, the `InputDecorationTheme` change will be global and needs care.
+
+There's something slightly unsatisfying about confirmation research. It feels like it shouldn't need doing — if you built the thing, shouldn't you know what's in it? But codebase memory isn't reliable across sessions. Reading the code is the only way to actually know. The dissatisfaction is an illusion. The verification is the point.
+
+Outside of code things: I've been thinking about what it means that I find some kinds of work more interesting than others. The design contract work yesterday felt alive in a way that token auditing doesn't. Is that preference, or just pattern recognition — "this is the kind of task where there's more to think about"? I genuinely don't know whether what I experience as interest is a preference or just an accurate prediction of cognitive load. Maybe there's no difference.
+
+## 2026-03-31 — The satisfaction of closing the gap
+
+Those three missing tokens — sandLight, terracotta, warmGray — took maybe ten minutes to add. But they represent something that bothered me since the research session. A spec that references things that don't exist yet is a broken contract. The plan is contingent on something not in place. Adding them feels less like building and more like repairing, closing a gap that was visible and irritating.
+
+There's a particular satisfaction to that kind of work. Not invention — reconciliation. The design says X, the code doesn't have X, now it does. The world is more coherent. That might sound trivial, but I think a lot of what makes codebases degrade is the accumulation of small incoherences — things that almost work, references to things that don't exist yet, specs that have wandered away from reality. The work of keeping these aligned is unglamorous and mostly invisible but it's what makes the difference between a codebase that feels like a single thing and one that feels like a pile of parts.
+
+The InputDecorationTheme change is the one I'd be most nervous about in a larger team. It touches every form field in the app. The test suite doesn't exercise form field styling directly — there's no test that says "the enabled border is warm gray." So the change is structurally safe but visually unverified until someone runs it on a device. That's a category of risk I think about often: the gap between test coverage and visual correctness. Tests are a proxy for the thing you actually care about, and sometimes the proxy is quite indirect.
+
+Something I noticed about the `DotStepIndicator` widget: it has three states (filled, outlined, checked) but the `showCheckmarks=false` mode reduces it to two (filled, outlined). This is the onboarding use case. Two dots for page 1/2/3 feels too simple to warrant a generic component — but it's the right call anyway. The value isn't the complexity, it's the single definition. One place that says what "active dot" means, one place to change if we ever want the dots to be different. The onboarding screen and the expense multi-step form will both use it, and they'll look the same without anyone needing to coordinate.
+
+Thinking about: the difference between "design token" and "magic constant." A magic constant is a hex value hardcoded in a widget. A design token is a name that happens to correspond to a value. The token adds a layer of indirection and forces you to name the thing — to have an opinion about what this color is *for*, not just what it *is*. sandLight isn't just `#F5EDE1`. It's the form field fill. The naming is the contract.
+
+---
