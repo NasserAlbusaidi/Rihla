@@ -180,6 +180,34 @@ class SkeletonLoader extends StatelessWidget {
     );
   }
 
+  /// Skeleton mirroring the Memories photo grid layout.
+  ///
+  /// Renders a 3-column grid of [count] equal skeleton blocks (default 9).
+  /// Used as the loading placeholder for MemoriesScreen.
+  factory SkeletonLoader.photoGrid({int count = 9}) {
+    return SkeletonLoader(
+      itemCount: 1,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: count,
+          itemBuilder: (context2, index2) => const SkeletonBlock(
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: 8,
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Generic plain-card skeleton fallback for screens without a named variant.
   ///
   /// Produces [SkeletonCard] items of uniform height 72dp.

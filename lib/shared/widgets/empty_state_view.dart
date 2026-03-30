@@ -10,6 +10,7 @@ class EmptyStateView extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
   final Color? iconColor;
+  final LinearGradient? accentGradient;
 
   const EmptyStateView({
     super.key,
@@ -19,6 +20,7 @@ class EmptyStateView extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.iconColor,
+    this.accentGradient,
   });
 
   @override
@@ -36,11 +38,20 @@ class EmptyStateView extends StatelessWidget {
             Container(
               width: 72,
               height: 72,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+              decoration: accentGradient != null
+                  ? BoxDecoration(
+                      gradient: accentGradient,
+                      shape: BoxShape.circle,
+                    )
+                  : BoxDecoration(
+                      color: color.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+                    ),
+              child: Icon(
+                icon,
+                size: 48,
+                color: accentGradient != null ? Colors.white : color,
               ),
-              child: Icon(icon, size: 32, color: color),
             ),
             const SizedBox(height: AppColors.space20),
             Text(
