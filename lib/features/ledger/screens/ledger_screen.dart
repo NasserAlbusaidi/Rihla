@@ -2,17 +2,17 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/utils/page_transitions.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
-import '../../events/models/event_model.dart';
-import '../../groups/models/group_model.dart';
+import '../../events/providers/event_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
@@ -24,17 +24,22 @@ import '../providers/ledger_provider.dart';
 import '../widgets/member_balances_section.dart';
 import '../widgets/spending_summary_section.dart';
 import '../widgets/transaction_list.dart';
-import 'add_expense_screen.dart';
 import 'edit_expense_sheet.dart';
 import '../keys/ledger_keys.dart';
-import 'settle_up_screen.dart';
 
-/// Ledger Screen - Event Settlement with dark header, debt tabs, and actions
+/// Ledger Screen - Event Settlement with dark header, debt tabs, and actions.
+///
+/// Takes string IDs per D-14 and D-08. Uses [eventDetailProvider] to load
+/// event data. Shows a not-found error state per D-11 when event is null.
 class LedgerScreen extends ConsumerStatefulWidget {
-  final Event event;
-  final Group group;
+  final String groupId;
+  final String eventId;
 
-  const LedgerScreen({super.key, required this.event, required this.group});
+  const LedgerScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   @override
   ConsumerState<LedgerScreen> createState() => _LedgerScreenState();
@@ -42,17 +47,48 @@ class LedgerScreen extends ConsumerStatefulWidget {
 
 class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   void _openSettleUp(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (context) =>
-            SettleUpScreen(event: widget.event, group: widget.group),
-      ),
-    );
+    context.push(
+        '/group/${widget.groupId}/event/${widget.eventId}/ledger/settle-up');
   }
 
   @override
   Widget build(BuildContext context) {
-    final eventRef = (groupId: widget.event.groupId, eventId: widget.event.id);
+    final eventRef =
+        (groupId: widget.groupId, eventId: widget.eventId);
+
+    final eventAsync = ref.watch(eventDetailProvider(eventRef));
+
+    // Loading state
+    if (eventAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final event = eventAsync.valueOrNull;
+
+    // Not-found state per D-11
+    if (event == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Not Found', useDarkTheme: true),
+            Expanded(
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: 'This event no longer exists',
+                message:
+                    'It may have been deleted. Tap below to go back to your groups.',
+                actionLabel: 'Go Home',
+                onAction: () => context.go('/home'),
+                iconColor: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     // Watch raw streams for Balance Calculation using EventRef-based providers
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
@@ -62,13 +98,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     final ledgerAsync = ref.watch(eventUnifiedLedgerProvider(eventRef));
 
     // Derive participants from event data (no SQLite lookup needed)
-    final participants = widget.event.participantIds.map((id) {
+    final participants = event.participantIds.map((id) {
       return Participant(
         id: id,
-        tripId: widget.event.id,
+        tripId: event.id,
         role: ParticipantRole.member,
-        joinedAt: widget.event.createdAt,
-        displayName: widget.event.participantNames[id],
+        joinedAt: event.createdAt,
+        displayName: event.participantNames[id],
       );
     }).toList();
 
@@ -77,9 +113,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     final subGroups = subGroupsAsync.valueOrNull ?? [];
 
     // Current participant: match device name to event participant
-    final currentParticipantId = participants.isNotEmpty
-        ? participants.first.id
-        : null;
+    final currentParticipantId =
+        participants.isNotEmpty ? participants.first.id : null;
 
     return Scaffold(
       key: LedgerKeys.screen,
@@ -90,6 +125,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             final transactions = ledgerAsync.valueOrNull ?? [];
             return _buildContent(
               context,
+              event,
               expenses,
               settlements,
               transactions,
@@ -100,7 +136,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => NetworkErrorWidget(
-            onRetry: () => ref.invalidate(eventSettlementsProvider(eventRef)),
+            onRetry: () =>
+                ref.invalidate(eventSettlementsProvider(eventRef)),
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -113,6 +150,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 
   Widget _buildContent(
     BuildContext context,
+    event,
     List<Expense> expenses,
     List<Settlement> settlements,
     List<Transaction> transactions,
@@ -139,13 +177,15 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     );
 
     final netBalance = myBalance.netBalance;
-    final participantCount = participants.length > 1 ? participants.length : 1;
+    final participantCount =
+        participants.length > 1 ? participants.length : 1;
 
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
           child: _buildBalanceHeader(
             context,
+            event,
             netBalance,
             participantCount,
           ).animate().fadeIn().slideY(begin: -0.2),
@@ -156,14 +196,14 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           child: MemberBalancesSection(
             balances: balances,
             currentParticipantId: currentParticipantId,
-            currency: widget.event.currency,
+            currency: event.currency,
           ).animate().fadeIn(delay: 100.ms),
         ),
         // Spending summary toggle
         SliverToBoxAdapter(
           child: SpendingSummarySection(
             expenses: expenses,
-            currency: widget.event.currency,
+            currency: event.currency,
           ).animate().fadeIn(delay: 150.ms),
         ),
         // Transactions
@@ -171,7 +211,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           child: TransactionList(
             transactions: transactions,
             currentParticipantId: currentParticipantId,
-            currency: widget.event.currency,
+            currency: event.currency,
             onEditExpense: (expense) => _editExpense(context, expense),
             onAddExpense: () => _addExpense(context),
           ).animate().fadeIn(delay: 200.ms),
@@ -183,6 +223,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 
   Widget _buildBalanceHeader(
     BuildContext context,
+    event,
     Decimal netBalance,
     int participantCount,
   ) {
@@ -191,14 +232,16 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 
     return ModuleHeader(
       title: 'Ledger',
-      subtitle: widget.event.name.toUpperCase(),
+      subtitle: event.name.toUpperCase(),
       useDarkTheme: true,
       actions: [
         Container(
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            borderRadius:
+                BorderRadius.circular(AppColors.radiusSmall + 2),
+            border:
+                Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: IconButton(
             icon: const Icon(
@@ -218,7 +261,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              border:
+                  Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Row(
               children: [
@@ -233,7 +277,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           Text(
                             isPositive ? '+' : '-',
                             style: TextStyle(
-                              color: isPositive ? AppColors.primary : AppColors.error,
+                              color: isPositive
+                                  ? AppColors.primary
+                                  : AppColors.error,
                               fontSize: 28,
                               fontWeight: FontWeight.w900,
                             ),
@@ -241,7 +287,9 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           const SizedBox(width: 4),
                           Text(
                             absBalance.toStringAsFixed(
-                              AppFormatters.currencyConfig[widget.event.currency]?.decimals ?? 3,
+                              AppFormatters.currencyConfig[event.currency]
+                                      ?.decimals ??
+                                  3,
                             ),
                             style: const TextStyle(
                               color: Colors.white,
@@ -252,9 +300,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            widget.event.currency,
+                            event.currency,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color:
+                                  Colors.white.withValues(alpha: 0.5),
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
                             ),
@@ -334,7 +383,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               : null,
           border: isPrimary
               ? null
-              : Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              : Border.all(
+                  color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -362,21 +412,15 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => EditExpenseSheet(
-        groupId: widget.event.groupId,
-        eventId: widget.event.id,
+        groupId: widget.groupId,
+        eventId: widget.eventId,
         expense: expense,
       ),
     );
   }
 
   void _addExpense(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (context) => AddExpenseScreen(
-          groupId: widget.event.groupId,
-          eventId: widget.event.id,
-        ),
-      ),
-    );
+    context.push(
+        '/group/${widget.groupId}/event/${widget.eventId}/ledger/add');
   }
 }

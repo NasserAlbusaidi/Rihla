@@ -2,16 +2,18 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
-import '../../events/models/event_model.dart';
-import '../../groups/models/group_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
+import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/module_header.dart';
+import '../../events/providers/event_provider.dart';
 import '../../trip/models/trip_model.dart';
+import '../../logistics/providers/sub_group_provider.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
@@ -21,16 +23,59 @@ import '../keys/ledger_keys.dart';
 import '../widgets/settlement_summary_card.dart';
 import '../widgets/settlement_tile.dart';
 
-/// Settle Up Screen - Shows optimized settlements with payment actions
+/// Settle Up Screen - Shows optimized settlements with payment actions.
+///
+/// GoRouter route at /group/:gid/event/:eid/ledger/settle-up per D-07.
+/// Takes string IDs per D-14. Uses [eventDetailProvider] internally.
+/// Shows a not-found error state per D-11 when event is null.
 class SettleUpScreen extends ConsumerWidget {
-  final Event event;
-  final Group group;
+  final String groupId;
+  final String eventId;
 
-  const SettleUpScreen({super.key, required this.event, required this.group});
+  const SettleUpScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final eventRef = (groupId: event.groupId, eventId: event.id);
+    final eventRef = (groupId: groupId, eventId: eventId);
+
+    final eventAsync = ref.watch(eventDetailProvider(eventRef));
+
+    // Loading state
+    if (eventAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final event = eventAsync.valueOrNull;
+
+    // Not-found state per D-11
+    if (event == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Not Found', useDarkTheme: true),
+            Expanded(
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: 'This event no longer exists',
+                message:
+                    'It may have been deleted. Tap below to go back to your groups.',
+                actionLabel: 'Go Home',
+                onAction: () => context.go('/home'),
+                iconColor: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
     final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
@@ -80,6 +125,7 @@ class SettleUpScreen extends ConsumerWidget {
                   return _buildContent(
                     context,
                     ref,
+                    event,
                     optimalSettlements,
                     userNames,
                     balances,
@@ -88,9 +134,13 @@ class SettleUpScreen extends ConsumerWidget {
                     participants,
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
                 error: (e, _) => NetworkErrorWidget(
-                  onRetry: () => ref.invalidate(eventExpensesProvider((groupId: event.groupId, eventId: event.id))),
+                  onRetry: () => ref.invalidate(
+                    eventExpensesProvider(
+                        (groupId: groupId, eventId: eventId)),
+                  ),
                 ),
               ),
             ),
@@ -115,7 +165,7 @@ class SettleUpScreen extends ConsumerWidget {
             ),
             child: IconButton(
               icon: const Icon(Iconsax.arrow_left, size: 20),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => context.pop(),
             ),
           ),
           const Text(
@@ -135,6 +185,7 @@ class SettleUpScreen extends ConsumerWidget {
   Widget _buildContent(
     BuildContext context,
     WidgetRef ref,
+    event,
     List<Map<String, dynamic>> pendingSettlements,
     Map<String, String> userNames,
     List<UserBalance> balances,
@@ -150,11 +201,11 @@ class SettleUpScreen extends ConsumerWidget {
     final myBalance = balances.firstWhere(
       (b) => b.participantId == currentUserId,
       orElse: () => UserBalance(
-              participantId: '',
-              totalPaid: Decimal.zero,
-              totalOwed: Decimal.zero,
-              netBalance: Decimal.zero,
-            ),
+        participantId: '',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
     );
 
     // Group settlements: "Action Required" (by me) vs "Waiting for Others"
@@ -196,7 +247,7 @@ class SettleUpScreen extends ConsumerWidget {
             currency: event.currency,
             myDebts: myDebts,
             onSettleUp: myDebts.isNotEmpty
-                ? () => _confirmPayment(context, ref, myDebts.first)
+                ? () => _confirmPayment(context, ref, event, myDebts.first)
                 : null,
           )
               .animate()
@@ -214,7 +265,7 @@ class SettleUpScreen extends ConsumerWidget {
                 settlements: myDebts,
                 currency: event.currency,
                 isUrgent: true,
-                onTap: (s) => _confirmPayment(context, ref, s),
+                onTap: (s) => _confirmPayment(context, ref, event, s),
               ),
               const SizedBox(height: 24),
             ],
@@ -225,7 +276,7 @@ class SettleUpScreen extends ConsumerWidget {
               SettlementGroupCard(
                 settlements: debtToMe,
                 currency: event.currency,
-                onTap: (s) => _confirmPayment(context, ref, s),
+                onTap: (s) => _confirmPayment(context, ref, event, s),
               ),
               const SizedBox(height: 24),
             ],
@@ -236,7 +287,7 @@ class SettleUpScreen extends ConsumerWidget {
               SettlementGroupCard(
                 settlements: others,
                 currency: event.currency,
-                onTap: (s) => _confirmPayment(context, ref, s),
+                onTap: (s) => _confirmPayment(context, ref, event, s),
               ),
               const SizedBox(height: 24),
             ],
@@ -307,7 +358,7 @@ class SettleUpScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'All Settled! 🎉',
+            'All Settled!',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -326,15 +377,16 @@ class SettleUpScreen extends ConsumerWidget {
   Future<void> _recordSettlement(
     BuildContext context,
     WidgetRef ref,
+    event,
     Map<String, dynamic> settlement,
   ) async {
+    final eventRef = (groupId: groupId, eventId: eventId);
     try {
-      final eventRef = (groupId: event.groupId, eventId: event.id);
       await ref
           .read(settlementServiceProvider)
           .addSettlement(
-            groupId: event.groupId,
-            eventId: event.id,
+            groupId: groupId,
+            eventId: eventId,
             payerParticipantId: settlement['fromUserId'] as String,
             recipientParticipantId: settlement['toUserId'] as String,
             amount: settlement['amount'] as Decimal,
@@ -356,7 +408,8 @@ class SettleUpScreen extends ConsumerWidget {
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -367,7 +420,8 @@ class SettleUpScreen extends ConsumerWidget {
             content: Text('Error recording payment: $e'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -377,12 +431,14 @@ class SettleUpScreen extends ConsumerWidget {
   Future<void> _confirmPayment(
     BuildContext context,
     WidgetRef ref,
+    event,
     Map<String, dynamic> settlement,
   ) async {
     final fromName = settlement['fromUserName'] as String;
     final toName = settlement['toUserName'] as String;
     final amount = settlement['amount'] as Decimal;
-    final amountFormatted = AppFormatters.formatCurrency(amount, event.currency);
+    final amountFormatted =
+        AppFormatters.formatCurrency(amount, event.currency);
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
@@ -456,7 +512,8 @@ class SettleUpScreen extends ConsumerWidget {
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.black,
                     shadowColor: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -489,6 +546,6 @@ class SettleUpScreen extends ConsumerWidget {
 
     if (!context.mounted || confirmed != true) return;
 
-    _recordSettlement(context, ref, settlement);
+    _recordSettlement(context, ref, event, settlement);
   }
 }

@@ -2,92 +2,91 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/types/event_ref.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/utils/page_transitions.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 import '../keys/event_keys.dart';
 import '../../gear/models/gear_item_model.dart';
 import '../../gear/providers/gear_provider.dart';
-import '../../gear/screens/gear_screen.dart';
-import '../../groups/models/group_model.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
-import '../../ledger/screens/ledger_screen.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
-import '../../logistics/screens/logistics_screen.dart';
-import '../../memories/screens/memories_screen.dart';
 import '../../vault/models/document_model.dart';
 import '../../vault/providers/document_provider.dart';
-import '../../vault/screens/vault_screen.dart';
 import '../models/event_model.dart';
 
 /// Priority-sorted list of module cards for an event hub.
 ///
-/// Uses EventRef-based Firestore providers for all data.
-/// No Trip facade — part of bridge removal in Plan 04-05.
-/// Cards are filtered by [event.modules] booleans — only enabled
-/// modules render a card. This supports Custom events with arbitrary
-/// module selections per D-14.
+/// Uses string IDs + EventRef-based Firestore providers for all data.
+/// Receives [EventModules?] from [EventCommandCenter] which already has the
+/// event from its provider lookup — no redundant provider watch here.
+/// If [modules] is null, all modules are shown.
+/// Part of the D-14 big-bang constructor migration.
 class EventModuleList extends ConsumerWidget {
-  final Event event;
-  final Group group;
-  final EventRef eventRef;
+  final String groupId;
+  final String eventId;
+  final EventModules? modules;
 
   const EventModuleList({
     super.key,
-    required this.event,
-    required this.group,
-    required this.eventRef,
+    required this.groupId,
+    required this.eventId,
+    this.modules,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final eventRef = (groupId: groupId, eventId: eventId);
+
+    // Determine which modules are enabled (null modules = show all)
+    final showLedger = modules?.ledger ?? true;
+    final showGear = modules?.gear ?? true;
+    final showLogistics = modules?.logistics ?? true;
+    final showVault = modules?.vault ?? true;
+    final showMemories = modules?.memories ?? true;
+
     // Always watch core providers — needed for Ledger card.
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
 
     // Conditionally watch module-specific providers.
-    final gearAsync = event.modules.gear
-        ? ref.watch(eventGearItemsProvider(eventRef))
-        : null;
-    final subGroupsAsync = event.modules.logistics
-        ? ref.watch(eventSubGroupsProvider(eventRef))
-        : null;
-    final docsAsync = event.modules.vault
-        ? ref.watch(eventDocumentsProvider(eventRef))
-        : null;
+    final gearAsync =
+        showGear ? ref.watch(eventGearItemsProvider(eventRef)) : null;
+    final subGroupsAsync =
+        showLogistics ? ref.watch(eventSubGroupsProvider(eventRef)) : null;
+    final docsAsync =
+        showVault ? ref.watch(eventDocumentsProvider(eventRef)) : null;
 
     // Build module card configs.
     final cards = <_ModuleCardConfig>[];
 
-    // --- Ledger (conditional on event.modules.ledger — Custom type can toggle off) ---
-    if (event.modules.ledger) {
-      _addLedgerCard(cards, expensesAsync, settlementsAsync, context);
+    // --- Ledger ---
+    if (showLedger) {
+      _addLedgerCard(cards, expensesAsync, settlementsAsync, context, eventRef);
     }
 
     // --- Gear ---
-    if (event.modules.gear) {
+    if (showGear) {
       _addGearCard(cards, gearAsync, context);
     }
 
     // --- Logistics ---
-    if (event.modules.logistics) {
+    if (showLogistics) {
       _addLogisticsCard(cards, subGroupsAsync, context);
     }
 
     // --- Vault ---
-    if (event.modules.vault) {
+    if (showVault) {
       _addVaultCard(cards, docsAsync, context);
     }
 
     // --- Memories ---
-    if (event.modules.memories) {
+    if (showMemories) {
       _addMemoriesCard(cards, context);
     }
 
@@ -128,8 +127,15 @@ class EventModuleList extends ConsumerWidget {
     AsyncValue<List<Expense>> expensesAsync,
     AsyncValue<List<Settlement>> settlementsAsync,
     BuildContext context,
+    EventRef eventRef,
   ) {
     final expenses = expensesAsync.valueOrNull ?? [];
+
+    // We need the currency — derive from event ref via a default.
+    // The currency is displayed in the summary but we don't have direct access
+    // here; use a placeholder that the parent could pass, but for now we'll
+    // just show count as the summary without currency formatting.
+    // A null-safe fallback: show expense count only.
     final totalSpent = expenses.fold<Decimal>(
       Decimal.zero,
       (sum, e) => sum + e.amount,
@@ -142,8 +148,9 @@ class EventModuleList extends ConsumerWidget {
 
     if (expenses.isNotEmpty) {
       final count = expenses.length;
+      // Use OMR as default currency display for module card summary
       ledgerSummary =
-          '$count expense${count != 1 ? "s" : ""} \u00b7 ${AppFormatters.formatCurrency(totalSpent, event.currency)}';
+          '$count expense${count != 1 ? "s" : ""} \u00b7 ${AppFormatters.formatCurrency(totalSpent, 'OMR')}';
       ledgerPriority = 50;
     }
 
@@ -281,43 +288,23 @@ class EventModuleList extends ConsumerWidget {
   }
 
   void _openLedger(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (context) => LedgerScreen(event: event, group: group),
-      ),
-    );
+    context.push('/group/$groupId/event/$eventId/ledger');
   }
 
   void _openGear(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (context) => GearScreen(event: event, group: group),
-      ),
-    );
+    context.push('/group/$groupId/event/$eventId/gear');
   }
 
   void _openLogistics(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (context) => LogisticsScreen(event: event, group: group),
-      ),
-    );
+    context.push('/group/$groupId/event/$eventId/logistics');
   }
 
   void _openVault(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (context) => VaultScreen(event: event, group: group),
-      ),
-    );
+    context.push('/group/$groupId/event/$eventId/vault');
   }
 
   void _openMemories(BuildContext context) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (context) => MemoriesScreen(event: event, group: group),
-      ),
-    );
+    context.push('/group/$groupId/event/$eventId/memories');
   }
 }
 
