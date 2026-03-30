@@ -12,6 +12,7 @@ import '../../features/groups/screens/join_group_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+
 /// Route names for type-safe navigation
 class AppRoutes {
   static const String splash = '/';
@@ -21,8 +22,47 @@ class AppRoutes {
   // Groups routes (Phase 2)
   static const String createGroup = '/create-group';
   static const String joinGroup = '/join-group';
-  static const String groupDetail = '/group/:id';
-  static const String groupSettings = '/group/:id/settings';
+  static const String groupDetail = '/group/:gid';
+  static const String groupSettings = '/group/:gid/settings';
+  // Group-level routes (Phase 19)
+  static const String groupSettleUp = '/group/:gid/settle-up';
+  static const String groupActivity = '/group/:gid/activity';
+  static const String createEvent = '/group/:gid/create-event';
+  static const String createEventTyped = '/group/:gid/create-event/:type';
+  // Event hub and module routes (Phase 19)
+  static const String eventHub = '/group/:gid/event/:eid';
+  static const String eventLedger = '/group/:gid/event/:eid/ledger';
+  static const String eventLedgerAdd = '/group/:gid/event/:eid/ledger/add';
+  static const String eventLedgerEdit =
+      '/group/:gid/event/:eid/ledger/edit/:expId';
+  static const String eventLedgerSettleUp =
+      '/group/:gid/event/:eid/ledger/settle-up';
+  static const String eventGear = '/group/:gid/event/:eid/gear';
+  static const String eventLogistics = '/group/:gid/event/:eid/logistics';
+  static const String eventVault = '/group/:gid/event/:eid/vault';
+  static const String eventMemories = '/group/:gid/event/:eid/memories';
+  static const String eventMemoryDetail =
+      '/group/:gid/event/:eid/memories/:memId';
+  static const String eventActivity = '/group/:gid/event/:eid/activity';
+}
+
+/// Shared slide-right page transition used by all route-level screens.
+///
+/// Replicates [AppPageRoute.buildTransitions] exactly — Offset(1,0) → zero
+/// with Curves.easeOutCubic.
+Widget _slideRightTransition(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  return SlideTransition(
+    position: Tween<Offset>(
+      begin: const Offset(1, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+    child: child,
+  );
 }
 
 /// Provider to track onboarding completion state
@@ -127,44 +167,241 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.groupDetail,
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: GroupDetailScreen(groupId: state.pathParameters['id']!),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(1, 0),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutCubic,
-                ),
-              ),
-              child: child,
-            );
-          },
+          child: GroupDetailScreen(groupId: state.pathParameters['gid']!),
+          transitionsBuilder: _slideRightTransition,
         ),
         routes: [
           GoRoute(
             path: 'settings',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: GroupSettingsScreen(groupId: state.pathParameters['id']!),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(1, 0),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
+              child:
+                  GroupSettingsScreen(groupId: state.pathParameters['gid']!),
+              transitionsBuilder: _slideRightTransition,
+            ),
+          ),
+
+          // Group settle-up (Phase 19 — placeholder)
+          GoRoute(
+            path: 'settle-up',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: Scaffold(
+                body: Center(
+                  child: Text(
+                      'GroupSettleUp:${state.pathParameters['gid']}'),
+                ),
+              ),
+              transitionsBuilder: _slideRightTransition,
+            ),
+          ),
+
+          // Group activity (Phase 19 — placeholder)
+          GoRoute(
+            path: 'activity',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: Scaffold(
+                body: Center(
+                  child: Text(
+                      'GroupActivity:${state.pathParameters['gid']}'),
+                ),
+              ),
+              transitionsBuilder: _slideRightTransition,
+            ),
+          ),
+
+          // Create event — type selector (Phase 19 — placeholder)
+          GoRoute(
+            path: 'create-event',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: Scaffold(
+                body: Center(
+                  child: Text(
+                      'CreateEvent:${state.pathParameters['gid']}'),
+                ),
+              ),
+              transitionsBuilder: _slideRightTransition,
+            ),
+          ),
+
+          // Create event — typed (Phase 19 — placeholder)
+          GoRoute(
+            path: 'create-event/:type',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: Scaffold(
+                body: Center(
+                  child: Text(
+                      'CreateEventTyped:${state.pathParameters['type']}'),
+                ),
+              ),
+              transitionsBuilder: _slideRightTransition,
+            ),
+          ),
+
+          // Event hub and module sub-tree (Phase 19)
+          GoRoute(
+            path: 'event/:eid',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: Scaffold(
+                body: Center(
+                  child: Text(
+                      'EventHub:${state.pathParameters['eid']}'),
+                ),
+              ),
+              transitionsBuilder: _slideRightTransition,
+            ),
+            routes: [
+              // Ledger module
+              GoRoute(
+                path: 'ledger',
+                pageBuilder: (context, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: Scaffold(
+                    body: Center(
+                      child: Text(
+                          'Ledger:${state.pathParameters['eid']}'),
                     ),
                   ),
-                  child: child,
-                );
-              },
-            ),
+                  transitionsBuilder: _slideRightTransition,
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'add',
+                    pageBuilder: (context, state) => CustomTransitionPage(
+                      key: state.pageKey,
+                      child: Scaffold(
+                        body: Center(
+                          child: Text(
+                              'AddExpense:${state.pathParameters['eid']}'),
+                        ),
+                      ),
+                      transitionsBuilder: _slideRightTransition,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'edit/:expId',
+                    pageBuilder: (context, state) => CustomTransitionPage(
+                      key: state.pageKey,
+                      child: Scaffold(
+                        body: Center(
+                          child: Text(
+                              'EditExpense:${state.pathParameters['expId']}'),
+                        ),
+                      ),
+                      transitionsBuilder: _slideRightTransition,
+                    ),
+                  ),
+                  // Event-level settle-up (per D-07)
+                  GoRoute(
+                    path: 'settle-up',
+                    pageBuilder: (context, state) => CustomTransitionPage(
+                      key: state.pageKey,
+                      child: Scaffold(
+                        body: Center(
+                          child: Text(
+                              'EventSettleUp:${state.pathParameters['eid']}'),
+                        ),
+                      ),
+                      transitionsBuilder: _slideRightTransition,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Gear module
+              GoRoute(
+                path: 'gear',
+                pageBuilder: (context, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: Scaffold(
+                    body: Center(
+                      child:
+                          Text('Gear:${state.pathParameters['eid']}'),
+                    ),
+                  ),
+                  transitionsBuilder: _slideRightTransition,
+                ),
+              ),
+
+              // Logistics module
+              GoRoute(
+                path: 'logistics',
+                pageBuilder: (context, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: Scaffold(
+                    body: Center(
+                      child: Text(
+                          'Logistics:${state.pathParameters['eid']}'),
+                    ),
+                  ),
+                  transitionsBuilder: _slideRightTransition,
+                ),
+              ),
+
+              // Vault module
+              GoRoute(
+                path: 'vault',
+                pageBuilder: (context, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: Scaffold(
+                    body: Center(
+                      child: Text(
+                          'Vault:${state.pathParameters['eid']}'),
+                    ),
+                  ),
+                  transitionsBuilder: _slideRightTransition,
+                ),
+              ),
+
+              // Memories module
+              GoRoute(
+                path: 'memories',
+                pageBuilder: (context, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: Scaffold(
+                    body: Center(
+                      child: Text(
+                          'Memories:${state.pathParameters['eid']}'),
+                    ),
+                  ),
+                  transitionsBuilder: _slideRightTransition,
+                ),
+                routes: [
+                  GoRoute(
+                    path: ':memId',
+                    pageBuilder: (context, state) => CustomTransitionPage(
+                      key: state.pageKey,
+                      child: Scaffold(
+                        body: Center(
+                          child: Text(
+                              'MemoryDetail:${state.pathParameters['memId']}'),
+                        ),
+                      ),
+                      transitionsBuilder: _slideRightTransition,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Activity module
+              GoRoute(
+                path: 'activity',
+                pageBuilder: (context, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: Scaffold(
+                    body: Center(
+                      child: Text(
+                          'EventActivity:${state.pathParameters['eid']}'),
+                    ),
+                  ),
+                  transitionsBuilder: _slideRightTransition,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -175,21 +412,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const SettingsScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: const Offset(1, 0),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    ),
-                  ),
-              child: child,
-            );
-          },
+          transitionsBuilder: _slideRightTransition,
         ),
       ),
     ],
