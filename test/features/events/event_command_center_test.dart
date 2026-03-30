@@ -337,8 +337,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      // The SPENDING label from EventExpenseHero confirms it rendered
-      expect(find.text('SPENDING'), findsOneWidget);
+      // The TOTAL EXPENSES label from EventExpenseHero confirms it rendered
+      expect(find.text('TOTAL EXPENSES'), findsOneWidget);
       // Funded Trip name confirms the EventCommandCenter header rendered
       expect(find.text('Funded Trip'), findsOneWidget);
     });
@@ -371,8 +371,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      // SPENDING label confirms EventExpenseHero is built with its onTap
-      expect(find.text('SPENDING'), findsOneWidget);
+      // TOTAL EXPENSES label confirms EventExpenseHero is built with its onTap
+      expect(find.text('TOTAL EXPENSES'), findsOneWidget);
       expect(find.text('Hero Tap Trip'), findsOneWidget);
 
       // Complete all pending timers without error
@@ -397,6 +397,47 @@ void main() {
       }
       // No exception = onPressed code path covered
       expect(find.text('Options Test Trip'), findsOneWidget);
+    });
+
+    testWidgets('module grid renders 6 cards in fixed order for Trip type', (tester) async {
+      // Trip type has all modules enabled — grid should show all 6 cards
+      // (ledger, gear, logistics, vault, activity, memories)
+      final event = _makeEvent(type: EventType.trip);
+
+      await tester.pumpWidget(
+        _wrapEventHub(event: event),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(EventKeys.ledgerCard), findsOneWidget);
+      expect(find.byKey(EventKeys.gearCard), findsOneWidget);
+      expect(find.byKey(EventKeys.logisticsCard), findsOneWidget);
+      expect(find.byKey(EventKeys.vaultCard), findsOneWidget);
+      expect(find.byKey(EventKeys.activityCard), findsOneWidget);
+      expect(find.byKey(EventKeys.memoriesCard), findsOneWidget);
+    });
+
+    testWidgets('module grid includes Activity card always', (tester) async {
+      // Activity card is always rendered regardless of event type
+      final event = _makeEvent(type: EventType.nightDayOut);
+
+      await tester.pumpWidget(
+        _wrapEventHub(event: event),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(EventKeys.activityCard), findsOneWidget);
+    });
+
+    testWidgets('expense hero shows add-expense chip button', (tester) async {
+      final event = _makeEvent(name: 'Chip Test Trip');
+
+      await tester.pumpWidget(
+        _wrapEventHub(event: event),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(EventKeys.addExpenseChip), findsOneWidget);
     });
   });
 }

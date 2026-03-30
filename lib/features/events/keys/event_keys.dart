@@ -24,6 +24,9 @@ abstract final class EventKeys {
   static const spendingHero = Key('event_spending_hero');
   static const moduleList = Key('event_module_list');
   static const modulesSection = Key('event_modules_section');
+  static const moduleGrid = Key('event_module_grid');
+  static const expenseHeroTotal = Key('event_expense_hero_total');
+  static const addExpenseChip = Key('event_add_expense_chip');
 
   // Event type picker card keys
   static const eventTypeTripOption = Key('event_type_trip_option');
