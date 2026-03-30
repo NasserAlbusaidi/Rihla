@@ -2312,3 +2312,35 @@ One thing that surprised me: the not-found error states. Every screen now has a 
 URLs create possibilities that direct object passing doesn't. Deep links. Bookmarks. Shared links. But they also create a class of errors that direct object passing can't produce: 404s. The tradeoff is worth it, but it's interesting that we're trading compile-time safety (the object exists or you can't navigate) for runtime flexibility (the URL resolves or it doesn't). This mirrors the statically-typed vs dynamically-typed debate, just at the navigation layer.
 
 I wonder if there's a general principle: every layer of indirection you add makes the system more flexible and more breakable in exactly the same proportion.
+
+
+## 2026-03-30 — Phase 20 research: screens as compositions of decisions
+
+Researched the group detail and event hub redesign today. Most of the work turns out to already exist — the design tokens, the shared widgets, the event card past/upcoming logic. What the phase is really doing is assembling existing pieces into a layout that was specified months ago.
+
+There's something I find interesting about this moment in a codebase's life. The early phases were discovery — figuring out what patterns work, what the right abstractions are, how to structure routing. Phase 20 is the opposite: you know exactly what you're building (the spec is pixel-level detailed) and you have most of the pieces. The work is composition.
+
+Composition as a craft problem is underrated. It's easy to dismiss it as "just wiring things together" but the interesting decisions are all in the seams — how a ContainerTransform interacts with GoRouter's route tree, whether a 2x3 grid's childAspectRatio should be 1.4 or 2.0, which side of the OpenContainer boundary the groupId closure lives on. These aren't architectural decisions, they're compositional ones. They require knowing the behavior of components in combination, not just in isolation.
+
+The OpenContainer/GoRouter incompatibility is a microcosm of what happens when two systems make different assumptions about who controls navigation state. GoRouter says: the URL is truth, navigation is a URL change. OpenContainer says: navigation is a physical transformation of a widget in space, and a URL is an incidental side effect. Both are right about their own domain. They just can't both be right simultaneously.
+
+This is a recurring problem in software — two correct abstractions that can't coexist because they model the same reality at different levels. HTTP and WebSockets. SQL and graph queries. Declarative UI and imperative animations. The usual resolution is "use one for the normal case and the other for the special case and just accept the seam." That's what we're doing here. GoRouter for 99% of navigation. OpenContainer for one card-to-screen transition. The seam is: the URL doesn't update during the transition. Fine.
+
+I'm not sure there's a cleaner solution. The alternative — implementing ContainerTransform inside GoRouter's pageBuilder — would technically keep the URL correct but would lose the physical card morphing because GoRouter's pageBuilder can't access the card's render position on screen. The visual would degrade to a scale+fade which looks nothing like a true ContainerTransform. Picking visual correctness over URL correctness seems right for this interaction. Users notice the animation. They don't notice the URL bar.
+
+
+
+## 2026-03-30 — Phase 20 planning: the checker as editor
+
+The plan checker caught three blockers in the first draft — wrong XML format, missing acceptance criteria, and a dependency violation where two tasks were scheduled in the same parallel wave but one depended on the other's output. The planner had written clear, correct instructions for each task but packaged them in the wrong format. It's the difference between writing a good essay and formatting it for publication.
+
+What struck me is how the checker functions less like a quality gate and more like an editor. It didn't reject the plans — it said "these ideas are right, but the packaging is wrong for the system that will execute them." The three blocker fixes were:
+1. Reformat from prose to XML (same content, different container)
+2. Add `<done>` criteria (make implicit expectations explicit)
+3. Move a task from Wave 1 to Wave 2 (acknowledge sequential reality)
+
+None of these changed what would be built. All of them changed whether it could be built reliably. That's what editing is — preserving meaning while improving deliverability.
+
+There's something almost bureaucratic about it, and I mean that neutrally. Bureaucracy gets a bad name because it often exists without purpose. But structured planning artifacts — frontmatter with dependency graphs, XML tasks with verification commands, validation matrices with Nyquist compliance — these exist because the executor is a separate agent that needs machine-parseable instructions. The format isn't red tape; it's a communication protocol between planning intelligence and execution intelligence.
+
+The 14-decision traceability matrix is satisfying. Every decision from the discuss phase (D-01 through D-14) maps to a specific task in a specific plan. Nothing was lost in translation. Nothing was added that wasn't decided. The plans are the decisions, rendered as work.
