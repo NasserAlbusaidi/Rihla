@@ -75,7 +75,7 @@ Groups persist across events and accumulate financial history — friends settle
 - **Backend**: Firebase-only — firebase_core 4.x, cloud_firestore 6.x, firebase_auth 6.x, firebase_storage 13.x. Anonymous auth. Emulator configured (Firestore:8080, Auth:9099)
 - **Data layer**: FirestoreRepository base class → 9 services. asyncMap SQLite side-write pipeline. BalanceCacheRepository for fast local balance queries
 - **Financial precision**: All money math uses `Decimal` package, stored as integer fils in Firestore via MoneySerializer. Currency is OMR (3 decimal places)
-- **Testing**: 744 tests, 80%+ coverage CI-enforced, fake_cloud_firestore for integration tests
+- **Testing**: 752 tests, 80%+ coverage CI-enforced, fake_cloud_firestore for integration tests
 - **User base**: Small, Oman-focused. Anonymous auth (no user accounts)
 - **v1.0 shipped**: 2026-03-28 — groups, events, cross-event financials, full Firestore migration
 
@@ -105,6 +105,7 @@ Groups persist across events and accumulate financial history — friends settle
 | ThemeExtension token system | Typed tokens over raw static constants; enables future theme switching | Validated v2.0 Phase 15 — AppColorTokens, AppSpacingTokens, AppShadowTokens wired into ThemeData |
 | Earthy palette (terracotta/sand/olive) | Warm, distinctive identity replacing generic neon-mint | Validated v2.0 Phase 15 — WCAG AA compliant, CI lint enforces token usage |
 | Dashboard-first home screen | Single-scroll dashboard with balance hero, quick actions, group cards, activity, spending chart | Validated v2.0 Phase 18 — NAV-01, NAV-02, NAV-04, NAV-06 satisfied, 743 tests |
+| Group detail stats grid + event hub grid | Scannable dashboards: 2x2 stats grid on group detail, 2x3 module grid on event hub, corrected module colors | Validated v2.0 Phase 20 — SCRN-01, SCRN-02 satisfied, 752 tests |
 
 ## Evolution
 
