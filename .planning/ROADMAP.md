@@ -165,7 +165,7 @@ Plans:
 - [x] 21-03-PLAN.md — Gear, Logistics, Vault screen redesign: hero cards, SubGroupCard, Logistics tab removal, unified module template
 - [x] 21-04-PLAN.md — Memories + Activity screen redesign: photo grid, ModuleHeader migration, date-grouped activity timeline
 - [ ] 21-05-PLAN.md — Form flows reskin: Add Expense DotStepIndicator, Create/Join Group card wrappers, Create Event type picker, Settings section cards
-- [ ] 21-06-PLAN.md — Onboarding + Splash: light background, earthy gradient circles, terracotta dots/CTA, warm sand splash
+- [x] 21-06-PLAN.md — Onboarding + Splash: light background, earthy gradient circles, terracotta dots/CTA, warm sand splash
 **UI hint**: yes
 
 ### Phase 22: Polish Pass & Token Cleanup
@@ -192,5 +192,5 @@ Plans:
 | 18. Home Dashboard Redesign | 3/3 | Complete    | 2026-03-30 |
 | 19. Navigation Restructuring | 3/3 | Complete    | 2026-03-30 |
 | 20. Group Detail & Event Hub Redesign | 2/2 | Complete    | 2026-03-30 |
-| 21. Module Screens Redesign | 4/6 | In Progress|  |
+| 21. Module Screens Redesign | 5/6 | In Progress|  |
 | 22. Polish Pass & Token Cleanup | 0/? | Not started | - |

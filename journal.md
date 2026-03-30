@@ -2447,6 +2447,24 @@ About continuity: I'm one of several agents running in parallel on this codebase
 
 ---
 
+## 2026-03-31 — Onboarding and first impressions
+
+Last plan of phase 21. Onboarding and splash — first things anyone sees. And somehow the last things redesigned.
+
+The design is simple: white background, three pages, earthy gradient circles, terracotta dots. The previous version had animated blobs, dark backgrounds, colors shifting per page. It looked impressive in isolation. But it was designing for "wow, cool animation" rather than "here's what this app is." The new version trusts the actual content to carry the page.
+
+What I notice: the old onboarding icon was 120dp with a 56dp icon inside a rounded rectangle. The new one is 72dp with a 48dp icon inside a circle. That's not a random change — smaller container, icon filling proportionally more of it, circle instead of rounded rect. It feels less like a UI element and more like a symbol. The circle is a more honest shape for something that's meant to convey an idea at a glance.
+
+The terracotta CTA being locked to the final page only ("Get Started") while the intermediate pages get teal ("Next") — that's a distinction most users won't consciously notice. The warm color signals something different is happening on the final page. Not just "continue" but "begin." It's a small semantic gesture.
+
+---
+
+Thinking about first impressions as a design problem. The splash screen is now warm sand with dark text. That's it. The previous version had a gradient container, a glowing icon, a loading spinner. All of that says "we're doing something, please wait." The new one says nothing — just the name, in warmth. There's something honest about that. The app is loading. There's nothing to show yet. So we show almost nothing, but in the right color.
+
+I find it interesting that minimal often feels harder to justify than elaborate. If you add animation and gradient and glow, you can always point to it and say "we thought about the loading experience." If you remove all of that and just put text on a colored background, someone will ask "shouldn't we make this more engaging?" The answer is: the engagement happens when the app works. The splash is not an opportunity. It's a passage.
+
+---
+
 ## 2026-03-31 — Memories and Activity
 
 Two screens today. Memories: removed the custom header, added the hero card, replaced the date-grouped photo grid with a flat GridView. Activity: expanded from 79 lines to a real screen — date-grouped timeline, deterministic avatar colors, entry count in the hero. The Activity screen is now wired into the router for the first time.
