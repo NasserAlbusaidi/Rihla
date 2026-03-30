@@ -18,6 +18,7 @@ import '../../features/groups/screens/group_settle_up_screen.dart';
 import '../../features/groups/screens/join_group_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/ledger/screens/add_expense_screen.dart';
+import '../../features/ledger/screens/edit_expense_screen.dart';
 import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
 import '../../features/logistics/screens/logistics_screen.dart';
@@ -61,8 +62,7 @@ class AppRoutes {
 
 /// Shared slide-right page transition used by all route-level screens.
 ///
-/// Replicates [AppPageRoute.buildTransitions] exactly — Offset(1,0) → zero
-/// with Curves.easeOutCubic.
+/// Slides from Offset(1,0) → zero with Curves.easeOutCubic.
 Widget _slideRightTransition(
   BuildContext context,
   Animation<double> animation,
@@ -282,16 +282,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                       transitionsBuilder: _slideRightTransition,
                     ),
                   ),
-                  // edit/:expId — Plan 03 will convert EditExpenseSheet -> GoRouter route
                   GoRoute(
                     path: 'edit/:expId',
                     pageBuilder: (context, state) => CustomTransitionPage(
                       key: state.pageKey,
-                      child: Scaffold(
-                        body: Center(
-                          child: Text(
-                              'EditExpense:${state.pathParameters['expId']}'),
-                        ),
+                      child: EditExpenseScreen(
+                        groupId: state.pathParameters['gid']!,
+                        eventId: state.pathParameters['eid']!,
+                        expenseId: state.pathParameters['expId']!,
                       ),
                       transitionsBuilder: _slideRightTransition,
                     ),

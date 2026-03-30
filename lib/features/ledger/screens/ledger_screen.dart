@@ -24,7 +24,6 @@ import '../providers/ledger_provider.dart';
 import '../widgets/member_balances_section.dart';
 import '../widgets/spending_summary_section.dart';
 import '../widgets/transaction_list.dart';
-import 'edit_expense_sheet.dart';
 import '../keys/ledger_keys.dart';
 
 /// Ledger Screen - Event Settlement with dark header, debt tabs, and actions.
@@ -407,16 +406,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   }
 
   void _editExpense(BuildContext context, Expense expense) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => EditExpenseSheet(
-        groupId: widget.groupId,
-        eventId: widget.eventId,
-        expense: expense,
-      ),
-    );
+    context.push(
+        '/group/${widget.groupId}/event/${widget.eventId}/ledger/edit/${expense.id}');
   }
 
   void _addExpense(BuildContext context) {
