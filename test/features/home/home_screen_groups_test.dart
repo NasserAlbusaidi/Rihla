@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,10 +6,13 @@ import 'package:go_router/go_router.dart';
 
 import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/widgets/group_card.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
+import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -23,6 +27,40 @@ Group _makeGroup(String id, String name, {int memberCount = 2}) => Group(
       currency: 'OMR',
       createdAt: DateTime(2026, 1, 1),
     );
+
+/// Returns the minimal set of overrides needed for the new dashboard providers
+/// to not throw (empty/settled state). Tests that need specific values add
+/// their own overrides on top.
+List<Override> _dashboardOverrides() => [
+      crossGroupBalanceProvider.overrideWith(
+        (ref) => AsyncValue.data((
+          net: Decimal.zero,
+          groupCount: 0,
+          isLoading: false,
+        )),
+      ),
+      crossGroupActivityProvider.overrideWith(
+        (ref) => const AsyncValue.data([]),
+      ),
+      weeklyGroupSpendingProvider.overrideWith(
+        (ref) => AsyncValue.data(
+          List.generate(7, (i) {
+            final date = DateTime(2026, 3, 24).add(Duration(days: i));
+            return (date: date, amount: Decimal.zero);
+          }),
+        ),
+      ),
+      groupBalancesProvider.overrideWith(
+        (ref, groupId) => AsyncValue.data((
+          balances: <UserBalance>[],
+          totalSpent: Decimal.zero,
+          eventCount: 0,
+          perEventBreakdown: <String, Map<String, Decimal>>{},
+          memberNames: <String, String>{},
+        )),
+      ),
+      currentUserIdProvider.overrideWithValue('test-user-id'),
+    ];
 
 /// Wraps [widget] with GoRouter and ProviderScope overrides needed for testing.
 Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
@@ -69,6 +107,7 @@ void main() {
             userGroupsProvider.overrideWith(
               (ref) => Stream.value([]),
             ),
+            ..._dashboardOverrides(),
           ],
         ),
       );
@@ -91,6 +130,7 @@ void main() {
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
             ),
+            ..._dashboardOverrides(),
           ],
         ),
       );
@@ -109,6 +149,7 @@ void main() {
             userGroupsProvider.overrideWith(
               (ref) => Stream.value([]),
             ),
+            ..._dashboardOverrides(),
           ],
         ),
       );
@@ -126,6 +167,7 @@ void main() {
             userGroupsProvider.overrideWith(
               (ref) => Stream.value([]),
             ),
+            ..._dashboardOverrides(),
           ],
         ),
       );
@@ -148,6 +190,7 @@ void main() {
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
             ),
+            ..._dashboardOverrides(),
           ],
         ),
       );
