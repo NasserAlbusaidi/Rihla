@@ -5,7 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/events/models/event_model.dart'
+    show Event, EventModules, EventType;
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/events/widgets/event_card.dart';
+import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
@@ -165,7 +169,7 @@ void main() {
   });
 
   group('GroupDetailScreen financial sections', () {
-    testWidgets('shows GroupBalanceHero when expenses exist', (tester) async {
+    testWidgets('shows stats grid when expenses exist', (tester) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -175,11 +179,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // GroupBalanceHero renders "GROUP BALANCES" label
-      expect(find.byKey(GroupKeys.groupBalancesLabel), findsOneWidget);
+      // Stats grid replaces GroupBalanceHero (D-08)
+      expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
     });
 
-    testWidgets('hides GroupBalanceHero when no expenses exist (D-19)',
+    testWidgets(
+        'stats grid is always visible; settle-up CTA hidden when zero balance',
         (tester) async {
       await tester.pumpWidget(
         _wrap(
@@ -190,8 +195,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // GroupBalanceHero must NOT be shown when totalSpent == 0
-      expect(find.byKey(GroupKeys.groupBalancesLabel), findsNothing);
+      // Stats grid is always shown (D-08) — replaces the conditional hero
+      expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
+      // Settle-up CTA must be hidden when all balances are zero (D-10)
+      expect(find.byKey(GroupKeys.settleUpCta), findsNothing);
     });
 
     testWidgets('shows Members & Balances section with GroupMemberBalanceCard tiles',
@@ -279,6 +286,115 @@ void main() {
 
       // Invite Code section must be below the Events section (higher Y coordinate)
       expect(inviteOffset.dy, greaterThan(eventsOffset.dy));
+    });
+
+    testWidgets('stats grid shows 4 stat tiles', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesWithExpenses),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
+      expect(find.byKey(GroupKeys.statYourBalance), findsOneWidget);
+      expect(find.byKey(GroupKeys.statGroupTotal), findsOneWidget);
+      expect(find.byKey(GroupKeys.statActiveMembers), findsOneWidget);
+      expect(find.byKey(GroupKeys.statEvents), findsOneWidget);
+    });
+
+    testWidgets('shows settle-up CTA when balance is non-zero', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesWithExpenses),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Current user (uid-creator) has netBalance of 15.000 — CTA must appear
+      expect(find.byKey(GroupKeys.settleUpCta), findsOneWidget);
+    });
+
+    testWidgets('hides settle-up CTA when all balances are zero',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesEmpty),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleUpCta), findsNothing);
+    });
+
+    testWidgets('section order: Events before Members before Activity (D-09)',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesEmpty),
+          activities: _testActivity,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final eventsOffset =
+          tester.getTopLeft(find.byKey(GroupKeys.eventsSection).first);
+      final membersOffset =
+          tester.getTopLeft(find.byKey(GroupKeys.membersAndBalancesSection).first);
+      final activityOffset =
+          tester.getTopLeft(find.byKey(GroupKeys.recentActivitySection).first);
+
+      // Events < Members < Activity (lower Y = higher on screen)
+      expect(eventsOffset.dy, lessThan(membersOffset.dy));
+      expect(membersOffset.dy, lessThan(activityOffset.dy));
+    });
+
+    testWidgets('event card shows personal balance when provided',
+        (tester) async {
+      final testEvent = Event(
+        id: 'event-1',
+        groupId: _groupId,
+        name: 'Beach Trip',
+        type: EventType.trip,
+        currency: 'OMR',
+        createdAt: DateTime(2026, 1, 10),
+        participantIds: const [],
+        participantNames: const {},
+        modules: const EventModules(),
+        createdBy: 'uid-creator',
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            eventExpensesProvider(
+              (groupId: _groupId, eventId: 'event-1'),
+            ).overrideWith((ref) => Stream.value(const [])),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: EventCard(
+                event: testEvent,
+                personalBalance: Decimal.parse('-5.000'),
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Personal balance text must appear when personalBalance is non-null
+      expect(find.textContaining('5.000'), findsWidgets);
     });
   });
 }

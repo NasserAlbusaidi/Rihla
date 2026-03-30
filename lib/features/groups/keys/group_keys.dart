@@ -38,6 +38,14 @@ abstract final class GroupKeys {
   static const settingsCurrencyTile = Key('group_settings_currency_tile');
   static const settingsInviteCodeTile = Key('group_settings_invite_code_tile');
 
+  // Stats grid keys (Phase 20 redesign — D-08)
+  static const statsGrid = Key('group_stats_grid');
+  static const statYourBalance = Key('group_stat_your_balance');
+  static const statGroupTotal = Key('group_stat_group_total');
+  static const statActiveMembers = Key('group_stat_active_members');
+  static const statEvents = Key('group_stat_events');
+  static const settleUpCta = Key('group_settle_up_cta');
+
   // Section header keys (for GroupDetailScreen)
   static const recentActivitySection = Key('group_recent_activity_section');
   static const eventsCountChip = Key('group_events_count_chip');

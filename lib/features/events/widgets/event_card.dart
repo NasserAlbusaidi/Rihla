@@ -20,10 +20,18 @@ class EventCard extends ConsumerWidget {
   final Event event;
   final VoidCallback onTap;
 
+  /// Optional personal balance for the current user in this event.
+  ///
+  /// When non-null, renders an inline balance text with color coding
+  /// (errorText when negative, successText when positive, textSecondary
+  /// when zero). Set in Task 2 of Phase 20 Plan 01.
+  final Decimal? personalBalance;
+
   const EventCard({
     super.key,
     required this.event,
     required this.onTap,
+    this.personalBalance,
   });
 
   @override
