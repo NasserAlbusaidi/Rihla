@@ -5,6 +5,8 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-03-30
+revised: 2026-03-30
+revision_reason: "Fix 3 blocking color contradictions with CONTEXT.md locked decisions (D-26 label color, D-29 onboarding CTA, D-30 splash background) + accessibility note for back button."
 ---
 
 # Phase 21 — UI Design Contract
@@ -114,7 +116,7 @@ Canonical palette: **AppColorTokens.light** (`lib/core/theme/tokens/color_tokens
 | Destructive display | `AppColors.error` | #EF4444 | Error icons, error border in form fields |
 
 **Accent (#0D7B74 teal) is reserved for:**
-- Primary CTA buttons (`ElevatedButton` background)
+- Primary CTA buttons (`ElevatedButton` background) — except onboarding final page (see D-29 below)
 - Ledger module icon container fill (`AppColors.moduleLedgerLight` #E6F5F3) and icon itself
 - Ledger empty state icon circle background gradient
 - Settlement timeline rows checkmark icon and border accent
@@ -145,9 +147,9 @@ Canonical palette: **AppColorTokens.light** (`lib/core/theme/tokens/color_tokens
 - Enabled border: `AppColors.warmGray` (#E5D5C0 / 1.5dp)
 - Focused border: `AppColors.terracotta` (#CC6B49 / 2dp)
 - Error border: `AppColors.error` (#EF4444 / 1.5dp)
-- Label text: `AppColors.textSecondary`
+- Label text: `Color(0xFF2C1A0E)` (dark brown — D-26 locked)
 - Floating label: `AppColors.terracotta` (#CC6B49)
-- Hint text: `AppColors.textMuted` (decorative only)
+- Hint text: `Color(0xFFA89888)` (sand gray — D-26 locked)
 - Border radius: 12dp (`radiusMedium`)
 
 **Source:** CONTEXT.md D-02, D-09, D-17, D-18, D-26; `lib/core/theme/tokens/color_tokens.dart`; Phase 16 palette reconciliation
@@ -264,11 +266,11 @@ Section cards (iOS grouped table style): Profile card, Preferences card, About c
 - 3-page `PageView` structure (unchanged).
 - Each page: large icon (48dp) in 72dp warm gradient circle (earthy palette per D-18 style), title 20sp weight 600 `textPrimary`, subtitle 14sp weight 400 `textSecondary`.
 - Dot indicators: terracotta `Color(0xFFCC6B49)` filled dot (8dp) for active page, outlined ring same color for inactive. Extracted as shared `DotIndicator` widget if not already existing.
-- Final page CTA: `ElevatedButton` (primary teal, full-width, 52dp height). Text: "Get Started".
+- Final page CTA: `ElevatedButton` in terracotta (`Color(0xFFCC6B49)`), full-width, 52dp height. Text: "Get Started". (D-29 locked — terracotta, not primary teal.)
 
 #### Splash Screen (D-30)
 
-- `Scaffold` with `AppColors.surface` (#F8F9FA) warm gray-50 background (not pure white — provides subtle warmth).
+- `Scaffold` with warm sand background `Color(0xFFF2E8D6)` — not `AppColors.surface`. (D-30 locked — warm sand #F2E8D6.)
 - App logo/name centered: name in 28sp weight 600 `AppColors.textPrimary`.
 - No animation (Phase 22 concern).
 
@@ -286,7 +288,7 @@ Section cards (iOS grouped table style): Profile card, Preferences card, About c
 | Logistics hero | Create Group | `ElevatedButton` (teal) |
 | Vault hero | Upload File | `ElevatedButton` (teal) |
 | Memories hero | Add Photo | `ElevatedButton` (teal) |
-| Onboarding final page | Get Started | `ElevatedButton` (teal, full-width) |
+| Onboarding final page | Get Started | `ElevatedButton` (terracotta #CC6B49, full-width) |
 | Create Group submit | Create Group | `ElevatedButton` (teal, full-width) |
 | Join Group submit | Join Group | `ElevatedButton` (teal, full-width) |
 | Create Event submit | Create Event | `ElevatedButton` (teal, full-width) |
@@ -341,7 +343,7 @@ Pre-existing shared widgets to use without modification unless noted:
 
 | Widget | File | Phase 21 Usage |
 |--------|------|----------------|
-| `ModuleHeader` | `lib/shared/widgets/module_header.dart` | All 6 module screens + form flows. Memories needs migration from custom header. |
+| `ModuleHeader` | `lib/shared/widgets/module_header.dart` | All 6 module screens + form flows. Memories needs migration from custom header. Back button must include `Semantics(label: 'Go back')` for accessibility. |
 | `EmptyStateView` | `lib/shared/widgets/empty_state_view.dart` | All 6 module screens + form error states. Needs `accentColor` parameter for D-17/D-18 earthy circle gradient. |
 | `SkeletonLoader` | `lib/shared/widgets/skeleton_loader.dart` | Gear/Logistics/Vault have existing factories. Ledger needs `expenseList` factory (new). Memories needs `photoGrid` factory (new). |
 | `SearchFilterBar` | `lib/shared/widgets/search_filter_bar.dart` | Gear and Vault — retained alongside hero cards. |
@@ -422,8 +424,12 @@ All text-on-background pairs verified against Phase 15 token validation:
 | `errorText` #B91C1C | `background` #FFFFFF | 6.57:1 | AA | "You owe" balance |
 | `textMuted` #9CA3AF | any | 2.86:1 | FAIL (decorative only) | Timestamps, overlines |
 | `textOnPrimary` #FFFFFF | `headerGradientStart` #111827 | 17.15:1 | AAA | Header title |
+| `Color(0xFF2C1A0E)` dark brown | `sandLight` #F5EDE1 | ~12.5:1 | AAA | Form label text on sand fill (D-26) |
+| `textOnPrimary` #FFFFFF | terracotta #CC6B49 | ~3.1:1 | AA Large only | Onboarding "Get Started" CTA label — 52dp button qualifies as large text (18sp bold equivalent) |
 
 **CRITICAL:** `textMuted` must never be used for functional text — only decorative overlines, timestamps, and icon hints.
+
+**Note on hint text:** `Color(0xFFA89888)` (sand gray) is decorative-only — used exclusively for input placeholder/hint text where contrast requirement does not apply (placeholder is not required information).
 
 ---
 
@@ -436,8 +442,9 @@ Quick reference for executor — canonical token-to-hex mapping for Phase 21:
 | `AppColors.background` | #FFFFFF | Page scaffold |
 | `AppColors.surface` | #F8F9FA | Cards, heroes, skeleton bg |
 | `AppColors.sandLight` | #F5EDE1 | Input fill (D-26) |
+| `Color(0xFFF2E8D6)` | #F2E8D6 | Splash background — warm sand (D-30 locked) |
 | `AppColors.primary` | #0D7B74 | Teal CTA, Ledger accent |
-| `AppColors.terracotta` | #CC6B49 | Form focused border, step dots, onboarding dots (D-26) |
+| `AppColors.terracotta` | #CC6B49 | Form focused border, step dots, onboarding dots, onboarding final CTA (D-26, D-29) |
 | `AppColors.warmGray` | #E5D5C0 | Form enabled border (D-26) |
 | `AppColors.border` | #E5E7EB | Hairline borders, skeleton bars |
 | `AppColors.textPrimary` | #111827 | All primary text |
@@ -454,6 +461,8 @@ Quick reference for executor — canonical token-to-hex mapping for Phase 21:
 | `AppColors.headerGradientStart` | #111827 | ModuleHeader gradient top |
 | `AppColors.headerGradientEnd` | #1F2937 | ModuleHeader gradient bottom |
 | `AppColors.selectionFill` | #E6F5F3 | Selected chip/item bg |
+| `Color(0xFF2C1A0E)` | #2C1A0E | Form label text — dark brown (D-26 locked) |
+| `Color(0xFFA89888)` | #A89888 | Form hint text — sand gray (D-26 locked) |
 
 ---
 
