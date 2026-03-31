@@ -183,7 +183,7 @@ Plans:
 - [x] 22-01-PLAN.md — Foundation: grain asset + GrainOverlay widget + AnimatedCurrencyText widget + missing AppColorTokens
 - [x] 22-02-PLAN.md — Haptic feedback on 3 write actions + AnimatedCurrencyText integration in BalanceHeroCard and LedgerHeroCard
 - [ ] 22-03-PLAN.md — M3 motion: OpenContainer for EventCard/SmartModuleCard, SharedAxis for AddExpenseScreen steps, FadeThrough for BottomNavShell
-- [ ] 22-04-PLAN.md — Grain texture application to all hero cards and ModuleHeader
+- [x] 22-04-PLAN.md — Grain texture application to all hero cards and ModuleHeader
 - [ ] 22-05-PLAN.md — AppColors bulk migration (1,351 refs across 81 files) and class deletion
 **UI hint**: yes
 
@@ -199,4 +199,4 @@ Plans:
 | 19. Navigation Restructuring | 3/3 | Complete    | 2026-03-30 |
 | 20. Group Detail & Event Hub Redesign | 2/2 | Complete    | 2026-03-30 |
 | 21. Module Screens Redesign | 6/6 | Complete    | 2026-03-30 |
-| 22. Polish Pass & Token Cleanup | 2/5 | In Progress|  |
+| 22. Polish Pass & Token Cleanup | 3/5 | In Progress|  |
