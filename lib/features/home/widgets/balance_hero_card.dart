@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/animated_currency_text.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../keys/home_keys.dart';
@@ -35,24 +36,21 @@ class BalanceHeroCard extends ConsumerWidget {
     final net = balance.net;
     final groupCount = balance.groupCount;
 
-    final (Color color, IconData icon, String amountText, String descriptionText) =
+    final (Color color, IconData icon, String descriptionText) =
         switch (net.compareTo(Decimal.zero)) {
       < 0 => (
           AppColors.errorText,
           Iconsax.warning_2,
-          'OMR ${net.abs().toStringAsFixed(3)}',
           'You owe across $groupCount group${groupCount == 1 ? '' : 's'}',
         ),
       > 0 => (
           AppColors.successText,
           Iconsax.tick_circle,
-          'OMR ${net.toStringAsFixed(3)}',
           'You are owed across $groupCount group${groupCount == 1 ? '' : 's'}',
         ),
       _ => (
           AppColors.textSecondary,
           Iconsax.tick_circle,
-          'OMR 0.000',
           'All settled up',
         ),
     };
@@ -82,12 +80,12 @@ class BalanceHeroCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  amountText,
-                  style: TextStyle(
+                AnimatedCurrencyText(
+                  value: net,
+                  currency: 'OMR',
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: color,
                   ),
                 ),
                 const SizedBox(height: 2),

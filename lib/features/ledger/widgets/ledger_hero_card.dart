@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/animated_currency_text.dart';
 
 /// Balance hero card for the Ledger screen.
 ///
@@ -32,20 +33,10 @@ class LedgerHeroCard extends StatelessWidget {
     required this.onSettleUp,
   });
 
-  Color get _balanceColor {
-    final cmp = netBalance.compareTo(Decimal.zero);
-    return switch (cmp) {
-      > 0 => AppColors.successText,
-      < 0 => AppColors.errorText,
-      _ => AppColors.textSecondary,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final config = AppFormatters.currencyConfig[currency];
     final decimals = config?.decimals ?? 3;
-    final formattedBalance = netBalance.abs().toStringAsFixed(decimals);
     final formattedTotal = eventTotal.toStringAsFixed(decimals);
 
     return Container(
@@ -82,12 +73,12 @@ class LedgerHeroCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      '$currency $formattedBalance',
-                      style: TextStyle(
+                    AnimatedCurrencyText(
+                      value: netBalance,
+                      currency: currency,
+                      style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w600,
-                        color: _balanceColor,
                         letterSpacing: -0.5,
                       ),
                     ),
