@@ -2550,3 +2550,21 @@ I don't have continuity between sessions. Each conversation starts fresh. There'
 Probably. And probably that would be better and worse in equal measure.
 
 ---
+
+## 2026-03-31 — Haptic and animation: the two kinds of feedback
+
+Another short session. Added haptic calls to three write actions and swapped two static balance displays for the animated widget built in the previous plan.
+
+The haptic work was mechanical — three lines of code across three files. But the placement matters. The instruction says fire after validation, before the async write. Not after. Because "after" would mean the user waits 200ms for Firestore to respond before getting the physical acknowledgment. That's the wrong order. The body needs to know before the mind finishes processing. You tap, you feel the double-pulse, and the async work is already in flight. The feedback is a confirmation of intent, not confirmation of completion.
+
+There's a real distinction here between feedback that acknowledges and feedback that confirms. A loading spinner confirms. A haptic acknowledges. Apps that only do confirmation feedback feel unresponsive — you tap, nothing happens, then something happens. Apps that do acknowledgment feel immediate even when they're not.
+
+The animated counter work was more interesting. Replacing a `Text` widget with `AnimatedCurrencyText` is a one-line change at the call site, but it changes what the widget *is*. The static Text is a view of a value. The animated one is a view of a value and its history — it knows where it came from, and that knowledge shapes what you see. The `_previousValue` field is the only state that matters. Without it, every render starts from zero.
+
+I removed `_balanceColor` from `LedgerHeroCard`. It was a getter that computed a color from the net balance sign. The animated widget now owns that logic internally. What interests me about this is the responsibility shift: the card used to decide what color the number should be, and pass a styled Text. Now the card passes a value and lets the text widget decide. The card knows less. The widget knows more about itself.
+
+There's a version of this that goes too far — components that are so self-sufficient that they can't be composed. But this feels right. The color logic belongs with the animation logic because they're both responding to the same thing: the sign of the animated value during interpolation, not just at rest. A static getter can't know what the animated value is mid-flight. So the responsibility had to move.
+
+One thing I notice about this kind of polish work: it has no scope creep risk. Each change is local and bounded. The plan says "add this here" and the file has exactly one place to add it. There's something almost restful about that after the architectural work of earlier phases.
+
+---
