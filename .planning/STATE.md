@@ -121,6 +121,9 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 - Phase 21 P04: GridView.builder with crossAxisCount:3 used for Memories photo grid (not StaggeredGrid Wrap) per D-24 spec — acceptance criteria required explicit crossAxisCount token
 - Phase 21 P03: SubGroupCard made feature-complete (interactive delete/remove member dialogs + LogisticsKeys) to replace old SubgroupCard and preserve test behavior — display-only card would break 6 logistics tests
 - Phase 21 P03: GearScreen add-item TextField placed before SliverFillRemaining in sliver list — ensures widget is findable in tests even in empty state
+- Phase 22 P03: OpenContainer navigates directly to destination screen (not GoRouter) — URL desync accepted per Phase 20 D-06 for ContainerTransform animation
+- Phase 22 P03: Stack + AnimatedOpacity + IgnorePointer replaces IndexedStack in BottomNavShell — renders all tabs simultaneously, 200ms FadeThrough per M3 spec
+- Phase 22 P03: PageTransitionSwitcher + SharedAxisTransition.vertical for AddExpenseScreen steps — _goingBack flag controls reverse direction for proper animation
 
 ### Known Risks
 
