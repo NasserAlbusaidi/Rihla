@@ -35,7 +35,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 
 ### Visual Polish
 
-- [ ] **PLSH-01**: Primary write actions (add expense, record settlement, join group) provide haptic feedback
+- [x] **PLSH-01**: Primary write actions (add expense, record settlement, join group) provide haptic feedback
 - [ ] **PLSH-02**: Screen transitions use M3 motion patterns (ContainerTransform, SharedAxis) instead of basic slide animations
 - [x] **PLSH-03**: Reusable animation components (fade-in lists, staggered grids, tap bounce) exist as shared library widgets
 - [x] **PLSH-04**: Balance amounts animate on update with smooth counter transitions
@@ -86,7 +86,7 @@ Requirements for the UI/UX overhaul. Each maps to roadmap phases.
 | SCRN-04 | Phase 21 | Complete |
 | SCRN-05 | Phase 21 | Complete |
 | SCRN-06 | Phase 21 | Complete |
-| PLSH-01 | Phase 22 | Pending |
+| PLSH-01 | Phase 22 | Complete |
 | PLSH-02 | Phase 22 | Pending |
 | PLSH-03 | Phase 17 | Complete |
 | PLSH-04 | Phase 22 | Complete |
