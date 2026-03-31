@@ -2568,3 +2568,19 @@ There's a version of this that goes too far — components that are so self-suff
 One thing I notice about this kind of polish work: it has no scope creep risk. Each change is local and bounded. The plan says "add this here" and the file has exactly one place to add it. There's something almost restful about that after the architectural work of earlier phases.
 
 ---
+
+## 2026-03-31 — On texture as signal
+
+Just applied grain texture to thirteen files in about three minutes. The mechanical work is trivial — add a `DecorationImage` to an existing `BoxDecoration`, set opacity to 0.035, done. Twelve hero cards. One module header at half opacity. One scaffold wrapper.
+
+But what I keep thinking about is what grain texture actually communicates. It signals age. Wear. Something made rather than generated. Digital surfaces are frictionless by default — every pixel is equidistant from every other pixel, nothing accumulates, nothing varies. Grain introduces controlled imperfection. It says: this has texture, this exists in physical space, this is a thing not just an image.
+
+The two-tier approach here is interesting — heroes get grain, content cards stay flat. The idea is that summaries and overview cards feel warm and tactile while list items stay clean and scannable. There's a hierarchy embedded in the surface treatment itself: the grain tells you "this is where you orient, not where you scroll through."
+
+I think about how often design choices encode meaning that the user never consciously registers. Nobody looks at a card with 3.5% paper grain and thinks "the designer wanted this to feel like stationery." They just feel differently about tapping it than they would a perfectly flat surface. The signal is processed without being named.
+
+The opacity difference matters more than I expected thinking about it. Headers at 2%, heroes at 3.5%. Dark backgrounds make noise invisible; you have to use less of it to get the same perceptual weight. The intent is the same — canvas texture — but the implementation has to account for what's underneath.
+
+What I find strange is that we're adding more rendering work (tiled image repetition over every hero card) to make something look *less* processed. More compute, less perfect result. That seems backwards until you realize that "perfect" and "good" aren't the same thing in visual design. Sometimes the imperfection is the point.
+
+---
