@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/connectivity_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -16,6 +15,8 @@ import '../keys/vault_keys.dart';
 import '../models/document_model.dart';
 import '../providers/document_provider.dart';
 import '../widgets/vault_hero_card.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Vault Screen — unified module template (D-08, D-14, D-20).
 ///
@@ -50,7 +51,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Vault', useDarkTheme: true),
@@ -65,7 +66,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -77,7 +78,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -89,7 +90,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     if (connectivity == ConnectivityStatus.offline) {
       return Scaffold(
         key: VaultKeys.screen,
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             ModuleHeader(
@@ -112,7 +113,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
     return Scaffold(
       key: VaultKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -134,7 +135,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     (groupId: widget.groupId, eventId: widget.eventId),
                   ),
                 ),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ),
@@ -191,12 +192,12 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             ),
           )
         else ...[
-          const SliverPadding(
+          SliverPadding(
             padding: EdgeInsets.fromLTRB(
-              AppColors.space16,
-              AppColors.space12,
-              AppColors.space16,
-              AppColors.space4,
+              16,
+              12,
+              16,
+              4,
             ),
             sliver: SliverToBoxAdapter(
               child: Text(
@@ -204,7 +205,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -212,17 +213,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
-              AppColors.space16,
+              16,
               0,
-              AppColors.space16,
-              AppColors.space32,
+              16,
+              32,
             ),
             sliver: SliverToBoxAdapter(
               child: FadeInList(
                 children: filteredDocs.map((doc) {
                   return Padding(
                     padding:
-                        const EdgeInsets.only(bottom: AppColors.space8),
+                        const EdgeInsets.only(bottom: 8),
                     child: _buildDocumentCard(context, doc),
                   );
                 }).toList(),
@@ -237,27 +238,27 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   Widget _buildDocumentCard(BuildContext context, Document doc) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
-        boxShadow: AppColors.cardShadow,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColorTokens.light.inputFill, width: 1.5),
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+        borderRadius: BorderRadius.circular(16),
         child: Dismissible(
           key: Key(doc.id),
           direction: DismissDirection.endToStart,
           background: Container(
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 24),
-            color: AppColors.error.withValues(alpha: 0.1),
-            child: const Icon(Iconsax.trash, color: AppColors.errorText),
+            color: AppColorTokens.light.error.withValues(alpha: 0.1),
+            child: Icon(Iconsax.trash, color: AppColorTokens.light.errorText),
           ),
           confirmDismiss: (direction) async {
             return await showDialog<bool>(
               context: context,
               builder: (context) => AlertDialog(
-                backgroundColor: AppColors.surface,
+                backgroundColor: AppColorTokens.light.cardSurface,
                 title: const Text(
                   'DELETE FILE',
                   style: TextStyle(
@@ -273,9 +274,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text(
+                    child: Text(
                       'Delete',
-                      style: TextStyle(color: AppColors.errorText),
+                      style: TextStyle(color: AppColorTokens.light.errorText),
                     ),
                   ),
                 ],
@@ -286,7 +287,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           child: InkWell(
             onTap: () => _openDocument(context, doc),
             child: Padding(
-              padding: const EdgeInsets.all(AppColors.space16),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   // Icon container — 52dp, moduleVaultLight bg (D-20)
@@ -294,27 +295,27 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: AppColors.moduleVaultLight,
+                      color: AppColorTokens.light.moduleVaultLight,
                       borderRadius: BorderRadius.circular(
-                          AppColors.radiusMedium),
+                          12),
                     ),
                     child: Icon(
                       _getTypeIcon(doc.type),
-                      color: AppColors.moduleVault,
+                      color: AppColorTokens.light.moduleVault,
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: AppColors.space16),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           doc.fileName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: AppColorTokens.light.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -322,10 +323,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                         const SizedBox(height: 4),
                         Text(
                           _buildMetadata(doc),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
-                            color: AppColors.textSecondary,
+                            color: AppColorTokens.light.textSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -333,23 +334,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: AppColors.space12),
+                  const SizedBox(width: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
+                      color: AppColorTokens.light.inputFill,
                       borderRadius:
-                          BorderRadius.circular(AppColors.radiusSmall),
+                          BorderRadius.circular(8),
                     ),
                     child: Text(
                       doc.extension.toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: AppColorTokens.light.textSecondary,
                       ),
                     ),
                   ),
@@ -424,7 +425,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               Text('${result.fileName} uploaded'),
             ],
           ),
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColorTokens.light.primary,
         ),
       );
     } else {
@@ -439,7 +440,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 Expanded(child: Text('Upload failed: $error')),
               ],
             ),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColorTokens.light.error,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -459,7 +460,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Could not open file: $e'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColorTokens.light.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),

@@ -4,8 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../models/memory_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Scrollable staggered photo grid grouped by date.
 ///
@@ -33,7 +33,7 @@ class MemoriesPhotoGrid extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: AppColors.primary,
+      color: AppColorTokens.light.primary,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
@@ -60,24 +60,24 @@ class MemoriesPhotoGrid extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
+                        color: AppColorTokens.light.inputFill,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         dateKey,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textSecondary,
+                          color: AppColorTokens.light.textSecondary,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       '${photos.length} photo${photos.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textMuted,
+                        color: AppColorTokens.light.textMuted,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -157,7 +157,7 @@ class MemoriesPhotoGrid extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: AppColors.surfaceLight,
+          color: AppColorTokens.light.inputFill,
         ),
         child: Stack(
           fit: StackFit.expand,
@@ -167,25 +167,25 @@ class MemoriesPhotoGrid extends StatelessWidget {
                 imageUrl: memory.signedUrl!,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
-                  color: AppColors.surfaceLight,
-                  child: const Center(
+                  color: AppColorTokens.light.inputFill,
+                  child: Center(
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                     ),
                   ),
                 ),
                 errorWidget: (context, url, error) => Container(
-                  color: AppColors.surfaceLight,
-                  child: const Icon(
+                  color: AppColorTokens.light.inputFill,
+                  child: Icon(
                     Iconsax.gallery_slash,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                   ),
                 ),
               )
             else
-              const Center(
-                child: Icon(Iconsax.gallery_slash, color: AppColors.textMuted),
+              Center(
+                child: Icon(Iconsax.gallery_slash, color: AppColorTokens.light.textMuted),
               ),
 
             // Gradient overlay at bottom

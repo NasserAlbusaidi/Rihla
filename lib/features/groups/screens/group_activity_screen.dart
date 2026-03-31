@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../keys/group_keys.dart';
 import '../models/group_activity_log_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../widgets/group_activity_tile.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Full-screen paginated group activity log (GRP-05).
 ///
@@ -75,7 +76,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: GroupKeys.activityScreen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -95,10 +96,10 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppColors.radiusSmall),
-              border: Border.all(color: AppColors.borderLight, width: 1),
-              boxShadow: AppColors.cardShadow,
+              color: AppColorTokens.light.cardSurface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColorTokens.light.inputFill, width: 1),
+              boxShadow: AppShadowTokens.standard.raised,
             ),
             child: IconButton(
               key: GroupKeys.activityBackButton,
@@ -107,19 +108,19 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
               tooltip: 'Back',
               style: IconButton.styleFrom(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ),
           ),
-          const Text(
+          Text(
             key: GroupKeys.activityScreenTitle,
             'Group Activity',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.5,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
           const SizedBox(width: 48),
@@ -147,10 +148,10 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       itemCount: _activities.length + (_hasMore ? 1 : 0),
-      separatorBuilder: (context, index) => const Divider(
+      separatorBuilder: (context, index) => Divider(
         height: 1,
         thickness: 1,
-        color: AppColors.border,
+        color: AppColorTokens.light.border,
       ),
       itemBuilder: (context, index) {
         if (index == _activities.length) {
@@ -162,12 +163,12 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
                 : Center(
                     child: TextButton(
                       onPressed: _loadPage,
-                      child: const Text(
+                      child: Text(
                         'Load more',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                          color: AppColorTokens.light.primary,
                         ),
                       ),
                     ),
@@ -184,10 +185,10 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       itemCount: 5,
-      separatorBuilder: (context, index) => const Divider(
+      separatorBuilder: (context, index) => Divider(
         height: 1,
         thickness: 1,
-        color: AppColors.border,
+        color: AppColorTokens.light.border,
       ),
       itemBuilder: (context, index) => const _SkeletonRow(),
     );
@@ -208,8 +209,8 @@ class _SkeletonRow extends StatelessWidget {
           Container(
             width: 36,
             height: 36,
-            decoration: const BoxDecoration(
-              color: AppColors.border,
+            decoration: BoxDecoration(
+              color: AppColorTokens.light.border,
               shape: BoxShape.circle,
             ),
           ),
@@ -223,7 +224,7 @@ class _SkeletonRow extends StatelessWidget {
                   height: 12,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: AppColors.border,
+                    color: AppColorTokens.light.border,
                     borderRadius: BorderRadius.circular(6),
                   ),
                 ),
@@ -232,7 +233,7 @@ class _SkeletonRow extends StatelessWidget {
                   height: 10,
                   width: 80,
                   decoration: BoxDecoration(
-                    color: AppColors.borderLight,
+                    color: AppColorTokens.light.inputFill,
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),

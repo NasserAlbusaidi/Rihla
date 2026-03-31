@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -18,6 +17,7 @@ import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
 import '../providers/category_provider.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Full-page screen for editing an existing expense.
 ///
@@ -141,9 +141,9 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Iconsax.trash, color: AppColors.error),
+            Icon(Iconsax.trash, color: AppColorTokens.light.error),
             SizedBox(width: 12),
             Text('Delete Expense?'),
           ],
@@ -158,9 +158,9 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
+            child: Text(
               'Delete',
-              style: TextStyle(color: AppColors.error),
+              style: TextStyle(color: AppColorTokens.light.error),
             ),
           ),
         ],
@@ -186,9 +186,9 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
 
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Expense deleted'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColorTokens.light.success,
           ),
         );
         context.pop();
@@ -207,12 +207,12 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'SPLIT TYPE',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: AppColors.textMuted,
+            color: AppColorTokens.light.textMuted,
             letterSpacing: 1.5,
           ),
         ),
@@ -220,7 +220,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
+            color: AppColorTokens.light.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -292,7 +292,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
+            color: isSelected ? AppColorTokens.light.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -301,7 +301,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? Colors.white : AppColors.textMuted,
+                color: isSelected ? Colors.white : AppColorTokens.light.textMuted,
               ),
               const SizedBox(width: 6),
               Text(
@@ -309,7 +309,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white : AppColors.textMuted,
+                  color: isSelected ? Colors.white : AppColorTokens.light.textMuted,
                 ),
               ),
             ],
@@ -374,12 +374,12 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'PAID BY',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: AppColors.textMuted,
+            color: AppColorTokens.light.textMuted,
             letterSpacing: 1.5,
           ),
         ),
@@ -387,7 +387,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
+            color: AppColorTokens.light.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
           child: DropdownButtonHideUnderline(
@@ -422,7 +422,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
 
     return Scaffold(
       key: LedgerKeys.editExpenseSheet,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
@@ -443,13 +443,13 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
+                          color: AppColorTokens.light.selectionFill,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Iconsax.edit, color: AppColors.primary),
+                        child: Icon(Iconsax.edit, color: AppColorTokens.light.primary),
                       ),
                       const SizedBox(width: 16),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -458,14 +458,14 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                                color: AppColorTokens.light.textPrimary,
                               ),
                             ),
                             Text(
                               'Changes are tracked in history',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.textMuted,
+                                color: AppColorTokens.light.textMuted,
                               ),
                             ),
                           ],
@@ -474,7 +474,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                       // Delete button
                       IconButton(
                         onPressed: _isSubmitting ? null : () => _confirmDelete(expense),
-                        icon: const Icon(Iconsax.trash, color: AppColors.error),
+                        icon: Icon(Iconsax.trash, color: AppColorTokens.light.error),
                         tooltip: 'Delete expense',
                       ),
                     ],
@@ -484,21 +484,21 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'AMOUNT',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.textMuted,
+                          color: AppColorTokens.light.textMuted,
                           letterSpacing: 1.5,
                         ),
                       ),
                       // Show original amount for reference
                       Text(
                         'was ${expense.amount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3)} $_tripCurrency',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.textMuted,
+                          color: AppColorTokens.light.textMuted,
                         ),
                       ),
                     ],
@@ -513,7 +513,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                     decoration: InputDecoration(
                       hintText: '0.000',
                       suffixText: _tripCurrency,
-                      fillColor: AppColors.surfaceLight,
+                      fillColor: AppColorTokens.light.inputFill,
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -537,10 +537,10 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.warning.withValues(alpha: 0.1),
+                            color: AppColorTokens.light.warning.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: AppColors.warning.withValues(alpha: 0.3),
+                              color: AppColorTokens.light.warning.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -548,29 +548,29 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                               Icon(
                                 Iconsax.arrow_swap_horizontal,
                                 size: 16,
-                                color: AppColors.warning,
+                                color: AppColorTokens.light.warning,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 expense.amount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   decoration: TextDecoration.lineThrough,
-                                  color: AppColors.textMuted,
+                                  color: AppColorTokens.light.textMuted,
                                   fontSize: 13,
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Icon(
+                              Icon(
                                 Icons.arrow_forward,
                                 size: 14,
-                                color: AppColors.textMuted,
+                                color: AppColorTokens.light.textMuted,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 '${newAmount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3)} $_tripCurrency',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.warning,
+                                  color: AppColorTokens.light.warning,
                                   fontSize: 13,
                                 ),
                               ),
@@ -582,12 +582,12 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                   ),
                   const SizedBox(height: 16),
                   // Category Selector
-                  const Text(
+                  Text(
                     'CATEGORY',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -617,8 +617,8 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.surfaceLight,
+                                      ? AppColorTokens.light.primary
+                                      : AppColorTokens.light.inputFill,
                                   borderRadius: BorderRadius.circular(22),
                                 ),
                                 alignment: Alignment.center,
@@ -628,7 +628,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                                     fontWeight: FontWeight.w600,
                                     color: isSelected
                                         ? Colors.white
-                                        : AppColors.textSecondary,
+                                        : AppColorTokens.light.textSecondary,
                                   ),
                                 ),
                               ),
@@ -646,12 +646,12 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                   _buildPayerSelector(),
                   const SizedBox(height: 16),
                   // Note Field
-                  const Text(
+                  Text(
                     'NOTE',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -661,7 +661,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                     maxLines: 2,
                     decoration: InputDecoration(
                       hintText: 'Add a note...',
-                      fillColor: AppColors.surfaceLight,
+                      fillColor: AppColorTokens.light.inputFill,
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -691,7 +691,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                         child: ElevatedButton(
                           onPressed: _isSubmitting ? null : () => _save(expense),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: AppColorTokens.light.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
@@ -735,7 +735,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         body: Center(child: CircularProgressIndicator()),
       ),
       error: (e, _) => Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
@@ -746,7 +746,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                 message: 'Could not load the expense data.',
                 actionLabel: 'Go Back',
                 onAction: () => context.pop(),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -757,7 +757,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
 
         if (expense == null) {
           return Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: AppColorTokens.light.scaffoldBackground,
             body: Column(
               children: [
                 const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
@@ -768,7 +768,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                     message: 'This expense may have been deleted.',
                     actionLabel: 'Go Back',
                     onAction: () => context.pop(),
-                    iconColor: AppColors.textSecondary,
+                    iconColor: AppColorTokens.light.textSecondary,
                   ),
                 ),
               ],

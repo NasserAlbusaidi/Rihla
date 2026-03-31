@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/keys/shared_keys.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/services/haptic_service.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 class AppTabBar extends StatelessWidget {
   final TabController controller;
@@ -17,24 +17,24 @@ class AppTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = activeColor ?? AppColors.primary;
+    final color = activeColor ?? AppColorTokens.light.primary;
 
     return Container(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppColors.space24,
-        vertical: AppColors.space12,
+        horizontal: 24,
+        vertical: 12,
       ),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+        color: AppColorTokens.light.inputFill,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: TabBar(
         controller: controller,
         onTap: (_) => HapticService.selection(),
         indicator: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
               color: color.withValues(alpha: 0.2),
@@ -46,7 +46,7 @@ class AppTabBar extends StatelessWidget {
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        unselectedLabelColor: AppColors.textMuted,
+        unselectedLabelColor: AppColorTokens.light.textMuted,
         labelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,

@@ -2,10 +2,10 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/models/expense_model.dart';
 import '../keys/group_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Expandable card showing a group member's net balance and per-event breakdown.
 ///
@@ -100,9 +100,9 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusMedium),
-        border: Border.all(color: AppColors.border),
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColorTokens.light.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -117,13 +117,13 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
           // --- Collapsed header row ---
           InkWell(
             onTap: () => widget.onExpandChanged(!widget.isExpanded),
-            borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+            borderRadius: BorderRadius.circular(12),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 44),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppColors.space16,
-                  vertical: AppColors.space12,
+                  horizontal: 16,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
@@ -131,25 +131,25 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                     Expanded(
                       child: Text(
                         widget.balance.displayName ?? widget.balance.participantId,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: AppColorTokens.light.textPrimary,
                         ),
                       ),
                     ),
 
                     // Net balance amount + settled badge
                     if (isSettled) ...[
-                      const Text(
+                      Text(
                         '0.000 OMR',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textMuted,
+                          color: AppColorTokens.light.textMuted,
                         ),
                       ),
-                      const SizedBox(width: AppColors.space8),
+                      const SizedBox(width: 8),
                       Container(
                         key: GroupKeys.settledBadge,
                         padding: const EdgeInsets.symmetric(
@@ -157,13 +157,13 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
+                          color: AppColorTokens.light.inputFill,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Settled',
                           style: TextStyle(
-                            color: AppColors.textMuted,
+                            color: AppColorTokens.light.textMuted,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -175,20 +175,20 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: isOwed ? AppColors.emerald : AppColors.rose,
+                          color: isOwed ? AppColorTokens.light.success : AppColorTokens.light.error,
                         ),
                       ),
                     ],
 
-                    const SizedBox(width: AppColors.space8),
+                    const SizedBox(width: 8),
 
                     // Expand chevron
                     RotationTransition(
                       turns: _chevronRotation,
-                      child: const Icon(
+                      child: Icon(
                         Iconsax.arrow_down_1,
                         size: 16,
-                        color: AppColors.textMuted,
+                        color: AppColorTokens.light.textMuted,
                       ),
                     ),
                   ],
@@ -221,7 +221,7 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Divider
-        const Divider(height: 1, thickness: 1, color: AppColors.border),
+        Divider(height: 1, thickness: 1, color: AppColorTokens.light.border),
 
         // Per-event rows
         ...widget.perEventBreakdown.entries.map((entry) {
@@ -238,20 +238,20 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                 ? () => widget.onEventTap!(eventId)
                 : null,
             child: Container(
-              color: AppColors.surfaceLight,
+              color: AppColorTokens.light.inputFill,
               padding: const EdgeInsets.symmetric(
-                horizontal: AppColors.space16,
-                vertical: AppColors.space8,
+                horizontal: 16,
+                vertical: 8,
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       eventName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
+                        color: AppColorTokens.light.textSecondary,
                       ),
                     ),
                   ),
@@ -260,15 +260,15 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: eventIsOwed ? AppColors.emerald : AppColors.rose,
+                      color: eventIsOwed ? AppColorTokens.light.success : AppColorTokens.light.error,
                     ),
                   ),
                   if (widget.onEventTap != null) ...[
-                    const SizedBox(width: AppColors.space8),
-                    const Icon(
+                    const SizedBox(width: 8),
+                    Icon(
                       Iconsax.arrow_right_3,
                       size: 14,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                     ),
                   ],
                 ],
@@ -281,10 +281,10 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
         if (showSettleButton)
           Padding(
             padding: const EdgeInsets.only(
-              left: AppColors.space16,
-              right: AppColors.space16,
-              top: AppColors.space8,
-              bottom: AppColors.space8,
+              left: 16,
+              right: 16,
+              top: 8,
+              bottom: 8,
             ),
             child: Align(
               alignment: Alignment.centerRight,
@@ -292,20 +292,20 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                 key: GroupKeys.settleButton,
                 onPressed: widget.onSettleUpTap,
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
+                  foregroundColor: AppColorTokens.light.primary,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppColors.space12,
-                    vertical: AppColors.space4,
+                    horizontal: 12,
+                    vertical: 4,
                   ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text(
+                child: Text(
                   'Settle',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    color: AppColorTokens.light.primary,
                   ),
                 ),
               ),

@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -15,6 +14,7 @@ import '../models/memory_model.dart';
 import '../providers/memory_provider.dart';
 import '../widgets/full_screen_photo.dart';
 import '../widgets/memories_hero_card.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Memories screen — Photo timeline for an event.
 ///
@@ -62,9 +62,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Photo added to memories!'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColorTokens.light.success,
           ),
         );
       }
@@ -77,9 +77,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: const EdgeInsets.all(AppColors.space24),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColorTokens.light.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
@@ -89,39 +89,39 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.border,
+                color: AppColorTokens.light.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: AppColors.space24),
-            const Text(
+            const SizedBox(height: 24),
+            Text(
               'Add a Memory',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
-            const SizedBox(height: AppColors.space24),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
                   child: _buildSourceOption(
                     icon: Iconsax.camera,
                     label: 'Camera',
-                    color: AppColors.primary,
+                    color: AppColorTokens.light.primary,
                     onTap: () {
                       Navigator.pop(context);
                       _addPhoto(ImageSource.camera);
                     },
                   ),
                 ),
-                const SizedBox(width: AppColors.space16),
+                const SizedBox(width: 16),
                 Expanded(
                   child: _buildSourceOption(
                     icon: Iconsax.gallery,
                     label: 'Gallery',
-                    color: AppColors.primary,
+                    color: AppColorTokens.light.primary,
                     onTap: () {
                       Navigator.pop(context);
                       _addPhoto(ImageSource.gallery);
@@ -130,18 +130,18 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: AppColors.space16),
+            const SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: AppColorTokens.light.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            const SizedBox(height: AppColors.space8),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -160,13 +160,13 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
         padding: const EdgeInsets.symmetric(vertical: 24),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withValues(alpha: 0.15)),
         ),
         child: Column(
           children: [
             Icon(icon, size: 32, color: color),
-            const SizedBox(height: AppColors.space8),
+            const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
@@ -190,7 +190,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     // Loading state — skeleton while event loads
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(
@@ -208,7 +208,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found'),
@@ -220,7 +220,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -230,7 +230,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
 
     return Scaffold(
       key: MemoriesKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: memoriesAsync.when(
         loading: () => CustomScrollView(
           slivers: [
@@ -260,7 +260,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                 message: 'Check your connection and try again.',
                 actionLabel: 'Reload',
                 onAction: () => ref.invalidate(eventMemoriesProvider(eventRef)),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -322,7 +322,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(AppColors.space16),
+      padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 8,
@@ -340,18 +340,18 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                     memory.signedUrl!,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
-                      color: AppColors.surfaceLight,
-                      child: const Icon(
+                      color: AppColorTokens.light.inputFill,
+                      child: Icon(
                         Iconsax.gallery_slash,
-                        color: AppColors.textMuted,
+                        color: AppColorTokens.light.textMuted,
                       ),
                     ),
                   )
                 : Container(
-                    color: AppColors.surfaceLight,
-                    child: const Icon(
+                    color: AppColorTokens.light.inputFill,
+                    child: Icon(
                       Iconsax.image,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                     ),
                   ),
           ),

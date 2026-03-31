@@ -4,6 +4,7 @@ import 'package:shimmer/shimmer.dart';
 
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/shared/widgets/skeleton_primitives.dart';
+import 'package:safar/core/theme/tokens/color_tokens.dart';
 
 void main() {
   // ---------------------------------------------------------------------------
@@ -391,7 +392,7 @@ void main() {
   });
 
   group('SkeletonLoader shimmer colors', () {
-    testWidgets('gradient contains AppColors.surfaceLight and AppColors.surface', (tester) async {
+    testWidgets('gradient contains AppColorTokens.light.inputFill and AppColorTokens.light.cardSurface', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -407,8 +408,8 @@ void main() {
 
       final shimmer = tester.widget<Shimmer>(find.byType(Shimmer));
       final gradient = shimmer.gradient as LinearGradient;
-      // AppColors.surfaceLight = Color(0xFFF3F4F6) — base color
-      // AppColors.surface = Color(0xFFF8F9FA) — highlight color
+      // AppColorTokens.light.inputFill = Color(0xFFF3F4F6) — base color
+      // AppColorTokens.light.cardSurface = Color(0xFFF8F9FA) — highlight color
       expect(gradient.colors, contains(const Color(0xFFF3F4F6)));
       expect(gradient.colors, contains(const Color(0xFFF8F9FA)));
     });

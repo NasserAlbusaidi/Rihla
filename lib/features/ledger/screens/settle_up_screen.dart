@@ -7,7 +7,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -23,6 +22,8 @@ import '../widgets/recorded_settlements_section.dart';
 import '../keys/ledger_keys.dart';
 import '../widgets/settlement_summary_card.dart';
 import '../widgets/settlement_tile.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Settle Up Screen - Shows optimized settlements with payment actions.
 ///
@@ -57,7 +58,7 @@ class SettleUpScreen extends ConsumerWidget {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -69,7 +70,7 @@ class SettleUpScreen extends ConsumerWidget {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -94,7 +95,7 @@ class SettleUpScreen extends ConsumerWidget {
 
     return Scaffold(
       key: LedgerKeys.settleUpScreen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -159,10 +160,10 @@ class SettleUpScreen extends ConsumerWidget {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColorTokens.light.cardSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.borderLight),
-              boxShadow: AppColors.cardShadow,
+              border: Border.all(color: AppColorTokens.light.inputFill),
+              boxShadow: AppShadowTokens.standard.raised,
             ),
             child: IconButton(
               icon: const Icon(Iconsax.arrow_left, size: 20),
@@ -325,14 +326,14 @@ class SettleUpScreen extends ConsumerWidget {
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: AppColors.textMuted),
+        Icon(icon, size: 14, color: AppColorTokens.light.textMuted),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w900,
-            color: AppColors.textMuted,
+            color: AppColorTokens.light.textMuted,
             letterSpacing: 1.2,
           ),
         ),
@@ -348,27 +349,27 @@ class SettleUpScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.1),
+              color: AppColorTokens.light.success.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Iconsax.tick_circle,
-              color: AppColors.success,
+              color: AppColorTokens.light.success,
               size: 32,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'All Settled!',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
-          const Text(
+          Text(
             'No payments needed',
-            style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 14, color: AppColorTokens.light.textMuted),
           ),
         ],
       ),
@@ -408,7 +409,7 @@ class SettleUpScreen extends ConsumerWidget {
                 Text('Payment recorded!'),
               ],
             ),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColorTokens.light.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
@@ -420,7 +421,7 @@ class SettleUpScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error recording payment: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColorTokens.light.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
@@ -447,8 +448,8 @@ class SettleUpScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
+        decoration: BoxDecoration(
+          color: AppColorTokens.light.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
@@ -458,25 +459,25 @@ class SettleUpScreen extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.border,
+                color: AppColorTokens.light.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Confirm Payment',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               '$fromName paid $amountFormatted to $toName',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppColors.textSecondary,
+                color: AppColorTokens.light.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -485,7 +486,7 @@ class SettleUpScreen extends ConsumerWidget {
               'Record this as settled? (via cash, bank transfer, or other method)',
               style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textMuted.withValues(alpha: 0.7),
+                color: AppColorTokens.light.textMuted.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -496,11 +497,11 @@ class SettleUpScreen extends ConsumerWidget {
               width: double.infinity,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+                  gradient: AppColorTokens.light.primaryGradient,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
+                      color: AppColorTokens.light.primary.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -532,10 +533,10 @@ class SettleUpScreen extends ConsumerWidget {
             // Cancel
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../../core/theme/app_theme.dart';
 import 'skeleton_primitives.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 /// Reusable skeleton loading placeholders.
 ///
@@ -11,8 +11,8 @@ import 'skeleton_primitives.dart';
 ///
 /// All variants wrap their children in [Shimmer.fromColors] using warm-neutral
 /// AppColors tokens:
-/// - baseColor: [AppColors.surfaceLight] (#F3F4F6)
-/// - highlightColor: [AppColors.surface] (#F8F9FA)
+/// - baseColor: [AppColorTokens.light.inputFill] (#F3F4F6)
+/// - highlightColor: [AppColorTokens.light.cardSurface] (#F8F9FA)
 ///
 /// ## Named factories (content-aware)
 /// - [SkeletonLoader.dashboardHero] — balance hero card + stats row
@@ -56,7 +56,7 @@ class SkeletonLoader extends StatelessWidget {
             SkeletonBlock(
               width: double.infinity,
               height: 120,
-              borderRadius: AppColors.radiusLarge,
+              borderRadius: 16,
             ),
             SizedBox(height: 16),
             Row(
@@ -258,8 +258,8 @@ class SkeletonLoader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: AppColors.surfaceLight, // #F3F4F6 — warm-neutral base
-      highlightColor: AppColors.surface, // #F8F9FA — warm-neutral highlight
+      baseColor: AppColorTokens.light.inputFill, // #F3F4F6 — warm-neutral base
+      highlightColor: AppColorTokens.light.cardSurface, // #F8F9FA — warm-neutral highlight
       child: SingleChildScrollView(
         // NeverScrollableScrollPhysics prevents user scroll while keeping
         // Column items clipped to bounded parent height (e.g. inside Expanded).

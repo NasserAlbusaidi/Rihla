@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Collapsible section showing the 5 most recent expenses.
 class RecentExpensesSection extends StatelessWidget {
@@ -26,27 +26,27 @@ class RecentExpensesSection extends StatelessWidget {
         initiallyExpanded: false,
         tilePadding: EdgeInsets.zero,
         childrenPadding: EdgeInsets.zero,
-        title: const Text(
+        title: Text(
           'RECENT EXPENSES',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
+            color: AppColorTokens.light.textMuted,
             letterSpacing: 1.0,
           ),
         ),
-        trailing: const Icon(
+        trailing: Icon(
           Iconsax.arrow_down_1,
           size: 16,
-          color: AppColors.textMuted,
+          color: AppColorTokens.light.textMuted,
         ),
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColorTokens.light.cardSurface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.5),
+                color: AppColorTokens.light.border.withValues(alpha: 0.5),
               ),
             ),
             child: Column(
@@ -74,7 +74,7 @@ class RecentExpensesSection extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: AppColorTokens.light.scaffoldBackground,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -91,19 +91,19 @@ class RecentExpensesSection extends StatelessWidget {
                   children: [
                     Text(
                       expense.description ?? 'Expense',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
+                        color: AppColorTokens.light.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       expense.categoryName ?? 'General',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textMuted,
+                        color: AppColorTokens.light.textMuted,
                       ),
                     ),
                   ],
@@ -111,17 +111,17 @@ class RecentExpensesSection extends StatelessWidget {
               ),
               Text(
                 AppFormatters.formatCurrency(expense.amount, currency),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
+                  color: AppColorTokens.light.textPrimary,
                 ),
               ),
             ],
           ),
         ),
         if (showDivider)
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          Divider(height: 1, thickness: 1, color: AppColorTokens.light.border),
       ],
     );
   }

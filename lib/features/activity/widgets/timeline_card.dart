@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../models/activity_log_model.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../../../core/theme/tokens/color_tokens.dart';
 
 class TimelineCard extends StatelessWidget {
   final ActivityLog log;
@@ -193,7 +193,7 @@ class TimelineCard extends StatelessWidget {
 
       TextStyle style = TextStyle(
         fontSize: 14,
-        color: AppColors.textPrimary,
+        color: AppColorTokens.light.textPrimary,
         decoration: isDeleted ? TextDecoration.lineThrough : null,
         fontFamily: 'NotoSans', // Requested font
       );

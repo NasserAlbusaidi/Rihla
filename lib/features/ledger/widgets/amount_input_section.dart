@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Numeric keypad and amount display for expense entry.
 ///
@@ -30,19 +30,19 @@ class AmountInputSection extends StatelessWidget {
           children: [
             Text(
               currency,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w300,
-                color: AppColors.textMuted,
+                color: AppColorTokens.light.textMuted,
               ),
             ),
             const SizedBox(width: 8),
             Text(
               amount,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 64,
                 fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
           ],
@@ -85,9 +85,9 @@ class _Numpad extends StatelessWidget {
       children: keys.map((key) {
         if (key == 'back') {
           return _NumpadKey(
-            child: const Icon(
+            child: Icon(
               Icons.backspace_outlined,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
             onTap: () => onKeyPress('back'),
           );
@@ -95,10 +95,10 @@ class _Numpad extends StatelessWidget {
         return _NumpadKey(
           child: Text(
             key,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
           onTap: () => onKeyPress(key),

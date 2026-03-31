@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -18,6 +17,8 @@ import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
 import '../widgets/sub_group_card.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Logistics Screen — unified module template (D-08, D-23).
 ///
@@ -58,7 +59,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
     // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Logistics', useDarkTheme: true),
@@ -73,7 +74,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -85,7 +86,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -95,7 +96,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
 
     return Scaffold(
       key: LogisticsKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -106,7 +107,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
+                  borderRadius: BorderRadius.circular(8 + 2),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.12),
                   ),
@@ -182,12 +183,12 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
             ),
           )
         else ...[
-          const SliverPadding(
+          SliverPadding(
             padding: EdgeInsets.fromLTRB(
-              AppColors.space16,
-              AppColors.space12,
-              AppColors.space16,
-              AppColors.space4,
+              16,
+              12,
+              16,
+              4,
             ),
             sliver: SliverToBoxAdapter(
               child: Text(
@@ -195,7 +196,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -217,7 +218,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
         ],
 
         const SliverPadding(
-          padding: EdgeInsets.only(bottom: AppColors.space32),
+          padding: EdgeInsets.only(bottom: 32),
           sliver: SliverToBoxAdapter(child: SizedBox()),
         ),
       ],
@@ -231,53 +232,53 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
   }) {
     return Container(
       margin: const EdgeInsets.fromLTRB(
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space8,
+        16,
+        16,
+        16,
+        8,
       ),
-      padding: const EdgeInsets.all(AppColors.space20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-        boxShadow: AppColors.cardShadow,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'ORGANIZATION',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: AppColors.space8),
+          const SizedBox(height: 8),
           Text(
             '$groupCount groups · $memberCount members',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
           if (unassignedCount > 0) ...[
-            const SizedBox(height: AppColors.space8),
+            const SizedBox(height: 8),
             Text(
               '$unassignedCount unassigned',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: AppColors.errorText,
+                color: AppColorTokens.light.errorText,
               ),
             ),
           ],
-          const SizedBox(height: AppColors.space16),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: AppColors.buttonHeight,
+            height: 52,
             child: ElevatedButton(
               onPressed: _showCreateDialog,
               child: const Text('Create Group'),
@@ -304,21 +305,21 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
           final allGroupsAsync = ref.watch(eventSubGroupsProvider(localEventRef));
           return Container(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
+            decoration: BoxDecoration(
+              color: AppColorTokens.light.cardSurface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'SELECT MEMBER',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 2,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -335,12 +336,12 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                         .toList();
 
                     if (unassigned.isEmpty) {
-                      return const Padding(
+                      return Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
                         child: Center(
                           child: Text(
                             'No unassigned members',
-                            style: TextStyle(color: AppColors.textMuted),
+                            style: TextStyle(color: AppColorTokens.light.textMuted),
                           ),
                         ),
                       );
@@ -354,7 +355,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                           return ListTile(
                             leading: CircleAvatar(
                               radius: 18,
-                              backgroundColor: AppColors.background,
+                              backgroundColor: AppColorTokens.light.scaffoldBackground,
                               backgroundImage:
                                   p.avatarUrl != null &&
                                       p.avatarUrl!.startsWith('http')
@@ -364,10 +365,10 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                                       !p.avatarUrl!.startsWith('http')
                                   ? Text(
                                       p.displayName?[0] ?? 'U',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.moduleLedger,
+                                        color: AppColorTokens.light.moduleLedger,
                                       ),
                                     )
                                   : null,
@@ -391,12 +392,12 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                       ),
                     );
                   },
-                  loading: () => const Padding(
+                  loading: () => Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: Text(
                         'Loading...',
-                        style: TextStyle(color: AppColors.textMuted),
+                        style: TextStyle(color: AppColorTokens.light.textMuted),
                       ),
                     ),
                   ),
@@ -460,7 +461,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColorTokens.light.cardSurface,
         title: const Text('Delete Group?'),
         content: Text(
           'This will remove ${group.name} and all its assignments.',
@@ -476,9 +477,9 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
               Navigator.pop(context);
               _deleteGroup(group);
             },
-            child: const Text(
+            child: Text(
               'DELETE',
-              style: TextStyle(color: AppColors.errorText),
+              style: TextStyle(color: AppColorTokens.light.errorText),
             ),
           ),
         ],
@@ -524,8 +525,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
           24,
           24 + MediaQuery.of(context).viewInsets.bottom,
         ),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
+        decoration: BoxDecoration(
+          color: AppColorTokens.light.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
@@ -535,11 +536,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
             Text(
               group != null ? 'EDIT GROUP' : 'NEW GROUP',
               key: group != null ? null : LogisticsKeys.createGroupTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 2,
-                color: AppColors.textMuted,
+                color: AppColorTokens.light.textMuted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -548,14 +549,14 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
               controller: _nameController,
               autofocus: true,
               inputFormatters: [LengthLimitingTextInputFormatter(50)],
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'CAR NAME (e.g. DEFENDER 1)',
-                prefixIcon: Icon(Iconsax.car, color: AppColors.textMuted),
+                prefixIcon: Icon(Iconsax.car, color: AppColorTokens.light.textMuted),
               ),
             ),
             const SizedBox(height: 16),
@@ -566,15 +567,15 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                 LengthLimitingTextInputFormatter(2),
                 FilteringTextInputFormatter.digitsOnly,
               ],
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'CAPACITY',
                 prefixIcon:
-                    Icon(Iconsax.people, color: AppColors.textMuted),
+                    Icon(Iconsax.people, color: AppColorTokens.light.textMuted),
               ),
             ),
             const SizedBox(height: 24),

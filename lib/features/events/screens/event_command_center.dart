@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
@@ -15,6 +14,7 @@ import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
 import '../widgets/event_module_list.dart';
 import 'event_expense_hero.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Per-event hub (CommandCenter equivalent) for events.
 ///
@@ -42,7 +42,7 @@ class EventCommandCenter extends ConsumerWidget {
     // Loading state — skeleton instead of CircularProgressIndicator
     if (eventAsync.isLoading || groupAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Loading...', useDarkTheme: true),
@@ -50,15 +50,15 @@ class EventCommandCenter extends ConsumerWidget {
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(
-                  AppColors.space24,
-                  AppColors.space20,
-                  AppColors.space24,
-                  AppColors.space24,
+                  24,
+                  20,
+                  24,
+                  24,
                 ),
                 child: Column(
                   children: [
                     SkeletonLoader.dashboardHero(),
-                    const SizedBox(height: AppColors.space24),
+                    const SizedBox(height: 24),
                     SkeletonLoader.cardList(count: 6),
                   ],
                 ),
@@ -75,7 +75,7 @@ class EventCommandCenter extends ConsumerWidget {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -87,7 +87,7 @@ class EventCommandCenter extends ConsumerWidget {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -99,14 +99,14 @@ class EventCommandCenter extends ConsumerWidget {
 
     return Scaffold(
       key: EventKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       floatingActionButton: FloatingActionButton(
         key: EventKeys.addExpenseFab,
         onPressed: () {
           HapticService.medium();
           context.push('/group/$groupId/event/$eventId/ledger/add');
         },
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColorTokens.light.primary,
         shape: const CircleBorder(),
         child: const Icon(Iconsax.add, color: Colors.black),
       ),
@@ -144,9 +144,9 @@ class EventCommandCenter extends ConsumerWidget {
           // Expense hero card
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
-              AppColors.space24,
-              AppColors.space20,
-              AppColors.space24,
+              24,
+              20,
+              24,
               0,
             ),
             sliver: SliverToBoxAdapter(
@@ -161,9 +161,9 @@ class EventCommandCenter extends ConsumerWidget {
           // Module grid
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
-              AppColors.space24,
-              AppColors.space24,
-              AppColors.space24,
+              24,
+              24,
+              24,
               0,
             ),
             sliver: SliverToBoxAdapter(
@@ -177,7 +177,7 @@ class EventCommandCenter extends ConsumerWidget {
 
           // Bottom spacing
           const SliverToBoxAdapter(
-            child: SizedBox(height: AppColors.space32),
+            child: SizedBox(height: 32),
           ),
         ],
       ),

@@ -3,10 +3,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
 import '../models/transaction_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Transaction list showing recent expenses and settlements.
 /// Displays empty state with CTA when no transactions exist.
@@ -51,12 +52,12 @@ class TransactionList extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'RECENT',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
               letterSpacing: 1.5,
             ),
           ),
@@ -70,13 +71,13 @@ class TransactionList extends StatelessWidget {
                     width: 72,
                     height: 72,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
+                      color: AppColorTokens.light.selectionFill,
                       borderRadius: BorderRadius.circular(22),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Iconsax.wallet_3,
                       size: 32,
-                      color: AppColors.primary,
+                      color: AppColorTokens.light.primary,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -87,10 +88,10 @@ class TransactionList extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Add your first expense to start tracking\ncosts and splitting them with your group.',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: AppColorTokens.light.textSecondary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -105,7 +106,7 @@ class TransactionList extends StatelessWidget {
                     icon: const Icon(Iconsax.add, size: 18),
                     label: const Text('Add Expense'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: AppColorTokens.light.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -179,7 +180,7 @@ class TransactionCard extends StatelessWidget {
     String subtitle;
 
     if (isSettlement) {
-      iconColor = AppColors.success;
+      iconColor = AppColorTokens.light.success;
       iconData = Iconsax.money_send;
       title = 'Payment to ${transaction.settlement?.recipientName ?? "Member"}';
       subtitle = isPayer
@@ -187,7 +188,7 @@ class TransactionCard extends StatelessWidget {
           : 'Paid by ${transaction.settlement?.payerName ?? "Member"}';
     } else {
       // Expense
-      iconColor = AppColors.primary;
+      iconColor = AppColorTokens.light.primary;
       iconData = getCategoryIcon(transaction.expense?.categoryIcon);
       title = transaction.expense?.description ?? transaction.expense?.categoryName ?? 'Expense';
       subtitle = isPayer
@@ -206,15 +207,15 @@ class TransactionCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColorTokens.light.cardSurface,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isSettlement
-                ? AppColors.success.withValues(alpha: 0.3)
-                : AppColors.borderLight,
+                ? AppColorTokens.light.success.withValues(alpha: 0.3)
+                : AppColorTokens.light.inputFill,
             width: 1.5,
           ),
-          boxShadow: AppColors.cardShadow,
+          boxShadow: AppShadowTokens.standard.raised,
         ),
         child: Row(
           children: [
@@ -242,7 +243,7 @@ class TransactionCard extends StatelessWidget {
                             width: 16,
                             height: 16,
                             decoration: BoxDecoration(
-                              color: AppColors.mint,
+                              color: AppColorTokens.light.primary,
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 1.5),
                             ),
@@ -273,9 +274,9 @@ class TransactionCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -287,7 +288,7 @@ class TransactionCard extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
-                color: isSettlement ? AppColors.success : AppColors.textPrimary,
+                color: isSettlement ? AppColorTokens.light.success : AppColorTokens.light.textPrimary,
               ),
             ),
           ],

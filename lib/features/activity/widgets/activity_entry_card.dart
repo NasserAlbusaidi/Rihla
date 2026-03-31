@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-import '../../../core/theme/app_theme.dart';
 import '../models/activity_log_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Activity entry card for the date-grouped timeline — D-21.
 ///
@@ -25,14 +26,14 @@ class ActivityEntryCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppColors.space16,
-        vertical: AppColors.space4,
+        horizontal: 16,
+        vertical: 4,
       ),
-      padding: const EdgeInsets.all(AppColors.space16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge + 8),
-        boxShadow: AppColors.shadowRaised,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16 + 8),
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,7 +57,7 @@ class ActivityEntryCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: AppColors.space12),
+          const SizedBox(width: 12),
           // Content column
           Expanded(
             child: Column(
@@ -65,10 +66,10 @@ class ActivityEntryCard extends StatelessWidget {
                 // Line 1: actor name + action description
                 Text(
                   log.logText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: AppColors.textPrimary,
+                    color: AppColorTokens.light.textPrimary,
                     height: 1.4,
                   ),
                 ),
@@ -76,10 +77,10 @@ class ActivityEntryCard extends StatelessWidget {
                 // Line 2: relative time
                 Text(
                   timeago.format(log.createdAt),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                   ),
                 ),
               ],

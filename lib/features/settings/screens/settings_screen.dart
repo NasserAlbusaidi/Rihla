@@ -7,11 +7,12 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/app_metadata.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
-import '../../../core/theme/app_theme.dart';
 // AppFormatters not needed for settings
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/models/app_settings_model.dart';
 import '../keys/settings_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Settings Screen with profile, theme, and about sections
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -75,13 +76,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   ) {
     final isSelected = mode == current;
     return ListTile(
-      leading: Icon(icon, color: isSelected ? AppColors.primary : null),
+      leading: Icon(icon, color: isSelected ? AppColorTokens.light.primary : null),
       title: Text(
         title,
-        style: TextStyle(color: isSelected ? AppColors.primary : null),
+        style: TextStyle(color: isSelected ? AppColorTokens.light.primary : null),
       ),
       trailing: isSelected
-          ? const Icon(Icons.check, color: AppColors.primary)
+          ? Icon(Icons.check, color: AppColorTokens.light.primary)
           : null,
       onTap: () {
         HapticService.selection();
@@ -115,10 +116,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return ListTile(
       title: Text(
         title,
-        style: TextStyle(color: isSelected ? AppColors.primary : null),
+        style: TextStyle(color: isSelected ? AppColorTokens.light.primary : null),
       ),
       trailing: isSelected
-          ? const Icon(Icons.check, color: AppColors.primary)
+          ? Icon(Icons.check, color: AppColorTokens.light.primary)
           : null,
       onTap: () {
         HapticService.selection();
@@ -159,11 +160,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: Text(
                   '$symbol - $currency',
                   style: TextStyle(
-                    color: isSelected ? AppColors.primary : null,
+                    color: isSelected ? AppColorTokens.light.primary : null,
                   ),
                 ),
                 trailing: isSelected
-                    ? const Icon(Icons.check, color: AppColors.primary)
+                    ? Icon(Icons.check, color: AppColorTokens.light.primary)
                     : null,
                 onTap: () {
                   HapticService.selection();
@@ -274,7 +275,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       key: SettingsKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -319,7 +320,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted.withValues(alpha: 0.5),
+                    color: AppColorTokens.light.textMuted.withValues(alpha: 0.5),
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -335,25 +336,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColorTokens.light.cardSurface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                Icon(Iconsax.user, size: 16, color: AppColors.primary),
+                Icon(Iconsax.user, size: 16, color: AppColorTokens.light.primary),
                 SizedBox(width: 8),
                 Text(
                   'PROFILE',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -365,55 +366,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.user_edit,
-                  size: 18, color: AppColors.primary),
+              child: Icon(Iconsax.user_edit,
+                  size: 18, color: AppColorTokens.light.primary),
             ),
-            title: const Text(
+            title: Text(
               'Your Name',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
             subtitle: Text(
               settings.deviceName.isEmpty ? 'Not set' : settings.deviceName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: AppColorTokens.light.textSecondary,
               ),
             ),
-            trailing: const Icon(Iconsax.arrow_right_3,
-                size: 16, color: AppColors.textMuted),
+            trailing: Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColorTokens.light.textMuted),
             onTap: _showDeviceNameDialog,
           ),
-          const Divider(height: 1, indent: 16, endIndent: 16,
-              color: AppColors.border),
+          Divider(height: 1, indent: 16, endIndent: 16,
+              color: AppColorTokens.light.border),
           ListTile(
             leading: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.profile_circle,
-                  size: 18, color: AppColors.primary),
+              child: Icon(Iconsax.profile_circle,
+                  size: 18, color: AppColorTokens.light.primary),
             ),
-            title: const Text(
+            title: Text(
               'App Version',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
-            subtitle: const Text(
+            subtitle: Text(
               AppMetadata.visibleAppName,
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 12, color: AppColorTokens.light.textSecondary),
             ),
           ),
           const SizedBox(height: 8),
@@ -430,23 +431,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: AppColorTokens.light.inputFill,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.borderLight),
+              border: Border.all(color: AppColorTokens.light.inputFill),
             ),
             child: IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Iconsax.arrow_left,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
                 size: 20,
               ),
               onPressed: () => context.pop(),
             ),
           ),
-          const Text(
+          Text(
             'SETTINGS',
             style: TextStyle(
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
               fontSize: 12,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
@@ -465,25 +466,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColorTokens.light.cardSurface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                Icon(Iconsax.setting_2, size: 16, color: AppColors.primary),
+                Icon(Iconsax.setting_2, size: 16, color: AppColorTokens.light.primary),
                 SizedBox(width: 8),
                 Text(
                   'PREFERENCES',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -495,120 +496,120 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.money,
-                  size: 18, color: AppColors.primary),
+              child: Icon(Iconsax.money,
+                  size: 18, color: AppColorTokens.light.primary),
             ),
-            title: const Text(
+            title: Text(
               'Currency',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
             subtitle: Text(
               settings.currencyCode,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(
+                  fontSize: 12, color: AppColorTokens.light.textSecondary),
             ),
-            trailing: const Icon(Iconsax.arrow_right_3,
-                size: 16, color: AppColors.textMuted),
+            trailing: Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColorTokens.light.textMuted),
             onTap: _showCurrencyDialog,
           ),
-          const Divider(
-              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColorTokens.light.border),
           ListTile(
             leading: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.global,
-                  size: 18, color: AppColors.primary),
+              child: Icon(Iconsax.global,
+                  size: 18, color: AppColorTokens.light.primary),
             ),
-            title: const Text(
+            title: Text(
               'Language',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
             subtitle: Text(
               settings.languageCode == 'en' ? 'English' : 'العربية',
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(
+                  fontSize: 12, color: AppColorTokens.light.textSecondary),
             ),
-            trailing: const Icon(Iconsax.arrow_right_3,
-                size: 16, color: AppColors.textMuted),
+            trailing: Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColorTokens.light.textMuted),
             onTap: _showLanguageDialog,
           ),
-          const Divider(
-              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColorTokens.light.border),
           ListTile(
             leading: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
               child:
-                  const Icon(Iconsax.moon, size: 18, color: AppColors.primary),
+                  Icon(Iconsax.moon, size: 18, color: AppColorTokens.light.primary),
             ),
-            title: const Text(
+            title: Text(
               'Theme',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
             subtitle: Text(
               settings.themeMode == AppThemeMode.system
                   ? 'Follow system'
                   : (settings.themeMode == AppThemeMode.light ? 'Light' : 'Dark'),
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(
+                  fontSize: 12, color: AppColorTokens.light.textSecondary),
             ),
-            trailing: const Icon(Iconsax.arrow_right_3,
-                size: 16, color: AppColors.textMuted),
+            trailing: Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColorTokens.light.textMuted),
             onTap: _showThemeDialog,
           ),
-          const Divider(
-              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColorTokens.light.border),
           SwitchListTile(
             secondary: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.notification,
-                  size: 18, color: AppColors.primary),
+              child: Icon(Iconsax.notification,
+                  size: 18, color: AppColorTokens.light.primary),
             ),
-            title: const Text(
+            title: Text(
               'Push Notifications',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
             subtitle: Text(
               _notificationSubtitle(notificationStatus),
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(
+                  fontSize: 12, color: AppColorTokens.light.textSecondary),
             ),
             value: isNotifEnabled,
-            activeThumbColor: AppColors.primary,
-            activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
+            activeThumbColor: AppColorTokens.light.primary,
+            activeTrackColor: AppColorTokens.light.primary.withValues(alpha: 0.3),
             onChanged: (value) async {
               final notifService = ref.read(notificationServiceProvider);
               if (value) {
@@ -638,25 +639,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColorTokens.light.cardSurface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                Icon(Iconsax.info_circle, size: 16, color: AppColors.primary),
+                Icon(Iconsax.info_circle, size: 16, color: AppColorTokens.light.primary),
                 SizedBox(width: 8),
                 Text(
                   'ABOUT',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -668,60 +669,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.document_text,
-                  size: 18, color: AppColors.primary),
+              child: Icon(Iconsax.document_text,
+                  size: 18, color: AppColorTokens.light.primary),
             ),
-            title: const Text(
+            title: Text(
               'Privacy Policy',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
-            trailing: const Icon(Iconsax.arrow_right_3,
-                size: 16, color: AppColors.textMuted),
+            trailing: Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColorTokens.light.textMuted),
             onTap: _showPrivacyPolicy,
           ),
-          const Divider(
-              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColorTokens.light.border),
           ListTile(
             leading: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Iconsax.document,
-                  size: 18, color: AppColors.primary),
+              child: Icon(Iconsax.document,
+                  size: 18, color: AppColorTokens.light.primary),
             ),
-            title: const Text(
+            title: Text(
               'Terms of Service',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
-            trailing: const Icon(Iconsax.arrow_right_3,
-                size: 16, color: AppColors.textMuted),
+            trailing: Icon(Iconsax.arrow_right_3,
+                size: 16, color: AppColorTokens.light.textMuted),
             onTap: _showTermsOfService,
           ),
-          const Divider(
-              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColorTokens.light.border),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
               child: Text(
                 'Version ${appMetadata.version} (${appMetadata.buildNumber})',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
                 textAlign: TextAlign.center,
               ),

@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -60,13 +59,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
     return Scaffold(
       key: GroupKeys.detailScreen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       floatingActionButton: Semantics(
         label: 'Create event',
         button: true,
         child: FloatingActionButton(
           onPressed: () => context.push('/group/$groupId/create-event'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColorTokens.light.primary,
           shape: const CircleBorder(),
           child: const Icon(Iconsax.add, color: Colors.black),
         ),
@@ -128,12 +127,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppColors.space24,
+              horizontal: 24,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: AppColors.space16),
+                const SizedBox(height: 16),
 
                 // --- 2x2 Stats grid (D-08: always visible) ---
                 GroupStatsGrid(
@@ -144,23 +143,23 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   eventCount: balancesData?.eventCount ?? 0,
                   currency: group.currency,
                 ),
-                const SizedBox(height: AppColors.space16),
+                const SizedBox(height: 16),
 
                 // --- Settle-up CTA (D-10: conditional on non-zero balance) ---
                 if (showSettleUpCta) ...[
                   SizedBox(
                     width: double.infinity,
-                    height: AppColors.buttonHeight,
+                    height: 52,
                     child: ElevatedButton(
                       key: GroupKeys.settleUpCta,
                       onPressed: () =>
                           context.push('/group/$groupId/settle-up'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.textOnPrimary,
+                        backgroundColor: AppColorTokens.light.primary,
+                        foregroundColor: AppColorTokens.light.textOnPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius:
-                              BorderRadius.circular(AppColors.radiusMedium),
+                              BorderRadius.circular(12),
                         ),
                       ),
                       child: const Text(
@@ -172,25 +171,25 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppColors.space24),
+                  const SizedBox(height: 24),
                 ] else
-                  const SizedBox(height: AppColors.space8),
+                  const SizedBox(height: 8),
 
                 // --- Events (D-09: before Members) ---
                 _buildEventsSection(context, group, balancesData, currentUid),
-                const SizedBox(height: AppColors.space24),
+                const SizedBox(height: 24),
 
                 // --- Members & Balances ---
                 _buildMembersBalancesSection(context, group, balancesAsync),
-                const SizedBox(height: AppColors.space24),
+                const SizedBox(height: 24),
 
                 // --- Invite Code (D-30: below events) ---
                 _buildInviteSection(context, group),
-                const SizedBox(height: AppColors.space24),
+                const SizedBox(height: 24),
 
                 // --- Recent Activity (D-34) ---
                 _buildActivitySection(context),
-                const SizedBox(height: AppColors.space32),
+                const SizedBox(height: 32),
               ],
             ),
           ),
@@ -227,18 +226,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 Container(
                   key: GroupKeys.eventsCountChip,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppColors.space8,
-                    vertical: AppColors.space4,
+                    horizontal: 8,
+                    vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
+                    color: AppColorTokens.light.inputFill,
                     borderRadius:
-                        BorderRadius.circular(AppColors.radiusSmall),
+                        BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${events.length}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: AppColorTokens.light.textSecondary,
                         ),
                   ),
                 ),
@@ -249,7 +248,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, st) =>
               Text('Events', style: Theme.of(context).textTheme.titleMedium),
         ),
-        const SizedBox(height: AppColors.space12),
+        const SizedBox(height: 12),
         // Event list or empty state
         eventsAsync.when(
           data: (events) {
@@ -270,7 +269,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             return Column(
               children: [
                 for (int i = 0; i < events.length; i++) ...[
-                  if (i > 0) const SizedBox(height: AppColors.space12),
+                  if (i > 0) const SizedBox(height: 12),
                   OpenContainer<void>(
                     closedColor: Colors.transparent,
                     openColor: AppColorTokens.light.scaffoldBackground,
@@ -303,7 +302,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load events",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
           ),
         ),
@@ -336,21 +335,21 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           key: GroupKeys.membersAndBalancesSection,
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        const SizedBox(height: AppColors.space12),
+        const SizedBox(height: 12),
         balancesAsync.when(
           data: (balancesData) {
             if (balancesData.balances.isEmpty) {
               return Text(
                 'No members yet',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                     ),
               );
             }
             return Column(
               children: [
                 for (int i = 0; i < balancesData.balances.length; i++) ...[
-                  if (i > 0) const SizedBox(height: AppColors.space8),
+                  if (i > 0) const SizedBox(height: 8),
                   GroupMemberBalanceCard(
                     balance: balancesData.balances[i],
                     perEventBreakdown: balancesData.perEventBreakdown[
@@ -384,7 +383,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load balances",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
           ),
         ),
@@ -402,21 +401,21 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           key: GroupKeys.inviteCodeSection,
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        const SizedBox(height: AppColors.space12),
+        const SizedBox(height: 12),
         InviteCodeDisplay(code: group.inviteCode),
-        const SizedBox(height: AppColors.space12),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
               child: SizedBox(
-                height: AppColors.buttonHeight,
+                height: 52,
                 child: ElevatedButton.icon(
                   icon: const Icon(Iconsax.copy, size: 16),
                   label: const Text('Copy'),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius:
-                          BorderRadius.circular(AppColors.radiusMedium),
+                          BorderRadius.circular(12),
                     ),
                   ),
                   onPressed: () {
@@ -434,17 +433,17 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: AppColors.space12),
+            const SizedBox(width: 12),
             Expanded(
               child: SizedBox(
-                height: AppColors.buttonHeight,
+                height: 52,
                 child: OutlinedButton.icon(
                   icon: const Icon(Iconsax.share, size: 16),
                   label: const Text('Share'),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius:
-                          BorderRadius.circular(AppColors.radiusMedium),
+                          BorderRadius.circular(12),
                     ),
                   ),
                   onPressed: () {
@@ -474,14 +473,14 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           key: GroupKeys.recentActivitySection,
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        const SizedBox(height: AppColors.space8),
+        const SizedBox(height: 8),
         activityAsync.when(
           data: (activities) {
             if (activities.isEmpty) {
               return Text(
                 'No activity yet',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                     ),
               );
             }
@@ -497,17 +496,17 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load activity",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
           ),
         ),
         TextButton(
           key: GroupKeys.seeAllActivityButton,
           onPressed: () => context.push('/group/$groupId/activity'),
-          child: const Text(
+          child: Text(
             'See all activity',
             style: TextStyle(
-              color: AppColors.primary,
+              color: AppColorTokens.light.primary,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -528,12 +527,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppColors.space24,
+              horizontal: 24,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: AppColors.space16),
+                const SizedBox(height: 16),
                 // Stats grid skeleton — 2x2 grid
                 const Row(
                   children: [
@@ -543,48 +542,48 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                           SkeletonBlock(
                             width: double.infinity,
                             height: 72,
-                            borderRadius: AppColors.radiusSmall,
+                            borderRadius: 8,
                           ),
-                          SizedBox(height: AppColors.space8),
+                          SizedBox(height: 8),
                           SkeletonBlock(
                             width: double.infinity,
                             height: 72,
-                            borderRadius: AppColors.radiusSmall,
+                            borderRadius: 8,
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(width: AppColors.space8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         children: [
                           SkeletonBlock(
                             width: double.infinity,
                             height: 72,
-                            borderRadius: AppColors.radiusSmall,
+                            borderRadius: 8,
                           ),
-                          SizedBox(height: AppColors.space8),
+                          SizedBox(height: 8),
                           SkeletonBlock(
                             width: double.infinity,
                             height: 72,
-                            borderRadius: AppColors.radiusSmall,
+                            borderRadius: 8,
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppColors.space16),
+                const SizedBox(height: 16),
                 // CTA skeleton
                 const SkeletonBlock(
                   width: double.infinity,
-                  height: AppColors.buttonHeight,
-                  borderRadius: AppColors.radiusMedium,
+                  height: 52,
+                  borderRadius: 12,
                 ),
-                const SizedBox(height: AppColors.space24),
+                const SizedBox(height: 24),
                 // Section header skeleton
                 const SkeletonBar(width: 80, height: 16),
-                const SizedBox(height: AppColors.space12),
+                const SizedBox(height: 12),
                 // Event cards skeleton
                 SkeletonLoader.eventCard(count: 2),
               ],

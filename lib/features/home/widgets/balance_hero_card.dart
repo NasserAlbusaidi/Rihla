@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/animated_currency_text.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../keys/home_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Balance hero card for the home dashboard.
 ///
@@ -39,17 +40,17 @@ class BalanceHeroCard extends ConsumerWidget {
     final (Color color, IconData icon, String descriptionText) =
         switch (net.compareTo(Decimal.zero)) {
       < 0 => (
-          AppColors.errorText,
+          AppColorTokens.light.errorText,
           Iconsax.warning_2,
           'You owe across $groupCount group${groupCount == 1 ? '' : 's'}',
         ),
       > 0 => (
-          AppColors.successText,
+          AppColorTokens.light.successText,
           Iconsax.tick_circle,
           'You are owed across $groupCount group${groupCount == 1 ? '' : 's'}',
         ),
       _ => (
-          AppColors.textSecondary,
+          AppColorTokens.light.textSecondary,
           Iconsax.tick_circle,
           'All settled up',
         ),
@@ -57,11 +58,11 @@ class BalanceHeroCard extends ConsumerWidget {
 
     return Container(
       key: HomeKeys.balanceHeroCard,
-      margin: const EdgeInsets.symmetric(horizontal: AppColors.space16),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-        boxShadow: AppColors.shadowRaised,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,
@@ -70,7 +71,7 @@ class BalanceHeroCard extends ConsumerWidget {
           alignment: Alignment.topLeft,
         ),
       ),
-      padding: const EdgeInsets.all(AppColors.space16),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           Container(
@@ -78,11 +79,11 @@ class BalanceHeroCard extends ConsumerWidget {
             height: 48,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 24, color: color),
           ),
-          const SizedBox(width: AppColors.space12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,10 +99,10 @@ class BalanceHeroCard extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   descriptionText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: AppColors.textSecondary,
+                    color: AppColorTokens.light.textSecondary,
                   ),
                 ),
               ],
@@ -115,11 +116,11 @@ class BalanceHeroCard extends ConsumerWidget {
   Widget _buildErrorCard() {
     return Container(
       key: HomeKeys.balanceHeroCard,
-      margin: const EdgeInsets.symmetric(horizontal: AppColors.space16),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-        boxShadow: AppColors.shadowRaised,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,
@@ -128,16 +129,16 @@ class BalanceHeroCard extends ConsumerWidget {
           alignment: Alignment.topLeft,
         ),
       ),
-      padding: const EdgeInsets.all(AppColors.space16),
-      child: const Row(
+      padding: const EdgeInsets.all(16),
+      child: Row(
         children: [
-          Icon(Iconsax.warning_2, size: 24, color: AppColors.textSecondary),
-          SizedBox(width: AppColors.space12),
+          Icon(Iconsax.warning_2, size: 24, color: AppColorTokens.light.textSecondary),
+          SizedBox(width: 12),
           Text(
             'Balance unavailable',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: AppColorTokens.light.textSecondary,
             ),
           ),
         ],

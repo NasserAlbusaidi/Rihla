@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/group_activity_log_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// A single activity log entry tile.
 ///
@@ -25,7 +25,7 @@ class GroupActivityTile extends StatelessWidget {
     final (icon, color) = _iconAndColor(activity.type);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppColors.space8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -40,7 +40,7 @@ class GroupActivityTile extends StatelessWidget {
             child: Icon(icon, size: 16, color: color),
           ),
 
-          const SizedBox(width: AppColors.space12),
+          const SizedBox(width: 12),
 
           // Text column
           Expanded(
@@ -53,34 +53,34 @@ class GroupActivityTile extends StatelessWidget {
                     children: [
                       TextSpan(
                         text: activity.actorName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: AppColorTokens.light.textPrimary,
                         ),
                       ),
                       const TextSpan(text: ' '),
                       TextSpan(
                         text: activity.description,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
+                          color: AppColorTokens.light.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: AppColors.space4),
+                const SizedBox(height: 4),
 
                 // Relative timestamp
                 Text(
                   AppFormatters.formatRelativeDate(activity.timestamp),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                   ),
                 ),
               ],
@@ -94,12 +94,12 @@ class GroupActivityTile extends StatelessWidget {
   /// Returns the icon and color for the given activity type.
   (IconData, Color) _iconAndColor(String type) {
     return switch (type) {
-      'event_created' => (Iconsax.calendar_add, AppColors.primary),
-      'event_deleted' => (Iconsax.calendar_remove, AppColors.textMuted),
-      'group_settlement' => (Iconsax.tick_circle, AppColors.success),
-      'member_joined' => (Iconsax.profile_add, AppColors.primary),
-      'member_left' => (Iconsax.profile_delete, AppColors.textMuted),
-      _ => (Iconsax.info_circle, AppColors.textMuted),
+      'event_created' => (Iconsax.calendar_add, AppColorTokens.light.primary),
+      'event_deleted' => (Iconsax.calendar_remove, AppColorTokens.light.textMuted),
+      'group_settlement' => (Iconsax.tick_circle, AppColorTokens.light.success),
+      'member_joined' => (Iconsax.profile_add, AppColorTokens.light.primary),
+      'member_left' => (Iconsax.profile_delete, AppColorTokens.light.textMuted),
+      _ => (Iconsax.info_circle, AppColorTokens.light.textMuted),
     };
   }
 }

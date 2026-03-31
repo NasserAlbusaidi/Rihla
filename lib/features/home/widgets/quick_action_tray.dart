@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/animations/tap_bounce.dart';
 import '../keys/home_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Quick action tray for the home dashboard.
 ///
@@ -31,8 +31,8 @@ class QuickActionTray extends StatelessWidget {
     return Container(
       key: HomeKeys.quickActionTray,
       padding: const EdgeInsets.symmetric(
-        horizontal: AppColors.space16,
-        vertical: AppColors.space8,
+        horizontal: 16,
+        vertical: 8,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -89,14 +89,14 @@ class _QuickActionButton extends StatelessWidget {
           SizedBox(
             width: 48,
             height: 48,
-            child: Icon(icon, size: 24, color: AppColors.primary),
+            child: Icon(icon, size: 24, color: AppColorTokens.light.primary),
           ),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
+              color: AppColorTokens.light.textSecondary,
             ),
           ),
         ],

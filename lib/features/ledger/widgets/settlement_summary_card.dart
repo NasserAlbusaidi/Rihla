@@ -2,9 +2,10 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Premium bento-style summary card for the Settle Up screen.
 /// Displays the current user's net balance, total pending, and total paid.
@@ -29,7 +30,7 @@ class SettlementSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = netBalance >= Decimal.zero;
-    final accentColor = isPositive ? AppColors.success : AppColors.error;
+    final accentColor = isPositive ? AppColorTokens.light.success : AppColorTokens.light.error;
 
     return Container(
       width: double.infinity,
@@ -39,12 +40,12 @@ class SettlementSummaryCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             accentColor.withValues(alpha: 0.15),
-            AppColors.surface.withValues(alpha: 0.8),
+            AppColorTokens.light.cardSurface.withValues(alpha: 0.8),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1),
-        boxShadow: AppColors.cardShadowLarge,
+        boxShadow: AppShadowTokens.standard.floating,
       ),
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -72,10 +73,10 @@ class SettlementSummaryCard extends StatelessWidget {
                     children: [
                       Text(
                         AppFormatters.formatCurrency(netBalance.abs(), currency),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
+                          color: AppColorTokens.light.textPrimary,
                           letterSpacing: -1,
                         ),
                       ),
@@ -98,7 +99,7 @@ class SettlementSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: AppColorTokens.light.border),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -121,11 +122,11 @@ class SettlementSummaryCard extends StatelessWidget {
               width: double.infinity,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+                  gradient: AppColorTokens.light.primaryGradient,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
+                      color: AppColorTokens.light.primary.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -157,7 +158,7 @@ class SettlementSummaryCard extends StatelessWidget {
     return Expanded(
       child: Row(
         children: [
-          Icon(icon, size: 14, color: AppColors.textMuted),
+          Icon(icon, size: 14, color: AppColorTokens.light.textMuted),
           const SizedBox(width: 8),
           Flexible(
             child: Column(
@@ -165,18 +166,18 @@ class SettlementSummaryCard extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                   ),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: AppColorTokens.light.textPrimary,
                   ),
                 ),
               ],

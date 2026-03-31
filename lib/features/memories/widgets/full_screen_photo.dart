@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../models/memory_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Full-screen photo viewer with pinch-to-zoom and a delete action.
 ///
@@ -97,9 +97,9 @@ class FullScreenPhoto extends StatelessWidget {
                                   Navigator.pop(ctx);
                                   onDelete();
                                 },
-                                child: const Text(
+                                child: Text(
                                   'Delete',
-                                  style: TextStyle(color: AppColors.error),
+                                  style: TextStyle(color: AppColorTokens.light.error),
                                 ),
                               ),
                             ],

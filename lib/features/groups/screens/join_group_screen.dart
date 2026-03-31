@@ -5,10 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_provider.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Screen for joining a group via a 6-character invite code.
 ///
@@ -105,18 +106,18 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppColors.space16, vertical: AppColors.space16),
+            horizontal: 16, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Form fields card
             Container(
-              margin: const EdgeInsets.only(bottom: AppColors.space16),
-              padding: const EdgeInsets.all(AppColors.space16),
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColorTokens.light.cardSurface,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: AppColors.cardShadow,
+                boxShadow: AppShadowTokens.standard.raised,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,7 +127,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                     'Your name',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: AppColors.space8),
+                  const SizedBox(height: 8),
                   TextFormField(
                     controller: _nameController,
                     textCapitalization: TextCapitalization.words,
@@ -134,20 +135,20 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                       hintText: 'Enter your name',
                     ),
                   ),
-                  const SizedBox(height: AppColors.space24),
+                  const SizedBox(height: 24),
 
                   Text(
                     'Invite code',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: AppColors.space8),
+                  const SizedBox(height: 8),
                   Text(
                     'Ask a group member for their 6-character code',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: AppColorTokens.light.textSecondary,
                         ),
                   ),
-                  const SizedBox(height: AppColors.space16),
+                  const SizedBox(height: 16),
 
                   // Invite code input — uppercase, max 6 chars, spaced display
                   TextFormField(
@@ -185,7 +186,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
               label: isLoading ? 'Joining\u2026' : 'Join Group',
             ),
 
-            const SizedBox(height: AppColors.space32),
+            const SizedBox(height: 32),
           ],
         ),
       ),

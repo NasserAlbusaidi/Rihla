@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
@@ -27,6 +26,8 @@ import '../widgets/expense_success_dialog.dart';
 import '../widgets/receipt_picker_section.dart';
 import '../widgets/split_scope_selector.dart';
 import '../../../shared/widgets/dot_step_indicator.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Omni-Splitter (Add Expense Screen) - Redesigned with 3-step flow
 class AddExpenseScreen extends ConsumerStatefulWidget {
@@ -312,7 +313,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     return Scaffold(
       key: LedgerKeys.addExpenseScreen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -364,9 +365,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColorTokens.light.cardSurface,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: AppColors.cardShadow,
+                boxShadow: AppShadowTokens.standard.raised,
               ),
               child: AmountInputSection(
                 amount: _amount,
@@ -384,9 +385,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColorTokens.light.cardSurface,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: AppColors.cardShadow,
+              boxShadow: AppShadowTokens.standard.raised,
             ),
             child: CategorySelectionStep(
               categoriesAsync: categoriesAsync,
@@ -417,7 +418,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               IconButton(
                 icon: Icon(
                   _currentStep == 0 ? Icons.close : Iconsax.arrow_left,
-                  color: AppColors.textSecondary,
+                  color: AppColorTokens.light.textSecondary,
                 ),
                 onPressed: () =>
                     _currentStep == 0 ? context.pop() : _prevStep(),
@@ -428,11 +429,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   'SELECT CATEGORY',
                   'SPLIT & CONFIRM',
                 ][_currentStep],
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
               ),
               const SizedBox(width: 48), // Placeholder for balance
@@ -445,7 +446,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             child: DotStepIndicator(
               stepCount: 3,
               currentStep: _currentStep,
-              activeColor: AppColors.terracotta,
+              activeColor: AppColorTokens.light.focusBorderWarm,
               showCheckmarks: true,
             ),
           ),
@@ -465,19 +466,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColorTokens.light.cardSurface,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: AppColors.cardShadow,
+              boxShadow: AppShadowTokens.standard.raised,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Split Details',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
+                    color: AppColorTokens.light.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -518,19 +519,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColorTokens.light.cardSurface,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: AppColors.cardShadow,
+              boxShadow: AppShadowTokens.standard.raised,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'NOTE',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -540,7 +541,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   maxLines: 2,
                   decoration: InputDecoration(
                     hintText: 'e.g. Lunch at trailhead...',
-                    fillColor: AppColors.surfaceLight,
+                    fillColor: AppColorTokens.light.inputFill,
                     filled: true,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -570,17 +571,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       margin: const EdgeInsets.only(top: 24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.rose.withValues(alpha: 0.1),
+        color: AppColorTokens.light.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
-          const Icon(Iconsax.warning_2, color: AppColors.rose, size: 20),
+          Icon(Iconsax.warning_2, color: AppColorTokens.light.error, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               error,
-              style: const TextStyle(color: AppColors.rose, fontSize: 13),
+              style: TextStyle(color: AppColorTokens.light.error, fontSize: 13),
             ),
           ),
         ],
@@ -600,20 +601,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         height: 64,
         child: Container(
           decoration: BoxDecoration(
-            gradient: isLastStep ? AppColors.primaryGradient : null,
+            gradient: isLastStep ? AppColorTokens.light.primaryGradient : null,
             color: isLastStep
                 ? null
                 : (canContinue
-                      ? AppColors.textPrimary
-                      : AppColors.surfaceLight),
+                      ? AppColorTokens.light.textPrimary
+                      : AppColorTokens.light.inputFill),
             borderRadius: BorderRadius.circular(20),
             boxShadow: canContinue
                 ? [
                     BoxShadow(
                       color:
                           (isLastStep
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary)
+                                  ? AppColorTokens.light.primary
+                                  : AppColorTokens.light.textPrimary)
                               .withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),

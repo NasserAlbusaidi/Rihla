@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/services/haptic_service.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 class SearchFilterBar extends StatefulWidget {
   final ValueChanged<String> onSearchChanged;
@@ -36,7 +36,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppColors.space24),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
           Row(
@@ -59,8 +59,8 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                         prefixIcon:
                             const Icon(Iconsax.search_normal, size: 18),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppColors.space16,
-                          vertical: AppColors.space12,
+                          horizontal: 16,
+                          vertical: 12,
                         ),
                         suffixIcon: _controller.text.isNotEmpty
                             ? IconButton(
@@ -77,7 +77,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   ),
                 ),
               ),
-              const SizedBox(width: AppColors.space8),
+              const SizedBox(width: 8),
               Tooltip(
                 message: _isExpanded ? 'Close search' : 'Toggle search',
                 child: GestureDetector(
@@ -94,21 +94,21 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                     height: 44,
                     decoration: BoxDecoration(
                       color: _isExpanded
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : AppColors.surfaceLight,
+                          ? AppColorTokens.light.primary.withValues(alpha: 0.1)
+                          : AppColorTokens.light.inputFill,
                       borderRadius:
-                          BorderRadius.circular(AppColors.radiusSmall),
+                          BorderRadius.circular(8),
                       border: Border.all(
                         color: _isExpanded
-                            ? AppColors.primary.withValues(alpha: 0.3)
-                            : AppColors.borderLight,
+                            ? AppColorTokens.light.primary.withValues(alpha: 0.3)
+                            : AppColorTokens.light.inputFill,
                       ),
                     ),
                     child: Icon(
                       _isExpanded ? Icons.close : Iconsax.search_normal,
                       size: 18,
                       color:
-                          _isExpanded ? AppColors.primary : AppColors.textMuted,
+                          _isExpanded ? AppColorTokens.light.primary : AppColorTokens.light.textMuted,
                     ),
                   ),
                 ),
@@ -116,14 +116,14 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
             ],
           ),
           if (widget.filters != null && widget.filters!.isNotEmpty) ...[
-            const SizedBox(height: AppColors.space8),
+            const SizedBox(height: 8),
             SizedBox(
               height: 36,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.filters!.length,
                 separatorBuilder: (_, _) =>
-                    const SizedBox(width: AppColors.space8),
+                    const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final filter = widget.filters![index];
                   final isActive = filter == widget.activeFilter;

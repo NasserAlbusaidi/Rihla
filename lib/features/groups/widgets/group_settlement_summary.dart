@@ -1,9 +1,10 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Summary card displayed at the top of the Group Settle-Up screen.
 ///
@@ -29,49 +30,49 @@ class GroupSettlementSummaryCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.primary.withValues(alpha: 0.12),
-            AppColors.surface.withValues(alpha: 0.9),
+            AppColorTokens.light.primary.withValues(alpha: 0.12),
+            AppColorTokens.light.cardSurface.withValues(alpha: 0.9),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
+          color: AppColorTokens.light.primary.withValues(alpha: 0.2),
           width: 1,
         ),
-        boxShadow: AppColors.cardShadowLarge,
+        boxShadow: AppShadowTokens.standard.floating,
       ),
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'GROUP TOTAL PENDING',
             key: GroupKeys.settleUpGroupTotalLabel,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             AppFormatters.formatCurrency(totalPending, currency),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
               letterSpacing: -1,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             'Across $eventCount event${eventCount == 1 ? '' : 's'}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
             ),
           ),
         ],

@@ -2,9 +2,10 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/animated_currency_text.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Balance hero card for the Ledger screen.
 ///
@@ -41,16 +42,16 @@ class LedgerHeroCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space8,
+        16,
+        16,
+        16,
+        8,
       ),
-      padding: const EdgeInsets.all(AppColors.space20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColorTokens.light.cardSurface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,
@@ -70,12 +71,12 @@ class LedgerHeroCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'YOUR BALANCE',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.textMuted,
+                        color: AppColorTokens.light.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -95,22 +96,22 @@ class LedgerHeroCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
+                  Text(
                     'EVENT TOTAL',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                       letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '$currency $formattedTotal',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: AppColorTokens.light.textPrimary,
                     ),
                   ),
                 ],
@@ -124,26 +125,26 @@ class LedgerHeroCard extends StatelessWidget {
             children: [
               Text(
                 '$expenseCount expenses',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary,
+                  color: AppColorTokens.light.textSecondary,
                 ),
               ),
-              const Text(
+              Text(
                 ' \u00b7 ',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary,
+                  color: AppColorTokens.light.textSecondary,
                 ),
               ),
               Text(
                 '$settlementCount settlements',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary,
+                  color: AppColorTokens.light.textSecondary,
                 ),
               ),
             ],
@@ -155,7 +156,7 @@ class LedgerHeroCard extends StatelessWidget {
             children: [
               Expanded(
                 child: SizedBox(
-                  height: AppColors.buttonHeight,
+                  height: 52,
                   child: ElevatedButton.icon(
                     onPressed: onAddExpense,
                     icon: const Icon(Iconsax.add, size: 18),
@@ -166,7 +167,7 @@ class LedgerHeroCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: SizedBox(
-                  height: AppColors.buttonHeight,
+                  height: 52,
                   child: OutlinedButton.icon(
                     onPressed: onSettleUp,
                     icon: const Icon(Iconsax.money_send, size: 18),

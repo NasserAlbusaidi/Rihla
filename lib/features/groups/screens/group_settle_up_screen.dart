@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 
 import 'package:go_router/go_router.dart';
 import '../../../core/config/firebase_config.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -19,6 +18,8 @@ import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
 import '../widgets/group_settlement_summary.dart';
 import '../widgets/group_settlement_tile.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Full-screen cross-event settlement UI (FIN-04, D-22).
 ///
@@ -101,7 +102,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // Not-found state per D-11
     if (group == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -113,7 +114,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     'You may have been removed. Tap below to go back home.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -134,7 +135,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
     return Scaffold(
       key: GroupKeys.settleUpScreen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -157,15 +158,15 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Iconsax.warning_2,
-                            size: 40, color: AppColors.rose),
+                        Icon(Iconsax.warning_2,
+                            size: 40, color: AppColorTokens.light.error),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Couldn\'t load balances.',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: AppColorTokens.light.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -194,10 +195,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppColors.radiusSmall),
-              border: Border.all(color: AppColors.borderLight, width: 1),
-              boxShadow: AppColors.cardShadow,
+              color: AppColorTokens.light.cardSurface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColorTokens.light.inputFill, width: 1),
+              boxShadow: AppShadowTokens.standard.raised,
             ),
             child: IconButton(
               icon: const Icon(Iconsax.arrow_left, size: 20),
@@ -205,19 +206,19 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               tooltip: 'Back',
               style: IconButton.styleFrom(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ),
           ),
-          const Text(
+          Text(
             'Settle Up',
             key: GroupKeys.settleUpTitle,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.5,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
           const SizedBox(width: 48),
@@ -342,14 +343,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: AppColors.textMuted),
+        Icon(icon, size: 14, color: AppColorTokens.light.textMuted),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: AppColors.textMuted,
+            color: AppColorTokens.light.textMuted,
             letterSpacing: 1.2,
           ),
         ),
@@ -479,33 +480,33 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.12),
+              color: AppColorTokens.light.success.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Iconsax.tick_circle,
-              color: AppColors.success,
+              color: AppColorTokens.light.success,
               size: 48,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'All settled across the group!',
             key: GroupKeys.settleUpAllSettledMessage,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'No payments needed right now.',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
             ),
             textAlign: TextAlign.center,
           ),
@@ -539,8 +540,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         ),
         child: Container(
           padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
+          decoration: BoxDecoration(
+            color: AppColorTokens.light.cardSurface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
@@ -550,18 +551,18 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: AppColorTokens.light.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Record Settlement',
                 key: GroupKeys.settleUpRecordSheetTitle,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: AppColorTokens.light.textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -569,9 +570,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               Text(
                 '$fromName paid ${AppFormatters.formatCurrency(suggestedAmount, group.currency)} to $toName. '
                 'Record this as settled? (via cash, bank transfer, or other method)',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.textSecondary,
+                  color: AppColorTokens.light.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -584,7 +585,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                   labelText: 'Amount (${group.currency})',
                   border: OutlineInputBorder(
                     borderRadius:
-                        BorderRadius.circular(AppColors.radiusMedium),
+                        BorderRadius.circular(12),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -599,7 +600,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                   labelText: 'Add a note (optional)',
                   border: OutlineInputBorder(
                     borderRadius:
-                        BorderRadius.circular(AppColors.radiusMedium),
+                        BorderRadius.circular(12),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -612,9 +613,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                 width: double.infinity,
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
+                    gradient: AppColorTokens.light.primaryGradient,
                     borderRadius:
-                        BorderRadius.circular(AppColors.radiusMedium),
+                        BorderRadius.circular(12),
                   ),
                   child: ElevatedButton(
                     key: GroupKeys.markAsPaidButton,
@@ -628,7 +629,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius:
-                            BorderRadius.circular(AppColors.radiusMedium),
+                            BorderRadius.circular(12),
                       ),
                     ),
                     child: const Text(
@@ -646,12 +647,12 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               TextButton(
                 key: GroupKeys.notNowButton,
                 onPressed: () => Navigator.pop(sheetContext),
-                child: const Text(
+                child: Text(
                   'Not Now',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                   ),
                 ),
               ),
@@ -736,7 +737,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Settlement recorded.'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColorTokens.light.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -751,7 +752,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             content: const Text(
               'Couldn\'t record settlement. Check your connection and try again.',
             ),
-            backgroundColor: AppColors.rose,
+            backgroundColor: AppColorTokens.light.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

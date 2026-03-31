@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../animations/tap_bounce.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 /// A smart module card that shows live data summaries or contextual nudges.
 ///
@@ -40,10 +40,10 @@ class SmartModuleCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColorTokens.light.cardSurface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: actionText != null ? color.withValues(alpha: 0.3) : AppColors.borderLight,
+            color: actionText != null ? color.withValues(alpha: 0.3) : AppColorTokens.light.inputFill,
             width: 1.5,
           ),
           boxShadow: [
@@ -79,7 +79,7 @@ class SmartModuleCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surface, width: 1.5),
+                        border: Border.all(color: AppColorTokens.light.cardSurface, width: 1.5),
                       ),
                     ),
                   ),
@@ -96,10 +96,10 @@ class SmartModuleCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: AppColorTokens.light.textPrimary,
                       letterSpacing: -0.3,
                     ),
                     maxLines: 1,
@@ -120,10 +120,10 @@ class SmartModuleCard extends StatelessWidget {
                   else if (!isEmpty && summaryText != null)
                     Text(
                       summaryText!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: AppColorTokens.light.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -131,10 +131,10 @@ class SmartModuleCard extends StatelessWidget {
                   else
                     Text(
                       description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textMuted,
+                        color: AppColorTokens.light.textMuted,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -149,7 +149,7 @@ class SmartModuleCard extends StatelessWidget {
             Icon(
               Iconsax.arrow_right_3,
               size: 18,
-              color: isEmpty ? AppColors.textMuted : AppColors.textSecondary,
+              color: isEmpty ? AppColorTokens.light.textMuted : AppColorTokens.light.textSecondary,
             ),
           ],
         ),

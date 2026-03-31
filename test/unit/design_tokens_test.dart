@@ -148,6 +148,11 @@ void main() {
         bottomNavBackground: Color(0xFF000000),
         bottomNavActiveIcon: Color(0xFF000000),
         bottomNavInactiveIcon: Color(0xFF000000),
+        inputFillWarm: Color(0xFF000000),
+        focusBorderWarm: Color(0xFF000000),
+        borderWarm: Color(0xFF000000),
+        warning: Color(0xFF000000),
+        primaryDark: Color(0xFF000000),
       );
       final lerped = AppColorTokens.light.lerp(other, 0.0);
       expect(lerped.primary, equals(AppColorTokens.light.primary));
@@ -190,6 +195,11 @@ void main() {
         bottomNavBackground: Color(0xFF000000),
         bottomNavActiveIcon: Color(0xFF000000),
         bottomNavInactiveIcon: Color(0xFF000000),
+        inputFillWarm: Color(0xFF000000),
+        focusBorderWarm: Color(0xFF000000),
+        borderWarm: Color(0xFF000000),
+        warning: Color(0xFF000000),
+        primaryDark: Color(0xFF000000),
       );
       final lerped = AppColorTokens.light.lerp(other, 1.0);
       expect(lerped.primary, equals(const Color(0xFF000000)));
@@ -412,24 +422,24 @@ void main() {
   // AppColors facade
   // ---------------------------------------------------------------------------
   group('AppColors facade', () {
-    test('AppColors.primary equals teal #0D7B74', () {
-      expect(AppColors.primary, equals(const Color(0xFF0D7B74)));
+    test('AppColorTokens.light.primary equals teal #0D7B74', () {
+      expect(AppColorTokens.light.primary, equals(const Color(0xFF0D7B74)));
     });
 
-    test('AppColors.textOnPrimary equals white #FFFFFF (not black)', () {
-      expect(AppColors.textOnPrimary, equals(const Color(0xFFFFFFFF)));
+    test('AppColorTokens.light.textOnPrimary equals white #FFFFFF (not black)', () {
+      expect(AppColorTokens.light.textOnPrimary, equals(const Color(0xFFFFFFFF)));
     });
 
-    test('AppColors.background equals white #FFFFFF', () {
-      expect(AppColors.background, equals(const Color(0xFFFFFFFF)));
+    test('AppColorTokens.light.scaffoldBackground equals white #FFFFFF', () {
+      expect(AppColorTokens.light.scaffoldBackground, equals(const Color(0xFFFFFFFF)));
     });
 
-    test('AppColors.textPrimary equals gray-900 #111827', () {
-      expect(AppColors.textPrimary, equals(const Color(0xFF111827)));
+    test('AppColorTokens.light.textPrimary equals gray-900 #111827', () {
+      expect(AppColorTokens.light.textPrimary, equals(const Color(0xFF111827)));
     });
 
-    test('AppColors.surface equals cool gray #F8F9FA', () {
-      expect(AppColors.surface, equals(const Color(0xFFF8F9FA)));
+    test('AppColorTokens.light.cardSurface equals cool gray #F8F9FA', () {
+      expect(AppColorTokens.light.cardSurface, equals(const Color(0xFFF8F9FA)));
     });
   });
 }

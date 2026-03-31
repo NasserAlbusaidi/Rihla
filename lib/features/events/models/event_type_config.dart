@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import 'event_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Static configuration providing UI metadata for each [EventType].
 ///
@@ -12,11 +12,11 @@ import 'event_model.dart';
 /// - Event hub header accents
 ///
 /// Color assignments per UI-SPEC:
-/// - Trip: AppColors.mint (#13EC92)
-/// - Camping: AppColors.emerald (#10B981)
-/// - Travel: AppColors.sky (#0EA5E9)
-/// - Night/Day Out: AppColors.indigo (#6366F1)
-/// - Custom: AppColors.amber (#F59E0B)
+/// - Trip: AppColorTokens.light.primary (#13EC92)
+/// - Camping: AppColorTokens.light.success (#10B981)
+/// - Travel: AppColorTokens.light.textSecondary (#0EA5E9)
+/// - Night/Day Out: AppColorTokens.light.textSecondary (#6366F1)
+/// - Custom: AppColorTokens.light.warning (#F59E0B)
 class EventTypeConfig {
   final EventType type;
   final String label;
@@ -32,41 +32,43 @@ class EventTypeConfig {
     required this.color,
   });
 
+  // Colors use inline const literals since const Map cannot reference ThemeExtension fields.
+  // Values match AppColorTokens.light exactly.
   static const Map<EventType, EventTypeConfig> _configs = {
     EventType.trip: EventTypeConfig._(
       type: EventType.trip,
       label: 'Trip',
       description: 'Full travel experience with all modules',
       icon: Iconsax.airplane,
-      color: AppColors.mint,
+      color: Color(0xFF0D7B74), // AppColorTokens.light.primary
     ),
     EventType.camping: EventTypeConfig._(
       type: EventType.camping,
       label: 'Camping',
       description: 'Outdoor adventure with gear tracking',
       icon: Iconsax.tree,
-      color: AppColors.emerald,
+      color: Color(0xFF10B981), // AppColorTokens.light.success
     ),
     EventType.travel: EventTypeConfig._(
       type: EventType.travel,
       label: 'Travel',
       description: 'Journey with logistics and documents',
       icon: Iconsax.car,
-      color: AppColors.sky,
+      color: Color(0xFF6B7280), // AppColorTokens.light.textSecondary
     ),
     EventType.nightDayOut: EventTypeConfig._(
       type: EventType.nightDayOut,
       label: 'Night/Day Out',
       description: 'Quick outing with expense splitting',
       icon: Iconsax.moon,
-      color: AppColors.indigo,
+      color: Color(0xFF6B7280), // AppColorTokens.light.textSecondary
     ),
     EventType.custom: EventTypeConfig._(
       type: EventType.custom,
       label: 'Custom',
       description: 'Pick your own modules',
       icon: Iconsax.element_3,
-      color: AppColors.amber,
+      color: Color(0xFFF59E0B), // AppColorTokens.light.warning
     ),
   };
 

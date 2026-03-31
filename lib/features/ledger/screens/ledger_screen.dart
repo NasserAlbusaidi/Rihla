@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -21,6 +20,7 @@ import '../providers/expense_provider.dart';
 import '../widgets/expense_card.dart';
 import '../widgets/ledger_hero_card.dart';
 import '../widgets/settlement_row.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Sealed type for a merged timeline item (expense or settlement).
 sealed class _TimelineItem {
@@ -72,7 +72,7 @@ class LedgerScreen extends ConsumerWidget {
     if (eventAsync.isLoading) {
       return Scaffold(
         key: LedgerKeys.screen,
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Ledger', useDarkTheme: true),
@@ -88,7 +88,7 @@ class LedgerScreen extends ConsumerWidget {
     if (event == null) {
       return Scaffold(
         key: LedgerKeys.screen,
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -100,7 +100,7 @@ class LedgerScreen extends ConsumerWidget {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -134,7 +134,7 @@ class LedgerScreen extends ConsumerWidget {
       if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
         return Scaffold(
           key: LedgerKeys.screen,
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColorTokens.light.scaffoldBackground,
           body: Column(
             children: [
               ModuleHeader(
@@ -153,7 +153,7 @@ class LedgerScreen extends ConsumerWidget {
     if (expensesAsync.hasError || settlementsAsync.hasError) {
       return Scaffold(
         key: LedgerKeys.screen,
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             ModuleHeader(
@@ -171,7 +171,7 @@ class LedgerScreen extends ConsumerWidget {
                   ref.invalidate(eventExpensesProvider(eventRef));
                   ref.invalidate(eventSettlementsProvider(eventRef));
                 },
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -184,7 +184,7 @@ class LedgerScreen extends ConsumerWidget {
 
     return Scaffold(
       key: LedgerKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: _LedgerBody(
         groupId: groupId,
         eventId: eventId,
@@ -346,10 +346,10 @@ class _LedgerBody extends StatelessWidget {
             child: Text(
               'TRANSACTIONS',
               key: LedgerKeys.spendingLabel,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
-                color: AppColors.textMuted,
+                color: AppColorTokens.light.textMuted,
                 letterSpacing: 0.5,
               ),
             ),

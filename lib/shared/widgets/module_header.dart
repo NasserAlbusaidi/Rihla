@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/keys/shared_keys.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 class ModuleHeader extends StatelessWidget {
   final String title;
@@ -28,20 +28,20 @@ class ModuleHeader extends StatelessWidget {
 
   Widget _buildLight(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
+          bottom: BorderSide(color: AppColorTokens.light.border, width: 0.5),
         ),
       ),
       child: SafeArea(
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppColors.space24,
-            AppColors.space12,
-            AppColors.space24,
-            AppColors.space24,
+            24,
+            12,
+            24,
+            24,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,30 +53,30 @@ class ModuleHeader extends StatelessWidget {
                   if (actions != null) Row(children: actions!),
                 ],
               ),
-              const SizedBox(height: AppColors.space16),
+              const SizedBox(height: 16),
               if (subtitle != null) ...[
                 Text(
                   subtitle!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: AppColors.space4),
+                const SizedBox(height: 4),
               ],
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: AppColorTokens.light.textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
               if (bottom != null) ...[
-                const SizedBox(height: AppColors.space16),
+                const SizedBox(height: 16),
                 bottom!,
               ],
             ],
@@ -88,8 +88,8 @@ class ModuleHeader extends StatelessWidget {
 
   Widget _buildDark(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.darkHeaderGradient,
+      decoration: BoxDecoration(
+        gradient: AppColorTokens.light.headerGradient,
         image: DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,
@@ -102,10 +102,10 @@ class ModuleHeader extends StatelessWidget {
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppColors.space24,
-            AppColors.space12,
-            AppColors.space24,
-            AppColors.space32,
+            24,
+            12,
+            24,
+            32,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,7 +117,7 @@ class ModuleHeader extends StatelessWidget {
                   if (actions != null) Row(children: actions!),
                 ],
               ),
-              const SizedBox(height: AppColors.space20),
+              const SizedBox(height: 20),
               if (subtitle != null) ...[
                 Text(
                   subtitle!,
@@ -128,7 +128,7 @@ class ModuleHeader extends StatelessWidget {
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: AppColors.space4),
+                const SizedBox(height: 4),
               ],
               Text(
                 title,
@@ -140,7 +140,7 @@ class ModuleHeader extends StatelessWidget {
                 ),
               ),
               if (bottom != null) ...[
-                const SizedBox(height: AppColors.space16),
+                const SizedBox(height: 16),
                 bottom!,
               ],
             ],
@@ -167,7 +167,7 @@ class _LightBackButton extends StatelessWidget {
           width: 44,
           height: 44,
           alignment: Alignment.center,
-          child: const Icon(Iconsax.arrow_left, color: AppColors.textPrimary, size: 20),
+          child: Icon(Iconsax.arrow_left, color: AppColorTokens.light.textPrimary, size: 20),
         ),
       ),
     );
@@ -191,7 +191,7 @@ class _DarkBackButton extends StatelessWidget {
           height: 44,
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(AppColors.radiusSmall + 2),
+            borderRadius: BorderRadius.circular(8 + 2),
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: const Icon(Iconsax.arrow_left, color: Colors.white, size: 20),

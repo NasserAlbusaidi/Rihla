@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/widgets/group_member_balance_card.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/core/theme/tokens/color_tokens.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -67,7 +68,7 @@ void main() {
       );
       expect(
         (amountText.style?.color ?? Colors.transparent).value,
-        AppColors.emerald.value,
+        AppColorTokens.light.success.value,
         reason: 'Positive balance should be shown in emerald',
       );
     });
@@ -101,7 +102,7 @@ void main() {
       );
       expect(
         (amountText.style?.color ?? Colors.transparent).value,
-        AppColors.rose.value,
+        AppColorTokens.light.error.value,
         reason: 'Negative balance should be shown in rose',
       );
     });
@@ -225,8 +226,3 @@ void main() {
   });
 }
 
-// Keep a reference to AppColors to avoid import-only issues.
-class AppColors {
-  static const Color emerald = Color(0xFF10B981);
-  static const Color rose = Color(0xFFEF4444);
-}

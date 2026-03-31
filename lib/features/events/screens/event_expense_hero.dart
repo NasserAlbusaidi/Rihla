@@ -2,11 +2,12 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Light-themed hero card showing total event spending.
 ///
@@ -35,10 +36,10 @@ class EventExpenseHero extends ConsumerWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppColors.shadowRaised,
+          color: AppColorTokens.light.cardSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColorTokens.light.border),
+          boxShadow: AppShadowTokens.standard.raised,
           image: const DecorationImage(
             image: AssetImage('assets/textures/grain.png'),
             repeat: ImageRepeat.repeat,
@@ -47,7 +48,7 @@ class EventExpenseHero extends ConsumerWidget {
             alignment: Alignment.topLeft,
           ),
         ),
-        padding: const EdgeInsets.all(AppColors.space16),
+        padding: const EdgeInsets.all(16),
         child: expensesAsync.when(
           data: (expenses) {
             Decimal totalExpenses = Decimal.zero;
@@ -62,12 +63,12 @@ class EventExpenseHero extends ConsumerWidget {
                 // Overline + add-expense chip row
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'TOTAL EXPENSES',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textMuted,
+                        color: AppColorTokens.light.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -82,9 +83,9 @@ class EventExpenseHero extends ConsumerWidget {
                           fontSize: 12,
                         ),
                       ),
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: AppColorTokens.light.primary,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: AppColors.space8,
+                        horizontal: 8,
                         vertical: 0,
                       ),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -92,7 +93,7 @@ class EventExpenseHero extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppColors.space8),
+                const SizedBox(height: 8),
                 // Animated total amount
                 TweenAnimationBuilder<double>(
                   key: EventKeys.expenseHeroTotal,
@@ -108,10 +109,10 @@ class EventExpenseHero extends ConsumerWidget {
                         Decimal.parse(value.toStringAsFixed(3)),
                         event.currency,
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: AppColorTokens.light.textPrimary,
                         letterSpacing: -1,
                       ),
                     );
@@ -120,30 +121,30 @@ class EventExpenseHero extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${expenses.length} expense${expenses.length != 1 ? "s" : ""}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: AppColorTokens.light.textSecondary,
                   ),
                 ),
               ],
             );
           },
-          loading: () => const SizedBox(
+          loading: () => SizedBox(
             height: 80,
             child: Center(
               child: CircularProgressIndicator(
-                color: AppColors.primary,
+                color: AppColorTokens.light.primary,
                 strokeWidth: 2,
               ),
             ),
           ),
-          error: (e, st) => const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppColors.space16),
+          error: (e, st) => Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
             child: Text(
               'Could not load expenses',
               style: TextStyle(
-                color: AppColors.textSecondary,
+                color: AppColorTokens.light.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),

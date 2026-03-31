@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Hero card for the Activity screen — D-16.
 ///
@@ -24,16 +25,16 @@ class ActivityHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space16,
+        16,
+        16,
+        16,
         0,
       ),
-      padding: const EdgeInsets.all(AppColors.space20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge + 8),
-        boxShadow: AppColors.shadowRaised,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16 + 8),
+        boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,
@@ -46,33 +47,33 @@ class ActivityHeroCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Row 1: "ACTIVITY" overline
-          const Text(
+          Text(
             'ACTIVITY',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: AppColors.space8),
+          const SizedBox(height: 8),
           // Row 2: entry count
           Text(
             '$entryCount entries',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
-          const SizedBox(height: AppColors.space4),
+          const SizedBox(height: 4),
           // Row 3: last update
           Text(
             'Last update: $lastUpdate',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
+              color: AppColorTokens.light.textSecondary,
             ),
           ),
           // No CTA button — Activity is read-only per D-16

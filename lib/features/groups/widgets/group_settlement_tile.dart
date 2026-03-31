@@ -1,9 +1,10 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// A single settlement row showing payer → payee and amount.
 ///
@@ -40,7 +41,7 @@ class GroupSettlementTile extends StatelessWidget {
     return Container(
       key: tileKey,
       color: isHighlighted
-          ? AppColors.primary.withValues(alpha: 0.05)
+          ? AppColorTokens.light.primary.withValues(alpha: 0.05)
           : null,
       child: Column(
         children: [
@@ -75,9 +76,9 @@ class GroupSettlementTile extends StatelessWidget {
                         children: [
                           RichText(
                             text: TextSpan(
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: AppColors.textPrimary,
+                                color: AppColorTokens.light.textPrimary,
                               ),
                               children: [
                                 TextSpan(
@@ -86,10 +87,10 @@ class GroupSettlementTile extends StatelessWidget {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const TextSpan(
+                                TextSpan(
                                   text: ' pays ',
                                   style: TextStyle(
-                                    color: AppColors.textMuted,
+                                    color: AppColorTokens.light.textMuted,
                                   ),
                                 ),
                                 TextSpan(
@@ -108,8 +109,8 @@ class GroupSettlementTile extends StatelessWidget {
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                               color: isYourAction
-                                  ? AppColors.rose
-                                  : AppColors.textPrimary,
+                                  ? AppColorTokens.light.error
+                                  : AppColorTokens.light.textPrimary,
                             ),
                           ),
                         ],
@@ -130,9 +131,9 @@ class GroupSettlementTile extends StatelessWidget {
                           Flexible(
                             child: Text(
                               e.key,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.textMuted,
+                                color: AppColorTokens.light.textMuted,
                                 fontWeight: FontWeight.w500,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -140,9 +141,9 @@ class GroupSettlementTile extends StatelessWidget {
                           ),
                           Text(
                             ': ${AppFormatters.formatCurrency(e.value, currency)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textMuted,
+                              color: AppColorTokens.light.textMuted,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -159,9 +160,9 @@ class GroupSettlementTile extends StatelessWidget {
                     width: double.infinity,
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
+                        gradient: AppColorTokens.light.primaryGradient,
                         borderRadius:
-                            BorderRadius.circular(AppColors.radiusMedium),
+                            BorderRadius.circular(12),
                       ),
                       child: ElevatedButton(
                         key: isYourAction
@@ -175,7 +176,7 @@ class GroupSettlementTile extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
-                              AppColors.radiusMedium,
+                              12,
                             ),
                           ),
                         ),
@@ -198,7 +199,7 @@ class GroupSettlementTile extends StatelessWidget {
             Divider(
               height: 1,
               thickness: 1,
-              color: AppColors.border.withValues(alpha: 0.5),
+              color: AppColorTokens.light.border.withValues(alpha: 0.5),
               indent: 16,
               endIndent: 16,
             ),
@@ -212,13 +213,13 @@ class GroupSettlementTile extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: isPayer ? AppColors.surface : AppColors.surfaceLight,
+        color: isPayer ? AppColorTokens.light.cardSurface : AppColorTokens.light.inputFill,
         shape: BoxShape.circle,
         border: Border.all(
-          color: isPayer ? AppColors.primary : AppColors.border,
+          color: isPayer ? AppColorTokens.light.primary : AppColorTokens.light.border,
           width: isPayer ? 2 : 1,
         ),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Center(
         child: Text(
@@ -226,7 +227,7 @@ class GroupSettlementTile extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: isPayer ? AppColors.textPrimary : AppColors.textSecondary,
+            color: isPayer ? AppColorTokens.light.textPrimary : AppColorTokens.light.textSecondary,
           ),
         ),
       ),
@@ -250,10 +251,10 @@ class GroupSettlementGroupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-        boxShadow: isYourAction ? AppColors.cardShadow : null,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColorTokens.light.border.withValues(alpha: 0.5)),
+        boxShadow: isYourAction ? AppShadowTokens.standard.raised : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: tiles),

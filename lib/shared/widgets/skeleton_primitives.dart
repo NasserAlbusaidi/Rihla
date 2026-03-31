@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 /// Composable skeleton building blocks for content-aware loading placeholders.
 ///
-/// All primitives use [AppColors.surface] as fill color. The shimmer animation
+/// All primitives use [AppColorTokens.light.cardSurface] as fill color. The shimmer animation
 /// is handled by the parent [Shimmer.fromColors] in [SkeletonLoader] — children
 /// only need an opaque fill.
 ///
@@ -25,8 +25,8 @@ class SkeletonCircle extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: AppColorTokens.light.cardSurface,
         shape: BoxShape.circle,
       ),
     );
@@ -43,7 +43,7 @@ class SkeletonBar extends StatelessWidget {
   /// The height of the bar. Defaults to 14.0.
   final double height;
 
-  /// Custom border radius. Defaults to [AppColors.radiusSmall] (8dp).
+  /// Custom border radius. Defaults to [8] (8dp).
   final double? borderRadius;
 
   const SkeletonBar({
@@ -59,8 +59,8 @@ class SkeletonBar extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(borderRadius ?? AppColors.radiusSmall),
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(borderRadius ?? 8),
       ),
     );
   }
@@ -70,7 +70,7 @@ class SkeletonBar extends StatelessWidget {
 ///
 /// Use for card areas, buttons, images, and multi-line regions.
 /// Distinguished from [SkeletonBar] by having a required height parameter
-/// and defaulting to [AppColors.radiusMedium] border radius.
+/// and defaulting to [12] border radius.
 class SkeletonBlock extends StatelessWidget {
   /// The width of the block.
   final double width;
@@ -78,7 +78,7 @@ class SkeletonBlock extends StatelessWidget {
   /// The height of the block.
   final double height;
 
-  /// Custom border radius. Defaults to [AppColors.radiusMedium] (12dp).
+  /// Custom border radius. Defaults to [12] (12dp).
   final double? borderRadius;
 
   const SkeletonBlock({
@@ -94,8 +94,8 @@ class SkeletonBlock extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(borderRadius ?? AppColors.radiusMedium),
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(borderRadius ?? 12),
       ),
     );
   }
@@ -161,7 +161,7 @@ class SkeletonCard extends StatelessWidget {
   /// The height of the card.
   final double height;
 
-  /// Custom border radius. Defaults to [AppColors.radiusLarge] (16dp).
+  /// Custom border radius. Defaults to [16] (16dp).
   final double? borderRadius;
 
   const SkeletonCard({
@@ -175,8 +175,8 @@ class SkeletonCard extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(borderRadius ?? AppColors.radiusLarge),
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(borderRadius ?? 16),
       ),
     );
   }

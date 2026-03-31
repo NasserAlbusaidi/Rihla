@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../models/event_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Dark hero card showing total event spending and user balance status.
 ///
@@ -39,10 +39,10 @@ class EventSpendingHero extends ConsumerWidget {
         height: 140,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
-          gradient: AppColors.darkHeaderGradient,
+          gradient: AppColorTokens.light.headerGradient,
           boxShadow: [
             BoxShadow(
-              color: AppColors.surfaceDark.withValues(alpha: 0.2),
+              color: AppColorTokens.light.headerGradientStart.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -94,8 +94,8 @@ class EventSpendingHero extends ConsumerWidget {
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: AppColors.space24,
-                        vertical: AppColors.space16,
+                        horizontal: 24,
+                        vertical: 16,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,9 +114,9 @@ class EventSpendingHero extends ConsumerWidget {
                                       ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Iconsax.wallet_3,
-                                      color: AppColors.mint,
+                                      color: AppColorTokens.light.primary,
                                       size: 16,
                                     ),
                                   ),
@@ -141,8 +141,8 @@ class EventSpendingHero extends ConsumerWidget {
                                   decoration: BoxDecoration(
                                     color:
                                         (isOwed
-                                                ? AppColors.emerald
-                                                : AppColors.rose)
+                                                ? AppColorTokens.light.success
+                                                : AppColorTokens.light.error)
                                             .withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
@@ -150,8 +150,8 @@ class EventSpendingHero extends ConsumerWidget {
                                     isOwed ? 'OWED' : 'OWE',
                                     style: TextStyle(
                                       color: isOwed
-                                          ? AppColors.mint
-                                          : AppColors.rose,
+                                          ? AppColorTokens.light.primary
+                                          : AppColorTokens.light.error,
                                       fontSize: 9,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: 0.5,
@@ -217,9 +217,9 @@ class EventSpendingHero extends ConsumerWidget {
                                                 : 'Pending payment: -$formatted',
                                             style: TextStyle(
                                               color: isOwed
-                                                  ? AppColors.mint
+                                                  ? AppColorTokens.light.primary
                                                       .withValues(alpha: 0.8)
-                                                  : AppColors.rose
+                                                  : AppColorTokens.light.error
                                                       .withValues(alpha: 0.8),
                                               fontSize: 12,
                                               fontWeight: FontWeight.w700,
@@ -250,8 +250,8 @@ class EventSpendingHero extends ConsumerWidget {
                       ),
                     );
                   },
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.mint),
+                  loading: () => Center(
+                    child: CircularProgressIndicator(color: AppColorTokens.light.primary),
                   ),
                   error: (_, __) => const Center(
                     child: Text(

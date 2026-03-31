@@ -8,6 +8,7 @@ import 'core/config/firebase_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/settings_provider.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,10 +31,10 @@ void main() async {
 
       // Set system UI overlay style for light theme
       SystemChrome.setSystemUIOverlayStyle(
-        const SystemUiOverlayStyle(
+        SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
-          systemNavigationBarColor: AppColors.background,
+          systemNavigationBarColor: AppColorTokens.light.scaffoldBackground,
           systemNavigationBarIconBrightness: Brightness.dark,
         ),
       );

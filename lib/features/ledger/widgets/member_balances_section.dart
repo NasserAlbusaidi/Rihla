@@ -2,9 +2,9 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Horizontal scrollable list of member balance avatars.
 /// Tapping a member shows a detailed balance tooltip dialog.
@@ -27,12 +27,12 @@ class MemberBalancesSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'BALANCES',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
               letterSpacing: 1.5,
             ),
           ),
@@ -40,10 +40,10 @@ class MemberBalancesSection extends StatelessWidget {
           SizedBox(
             height: 80,
             child: balances.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No participants yet',
-                      style: TextStyle(color: AppColors.textMuted),
+                      style: TextStyle(color: AppColorTokens.light.textMuted),
                     ),
                   )
                 : ListView.builder(
@@ -68,10 +68,10 @@ class MemberBalancesSection extends StatelessWidget {
                                   CircleAvatar(
                                     radius: 24,
                                     backgroundColor: isMe
-                                        ? AppColors.primary
+                                        ? AppColorTokens.light.primary
                                         : (isPositive
-                                                  ? AppColors.success
-                                                  : AppColors.error)
+                                                  ? AppColorTokens.light.success
+                                                  : AppColorTokens.light.error)
                                               .withValues(alpha: 0.15),
                                     child: Text(
                                       (balance.displayName ?? 'U')[0].toUpperCase(),
@@ -79,7 +79,7 @@ class MemberBalancesSection extends StatelessWidget {
                                         fontWeight: FontWeight.bold,
                                         color: isMe
                                             ? Colors.white
-                                            : (isPositive ? AppColors.success : AppColors.error),
+                                            : (isPositive ? AppColorTokens.light.success : AppColorTokens.light.error),
                                       ),
                                     ),
                                   ),
@@ -90,7 +90,7 @@ class MemberBalancesSection extends StatelessWidget {
                                       width: 14,
                                       height: 14,
                                       decoration: BoxDecoration(
-                                        color: isPositive ? AppColors.success : AppColors.error,
+                                        color: isPositive ? AppColorTokens.light.success : AppColorTokens.light.error,
                                         shape: BoxShape.circle,
                                         border: Border.all(color: Colors.white, width: 2),
                                       ),
@@ -113,7 +113,7 @@ class MemberBalancesSection extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: isMe ? FontWeight.w600 : FontWeight.normal,
-                                    color: AppColors.textSecondary,
+                                    color: AppColorTokens.light.textSecondary,
                                   ),
                                 ),
                               ),
@@ -143,31 +143,31 @@ class MemberBalancesSection extends StatelessWidget {
             CircleAvatar(
               radius: 32,
               backgroundColor: isPositive
-                  ? AppColors.success.withValues(alpha: 0.15)
-                  : AppColors.error.withValues(alpha: 0.15),
+                  ? AppColorTokens.light.success.withValues(alpha: 0.15)
+                  : AppColorTokens.light.error.withValues(alpha: 0.15),
               child: Text(
                 (balance.displayName ?? 'U')[0].toUpperCase(),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: isPositive ? AppColors.success : AppColors.error,
+                  color: isPositive ? AppColorTokens.light.success : AppColorTokens.light.error,
                 ),
               ),
             ),
             const SizedBox(height: 12),
             Text(
               balance.displayName ?? 'Unknown',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -175,21 +175,21 @@ class MemberBalancesSection extends StatelessWidget {
                   _buildBalanceRow(
                     'Total Paid',
                     balance.totalPaid,
-                    AppColors.primary,
+                    AppColorTokens.light.primary,
                     currency,
                   ),
                   const SizedBox(height: 8),
                   _buildBalanceRow(
                     'Fair Share',
                     balance.totalOwed,
-                    AppColors.textMuted,
+                    AppColorTokens.light.textMuted,
                     currency,
                   ),
                   const Divider(height: 24),
                   _buildBalanceRow(
                     isPositive ? 'Is Owed' : 'Owes',
                     balance.netBalance.abs(),
-                    isPositive ? AppColors.success : AppColors.error,
+                    isPositive ? AppColorTokens.light.success : AppColorTokens.light.error,
                     currency,
                     isBold: true,
                   ),
@@ -201,7 +201,7 @@ class MemberBalancesSection extends StatelessWidget {
               isPositive
                   ? 'Paid more than their share'
                   : 'Paid less than their share',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 12, color: AppColorTokens.light.textMuted),
             ),
           ],
         ),
@@ -228,7 +228,7 @@ class MemberBalancesSection extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: AppColorTokens.light.textSecondary,
             fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
           ),
         ),

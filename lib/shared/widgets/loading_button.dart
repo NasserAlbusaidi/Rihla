@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/tokens/color_tokens.dart';
+import '../../core/theme/tokens/shadow_tokens.dart';
 
 /// Loading button widget with animated state
 class LoadingButton extends StatelessWidget {
@@ -22,11 +23,11 @@ class LoadingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: AppColors.buttonHeight,
+      height: 52,
       decoration: BoxDecoration(
         gradient: gradient,
-        color: gradient == null ? AppColors.primary : null,
-        borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+        color: gradient == null ? AppColorTokens.light.primary : null,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
@@ -34,7 +35,7 @@ class LoadingButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         child: isLoading
@@ -76,9 +77,9 @@ class GlassCard extends StatelessWidget {
     return Container(
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColorTokens.light.cardSurface,
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: child,
     );
@@ -105,11 +106,11 @@ class GradientContainer extends StatelessWidget {
     return Container(
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: gradient ?? AppColors.primaryGradient,
+        gradient: gradient ?? AppColorTokens.light.primaryGradient,
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
+            color: AppColorTokens.light.primary.withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -174,9 +175,9 @@ class _ShimmerPlaceholderState extends State<ShimmerPlaceholder>
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: [
-                AppColors.surfaceLight,
-                AppColors.border,
-                AppColors.surfaceLight,
+                AppColorTokens.light.inputFill,
+                AppColorTokens.light.border,
+                AppColorTokens.light.inputFill,
               ],
               stops: [
                 _animation.value - 0.3,

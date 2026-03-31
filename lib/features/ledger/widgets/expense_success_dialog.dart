@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/theme/app_theme.dart';
 import '../models/expense_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Success dialog shown after saving an expense.
 class ExpenseSuccessDialog extends StatelessWidget {
@@ -23,7 +24,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -34,7 +35,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
             Align(
               alignment: Alignment.topRight,
               child: IconButton(
-                icon: const Icon(Icons.close, color: AppColors.textMuted),
+                icon: Icon(Icons.close, color: AppColorTokens.light.textMuted),
                 onPressed: onDone,
               ),
             ),
@@ -43,14 +44,14 @@ class ExpenseSuccessDialog extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: const BoxDecoration(
-                color: AppColors.primaryLight,
+              decoration: BoxDecoration(
+                color: AppColorTokens.light.selectionFill,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Iconsax.tick_circle5,
                 size: 48,
-                color: AppColors.primary,
+                color: AppColorTokens.light.primary,
               ),
             ).animate().scale(
               delay: 100.ms,
@@ -70,7 +71,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColorTokens.light.inputFill,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -79,8 +80,8 @@ class ExpenseSuccessDialog extends StatelessWidget {
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
+                    decoration: BoxDecoration(
+                      color: AppColorTokens.light.primary,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -107,7 +108,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: onDone,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: AppColorTokens.light.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -159,9 +160,9 @@ class _ExpenseSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColorTokens.light.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Column(
         children: [
@@ -186,13 +187,13 @@ class _ExpenseSummaryCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
+                    color: AppColorTokens.light.selectionFill,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Iconsax.category,
                     size: 18,
-                    color: AppColors.primary,
+                    color: AppColorTokens.light.primary,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -212,10 +213,10 @@ class _ExpenseSummaryCard extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                const Icon(
+                Icon(
                   Iconsax.arrow_right_3,
                   size: 16,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
               ],
             ),

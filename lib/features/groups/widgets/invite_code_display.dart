@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/keys/shared_keys.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Widget that displays a formatted invite code in a mintSurface pill.
 ///
@@ -29,40 +29,40 @@ class InviteCodeDisplay extends StatelessWidget {
         // Code pill
         Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppColors.space24,
-            vertical: AppColors.space16,
+            horizontal: 24,
+            vertical: 16,
           ),
           decoration: BoxDecoration(
-            color: AppColors.mintSurface,
-            borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+            color: AppColorTokens.light.selectionFill,
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
             child: Text(
               code,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 8,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
             ),
           ),
         ),
         // Action buttons (copy + share)
         if (hasActions) ...[
-          const SizedBox(height: AppColors.space16),
+          const SizedBox(height: 16),
           Row(
             children: [
               if (onCopy != null)
                 Expanded(
                   child: SizedBox(
-                    height: AppColors.buttonHeight,
+                    height: 52,
                     child: ElevatedButton(
                       key: SharedKeys.inviteCodeCopyButton,
                       onPressed: onCopy,
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: const Text('Copy Code'),
@@ -70,17 +70,17 @@ class InviteCodeDisplay extends StatelessWidget {
                   ),
                 ),
               if (onCopy != null && onShare != null)
-                const SizedBox(width: AppColors.space12),
+                const SizedBox(width: 12),
               if (onShare != null)
                 Expanded(
                   child: SizedBox(
-                    height: AppColors.buttonHeight,
+                    height: 52,
                     child: OutlinedButton(
                       key: SharedKeys.inviteCodeShareButton,
                       onPressed: onShare,
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: const Text('Share'),

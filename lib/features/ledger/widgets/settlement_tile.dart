@@ -2,8 +2,9 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// A card containing a group of settlement tiles.
 /// Renders pending settlements for a specific category (e.g., "Your Actions").
@@ -25,14 +26,14 @@ class SettlementGroupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColorTokens.light.cardSurface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isUrgent
-              ? AppColors.rose.withValues(alpha: 0.2)
-              : AppColors.border.withValues(alpha: 0.5),
+              ? AppColorTokens.light.error.withValues(alpha: 0.2)
+              : AppColorTokens.light.border.withValues(alpha: 0.5),
         ),
-        boxShadow: isUrgent ? AppColors.cardShadow : null,
+        boxShadow: isUrgent ? AppShadowTokens.standard.raised : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -107,8 +108,8 @@ class SettlementTile extends StatelessWidget {
                     children: [
                       RichText(
                         text: TextSpan(
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
+                          style: TextStyle(
+                            color: AppColorTokens.light.textPrimary,
                             fontSize: 14,
                           ),
                           children: [
@@ -118,10 +119,10 @@ class SettlementTile extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const TextSpan(
+                            TextSpan(
                               text: ' → ',
                               style: TextStyle(
-                                color: AppColors.textMuted,
+                                color: AppColorTokens.light.textMuted,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -142,7 +143,7 @@ class SettlementTile extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
-                              color: isUrgent ? AppColors.rose : AppColors.mint,
+                              color: isUrgent ? AppColorTokens.light.error : AppColorTokens.light.primary,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -153,15 +154,15 @@ class SettlementTile extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.rose.withValues(alpha: 0.1),
+                                color: AppColorTokens.light.error.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'PAYMENT DUE',
                                 style: TextStyle(
                                   fontSize: 8,
                                   fontWeight: FontWeight.w900,
-                                  color: AppColors.rose,
+                                  color: AppColorTokens.light.error,
                                 ),
                               ),
                             ),
@@ -172,10 +173,10 @@ class SettlementTile extends StatelessWidget {
                 ),
 
                 // Arrow icon
-                const Icon(
+                Icon(
                   Iconsax.arrow_right_3,
                   size: 16,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
               ],
             ),
@@ -184,7 +185,7 @@ class SettlementTile extends StatelessWidget {
             Divider(
               height: 1,
               thickness: 1,
-              color: AppColors.border.withValues(alpha: 0.5),
+              color: AppColorTokens.light.border.withValues(alpha: 0.5),
               indent: 16,
               endIndent: 16,
             ),
@@ -198,13 +199,13 @@ class SettlementTile extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: isPayer ? AppColors.surface : AppColors.surfaceLight,
+        color: isPayer ? AppColorTokens.light.cardSurface : AppColorTokens.light.inputFill,
         shape: BoxShape.circle,
         border: Border.all(
-          color: isPayer ? AppColors.mint : AppColors.border,
+          color: isPayer ? AppColorTokens.light.primary : AppColorTokens.light.border,
           width: isPayer ? 2 : 1,
         ),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Center(
         child: Text(
@@ -212,7 +213,7 @@ class SettlementTile extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: isPayer ? AppColors.textPrimary : AppColors.textSecondary,
+            color: isPayer ? AppColorTokens.light.textPrimary : AppColorTokens.light.textSecondary,
           ),
         ),
       ),

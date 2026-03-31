@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/keys/shared_keys.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 class EmptyStateView extends StatelessWidget {
   final IconData icon;
@@ -25,13 +25,13 @@ class EmptyStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? AppColors.textMuted;
+    final color = iconColor ?? AppColorTokens.light.textMuted;
     final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     Widget result = Center(
       key: SharedKeys.emptyStateView,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppColors.space32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -45,7 +45,7 @@ class EmptyStateView extends StatelessWidget {
                     )
                   : BoxDecoration(
                       color: color.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+                      borderRadius: BorderRadius.circular(16),
                     ),
               child: Icon(
                 icon,
@@ -53,30 +53,30 @@ class EmptyStateView extends StatelessWidget {
                 color: accentGradient != null ? Colors.white : color,
               ),
             ),
-            const SizedBox(height: AppColors.space20),
+            const SizedBox(height: 20),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppColors.space8),
+            const SizedBox(height: 8),
             Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textMuted,
+                color: AppColorTokens.light.textMuted,
               ),
               textAlign: TextAlign.center,
             ),
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: AppColors.space24),
+              const SizedBox(height: 24),
               SizedBox(
-                height: AppColors.buttonHeight,
+                height: 52,
                 child: ElevatedButton(
                   key: SharedKeys.emptyStateCtaButton,
                   onPressed: onAction,

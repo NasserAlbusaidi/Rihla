@@ -2,10 +2,11 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Spending summary section showing total spend and optional category breakdown.
 class SpendingSummarySection extends StatefulWidget {
@@ -80,13 +81,13 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 key: LedgerKeys.spendingLabel,
                 'SPENDING',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                   letterSpacing: 1.5,
                 ),
               ),
@@ -94,10 +95,10 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
                 onTap: () => setState(() => _showByCategory = !_showByCategory),
                 child: Text(
                   _showByCategory ? 'Hide Categories' : 'By Category',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    color: AppColorTokens.light.primary,
                   ),
                 ),
               ),
@@ -108,10 +109,10 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColorTokens.light.cardSurface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border),
-              boxShadow: AppColors.cardShadow,
+              border: Border.all(color: AppColorTokens.light.border),
+              boxShadow: AppShadowTokens.standard.raised,
             ),
             child: Row(
               children: [
@@ -119,31 +120,31 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: AppColorTokens.light.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Iconsax.wallet_3, color: AppColors.primary, size: 24),
+                  child: Icon(Iconsax.wallet_3, color: AppColorTokens.light.primary, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Total Spent',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textMuted,
+                          color: AppColorTokens.light.textMuted,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         AppFormatters.formatCurrency(grandTotal, widget.currency),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
+                          color: AppColorTokens.light.textPrimary,
                           letterSpacing: -0.5,
                         ),
                       ),
@@ -152,10 +153,10 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
                 ),
                 Text(
                   '${widget.expenses.length} expenses',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                   ),
                 ),
               ],
@@ -167,10 +168,10 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColorTokens.light.cardSurface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.border),
-                boxShadow: AppColors.cardShadow,
+                border: Border.all(color: AppColorTokens.light.border),
+                boxShadow: AppShadowTokens.standard.raised,
               ),
               child: Column(
                 children: sortedCategories.map((cat) {
@@ -185,13 +186,13 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
+                            color: AppColorTokens.light.inputFill,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             _getCategoryIcon(cat.icon),
                             size: 18,
-                            color: AppColors.textSecondary,
+                            color: AppColorTokens.light.textSecondary,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -201,10 +202,10 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
                             children: [
                               Text(
                                 cat.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                                  color: AppColorTokens.light.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -212,8 +213,8 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: percentage / 100,
-                                  backgroundColor: AppColors.surfaceLight,
-                                  color: AppColors.primary,
+                                  backgroundColor: AppColorTokens.light.inputFill,
+                                  color: AppColorTokens.light.primary,
                                   minHeight: 4,
                                 ),
                               ),
@@ -226,18 +227,18 @@ class _SpendingSummarySectionState extends State<SpendingSummarySection> {
                           children: [
                             Text(
                               AppFormatters.formatCurrency(cat.total, widget.currency),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
+                                color: AppColorTokens.light.textPrimary,
                               ),
                             ),
                             Text(
                               '${percentage.toStringAsFixed(0)}%',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.textMuted,
+                                color: AppColorTokens.light.textMuted,
                               ),
                             ),
                           ],

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/types/event_ref.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -18,6 +17,8 @@ import '../keys/gear_keys.dart';
 import '../models/gear_item_model.dart';
 import '../providers/gear_provider.dart';
 import '../widgets/gear_hero_card.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Gear Screen — unified module template (D-08).
 ///
@@ -63,7 +64,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Gear', useDarkTheme: true),
@@ -79,7 +80,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -91,7 +92,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -101,7 +102,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
     return Scaffold(
       key: GearKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -175,22 +176,22 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppColors.space16,
-                AppColors.space8,
-                AppColors.space16,
-                AppColors.space8,
+                16,
+                8,
+                16,
+                8,
               ),
               child: _buildAddItemInput(),
             ),
           ),
           if (filteredItems.isEmpty && items.isNotEmpty)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               child: Center(
                 child: Text(
                   'No items match your filter',
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: AppColorTokens.light.textSecondary,
                   ),
                 ),
               ),
@@ -210,12 +211,12 @@ class _GearScreenState extends ConsumerState<GearScreen> {
               ),
             )
           else ...[
-            const SliverPadding(
+            SliverPadding(
               padding: EdgeInsets.fromLTRB(
-                AppColors.space16,
-                AppColors.space12,
-                AppColors.space16,
-                AppColors.space4,
+                16,
+                12,
+                16,
+                4,
               ),
               sliver: SliverToBoxAdapter(
                 child: Text(
@@ -223,7 +224,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: AppColors.textMuted,
+                    color: AppColorTokens.light.textMuted,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -231,16 +232,16 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
-                AppColors.space16,
+                16,
                 0,
-                AppColors.space16,
-                AppColors.space32,
+                16,
+                32,
               ),
               sliver: SliverToBoxAdapter(
                 child: FadeInList(
                   children: filteredItems.map((item) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: AppColors.space8),
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: _buildGearItemCard(item, currentUserId),
                     );
                   }).toList(),
@@ -257,17 +258,17 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final isMine = item.assignedTo == currentUserId;
 
     return Container(
-      padding: const EdgeInsets.all(AppColors.space16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: item.isHighPriority
-              ? AppColors.error.withValues(alpha: 0.3)
-              : AppColors.borderLight,
+              ? AppColorTokens.light.error.withValues(alpha: 0.3)
+              : AppColorTokens.light.inputFill,
           width: item.isHighPriority ? 2 : 1.5,
         ),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Row(
         children: [
@@ -281,16 +282,16 @@ class _GearScreenState extends ConsumerState<GearScreen> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: item.isPacked ? AppColors.primary : Colors.transparent,
+                color: item.isPacked ? AppColorTokens.light.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: item.isPacked ? AppColors.primary : AppColors.border,
+                  color: item.isPacked ? AppColorTokens.light.primary : AppColorTokens.light.border,
                   width: 2,
                 ),
                 boxShadow: item.isPacked
                     ? [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.3),
+                          color: AppColorTokens.light.primary.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -302,7 +303,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                   : null,
             ),
           ),
-          const SizedBox(width: AppColors.space16),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,8 +318,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.3,
                           color: item.isPacked
-                              ? AppColors.textMuted
-                              : AppColors.textPrimary,
+                              ? AppColorTokens.light.textMuted
+                              : AppColorTokens.light.textPrimary,
                           decoration: item.isPacked
                               ? TextDecoration.lineThrough
                               : null,
@@ -333,22 +334,22 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                   children: [
                     _buildStatusChip(item.status),
                     if (item.assignedTo != null) ...[
-                      const SizedBox(width: AppColors.space12),
+                      const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
+                          color: AppColorTokens.light.inputFill,
                           borderRadius:
-                              BorderRadius.circular(AppColors.radiusSmall),
+                              BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
                             CircleAvatar(
                               radius: 8,
-                              backgroundColor: AppColors.textMuted,
+                              backgroundColor: AppColorTokens.light.textMuted,
                               child: Text(
                                 item.assigneeInitials,
                                 style: const TextStyle(
@@ -366,10 +367,10 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                                             ?.split(' ')[0]
                                             .toUpperCase() ??
                                         'NONE'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w900,
-                                color: AppColors.textSecondary,
+                                color: AppColorTokens.light.textSecondary,
                               ),
                             ),
                           ],
@@ -382,9 +383,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             ),
           ),
           PopupMenuButton<String>(
-            icon: const Icon(
+            icon: Icon(
               Iconsax.more,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
               size: 20,
             ),
             onSelected: (value) => _handleMenuAction(value, item),
@@ -400,9 +401,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                 ),
               if (item.assignedTo == null)
                 const PopupMenuItem(value: 'claim', child: Text('Claim Item')),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'delete',
-                child: Text('Delete', style: TextStyle(color: AppColors.errorText)),
+                child: Text('Delete', style: TextStyle(color: AppColorTokens.light.errorText)),
               ),
             ],
           ),
@@ -413,9 +414,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
   Widget _buildStatusChip(GearStatus status) {
     final color = switch (status) {
-      GearStatus.unclaimed => AppColors.textMuted,
-      GearStatus.claimed => AppColors.warning,
-      GearStatus.packed => AppColors.moduleLedger,
+      GearStatus.unclaimed => AppColorTokens.light.textMuted,
+      GearStatus.claimed => AppColorTokens.light.warning,
+      GearStatus.packed => AppColorTokens.light.moduleLedger,
     };
 
     return Container(
@@ -439,23 +440,23 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
   Widget _buildPriorityBadge() {
     return Container(
-      margin: const EdgeInsets.only(left: AppColors.space8),
+      margin: const EdgeInsets.only(left: 8),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppColors.radiusSmall / 2),
+        color: AppColorTokens.light.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8 / 2),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Iconsax.flash, color: AppColors.errorText, size: 10),
+          Icon(Iconsax.flash, color: AppColorTokens.light.errorText, size: 10),
           SizedBox(width: 4),
           Text(
             'HIGH',
             style: TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.w900,
-              color: AppColors.errorText,
+              color: AppColorTokens.light.errorText,
             ),
           ),
         ],
@@ -467,16 +468,16 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-        border: Border.all(color: AppColors.surfaceLight),
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColorTokens.light.inputFill),
       ),
       child: Row(
         children: [
           IconButton(
             icon: Icon(
               Iconsax.flash,
-              color: _isHighPriority ? AppColors.errorText : AppColors.textMuted,
+              color: _isHighPriority ? AppColorTokens.light.errorText : AppColorTokens.light.textMuted,
               size: 20,
             ),
             onPressed: () {
@@ -489,13 +490,13 @@ class _GearScreenState extends ConsumerState<GearScreen> {
               controller: _itemController,
               inputFormatters: [LengthLimitingTextInputFormatter(100)],
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'ADD GEAR ITEM...',
                 hintStyle: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 8),
@@ -504,9 +505,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Iconsax.add_circle,
-              color: AppColors.primary,
+              color: AppColorTokens.light.primary,
               size: 28,
             ),
             onPressed: () {
@@ -525,7 +526,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         HapticService.lightClick();
         setState(() => _hideClaimed = !_hideClaimed);
       },
-      backgroundColor: AppColors.textPrimary,
+      backgroundColor: AppColorTokens.light.textPrimary,
       elevation: 4,
       shape: const CircleBorder(),
       tooltip: _hideClaimed ? 'Show All' : 'Hide Claimed',
@@ -544,7 +545,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       message: 'Check your connection and try again.',
       actionLabel: 'Reload',
       onAction: () => ref.invalidate(eventGearItemsProvider(_eventRef)),
-      iconColor: AppColors.textSecondary,
+      iconColor: AppColorTokens.light.textSecondary,
     );
   }
 
@@ -620,7 +621,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColorTokens.light.cardSurface,
         title: const Text(
           'DELETE ITEM',
           style: TextStyle(fontWeight: FontWeight.w900),
@@ -634,9 +635,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           TextButton(
             key: GearKeys.deleteConfirmButton,
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
+            child: Text(
               'DELETE',
-              style: TextStyle(color: AppColors.errorText),
+              style: TextStyle(color: AppColorTokens.light.errorText),
             ),
           ),
         ],

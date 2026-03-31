@@ -5,9 +5,9 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_provider.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Screen for managing group settings — name (creator-only), currency, and
 /// invite code display (D-15, D-16, D-22).
@@ -91,7 +91,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
   Future<void> _showCurrencyPicker(BuildContext ctx, String groupId, String currentCurrency) async {
     await showModalBottomSheet<void>(
       context: ctx,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColorTokens.light.cardSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -101,10 +101,10 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppColors.space24,
-                AppColors.space24,
-                AppColors.space24,
-                AppColors.space8,
+                24,
+                24,
+                24,
+                8,
               ),
               child: Text(
                 'Select Currency',
@@ -115,7 +115,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
               (c) => ListTile(
                 title: Text(c),
                 trailing: c == currentCurrency
-                    ? const Icon(Iconsax.tick_circle, color: AppColors.primary)
+                    ? Icon(Iconsax.tick_circle, color: AppColorTokens.light.primary)
                     : null,
                 onTap: () async {
                   Navigator.pop(sheetCtx);
@@ -137,7 +137,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                 },
               ),
             ),
-            const SizedBox(height: AppColors.space8),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -154,11 +154,11 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
 
     return Scaffold(
       key: GroupKeys.settingsScreen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       appBar: AppBar(
         title: const Text('Group Settings', key: GroupKeys.settingsTitle),
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: AppColorTokens.light.cardSurface,
+        foregroundColor: AppColorTokens.light.textPrimary,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Iconsax.arrow_left),
@@ -181,7 +181,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                 title: Text(
                   'Group Name',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppColorTokens.light.textSecondary,
                       ),
                 ),
                 subtitle: _isEditing
@@ -204,9 +204,9 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                                   ),
                                 )
                               : IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Iconsax.tick_circle,
-                                    color: AppColors.primary,
+                                    color: AppColorTokens.light.primary,
                                   ),
                                   onPressed: () =>
                                       _saveGroupName(group.id),
@@ -220,9 +220,9 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                       ),
                 trailing: isCreator && !_isEditing
                     ? IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Iconsax.edit_2,
-                          color: AppColors.textSecondary,
+                          color: AppColorTokens.light.textSecondary,
                         ),
                         onPressed: () => setState(() {
                           _isEditing = true;
@@ -232,7 +232,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                     : null,
               ),
 
-              const Divider(color: AppColors.border, height: 1),
+              Divider(color: AppColorTokens.light.border, height: 1),
 
               // ---- Currency ----
               ListTile(
@@ -240,16 +240,16 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                 title: Text(
                   'Currency',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppColorTokens.light.textSecondary,
                       ),
                 ),
                 subtitle: Text(
                   group.currency,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                trailing: const Icon(
+                trailing: Icon(
                   Iconsax.arrow_right_3,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
                 onTap: () => _showCurrencyPicker(
                   context,
@@ -258,7 +258,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                 ),
               ),
 
-              const Divider(color: AppColors.border, height: 1),
+              Divider(color: AppColorTokens.light.border, height: 1),
 
               // ---- Invite Code ----
               ListTile(
@@ -266,20 +266,20 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                 title: Text(
                   'Invite Code',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppColorTokens.light.textSecondary,
                       ),
                 ),
                 subtitle: Text(
                   group.inviteCode,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 4,
-                    color: AppColors.textPrimary,
+                    color: AppColorTokens.light.textPrimary,
                   ),
                 ),
                 trailing: IconButton(
-                  icon: const Icon(Iconsax.copy, color: AppColors.textSecondary),
+                  icon: Icon(Iconsax.copy, color: AppColorTokens.light.textSecondary),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: group.inviteCode));
                     HapticService.success();

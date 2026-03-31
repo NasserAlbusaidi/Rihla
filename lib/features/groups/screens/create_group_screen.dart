@@ -6,12 +6,13 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
 import '../widgets/invite_code_display.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Screen for creating a new group.
 ///
@@ -89,7 +90,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   Future<void> _showSharePrompt(BuildContext context, Group group) async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColorTokens.light.cardSurface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -127,7 +128,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppColors.space16, vertical: AppColors.space16),
+            horizontal: 16, vertical: 16),
         child: Form(
           key: _formKey,
           child: Column(
@@ -135,12 +136,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
             children: [
               // Form fields card
               Container(
-                margin: const EdgeInsets.only(bottom: AppColors.space16),
-                padding: const EdgeInsets.all(AppColors.space16),
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColorTokens.light.cardSurface,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: AppColors.cardShadow,
+                  boxShadow: AppShadowTokens.standard.raised,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +151,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                       'Group Name',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    const SizedBox(height: AppColors.space8),
+                    const SizedBox(height: 8),
 
                     // Group Name input
                     TextFormField(
@@ -165,14 +166,14 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                               ? "Group name can't be empty."
                               : null,
                     ),
-                    const SizedBox(height: AppColors.space24),
+                    const SizedBox(height: 24),
 
                     // Currency label
                     Text(
                       'Currency',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    const SizedBox(height: AppColors.space8),
+                    const SizedBox(height: 8),
 
                     // Currency selector
                     DropdownButtonFormField<String>(
@@ -187,14 +188,14 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                         if (v != null) setState(() => _selectedCurrency = v);
                       },
                     ),
-                    const SizedBox(height: AppColors.space24),
+                    const SizedBox(height: 24),
 
                     // Your name label
                     Text(
                       'Your name in this group',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    const SizedBox(height: AppColors.space8),
+                    const SizedBox(height: 8),
 
                     // Editable display name — saved to settings on group creation
                     TextFormField(
@@ -219,7 +220,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 label: isLoading ? 'Creating\u2026' : 'Create Group',
               ),
 
-              const SizedBox(height: AppColors.space32),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -262,7 +263,7 @@ class _SharePrompt extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(AppColors.space24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -271,36 +272,36 @@ class _SharePrompt extends StatelessWidget {
               group.name,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: AppColors.space8),
+            const SizedBox(height: 8),
             Text(
               'Share this code with your group',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: AppColorTokens.light.textSecondary,
                   ),
             ),
-            const SizedBox(height: AppColors.space24),
+            const SizedBox(height: 24),
 
             // Invite code pill (no inline buttons — buttons are below)
             InviteCodeDisplay(code: group.inviteCode),
 
-            const SizedBox(height: AppColors.space24),
+            const SizedBox(height: 24),
 
             // Copy and Share buttons
             Row(
               children: [
                 Expanded(
                   child: SizedBox(
-                    height: AppColors.buttonHeight,
+                    height: 52,
                     child: ElevatedButton(
                       onPressed: () => _copyCode(context),
                       child: const Text('Copy Code'),
                     ),
                   ),
                 ),
-                const SizedBox(width: AppColors.space12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: SizedBox(
-                    height: AppColors.buttonHeight,
+                    height: 52,
                     child: OutlinedButton(
                       onPressed: _shareCode,
                       child: const Text('Share'),
@@ -310,7 +311,7 @@ class _SharePrompt extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: AppColors.space16),
+            const SizedBox(height: 16),
 
             Center(
               child: TextButton(

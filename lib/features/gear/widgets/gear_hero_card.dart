@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Hero card for the Gear screen (D-12).
 ///
@@ -26,16 +27,16 @@ class GearHeroCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space8,
+        16,
+        16,
+        16,
+        8,
       ),
-      padding: const EdgeInsets.all(AppColors.space20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge),
-        boxShadow: AppColors.cardShadow,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,
@@ -48,57 +49,57 @@ class GearHeroCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Overline
-          const Text(
+          Text(
             'PACKING PROGRESS',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: AppColors.space8),
+          const SizedBox(height: 8),
           // Packed count heading
           Text(
             'Packed $packedCount/$totalCount',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
-          const SizedBox(height: AppColors.space12),
+          const SizedBox(height: 12),
           // Progress bar
           LinearProgressIndicator(
             value: progress,
             minHeight: 4,
-            backgroundColor: AppColors.border,
-            valueColor: const AlwaysStoppedAnimation(AppColors.moduleLedger),
+            backgroundColor: AppColorTokens.light.border,
+            valueColor: AlwaysStoppedAnimation(AppColorTokens.light.moduleLedger),
             borderRadius: BorderRadius.circular(2),
           ),
           if (priorityCount > 0) ...[
-            const SizedBox(height: AppColors.space12),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+                color: AppColorTokens.light.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '$priorityCount priority',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.errorText,
+                  color: AppColorTokens.light.errorText,
                 ),
               ),
             ),
           ],
-          const SizedBox(height: AppColors.space16),
+          const SizedBox(height: 16),
           // Add Item CTA
           SizedBox(
             width: double.infinity,
-            height: AppColors.buttonHeight,
+            height: 52,
             child: ElevatedButton(
               onPressed: onAddItem,
               child: const Text('Add Item'),

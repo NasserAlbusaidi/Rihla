@@ -2,8 +2,8 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Horizontal scrollable stats chips showing total group spending and top
 /// spenders.
@@ -38,7 +38,7 @@ class GroupSpendingStats extends StatelessWidget {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: AppColors.space24),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         children: [
           // Total spending chip
@@ -48,14 +48,14 @@ class GroupSpendingStats extends StatelessWidget {
                 '${AppFormatters.formatCurrency(totalSpent, currency)} across $eventCount events',
           ),
           if (displayedSpenders.isNotEmpty)
-            const SizedBox(width: AppColors.space8),
+            const SizedBox(width: 8),
           // Top spender chips
           ...displayedSpenders.asMap().entries.map((entry) {
             final i = entry.key;
             final spender = entry.value;
             return Padding(
               padding: EdgeInsets.only(
-                left: i == 0 ? 0 : AppColors.space8,
+                left: i == 0 ? 0 : 8,
               ),
               child: _StatsChip(
                 icon: Iconsax.profile_circle,
@@ -81,24 +81,24 @@ class _StatsChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppColors.space8,
-        vertical: AppColors.space4,
+        horizontal: 8,
+        vertical: 4,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+        color: AppColorTokens.light.inputFill,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.textSecondary),
-          const SizedBox(width: AppColors.space4),
+          Icon(icon, size: 14, color: AppColorTokens.light.textSecondary),
+          const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
         ],

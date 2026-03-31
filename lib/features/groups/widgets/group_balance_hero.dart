@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/keys/shared_keys.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Dark gradient hero card showing total group spending and the current
 /// user's net position, with a Settle Up CTA.
@@ -47,13 +47,13 @@ class GroupBalanceHero extends StatelessWidget {
       onTap: onSettleUp,
       child: Container(
         constraints: const BoxConstraints(minHeight: 140),
-        padding: const EdgeInsets.all(AppColors.space24),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
-          gradient: AppColors.darkHeaderGradient,
+          gradient: AppColorTokens.light.headerGradient,
           boxShadow: [
             BoxShadow(
-              color: AppColors.surfaceDark.withValues(alpha: 0.2),
+              color: AppColorTokens.light.headerGradientStart.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -110,14 +110,14 @@ class GroupBalanceHero extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: (isOwed ? AppColors.emerald : AppColors.rose)
+                            color: (isOwed ? AppColorTokens.light.success : AppColorTokens.light.error)
                                 .withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             isOwed ? 'YOU ARE OWED' : 'YOU OWE',
                             style: TextStyle(
-                              color: isOwed ? AppColors.mint : AppColors.rose,
+                              color: isOwed ? AppColorTokens.light.primary : AppColorTokens.light.error,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -126,7 +126,7 @@ class GroupBalanceHero extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: AppColors.space12),
+                  const SizedBox(height: 12),
 
                   // Row 2: animated total spent
                   TweenAnimationBuilder<double>(
@@ -152,7 +152,7 @@ class GroupBalanceHero extends StatelessWidget {
                     },
                   ),
 
-                  const SizedBox(height: AppColors.space4),
+                  const SizedBox(height: 4),
 
                   // Sub-line: user net position or settled text
                   if (isSettled)
@@ -183,7 +183,7 @@ class GroupBalanceHero extends StatelessWidget {
                               : 'You owe $formatted',
                           style: TextStyle(
                             color:
-                                isOwed ? AppColors.mint : AppColors.rose,
+                                isOwed ? AppColorTokens.light.primary : AppColorTokens.light.error,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
@@ -191,7 +191,7 @@ class GroupBalanceHero extends StatelessWidget {
                       },
                     ),
 
-                  const SizedBox(height: AppColors.space16),
+                  const SizedBox(height: 16),
 
                   // Settle Up CTA
                   SizedBox(
@@ -214,9 +214,9 @@ class GroupBalanceHero extends StatelessWidget {
                                 vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
+                                gradient: AppColorTokens.light.primaryGradient,
                                 borderRadius: BorderRadius.circular(
-                                  AppColors.radiusMedium,
+                                  12,
                                 ),
                               ),
                               child: const Row(
@@ -227,7 +227,7 @@ class GroupBalanceHero extends StatelessWidget {
                                     color: Colors.black,
                                     size: 16,
                                   ),
-                                  SizedBox(width: AppColors.space8),
+                                  SizedBox(width: 8),
                                   Text(
                                     'Settle Up',
                                     textAlign: TextAlign.center,

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/sub_group_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Horizontal scrollable pool of unassigned [Participant]s.
 ///
@@ -31,13 +32,13 @@ class UnassignedPool extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Row(
             children: [
-              const Text(
+              Text(
                 'UNASSIGNED PERSONNEL',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
               ),
               const Spacer(),
@@ -47,15 +48,15 @@ class UnassignedPool extends StatelessWidget {
                   vertical: 2,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColorTokens.light.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   '${unassigned.length} LEFT',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
+                    color: AppColorTokens.light.primary,
                   ),
                 ),
               ),
@@ -97,12 +98,12 @@ class UnassignedPool extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColorTokens.light.cardSurface,
             shape: BoxShape.circle,
             boxShadow: isFeedback
-                ? AppColors.cardShadowLarge
-                : AppColors.cardShadow,
-            border: Border.all(color: AppColors.surfaceLight, width: 2),
+                ? AppShadowTokens.standard.floating
+                : AppShadowTokens.standard.raised,
+            border: Border.all(color: AppColorTokens.light.inputFill, width: 2),
           ),
           child: Center(
             child: p.avatarUrl != null
@@ -111,9 +112,9 @@ class UnassignedPool extends StatelessWidget {
                   )
                 : Text(
                     (p.displayName ?? 'U')[0].toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
+                      color: AppColorTokens.light.textPrimary,
                     ),
                   ),
           ),
@@ -123,10 +124,10 @@ class UnassignedPool extends StatelessWidget {
           width: 60,
           child: Text(
             (p.displayName?.split(' ')[0] ?? 'UNK').toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
             ),
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,

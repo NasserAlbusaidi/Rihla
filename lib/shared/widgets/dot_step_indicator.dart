@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/tokens/color_tokens.dart';
 
 /// A dot-based step/page indicator widget with terracotta accent.
 ///
@@ -18,11 +18,11 @@ class DotStepIndicator extends StatelessWidget {
   final Color activeColor;
   final bool showCheckmarks; // true for Add Expense steps, false for onboarding pages
 
-  const DotStepIndicator({
+  DotStepIndicator({
     super.key,
     required this.stepCount,
     required this.currentStep,
-    this.activeColor = AppColors.terracotta,
+    this.activeColor = const Color(0xFFCC6B49), // AppColorTokens.light.focusBorderWarm
     this.showCheckmarks = true,
   });
 

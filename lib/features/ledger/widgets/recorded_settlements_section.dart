@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/settlement_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Collapsible history section showing recorded/completed settlements.
 class RecordedSettlementsSection extends StatelessWidget {
@@ -26,27 +26,27 @@ class RecordedSettlementsSection extends StatelessWidget {
         initiallyExpanded: false,
         tilePadding: EdgeInsets.zero,
         childrenPadding: EdgeInsets.zero,
-        title: const Text(
+        title: Text(
           'RECORDED HISTORY',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
+            color: AppColorTokens.light.textMuted,
             letterSpacing: 1.0,
           ),
         ),
-        trailing: const Icon(
+        trailing: Icon(
           Iconsax.arrow_down_1,
           size: 16,
-          color: AppColors.textMuted,
+          color: AppColorTokens.light.textMuted,
         ),
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColorTokens.light.cardSurface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.5),
+                color: AppColorTokens.light.border.withValues(alpha: 0.5),
               ),
             ),
             child: Column(
@@ -74,33 +74,33 @@ class RecordedSettlementsSection extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Iconsax.tick_circle,
                 size: 18,
-                color: AppColors.success,
+                color: AppColorTokens.light.success,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: RichText(
                   text: TextSpan(
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                    style: TextStyle(
+                      color: AppColorTokens.light.textSecondary,
                       fontSize: 13,
                     ),
                     children: [
                       TextSpan(
                         text: payerName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
+                          color: AppColorTokens.light.textPrimary,
                         ),
                       ),
                       const TextSpan(text: ' paid '),
                       TextSpan(
                         text: recipientName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
+                          color: AppColorTokens.light.textPrimary,
                         ),
                       ),
                     ],
@@ -112,17 +112,17 @@ class RecordedSettlementsSection extends StatelessWidget {
                 children: [
                   Text(
                     AppFormatters.formatCurrency(settlement.amount, currency),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.success,
+                      color: AppColorTokens.light.success,
                     ),
                   ),
                   Text(
                     AppFormatters.formatRelativeDate(settlement.settledAt),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                     ),
                   ),
                 ],
@@ -131,7 +131,7 @@ class RecordedSettlementsSection extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          Divider(height: 1, thickness: 1, color: AppColorTokens.light.border),
       ],
     );
   }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/grain_overlay.dart';
 import '../keys/home_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Bottom navigation shell for the home dashboard.
 ///
@@ -39,7 +39,7 @@ class _BottomNavShellState extends State<BottomNavShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: widget.scaffoldKey,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: _buildBody(),
       bottomNavigationBar: _buildNavBar(),
     );
@@ -74,9 +74,9 @@ class _BottomNavShellState extends State<BottomNavShell> {
     return BottomNavigationBar(
       currentIndex: _currentIndex,
       onTap: (i) => setState(() => _currentIndex = i),
-      backgroundColor: AppColors.bottomNavBackground,
-      selectedItemColor: AppColors.bottomNavActiveIcon,
-      unselectedItemColor: AppColors.bottomNavInactiveIcon,
+      backgroundColor: AppColorTokens.light.bottomNavBackground,
+      selectedItemColor: AppColorTokens.light.bottomNavActiveIcon,
+      unselectedItemColor: AppColorTokens.light.bottomNavInactiveIcon,
       // REQUIRED for 4 tabs: fixed type shows all labels (RESEARCH Pitfall 3)
       type: BottomNavigationBarType.fixed,
       showUnselectedLabels: true,
@@ -108,13 +108,13 @@ class _PlaceholderTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
         'Coming soon',
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w400,
-          color: AppColors.textSecondary,
+          color: AppColorTokens.light.textSecondary,
         ),
       ),
     );

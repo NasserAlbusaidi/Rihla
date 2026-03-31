@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-import '../../../core/theme/app_theme.dart';
 import '../../groups/models/group_activity_log_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// A single row in the cross-group activity feed.
 ///
@@ -46,7 +46,7 @@ class ActivityRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppColors.space4),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -62,7 +62,7 @@ class ActivityRow extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: AppColors.space8),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,19 +72,19 @@ class ActivityRow extends StatelessWidget {
                     children: [
                       Text(
                         activity.actorName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: AppColorTokens.light.textPrimary,
                           fontSize: 14,
                         ),
                       ),
-                      const SizedBox(width: AppColors.space4),
+                      const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           activity.description,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.textSecondary,
+                            color: AppColorTokens.light.textSecondary,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -96,24 +96,24 @@ class ActivityRow extends StatelessWidget {
                     children: [
                       Container(
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+                          color: AppColorTokens.light.inputFill,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         child: Text(
                           groupName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: AppColorTokens.light.textSecondary,
                           ),
                         ),
                       ),
-                      const SizedBox(width: AppColors.space8),
+                      const SizedBox(width: 8),
                       Text(
                         timeago.format(activity.timestamp),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: AppColorTokens.light.textMuted,
                         ),
                       ),
                     ],

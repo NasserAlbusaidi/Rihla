@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import 'app_theme.dart';
+import 'tokens/color_tokens.dart';
 
 /// Reusable error state widget for network/connection errors
 class NetworkErrorWidget extends StatelessWidget {
@@ -11,14 +11,14 @@ class NetworkErrorWidget extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
 
-  const NetworkErrorWidget({
+  NetworkErrorWidget({
     super.key,
     this.title = 'Connection Issue',
     this.message =
         'Unable to load data. Please check your internet connection and try again.',
     this.onRetry,
     this.icon = Iconsax.wifi_square,
-    this.iconColor = AppColors.warning,
+    this.iconColor = const Color(0xFFF59E0B), // AppColorTokens.light.warning
   });
 
   /// Factory for generic loading error
@@ -31,7 +31,7 @@ class NetworkErrorWidget extends StatelessWidget {
       message: customMessage ?? 'We couldn\'t load the data. Please try again.',
       onRetry: onRetry,
       icon: Iconsax.warning_2,
-      iconColor: AppColors.warning,
+      iconColor: AppColorTokens.light.warning,
     );
   }
 
@@ -42,7 +42,7 @@ class NetworkErrorWidget extends StatelessWidget {
       message: 'Please check your internet connection and try again.',
       onRetry: onRetry,
       icon: Iconsax.wifi_square,
-      iconColor: AppColors.textSecondary,
+      iconColor: AppColorTokens.light.textSecondary,
     );
   }
 
@@ -67,10 +67,10 @@ class NetworkErrorWidget extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: AppColorTokens.light.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -78,9 +78,9 @@ class NetworkErrorWidget extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppColors.textSecondary,
+                color: AppColorTokens.light.textSecondary,
               ),
             ),
             if (onRetry != null) ...[
@@ -90,7 +90,7 @@ class NetworkErrorWidget extends StatelessWidget {
                 icon: const Icon(Iconsax.refresh),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: AppColorTokens.light.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -125,19 +125,19 @@ class InlineErrorWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.amber.withValues(alpha: 0.1),
+        color: AppColorTokens.light.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(Iconsax.warning_2, color: AppColors.amber, size: 20),
+          Icon(Iconsax.warning_2, color: AppColorTokens.light.warning, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textSecondary,
+                color: AppColorTokens.light.textSecondary,
               ),
             ),
           ),

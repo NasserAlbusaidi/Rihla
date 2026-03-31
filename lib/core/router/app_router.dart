@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../theme/app_theme.dart';
 
 import '../../features/events/models/event_model.dart';
 import '../../features/events/screens/create_event_screen.dart';
@@ -27,6 +26,7 @@ import '../../features/memories/screens/memories_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/vault/screens/vault_screen.dart';
+import '../theme/tokens/color_tokens.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
@@ -418,7 +418,7 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Color(0xFFF2E8D6), // warm sand per D-30
       body: Center(
         child: Text(
@@ -426,7 +426,7 @@ class _SplashScreen extends StatelessWidget {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: AppColorTokens.light.textPrimary,
             fontFamily: 'Plus Jakarta Sans',
           ),
         ),

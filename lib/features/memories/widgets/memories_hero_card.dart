@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Hero card for the Memories screen — D-15.
 ///
@@ -29,16 +30,16 @@ class MemoriesHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space16,
+        16,
+        16,
+        16,
         0,
       ),
-      padding: const EdgeInsets.all(AppColors.space20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLarge + 8),
-        boxShadow: AppColors.shadowRaised,
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16 + 8),
+        boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,
@@ -51,23 +52,23 @@ class MemoriesHeroCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Row 1: "MEMORIES" overline
-          const Text(
+          Text(
             'MEMORIES',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: AppColors.space8),
+          const SizedBox(height: 8),
           // Row 2: photo count + optional date range
           _buildCountRow(),
-          const SizedBox(height: AppColors.space16),
+          const SizedBox(height: 16),
           // Row 3: Add Photo CTA
           SizedBox(
             width: double.infinity,
-            height: AppColors.buttonHeight,
+            height: 52,
             child: ElevatedButton(
               onPressed: onAddPhoto,
               child: const Text('Add Photo'),
@@ -80,12 +81,12 @@ class MemoriesHeroCard extends StatelessWidget {
 
   Widget _buildCountRow() {
     if (dateRange.isEmpty) {
-      return const Text(
+      return Text(
         '0 photos',
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+          color: AppColorTokens.light.textPrimary,
         ),
       );
     }
@@ -95,18 +96,18 @@ class MemoriesHeroCard extends StatelessWidget {
         children: [
           TextSpan(
             text: '$photoCount photos',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
             ),
           ),
           TextSpan(
             text: ' \u00b7 $dateRange',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
+              color: AppColorTokens.light.textSecondary,
             ),
           ),
         ],

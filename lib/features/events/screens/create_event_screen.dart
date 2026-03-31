@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/config/firebase_config.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_provider.dart';
@@ -13,6 +12,8 @@ import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Event creation form — Step 2 of the event creation flow.
 ///
@@ -170,7 +171,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
     return Scaffold(
       key: EventKeys.createEventScreen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       appBar: AppBar(
         title: Text('New ${typeConfig.label} Event'),
       ),
@@ -195,8 +196,8 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppColors.space16,
-                vertical: AppColors.space16),
+                horizontal: 16,
+                vertical: 16),
             child: Form(
               key: _formKey,
               child: Column(
@@ -204,25 +205,25 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 children: [
                   // --- Selected Event Type indicator card ---
                   Container(
-                    margin: const EdgeInsets.only(bottom: AppColors.space12),
+                    margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppColors.space16,
-                        vertical: AppColors.space12),
+                        horizontal: 16,
+                        vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppColors.moduleLedgerLight,
+                      color: AppColorTokens.light.moduleLedgerLight,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Row(
                       children: [
                         Icon(typeConfig.icon,
-                            size: 20, color: AppColors.moduleLedger),
-                        const SizedBox(width: AppColors.space8),
+                            size: 20, color: AppColorTokens.light.moduleLedger),
+                        const SizedBox(width: 8),
                         Text(
                           typeConfig.label,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
-                            color: AppColors.moduleLedger,
+                            color: AppColorTokens.light.moduleLedger,
                           ),
                         ),
                       ],
@@ -231,12 +232,12 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
                   // --- Event Details card ---
                   Container(
-                    margin: const EdgeInsets.only(bottom: AppColors.space12),
-                    padding: const EdgeInsets.all(AppColors.space16),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: AppColorTokens.light.cardSurface,
                       borderRadius: BorderRadius.circular(24),
-                      boxShadow: AppColors.cardShadow,
+                      boxShadow: AppShadowTokens.standard.raised,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,7 +247,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                           'Event Name',
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
-                        const SizedBox(height: AppColors.space8),
+                        const SizedBox(height: 8),
                         TextFormField(
                           controller: _nameController,
                           textCapitalization: TextCapitalization.sentences,
@@ -259,7 +260,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                                   : null,
                         ),
 
-                        const SizedBox(height: AppColors.space24),
+                        const SizedBox(height: 24),
 
                         // --- Dates ---
                         Row(
@@ -268,17 +269,17 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                               'Dates',
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
-                            const SizedBox(width: AppColors.space8),
+                            const SizedBox(width: 8),
                             Text(
                               '(optional)',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
-                                  ?.copyWith(color: AppColors.textMuted),
+                                  ?.copyWith(color: AppColorTokens.light.textMuted),
                             ),
                           ],
                         ),
-                        const SizedBox(height: AppColors.space8),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(
@@ -288,7 +289,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                                   style: OutlinedButton.styleFrom(
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(
-                                          AppColors.radiusMedium),
+                                          12),
                                     ),
                                   ),
                                   onPressed: _pickStartDate,
@@ -301,7 +302,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: AppColors.space12),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: SizedBox(
                                 height: 48,
@@ -309,7 +310,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                                   style: OutlinedButton.styleFrom(
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(
-                                          AppColors.radiusMedium),
+                                          12),
                                     ),
                                   ),
                                   onPressed: _pickEndDate,
@@ -330,12 +331,12 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
                   // --- Participants card ---
                   Container(
-                    margin: const EdgeInsets.only(bottom: AppColors.space12),
-                    padding: const EdgeInsets.all(AppColors.space16),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: AppColorTokens.light.cardSurface,
                       borderRadius: BorderRadius.circular(24),
-                      boxShadow: AppColors.cardShadow,
+                      boxShadow: AppShadowTokens.standard.raised,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,7 +345,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                           'Participants',
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
-                        const SizedBox(height: AppColors.space8),
+                        const SizedBox(height: 8),
                         ...members.map(
                           (member) => _ParticipantRow(
                             member: member,
@@ -374,12 +375,12 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   if (widget.eventType == EventType.custom)
                     Container(
                       margin:
-                          const EdgeInsets.only(bottom: AppColors.space12),
-                      padding: const EdgeInsets.all(AppColors.space16),
+                          const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: AppColorTokens.light.cardSurface,
                         borderRadius: BorderRadius.circular(24),
-                        boxShadow: AppColors.cardShadow,
+                        boxShadow: AppShadowTokens.standard.raised,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,12 +390,12 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                             key: EventKeys.modulesSection,
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
-                          const SizedBox(height: AppColors.space8),
+                          const SizedBox(height: 8),
                           _ModuleToggleRow(
                             key: EventKeys.moduleLedgerToggle,
                             icon: Iconsax.dollar_circle,
                             label: 'Ledger',
-                            color: AppColors.emerald,
+                            color: AppColorTokens.light.success,
                             value: _modules.ledger,
                             onChanged: (v) => setState(
                               () => _modules = _modules.copyWith(ledger: v),
@@ -404,7 +405,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                             key: EventKeys.moduleGearToggle,
                             icon: Iconsax.bag,
                             label: 'Gear',
-                            color: AppColors.amber,
+                            color: AppColorTokens.light.warning,
                             value: _modules.gear,
                             onChanged: (v) => setState(
                               () => _modules = _modules.copyWith(gear: v),
@@ -414,7 +415,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                             key: EventKeys.moduleLogisticsToggle,
                             icon: Iconsax.car,
                             label: 'Logistics',
-                            color: AppColors.sky,
+                            color: AppColorTokens.light.textSecondary,
                             value: _modules.logistics,
                             onChanged: (v) => setState(
                               () =>
@@ -425,7 +426,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                             key: EventKeys.moduleVaultToggle,
                             icon: Iconsax.folder,
                             label: 'Vault',
-                            color: AppColors.indigo,
+                            color: AppColorTokens.light.textSecondary,
                             value: _modules.vault,
                             onChanged: (v) => setState(
                               () => _modules = _modules.copyWith(vault: v),
@@ -435,7 +436,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                             key: EventKeys.moduleMemoriesToggle,
                             icon: Iconsax.image,
                             label: 'Memories',
-                            color: AppColors.mint,
+                            color: AppColorTokens.light.primary,
                             value: _modules.memories,
                             onChanged: (v) => setState(
                               () =>
@@ -454,7 +455,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                     onPressed: () => _submitForm(members),
                   ),
 
-                  const SizedBox(height: AppColors.space32),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -494,17 +495,17 @@ class _ParticipantRow extends StatelessWidget {
             Container(
               width: 32,
               height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceLight,
+              decoration: BoxDecoration(
+                color: AppColorTokens.light.inputFill,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Iconsax.user,
                 size: 16,
-                color: AppColors.textSecondary,
+                color: AppColorTokens.light.textSecondary,
               ),
             ),
-            const SizedBox(width: AppColors.space12),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 member.displayName,
@@ -516,7 +517,7 @@ class _ParticipantRow extends StatelessWidget {
               checkColor: Colors.white,
               fillColor: WidgetStateProperty.resolveWith(
                 (states) => states.contains(WidgetState.selected)
-                    ? AppColors.primary
+                    ? AppColorTokens.light.primary
                     : null,
               ),
               onChanged: (v) => onToggle(v ?? isSelected),
@@ -556,7 +557,7 @@ class _ModuleToggleRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, size: 24, color: color),
-          const SizedBox(width: AppColors.space12),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
@@ -567,12 +568,12 @@ class _ModuleToggleRow extends StatelessWidget {
             value: value,
             thumbColor: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.selected)
-                  ? AppColors.primary
+                  ? AppColorTokens.light.primary
                   : null,
             ),
             trackColor: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.selected)
-                  ? AppColors.primary.withValues(alpha: 0.3)
+                  ? AppColorTokens.light.primary.withValues(alpha: 0.3)
                   : null,
             ),
             onChanged: onChanged,

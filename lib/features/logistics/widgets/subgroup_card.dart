@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// A card that renders a single [SubGroup] with its member slots and drag-drop
 /// target for adding participants.
@@ -43,23 +44,23 @@ class SubgroupCard extends StatelessWidget {
         return Container(
           margin: const EdgeInsets.only(bottom: 24),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColorTokens.light.cardSurface,
             borderRadius: BorderRadius.circular(32),
             border: Border.all(
               color: candidateData.isNotEmpty
-                  ? AppColors.primary
-                  : AppColors.borderLight,
+                  ? AppColorTokens.light.primary
+                  : AppColorTokens.light.inputFill,
               width: candidateData.isNotEmpty ? 2 : 1.5,
             ),
             boxShadow: candidateData.isNotEmpty
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.2),
+                      color: AppColorTokens.light.primary.withValues(alpha: 0.2),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
                   ]
-                : AppColors.cardShadow,
+                : AppShadowTokens.standard.raised,
           ),
           child: Column(
             children: [
@@ -81,10 +82,10 @@ class SubgroupCard extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: AppColorTokens.light.inputFill,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: AppColors.borderLight,
+                color: AppColorTokens.light.inputFill,
                 width: 1.5,
               ),
             ),
@@ -92,7 +93,7 @@ class SubgroupCard extends StatelessWidget {
               group.type == SubGroupType.car
                   ? Iconsax.car
                   : Iconsax.house,
-              color: AppColors.primary,
+              color: AppColorTokens.light.primary,
               size: 24,
             ),
           ),
@@ -106,11 +107,11 @@ class SubgroupCard extends StatelessWidget {
                 children: [
                   Text(
                     group.name.toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.3,
-                      color: AppColors.textPrimary,
+                      color: AppColorTokens.light.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -121,8 +122,8 @@ class SubgroupCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: group.isFull
-                          ? AppColors.warning.withValues(alpha: 0.1)
-                          : AppColors.primary.withValues(alpha: 0.05),
+                          ? AppColorTokens.light.warning.withValues(alpha: 0.1)
+                          : AppColorTokens.light.primary.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -131,8 +132,8 @@ class SubgroupCard extends StatelessWidget {
                         fontSize: 8,
                         fontWeight: FontWeight.w900,
                         color: group.isFull
-                            ? AppColors.warning
-                            : AppColors.primary,
+                            ? AppColorTokens.light.warning
+                            : AppColorTokens.light.primary,
                       ),
                     ),
                   ),
@@ -141,10 +142,10 @@ class SubgroupCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Iconsax.more,
               size: 20,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
             ),
             onPressed: () => onDeleteGroup(group),
           ),
@@ -177,7 +178,7 @@ class SubgroupCard extends StatelessWidget {
             final confirm = await showDialog<bool>(
               context: context,
               builder: (context) => AlertDialog(
-                backgroundColor: AppColors.surface,
+                backgroundColor: AppColorTokens.light.cardSurface,
                 title: const Text(
                   'REMOVE MEMBER',
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
@@ -193,10 +194,10 @@ class SubgroupCard extends StatelessWidget {
                   TextButton(
                     key: LogisticsKeys.removeButton,
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text(
+                    child: Text(
                       'REMOVE',
                       style: TextStyle(
-                        color: AppColors.rose,
+                        color: AppColorTokens.light.error,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -213,10 +214,10 @@ class SubgroupCard extends StatelessWidget {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: AppColorTokens.light.inputFill,
               shape: BoxShape.circle,
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
+                color: AppColorTokens.light.primary.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
@@ -232,9 +233,9 @@ class SubgroupCard extends StatelessWidget {
                     )
                   : Text(
                       member.initials,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
+                        color: AppColorTokens.light.primary,
                       ),
                     ),
             ),
@@ -245,10 +246,10 @@ class SubgroupCard extends StatelessWidget {
           width: 60,
           child: Text(
             (member.displayName?.split(' ')[0] ?? 'UNK').toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w900,
-              color: AppColors.textSecondary,
+              color: AppColorTokens.light.textSecondary,
             ),
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
@@ -267,27 +268,27 @@ class SubgroupCard extends StatelessWidget {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: AppColorTokens.light.scaffoldBackground,
               shape: BoxShape.circle,
               border: Border.all(
-                color: AppColors.borderLight,
+                color: AppColorTokens.light.inputFill,
                 width: 2,
                 style: BorderStyle.solid,
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Iconsax.add,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
               size: 20,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'OPEN',
             style: TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
+              color: AppColorTokens.light.textMuted,
             ),
           ),
         ],

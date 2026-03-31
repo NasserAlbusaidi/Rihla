@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../models/group_member_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// A tile widget for displaying a group member in a member list.
 ///
@@ -20,23 +20,23 @@ class GroupMemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppColors.space12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
           // Avatar with initial
           CircleAvatar(
             radius: 20,
-            backgroundColor: AppColors.surfaceLight,
+            backgroundColor: AppColorTokens.light.inputFill,
             child: Text(
               member.displayName.isNotEmpty
                   ? member.displayName[0].toUpperCase()
                   : '?',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: AppColorTokens.light.textSecondary,
                   ),
             ),
           ),
-          const SizedBox(width: AppColors.space12),
+          const SizedBox(width: 12),
           // Name and role badge
           Expanded(
             child: Column(
@@ -48,21 +48,21 @@ class GroupMemberTile extends StatelessWidget {
                       : member.displayName,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: AppColors.space4),
+                const SizedBox(height: 4),
                 // Role badge
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppColors.space8,
+                    horizontal: 8,
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+                    color: AppColorTokens.light.inputFill,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     member.role,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: AppColorTokens.light.textSecondary,
                         ),
                   ),
                 ),

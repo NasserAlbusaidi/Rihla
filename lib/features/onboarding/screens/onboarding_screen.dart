@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/dot_step_indicator.dart';
 import '../keys/onboarding_keys.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Onboarding screen shown to first-time users
 class OnboardingScreen extends StatefulWidget {
@@ -86,7 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: OnboardingKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -98,10 +98,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: _currentPage < _pages.length - 1
                     ? TextButton(
                         onPressed: _completeOnboarding,
-                        child: const Text(
+                        child: Text(
                           'Skip',
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: AppColorTokens.light.textSecondary,
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                           ),
@@ -162,10 +162,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           // Title
           Text(
             data.title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: AppColorTokens.light.textPrimary,
               height: 1.3,
             ),
             textAlign: TextAlign.center,
@@ -176,10 +176,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           // Subtitle
           Text(
             data.subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
+              color: AppColorTokens.light.textSecondary,
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -202,7 +202,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           DotStepIndicator(
             stepCount: 3,
             currentStep: _currentPage,
-            activeColor: AppColors.terracotta,
+            activeColor: AppColorTokens.light.focusBorderWarm,
             showCheckmarks: false,
           ),
           const SizedBox(height: 40),
@@ -211,14 +211,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             // Final page: terracotta CTA (D-29 locked — NOT teal)
             SizedBox(
               width: double.infinity,
-              height: AppColors.buttonHeight,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _completeOnboarding,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.terracotta,
-                  foregroundColor: AppColors.textOnPrimary,
+                  backgroundColor: AppColorTokens.light.focusBorderWarm,
+                  foregroundColor: AppColorTokens.light.textOnPrimary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text(
@@ -234,14 +234,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             // Non-final page: teal Next button
             SizedBox(
               width: double.infinity,
-              height: AppColors.buttonHeight,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _nextPage,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.textOnPrimary,
+                  backgroundColor: AppColorTokens.light.primary,
+                  foregroundColor: AppColorTokens.light.textOnPrimary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text(

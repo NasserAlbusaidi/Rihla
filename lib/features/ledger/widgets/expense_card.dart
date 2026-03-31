@@ -2,9 +2,10 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Three-line expense card for the Ledger timeline.
 ///
@@ -46,9 +47,9 @@ class ExpenseCard extends StatelessWidget {
     final absStr = userBalance.abs().toStringAsFixed(decimals);
     final cmp = userBalance.compareTo(Decimal.zero);
     return switch (cmp) {
-      > 0 => ('Owed to you $currency $absStr', AppColors.successText),
-      < 0 => ('You owe $currency $absStr', AppColors.errorText),
-      _ => ('Settled', AppColors.textSecondary),
+      > 0 => ('Owed to you $currency $absStr', AppColorTokens.light.successText),
+      < 0 => ('You owe $currency $absStr', AppColorTokens.light.errorText),
+      _ => ('Settled', AppColorTokens.light.textSecondary),
     };
   }
 
@@ -71,11 +72,11 @@ class ExpenseCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        padding: const EdgeInsets.all(AppColors.space16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColorTokens.light.cardSurface,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: AppColors.cardShadow,
+          boxShadow: AppShadowTokens.standard.raised,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,25 +84,25 @@ class ExpenseCard extends StatelessWidget {
             // Line 1: icon + title + amount
             Row(
               children: [
-                Icon(icon, size: 20, color: AppColors.textSecondary),
+                Icon(icon, size: 20, color: AppColorTokens.light.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     expense.description ?? 'Expense',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: AppColorTokens.light.textPrimary,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Text(
                   '$currency $amountStr',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: AppColorTokens.light.textPrimary,
                   ),
                 ),
               ],
@@ -111,10 +112,10 @@ class ExpenseCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '$payerLabel \u00b7 $dateStr \u00b7 $peopleStr',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: AppColors.textSecondary,
+                color: AppColorTokens.light.textSecondary,
               ),
             ),
 

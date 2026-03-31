@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../events/models/event_model.dart';
@@ -10,6 +9,8 @@ import '../../trip/models/trip_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Scope selector (global/subgroup/custom/personal) with custom participant
 /// picker and payer selector for leaders.
@@ -48,7 +49,7 @@ class SplitScopeSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
+            color: AppColorTokens.light.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -148,9 +149,9 @@ class _ScopeTab extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.surface : Colors.transparent,
+            color: isSelected ? AppColorTokens.light.cardSurface : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected ? AppColors.cardShadow : null,
+            boxShadow: isSelected ? AppShadowTokens.standard.raised : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -158,7 +159,7 @@ class _ScopeTab extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? AppColors.mint : AppColors.textMuted,
+                color: isSelected ? AppColorTokens.light.primary : AppColorTokens.light.textMuted,
               ),
               const SizedBox(width: 8),
               Text(
@@ -167,8 +168,8 @@ class _ScopeTab extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: isSelected
-                      ? AppColors.textPrimary
-                      : AppColors.textMuted,
+                      ? AppColorTokens.light.textPrimary
+                      : AppColorTokens.light.textMuted,
                 ),
               ),
             ],
@@ -206,12 +207,12 @@ class _CustomParticipantSelector extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'SELECT PARTICIPANTS',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
-                color: AppColors.textMuted,
+                color: AppColorTokens.light.textMuted,
                 letterSpacing: 1.5,
               ),
             ),
@@ -221,8 +222,8 @@ class _CustomParticipantSelector extends ConsumerWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: customSplitParticipants.isNotEmpty
-                    ? AppColors.mint
-                    : AppColors.textMuted,
+                    ? AppColorTokens.light.primary
+                    : AppColorTokens.light.textMuted,
               ),
             ),
           ],
@@ -231,7 +232,7 @@ class _CustomParticipantSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
+            color: AppColorTokens.light.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
           constraints: const BoxConstraints(maxHeight: 200),
@@ -316,8 +317,8 @@ class _ParticipantTile extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.mint.withValues(alpha: 0.2)
-              : AppColors.surface,
+              ? AppColorTokens.light.primary.withValues(alpha: 0.2)
+              : AppColorTokens.light.cardSurface,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Center(
@@ -325,7 +326,7 @@ class _ParticipantTile extends StatelessWidget {
             (participant.displayName ?? 'U')[0].toUpperCase(),
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: isSelected ? AppColors.mint : AppColors.textMuted,
+              color: isSelected ? AppColorTokens.light.primary : AppColorTokens.light.textMuted,
             ),
           ),
         ),
@@ -335,21 +336,21 @@ class _ParticipantTile extends StatelessWidget {
         style: TextStyle(
           fontSize: 14,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          color: AppColors.textPrimary,
+          color: AppColorTokens.light.textPrimary,
         ),
       ),
       subtitle: participant.isShadow
-          ? const Text(
+          ? Text(
               'Shadow Profile',
               style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textMuted,
+                color: AppColorTokens.light.textMuted,
               ),
             )
           : null,
       trailing: Checkbox(
         value: isSelected,
-        activeColor: AppColors.mint,
+        activeColor: AppColorTokens.light.primary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
         ),
@@ -394,13 +395,13 @@ class _PayerSelector extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           key: LedgerKeys.payerSectionLabel,
           'PAID BY',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: AppColors.textMuted,
+            color: AppColorTokens.light.textMuted,
             letterSpacing: 1.5,
           ),
         ),
@@ -408,10 +409,10 @@ class _PayerSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
+            color: AppColorTokens.light.inputFill,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColors.textMuted.withValues(alpha: 0.3),
+              color: AppColorTokens.light.textMuted.withValues(alpha: 0.3),
             ),
           ),
           child: DropdownButtonHideUnderline(
@@ -427,13 +428,13 @@ class _PayerSelector extends ConsumerWidget {
                     children: [
                       CircleAvatar(
                         radius: 14,
-                        backgroundColor: AppColors.primaryLight,
+                        backgroundColor: AppColorTokens.light.selectionFill,
                         child: Text(
                           (p.displayName?.isNotEmpty == true ? p.displayName![0] : 'U').toUpperCase(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
+                            color: AppColorTokens.light.primary,
                           ),
                         ),
                       ),

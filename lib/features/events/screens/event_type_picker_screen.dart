@@ -3,11 +3,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/animations/tap_bounce.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Full-screen event type picker — Step 1 of the event creation flow.
 ///
@@ -28,7 +29,7 @@ class EventTypePickerScreen extends StatelessWidget {
 
     return Scaffold(
       key: EventKeys.eventTypePickerScreen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       appBar: AppBar(
         title: const Text('Choose Event Type', key: EventKeys.eventTypePickerTitle),
         leading: CloseButton(
@@ -36,10 +37,10 @@ class EventTypePickerScreen extends StatelessWidget {
         ),
       ),
       body: ListView.separated(
-        padding: const EdgeInsets.all(AppColors.space24),
+        padding: const EdgeInsets.all(24),
         itemCount: types.length,
         separatorBuilder: (context, index) =>
-            const SizedBox(height: AppColors.space12),
+            const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final config = types[index];
           final enabledModuleNames = _enabledModuleNames(config.type);
@@ -55,12 +56,12 @@ class EventTypePickerScreen extends StatelessWidget {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColorTokens.light.cardSurface,
                   borderRadius:
-                      BorderRadius.circular(AppColors.radiusLarge),
-                  boxShadow: AppColors.shadowRaised,
+                      BorderRadius.circular(16),
+                  boxShadow: AppShadowTokens.standard.raised,
                 ),
-                padding: const EdgeInsets.all(AppColors.space16),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     // Type icon container
@@ -77,7 +78,7 @@ class EventTypePickerScreen extends StatelessWidget {
                         color: config.color,
                       ),
                     ),
-                    const SizedBox(width: AppColors.space12),
+                    const SizedBox(width: 12),
                     // Text column
                     Expanded(
                       child: Column(
@@ -88,21 +89,21 @@ class EventTypePickerScreen extends StatelessWidget {
                             style:
                                 Theme.of(context).textTheme.titleMedium,
                           ),
-                          const SizedBox(height: AppColors.space4),
+                          const SizedBox(height: 4),
                           Text(
                             config.description,
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
                                 ?.copyWith(
-                                  color: AppColors.textMuted,
+                                  color: AppColorTokens.light.textMuted,
                                 ),
                           ),
-                          const SizedBox(height: AppColors.space8),
+                          const SizedBox(height: 8),
                           // Module chips
                           Wrap(
-                            spacing: AppColors.space4,
-                            runSpacing: AppColors.space4,
+                            spacing: 4,
+                            runSpacing: 4,
                             children: enabledModuleNames
                                 .map((name) => _ModuleChip(name: name))
                                 .toList(),
@@ -110,12 +111,12 @@ class EventTypePickerScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: AppColors.space8),
+                    const SizedBox(width: 8),
                     // Trailing arrow
-                    const Icon(
+                    Icon(
                       Iconsax.arrow_right_3,
                       size: 18,
-                      color: AppColors.textMuted,
+                      color: AppColorTokens.light.textMuted,
                     ),
                   ],
                 ),
@@ -169,9 +170,9 @@ class _ModuleChip extends StatelessWidget {
         name,
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
       ),
-      backgroundColor: AppColors.surfaceLight,
+      backgroundColor: AppColorTokens.light.inputFill,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusSmall),
+        borderRadius: BorderRadius.circular(8),
       ),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,

@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -16,6 +15,7 @@ import '../models/activity_log_model.dart';
 import '../services/activity_service.dart';
 import '../widgets/activity_entry_card.dart';
 import '../widgets/activity_hero_card.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Activity feed screen — Date-grouped timeline per D-21.
 ///
@@ -40,7 +40,7 @@ class ActivityFeedScreen extends ConsumerWidget {
     // Loading state — skeleton while event loads
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(
@@ -58,7 +58,7 @@ class ActivityFeedScreen extends ConsumerWidget {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found'),
@@ -70,7 +70,7 @@ class ActivityFeedScreen extends ConsumerWidget {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -80,7 +80,7 @@ class ActivityFeedScreen extends ConsumerWidget {
 
     return Scaffold(
       key: ActivityKeys.screen,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: activityAsync.when(
         loading: () => CustomScrollView(
           slivers: [
@@ -110,7 +110,7 @@ class ActivityFeedScreen extends ConsumerWidget {
                 message: 'Check your connection and try again.',
                 actionLabel: 'Reload',
                 onAction: () => ref.invalidate(eventActivityProvider(eventRef)),
-                iconColor: AppColors.textSecondary,
+                iconColor: AppColorTokens.light.textSecondary,
               ),
             ),
           ],
@@ -216,17 +216,17 @@ class _DateSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space16,
-        AppColors.space4,
+        16,
+        16,
+        16,
+        4,
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w400,
-          color: AppColors.textMuted,
+          color: AppColorTokens.light.textMuted,
           letterSpacing: 0.5,
         ),
       ),

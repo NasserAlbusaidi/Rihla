@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/core/theme/tokens/color_tokens.dart';
 
 void main() {
@@ -41,44 +40,44 @@ void main() {
   // AppColors facade — new Phase 18 static consts
   // ---------------------------------------------------------------------------
   group('AppColors facade — new Phase 18 constants', () {
-    test('AppColors.errorText equals dark red #B91C1C', () {
+    test('AppColorTokens.light.errorText equals dark red #B91C1C', () {
       expect(
-        AppColors.errorText,
+        AppColorTokens.light.errorText,
         equals(const Color(0xFFB91C1C)),
       );
     });
 
-    test('AppColors.successText equals dark emerald #047857', () {
+    test('AppColorTokens.light.successText equals dark emerald #047857', () {
       expect(
-        AppColors.successText,
+        AppColorTokens.light.successText,
         equals(const Color(0xFF047857)),
       );
     });
 
-    test('AppColors.offlineBannerBackground equals amber #F59E0B', () {
+    test('AppColorTokens.light.offlineBannerBackground equals amber #F59E0B', () {
       expect(
-        AppColors.offlineBannerBackground,
+        AppColorTokens.light.offlineBannerBackground,
         equals(const Color(0xFFF59E0B)),
       );
     });
 
-    test('AppColors.bottomNavBackground equals white #FFFFFF', () {
+    test('AppColorTokens.light.bottomNavBackground equals white #FFFFFF', () {
       expect(
-        AppColors.bottomNavBackground,
+        AppColorTokens.light.bottomNavBackground,
         equals(const Color(0xFFFFFFFF)),
       );
     });
 
-    test('AppColors.bottomNavActiveIcon equals teal #0D7B74', () {
+    test('AppColorTokens.light.bottomNavActiveIcon equals teal #0D7B74', () {
       expect(
-        AppColors.bottomNavActiveIcon,
+        AppColorTokens.light.bottomNavActiveIcon,
         equals(const Color(0xFF0D7B74)),
       );
     });
 
-    test('AppColors.bottomNavInactiveIcon equals gray-400 #9CA3AF', () {
+    test('AppColorTokens.light.bottomNavInactiveIcon equals gray-400 #9CA3AF', () {
       expect(
-        AppColors.bottomNavInactiveIcon,
+        AppColorTokens.light.bottomNavInactiveIcon,
         equals(const Color(0xFF9CA3AF)),
       );
     });
