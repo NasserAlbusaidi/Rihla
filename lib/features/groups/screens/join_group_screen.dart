@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../keys/group_keys.dart';
@@ -56,7 +57,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
             inviteCode: _codeController.text.trim(),
           );
       ref.read(groupLoadingProvider.notifier).state = false;
-      await HapticFeedback.mediumImpact();
+      HapticService.success(); // D-02: double-tap "done" feel vs single mediumImpact
       if (mounted) {
         context.pushReplacement('/group/${group.id}');
       }

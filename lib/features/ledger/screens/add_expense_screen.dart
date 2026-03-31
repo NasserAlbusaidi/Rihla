@@ -161,6 +161,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       }
       return;
     }
+    HapticService.success(); // D-02: fire on tap after validation, before async write
+
     final note = _noteController.text.trim();
 
     debugPrint('[EXPENSE] _submit: tripId=${widget.eventId}');

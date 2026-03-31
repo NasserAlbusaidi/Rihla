@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
@@ -380,6 +381,7 @@ class SettleUpScreen extends ConsumerWidget {
     event,
     Map<String, dynamic> settlement,
   ) async {
+    HapticService.success(); // D-02: fire on tap before async write
     final eventRef = (groupId: groupId, eventId: eventId);
     try {
       await ref
