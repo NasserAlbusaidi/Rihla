@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,12 +10,15 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../ledger/models/expense_model.dart' show UserBalance;
 import '../../events/providers/event_provider.dart';
+import '../../events/screens/event_command_center.dart';
 import '../../events/widgets/event_card.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
@@ -267,11 +271,28 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
               children: [
                 for (int i = 0; i < events.length; i++) ...[
                   if (i > 0) const SizedBox(height: AppColors.space12),
-                  EventCard(
-                    event: events[i],
-                    personalBalance: userEventBreakdown[events[i].id],
-                    onTap: () => context.push(
-                      '/group/$groupId/event/${events[i].id}',
+                  OpenContainer<void>(
+                    closedColor: Colors.transparent,
+                    openColor: AppColorTokens.light.scaffoldBackground,
+                    closedElevation: 0,
+                    openElevation: 0,
+                    closedShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppSpacingTokens.standard.radiusLarge,
+                      ),
+                    ),
+                    openShape: const RoundedRectangleBorder(),
+                    transitionDuration: const Duration(milliseconds: 400),
+                    transitionType: ContainerTransitionType.fade,
+                    useRootNavigator: false,
+                    closedBuilder: (context, openContainer) => EventCard(
+                      event: events[i],
+                      personalBalance: userEventBreakdown[events[i].id],
+                      onTap: openContainer,
+                    ),
+                    openBuilder: (context, _) => EventCommandCenter(
+                      groupId: groupId,
+                      eventId: events[i].id,
                     ),
                   ),
                 ],
