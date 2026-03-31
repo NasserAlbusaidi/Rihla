@@ -64,21 +64,21 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACT-01 | — | Pending |
-| ACT-02 | — | Pending |
-| ACT-03 | — | Pending |
-| CARD-01 | — | Pending |
-| CARD-02 | — | Pending |
-| CHRT-01 | — | Pending |
-| CHRT-02 | — | Pending |
-| LAYT-01 | — | Pending |
-| LAYT-02 | — | Pending |
+| ACT-01 | Phase 23 | Pending |
+| ACT-02 | Phase 23 | Pending |
+| ACT-03 | Phase 23 | Pending |
+| CARD-01 | Phase 24 | Pending |
+| CARD-02 | Phase 24 | Pending |
+| CHRT-01 | Phase 24 | Pending |
+| CHRT-02 | Phase 24 | Pending |
+| LAYT-01 | Phase 24 | Pending |
+| LAYT-02 | Phase 24 | Pending |
 
 **Coverage:**
 - v2.1 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9 (pending roadmap)
+- Mapped to phases: 9
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after initial definition*
+*Last updated: 2026-03-31 after roadmap creation*
