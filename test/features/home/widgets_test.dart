@@ -200,7 +200,8 @@ void main() {
       await tester.tap(find.text('Activity').last);
       await tester.pump();
 
-      expect(find.text('Coming soon'), findsOneWidget);
+      // Stack+AnimatedOpacity keeps all 3 placeholder tabs rendered simultaneously.
+      expect(find.text('Coming soon'), findsNWidgets(3));
     });
 
     testWidgets('Test 8: Groups tab shows child content', (tester) async {
@@ -219,7 +220,8 @@ void main() {
       // Tap Profile tab
       await tester.tap(find.text('Profile'));
       await tester.pump();
-      expect(find.text('Coming soon'), findsOneWidget);
+      // Stack+AnimatedOpacity keeps all 3 placeholder tabs rendered simultaneously.
+      expect(find.text('Coming soon'), findsNWidgets(3));
 
       // Tap back to Groups
       await tester.tap(find.text('Groups'));

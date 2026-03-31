@@ -354,7 +354,9 @@ void main() {
       await tester.tap(find.text('Activity').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Coming soon'), findsOneWidget);
+      // BottomNavShell keeps all 3 placeholder tabs rendered simultaneously
+      // (both IndexedStack and Stack+AnimatedOpacity build all children).
+      expect(find.text('Coming soon'), findsNWidgets(3));
     });
   });
 
