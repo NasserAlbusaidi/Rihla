@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Major UI/UX Overhaul
 status: executing
-stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-03-31T08:47:55.815Z"
+stopped_at: Completed 22-05-PLAN.md
+last_updated: "2026-03-31T09:12:13.525Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 28
-  completed_plans: 26
+  completed_plans: 28
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 ## Current Position
 
 Phase: 22 (polish-pass-token-cleanup) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 | Phase 22-polish-pass-token-cleanup P01 | 219 | 2 tasks | 8 files |
 | Phase 22-polish-pass-token-cleanup P02 | 6 | 2 tasks | 5 files |
 | Phase 22-polish-pass-token-cleanup P04 | 3 | 3 tasks | 12 files |
+| Phase 22-polish-pass-token-cleanup P05 | 60 | 1 tasks | 88 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,7 @@ Progress: [██████████] 100% (Phase 18 complete — 5 of 9 ph
 - Stitch-first design workflow chosen: design in Stitch, extract tokens, implement in Flutter
 - Warm earthy palette: terracotta (~#CC6B49), sand (~#F2E8D6), olive (~#7A8C5E), dark brown body text (#2C1A0E)
 - AppColors public API preserved throughout migration — 895 call sites never touched
+- Phase 22 P05: AppColors class deleted — all 1375 refs migrated to AppColorTokens/AppSpacingTokens/AppShadowTokens; ThemeExtension fields via static const are not Dart compile-time constants; const removed from parent constructors containing token property accesses; 767 tests pass
 - No StatefulShellRoute / bottom nav — single hierarchy data model (Group → Event → Module)
 - Navigation flattening via content surfacing, not structural nav changes
 - Phases 14 and 15 are non-negotiable prerequisites before any visual screen work begins
@@ -139,6 +141,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-31T08:47:55.812Z
-Stopped at: Completed 22-04-PLAN.md
+Last session: 2026-03-31T09:12:13.521Z
+Stopped at: Completed 22-05-PLAN.md
 Next action: Execute Phase 22 via `/gsd:execute-phase 22`

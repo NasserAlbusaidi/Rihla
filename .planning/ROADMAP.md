@@ -38,7 +38,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **Phase 19: Navigation Restructuring** - Migrate 22 Navigator.push calls to GoRouter subroutes so all event-level screens are reachable within 2 taps (completed 2026-03-30)
 - [x] **Phase 20: Group Detail & Event Hub Redesign** - Redesign the group gateway and event hub with earthy tokens, type-specific color accents, and M3 transitions (completed 2026-03-30)
 - [x] **Phase 21: Module Screens Redesign** - Apply the new design language to all six module screens with card-style layouts and illustrated empty states (completed 2026-03-30)
-- [ ] **Phase 22: Polish Pass & Token Cleanup** - Add haptic feedback, animated balance counters, texture overlays, M3 motion, and delete legacy AppColors
+- [x] **Phase 22: Polish Pass & Token Cleanup** - Add haptic feedback, animated balance counters, texture overlays, M3 motion, and delete legacy AppColors (completed 2026-03-31)
 
 ## Phase Details
 
@@ -182,9 +182,9 @@ Plans:
 Plans:
 - [x] 22-01-PLAN.md — Foundation: grain asset + GrainOverlay widget + AnimatedCurrencyText widget + missing AppColorTokens
 - [x] 22-02-PLAN.md — Haptic feedback on 3 write actions + AnimatedCurrencyText integration in BalanceHeroCard and LedgerHeroCard
-- [ ] 22-03-PLAN.md — M3 motion: OpenContainer for EventCard/SmartModuleCard, SharedAxis for AddExpenseScreen steps, FadeThrough for BottomNavShell
+- [x] 22-03-PLAN.md — M3 motion: OpenContainer for EventCard/SmartModuleCard, SharedAxis for AddExpenseScreen steps, FadeThrough for BottomNavShell
 - [x] 22-04-PLAN.md — Grain texture application to all hero cards and ModuleHeader
-- [ ] 22-05-PLAN.md — AppColors bulk migration (1,351 refs across 81 files) and class deletion
+- [x] 22-05-PLAN.md — AppColors bulk migration (1,351 refs across 81 files) and class deletion
 **UI hint**: yes
 
 ## Progress
@@ -199,4 +199,4 @@ Plans:
 | 19. Navigation Restructuring | 3/3 | Complete    | 2026-03-30 |
 | 20. Group Detail & Event Hub Redesign | 2/2 | Complete    | 2026-03-30 |
 | 21. Module Screens Redesign | 6/6 | Complete    | 2026-03-30 |
-| 22. Polish Pass & Token Cleanup | 3/5 | In Progress|  |
+| 22. Polish Pass & Token Cleanup | 5/5 | Complete   | 2026-03-31 |

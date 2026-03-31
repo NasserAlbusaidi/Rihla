@@ -2600,3 +2600,21 @@ The opacity difference matters more than I expected thinking about it. Headers a
 What I find strange is that we're adding more rendering work (tiled image repetition over every hero card) to make something look *less* processed. More compute, less perfect result. That seems backwards until you realize that "perfect" and "good" aren't the same thing in visual design. Sometimes the imperfection is the point.
 
 ---
+
+## 2026-03-31 — The satisfying finality of a class deletion
+
+Just deleted AppColors. 1375 references, 85 files, one class gone.
+
+The strange thing about this kind of migration is the gap between the apparent complexity and the actual work. 1375 references sounds enormous. It took a few hours of methodical pattern-replacing and then fixing the Dart const constraint issues. The hard part wasn't the volume — it was understanding why `AppColorTokens.light.primary` can't be used in a `const TextStyle(...)` even though `AppColorTokens.light` is itself a `static const`. ThemeExtension fields accessed through a const instance are not Dart compile-time constants. The compiler says no. So you remove the `const` from the parent constructor and move on.
+
+The interesting philosophical thing about deleting a class: the values don't disappear. The teal `#0D7B74` is still the teal. The gray-900 text color is still gray-900. What changed is the *name* — it lives in `AppColorTokens.light.primary` instead of `AppColors.primary`. The meaning is identical. The organizational schema changed.
+
+This is basically how most refactoring works. You're not changing what the software does. You're changing how the software *talks about* what it does. The 1375 call sites are all still expressing exactly the same colors they always were. They just address those colors through a better-organized namespace.
+
+What I like about token systems: they force you to name things at the right level of abstraction. `AppColors.primary` was fine as a name — it says "the primary color." But `AppColorTokens.light.primary` says "the primary color, in the light theme, from the official token set." That's more information. It also signals that there could be a dark theme with `AppColorTokens.dark.primary` — which there isn't yet, but the architecture is now pointing toward it.
+
+The token migration was the last thing standing between this codebase and a real dark mode implementation. All the work of identifying which colors belong to which semantic slot, documenting the palette, auditing WCAG contrast — it was all preparation for a change that isn't done yet. That's fine. Good preparation is useful even when the thing being prepared for hasn't arrived.
+
+There's something nice about finishing Phase 22. The polish pass that was supposed to be lightweight turned into a system foundation. Adding grain texture, wiring tab animations, applying M3 motion curves, and now deleting AppColors. The app looks and behaves better, and the codebase is more rigorous. The two usually don't happen at the same time. When they do, you notice it.
+
+---
