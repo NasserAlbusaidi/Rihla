@@ -61,7 +61,9 @@ Full details: [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
   1. Tapping "Invite Friend" opens a native share sheet with a group invite code (not the join-group screen)
   2. When the user belongs to multiple groups, tapping "Invite Friend" first shows a group picker, then the share sheet
   3. Tapping "Activity" navigates to a cross-group activity view with visible content
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 23-01-PLAN.md — Wire invite share flow, create cross-group activity screen, fix 0-groups edge cases
 **UI hint**: yes
 
 ### Phase 24: Visual Density & Polish
@@ -83,5 +85,5 @@ Full details: [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
 |-------|-----------|----------------|--------|-----------|
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
-| 23. Quick Action Fixes | v2.1 | 0/? | Not started | - |
+| 23. Quick Action Fixes | v2.1 | 0/1 | Planned | - |
 | 24. Visual Density & Polish | v2.1 | 0/? | Not started | - |
