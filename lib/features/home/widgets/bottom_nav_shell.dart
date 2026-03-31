@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/grain_overlay.dart';
 import '../keys/home_keys.dart';
 
 /// Bottom navigation shell for the home dashboard.
@@ -43,14 +44,17 @@ class _BottomNavShellState extends State<BottomNavShell> {
   }
 
   Widget _buildBody() {
-    return IndexedStack(
-      index: _currentIndex,
-      children: [
-        widget.child,
-        const _PlaceholderTab(),
-        const _PlaceholderTab(),
-        const _PlaceholderTab(),
-      ],
+    return GrainOverlay(
+      opacity: 0.035,
+      child: IndexedStack(
+        index: _currentIndex,
+        children: [
+          widget.child,
+          const _PlaceholderTab(),
+          const _PlaceholderTab(),
+          const _PlaceholderTab(),
+        ],
+      ),
     );
   }
 
