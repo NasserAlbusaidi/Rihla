@@ -48,22 +48,76 @@
 
 ---
 
+## Milestone: v2.0 — Major UI/UX Overhaul
+
+**Shipped:** 2026-03-31
+**Phases:** 9 | **Plans:** 28 | **Commits:** 190
+
+### What Was Built
+- ThemeExtension-based design token system with warm earthy palette (terracotta, sand, olive), WCAG AA verified, CI-enforced
+- Single-scroll home dashboard with cross-group balance hero, quick-action tray, inline group cards, weekly spending chart
+- Full GoRouter navigation restructuring — 22 Navigator.push calls replaced, all screens URL-addressable
+- Complete screen redesign across all 6 module screens, forms, onboarding, and splash with card-based layouts
+- M3 motion patterns (ContainerTransform, SharedAxis, FadeThrough), haptic feedback, grain textures, animated balance counters
+- AppColors class deleted after migrating 1,375 references to the new token system
+
+### What Worked
+- **Token system before screens** — Phases 14-15 as non-negotiable prerequisites meant zero palette rework across Phases 18-22. Every screen phase pulled from one source of truth
+- **Stitch-first design** — visual specs from Phase 16 gave each subsequent phase a target instead of designing-while-coding. Reduced back-and-forth
+- **Semantic Key infrastructure** — Phase 14's find.byKey() migration meant 143 tests survived 9 phases of visual restructuring with zero false failures
+- **Two-layer AppColors facade** — preserving the 895 call sites through Phase 15 then bulk-deleting in Phase 22 was the right sequencing. No intermediate breakage
+- **OpenContainer URL desync acceptance** — deciding early (Phase 20 D-06) that ContainerTransform animation quality > URL correctness saved repeated debate in Phases 22-23
+- **Wave-based parallel execution** — independent plans within phases (e.g., 21-01 through 21-06) ran in parallel subagents efficiently
+
+### What Was Inefficient
+- **SUMMARY one-liner extraction** — many SUMMARY.md files had malformed or missing one-liner fields, causing noisy auto-extraction at milestone completion. Summaries need stricter frontmatter enforcement
+- **Hardcoded Color regression** — Phase 15 added CI lint, but Phases 21-22 introduced 16 new inline Color(0xFF...) violations in gradient decorations. The lint didn't catch these because they were in allowlisted patterns (gradient stops). Need tighter lint scope
+- **Dead code accumulation** — StaggeredGrid (Phase 17), domain aliases (Phase 15), LogisticsHeroCard (Phase 21) were built but never adopted. Phase-level verification checked that deliverables existed but not that they were consumed downstream
+- **Nyquist validation gaps** — only 3/9 phases fully compliant. Validation was treated as optional rather than mandatory
+- **PLSH-02 checkbox drift** — REQUIREMENTS.md showed PLSH-02 unchecked despite implementation being verified. Manual checkbox updates drift from reality
+
+### Patterns Established
+- **AppColorTokens.light.* direct access** — all token references use the static instance directly, not Theme.of(context).extension. Simpler, grep-friendly, test-friendly
+- **OpenContainer for navigation transitions** — M3 ContainerTransform replaces TapBounce+context.push at the widget level; URL desync is an accepted trade-off
+- **Stack+AnimatedOpacity for tab switching** — replaces IndexedStack in BottomNavShell for true FadeThrough animation (renders all tabs simultaneously)
+- **SharedAxisTransition for form steps** — PageTransitionSwitcher with vertical shared axis and directional _goingBack flag
+- **HapticService for write actions** — centralized haptic feedback service called at point-of-success in expense/settlement/join-group flows
+- **GrainOverlay widget** — reusable grain texture overlay via Stack wrapping, applied to hero cards and headers
+
+### Key Lessons
+1. **CI lint must be comprehensive** — the Phase 15 Color(0xFF...) lint caught direct widget colors but missed gradient stops. Lint rules need to cover all Color instantiation patterns, not just the obvious ones
+2. **Build-then-verify is incomplete** — verifying "does it exist?" without verifying "is it used?" leads to dead code. Phase verification should check both creation and consumption
+3. **Facade-then-delete is the right migration pattern** — for 1,000+ reference migrations, keeping the old API through the intermediate phases and deleting in a final pass avoids mid-milestone breakage
+4. **4 days for 9 visual phases is possible** — with a token system, Stitch specs, and semantic tests as prerequisites, screen redesign is mostly mechanical. The 4-phase foundation (14-17) enabled the 5-phase execution (18-22) to move at speed
+5. **Palette decisions compound** — the Phase 16 monochrome+teal pivot from the original terracotta/sand/olive rippled through every subsequent phase. Making this decision early (before any screen work) was critical
+
+### Cost Observations
+- Model mix: primarily Sonnet for execution, Opus for planning/audits/milestone-completion
+- Sessions: ~15 sessions over 4 days
+- Notable: the entire v2.0 milestone (9 phases, 28 plans, 190 commits) completed in 4 days — 10x faster than v1.0 (91 days). Foundation work (token system, test hardening, Stitch specs) was the multiplier
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
 
-| Milestone | Commits | Phases | Key Change |
-|-----------|---------|--------|------------|
-| v1.0 | 411 | 13 | GSD workflow with audit-fix cycle |
+| Milestone | Commits | Phases | Timeline | Key Change |
+|-----------|---------|--------|----------|------------|
+| v1.0 | 411 | 13 | 91 days | GSD workflow with audit-fix cycle |
+| v2.0 | 190 | 9 | 4 days | Foundation-first visual overhaul with wave parallelism |
 
 ### Cumulative Quality
 
-| Milestone | Tests | Coverage | LOC |
-|-----------|-------|----------|-----|
-| v1.0 | 624 | 80%+ | 24,895 |
+| Milestone | Tests | Coverage | LOC | Files Changed |
+|-----------|-------|----------|-----|---------------|
+| v1.0 | 624 | 80%+ | 24,895 | — |
+| v2.0 | 767 | 80%+ | 29,489 | 254 |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Audit-driven gap closure catches real bugs that code review misses
-2. Wave 0 test stubs enforce TDD discipline at scale
-3. Bridge patterns need adjacent teardown phases to avoid debt accumulation
+1. Audit-driven gap closure catches real bugs that code review misses (v1.0, v2.0)
+2. Wave 0 test stubs enforce TDD discipline at scale (v1.0)
+3. Facade-then-delete is the safest pattern for 1,000+ reference migrations (v1.0 Supabase, v2.0 AppColors)
+4. Foundation phases (infrastructure before features) enable exponential execution speed in later phases (v2.0: 4 days vs v1.0: 91 days)
+5. CI lint rules must cover all instantiation patterns, not just the obvious ones (v2.0 gradient Color regression)
