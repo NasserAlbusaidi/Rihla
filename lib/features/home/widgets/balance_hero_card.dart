@@ -62,6 +62,13 @@ class BalanceHeroCard extends ConsumerWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusLarge),
         boxShadow: AppColors.shadowRaised,
+        image: const DecorationImage(
+          image: AssetImage('assets/textures/grain.png'),
+          repeat: ImageRepeat.repeat,
+          opacity: 0.035,
+          fit: BoxFit.none,
+          alignment: Alignment.topLeft,
+        ),
       ),
       padding: const EdgeInsets.all(AppColors.space16),
       child: Row(
@@ -113,6 +120,13 @@ class BalanceHeroCard extends ConsumerWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusLarge),
         boxShadow: AppColors.shadowRaised,
+        image: const DecorationImage(
+          image: AssetImage('assets/textures/grain.png'),
+          repeat: ImageRepeat.repeat,
+          opacity: 0.035,
+          fit: BoxFit.none,
+          alignment: Alignment.topLeft,
+        ),
       ),
       padding: const EdgeInsets.all(AppColors.space16),
       child: const Row(

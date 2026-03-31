@@ -39,6 +39,13 @@ class EventExpenseHero extends ConsumerWidget {
           borderRadius: BorderRadius.circular(AppColors.radiusLarge),
           border: Border.all(color: AppColors.border),
           boxShadow: AppColors.shadowRaised,
+          image: const DecorationImage(
+            image: AssetImage('assets/textures/grain.png'),
+            repeat: ImageRepeat.repeat,
+            opacity: 0.035,
+            fit: BoxFit.none,
+            alignment: Alignment.topLeft,
+          ),
         ),
         padding: const EdgeInsets.all(AppColors.space16),
         child: expensesAsync.when(

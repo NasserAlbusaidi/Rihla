@@ -51,6 +51,13 @@ class LedgerHeroCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppColors.cardShadow,
+        image: const DecorationImage(
+          image: AssetImage('assets/textures/grain.png'),
+          repeat: ImageRepeat.repeat,
+          opacity: 0.035,
+          fit: BoxFit.none,
+          alignment: Alignment.topLeft,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
