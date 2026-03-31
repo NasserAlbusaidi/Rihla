@@ -13,7 +13,9 @@ import '../keys/home_keys.dart';
 /// The Groups tab (index 0) shows the provided [child] widget.
 /// All other tabs show a [_PlaceholderTab] with "Coming soon".
 ///
-/// Uses [IndexedStack] to preserve scroll state of the Groups tab.
+/// Uses Stack + AnimatedOpacity for M3 FadeThrough tab switching while
+/// preserving all tab widget state (Phase 22 P03, D-07).
+/// IgnorePointer prevents interaction with invisible tabs.
 ///
 /// NOTE: GoRouter is NOT used for tab navigation per RESEARCH Pitfall 3.
 /// Phase 19 will wire real GoRouter routes for non-Groups tabs.
@@ -44,16 +46,26 @@ class _BottomNavShellState extends State<BottomNavShell> {
   }
 
   Widget _buildBody() {
+    final tabs = [
+      widget.child,
+      const _PlaceholderTab(),
+      const _PlaceholderTab(),
+      const _PlaceholderTab(),
+    ];
     return GrainOverlay(
       opacity: 0.035,
-      child: IndexedStack(
-        index: _currentIndex,
-        children: [
-          widget.child,
-          const _PlaceholderTab(),
-          const _PlaceholderTab(),
-          const _PlaceholderTab(),
-        ],
+      child: Stack(
+        children: List.generate(tabs.length, (index) {
+          return AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            opacity: index == _currentIndex ? 1.0 : 0.0,
+            child: IgnorePointer(
+              ignoring: index != _currentIndex,
+              child: tabs[index],
+            ),
+          );
+        }),
       ),
     );
   }

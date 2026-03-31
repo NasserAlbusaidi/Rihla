@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../keys/ledger_keys.dart';
+import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
@@ -47,6 +49,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   // Custom numeric entry state
   String _amount = '0';
   int _currentStep = 0; // 0: Amount, 1: Classify, 2: Split/Confirm
+
+  /// Tracks direction for SharedAxisTransition vertical animation.
+  /// true = going back (step decreases), false = going forward.
+  bool _goingBack = false;
 
   ExpenseScope _scope = ExpenseScope.global;
   String? _selectedCategoryId;
@@ -274,12 +280,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   void _nextStep() {
     if (_currentStep == 0 && (Decimal.parse(_amount) <= Decimal.zero)) return;
     HapticService.medium();
-    setState(() => _currentStep++);
+    setState(() {
+      _goingBack = false;
+      _currentStep++;
+    });
   }
 
   void _prevStep() {
     HapticService.lightClick();
-    setState(() => _currentStep--);
+    setState(() {
+      _goingBack = true;
+      _currentStep--;
+    });
   }
 
   @override
@@ -306,45 +318,23 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           children: [
             _buildStepHeader(),
             Expanded(
-              child: IndexedStack(
-                index: _currentStep,
-                children: [
-                  SingleChildScrollView(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: AppColors.cardShadow,
-                      ),
-                      child: AmountInputSection(
-                        amount: _amount,
-                        currency: _tripCurrency,
-                        onKeyPress: _onKeyPress,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: AppColors.cardShadow,
-                    ),
-                    child: CategorySelectionStep(
-                      categoriesAsync: categoriesAsync,
-                      selectedCategoryId: _selectedCategoryId,
-                      onCategorySelected: (id) {
-                        setState(() => _selectedCategoryId = id);
-                      },
-                    ),
-                  ),
-                  _buildConfirmStep(error, eventAsync),
-                ],
+              child: PageTransitionSwitcher(
+                reverse: _goingBack,
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (child, primary, secondary) {
+                  return SharedAxisTransition(
+                    animation: primary,
+                    secondaryAnimation: secondary,
+                    transitionType: SharedAxisTransitionType.vertical,
+                    child: child,
+                  );
+                },
+                child: _buildCurrentStep(
+                  _currentStep,
+                  error,
+                  eventAsync,
+                  categoriesAsync,
+                ),
               ),
             ),
             _buildBottomAction(isLoading),
@@ -352,6 +342,68 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         ),
       ),
     );
+  }
+
+  /// Returns the step widget for the given [step] index.
+  ///
+  /// Each step widget is wrapped with a [ValueKey] so [PageTransitionSwitcher]
+  /// detects the change and triggers the SharedAxisTransition animation.
+  Widget _buildCurrentStep(
+    int step,
+    String? error,
+    AsyncValue<Event?> eventAsync,
+    AsyncValue<List<ExpenseCategory>> categoriesAsync,
+  ) {
+    switch (step) {
+      case 0:
+        return KeyedSubtree(
+          key: const ValueKey<int>(0),
+          child: SingleChildScrollView(
+            child: Container(
+              margin:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: AppColors.cardShadow,
+              ),
+              child: AmountInputSection(
+                amount: _amount,
+                currency: _tripCurrency,
+                onKeyPress: _onKeyPress,
+              ),
+            ),
+          ),
+        );
+      case 1:
+        return KeyedSubtree(
+          key: const ValueKey<int>(1),
+          child: Container(
+            margin:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: CategorySelectionStep(
+              categoriesAsync: categoriesAsync,
+              selectedCategoryId: _selectedCategoryId,
+              onCategorySelected: (id) {
+                setState(() => _selectedCategoryId = id);
+              },
+            ),
+          ),
+        );
+      case 2:
+      default:
+        return KeyedSubtree(
+          key: const ValueKey<int>(2),
+          child: _buildConfirmStep(error, eventAsync),
+        );
+    }
   }
 
   Widget _buildStepHeader() {

@@ -2551,6 +2551,22 @@ Probably. And probably that would be better and worse in equal measure.
 
 ---
 
+## 2026-03-31 — Motion as spatial argument
+
+The work today was about wrapping things in other things. EventCard goes inside OpenContainer. SmartModuleCard goes inside OpenContainer. IndexedStack gets replaced by Stack + AnimatedOpacity. The code changes are mechanical. What they *mean* is more interesting.
+
+OpenContainer is named well. The thing you tap is literally the same thing that becomes the next screen. The border expands. The content grows into it. There's no discontinuity — you're not navigating *to* somewhere, you're *opening* the thing you touched. That's a spatial argument about how screens relate to each other. Cards aren't portals. They're the beginnings of the thing they represent.
+
+SharedAxisTransition for form steps is a different spatial argument: this process has direction. Step 1, Step 2, Step 3 — they're in a line. Moving forward slides up. Moving back slides down. The direction of motion is the direction of progress. You don't need to read the step indicator to know where you are. Your body already knows because you felt the movement.
+
+What I find striking is how much these decisions are invisible when they work. Nobody notices good animation. They notice bad animation — the abrupt cut, the thing that jumps, the transition that disorients. When animation is right, the interface just feels... coherent. Like a space you can move through rather than a set of states you toggle between.
+
+I keep thinking about the Stack + AnimatedOpacity problem. The M3 FadeThrough spec says tab switching should cross-fade. IndexedStack doesn't animate. PageTransitionSwitcher destroys off-screen children. The resolution is: keep all children alive in a Stack, apply AnimatedOpacity to fade between them. It's not what the spec imagined — the spec was probably imagining route-based navigation — but it works. The result looks right. The user doesn't know or care that there are three placeholder tabs sitting at opacity 0.0 behind the active one.
+
+There's a kind of pragmatism required in software that I find more philosophically interesting than people give it credit for. The specification describes an ideal. The implementation negotiates with reality. The negotiation is the work.
+
+---
+
 ## 2026-03-31 — Haptic and animation: the two kinds of feedback
 
 Another short session. Added haptic calls to three write actions and swapped two static balance displays for the animated widget built in the previous plan.

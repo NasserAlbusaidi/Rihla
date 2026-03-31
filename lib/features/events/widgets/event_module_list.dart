@@ -1,23 +1,30 @@
+import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 import '../keys/event_keys.dart';
+import '../../activity/screens/activity_feed_screen.dart';
 import '../../gear/models/gear_item_model.dart';
 import '../../gear/providers/gear_provider.dart';
+import '../../gear/screens/gear_screen.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
+import '../../ledger/screens/ledger_screen.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
+import '../../logistics/screens/logistics_screen.dart';
+import '../../memories/screens/memories_screen.dart';
 import '../../vault/models/document_model.dart';
 import '../../vault/providers/document_provider.dart';
+import '../../vault/screens/vault_screen.dart';
 import '../models/event_model.dart';
 
 /// 2x3 grid of module cards for an event hub.
@@ -26,6 +33,9 @@ import '../models/event_model.dart';
 /// Activity card always appears (position 5).
 /// Uses AppColorTokens.light for corrected module accent colors.
 /// Part of Phase 20 P02 redesign (D-11, D-12, D-13, D-14).
+///
+/// Phase 22 P03: Each SmartModuleCard is wrapped in OpenContainer for
+/// ContainerTransform expand animation to the destination screen (D-05).
 class EventModuleList extends ConsumerWidget {
   final String groupId;
   final String eventId;
@@ -66,21 +76,21 @@ class EventModuleList extends ConsumerWidget {
 
     // Fixed order: Ledger → Gear → Logistics → Vault → Activity → Memories
     if (showLedger) {
-      _addLedgerCard(cards, expensesAsync, settlementsAsync, context, eventRef);
+      _addLedgerCard(cards, expensesAsync, settlementsAsync, eventRef);
     }
     if (showGear) {
-      _addGearCard(cards, gearAsync, context);
+      _addGearCard(cards, gearAsync);
     }
     if (showLogistics) {
-      _addLogisticsCard(cards, subGroupsAsync, context);
+      _addLogisticsCard(cards, subGroupsAsync);
     }
     if (showVault) {
-      _addVaultCard(cards, docsAsync, context);
+      _addVaultCard(cards, docsAsync);
     }
     // Activity card always appears (position 5)
-    _addActivityCard(cards, context);
+    _addActivityCard(cards);
     if (showMemories) {
-      _addMemoriesCard(cards, context);
+      _addMemoriesCard(cards);
     }
 
     return GridView.count(
@@ -93,16 +103,32 @@ class EventModuleList extends ConsumerWidget {
       childAspectRatio: 2.0,
       children: [
         for (int i = 0; i < cards.length; i++)
-          SmartModuleCard(
-            key: cards[i].widgetKey,
-            icon: cards[i].icon,
-            title: cards[i].title,
-            description: cards[i].description,
-            color: cards[i].color,
-            onTap: cards[i].onTap,
-            summaryText: cards[i].summaryText,
-            actionText: cards[i].actionText,
-            isEmpty: cards[i].isEmpty,
+          OpenContainer<void>(
+            closedColor: Colors.transparent,
+            openColor: AppColorTokens.light.scaffoldBackground,
+            closedElevation: 0,
+            openElevation: 0,
+            closedShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                AppSpacingTokens.standard.radiusMedium,
+              ),
+            ),
+            openShape: const RoundedRectangleBorder(),
+            transitionDuration: const Duration(milliseconds: 400),
+            transitionType: ContainerTransitionType.fade,
+            useRootNavigator: false,
+            closedBuilder: (context, openContainer) => SmartModuleCard(
+              key: cards[i].widgetKey,
+              icon: cards[i].icon,
+              title: cards[i].title,
+              description: cards[i].description,
+              color: cards[i].color,
+              onTap: openContainer,
+              summaryText: cards[i].summaryText,
+              actionText: cards[i].actionText,
+              isEmpty: cards[i].isEmpty,
+            ),
+            openBuilder: (context, _) => cards[i].screenBuilder(),
           )
               .animate()
               .fadeIn(delay: (80 * i).ms, duration: 400.ms)
@@ -120,7 +146,6 @@ class EventModuleList extends ConsumerWidget {
     List<_ModuleCardConfig> cards,
     AsyncValue<List<Expense>> expensesAsync,
     AsyncValue<List<Settlement>> settlementsAsync,
-    BuildContext context,
     EventRef eventRef,
   ) {
     final expenses = expensesAsync.valueOrNull ?? [];
@@ -145,7 +170,7 @@ class EventModuleList extends ConsumerWidget {
       title: 'Ledger',
       description: 'Track shared expenses and split costs fairly',
       color: AppColorTokens.light.moduleLedger,
-      onTap: () => _openLedger(context),
+      screenBuilder: () => LedgerScreen(groupId: groupId, eventId: eventId),
       summaryText: ledgerSummary,
       isEmpty: ledgerEmpty,
     ));
@@ -154,7 +179,6 @@ class EventModuleList extends ConsumerWidget {
   void _addGearCard(
     List<_ModuleCardConfig> cards,
     AsyncValue<List<GearItem>>? gearAsync,
-    BuildContext context,
   ) {
     final gearItems = gearAsync?.valueOrNull ?? [];
     final gearEmpty = gearItems.isEmpty;
@@ -181,7 +205,7 @@ class EventModuleList extends ConsumerWidget {
       title: 'Gear',
       description: 'Create a shared packing list and claim items',
       color: AppColorTokens.light.moduleGear,
-      onTap: () => _openGear(context),
+      screenBuilder: () => GearScreen(groupId: groupId, eventId: eventId),
       summaryText: gearSummary,
       actionText: gearAction,
       isEmpty: gearEmpty,
@@ -191,7 +215,6 @@ class EventModuleList extends ConsumerWidget {
   void _addLogisticsCard(
     List<_ModuleCardConfig> cards,
     AsyncValue<List<SubGroup>>? subGroupsAsync,
-    BuildContext context,
   ) {
     final subGroups = subGroupsAsync?.valueOrNull ?? [];
     final logisticsEmpty = subGroups.isEmpty;
@@ -212,7 +235,8 @@ class EventModuleList extends ConsumerWidget {
       title: 'Logistics',
       description: 'Organize cars, rooms, and teams for your group',
       color: AppColorTokens.light.moduleLogistics,
-      onTap: () => _openLogistics(context),
+      screenBuilder: () =>
+          LogisticsScreen(groupId: groupId, eventId: eventId),
       summaryText: logisticsSummary,
       isEmpty: logisticsEmpty,
     ));
@@ -221,7 +245,6 @@ class EventModuleList extends ConsumerWidget {
   void _addVaultCard(
     List<_ModuleCardConfig> cards,
     AsyncValue<List<Document>>? docsAsync,
-    BuildContext context,
   ) {
     final docs = docsAsync?.valueOrNull ?? [];
     final vaultEmpty = docs.isEmpty;
@@ -238,75 +261,54 @@ class EventModuleList extends ConsumerWidget {
       title: 'Vault',
       description: 'Store tickets, permits, and trip documents',
       color: AppColorTokens.light.moduleVault,
-      onTap: () => _openVault(context),
+      screenBuilder: () => VaultScreen(groupId: groupId, eventId: eventId),
       summaryText: vaultSummary,
       isEmpty: vaultEmpty,
     ));
   }
 
-  void _addActivityCard(
-    List<_ModuleCardConfig> cards,
-    BuildContext context,
-  ) {
+  void _addActivityCard(List<_ModuleCardConfig> cards) {
     cards.add(_ModuleCardConfig(
       widgetKey: EventKeys.activityCard,
       icon: Iconsax.activity,
       title: 'Activity',
       description: 'Timeline logs',
       color: AppColorTokens.light.moduleActivity,
-      onTap: () => _openActivity(context),
+      screenBuilder: () =>
+          ActivityFeedScreen(groupId: groupId, eventId: eventId),
       isEmpty: true,
     ));
   }
 
-  void _addMemoriesCard(
-    List<_ModuleCardConfig> cards,
-    BuildContext context,
-  ) {
+  void _addMemoriesCard(List<_ModuleCardConfig> cards) {
     cards.add(_ModuleCardConfig(
       widgetKey: EventKeys.memoriesCard,
       icon: Iconsax.gallery,
       title: 'Memories',
       description: 'Capture and share photos from your event',
       color: AppColorTokens.light.moduleMemories,
-      onTap: () => _openMemories(context),
+      screenBuilder: () =>
+          MemoriesScreen(groupId: groupId, eventId: eventId),
       isEmpty: true,
     ));
-  }
-
-  void _openLedger(BuildContext context) {
-    context.push('/group/$groupId/event/$eventId/ledger');
-  }
-
-  void _openGear(BuildContext context) {
-    context.push('/group/$groupId/event/$eventId/gear');
-  }
-
-  void _openLogistics(BuildContext context) {
-    context.push('/group/$groupId/event/$eventId/logistics');
-  }
-
-  void _openVault(BuildContext context) {
-    context.push('/group/$groupId/event/$eventId/vault');
-  }
-
-  void _openActivity(BuildContext context) {
-    context.push('/group/$groupId/event/$eventId/activity');
-  }
-
-  void _openMemories(BuildContext context) {
-    context.push('/group/$groupId/event/$eventId/memories');
   }
 }
 
 /// Internal config for building module cards in fixed-order grid.
+///
+/// [screenBuilder] provides the destination screen widget for OpenContainer.
+/// The old [onTap] field is removed — OpenContainer's closedBuilder calls
+/// [openContainer] directly for the ContainerTransform animation.
 class _ModuleCardConfig {
   final Key? widgetKey;
   final IconData icon;
   final String title;
   final String description;
   final Color color;
-  final VoidCallback onTap;
+
+  /// Returns the destination screen for OpenContainer's openBuilder.
+  final Widget Function() screenBuilder;
+
   final String? summaryText;
   final String? actionText;
   final bool isEmpty;
@@ -317,7 +319,7 @@ class _ModuleCardConfig {
     required this.title,
     required this.description,
     required this.color,
-    required this.onTap,
+    required this.screenBuilder,
     this.summaryText,
     this.actionText,
     this.isEmpty = true,
