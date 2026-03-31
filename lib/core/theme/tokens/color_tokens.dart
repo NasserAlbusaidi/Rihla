@@ -43,6 +43,11 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     required this.bottomNavBackground,
     required this.bottomNavActiveIcon,
     required this.bottomNavInactiveIcon,
+    required this.inputFillWarm,
+    required this.focusBorderWarm,
+    required this.borderWarm,
+    required this.warning,
+    required this.primaryDark,
   });
 
   /// Teal — primary action color (buttons, FABs, focused inputs, links)
@@ -150,11 +155,33 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// Inactive tab icon — decorative only (#9CA3AF)
   final Color bottomNavInactiveIcon;
 
+  /// Warm sand form field fill (#F5EDE1) — earthy alternative to inputFill for forms.
+  final Color inputFillWarm;
+
+  /// Terracotta focus border (#CC6B49) — warm form focus indicator.
+  final Color focusBorderWarm;
+
+  /// Warm gray enabled border (#E5D5C0) — earthy alternative to border for form inputs.
+  final Color borderWarm;
+
+  /// Amber warning color (#F59E0B) — used for warning badges and alerts.
+  final Color warning;
+
+  /// Darker teal for gradient end (#0A6B65) — pairs with primary for CTA gradient.
+  final Color primaryDark;
+
   /// Computed dark header gradient (not const — LinearGradient is not const-constructable).
   LinearGradient get headerGradient => LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [headerGradientStart, headerGradientEnd],
+      );
+
+  /// Teal-to-dark-teal gradient for CTA buttons and accents.
+  LinearGradient get primaryGradient => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [primary, primaryDark],
       );
 
   /// Default neutral + teal light palette instance.
@@ -194,6 +221,11 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     bottomNavBackground: Color(0xFFFFFFFF),
     bottomNavActiveIcon: Color(0xFF0D7B74),
     bottomNavInactiveIcon: Color(0xFF9CA3AF),
+    inputFillWarm: Color(0xFFF5EDE1),
+    focusBorderWarm: Color(0xFFCC6B49),
+    borderWarm: Color(0xFFE5D5C0),
+    warning: Color(0xFFF59E0B),
+    primaryDark: Color(0xFF0A6B65),
   );
 
   @override
@@ -233,6 +265,11 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     Color? bottomNavBackground,
     Color? bottomNavActiveIcon,
     Color? bottomNavInactiveIcon,
+    Color? inputFillWarm,
+    Color? focusBorderWarm,
+    Color? borderWarm,
+    Color? warning,
+    Color? primaryDark,
   }) {
     return AppColorTokens(
       primary: primary ?? this.primary,
@@ -270,6 +307,11 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       bottomNavBackground: bottomNavBackground ?? this.bottomNavBackground,
       bottomNavActiveIcon: bottomNavActiveIcon ?? this.bottomNavActiveIcon,
       bottomNavInactiveIcon: bottomNavInactiveIcon ?? this.bottomNavInactiveIcon,
+      inputFillWarm: inputFillWarm ?? this.inputFillWarm,
+      focusBorderWarm: focusBorderWarm ?? this.focusBorderWarm,
+      borderWarm: borderWarm ?? this.borderWarm,
+      warning: warning ?? this.warning,
+      primaryDark: primaryDark ?? this.primaryDark,
     );
   }
 
@@ -312,6 +354,11 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       bottomNavBackground: Color.lerp(bottomNavBackground, other.bottomNavBackground, t)!,
       bottomNavActiveIcon: Color.lerp(bottomNavActiveIcon, other.bottomNavActiveIcon, t)!,
       bottomNavInactiveIcon: Color.lerp(bottomNavInactiveIcon, other.bottomNavInactiveIcon, t)!,
+      inputFillWarm: Color.lerp(inputFillWarm, other.inputFillWarm, t)!,
+      focusBorderWarm: Color.lerp(focusBorderWarm, other.focusBorderWarm, t)!,
+      borderWarm: Color.lerp(borderWarm, other.borderWarm, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
+      primaryDark: Color.lerp(primaryDark, other.primaryDark, t)!,
     );
   }
 }
