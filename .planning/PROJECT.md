@@ -65,7 +65,22 @@ Groups persist across events and accumulate financial history — friends settle
 
 ### Active
 
-(No active requirements — next milestone not yet planned)
+- [ ] Fix "Invite Friend" quick-action — currently wired to join-group instead of invite/share
+- [ ] Fix "Activity" quick-action button — currently non-functional
+- [ ] Improve group card visual distinction — richer cards, less flat
+- [ ] Clarify "This Week" chart — axis labels, clear what it measures
+- [ ] Reduce dashboard empty feel — better visual density and content layout
+
+## Current Milestone: v2.1 Home Screen Completion
+
+**Goal:** Fix all broken actions, improve visual density, and polish the home dashboard
+
+**Target features:**
+- Fix "Invite Friend" button (wired to join-group instead of invite/share)
+- Fix "Activity" quick-action button (dead tap)
+- Improve group card visual distinction (richer cards, less flat)
+- Clarify the "This Week" chart (axis labels, what it measures)
+- Reduce empty feel — better visual density and content layout
 
 ### Out of Scope
 
@@ -142,4 +157,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after v2.0 milestone — Major UI/UX Overhaul complete. 767 tests, 29,489 LOC. Next milestone not yet planned.*
+*Last updated: 2026-03-31 after v2.1 milestone start — Home Screen Completion*

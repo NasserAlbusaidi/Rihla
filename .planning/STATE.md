@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Major UI/UX Overhaul
-status: completed
-stopped_at: Milestone v2.0 archived
+milestone: v2.1
+milestone_name: Home Screen Completion
+status: active
+stopped_at: null
 last_updated: "2026-03-31"
 last_activity: 2026-03-31
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 28
-  completed_plans: 28
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,15 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Milestone v2.0 complete. Next milestone not yet planned.
+**Current focus:** v2.1 Home Screen Completion — fix broken actions, improve visual density, polish dashboard
 
 ## Current Position
 
-Milestone: v2.0 (Major UI/UX Overhaul) — COMPLETED 2026-03-31
-All 9 phases (14-22) complete. 28/28 plans executed.
-767 tests passing. 29,489 LOC Dart.
-
-Next action: `/gsd:new-milestone` to start next milestone
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-31 — Milestone v2.1 started
 
 ## Performance Metrics
 
@@ -46,7 +45,7 @@ Next action: `/gsd:new-milestone` to start next milestone
 
 ### Known Risks
 
-None — all v2.0 risks resolved.
+None identified yet.
 
 ### Blockers
 
@@ -55,5 +54,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-31
-Stopped at: Milestone v2.0 archived
-Next action: `/gsd:new-milestone` to start next milestone
+Stopped at: Defining requirements for v2.1
+Next action: Define requirements → create roadmap
