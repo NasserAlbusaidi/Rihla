@@ -15,6 +15,7 @@ import '../../features/groups/screens/group_detail_screen.dart';
 import '../../features/groups/screens/group_settings_screen.dart';
 import '../../features/groups/screens/group_settle_up_screen.dart';
 import '../../features/groups/screens/join_group_screen.dart';
+import '../../features/home/screens/cross_group_activity_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/ledger/screens/add_expense_screen.dart';
 import '../../features/ledger/screens/edit_expense_screen.dart';
@@ -59,6 +60,8 @@ class AppRoutes {
   static const String eventMemoryDetail =
       '/group/:gid/event/:eid/memories/:memId';
   static const String eventActivity = '/group/:gid/event/:eid/activity';
+  // Cross-group activity (Phase 23)
+  static const String activity = '/activity';
 }
 
 /// Shared slide-right page transition used by all route-level screens.
@@ -401,6 +404,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const SettingsScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
+
+      // Cross-group activity (Phase 23)
+      GoRoute(
+        path: AppRoutes.activity,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const CrossGroupActivityScreen(),
           transitionsBuilder: _slideRightTransition,
         ),
       ),
