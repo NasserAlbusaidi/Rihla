@@ -59,7 +59,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 
 ### v2.2 Profile Page
 
-- [ ] **Phase 25: Profile Screen Core** - Profile screen with identity management and cross-group stats
+- [x] **Phase 25: Profile Screen Core** - Profile screen with identity management and cross-group stats (completed 2026-04-01)
 - [ ] **Phase 26: Settings & Support** - Notification toggles, app info, and support section
 
 ## Phase Details
@@ -75,7 +75,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 **Plans**: 2 plans
 Plans:
 - [x] 25-01-PLAN.md — Data layer + profile screen UI (keys, initials circle, stats provider, name propagation, screen, bottom sheet, tests)
-- [ ] 25-02-PLAN.md — Navigation wiring (route /profile, home header avatar, bottom nav tab, delete old settings screen)
+- [x] 25-02-PLAN.md — Navigation wiring (route /profile, home header avatar, bottom nav tab, delete old settings screen)
 **UI hint**: yes
 
 ### Phase 26: Settings & Support
@@ -98,5 +98,5 @@ Plans:
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
-| 25 | v2.2 | 1/2 | In Progress|  |
+| 25 | v2.2 | 2/2 | Complete   | 2026-04-01 |
 | 26 | v2.2 | 0/? | Not started | - |
