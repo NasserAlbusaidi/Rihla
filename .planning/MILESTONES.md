@@ -1,5 +1,29 @@
 # Milestones
 
+## v2.1 Home Screen Completion (Shipped: 2026-04-01)
+
+**Phases:** 2 | **Plans:** 3 | **Tasks:** 4
+**Timeline:** 1 day (2026-03-31 → 2026-04-01)
+**Codebase:** ~30,000 LOC Dart | 789 tests | 80%+ coverage
+**Files changed:** 10 source files (+1,342 / -145)
+
+**Delivered:** Fixed all broken home screen quick actions and improved visual density — group cards now have colored accent strips and event context, charts show readable labels, and the dashboard has tighter spacing with a clear group list header.
+
+**Key accomplishments:**
+
+1. **Quick action fixes** — Invite Friend opens native share sheet with invite code (group picker for multi-group users), Activity navigates to new CrossGroupActivityScreen, 0-groups edge cases show SnackBar feedback
+2. **Group card enrichment** — 4dp earthy accent strip (hash-based color per group) and event context line showing last event name with relative timestamp
+3. **Chart clarity** — WeeklySpendingCard title updated to "Weekly Spending (OMR)" with per-bar amount labels
+4. **Dashboard density** — Spacing tightened to 12dp between sections, "Your Groups (N)" header added above group list
+
+**Tech debt carried forward:**
+
+- `group_card.dart` slot 4 (#7C6E5A) accent color has no AppColorTokens equivalent (plan-sanctioned)
+- `home_screen.dart:146` uses string literal `/activity` instead of AppRoutes constant
+- Phase 23 Nyquist validation missing (Phase 24 compliant)
+
+---
+
 ## v2.0 Major UI/UX Overhaul (Shipped: 2026-03-31)
 
 **Phases:** 9 | **Plans:** 28 | **Tasks:** 46

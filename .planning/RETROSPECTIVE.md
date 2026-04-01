@@ -98,6 +98,44 @@
 
 ---
 
+## Milestone: v2.1 — Home Screen Completion
+
+**Shipped:** 2026-04-01
+**Phases:** 2 | **Plans:** 3 | **Commits:** 30
+
+### What Was Built
+- Quick action fixes: Invite Friend → share sheet with invite code, Activity → CrossGroupActivityScreen, 0-groups edge case feedback
+- GroupCard accent strip (hash-based earthy color per group) and event context line (last event name + relative timestamp)
+- Weekly spending chart with "Weekly Spending (OMR)" title and per-bar amount labels
+- Dashboard spacing tightened to 12dp, "Your Groups (N)" section header above group list
+
+### What Worked
+- **Tight scope** — 9 requirements across 2 phases, all clearly defined from the v2.0 audit. No scope creep
+- **Same-day turnaround** — both phases planned, executed, and verified in a single day. Foundation work from v2.0 (token system, semantic tests) made this possible
+- **Audit-first completion** — running `/gsd:audit-milestone` before completion caught the Nyquist gap on Phase 23 and documented tech debt items cleanly
+- **TDD discipline held** — even for small visual changes (accent strip, chart labels), RED→GREEN→REFACTOR was followed with proper test commits
+
+### What Was Inefficient
+- **SUMMARY one-liner extraction still noisy** — Plan 24-01's one-liner was a bug description rather than an accomplishment. The extraction heuristic needs improvement
+- **Phase 23 Nyquist validation missing** — skipped during execution, caught at audit. Should have been part of phase completion
+- **Minimal scope overhead** — 2-phase milestone may not justify full milestone ceremony (archive, tag, retrospective). Consider a lighter "patch" workflow for sub-milestones
+
+### Patterns Established
+- **Hash-based accent colors** — `groupId.hashCode.abs() % N` for deterministic visual identity without user configuration
+- **IntrinsicHeight + CrossAxisAlignment.stretch** — pattern for full-height decorative elements in variable-height cards
+
+### Key Lessons
+1. **Small milestones ship fast but have proportionally high ceremony cost** — 2 phases took ~4 hours of work but milestone completion takes almost as long as the work itself. For patch-level milestones, consider a lighter archival workflow
+2. **Audit before complete is non-negotiable** — the audit caught 4 tech debt items and the Nyquist gap that would have been invisible otherwise
+3. **v2.0 foundation compounds** — token system, semantic tests, and Stitch workflow meant v2.1 visual changes were entirely mechanical. The investment keeps paying off
+
+### Cost Observations
+- Model mix: Sonnet for execution, Opus for audit and milestone completion
+- Sessions: 2 sessions over 1 day
+- Notable: the entire milestone (2 phases, 3 plans, 30 commits) completed in a single day — foundation compound effect from v2.0
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -106,6 +144,7 @@
 |-----------|---------|--------|----------|------------|
 | v1.0 | 411 | 13 | 91 days | GSD workflow with audit-fix cycle |
 | v2.0 | 190 | 9 | 4 days | Foundation-first visual overhaul with wave parallelism |
+| v2.1 | 30 | 2 | 1 day | Focused fix+polish on existing foundation |
 
 ### Cumulative Quality
 
@@ -113,11 +152,13 @@
 |-----------|-------|----------|-----|---------------|
 | v1.0 | 624 | 80%+ | 24,895 | — |
 | v2.0 | 767 | 80%+ | 29,489 | 254 |
+| v2.1 | 789 | 80%+ | ~30,000 | 10 |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Audit-driven gap closure catches real bugs that code review misses (v1.0, v2.0)
+1. Audit-driven gap closure catches real bugs that code review misses (v1.0, v2.0, v2.1)
 2. Wave 0 test stubs enforce TDD discipline at scale (v1.0)
 3. Facade-then-delete is the safest pattern for 1,000+ reference migrations (v1.0 Supabase, v2.0 AppColors)
-4. Foundation phases (infrastructure before features) enable exponential execution speed in later phases (v2.0: 4 days vs v1.0: 91 days)
+4. Foundation phases (infrastructure before features) enable exponential execution speed in later phases (v2.0: 4 days, v2.1: 1 day — compound effect)
 5. CI lint rules must cover all instantiation patterns, not just the obvious ones (v2.0 gradient Color regression)
+6. Small milestones ship fast but have proportionally high ceremony cost — consider lighter workflows for patch-level work (v2.1)

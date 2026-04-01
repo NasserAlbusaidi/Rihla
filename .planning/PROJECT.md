@@ -65,23 +65,19 @@ Groups persist across events and accumulate financial history — friends settle
 - ✓ Quick action buttons correctly wired (Invite Friend → share sheet, Activity → cross-group screen) — v2.1 Phase 23
 - ✓ Cross-group activity screen — v2.1 Phase 23
 - ✓ 0-groups edge case SnackBar feedback — v2.1 Phase 23
+- ✓ Group card visual distinction — accent strip + event context line — v2.1 Phase 24
+- ✓ Chart clarity — "Weekly Spending (OMR)" title + per-bar amount labels — v2.1 Phase 24
+- ✓ Dashboard density — 12dp spacing, "Your Groups (N)" section header — v2.1 Phase 24
 
 ### Active
 
-- [ ] Improve group card visual distinction — richer cards, less flat
-- [ ] Clarify "This Week" chart — axis labels, clear what it measures
-- [ ] Reduce dashboard empty feel — better visual density and content layout
+(None — planning next milestone)
 
-## Current Milestone: v2.1 Home Screen Completion
+## Current State
 
-**Goal:** Fix all broken actions, improve visual density, and polish the home dashboard
+**v2.1 shipped:** 2026-04-01 — Home screen quick actions fixed, group cards enriched, chart labels added, dashboard density improved.
 
-**Target features:**
-- Fix "Invite Friend" button (wired to join-group instead of invite/share)
-- Fix "Activity" quick-action button (dead tap)
-- Improve group card visual distinction (richer cards, less flat)
-- Clarify the "This Week" chart (axis labels, what it measures)
-- Reduce empty feel — better visual density and content layout
+**Next milestone:** Not yet planned. Run `/gsd:new-milestone` to start.
 
 ### Out of Scope
 
@@ -99,17 +95,18 @@ Groups persist across events and accumulate financial history — friends settle
 
 ## Context
 
-- **Codebase**: 29,489 LOC Dart across ~130 files, feature-first architecture
+- **Codebase**: ~30,000 LOC Dart across ~130 files, feature-first architecture
 - **Architecture**: Riverpod 2.x, GoRouter declarative routing (all screens URL-addressable), SQLite offline cache, Firebase Firestore backend
 - **Backend**: Firebase-only — firebase_core 4.x, cloud_firestore 6.x, firebase_auth 6.x, firebase_storage 13.x. Anonymous auth
 - **Data layer**: FirestoreRepository base class → 9 services. asyncMap SQLite side-write pipeline. BalanceCacheRepository for fast local balance queries
 - **Design system**: ThemeExtension-based warm earthy palette (terracotta, sand, olive). AppColorTokens/AppSpacingTokens/AppShadowTokens. WCAG AA verified. CI lint enforces token usage
 - **Navigation**: GoRouter with 23 route constants, OpenContainer/SharedAxis/FadeThrough M3 transitions
 - **Financial precision**: All money math uses `Decimal` package, stored as integer fils in Firestore via MoneySerializer. Currency is OMR (3 decimal places)
-- **Testing**: 767 tests, 80%+ coverage CI-enforced, fake_cloud_firestore for integration tests, semantic Key identifiers for rename resilience
+- **Testing**: 789 tests, 80%+ coverage CI-enforced, fake_cloud_firestore for integration tests, semantic Key identifiers for rename resilience
 - **User base**: Small, Oman-focused. Anonymous auth (no user accounts)
 - **v1.0 shipped**: 2026-03-28 — groups, events, cross-event financials, full Firestore migration
 - **v2.0 shipped**: 2026-03-31 — complete UI/UX overhaul with earthy design system, M3 motion, haptics
+- **v2.1 shipped**: 2026-04-01 — home screen quick actions fixed, group cards enriched, chart clarity, dashboard density
 
 ## Constraints
 
@@ -139,6 +136,8 @@ Groups persist across events and accumulate financial history — friends settle
 | OpenContainer over GoRouter for transitions | M3 ContainerTransform requires widget-level navigation | ✓ Validated v2.0 — URL desync accepted for animation quality |
 | AppColors deletion | Clean break from legacy; all refs migrated to token system | ✓ Validated v2.0 — 1,375 refs migrated, class deleted |
 | No bottom tab bar | Single-hierarchy data model (Group→Event→Module) | ✓ Validated v2.0 — content surfacing via dashboard |
+| Hash-based accent colors | Deterministic per-group visual identity without user config | ✓ Validated v2.1 — groupId.hashCode % 5 palette |
+| IntrinsicHeight for accent strips | Let content drive card height vs fixed height | ✓ Validated v2.1 — full-height accent strip clipping |
 
 ## Evolution
 
@@ -158,4 +157,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after v2.1 milestone start — Home Screen Completion*
+*Last updated: 2026-04-01 after v2.1 milestone completion — Home Screen Completion*
