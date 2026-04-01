@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/screens/group_detail_screen.dart';
 import '../../groups/widgets/group_card.dart';
@@ -48,15 +50,13 @@ class HomeScreen extends ConsumerWidget {
 
 /// Dashboard content for the Groups tab inside [BottomNavShell].
 ///
-/// Holds a [GlobalKey] for scroll-to-activity and delegates rendering to
-/// state-specific build methods based on [userGroupsProvider].
+/// Delegates rendering to state-specific build methods based on [userGroupsProvider].
 class _DashboardContent extends ConsumerStatefulWidget {
   @override
   ConsumerState<_DashboardContent> createState() => _DashboardContentState();
 }
 
 class _DashboardContentState extends ConsumerState<_DashboardContent> {
-  final _activitySectionKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -140,10 +140,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           // 2. Quick Action Tray
           SliverToBoxAdapter(
             child: QuickActionTray(
-              onAddExpense: () => _showGroupPicker(context, 'expense'),
-              onSettleUp: () => _showGroupPicker(context, 'settle'),
-              onInviteFriend: () => context.push('/join-group'),
-              onActivity: _scrollToActivity,
+              onAddExpense: () => _handleGroupAction(context, 'expense'),
+              onSettleUp: () => _handleGroupAction(context, 'settle'),
+              onInviteFriend: () => _handleGroupAction(context, 'invite'),
+              onActivity: () => context.push('/activity'),
             ),
           ),
 
@@ -209,7 +209,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     AsyncValue<List<CrossGroupActivityEntry>> activityAsync,
   ) {
     return Padding(
-      key: _activitySectionKey,
+      key: HomeKeys.activitySection,
       padding: const EdgeInsets.fromLTRB(
         16,
         24,
@@ -394,16 +394,35 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   }
 
   // ---------------------------------------------------------------------------
-  // Quick-action group picker
+  // Quick-action handler (replaces _showGroupPicker)
   // ---------------------------------------------------------------------------
 
-  void _showGroupPicker(BuildContext context, String action) {
+  void _handleGroupAction(BuildContext context, String action) {
     final groups = ref.read(userGroupsProvider).valueOrNull ?? [];
-    if (groups.isEmpty) return;
-    if (groups.length == 1) {
-      context.push('/group/${groups.first.id}');
+
+    if (groups.isEmpty) {
+      final message = switch (action) {
+        'expense' => 'Create a group first to add expenses',
+        'settle' => 'Create a group first to settle up',
+        'invite' => 'Create a group first to invite friends',
+        _ => 'Create a group first',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
       return;
     }
+
+    if (groups.length == 1) {
+      if (action == 'invite') {
+        _shareInviteCode(groups.first);
+      } else {
+        context.push('/group/${groups.first.id}');
+      }
+      return;
+    }
+
+    // 2+ groups — show picker
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColorTokens.light.cardSurface,
@@ -416,12 +435,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                8,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
                 'Choose a group',
                 style: TextStyle(
@@ -433,13 +447,15 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             ),
             ...groups.map(
               (group) => ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 title: Text(group.name),
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  context.push('/group/${group.id}');
+                  if (action == 'invite') {
+                    _shareInviteCode(group);
+                  } else {
+                    context.push('/group/${group.id}');
+                  }
                 },
               ),
             ),
@@ -450,17 +466,13 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   }
 
   // ---------------------------------------------------------------------------
-  // Scroll to activity section
+  // Share invite code via native share sheet
   // ---------------------------------------------------------------------------
 
-  void _scrollToActivity() {
-    final ctx = _activitySectionKey.currentContext;
-    if (ctx != null) {
-      Scrollable.ensureVisible(
-        ctx,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
+  void _shareInviteCode(Group group) {
+    Share.share(
+      'Join my group ${group.name} on Rihla! Code: ${group.inviteCode} — Download: https://play.google.com/store/apps/details?id=com.safar.safar',
+      subject: 'Join ${group.name} on Rihla',
+    );
   }
 }
