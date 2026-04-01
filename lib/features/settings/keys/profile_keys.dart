@@ -12,4 +12,12 @@ abstract final class ProfileKeys {
   static const statGroups = Key('profile_stat_groups');
   static const statEvents = Key('profile_stat_events');
   static const statSpent = Key('profile_stat_spent');
+
+  // Phase 26 keys — notifications, about, and support sections
+  static const notificationToggleTile = Key('profile_notification_toggle_tile');
+  static const notificationSwitch = Key('profile_notification_switch');
+  static const versionTile = Key('profile_version_tile');
+  static const feedbackTile = Key('profile_feedback_tile');
+  static const licensesTile = Key('profile_licenses_tile');
+  static const coffeeTile = Key('profile_coffee_tile');
 }
