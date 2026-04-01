@@ -9,6 +9,7 @@ abstract final class HomeKeys {
 
   // Actions
   static const createGroupFab = Key('home_create_group_fab');
+  static const profileAvatar = Key('home_profile_avatar');
   static const createGroupOption = Key('home_create_group_option');
   static const joinGroupOption = Key('home_join_group_option');
 

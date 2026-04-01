@@ -67,7 +67,7 @@ GroupActivityLog _makeActivity(String id, String actorName, String description) 
 Widget _buildTestApp(
   Widget widget, {
   List<Override> overrides = const [],
-  SharedPreferences? prefs,
+  required SharedPreferences prefs,
 }) {
   final router = GoRouter(
     initialLocation: '/home',
@@ -96,15 +96,19 @@ Widget _buildTestApp(
         builder: (ctx, state) =>
             const Scaffold(body: Text('ProfileScreen')),
       ),
+      GoRoute(
+        path: '/activity',
+        builder: (ctx, state) =>
+            const Scaffold(body: Text('ActivityScreen')),
+      ),
     ],
   );
 
-  final prefsOverride = prefs != null
-      ? [sharedPreferencesProvider.overrideWithValue(prefs)]
-      : <Override>[];
-
   return ProviderScope(
-    overrides: [...prefsOverride, ...overrides],
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      ...overrides,
+    ],
     child: MaterialApp.router(routerConfig: router),
   );
 }
@@ -183,11 +187,18 @@ List<Override> _loadedOverrides() => [
     ];
 
 void main() {
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
+
   group('HomeScreen dashboard - loaded state', () {
 
     testWidgets('Test 1: renders BalanceHeroCard widget', (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -196,7 +207,7 @@ void main() {
 
     testWidgets('Test 2: renders QuickActionTray widget', (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -205,7 +216,7 @@ void main() {
 
     testWidgets('Test 3: renders WeeklySpendingCard widget', (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -223,7 +234,7 @@ void main() {
     testWidgets('Test 4: renders ActivityRow widgets for activity entries',
         (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -266,7 +277,7 @@ void main() {
     testWidgets('Test 5: shows EmptyStateView with "Create your first group" text',
         (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _emptyOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _emptyOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -276,7 +287,7 @@ void main() {
     testWidgets('Test 6: empty state EmptyStateView has CTA button "Create Group"',
         (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _emptyOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _emptyOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -319,7 +330,7 @@ void main() {
     testWidgets('Test 7: error state renders "Something went wrong" heading',
         (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _errorOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _errorOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -328,7 +339,7 @@ void main() {
 
     testWidgets('Test 8: error state has "Retry" CTA button', (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _errorOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _errorOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -377,33 +388,35 @@ void main() {
     testWidgets('Test 9: bottom nav shows 4 tabs (Groups, Activity, Chats, Profile)',
         (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _navOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _navOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Groups'), findsOneWidget);
+      // 'Groups' appears in bottom nav label and in ProfileScreen's stat card (tab 3 built).
+      expect(find.text('Groups'), findsAtLeastNWidgets(1));
       // 'Activity' text appears in both QuickActionTray and BottomNavigationBar.
       // The nav tab label has a smaller font style; we assert at least one exists.
       expect(find.text('Activity'), findsAtLeastNWidgets(1));
       expect(find.text('Chats'), findsOneWidget);
+      // 'Profile' appears in bottom nav label only.
       expect(find.text('Profile'), findsOneWidget);
     });
 
-    testWidgets('Test 10: tapping non-Groups tab shows "Coming soon" placeholder',
+    testWidgets('Test 10: tapping Profile tab shows ProfileScreen (Phase 25)',
         (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _navOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _navOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
-      // Tap the last 'Activity' text which is the BottomNavBar label
-      // (the first 'Activity' is the QuickActionTray button label)
-      await tester.tap(find.text('Activity').last);
+      // Tap the 'Profile' bottom nav label
+      await tester.tap(find.text('Profile'));
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
-      // BottomNavShell keeps all 3 placeholder tabs rendered simultaneously
-      // (both IndexedStack and Stack+AnimatedOpacity build all children).
-      expect(find.text('Coming soon'), findsNWidgets(3));
+      // BottomNavShell renders ProfileScreen at tab index 3 (Phase 25).
+      // Activity and Chats tabs remain as _PlaceholderTab ("Coming soon").
+      expect(find.text('Coming soon'), findsNWidgets(2));
     });
   });
 
@@ -416,6 +429,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
@@ -468,6 +482,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
@@ -518,7 +533,7 @@ void main() {
         (tester) async {
       // _loadedOverrides() provides 2 groups
       await tester.pumpWidget(
-        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides()),
+        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides(), prefs: prefs),
       );
       await tester.pumpAndSettle();
 
@@ -567,6 +582,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _enrichmentOverrides(events: [
             _makeEvent('e1', 'Camping Trip', EventType.camping),
           ]),
@@ -594,6 +610,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _enrichmentOverrides(events: [
             _makeEvent('e1', 'Camping Trip', EventType.camping),
           ]),
@@ -611,6 +628,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _enrichmentOverrides(events: [
             _makeEvent(
               'e1',
@@ -633,6 +651,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _enrichmentOverrides(events: []),
         ),
       );
@@ -648,6 +667,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _enrichmentOverrides(),
         ),
       );

@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/haptic_service.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-
+import '../../../shared/widgets/initials_circle.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/models/group_model.dart';
@@ -87,12 +89,39 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                               fontWeight: FontWeight.w700,
                             ),
                   ),
-                  FloatingActionButton.small(
-                    key: HomeKeys.createGroupFab,
-                    onPressed: () => _showFabBottomSheet(context),
-                    backgroundColor: AppColorTokens.light.primary,
-                    heroTag: 'home_fab',
-                    child: Icon(Iconsax.add, color: AppColorTokens.light.textOnPrimary),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FloatingActionButton.small(
+                        key: HomeKeys.createGroupFab,
+                        onPressed: () => _showFabBottomSheet(context),
+                        backgroundColor: AppColorTokens.light.primary,
+                        heroTag: 'home_fab',
+                        child: Icon(Iconsax.add, color: AppColorTokens.light.textOnPrimary),
+                      ),
+                      const SizedBox(width: 8),
+                      Semantics(
+                        label: 'Open profile',
+                        button: true,
+                        child: GestureDetector(
+                          key: HomeKeys.profileAvatar,
+                          onTap: () {
+                            HapticService.lightClick();
+                            context.push('/profile');
+                          },
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Center(
+                              child: InitialsCircle(
+                                size: 32,
+                                name: ref.watch(settingsProvider).deviceName,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

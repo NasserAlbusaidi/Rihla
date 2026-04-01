@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../features/settings/screens/profile_screen.dart';
 import '../../../shared/widgets/grain_overlay.dart';
 import '../keys/home_keys.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
@@ -50,7 +51,7 @@ class _BottomNavShellState extends State<BottomNavShell> {
       widget.child,
       const _PlaceholderTab(),
       const _PlaceholderTab(),
-      const _PlaceholderTab(),
+      const ProfileScreen(),  // Tab 3: Profile (Phase 25)
     ];
     return GrainOverlay(
       opacity: 0.035,
