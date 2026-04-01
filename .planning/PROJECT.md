@@ -73,9 +73,9 @@ Groups persist across events and accumulate financial history — friends settle
 
 - [ ] Display name editing from profile page
 - [ ] Cross-group stats (total groups, events, spending)
-- [ ] Notification settings (FCM push toggles)
-- [ ] App info / about (version, feedback, licenses)
-- [ ] "Buy me a coffee" placeholder
+- ✓ Notification settings (FCM push toggles) — v2.2 Phase 26
+- ✓ App info / about (version, feedback, licenses) — v2.2 Phase 26
+- ✓ "Buy me a coffee" placeholder — v2.2 Phase 26
 
 ## Current Milestone: v2.2 Profile Page
 
@@ -94,6 +94,7 @@ Groups persist across events and accumulate financial history — friends settle
 
 **v2.2 started:** 2026-04-01 — Profile Page milestone.
 **Phase 25 complete:** 2026-04-01 — Profile screen with identity management (display name + initials circle) and cross-group stats (groups, events, OMR spending). Navigable from home header avatar and bottom nav Profile tab.
+**Phase 26 complete:** 2026-04-01 — Notification toggle, app version display, feedback mailto link, open-source licenses, "Buy me a coffee" placeholder. All added as new sections to ProfileScreen. 812 tests green.
 
 ### Out of Scope
 
