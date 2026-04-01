@@ -76,7 +76,10 @@ Plans:
   3. The weekly spending chart shows readable values — amount labels on bars or a Y-axis scale are present
   4. The chart title reads "Weekly Spending" with a currency indicator, not just "This Week"
   5. The dashboard has tighter visual rhythm — reduced dead whitespace between sections and a clear header above the group list
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 24-01-PLAN.md — GroupCard accent strip and event context line (CARD-01, CARD-02)
+- [ ] 24-02-PLAN.md — Chart bar labels, title update, dashboard spacing, section header (CHRT-01, CHRT-02, LAYT-01, LAYT-02)
 **UI hint**: yes
 
 ## Progress
@@ -86,4 +89,4 @@ Plans:
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
 | 23. Quick Action Fixes | v2.1 | 1/1 | Complete    | 2026-04-01 |
-| 24. Visual Density & Polish | v2.1 | 0/? | Not started | - |
+| 24. Visual Density & Polish | v2.1 | 0/2 | Planning complete | - |
