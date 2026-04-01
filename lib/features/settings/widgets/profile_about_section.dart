@@ -30,7 +30,7 @@ class ProfileAboutSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             color: AppColorTokens.light.cardSurface,
@@ -121,7 +121,7 @@ class ProfileAboutSection extends ConsumerWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             // 36px icon container (D-03)

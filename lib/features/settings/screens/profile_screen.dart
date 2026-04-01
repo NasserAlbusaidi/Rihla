@@ -11,7 +11,10 @@ import '../../../shared/widgets/initials_circle.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
+import '../widgets/profile_about_section.dart';
+import '../widgets/profile_notifications_section.dart';
 import '../widgets/profile_stats_section.dart';
+import '../widgets/profile_support_section.dart';
 
 /// Profile screen displaying identity (initials circle + display name) and
 /// cross-group stats (groups, events, total spending).
@@ -42,7 +45,7 @@ class ProfileScreen extends ConsumerWidget {
                   _buildBackButton(context),
                 ],
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
                 // Identity section
                 _buildIdentitySection(context, ref, settings.deviceName)
@@ -50,7 +53,7 @@ class ProfileScreen extends ConsumerWidget {
                     .fadeIn(delay: 100.ms)
                     .slideY(begin: 0.1),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
                 // Stats section
                 ProfileStatsSection(stats: stats)
@@ -58,7 +61,31 @@ class ProfileScreen extends ConsumerWidget {
                     .fadeIn(delay: 200.ms)
                     .slideY(begin: 0.1),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 10),
+
+                // Notifications section (D-04: after Stats)
+                const ProfileNotificationsSection()
+                    .animate()
+                    .fadeIn(delay: 300.ms)
+                    .slideY(begin: 0.1),
+
+                const SizedBox(height: 12),
+
+                // About section
+                const ProfileAboutSection()
+                    .animate()
+                    .fadeIn(delay: 400.ms)
+                    .slideY(begin: 0.1),
+
+                const SizedBox(height: 12),
+
+                // Support section
+                const ProfileSupportSection()
+                    .animate()
+                    .fadeIn(delay: 500.ms)
+                    .slideY(begin: 0.1),
+
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -142,7 +169,6 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 8),
         ],
       ),
     );

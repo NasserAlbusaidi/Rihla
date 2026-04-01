@@ -35,7 +35,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _buildNotificationTile(context, ref, isOn: isOn, isPermDenied: isPermDenied),
       ],
     );
@@ -77,7 +77,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
         boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             // 36px icon container (D-03)
@@ -128,9 +128,9 @@ class ProfileNotificationsSection extends ConsumerWidget {
               value: isOn,
               onChanged: isPermDenied
                   ? null
-                  : (value) async {
-                      await HapticService.selection();
-                      await ref
+                  : (value) {
+                      HapticService.selection();
+                      ref
                           .read(settingsProvider.notifier)
                           .setPushNotificationsEnabled(value);
                     },
@@ -158,14 +158,21 @@ class ProfileNotificationsSection extends ConsumerWidget {
   /// Called once per build — the StateProvider deduplicates identical writes
   /// so multiple invocations are safe. This covers the cold-start case where
   /// the user had previously denied permission (Pitfall 2).
+  ///
+  /// Wrapped in try/catch because FirebaseMessaging.instance may throw
+  /// if Firebase is not initialized (e.g., in test environments).
   void _hydratePermissionStatus(WidgetRef ref) {
-    FirebaseMessaging.instance.getNotificationSettings().then((settings) {
-      if (settings.authorizationStatus == AuthorizationStatus.denied) {
-        ref.read(notificationStatusProvider.notifier).state =
-            NotificationStatus.permissionDenied;
-      }
-    }).catchError((Object _) {
-      // Silently ignore — FCM may be unavailable in test environments
-    });
+    try {
+      FirebaseMessaging.instance.getNotificationSettings().then((settings) {
+        if (settings.authorizationStatus == AuthorizationStatus.denied) {
+          ref.read(notificationStatusProvider.notifier).state =
+              NotificationStatus.permissionDenied;
+        }
+      }).catchError((Object err) {
+        // Silently ignore — FCM may be unavailable in test environments
+      });
+    } catch (_) {
+      // FirebaseMessaging.instance threw synchronously — not initialized
+    }
   }
 }
