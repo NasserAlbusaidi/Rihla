@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -68,6 +70,7 @@ List<Override> _baseOverrides(List<Group> groups) => [
 Widget _buildTestApp(
   Widget widget, {
   List<Override> overrides = const [],
+  required SharedPreferences prefs,
 }) {
   final router = GoRouter(
     initialLocation: '/home',
@@ -93,11 +96,18 @@ Widget _buildTestApp(
         path: '/activity',
         builder: (ctx, state) => const Scaffold(body: Text('ActivityScreen')),
       ),
+      GoRoute(
+        path: '/profile',
+        builder: (ctx, state) => const Scaffold(body: Text('ProfileScreen')),
+      ),
     ],
   );
 
   return ProviderScope(
-    overrides: overrides,
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      ...overrides,
+    ],
     child: MaterialApp.router(routerConfig: router),
   );
 }
@@ -129,14 +139,22 @@ void _teardownShareChannelMock() {
 // ---------------------------------------------------------------------------
 
 void main() {
+  late SharedPreferences prefs;
+
   setUpAll(_setupShareChannelMock);
   tearDownAll(_teardownShareChannelMock);
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
 
   group('Quick actions — 0 groups SnackBar edge cases', () {
     testWidgets('Invite Friend with 0 groups shows SnackBar', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([]),
         ),
       );
@@ -163,6 +181,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([]),
         ),
       );
@@ -182,6 +201,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([group1]),
         ),
       );
@@ -197,6 +217,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([group1]),
         ),
       );
@@ -212,6 +233,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([group1]),
         ),
       );
@@ -228,6 +250,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([group1]),
         ),
       );
@@ -249,6 +272,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([group1, group2]),
         ),
       );
@@ -267,6 +291,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([group1, group2]),
         ),
       );
@@ -287,6 +312,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: _baseOverrides([group1]),
         ),
       );

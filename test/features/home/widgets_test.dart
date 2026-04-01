@@ -2,14 +2,27 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
 import 'package:safar/features/home/widgets/weekly_spending_card.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
 
 void main() {
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
   // Helper to build a test GroupActivityLog
   GroupActivityLog makeActivity({
     String actorName = 'Alice',
@@ -204,63 +217,98 @@ void main() {
   // BottomNavShell tests
   // ---------------------------------------------------------------------------
   group('BottomNavShell', () {
-    testWidgets('Test 6: renders 4 tabs: Groups, Activity, Chats, Profile', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: BottomNavShell(
-            child: const Text('Dashboard Content'),
+    /// Minimal overrides for BottomNavShell tests — ProfileScreen (tab 3)
+    /// watches settingsProvider, userGroupsProvider, groupEventsProvider,
+    /// and groupBalancesProvider via profileStatsProvider.
+    List<Override> _shellOverrides() => [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          userGroupsProvider.overrideWith((ref) => Stream.value([])),
+          crossGroupActivityProvider.overrideWith(
+            (ref) => const AsyncValue.data([]),
           ),
-        ),
-      );
-      await tester.pump();
+          groupEventsProvider.overrideWith(
+            (ref, groupId) => Stream.value([]),
+          ),
+          groupBalancesProvider.overrideWith(
+            (ref, groupId) => AsyncValue.data((
+              balances: <UserBalance>[],
+              totalSpent: Decimal.zero,
+              eventCount: 0,
+              perEventBreakdown: <String, Map<String, Decimal>>{},
+              memberNames: <String, String>{},
+            )),
+          ),
+          currentUserIdProvider.overrideWithValue('test-user-id'),
+        ];
 
-      expect(find.text('Groups'), findsOneWidget);
+    /// Builds a test app with GoRouter for BottomNavShell — ProfileScreen
+    /// requires GoRouter.of(context) for back-button detection.
+    Widget _buildShellApp(List<Override> overrides) {
+      final router = GoRouter(
+        initialLocation: '/home',
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (ctx, state) => BottomNavShell(
+              child: const Text('Dashboard Content'),
+            ),
+          ),
+          GoRoute(
+            path: '/profile',
+            builder: (ctx, state) => const Scaffold(body: Text('ProfileRoute')),
+          ),
+        ],
+      );
+      return ProviderScope(
+        overrides: overrides,
+        child: MaterialApp.router(routerConfig: router),
+      );
+    }
+
+    testWidgets('Test 6: renders 4 tabs: Groups, Activity, Chats, Profile', (tester) async {
+      await tester.pumpWidget(_buildShellApp(_shellOverrides()));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      // 'Groups' appears in bottom nav label and in ProfileScreen stat card (built tab 3).
+      expect(find.text('Groups'), findsAtLeastNWidgets(1));
       expect(find.text('Activity'), findsAtLeastNWidgets(1));
       expect(find.text('Chats'), findsOneWidget);
       expect(find.text('Profile'), findsOneWidget);
     });
 
     testWidgets('Test 7: shows Coming soon when tapping Activity tab', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: BottomNavShell(
-            child: const Text('Dashboard Content'),
-          ),
-        ),
-      );
-      await tester.pump();
+      await tester.pumpWidget(_buildShellApp(_shellOverrides()));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
 
       // Tap Activity tab (index 1)
       await tester.tap(find.text('Activity').last);
       await tester.pump();
 
-      // Stack+AnimatedOpacity keeps all 3 placeholder tabs rendered simultaneously.
-      expect(find.text('Coming soon'), findsNWidgets(3));
+      // Stack+AnimatedOpacity builds all tabs simultaneously.
+      // Profile tab (index 3) now shows ProfileScreen (Phase 25), not _PlaceholderTab.
+      // Only Activity (1) and Chats (2) show "Coming soon".
+      expect(find.text('Coming soon'), findsNWidgets(2));
     });
 
     testWidgets('Test 8: Groups tab shows child content', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: BottomNavShell(
-            child: const Text('Dashboard Content'),
-          ),
-        ),
-      );
-      await tester.pump();
+      await tester.pumpWidget(_buildShellApp(_shellOverrides()));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
 
       expect(find.text('Dashboard Content'), findsOneWidget);
 
-      // Tap Profile tab
+      // Tap Profile tab — ProfileScreen is shown (Phase 25, not "Coming soon")
       await tester.tap(find.text('Profile'));
-      await tester.pump();
-      // Stack+AnimatedOpacity keeps all 3 placeholder tabs rendered simultaneously.
-      expect(find.text('Coming soon'), findsNWidgets(3));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
 
-      // Tap back to Groups
-      await tester.tap(find.text('Groups'));
+      // Activity (1) and Chats (2) still render as "Coming soon" in the Stack.
+      expect(find.text('Coming soon'), findsNWidgets(2));
+
+      // Tap back to Groups (use key since 'Groups' also appears in ProfileScreen stat card)
+      await tester.tap(find.text('Groups').last);
       await tester.pump();
       expect(find.text('Dashboard Content'), findsOneWidget);
     });

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/keys/shared_keys.dart';
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -88,7 +90,11 @@ List<Override> _dashboardOverrides() => [
     ];
 
 /// Wraps [widget] with GoRouter and ProviderScope overrides needed for testing.
-Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
+Widget _buildTestApp(
+  Widget widget, {
+  List<Override> overrides = const [],
+  required SharedPreferences prefs,
+}) {
   final router = GoRouter(
     initialLocation: '/home',
     routes: [
@@ -109,11 +115,22 @@ Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
         builder: (ctx, state) =>
             Scaffold(body: Text('GroupDetail:${state.pathParameters['id']}')),
       ),
+      GoRoute(
+        path: '/profile',
+        builder: (ctx, state) => const Scaffold(body: Text('ProfileScreen')),
+      ),
+      GoRoute(
+        path: '/activity',
+        builder: (ctx, state) => const Scaffold(body: Text('ActivityScreen')),
+      ),
     ],
   );
 
   return ProviderScope(
-    overrides: overrides,
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      ...overrides,
+    ],
     child: MaterialApp.router(routerConfig: router),
   );
 }
@@ -123,11 +140,19 @@ Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
 // ---------------------------------------------------------------------------
 
 void main() {
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
+
   group('HomeScreen groups', () {
     testWidgets('shows "Your Groups" header', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             userGroupsProvider.overrideWith(
               (ref) => Stream.value([]),
@@ -151,6 +176,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
@@ -170,6 +196,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             userGroupsProvider.overrideWith(
               (ref) => Stream.value([]),
@@ -188,6 +215,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             userGroupsProvider.overrideWith(
               (ref) => Stream.value([]),
@@ -213,6 +241,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
@@ -245,6 +274,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             ..._dashboardOverrides(),
             userGroupsProvider.overrideWith(
@@ -270,6 +300,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             ..._dashboardOverrides(),
             userGroupsProvider.overrideWith(
@@ -297,6 +328,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
+          prefs: prefs,
           overrides: [
             ..._dashboardOverrides(),
             userGroupsProvider.overrideWith(
