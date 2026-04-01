@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
+
+import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../keys/profile_keys.dart';
+
+/// Support section widget for ProfileScreen.
+///
+/// Displays a "Buy me a coffee" placeholder tile (SUPP-01) that shows a
+/// "Coming soon" SnackBar on tap (D-12, D-13).
+class ProfileSupportSection extends StatelessWidget {
+  const ProfileSupportSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColorTokens.light.cardSurface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: AppShadowTokens.standard.raised,
+          ),
+          child: _buildCoffeeTile(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader() {
+    return Row(
+      children: [
+        Icon(
+          Iconsax.heart,
+          size: 16,
+          color: AppColorTokens.light.textSecondary,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'SUPPORT',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColorTokens.light.textSecondary,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoffeeTile(BuildContext context) {
+    return GestureDetector(
+      key: ProfileKeys.coffeeTile,
+      onTap: () async {
+        await HapticService.lightClick();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Coming soon')),
+          );
+        }
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            // 36px icon container (D-03)
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColorTokens.light.inputFill,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Icon(
+                  Iconsax.coffee,
+                  size: 18,
+                  color: AppColorTokens.light.textSecondary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Buy me a coffee',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColorTokens.light.textPrimary,
+                ),
+              ),
+            ),
+            Icon(
+              Iconsax.arrow_right_3,
+              size: 16,
+              color: AppColorTokens.light.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
