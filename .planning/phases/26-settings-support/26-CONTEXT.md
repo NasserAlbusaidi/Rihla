@@ -16,13 +16,13 @@ No new screens — all content is added as new sections to the existing `Profile
 ## Implementation Decisions
 
 ### Section Layout & Grouping
-- **D-01:** Grouped list tiles with uppercase section headers matching the established pattern (icon + uppercase label with `letterSpacing: 1.5`, `textMuted` color).
+- **D-01:** Grouped list tiles with uppercase section headers matching the established pattern (icon + uppercase label with `letterSpacing: 1.5`, `textSecondary` color). *(Updated from `textMuted` — CLAUDE.md forbids textMuted for functional text, WCAG AA failure at 2.86:1. `textSecondary` matches ProfileStatsSection reference.)*
 - **D-02:** Three sections below existing identity + stats: NOTIFICATIONS, ABOUT, SUPPORT — each with its own header.
 - **D-03:** List tiles use the established pattern: 36px icon container with `inputFill` bg, `borderRadius: 10`.
 - **D-04:** Section order top to bottom: Identity (existing) → Stats (existing) → Notifications → About → Support.
 
 ### Notification Toggle
-- **D-05:** Push notification toggle is a Switch widget integrated into a list tile. Flipping ON calls `NotificationService.initialize()` which triggers the OS permission dialog.
+- **D-05:** Push notification toggle is a Switch widget integrated into a list tile. Flipping ON calls `settingsProvider.setPushNotificationsEnabled(true)` — the `appBootstrapProvider` reacts and calls `NotificationService.initialize()` which triggers the OS permission dialog. *(Updated: widget persists preference only; bootstrap handles FCM. Prevents double permission dialog per Research Pitfall 1.)*
 - **D-06:** If OS permission granted, toggle stays ON and `settingsProvider.setPushNotificationsEnabled(true)` persists the preference.
 - **D-07:** If OS permission denied, toggle flips back to OFF with a brief explanation.
 - **D-08:** If the user previously denied OS permission, toggle shows as OFF and disabled with subtitle text "Enable in device Settings" — tapping opens app settings via `openAppSettings()`.
