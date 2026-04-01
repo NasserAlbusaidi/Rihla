@@ -52,24 +52,24 @@ None deferred for this milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IDENT-01 | — | Pending |
-| IDENT-02 | — | Pending |
-| IDENT-03 | — | Pending |
-| STATS-01 | — | Pending |
-| STATS-02 | — | Pending |
-| STATS-03 | — | Pending |
-| NOTIF-01 | — | Pending |
-| NOTIF-02 | — | Pending |
-| INFO-01 | — | Pending |
-| INFO-02 | — | Pending |
-| INFO-03 | — | Pending |
-| SUPP-01 | — | Pending |
+| IDENT-01 | Phase 25 | Pending |
+| IDENT-02 | Phase 25 | Pending |
+| IDENT-03 | Phase 25 | Pending |
+| STATS-01 | Phase 25 | Pending |
+| STATS-02 | Phase 25 | Pending |
+| STATS-03 | Phase 25 | Pending |
+| NOTIF-01 | Phase 26 | Pending |
+| NOTIF-02 | Phase 26 | Pending |
+| INFO-01 | Phase 26 | Pending |
+| INFO-02 | Phase 26 | Pending |
+| INFO-03 | Phase 26 | Pending |
+| SUPP-01 | Phase 26 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-01*
-*Last updated: 2026-04-01 after initial definition*
+*Last updated: 2026-04-01 — traceability filled after roadmap creation*

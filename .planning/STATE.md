@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Profile Page
-status: requirements
-stopped_at: Defining requirements
+status: roadmap
+stopped_at: Roadmap created — ready to plan Phase 25
 last_updated: "2026-04-01"
 last_activity: 2026-04-01
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Defining requirements for v2.2 Profile Page
+**Current focus:** v2.2 Profile Page — Phase 25: Profile Screen Core
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 25 — Profile Screen Core
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-01 — Milestone v2.2 started
+Status: Not started
+Last activity: 2026-04-01 — Roadmap created for v2.2
+
+```
+Phase 25 [          ] 0%
+Phase 26 [          ] 0%
+```
 
 ## Performance Metrics
 
@@ -45,7 +50,8 @@ Last activity: 2026-04-01 — Milestone v2.2 started
 
 ### Known Risks
 
-None.
+- Display name propagation (IDENT-03) writes to all group participant records — scope depends on how many groups a user belongs to; Firestore batch write needed.
+- FCM token management for NOTIF-02 — toggling push off requires unregistering the FCM token or storing a local preference; confirm approach during planning.
 
 ### Blockers
 
@@ -54,5 +60,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-01
-Stopped at: Defining requirements for v2.2
-Next action: Define requirements → create roadmap
+Stopped at: Roadmap created for v2.2 (2 phases: 25-26, 12 requirements mapped)
+Next action: `/gsd:plan-phase 25` — plan Profile Screen Core

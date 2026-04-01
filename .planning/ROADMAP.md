@@ -5,6 +5,7 @@
 - ✅ **v1.0 Groups, Events & Cross-Event Financials** — Phases 1-13 (shipped 2026-03-28)
 - ✅ **v2.0 Major UI/UX Overhaul** — Phases 14-22 (shipped 2026-03-31)
 - ✅ **v2.1 Home Screen Completion** — Phases 23-24 (shipped 2026-04-01)
+- [ ] **v2.2 Profile Page** — Phases 25-26
 
 ## Phases
 
@@ -56,6 +57,37 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 
 </details>
 
+### v2.2 Profile Page
+
+- [ ] **Phase 25: Profile Screen Core** - Profile screen with identity management and cross-group stats
+- [ ] **Phase 26: Settings & Support** - Notification toggles, app info, and support section
+
+## Phase Details
+
+### Phase 25: Profile Screen Core
+**Goal**: Users can view and manage their identity and see their cross-group stats in a new profile screen
+**Depends on**: Nothing (new screen, no existing phase dependencies within v2.2)
+**Requirements**: IDENT-01, IDENT-02, IDENT-03, STATS-01, STATS-02, STATS-03
+**Success Criteria** (what must be TRUE):
+  1. User can navigate to a profile screen and see their current display name
+  2. User can tap to edit their display name and save it — the new name appears across all groups they belong to
+  3. User can see their total group count, event count, and total spending in OMR on the profile screen
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 26: Settings & Support
+**Goal**: Users can manage notification preferences and access app info and support options from the profile screen
+**Depends on**: Phase 25
+**Requirements**: NOTIF-01, NOTIF-02, INFO-01, INFO-02, INFO-03, SUPP-01
+**Success Criteria** (what must be TRUE):
+  1. User can see their current push notification status (enabled/disabled) on the profile screen
+  2. User can toggle push notifications on or off and the preference persists across app restarts
+  3. User can see the app version number on the profile screen
+  4. User can tap a feedback/support link that opens an external URL
+  5. User can tap to open the open-source licenses screen, and a "Buy me a coffee" placeholder section is visible on the profile screen
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -63,3 +95,5 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
+| 25 | v2.2 | 0/? | Not started | - |
+| 26 | v2.2 | 0/? | Not started | - |
