@@ -1,18 +1,29 @@
 // Widget tests for ProfileScreen — covers IDENT-01, IDENT-02, STATS-01, STATS-02,
 // STATS-03. Tests are written first (RED) before implementing the widgets.
+// Phase 26 tests cover NOTIF-01, NOTIF-02, INFO-01, INFO-02, INFO-03, SUPP-01.
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/config/app_metadata.dart';
+import 'package:safar/core/providers/app_bootstrap_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/services/notification_service.dart';
 import 'package:safar/core/utils/formatters.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 import 'package:safar/features/settings/screens/profile_screen.dart';
+
+// ---------------------------------------------------------------------------
+// Phase 26 mock classes
+// ---------------------------------------------------------------------------
+
+class MockNotificationService extends Mock implements NotificationService {}
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -51,13 +62,50 @@ AsyncValue<ProfileStats> _statsData({
     ));
 
 /// Pump the widget tree and advance time enough for all flutter_animate
-/// animations to complete (identity section delays up to 200ms + ~300ms).
+/// animations to complete (identity section delays up to 200ms; support
+/// section delays up to 500ms).
 Future<void> _pumpWithAnimations(WidgetTester tester) async {
   await tester.pump();
-  // Advance through animation delays: 100ms + 200ms + buffer
-  await tester.pump(const Duration(milliseconds: 500));
-  // One more pump to process any final callbacks
+  await tester.pump(const Duration(milliseconds: 700));
   await tester.pump();
+}
+
+/// Build overrides for Phase 26 tests. Includes SharedPreferences with
+/// a device name, profile stats, notification status, app metadata, and
+/// bootstrap no-op.
+///
+/// settingsProvider uses the REAL SettingsNotifier backed by the mocked
+/// SharedPreferences instance. This works because SettingsNotifier reads/writes
+/// via SettingsService which delegates to SharedPreferences — the mocked prefs
+/// instance intercepts all reads/writes. No settingsProvider override is needed
+/// because the sharedPreferencesProvider override propagates through the
+/// dependency chain: sharedPreferencesProvider -> SettingsService -> SettingsNotifier.
+List<Override> _phase26Overrides({
+  SharedPreferences? prefs,
+  NotificationStatus notifStatus = NotificationStatus.off,
+  bool pushEnabled = false,
+  String version = '2.2.0',
+}) {
+  final mockNotifService = MockNotificationService();
+  when(() => mockNotifService.initialize()).thenAnswer((_) async => true);
+  when(() => mockNotifService.removeToken()).thenAnswer((_) async {});
+  when(() => mockNotifService.isInitialized).thenReturn(false);
+
+  return [
+    if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
+    profileStatsProvider.overrideWith((ref) => _statsData()),
+    notificationStatusProvider.overrideWith((ref) => notifStatus),
+    notificationServiceProvider.overrideWithValue(mockNotifService),
+    appBootstrapProvider.overrideWith((ref) {}),
+    appMetadataProvider.overrideWith(
+      (ref) => Future.value(AppMetadata(
+        appName: 'Rihla',
+        packageName: 'com.safar.safar',
+        version: version,
+        buildNumber: '1',
+      )),
+    ),
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -281,6 +329,200 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Phase 26 tests — TDD RED phase
+  // These tests assert on widgets that do not exist yet. They will fail until
+  // Plan 01 (Wave 2) adds ProfileNotificationsSection, ProfileAboutSection,
+  // and ProfileSupportSection to ProfileScreen.
+  // ---------------------------------------------------------------------------
+
+  group('ProfileScreen -- NOTIF-01', () {
+    testWidgets(
+        'shows notification toggle tile in OFF state when pushNotificationsEnabled is false',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(
+            prefs: prefs,
+            pushEnabled: false,
+            notifStatus: NotificationStatus.off,
+          ),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byKey(ProfileKeys.notificationToggleTile), findsOneWidget);
+      final switchWidget = tester.widget<Switch>(
+        find.byKey(ProfileKeys.notificationSwitch),
+      );
+      expect(switchWidget.value, isFalse);
+    });
+
+    testWidgets(
+        'shows notification toggle in disabled state with subtitle when permission denied',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(
+            prefs: prefs,
+            notifStatus: NotificationStatus.permissionDenied,
+          ),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.text('Enable in device Settings'), findsOneWidget);
+      final switchWidget = tester.widget<Switch>(
+        find.byKey(ProfileKeys.notificationSwitch),
+      );
+      expect(switchWidget.onChanged, isNull);
+    });
+  });
+
+  group('ProfileScreen -- NOTIF-02', () {
+    testWidgets('toggling switch ON calls setPushNotificationsEnabled(true)',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(
+            prefs: prefs,
+            pushEnabled: false,
+            notifStatus: NotificationStatus.off,
+          ),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
+      await tester.pumpAndSettle();
+
+      final switchWidget = tester.widget<Switch>(
+        find.byKey(ProfileKeys.notificationSwitch),
+      );
+      expect(switchWidget.value, isTrue);
+    });
+
+    testWidgets('toggling switch OFF calls setPushNotificationsEnabled(false)',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+        'settings_push_notifications': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(
+            prefs: prefs,
+            pushEnabled: true,
+            notifStatus: NotificationStatus.enabled,
+          ),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
+      await tester.pumpAndSettle();
+
+      final switchWidget = tester.widget<Switch>(
+        find.byKey(ProfileKeys.notificationSwitch),
+      );
+      expect(switchWidget.value, isFalse);
+    });
+  });
+
+  group('ProfileScreen -- INFO-01', () {
+    testWidgets('shows app version in version tile', (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(
+            prefs: prefs,
+            version: '2.2.0',
+          ),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byKey(ProfileKeys.versionTile), findsOneWidget);
+      expect(find.text('v2.2.0'), findsOneWidget);
+    });
+  });
+
+  group('ProfileScreen -- INFO-02', () {
+    testWidgets('shows feedback tile', (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(prefs: prefs),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byKey(ProfileKeys.feedbackTile), findsOneWidget);
+      expect(find.text('Send Feedback'), findsOneWidget);
+    });
+  });
+
+  group('ProfileScreen -- INFO-03', () {
+    testWidgets('shows licenses tile', (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(prefs: prefs),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byKey(ProfileKeys.licensesTile), findsOneWidget);
+      expect(find.text('Open-source Licenses'), findsOneWidget);
+    });
+  });
+
+  group('ProfileScreen -- SUPP-01', () {
+    testWidgets('shows coffee tile and displays Coming soon SnackBar on tap',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(prefs: prefs),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byKey(ProfileKeys.coffeeTile), findsOneWidget);
+      await tester.tap(find.byKey(ProfileKeys.coffeeTile));
+      await tester.pump();
+
+      expect(find.text('Coming soon'), findsOneWidget);
     });
   });
 }
