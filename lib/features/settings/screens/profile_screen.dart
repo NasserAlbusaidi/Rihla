@@ -1,0 +1,172 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
+
+import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../shared/widgets/initials_circle.dart';
+import '../keys/profile_keys.dart';
+import '../providers/profile_stats_provider.dart';
+import '../widgets/edit_name_bottom_sheet.dart';
+import '../widgets/profile_stats_section.dart';
+
+/// Profile screen displaying identity (initials circle + display name) and
+/// cross-group stats (groups, events, total spending).
+///
+/// The screen is unrouted in this plan — routing is wired in Phase 25-02.
+class ProfileScreen extends ConsumerWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final stats = ref.watch(profileStatsProvider);
+    final canPop = GoRouter.of(context).canPop();
+
+    return Scaffold(
+      key: ProfileKeys.screen,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Optional back button (shown when pushed on nav stack)
+                if (canPop) ...[
+                  const SizedBox(height: 12),
+                  _buildBackButton(context),
+                ],
+
+                const SizedBox(height: 20),
+
+                // Identity section
+                _buildIdentitySection(context, ref, settings.deviceName)
+                    .animate()
+                    .fadeIn(delay: 100.ms)
+                    .slideY(begin: 0.1),
+
+                const SizedBox(height: 24),
+
+                // Stats section
+                ProfileStatsSection(stats: stats)
+                    .animate()
+                    .fadeIn(delay: 200.ms)
+                    .slideY(begin: 0.1),
+
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackButton(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColorTokens.light.inputFill,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColorTokens.light.inputFill),
+        ),
+        child: IconButton(
+          icon: Icon(
+            Iconsax.arrow_left,
+            color: AppColorTokens.light.textPrimary,
+            size: 20,
+          ),
+          onPressed: () => GoRouter.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIdentitySection(
+    BuildContext context,
+    WidgetRef ref,
+    String deviceName,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Initials circle — 64dp diameter
+          InitialsCircle(
+            key: ProfileKeys.initialsCircle,
+            size: 64,
+            name: deviceName,
+          ),
+          const SizedBox(height: 12),
+          // Name display or "Set your name" prompt
+          if (deviceName.isNotEmpty)
+            GestureDetector(
+              onTap: () => _openEditSheet(context, ref, deviceName),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    deviceName,
+                    key: ProfileKeys.displayName,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColorTokens.light.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Iconsax.edit_2,
+                    size: 16,
+                    color: AppColorTokens.light.textSecondary,
+                  ),
+                ],
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: () => _openEditSheet(context, ref, deviceName),
+              child: Text(
+                'Set your name',
+                key: ProfileKeys.setNamePrompt,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColorTokens.light.primary,
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  void _openEditSheet(
+    BuildContext context,
+    WidgetRef ref,
+    String currentName,
+  ) {
+    HapticService.selection();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColorTokens.light.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => EditNameBottomSheet(
+        currentName: ref.read(settingsProvider).deviceName,
+        onSave: (name) async {
+          await ref.read(settingsProvider.notifier).setDeviceName(name);
+        },
+      ),
+    );
+  }
+}

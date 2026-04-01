@@ -1,0 +1,156 @@
+import 'package:decimal/decimal.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
+
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../core/utils/formatters.dart';
+import '../keys/profile_keys.dart';
+import '../providers/profile_stats_provider.dart';
+
+/// Displays cross-group stats (groups, events, total spending) in 3 cards.
+///
+/// Consumes [AsyncValue<ProfileStats>] and renders skeletons while loading,
+/// graceful zeros on error, and real values once data is available.
+class ProfileStatsSection extends StatelessWidget {
+  const ProfileStatsSection({super.key, required this.stats});
+
+  final AsyncValue<ProfileStats> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: ProfileKeys.statsSection,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header
+        Row(
+          children: [
+            Icon(
+              Iconsax.chart,
+              size: 16,
+              color: AppColorTokens.light.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'YOUR JOURNEY',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColorTokens.light.textSecondary,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Stats row
+        Row(
+          children: _buildStatCards(),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildStatCards() {
+    if (stats.isLoading) {
+      // Placeholder cards while loading
+      return [
+        _buildStatCard(
+          key: ProfileKeys.statGroups,
+          value: '–',
+          label: 'Groups',
+          accent: AppColorTokens.light.primary,
+        ),
+        const SizedBox(width: 8),
+        _buildStatCard(
+          key: ProfileKeys.statEvents,
+          value: '–',
+          label: 'Events',
+          accent: AppColorTokens.light.successText,
+        ),
+        const SizedBox(width: 8),
+        _buildStatCard(
+          key: ProfileKeys.statSpent,
+          value: '–',
+          label: 'Spent',
+          accent: AppColorTokens.light.primaryDark,
+        ),
+      ];
+    }
+
+    // Use actual data if available, fall back to zeros on error
+    final data = stats.valueOrNull ??
+        (groupCount: 0, eventCount: 0, totalSpent: Decimal.zero);
+
+    return [
+      _buildStatCard(
+        key: ProfileKeys.statGroups,
+        value: data.groupCount.toString(),
+        label: 'Groups',
+        accent: AppColorTokens.light.primary,
+      ),
+      const SizedBox(width: 8),
+      _buildStatCard(
+        key: ProfileKeys.statEvents,
+        value: data.eventCount.toString(),
+        label: 'Events',
+        accent: AppColorTokens.light.successText,
+      ),
+      const SizedBox(width: 8),
+      _buildStatCard(
+        key: ProfileKeys.statSpent,
+        value: AppFormatters.formatCurrency(data.totalSpent, 'OMR'),
+        label: 'Spent',
+        accent: AppColorTokens.light.primaryDark,
+      ),
+    ];
+  }
+
+  Widget _buildStatCard({
+    required Key key,
+    required String value,
+    required String label,
+    required Color accent,
+  }) {
+    return Expanded(
+      child: Container(
+        key: key,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColorTokens.light.cardSurface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppShadowTokens.standard.raised,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: accent,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColorTokens.light.textSecondary,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
