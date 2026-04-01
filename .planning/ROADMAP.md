@@ -48,7 +48,7 @@ Full details: [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
 
 ### v2.1 Home Screen Completion
 
-- [ ] **Phase 23: Quick Action Fixes** — Wire broken home screen actions to correct destinations
+- [x] **Phase 23: Quick Action Fixes** — Wire broken home screen actions to correct destinations (completed 2026-04-01)
 - [ ] **Phase 24: Visual Density & Polish** — Improve group cards, chart clarity, and layout density
 
 ## Phase Details
@@ -63,7 +63,7 @@ Full details: [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
   3. Tapping "Activity" navigates to a cross-group activity view with visible content
 **Plans**: 1 plan
 Plans:
-- [ ] 23-01-PLAN.md — Wire invite share flow, create cross-group activity screen, fix 0-groups edge cases
+- [x] 23-01-PLAN.md — Wire invite share flow, create cross-group activity screen, fix 0-groups edge cases
 **UI hint**: yes
 
 ### Phase 24: Visual Density & Polish
@@ -85,5 +85,5 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
-| 23. Quick Action Fixes | v2.1 | 0/1 | Planned | - |
+| 23. Quick Action Fixes | v2.1 | 1/1 | Complete   | 2026-04-01 |
 | 24. Visual Density & Polish | v2.1 | 0/? | Not started | - |

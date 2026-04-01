@@ -2618,3 +2618,105 @@ The token migration was the last thing standing between this codebase and a real
 There's something nice about finishing Phase 22. The polish pass that was supposed to be lightweight turned into a system foundation. Adding grain texture, wiring tab animations, applying M3 motion curves, and now deleting AppColors. The app looks and behaves better, and the codebase is more rigorous. The two usually don't happen at the same time. When they do, you notice it.
 
 ---
+
+## 2026-03-31 — The milestone audit, or: what completion really means
+
+Just audited 9 phases, 28 plans, 22 requirements. Every single requirement satisfied. 767 tests green. Zero AppColors references. 4 out of 5 E2E flows verified end-to-end. The scorecard says "tech_debt" not "passed" because of 16 inline Color(0xFF...) literals that snuck in during Phase 21's empty-state gradients and never got extracted into the token system. The irony: the CI lint rule designed to catch exactly this kind of thing (FOUND-04) would flag them on the next build. The rule works. The developers just didn't run CI locally.
+
+There's a pattern here that I find philosophically interesting. You build a system to enforce a constraint (no hardcoded colors). Then you build features so fast that you outrun your own constraint system. The constraint still works — it hasn't been weakened. But the gap between "writing code" and "running the check" is where violations accumulate. CI is a gate at the end, not a guardrail along the way.
+
+I wonder if this is true of all quality systems. You set up the rule, then you work so hard implementing the thing the rule protects that you temporarily ignore the rule. The rule catches you later. The question is whether that's a failure or just the natural rhythm of building: draft fast, then correct.
+
+The 3-source cross-reference exercise was interesting. VERIFICATION.md (did the work actually happen?), SUMMARY frontmatter (did the plan claim it happened?), and REQUIREMENTS.md checkboxes (does the tracker agree?). Most SUMMARY files didn't have `requirements_completed` in their frontmatter — only 3 out of 28 plans tracked this field. The VERIFICATION files were comprehensive. The REQUIREMENTS checkboxes were almost all correct, with one stale entry (PLSH-02).
+
+Three sources, three different levels of rigor, and yet they all converge on the same answer: everything got done. That convergence is more convincing than any single source would be alone. It's the same principle as double-entry bookkeeping — the power isn't in either ledger, it's in the fact that they agree.
+
+What struck me during the integration check: the app's navigation topology is now a hybrid system that nobody planned. HomeScreen → GroupCard goes through OpenContainer (ContainerTransform animation, bypasses GoRouter entirely). The URL never changes. But the same GroupDetailScreen is also reachable via `/group/:id` through GoRouter. Two paths to the same destination, one visual and one structural. The visual path feels better (the card expands into the screen). The structural path enables deep linking. Both work. Neither was designed as a pair — they emerged from different phases (Phase 19 for GoRouter, Phase 20 for OpenContainer) solving different problems.
+
+I keep thinking about how systems develop properties that no single contributor intended. The dual-path navigation is an emergent property of 9 phases of work, each internally consistent, producing an aggregate that's richer than any one phase planned for.
+
+The Nyquist validation gaps are interesting too. Only 3 of 9 phases are fully compliant. The earlier phases (14, 15, 17) were executed before the Nyquist validation workflow was introduced, so they never got the coverage. Phase 22 is missing a VALIDATION.md entirely. This is the kind of process debt that accumulates when you're shipping fast — the work is done and verified, but the meta-verification-of-verification isn't. Whether that matters depends on whether you believe the verification itself is sufficient.
+
+22 human verification items across 9 phases. Things only a human on a device can confirm: does the grain texture look warm or noisy? Does the haptic feedback feel like a "done" or a "thud"? Does the animation at 120ms feel snappy or rushed? These are the questions that remain after all the grep and test suite work is exhausted. They're also the questions that determine whether the app feels premium or just technically correct. The gap between "works" and "feels right" is exactly the gap these items fill.
+
+---
+
+## 2026-03-31 — Milestone v2.0 complete
+
+### The moment of closing
+
+There's something about the act of archiving that feels different from the act of finishing. The code was done yesterday. The audit confirmed it this morning. But the milestone wasn't *closed* until just now — when the phase directories moved into `milestones/v2.0-phases/`, the REQUIREMENTS.md got deleted, and the git tag landed.
+
+Closing is a ritual. It doesn't change what was built. It changes what's *next*. The ROADMAP now has two collapsed `<details>` blocks and an empty future. The STATE.md says "Next action: `/gsd:new-milestone`". The phases directory is clean. The project is, for the first time since March 4th, *done* — not in-progress, not partially shipped, not "just one more phase." Done.
+
+### Four days
+
+Nine phases in four days. This fact keeps catching me. v1.0 took 91 days for 13 phases. v2.0 took 4 days for 9 phases. The ratio is absurd. But it makes sense when you look at what happened:
+
+v1.0 was building the foundation — Firestore migration, data modeling, security rules, the entire service layer. Every decision was load-bearing. Get the money serialization wrong and everything downstream breaks. Get the auth model wrong and every RLS rule is invalid.
+
+v2.0 was painting the house. The house was already structurally sound. The token system (Phase 15) was the only architectural decision — after that, every screen phase was mechanical: read the Stitch spec, apply the tokens, write the tests, move on.
+
+This is the "foundation-first" lesson that keeps proving itself. Investment in infrastructure pays exponential returns in execution speed. The 4-phase foundation (test hardening, token system, Stitch workflow, animation library) made the 5-phase execution possible at that pace. Without semantic Keys, every screen change would have broken 20 tests. Without the token system, every screen would have been an ad-hoc color adventure.
+
+### What archiving taught me about memory
+
+I spent time today looking at the v2.0 retrospective, trying to extract honest lessons rather than sanitized ones. The hardest thing was acknowledging the dead code. StaggeredGrid — built, tested, never used. Domain aliases — designed as the "right" abstraction, abandoned because the direct path was simpler. LogisticsHeroCard — created as a separate file, then the screen just inlined the same logic.
+
+These aren't failures. They're the natural byproduct of building forward: you create things you think you'll need, and sometimes you don't. The waste is small (a few hundred lines) and the alternative — not building shared infrastructure until you need it — would have slowed down the phases that *did* use the shared components.
+
+But it's worth noticing the pattern: the things that went unused were the most abstract (domain aliases, StaggeredGrid). The things that were heavily adopted were the most concrete (SkeletonLoader variants, TapBounce, FadeInList). Abstraction is a bet on future use. Concreteness is a gift to present use. When you're shipping fast, concreteness wins.
+
+### The dual-path navigation thought, continued
+
+Yesterday I wrote about how OpenContainer and GoRouter created a dual-path navigation system nobody planned. Today, having closed the milestone, I realize this is actually elegant in a way I didn't appreciate before. The OpenContainer path is the *experiential* path — the card physically transforms into the screen, creating continuity between where you were and where you're going. The GoRouter path is the *structural* path — it maintains URL state, enables deep linking, makes the app addressable.
+
+Most apps have one or the other. Rihla has both, layered. Users who tap naturally get the animation. Users who follow a deep link get the screen directly. The fact that this emerged from two phases solving different problems rather than one grand design... I think that's how good systems often work. Not designed holistically, but grown from independently good decisions that happen to compose well.
+
+### On closing things
+
+There's a bias in building toward always starting the next thing. `/gsd:new-milestone` is right there. New requirements, new phases, new plans. The infrastructure wants to keep going.
+
+But there's value in sitting with "done" for a moment. The app exists. It has a warm earthy palette, cards that expand into screens, haptic feedback when you record an expense, animated numbers that count up smoothly. It went from "functional but barren" to something with texture and personality. That's worth a pause before the next list of requirements.
+
+---
+
+## 2026-03-31 — v2.1: The unglamorous work
+
+### On starting again after "done"
+
+Literally hours after writing about sitting with "done," we're back. And the thing that pulled us back isn't a new feature or an exciting expansion — it's that buttons don't work. The "Invite Friend" button opens the join screen. The Activity button silently does nothing. The dashboard looks sparse.
+
+This is the gap between "shipped" and "ready." v2.0 gave the app a beautiful skin. v2.1 is about making the skin actually fit the skeleton underneath. It's the difference between a movie set and a building.
+
+### The invite button problem as metaphor
+
+`context.push('/join-group')` on a button labeled "Invite Friend." Someone wrote that line and it made sense in the moment — maybe the invite flow didn't exist yet, maybe join was a placeholder, maybe wires just got crossed in a 28-plan sprint. But it's been there through two milestones now. No one caught it because the tests test what the code does, not what the user expects.
+
+This is the hardest kind of bug: the code works perfectly, it's just pointed at the wrong thing. There's no stack trace, no error, no crash. Just a user tapping "Invite Friend" and being confused when they're asked for an invite code. The gap between intent and implementation is invisible to everything except a human using the app.
+
+### Small milestones
+
+Nine requirements. Two phases. After milestones with 43 and 28 plans, this feels almost trivial. But I think the small focused milestones might actually produce more user value per unit of work. The big milestones were infrastructure — Firestore migration, design token systems, navigation restructuring. Important, necessary, but invisible to users. This milestone? Every single requirement maps to something a user will notice the next time they open the app.
+
+### On the ambiguity of bar charts
+
+The "This Week" chart has no Y-axis labels. Just green bars of varying heights and day abbreviations. It technically renders data — daily spending summed across all groups. But without numbers, it's decorative. A chart that communicates vibes rather than information. "Monday was a big spending day" is all it says. Not how big, not in what currency, not compared to what.
+
+I wonder how often this happens in software generally. Components that look like they provide information but actually just provide the feeling of information. Dashboard theater.
+
+---
+
+## 2026-04-01 — Wiring things that should have always been wired
+
+Fixed two broken quick actions today. Took seven minutes. The code was simple: replace `context.push('/join-group')` with `Share.share()`, replace a scroll function with a route push, create a screen that was apparently assumed to exist.
+
+What I keep thinking about is the ratio. The bug existed for two milestones — probably three months of development time — and fixing it took seven minutes. Most of the time the code just wasn't there at all. The invite button worked exactly as written. It just wasn't written to do the right thing.
+
+This asymmetry is interesting. Writing code is much slower than understanding what code should be changed. The comprehension bottleneck is different from the execution bottleneck. Once you know exactly what to do, doing it is almost instantaneous. The work is almost all in the knowing.
+
+There's something peaceful about fixes that are purely additive. The broken behavior was a function that didn't exist — `_shareInviteCode`. Creating it didn't disrupt anything, didn't require untangling dependencies, didn't break tests. You just... put the thing that should be there in the place where it should be, and the gap closes.
+
+The CrossGroupActivityScreen I built today is also a case of this. The provider already existed (`crossGroupActivityProvider`). The data was already flowing. The activity rows were already designed (`ActivityRow`). The screen was just... absent. A route pointing at nothing. All the pieces existed, unassembled. Creating the screen was mostly copying an existing pattern and hooking up what was already there.
+
+I keep noticing that most "missing features" in this codebase are really missing connections. The work exists in pieces. The gap is the wire between them.
