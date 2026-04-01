@@ -2,8 +2,8 @@
 phase: 24
 slug: visual-density-polish
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-01
 ---
 
@@ -38,12 +38,12 @@ created: 2026-04-01
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 24-01-01 | 01 | 1 | CARD-01 | widget | `flutter test test/features/home_test.dart` | ❌ W0 | ⬜ pending |
-| 24-01-02 | 01 | 1 | CARD-02 | widget | `flutter test test/features/home_test.dart` | ❌ W0 | ⬜ pending |
-| 24-02-01 | 02 | 1 | CHRT-01 | widget | `flutter test test/features/home_test.dart` | ❌ W0 | ⬜ pending |
-| 24-02-02 | 02 | 1 | CHRT-02 | widget | `flutter test test/features/home_test.dart` | ❌ W0 | ⬜ pending |
-| 24-03-01 | 03 | 1 | LAYT-01 | widget | `flutter test test/features/home_test.dart` | ❌ W0 | ⬜ pending |
-| 24-03-02 | 03 | 1 | LAYT-02 | widget | `flutter test test/features/home_test.dart` | ❌ W0 | ⬜ pending |
+| 24-01-01 | 01 | 1 | CARD-01 | widget | `flutter test test/features/home/home_screen_groups_test.dart` | ❌ W0 | ⬜ pending |
+| 24-01-02 | 01 | 1 | CARD-02 | widget | `flutter test test/features/home/home_screen_groups_test.dart` | ❌ W0 | ⬜ pending |
+| 24-02-01 | 02 | 2 | CHRT-01 | widget | `flutter test test/features/home/widgets_test.dart` | ❌ W0 | ⬜ pending |
+| 24-02-02 | 02 | 2 | CHRT-02 | widget | `flutter test test/features/home/widgets_test.dart` | ❌ W0 | ⬜ pending |
+| 24-02-03 | 02 | 2 | LAYT-01 | widget | `flutter test test/features/home/home_screen_dashboard_test.dart` | ❌ W0 | ⬜ pending |
+| 24-02-04 | 02 | 2 | LAYT-02 | widget | `flutter test test/features/home/home_screen_dashboard_test.dart` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,7 +51,9 @@ created: 2026-04-01
 
 ## Wave 0 Requirements
 
-- [ ] `test/features/home_test.dart` — stubs for CARD-01, CARD-02, CHRT-01, CHRT-02, LAYT-01, LAYT-02
+- [ ] `test/features/home/home_screen_groups_test.dart` — stubs for CARD-01, CARD-02
+- [ ] `test/features/home/widgets_test.dart` — stubs for CHRT-01, CHRT-02
+- [ ] `test/features/home/home_screen_dashboard_test.dart` — stubs for LAYT-01, LAYT-02
 - [ ] Test fixtures for GroupCard with mock group events provider
 - [ ] Test fixtures for WeeklySpendingCard with mock spending data
 
