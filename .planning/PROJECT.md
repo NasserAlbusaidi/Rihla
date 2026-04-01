@@ -62,11 +62,12 @@ Groups persist across events and accumulate financial history — friends settle
 - ✓ Reusable animation components (FadeInList, TapBounce, SkeletonLoader) — v2.0 Phase 17
 - ✓ Animated balance counters — v2.0 Phase 22
 - ✓ Grain/texture overlays + AppColors deleted — v2.0 Phase 22
+- ✓ Quick action buttons correctly wired (Invite Friend → share sheet, Activity → cross-group screen) — v2.1 Phase 23
+- ✓ Cross-group activity screen — v2.1 Phase 23
+- ✓ 0-groups edge case SnackBar feedback — v2.1 Phase 23
 
 ### Active
 
-- [ ] Fix "Invite Friend" quick-action — currently wired to join-group instead of invite/share
-- [ ] Fix "Activity" quick-action button — currently non-functional
 - [ ] Improve group card visual distinction — richer cards, less flat
 - [ ] Clarify "This Week" chart — axis labels, clear what it measures
 - [ ] Reduce dashboard empty feel — better visual density and content layout
