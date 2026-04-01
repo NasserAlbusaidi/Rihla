@@ -52,6 +52,7 @@ dependencies:
   file_picker: ^10.3.8
   open_filex: ^4.6.1
   url_launcher: ^6.3.2
+  app_settings: ^7.0.0
   intl: ^0.20.2
   sqflite: ^2.4.2
   path: ^1.9.1
