@@ -36,7 +36,7 @@ Declared values — all from `AppSpacingTokens.standard` in `lib/core/theme/toke
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| space4 | 4dp | Icon-to-text gap inside event context line; accent strip width |
+| space4 | 4dp | Icon-to-text gap inside event context line; accent strip width; gap between chart bar label and bar |
 | space8 | 8dp | Vertical gap between group card rows; member count badge internal padding; activity row vertical padding |
 | space12 | 12dp | Inter-section gap on dashboard (D-12 — tightened from 16-24dp) |
 | space16 | 16dp | Card internal padding; horizontal page margin; chart card margin |
@@ -51,7 +51,6 @@ Phase-specific exceptions:
 | Accent strip width | 4dp (space4) | Fixed visual spec from D-06 — a narrow left-edge strip |
 | Accent strip height | Full card height (flex) | Stretches to card height via AlignedRow or ClipRRect |
 | Event context line icon | 16dp icon size | D-02 — small inline type icon, space4 gap to text |
-| Chart bar label font | 9dp | Below bodySmall — must not clip inside narrow bar columns |
 | Touch targets | 48dp minimum | Flutter Material 3 tap-target minimum — enforced on all tappable rows |
 
 Source: CONTEXT.md D-12, `lib/core/theme/tokens/spacing_tokens.dart`
@@ -67,10 +66,13 @@ All roles use Plus Jakarta Sans. Roles map to `AppTheme._buildTextTheme()` style
 | Body | bodyMedium | 14sp | 400 | 1.4 | Balance label, context line event name, chart error text |
 | Label / Secondary | bodySmall | 12sp | 400 | 1.3 | Relative date in context line, chart day labels, member count, section overline |
 | Card title | titleMedium | 15sp | 600 | 1.3 | Group name in GroupCard |
-| Section header | headlineLarge (override) | 28sp | 700 | 1.2 | "Your Groups (N)" — matches existing home header style |
-| Chart bar label | Custom TextStyle | 9sp | 600 | 1.0 | Amount label at bar top — must not overflow bar column |
+| Section header | headlineLarge (override) | 28sp | 600 | 1.2 | "Your Groups (N)" — matches existing home header style |
 
-Weight palette: regular (400) and semibold (600) only. The 700 weight is reserved for the section header and existing hero card — no new 700 usages introduced in this phase.
+Weight palette for this phase: regular (400) and semibold (600) only.
+
+Note: The 28sp section header uses weight 600 (semibold) to stay within the two-weight palette. The existing 700-weight hero card heading is inherited from prior phases and is not a new decision introduced in Phase 24 — it is excluded from this phase's type scale contract.
+
+Implementation-detail override (outside type scale): chart bar amount labels use `TextStyle(fontSize: 9, fontWeight: FontWeight.w600)` directly in `weekly_spending_card.dart`. This size falls below the declared type scale minimum and is constrained by bar column geometry — it is not a new type scale token. Do not add it to the theme or use it outside the bar chart context.
 
 Source: `lib/core/theme/app_theme.dart` `_buildTextTheme`, CONTEXT.md Established Patterns
 
@@ -79,6 +81,8 @@ Source: `lib/core/theme/app_theme.dart` `_buildTextTheme`, CONTEXT.md Establishe
 ## Color
 
 All values from `AppColorTokens.light` in `lib/core/theme/tokens/color_tokens.dart`. No new color constants introduced in this phase — all visuals map to existing tokens.
+
+**Primary focal point:** BalanceHeroCard is the dominant visual element on the dashboard. All other components (GroupCard, WeeklySpendingCard, section headers) are subordinate in visual weight.
 
 | Role | Token | Hex | Usage |
 |------|-------|-----|-------|
@@ -156,7 +160,7 @@ Changes:
 ```
 Column (mainAxisAlignment: end)
   Text(amountLabel)   ← NEW: 9sp, weight 600, textSecondary, only when amount > 0
-  SizedBox(2)         ← NEW: gap between label and bar
+  SizedBox(4)         ← gap between label and bar (space4 token)
   Container(barHeight, teal bar or gray placeholder)
   SizedBox(4)
   Text(dayLabel)
@@ -205,11 +209,11 @@ Source: CONTEXT.md D-12, D-13, D-14
 | Group card — balance error | "Settled" (existing, unchanged, safe fallback) |
 | Chart title | "Weekly Spending (OMR)" |
 | Chart — all-zero state | "No spending this week" (existing, unchanged) |
-| Chart — error state | "Spending data unavailable" (existing, unchanged) |
+| Chart — error state | "Spending data unavailable — pull to refresh" |
 | Section header (groups list) | "Your Groups (N)" where N = groups.length |
 | Error state heading | "Something went wrong" (existing, unchanged) |
 | Error state body | "Check your connection and try again. Your travel groups are safely synced, but we need the internet to fetch latest updates." (existing, unchanged) |
-| Error CTA | "Retry" (existing) |
+| Error CTA | "Retry Loading" |
 
 No destructive actions in this phase. No confirmation dialogs needed.
 
@@ -281,15 +285,21 @@ No third-party component registries. All components are hand-authored Flutter wi
 |-------|--------|
 | Design system (Flutter ThemeExtension) | `lib/core/theme/app_theme.dart` codebase scan |
 | Spacing scale (all 7 tokens) | `lib/core/theme/tokens/spacing_tokens.dart` |
-| Typography (all 5 roles) | `lib/core/theme/app_theme.dart` _buildTextTheme |
+| Typography (4 declared roles) | `lib/core/theme/app_theme.dart` _buildTextTheme |
 | Color — dominant, secondary, accent | `lib/core/theme/tokens/color_tokens.dart` |
+| Focal point declaration | CONTEXT.md D-14 (section order implies hierarchy) |
 | Accent strip 5-color rotation | CONTEXT.md D-07 + AppColorTokens.light |
 | Group card new structure (D-01/D-02/D-03/D-06/D-07) | CONTEXT.md decisions + group_card.dart codebase scan |
 | Chart modifications (D-09/D-10/D-11) | CONTEXT.md decisions + weekly_spending_card.dart codebase scan |
 | Dashboard spacing tightening (D-12) | CONTEXT.md D-12 + home_screen.dart codebase scan |
 | Section header copy "Your Groups (N)" (D-13) | CONTEXT.md D-13 |
 | Copywriting — all existing copy | home_screen.dart, weekly_spending_card.dart codebase scan |
-| Event type icons | `lib/features/events/models/event_type_config.dart` |
+| Chart error copy updated with solution path | checker revision 2026-04-01 |
+| "Retry" → "Retry Loading" | checker revision 2026-04-01 |
+| 9sp excluded from type scale (implementation detail) | checker revision 2026-04-01 |
+| 700 weight excluded from phase weight palette | checker revision 2026-04-01 |
+| SizedBox(2) → SizedBox(4) in chart bar spec | checker revision 2026-04-01 |
+| Event type icons | `lib/features/trip/models/event_type.dart` |
 | Hash-color pattern | `lib/features/home/widgets/activity_row.dart` |
 | No destructive actions | CONTEXT.md scope — visual polish only |
 | Registry: none | Flutter project — shadcn gate not applicable |
