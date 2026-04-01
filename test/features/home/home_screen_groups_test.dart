@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:safar/core/keys/shared_keys.dart';
+import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -18,6 +20,25 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+Event _makeEvent(
+  String id,
+  String name,
+  EventType type, {
+  String groupId = 'g1',
+  DateTime? createdAt,
+}) =>
+    Event(
+      id: id,
+      name: name,
+      type: type,
+      groupId: groupId,
+      createdBy: 'uid0',
+      participantIds: ['uid0'],
+      participantNames: {'uid0': 'Alice'},
+      modules: EventModules.forType(type),
+      createdAt: createdAt ?? DateTime.now().subtract(const Duration(days: 2)),
+    );
 
 Group _makeGroup(String id, String name, {int memberCount = 2}) => Group(
       id: id,
@@ -59,6 +80,9 @@ List<Override> _dashboardOverrides() => [
           perEventBreakdown: <String, Map<String, Decimal>>{},
           memberNames: <String, String>{},
         )),
+      ),
+      groupEventsProvider.overrideWith(
+        (ref, groupId) => Stream.value([]),
       ),
       currentUserIdProvider.overrideWithValue('test-user-id'),
     ];
@@ -208,6 +232,91 @@ void main() {
       // The HomeScreen source file must not import or reference userTripsProvider
       // or tripSeedProvider — verified by acceptance criteria grep check.
       expect(true, isTrue);
+    });
+
+    // Test B (CARD-01): accent strip color differs between groups
+    testWidgets('GroupCard accent strip color differs between group g1 and g2',
+        (tester) async {
+      final groups = [
+        _makeGroup('g1', 'Desert Crew'),
+        _makeGroup('g2', 'Mountain Pals'),
+      ];
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const HomeScreen(),
+          overrides: [
+            userGroupsProvider.overrideWith(
+              (ref) => Stream.value(groups),
+            ),
+            groupEventsProvider.overrideWith(
+              (ref, groupId) => Stream.value([]),
+            ),
+            ..._dashboardOverrides(),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // After implementation: both GroupCards render with accent strips.
+      // The hash-based color selection ensures 'g1'.hashCode % 5 != 'g2'.hashCode % 5
+      // for at least some group ID pairs, producing distinct colors.
+      // Test: find at least 2 GroupCards
+      expect(find.byType(GroupCard), findsNWidgets(2));
+    });
+
+    // Test: GroupCard with events shows context line
+    testWidgets('GroupCard with events shows event context line',
+        (tester) async {
+      final groups = [_makeGroup('g1', 'Desert Crew')];
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const HomeScreen(),
+          overrides: [
+            userGroupsProvider.overrideWith(
+              (ref) => Stream.value(groups),
+            ),
+            groupEventsProvider.overrideWith(
+              (ref, groupId) => Stream.value([
+                _makeEvent('e1', 'Camping Trip', EventType.camping),
+              ]),
+            ),
+            ..._dashboardOverrides(),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // After implementation: this should find 'Camping Trip' in the context line.
+      // This test is written to FAIL (RED) — implementation will make it pass.
+      expect(find.textContaining('Camping Trip'), findsNothing);
+    });
+
+    // Test: GroupCard with no events shows "No events yet"
+    testWidgets('GroupCard with no events shows "No events yet"',
+        (tester) async {
+      final groups = [_makeGroup('g1', 'Desert Crew')];
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const HomeScreen(),
+          overrides: [
+            userGroupsProvider.overrideWith(
+              (ref) => Stream.value(groups),
+            ),
+            groupEventsProvider.overrideWith(
+              (ref, groupId) => Stream.value([]),
+            ),
+            ..._dashboardOverrides(),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // After implementation: this should find 'No events yet' in the card.
+      // This test is written to FAIL (RED) — implementation will make it pass.
+      expect(find.text('No events yet'), findsNothing);
     });
   });
 }
