@@ -470,9 +470,14 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   // ---------------------------------------------------------------------------
 
   void _shareInviteCode(Group group) {
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = box != null
+        ? box.localToGlobal(Offset.zero) & box.size
+        : Rect.zero;
     Share.share(
       'Join my group ${group.name} on Rihla! Code: ${group.inviteCode} — Download: https://play.google.com/store/apps/details?id=com.safar.safar',
       subject: 'Join ${group.name} on Rihla',
+      sharePositionOrigin: origin,
     );
   }
 }
