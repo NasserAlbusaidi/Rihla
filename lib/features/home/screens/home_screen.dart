@@ -133,7 +133,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
         slivers: [
           // 1. Balance Hero Card
           const SliverToBoxAdapter(
-            child: SizedBox(height: 16),
+            child: SizedBox(height: 12),
           ),
           const SliverToBoxAdapter(child: BalanceHeroCard()),
 
@@ -144,6 +144,17 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               onSettleUp: () => _handleGroupAction(context, 'settle'),
               onInviteFriend: () => _handleGroupAction(context, 'invite'),
               onActivity: () => context.push('/activity'),
+            ),
+          ),
+
+          // 2a. "Your Groups (N)" section header (D-13, LAYT-02)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                'Your Groups (${groups.length})',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
           ),
 
@@ -212,7 +223,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       key: HomeKeys.activitySection,
       padding: const EdgeInsets.fromLTRB(
         16,
-        24,
+        12,
         16,
         8,
       ),

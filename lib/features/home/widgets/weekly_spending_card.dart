@@ -57,7 +57,7 @@ class WeeklySpendingCard extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'This Week',
+            'Weekly Spending (OMR)',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 14,
@@ -75,7 +75,7 @@ class WeeklySpendingCard extends ConsumerWidget {
             )
           else
             SizedBox(
-              height: 80,
+              height: 96,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: weekData.map((entry) {
@@ -91,6 +91,17 @@ class WeeklySpendingCard extends ConsumerWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        if (entry.amount > Decimal.zero)
+                          Text(
+                            entry.amount.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: AppColorTokens.light.textSecondary,
+                            ),
+                          ),
+                        if (entry.amount > Decimal.zero)
+                          const SizedBox(height: 4),
                         Container(
                           height: barHeight > 0 ? barHeight : 2,
                           decoration: BoxDecoration(
