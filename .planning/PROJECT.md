@@ -93,6 +93,7 @@ Groups persist across events and accumulate financial history — friends settle
 **v2.1 shipped:** 2026-04-01 — Home screen quick actions fixed, group cards enriched, chart labels added, dashboard density improved.
 
 **v2.2 started:** 2026-04-01 — Profile Page milestone.
+**Phase 25 complete:** 2026-04-01 — Profile screen with identity management (display name + initials circle) and cross-group stats (groups, events, OMR spending). Navigable from home header avatar and bottom nav Profile tab.
 
 ### Out of Scope
 
@@ -172,4 +173,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after v2.2 milestone start — Profile Page*
+*Last updated: 2026-04-01 after Phase 25 complete — Profile Screen Core*
