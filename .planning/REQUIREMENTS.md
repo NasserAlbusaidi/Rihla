@@ -9,15 +9,15 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Identity
 
-- [ ] **IDENT-01**: User can view their current display name on the profile page
-- [ ] **IDENT-02**: User can edit their display name from the profile page
-- [ ] **IDENT-03**: Display name change propagates to all group participant records
+- [x] **IDENT-01**: User can view their current display name on the profile page
+- [x] **IDENT-02**: User can edit their display name from the profile page
+- [x] **IDENT-03**: Display name change propagates to all group participant records
 
 ### Stats
 
-- [ ] **STATS-01**: User can see total number of groups they belong to
-- [ ] **STATS-02**: User can see total number of events they've participated in
-- [ ] **STATS-03**: User can see total spending across all groups
+- [x] **STATS-01**: User can see total number of groups they belong to
+- [x] **STATS-02**: User can see total number of events they've participated in
+- [x] **STATS-03**: User can see total spending across all groups
 
 ### Notifications
 
@@ -52,12 +52,12 @@ None deferred for this milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IDENT-01 | Phase 25 | Pending |
-| IDENT-02 | Phase 25 | Pending |
-| IDENT-03 | Phase 25 | Pending |
-| STATS-01 | Phase 25 | Pending |
-| STATS-02 | Phase 25 | Pending |
-| STATS-03 | Phase 25 | Pending |
+| IDENT-01 | Phase 25 | Complete |
+| IDENT-02 | Phase 25 | Complete |
+| IDENT-03 | Phase 25 | Complete |
+| STATS-01 | Phase 25 | Complete |
+| STATS-02 | Phase 25 | Complete |
+| STATS-03 | Phase 25 | Complete |
 | NOTIF-01 | Phase 26 | Pending |
 | NOTIF-02 | Phase 26 | Pending |
 | INFO-01 | Phase 26 | Pending |
