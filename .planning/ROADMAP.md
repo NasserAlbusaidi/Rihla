@@ -72,7 +72,10 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
   1. User can navigate to a profile screen and see their current display name
   2. User can tap to edit their display name and save it — the new name appears across all groups they belong to
   3. User can see their total group count, event count, and total spending in OMR on the profile screen
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 25-01-PLAN.md — Data layer + profile screen UI (keys, initials circle, stats provider, name propagation, screen, bottom sheet, tests)
+- [ ] 25-02-PLAN.md — Navigation wiring (route /profile, home header avatar, bottom nav tab, delete old settings screen)
 **UI hint**: yes
 
 ### Phase 26: Settings & Support
@@ -95,5 +98,5 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
-| 25 | v2.2 | 0/? | Not started | - |
+| 25 | v2.2 | 0/2 | Not started | - |
 | 26 | v2.2 | 0/? | Not started | - |
