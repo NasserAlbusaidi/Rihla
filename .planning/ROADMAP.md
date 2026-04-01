@@ -85,5 +85,5 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
-| 23. Quick Action Fixes | v2.1 | 1/1 | Complete   | 2026-04-01 |
+| 23. Quick Action Fixes | v2.1 | 1/1 | Complete    | 2026-04-01 |
 | 24. Visual Density & Polish | v2.1 | 0/? | Not started | - |
