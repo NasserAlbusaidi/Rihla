@@ -49,7 +49,7 @@ Full details: [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
 ### v2.1 Home Screen Completion
 
 - [x] **Phase 23: Quick Action Fixes** — Wire broken home screen actions to correct destinations (completed 2026-04-01)
-- [ ] **Phase 24: Visual Density & Polish** — Improve group cards, chart clarity, and layout density
+- [x] **Phase 24: Visual Density & Polish** — Improve group cards, chart clarity, and layout density (completed 2026-04-01)
 
 ## Phase Details
 
@@ -89,4 +89,4 @@ Plans:
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
 | 23. Quick Action Fixes | v2.1 | 1/1 | Complete    | 2026-04-01 |
-| 24. Visual Density & Polish | v2.1 | 1/2 | In Progress|  |
+| 24. Visual Density & Polish | v2.1 | 1/2 | Complete    | 2026-04-01 |
