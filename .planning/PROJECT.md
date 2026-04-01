@@ -71,13 +71,28 @@ Groups persist across events and accumulate financial history — friends settle
 
 ### Active
 
-(None — planning next milestone)
+- [ ] Display name editing from profile page
+- [ ] Cross-group stats (total groups, events, spending)
+- [ ] Notification settings (FCM push toggles)
+- [ ] App info / about (version, feedback, licenses)
+- [ ] "Buy me a coffee" placeholder
+
+## Current Milestone: v2.2 Profile Page
+
+**Goal:** Add a profile page with identity management, cross-group stats, notification settings, and support options.
+
+**Target features:**
+- Display name editing (change name shown across all groups)
+- Cross-group stats (total groups, events, spending)
+- Notification settings (FCM push toggles)
+- App info / about (version, feedback, licenses)
+- "Buy me a coffee" placeholder (support/tip CTA)
 
 ## Current State
 
 **v2.1 shipped:** 2026-04-01 — Home screen quick actions fixed, group cards enriched, chart labels added, dashboard density improved.
 
-**Next milestone:** Not yet planned. Run `/gsd:new-milestone` to start.
+**v2.2 started:** 2026-04-01 — Profile Page milestone.
 
 ### Out of Scope
 
@@ -157,4 +172,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after v2.1 milestone completion — Home Screen Completion*
+*Last updated: 2026-04-01 after v2.2 milestone start — Profile Page*

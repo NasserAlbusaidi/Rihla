@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: Home Screen Completion
-status: completed
-stopped_at: Milestone v2.1 archived
+milestone: v2.2
+milestone_name: Profile Page
+status: requirements
+stopped_at: Defining requirements
 last_updated: "2026-04-01"
 last_activity: 2026-04-01
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -20,11 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v2.2 Profile Page
 
 ## Current Position
 
-All milestones complete. Ready for `/gsd:new-milestone`.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-01 — Milestone v2.2 started
 
 ## Performance Metrics
 
@@ -51,5 +54,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-01
-Stopped at: Milestone v2.1 archived
-Next action: `/gsd:new-milestone`
+Stopped at: Defining requirements for v2.2
+Next action: Define requirements → create roadmap
