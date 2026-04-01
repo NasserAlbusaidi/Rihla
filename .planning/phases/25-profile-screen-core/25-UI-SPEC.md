@@ -60,8 +60,7 @@ All type uses Plus Jakarta Sans via `GoogleFonts.getFont('Plus Jakarta Sans', ..
 |------|------|--------|-------------|-------|
 | Stat number | 22sp | w800 | 1.1 | Big number in stat cards (group count, event count, OMR spending) |
 | Body / name display | 16sp | w600 | 1.4 | Display name below initials circle, bottom sheet text field value |
-| Label / section header | 12sp | w600 | 1.3 | Stat card labels ("Groups", "Events", "Spent"), section header uppercase text |
-| Caption | 11sp | w600 | 1.2 | Stat card labels with letterSpacing: 0.5 |
+| Label / caption | 11sp | w600 | 1.2 | Stat card labels ("Groups", "Events", "Spent") with letterSpacing: 0.5, section header uppercase text with letterSpacing: 1.5 |
 
 Two weights only: **w600** (body, labels, captions) and **w800** (stat numbers).
 
@@ -196,9 +195,13 @@ Save button disabled when text field is empty (after trim).
 Add to the home dashboard header row's trailing area. Position: right-most element in the header row.
 
 ```
-GestureDetector(
-  onTap: () => context.push('/profile'),
-  child: InitialsCircle(size: 32dp, bg: focusBorderWarm, text: textOnPrimary),
+Semantics(
+  label: 'Open profile',
+  button: true,
+  child: GestureDetector(
+    onTap: () => context.push('/profile'),
+    child: InitialsCircle(size: 32dp, bg: focusBorderWarm, text: textOnPrimary),
+  ),
 )
 ```
 
