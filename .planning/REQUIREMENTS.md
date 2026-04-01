@@ -20,13 +20,13 @@ Requirements for home screen completion. Each maps to roadmap phases.
 
 ### Chart
 
-- [ ] **CHRT-01**: Weekly spending chart shows amount labels on bars or Y-axis so values are readable
-- [ ] **CHRT-02**: Chart title explicitly says "Weekly Spending" with currency context instead of just "This Week"
+- [x] **CHRT-01**: Weekly spending chart shows amount labels on bars or Y-axis so values are readable
+- [x] **CHRT-02**: Chart title explicitly says "Weekly Spending" with currency context instead of just "This Week"
 
 ### Layout
 
-- [ ] **LAYT-01**: Dashboard has improved visual density — tighter spacing, less dead whitespace between sections
-- [ ] **LAYT-02**: Group list section has a clear header and visual separation from quick actions and activity
+- [x] **LAYT-01**: Dashboard has improved visual density — tighter spacing, less dead whitespace between sections
+- [x] **LAYT-02**: Group list section has a clear header and visual separation from quick actions and activity
 
 ## Future Requirements
 
@@ -69,10 +69,10 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | ACT-03 | Phase 23 | Complete |
 | CARD-01 | Phase 24 | Complete |
 | CARD-02 | Phase 24 | Complete |
-| CHRT-01 | Phase 24 | Pending |
-| CHRT-02 | Phase 24 | Pending |
-| LAYT-01 | Phase 24 | Pending |
-| LAYT-02 | Phase 24 | Pending |
+| CHRT-01 | Phase 24 | Complete |
+| CHRT-02 | Phase 24 | Complete |
+| LAYT-01 | Phase 24 | Complete |
+| LAYT-02 | Phase 24 | Complete |
 
 **Coverage:**
 - v2.1 requirements: 9 total
