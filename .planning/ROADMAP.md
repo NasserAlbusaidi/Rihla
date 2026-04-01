@@ -88,7 +88,10 @@ Plans:
   3. User can see the app version number on the profile screen
   4. User can tap a feedback/support link that opens an external URL
   5. User can tap to open the open-source licenses screen, and a "Buy me a coffee" placeholder section is visible on the profile screen
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 26-01-PLAN.md — Section widgets (notifications toggle, about info, support placeholder) + wire into ProfileScreen
+- [x] 26-02-PLAN.md — Widget tests for all Phase 26 requirements (NOTIF-01/02, INFO-01/02/03, SUPP-01)
 **UI hint**: yes
 
 ## Progress
@@ -98,5 +101,5 @@ Plans:
 | 1-13 | v1.0 | 43/43 | Complete | 2026-03-28 |
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
-| 25 | v2.2 | 2/2 | Complete   | 2026-04-01 |
-| 26 | v2.2 | 0/? | Not started | - |
+| 25 | v2.2 | 2/2 | Complete    | 2026-04-01 |
+| 26 | v2.2 | 1/2 | In Progress|  |

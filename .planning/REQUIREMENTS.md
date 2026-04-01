@@ -21,18 +21,18 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Notifications
 
-- [ ] **NOTIF-01**: User can view current push notification status
-- [ ] **NOTIF-02**: User can toggle push notifications on/off
+- [x] **NOTIF-01**: User can view current push notification status
+- [x] **NOTIF-02**: User can toggle push notifications on/off
 
 ### App Info
 
-- [ ] **INFO-01**: User can view app version number
-- [ ] **INFO-02**: User can access feedback/support link
-- [ ] **INFO-03**: User can view open-source licenses
+- [x] **INFO-01**: User can view app version number
+- [x] **INFO-02**: User can access feedback/support link
+- [x] **INFO-03**: User can view open-source licenses
 
 ### Support
 
-- [ ] **SUPP-01**: User sees a "Buy me a coffee" placeholder section on the profile page
+- [x] **SUPP-01**: User sees a "Buy me a coffee" placeholder section on the profile page
 
 ## Future Requirements
 
@@ -58,12 +58,12 @@ None deferred for this milestone.
 | STATS-01 | Phase 25 | Complete |
 | STATS-02 | Phase 25 | Complete |
 | STATS-03 | Phase 25 | Complete |
-| NOTIF-01 | Phase 26 | Pending |
-| NOTIF-02 | Phase 26 | Pending |
-| INFO-01 | Phase 26 | Pending |
-| INFO-02 | Phase 26 | Pending |
-| INFO-03 | Phase 26 | Pending |
-| SUPP-01 | Phase 26 | Pending |
+| NOTIF-01 | Phase 26 | Complete |
+| NOTIF-02 | Phase 26 | Complete |
+| INFO-01 | Phase 26 | Complete |
+| INFO-02 | Phase 26 | Complete |
+| INFO-03 | Phase 26 | Complete |
+| SUPP-01 | Phase 26 | Complete |
 
 **Coverage:**
 - v2.2 requirements: 12 total
