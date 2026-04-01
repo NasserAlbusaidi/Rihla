@@ -9,14 +9,14 @@ Requirements for home screen completion. Each maps to roadmap phases.
 
 ### Quick Actions
 
-- [ ] **ACT-01**: "Invite Friend" button opens a share sheet with a group invite code (currently navigates to join-group screen)
-- [ ] **ACT-02**: When user has multiple groups, "Invite Friend" shows a group picker before sharing
-- [ ] **ACT-03**: "Activity" button navigates to a cross-group activity view (currently tries to scroll but silently fails)
+- [x] **ACT-01**: "Invite Friend" button opens a share sheet with a group invite code (currently navigates to join-group screen)
+- [x] **ACT-02**: When user has multiple groups, "Invite Friend" shows a group picker before sharing
+- [x] **ACT-03**: "Activity" button navigates to a cross-group activity view (currently tries to scroll but silently fails)
 
 ### Group Cards
 
-- [ ] **CARD-01**: Group card shows visual differentiation between groups (color accent, event count, or member indicators)
-- [ ] **CARD-02**: Group card displays richer context — last event name, recent activity hint, or total group spend
+- [x] **CARD-01**: Group card shows visual differentiation between groups (color accent, event count, or member indicators)
+- [x] **CARD-02**: Group card displays richer context — last event name, recent activity hint, or total group spend
 
 ### Chart
 
@@ -64,11 +64,11 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACT-01 | Phase 23 | Pending |
-| ACT-02 | Phase 23 | Pending |
-| ACT-03 | Phase 23 | Pending |
-| CARD-01 | Phase 24 | Pending |
-| CARD-02 | Phase 24 | Pending |
+| ACT-01 | Phase 23 | Complete |
+| ACT-02 | Phase 23 | Complete |
+| ACT-03 | Phase 23 | Complete |
+| CARD-01 | Phase 24 | Complete |
+| CARD-02 | Phase 24 | Complete |
 | CHRT-01 | Phase 24 | Pending |
 | CHRT-02 | Phase 24 | Pending |
 | LAYT-01 | Phase 24 | Pending |
