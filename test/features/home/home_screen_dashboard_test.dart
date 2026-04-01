@@ -134,43 +134,44 @@ GroupBalances _testGroupBalances({Decimal? net}) => (
 // Tests
 // ---------------------------------------------------------------------------
 
+List<Override> _loadedOverrides() => [
+      userGroupsProvider.overrideWith(
+        (ref) => Stream.value(_testGroups),
+      ),
+      crossGroupBalanceProvider.overrideWith(
+        (ref) => AsyncValue.data((
+          net: Decimal.parse('-5.500'),
+          groupCount: 2,
+          isLoading: false,
+        )),
+      ),
+      crossGroupActivityProvider.overrideWith(
+        (ref) => AsyncValue.data([
+          _toEntry(_testActivity1, 'Desert Crew', 'g1'),
+          _toEntry(_testActivity2, 'Mountain Pals', 'g2'),
+        ]),
+      ),
+      weeklyGroupSpendingProvider.overrideWith(
+        (ref) => AsyncValue.data(
+          List.generate(7, (i) {
+            final date = DateTime(2026, 3, 24).add(Duration(days: i));
+            return (date: date, amount: Decimal.zero);
+          }),
+        ),
+      ),
+      groupBalancesProvider.overrideWith(
+        (ref, groupId) => AsyncValue.data(_testGroupBalances()),
+      ),
+      groupEventsProvider.overrideWith(
+        (ref, groupId) => Stream.value([
+          _makeEvent('e1', 'Camping Trip', EventType.camping),
+        ]),
+      ),
+      currentUserIdProvider.overrideWithValue('test-user-id'),
+    ];
+
 void main() {
   group('HomeScreen dashboard - loaded state', () {
-    List<Override> _loadedOverrides() => [
-          userGroupsProvider.overrideWith(
-            (ref) => Stream.value(_testGroups),
-          ),
-          crossGroupBalanceProvider.overrideWith(
-            (ref) => AsyncValue.data((
-              net: Decimal.parse('-5.500'),
-              groupCount: 2,
-              isLoading: false,
-            )),
-          ),
-          crossGroupActivityProvider.overrideWith(
-            (ref) => AsyncValue.data([
-              _toEntry(_testActivity1, 'Desert Crew', 'g1'),
-              _toEntry(_testActivity2, 'Mountain Pals', 'g2'),
-            ]),
-          ),
-          weeklyGroupSpendingProvider.overrideWith(
-            (ref) => AsyncValue.data(
-              List.generate(7, (i) {
-                final date = DateTime(2026, 3, 24).add(Duration(days: i));
-                return (date: date, amount: Decimal.zero);
-              }),
-            ),
-          ),
-          groupBalancesProvider.overrideWith(
-            (ref, groupId) => AsyncValue.data(_testGroupBalances()),
-          ),
-          groupEventsProvider.overrideWith(
-            (ref, groupId) => Stream.value([
-              _makeEvent('e1', 'Camping Trip', EventType.camping),
-            ]),
-          ),
-          currentUserIdProvider.overrideWithValue('test-user-id'),
-        ];
 
     testWidgets('Test 1: renders BalanceHeroCard widget', (tester) async {
       await tester.pumpWidget(
@@ -497,6 +498,19 @@ void main() {
 
       // OpenContainer wrapping GroupCard confirms ContainerTransform is wired (NAV-04)
       expect(find.byType(OpenContainer<void>), findsWidgets);
+    });
+  });
+
+  group('HomeScreen dashboard - section header (Phase 24)', () {
+    testWidgets('Test NEW-3: "Your Groups (N)" header renders above group cards (LAYT-02)',
+        (tester) async {
+      // _loadedOverrides() provides 2 groups
+      await tester.pumpWidget(
+        _buildTestApp(const HomeScreen(), overrides: _loadedOverrides()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your Groups (2)'), findsOneWidget);
     });
   });
 

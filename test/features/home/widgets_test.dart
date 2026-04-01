@@ -110,7 +110,7 @@ void main() {
   // WeeklySpendingCard tests
   // ---------------------------------------------------------------------------
   group('WeeklySpendingCard', () {
-    testWidgets('Test 3: renders 7 bars and This Week title', (tester) async {
+    testWidgets('Test 3: renders 7 bars and Weekly Spending (OMR) title', (tester) async {
       await tester.pumpWidget(
         buildProviderWidget(
           child: const WeeklySpendingCard(),
@@ -123,7 +123,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('This Week'), findsOneWidget);
+      expect(find.text('Weekly Spending (OMR)'), findsOneWidget);
       // Mon through Sun labels should be visible
       expect(find.text('Mon'), findsOneWidget);
       expect(find.text('Sun'), findsOneWidget);
@@ -143,6 +143,42 @@ void main() {
       await tester.pump();
 
       expect(find.text('No spending this week'), findsOneWidget);
+    });
+
+    testWidgets('Test NEW-1: renders amount labels on non-zero bars (CHRT-01)', (tester) async {
+      await tester.pumpWidget(
+        buildProviderWidget(
+          child: const WeeklySpendingCard(),
+          overrides: [
+            weeklyGroupSpendingProvider.overrideWith(
+              (ref) => AsyncValue.data(makeWeekData()),
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+
+      // makeWeekData produces amounts 1.0 through 7.0
+      // Bar labels use toStringAsFixed(1), so '7.0' should appear
+      expect(find.text('7.0'), findsOneWidget);
+      expect(find.text('1.0'), findsOneWidget);
+    });
+
+    testWidgets('Test NEW-2: no amount labels on all-zero chart (CHRT-01)', (tester) async {
+      await tester.pumpWidget(
+        buildProviderWidget(
+          child: const WeeklySpendingCard(),
+          overrides: [
+            weeklyGroupSpendingProvider.overrideWith(
+              (ref) => AsyncValue.data(makeWeekData(allZero: true)),
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+
+      // All-zero state shows "No spending this week" — no amount labels
+      expect(find.text('0.0'), findsNothing);
     });
 
     testWidgets('Test 5: shows skeleton when provider is loading', (tester) async {
