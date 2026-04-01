@@ -60,7 +60,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 ### v2.2 Profile Page
 
 - [x] **Phase 25: Profile Screen Core** - Profile screen with identity management and cross-group stats (completed 2026-04-01)
-- [ ] **Phase 26: Settings & Support** - Notification toggles, app info, and support section
+- [x] **Phase 26: Settings & Support** - Notification toggles, app info, and support section (completed 2026-04-01)
 
 ## Phase Details
 
@@ -90,7 +90,7 @@ Plans:
   5. User can tap to open the open-source licenses screen, and a "Buy me a coffee" placeholder section is visible on the profile screen
 **Plans**: 2 plans
 Plans:
-- [ ] 26-01-PLAN.md — Section widgets (notifications toggle, about info, support placeholder) + wire into ProfileScreen
+- [x] 26-01-PLAN.md — Section widgets (notifications toggle, about info, support placeholder) + wire into ProfileScreen
 - [x] 26-02-PLAN.md — Widget tests for all Phase 26 requirements (NOTIF-01/02, INFO-01/02/03, SUPP-01)
 **UI hint**: yes
 
@@ -102,4 +102,4 @@ Plans:
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
 | 25 | v2.2 | 2/2 | Complete    | 2026-04-01 |
-| 26 | v2.2 | 1/2 | In Progress|  |
+| 26 | v2.2 | 2/2 | Complete   | 2026-04-01 |

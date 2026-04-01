@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Profile Page
-status: executing
-stopped_at: Completed 26-02-PLAN.md (TDD RED phase)
-last_updated: "2026-04-01T15:40:03.573Z"
+status: verifying
+stopped_at: Completed 26-01-PLAN.md (TDD GREEN phase)
+last_updated: "2026-04-01T15:55:58.313Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 Phase: 26 (settings-support) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-01
 
 ```
 Phase 25 [██████████] 100%
-Phase 26 [          ] 0%
+Phase 26 [██████████] 100%
 ```
 
 ## Performance Metrics
@@ -44,6 +44,7 @@ Phase 26 [          ] 0%
 | Phase 25 P01 | 406 | 2 tasks | 10 files |
 | Phase 25-profile-screen-core P02 | 20 | 3 tasks | 11 files |
 | Phase 26-settings-support P02 | 15 | 2 tasks | 2 files |
+| Phase 26-settings-support P01 | 35 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -57,6 +58,13 @@ Phase 26 [          ] 0%
 - sharedPreferencesProvider must be overridden in ALL HomeScreen widget tests — header now watches settingsProvider for deviceName
 - Profile entry points: header avatar (context.push /profile) and bottom nav tab 3 — both render ProfileScreen
 
+**Phase 26 P01 decisions:**
+
+- onChanged/onTap must be synchronous for test compatibility: pumpAndSettle cannot await async callbacks; fire-and-forget haptics, synchronous state updates
+- FirebaseMessaging.instance wrapped in try/catch in widget build for test-safe permission hydration
+- Compact tile padding (8dp vertical) and section spacing (10-16dp) needed to fit 800x600 test viewport
+- ProfileNotificationsSection only calls setPushNotificationsEnabled() — appBootstrapProvider handles FCM per updated D-05
+
 ### Known Risks
 
 - Display name propagation (IDENT-03) writes to all group participant records — scope depends on how many groups a user belongs to; Firestore batch write needed.
@@ -68,6 +76,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-01T15:40:03.570Z
-Stopped at: Completed 26-02-PLAN.md (TDD RED phase)
+Last session: 2026-04-01T15:55:58.308Z
+Stopped at: Completed 26-01-PLAN.md (TDD GREEN phase)
 Next action: `/gsd:plan-phase 25` — plan Profile Screen Core
