@@ -548,15 +548,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Find a Container with width exactly 4 (the accent strip)
-      final containers = tester.widgetList<Container>(find.byType(Container));
-      final accentStrip = containers.where((c) {
-        final constraints = c.constraints;
-        return constraints != null &&
-            constraints.maxWidth == 4 &&
-            constraints.minWidth == 4;
-      });
-      expect(accentStrip, isNotEmpty,
+      // Find a Container whose rendered width in the layout is exactly 4dp.
+      // The accent strip Container(width: 4) inside GroupCard renders at exactly 4dp.
+      bool foundAccentStrip = false;
+      for (final element in find.byType(Container).evaluate()) {
+        final renderBox = element.renderObject;
+        if (renderBox is RenderBox && renderBox.size.width == 4.0) {
+          foundAccentStrip = true;
+          break;
+        }
+      }
+      expect(foundAccentStrip, isTrue,
           reason: 'GroupCard should render a 4dp accent strip Container');
     });
 
@@ -573,11 +575,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Camping Trip'), findsNothing,
-          reason: 'GroupCard should show event name in context line');
-      // After implementation, this should find 'Camping Trip' in the context line.
-      // The test is written to FAIL now (RED) — implementation will make it pass.
-      expect(find.textContaining('Camping Trip'), findsNothing);
+      // Event name appears in context line as "Camping Trip — X ago"
+      expect(find.textContaining('Camping Trip'), findsOneWidget);
     });
 
     // Test D (CARD-02): GroupCard with events shows relative timestamp containing "ago"
@@ -598,9 +597,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // After implementation: context line shows "Beach Day — 3 hours ago"
-      expect(find.textContaining('ago'), findsNothing,
-          reason: 'GroupCard should show relative timestamp with "ago"');
+      // Context line shows "Beach Day — 3 hours ago"
+      expect(find.textContaining('ago'), findsOneWidget);
     });
 
     // Test E (CARD-02): GroupCard with no events shows "No events yet"
@@ -614,16 +612,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('No events yet'), findsNothing,
-          reason: 'GroupCard with no events should show "No events yet"');
+      expect(find.text('No events yet'), findsOneWidget);
     });
 
-    // Test F (CARD-02): GroupCard while loading shows "No events yet" placeholder
-    // Loading state is tested by checking loading() fallback in GroupCard implementation.
-    // Since StreamProvider starts in loading state before first emit, we test
-    // by pumping without settle after building the widget.
+    // Test F (CARD-02): GroupCard with empty events also shows "No events yet" placeholder
     testWidgets(
-        'Test F: GroupCard while events loading shows "No events yet" placeholder',
+        'Test F: GroupCard with empty events shows "No events yet" placeholder',
         (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
@@ -633,11 +627,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // After implementation: loading state shows "No events yet".
-      // This verifies the no-events state also shows the placeholder.
-      expect(find.text('No events yet'), findsNothing,
-          reason:
-              'GroupCard with empty events should show "No events yet" placeholder');
+      // No events shows "No events yet"
+      expect(find.text('No events yet'), findsOneWidget);
     });
   });
 }

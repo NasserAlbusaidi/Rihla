@@ -246,13 +246,10 @@ void main() {
         _buildTestApp(
           const HomeScreen(),
           overrides: [
+            ..._dashboardOverrides(),
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
             ),
-            groupEventsProvider.overrideWith(
-              (ref, groupId) => Stream.value([]),
-            ),
-            ..._dashboardOverrides(),
           ],
         ),
       );
@@ -274,6 +271,7 @@ void main() {
         _buildTestApp(
           const HomeScreen(),
           overrides: [
+            ..._dashboardOverrides(),
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
             ),
@@ -282,15 +280,13 @@ void main() {
                 _makeEvent('e1', 'Camping Trip', EventType.camping),
               ]),
             ),
-            ..._dashboardOverrides(),
           ],
         ),
       );
       await tester.pumpAndSettle();
 
-      // After implementation: this should find 'Camping Trip' in the context line.
-      // This test is written to FAIL (RED) — implementation will make it pass.
-      expect(find.textContaining('Camping Trip'), findsNothing);
+      // Context line shows "Camping Trip — X ago"
+      expect(find.textContaining('Camping Trip'), findsOneWidget);
     });
 
     // Test: GroupCard with no events shows "No events yet"
@@ -302,21 +298,19 @@ void main() {
         _buildTestApp(
           const HomeScreen(),
           overrides: [
+            ..._dashboardOverrides(),
             userGroupsProvider.overrideWith(
               (ref) => Stream.value(groups),
             ),
             groupEventsProvider.overrideWith(
               (ref, groupId) => Stream.value([]),
             ),
-            ..._dashboardOverrides(),
           ],
         ),
       );
       await tester.pumpAndSettle();
 
-      // After implementation: this should find 'No events yet' in the card.
-      // This test is written to FAIL (RED) — implementation will make it pass.
-      expect(find.text('No events yet'), findsNothing);
+      expect(find.text('No events yet'), findsOneWidget);
     });
   });
 }
