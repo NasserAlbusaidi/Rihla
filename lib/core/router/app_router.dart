@@ -25,7 +25,7 @@ import '../../features/logistics/screens/logistics_screen.dart';
 import '../../features/activity/screens/activity_feed_screen.dart';
 import '../../features/memories/screens/memories_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
-import '../../features/settings/screens/settings_screen.dart';
+import '../../features/settings/screens/profile_screen.dart';
 import '../../features/vault/screens/vault_screen.dart';
 import '../theme/tokens/color_tokens.dart';
 
@@ -34,7 +34,7 @@ class AppRoutes {
   static const String splash = '/';
   static const String onboarding = '/onboarding';
   static const String home = '/home';
-  static const String settings = '/settings';
+  static const String profile = '/profile';
   // Groups routes (Phase 2)
   static const String createGroup = '/create-group';
   static const String joinGroup = '/join-group';
@@ -398,12 +398,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Settings
+      // Profile (Phase 25)
       GoRoute(
-        path: AppRoutes.settings,
+        path: AppRoutes.profile,
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: const SettingsScreen(),
+          child: const ProfileScreen(),
           transitionsBuilder: _slideRightTransition,
         ),
       ),

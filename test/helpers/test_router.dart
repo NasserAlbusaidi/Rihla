@@ -29,8 +29,8 @@ GoRouter testRouter({
         builder: (context, _) => const Scaffold(body: Text('Home')),
       ),
       GoRoute(
-        path: '/settings',
-        builder: (context, _) => const Scaffold(body: Text('Settings')),
+        path: '/profile',
+        builder: (context, _) => const Scaffold(body: Text('Profile')),
       ),
       GoRoute(
         path: '/create-group',

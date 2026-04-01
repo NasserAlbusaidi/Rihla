@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
@@ -65,6 +67,7 @@ GroupActivityLog _makeActivity(String id, String actorName, String description) 
 Widget _buildTestApp(
   Widget widget, {
   List<Override> overrides = const [],
+  SharedPreferences? prefs,
 }) {
   final router = GoRouter(
     initialLocation: '/home',
@@ -88,11 +91,20 @@ Widget _buildTestApp(
         builder: (ctx, state) =>
             Scaffold(body: Text('GroupDetail:${state.pathParameters['id']}')),
       ),
+      GoRoute(
+        path: '/profile',
+        builder: (ctx, state) =>
+            const Scaffold(body: Text('ProfileScreen')),
+      ),
     ],
   );
 
+  final prefsOverride = prefs != null
+      ? [sharedPreferencesProvider.overrideWithValue(prefs)]
+      : <Override>[];
+
   return ProviderScope(
-    overrides: overrides,
+    overrides: [...prefsOverride, ...overrides],
     child: MaterialApp.router(routerConfig: router),
   );
 }
