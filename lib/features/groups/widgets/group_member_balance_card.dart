@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../ledger/models/expense_model.dart';
 import '../keys/group_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Expandable card showing a group member's net balance and per-event breakdown.
 ///
@@ -100,8 +101,12 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
-        borderRadius: BorderRadius.circular(12),
+        color: widget.isExpanded
+            ? AppColorTokens.light.selectionFill
+            : AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(
+          AppSpacingTokens.standard.radiusLarge,
+        ),
         border: Border.all(color: AppColorTokens.light.border),
         boxShadow: [
           BoxShadow(
@@ -117,7 +122,9 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
           // --- Collapsed header row ---
           InkWell(
             onTap: () => widget.onExpandChanged(!widget.isExpanded),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(
+              AppSpacingTokens.standard.radiusLarge,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 44),
               child: Padding(
@@ -146,7 +153,7 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppColorTokens.light.textMuted,
+                          color: AppColorTokens.light.textSecondary,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -175,7 +182,9 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: isOwed ? AppColorTokens.light.success : AppColorTokens.light.error,
+                          color: isOwed
+                          ? AppColorTokens.light.successText
+                          : AppColorTokens.light.errorText,
                         ),
                       ),
                     ],
@@ -260,7 +269,9 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: eventIsOwed ? AppColorTokens.light.success : AppColorTokens.light.error,
+                      color: eventIsOwed
+                          ? AppColorTokens.light.successText
+                          : AppColorTokens.light.errorText,
                     ),
                   ),
                   if (widget.onEventTap != null) ...[

@@ -68,8 +68,8 @@ void main() {
       );
       expect(
         (amountText.style?.color ?? Colors.transparent).value,
-        AppColorTokens.light.success.value,
-        reason: 'Positive balance should be shown in emerald',
+        AppColorTokens.light.successText.value,
+        reason: 'Positive balance should be shown in WCAG-safe successText',
       );
     });
 
@@ -102,8 +102,8 @@ void main() {
       );
       expect(
         (amountText.style?.color ?? Colors.transparent).value,
-        AppColorTokens.light.error.value,
-        reason: 'Negative balance should be shown in rose',
+        AppColorTokens.light.errorText.value,
+        reason: 'Negative balance should be shown in WCAG-safe errorText',
       );
     });
 

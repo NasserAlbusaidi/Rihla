@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
+import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_primitives.dart';
@@ -80,7 +81,62 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           return _buildContent(context, group);
         },
         loading: () => _buildLoading(context),
-        error: (e, st) => const Center(child: Text('Error loading group')),
+        error: (e, st) => Column(
+          children: [
+            const ModuleHeader(
+              title: 'Group',
+              subtitle: '',
+              useDarkTheme: true,
+            ),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Iconsax.warning_2,
+                      size: 48,
+                      color: AppColorTokens.light.textMuted,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Failed to load group',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColorTokens.light.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: AppSpacingTokens.standard.buttonHeight,
+                      child: ElevatedButton(
+                        onPressed: () =>
+                            ref.invalidate(groupDetailProvider(groupId)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColorTokens.light.primary,
+                          foregroundColor: AppColorTokens.light.textOnPrimary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacingTokens.standard.radiusMedium,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Try again',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: AppColorTokens.light.textOnPrimary,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -104,16 +160,32 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           useDarkTheme: true,
         ),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
+          child: RefreshIndicator(
+            color: AppColorTokens.light.primary,
+            backgroundColor: AppColorTokens.light.cardSurface,
+            onRefresh: () async {
+              // Invalidate Firestore-backed stream providers.
+              // groupBalancesProvider is a computed Provider.family that
+              // auto-recomputes — do NOT invalidate it directly.
+              ref.invalidate(groupDetailProvider(groupId));
+              ref.invalidate(groupEventsProvider(groupId));
+              ref.invalidate(groupMembersProvider(groupId));
+              ref.invalidate(groupActivityProvider(groupId));
+              ref.invalidate(groupSettlementsProvider(groupId));
+              // Brief delay for streams to re-establish
+              await Future.delayed(const Duration(milliseconds: 500));
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
 
-                // --- Stats grid + Settle-up CTA isolated in Consumer (D-02) ---
+                  // --- Stats grid + Settle-up CTA isolated in Consumer (D-02) ---
                 Consumer(
                   builder: (context, ref, _) {
                     final balancesAsync =
@@ -216,6 +288,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             ),
           ),
         ),
+      ),
       ],
     );
   }
@@ -291,35 +364,36 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 ? (balancesData?.perEventBreakdown[currentUid] ?? {})
                 : <String, Decimal>{};
 
-            return Column(
+            return FadeInList(
               children: [
-                for (int i = 0; i < events.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 12),
-                  OpenContainer<void>(
-                    closedColor: Colors.transparent,
-                    openColor: AppColorTokens.light.scaffoldBackground,
-                    closedElevation: 0,
-                    openElevation: 0,
-                    closedShape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppSpacingTokens.standard.radiusLarge,
+                for (int i = 0; i < events.length; i++)
+                  Padding(
+                    padding: EdgeInsets.only(top: i > 0 ? 12 : 0),
+                    child: OpenContainer<void>(
+                      closedColor: Colors.transparent,
+                      openColor: AppColorTokens.light.scaffoldBackground,
+                      closedElevation: 0,
+                      openElevation: 0,
+                      closedShape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppSpacingTokens.standard.radiusLarge,
+                        ),
+                      ),
+                      openShape: const RoundedRectangleBorder(),
+                      transitionDuration: const Duration(milliseconds: 400),
+                      transitionType: ContainerTransitionType.fade,
+                      useRootNavigator: false,
+                      closedBuilder: (context, openContainer) => EventCard(
+                        event: events[i],
+                        personalBalance: userEventBreakdown[events[i].id],
+                        onTap: openContainer,
+                      ),
+                      openBuilder: (context, _) => EventCommandCenter(
+                        groupId: groupId,
+                        eventId: events[i].id,
                       ),
                     ),
-                    openShape: const RoundedRectangleBorder(),
-                    transitionDuration: const Duration(milliseconds: 400),
-                    transitionType: ContainerTransitionType.fade,
-                    useRootNavigator: false,
-                    closedBuilder: (context, openContainer) => EventCard(
-                      event: events[i],
-                      personalBalance: userEventBreakdown[events[i].id],
-                      onTap: openContainer,
-                    ),
-                    openBuilder: (context, _) => EventCommandCenter(
-                      groupId: groupId,
-                      eventId: events[i].id,
-                    ),
                   ),
-                ],
               ],
             );
           },
