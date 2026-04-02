@@ -98,6 +98,10 @@ Groups persist across events and accumulate financial history — friends settle
 **Phase 26 complete:** 2026-04-01 — Notification toggle, app version display, feedback mailto link, open-source licenses, "Buy me a coffee" placeholder. All added as new sections to ProfileScreen. 812 tests green.
 **Phase 27 complete:** 2026-04-02 — appBootstrapProvider wired into SafarApp.build() so push notification toggle triggers FCM initialize/removeToken. NOTIF-02 gap closed. v2.2 milestone complete.
 
+**v2.3 started:** 2026-04-02 — Groups, Events & Modules milestone.
+**Phase 28 complete:** 2026-04-02 — Group detail screen with stats, events list, member balances in v2.x design.
+**Phase 29 complete:** 2026-04-02 — GroupSettingsScreen visual refresh with ProfileScreen pattern. Three section widgets (info, members, danger zone). Creator badge, member remove with balance gate, leave/delete with confirmation dialogs. WriteBatch service methods.
+
 ### Out of Scope
 
 - Chat/messaging — high complexity, not core to coordination value
@@ -176,4 +180,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after Phase 27 complete — Wire Notification Service (v2.2 milestone complete)*
+*Last updated: 2026-04-02 after Phase 29 complete — Group Management (v2.3 milestone)*
