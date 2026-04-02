@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-04-02
+revised: 2026-04-02
 ---
 
 # Phase 29 — UI Design Contract
@@ -35,10 +36,8 @@ Declared values from `AppSpacingTokens.standard`:
 | Token | Value | Usage |
 |-------|-------|-------|
 | space4 | 4dp | Icon gaps, chip inner padding |
-| space8 | 8dp | Section header-to-card gap, tile vertical padding |
-| space12 | 12dp | Inter-section gap (matches ProfileScreen gaps), back button top offset |
-| space16 | 16dp | Tile horizontal padding inside card, inter-section gap (smaller) |
-| space20 | 20dp | — |
+| space8 | 8dp | Section header-to-card gap, tile vertical padding, inter-section gap |
+| space16 | 16dp | Tile horizontal padding inside card, inter-section gap (larger) |
 | space24 | 24dp | Horizontal page padding (D-09: must be 24px, not 16px) |
 | space32 | 32dp | Bottom scroll padding |
 
@@ -46,13 +45,13 @@ Border radii from `AppSpacingTokens.standard`:
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| radiusSmall | 8dp | Icon container rounding, creator badge chip |
+| radiusSmall | 8dp | Icon container rounding (`BorderRadius.circular(8)`), creator badge chip |
 | radiusMedium | 12dp | — |
 | radiusLarge | 16dp | Card container `borderRadius` (all section cards) |
 
 Additional:
 - Button height: 52dp (`AppSpacingTokens.standard.buttonHeight`) — destructive action buttons
-- Icon containers in tiles: 36×36dp with `BorderRadius.circular(10)` (matches ProfileScreen D-03 pattern)
+- Icon containers in tiles: 36×36dp with `BorderRadius.circular(8)` (radiusSmall)
 - Sheet top radius: `Radius.circular(28)` (matches existing currency picker and ProfileScreen sheets)
 
 Exceptions:
@@ -67,14 +66,16 @@ Exceptions:
 
 All text uses Plus Jakarta Sans. Token source: existing ProfileScreen widgets.
 
+**Declared weights: w600 (semibold) and w400 (regular) — exactly 2 weights.**
+
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Section header | 11sp | 600 (w600) | 1.2 | Uppercase section labels — `letterSpacing: 1.5` |
-| Tile label | 14sp | 500 (w500) | 1.4 | Primary tile text (e.g. "Group Name", "Leave Group") |
+| Tile label | 14sp | 600 (w600) | 1.4 | Primary tile text (e.g. "Group Name", "Leave Group") |
 | Tile value / subtitle | 14sp | 400 (w400) | 1.4 | Secondary/supporting text in tiles |
-| Invite code display | 16sp | 700 (w700) | 1.2 | Invite code value — `letterSpacing: 4` (monospace feel) |
+| Invite code display | 16sp | 600 (w600) | 1.2 | Invite code value — `letterSpacing: 4` (monospace feel) |
 
-> Four roles, two primary weights (w500 for labels, w600 for section headers; w400 for values; w700 for invite code only).
+> Four roles, two weights only: w600 for section headers and tile labels (including invite code); w400 for all values and body text.
 > Source: `profile_about_section.dart` lines 99–107 (header), lines 143–150 (tile label); `group_settings_screen.dart` lines 272–278 (invite code)
 
 ---
@@ -132,21 +133,23 @@ Scaffold
     SingleChildScrollView
       Padding(horizontal: 24)
         Column
-          SizedBox(height: 12)
+          SizedBox(height: 16)
           _buildBackButton()           — back arrow (same as ProfileScreen)
           SizedBox(height: 16)
           GroupInfoSection             — name + currency + invite code
             .animate().fadeIn(delay: 100ms).slideY(begin: 0.1)
-          SizedBox(height: 12)
+          SizedBox(height: 16)
           GroupMembersSection          — member list with creator badge + remove
             .animate().fadeIn(delay: 200ms).slideY(begin: 0.1)
-          SizedBox(height: 12)
+          SizedBox(height: 16)
           GroupDangerSection           — leave group + delete group (creator only)
             .animate().fadeIn(delay: 300ms).slideY(begin: 0.1)
           SizedBox(height: 32)
 ```
 
 No `AppBar` — use back button inline at top (matches ProfileScreen, removes the existing AppBar pattern).
+
+**Primary visual anchor:** GroupInfoSection card — first in the stagger sequence, contains the group's identity (name, currency, invite code). This card draws the eye first and sets context for the sections below.
 
 ### Section Widget Pattern (replicate from ProfileScreen)
 
@@ -172,10 +175,10 @@ Column
 GestureDetector / InkWell
   Padding(horizontal: 16, vertical: 8)
     Row
-      Container(36×36, inputFill bg, radius:10)   ← icon container
+      Container(36×36, inputFill bg, BorderRadius.circular(8))   ← radiusSmall
         Icon(iconData, size:18, color:textSecondary)
-      SizedBox(width: 12)
-      Expanded → Text(label, 14sp, w500, textPrimary)
+      SizedBox(width: 16)
+      Expanded → Text(label, 14sp, w600, textPrimary)
       trailing widget (arrow / switch / action icon)
 ```
 
@@ -188,9 +191,9 @@ GestureDetector / InkWell
 Section header icon: `Iconsax.setting_2`, label: `'GROUP'`
 
 Tiles:
-1. **Group Name** — label `'Group Name'`, value = `group.name` (14sp w400 textPrimary), trailing: `Iconsax.edit_2` (textSecondary, 18dp) shown for creator only. Tapping trailing opens inline TextField (existing pattern from old screen). Non-creator: trailing = none.
-2. **Currency** — label `'Currency'`, value = `group.currency`, trailing: `Iconsax.arrow_right_3` (textMuted, 16dp). Tapping opens existing currency picker bottom sheet.
-3. **Invite Code** — label `'Invite Code'`, value = invite code (16sp, w700, letterSpacing:4, textPrimary), trailing: `Iconsax.copy` (textSecondary). Copy behavior unchanged (D-11 visual polish only).
+1. **Group Name** — label `'Group Name'` (14sp, w600, textPrimary), value = `group.name` (14sp, w400, textPrimary), trailing: `Iconsax.edit_2` (textSecondary, 18dp) shown for creator only — `semanticLabel: 'Edit group name'`. Tapping trailing opens inline TextField (existing pattern from old screen). Non-creator: trailing = none.
+2. **Currency** — label `'Currency'` (14sp, w600, textPrimary), value = `group.currency` (14sp, w400, textPrimary), trailing: `Iconsax.arrow_right_3` (textSecondary, 16dp) — `semanticLabel: 'Change currency'`. Tapping opens existing currency picker bottom sheet.
+3. **Invite Code** — label `'Invite Code'` (14sp, w600, textPrimary), value = invite code (16sp, w600, letterSpacing:4, textPrimary), trailing: `Iconsax.copy` (textSecondary) — `semanticLabel: 'Copy invite code'`. Copy behavior unchanged (D-11 visual polish only).
 
 ### GroupMembersSection
 
@@ -203,13 +206,18 @@ Member tile layout:
 Padding(horizontal: 16, vertical: 10)
   Row
     InitialsCircle(size: 36, name: member.displayName)   ← reuse existing widget
-    SizedBox(width: 12)
+    SizedBox(width: 16)
     Expanded
       Column
-        Text(member.displayName, 14sp, w500, textPrimary)
+        Text(member.displayName, 14sp, w600, textPrimary)
         if isCreator: SizedBox(height:2) + _buildCreatorBadge()
     if canRemove (current user is creator AND this member is not current user):
-      IconButton(Iconsax.user_minus, textSecondary, onTap: _confirmRemove)
+      IconButton(
+        icon: Iconsax.user_minus,
+        color: textSecondary,
+        tooltip: 'Remove [name] from group',   ← semanticLabel for icon-only action
+        onTap: _confirmRemove,
+      )
 ```
 
 Creator badge (`_buildCreatorBadge`):
@@ -218,7 +226,7 @@ Container
   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2)
   decoration:
     color: selectionFill   ← #E6F5F3
-    borderRadius: BorderRadius.circular(radiusSmall)   ← 8dp
+    borderRadius: BorderRadius.circular(8)   ← radiusSmall
   Text('Creator', 11sp, w600, primary)
 ```
 
@@ -231,13 +239,13 @@ Section header icon: `Iconsax.warning_2`, label: `'DANGER ZONE'`, header text co
 Card contains:
 1. **Leave Group** (visible to all members):
    - Tile leading icon: `Iconsax.logout`, icon container bg: error (#EF4444) at 10% opacity (`Color(0x1AEF4444)`), icon color: `errorText`
-   - Label: `'Leave Group'` (14sp, w500, errorText)
+   - Label: `'Leave Group'` (14sp, w600, errorText)
    - No trailing
    - Tapping triggers confirmation dialog (see below)
 
 2. **Delete Group** (creator only — conditionally rendered):
    - Tile leading icon: `Iconsax.trash`, icon container bg: error at 10% opacity, icon color: `errorText`
-   - Label: `'Delete Group'` (14sp, w500, errorText)
+   - Label: `'Delete Group'` (14sp, w600, errorText)
    - No trailing
    - Tapping triggers confirmation dialog
 
@@ -256,8 +264,8 @@ AlertDialog
   title: Text('Leave group?', 20sp, w600, textPrimary)
   content: Text('You'll lose access to all events and data in this group.', 14sp, w400, textSecondary)
   actions:
-    TextButton('Cancel', textSecondary) → dismiss
-    TextButton('Leave', errorText, w600) → execute leave + navigate /home
+    TextButton('Stay in group', textSecondary) → dismiss
+    TextButton('Leave group', errorText, w600) → execute leave + navigate /home
 ```
 
 ### Delete Group Dialog (creator only)
@@ -267,8 +275,8 @@ AlertDialog
   title: Text('Delete group?', 20sp, w600, textPrimary)
   content: Text('This will permanently delete the group and all its events. This cannot be undone.', 14sp, w400, textSecondary)
   actions:
-    TextButton('Cancel', textSecondary) → dismiss
-    TextButton('Delete', errorText, w600) → execute delete + navigate /home
+    TextButton('Keep group', textSecondary) → dismiss
+    TextButton('Delete group', errorText, w600) → execute delete + navigate /home
 ```
 
 ---
@@ -287,7 +295,7 @@ Padding(horizontal: 24)
   Column
     Icon(Iconsax.warning_2, 32dp, textSecondary)
     SizedBox(height: 8)
-    Text('Could not load settings', 14sp, w500, textPrimary)
+    Text('Could not load settings', 14sp, w600, textPrimary)
     SizedBox(height: 4)
     Text('Check your connection and try again.', 14sp, w400, textSecondary)
     SizedBox(height: 16)
@@ -334,12 +342,12 @@ Package: `flutter_animate` (`package:flutter_animate/flutter_animate.dart`)
 | Delete group tile label | `Delete Group` |
 | Leave dialog title | `Leave group?` |
 | Leave dialog body | `You'll lose access to all events and data in this group.` |
-| Leave dialog cancel | `Cancel` |
-| Leave dialog confirm | `Leave` |
+| Leave dialog dismiss | `Stay in group` |
+| Leave dialog confirm | `Leave group` |
 | Delete dialog title | `Delete group?` |
 | Delete dialog body | `This will permanently delete the group and all its events. This cannot be undone.` |
-| Delete dialog cancel | `Cancel` |
-| Delete dialog confirm | `Delete` |
+| Delete dialog dismiss | `Keep group` |
+| Delete dialog confirm | `Delete group` |
 | Remove member blocked snackbar | `Settle up with [name] before removing them.` |
 | Remove member blocked snackbar action | `Settle Up` |
 | Invite code copy snackbar | `Invite code copied` |
