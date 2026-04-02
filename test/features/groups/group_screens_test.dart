@@ -211,17 +211,15 @@ void main() {
         expect(find.byKey(GroupKeys.statActiveMembers), findsOneWidget);
       });
 
-      testWidgets('shows invite code section header and code display',
+      testWidgets('invite code section is not rendered (D-05 — moved to Phase 29)',
           (tester) async {
         await tester.pumpWidget(
           _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
         );
         await tester.pumpAndSettle();
 
-        // Section header
-        expect(find.byKey(GroupKeys.inviteCodeSection), findsOneWidget);
-        // The code itself appears in InviteCodeDisplay
-        expect(find.text('ABC123'), findsWidgets);
+        // Invite code section removed from GroupDetailScreen per D-05
+        expect(find.byKey(GroupKeys.inviteCodeSection), findsNothing);
       });
 
       testWidgets('shows members section with member names from groupMembersProvider',
