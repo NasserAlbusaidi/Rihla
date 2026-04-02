@@ -22,7 +22,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Notifications
 
 - [x] **NOTIF-01**: User can view current push notification status
-- [x] **NOTIF-02**: User can toggle push notifications on/off
+- [ ] **NOTIF-02**: User can toggle push notifications on/off
 
 ### App Info
 
@@ -59,7 +59,7 @@ None deferred for this milestone.
 | STATS-02 | Phase 25 | Complete |
 | STATS-03 | Phase 25 | Complete |
 | NOTIF-01 | Phase 26 | Complete |
-| NOTIF-02 | Phase 26 | Complete |
+| NOTIF-02 | Phase 27 | Pending |
 | INFO-01 | Phase 26 | Complete |
 | INFO-02 | Phase 26 | Complete |
 | INFO-03 | Phase 26 | Complete |

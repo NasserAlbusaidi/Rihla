@@ -61,6 +61,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 
 - [x] **Phase 25: Profile Screen Core** - Profile screen with identity management and cross-group stats (completed 2026-04-01)
 - [x] **Phase 26: Settings & Support** - Notification toggles, app info, and support section (completed 2026-04-01)
+- [ ] **Phase 27: Wire Notification Service** - Connect appBootstrapProvider to widget tree so FCM toggle works end-to-end
 
 ## Phase Details
 
@@ -94,6 +95,16 @@ Plans:
 - [x] 26-02-PLAN.md — Widget tests for all Phase 26 requirements (NOTIF-01/02, INFO-01/02/03, SUPP-01)
 **UI hint**: yes
 
+### Phase 27: Wire Notification Service
+**Goal**: Notification toggle actually controls FCM — appBootstrapProvider activated in widget tree
+**Depends on**: Phase 26
+**Requirements**: NOTIF-02
+**Gap Closure**: Closes gaps from v2.2 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. `appBootstrapProvider` is watched in SafarApp so its `ref.listen` fires on preference changes
+  2. Toggling push notifications on/off calls `NotificationService.initialize()` / `removeToken()` respectively
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -102,4 +113,5 @@ Plans:
 | 14-22 | v2.0 | 28/28 | Complete | 2026-03-31 |
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
 | 25 | v2.2 | 2/2 | Complete    | 2026-04-01 |
-| 26 | v2.2 | 2/2 | Complete   | 2026-04-01 |
+| 26 | v2.2 | 2/2 | Complete    | 2026-04-01 |
+| 27 | v2.2 | 0/0 | Pending     | — |
