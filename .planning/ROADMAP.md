@@ -135,13 +135,17 @@ Plans:
 **UI hint**: yes
 
 ### Phase 29: Group Management
-**Goal**: Full-stack group settings, invite flow, and member management
+**Goal**: Visual refresh of GroupSettingsScreen with ProfileScreen design pattern, member management with creator badge and remove capability, and leave/delete group actions with confirmation dialogs
 **Depends on**: Phase 28
 **Success Criteria** (what must be TRUE):
-  1. Users can manage group settings (name, modules)
-  2. Invite flow works end-to-end (create code, share, join)
-  3. Member management (add/remove) functions correctly
-**Plans**: TBD
+  1. GroupSettingsScreen follows ProfileScreen layout pattern (card containers, stagger animations, no AppBar)
+  2. Members section shows member list with creator badge and remove capability (balance-gated)
+  3. Leave group (any member) and delete group (creator-only) work with confirmation dialogs
+**Plans**: 2 plans
+Plans:
+- [ ] 29-01-PLAN.md — Service methods (leaveGroup, removeMember, deleteGroup), test keys, test scaffold
+- [ ] 29-02-PLAN.md — Section widgets (GroupInfoSection, GroupMembersSection, GroupDangerSection), screen refactor, test updates
+**UI hint**: yes
 
 ### Phase 30: Group Settle Up & Activity
 **Goal**: Full-stack group-level settlement and activity feed
@@ -202,7 +206,7 @@ Plans:
 | 26 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
-| 29 | v2.3 | 0/0 | Pending     | — |
+| 29 | v2.3 | 0/2 | Planning    | — |
 | 30 | v2.3 | 0/0 | Pending     | — |
 | 31 | v2.3 | 0/0 | Pending     | — |
 | 32 | v2.3 | 0/0 | Pending     | — |
