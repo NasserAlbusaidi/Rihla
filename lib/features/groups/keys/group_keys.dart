@@ -72,4 +72,32 @@ abstract final class GroupKeys {
   static Key memberBalanceCard(String memberId) =>
       Key('group_member_balance_card_$memberId');
   static Key settlementTile(String id) => Key('group_settlement_tile_$id');
+
+  // Phase 29 — Group Management
+
+  // GroupSettingsScreen layout
+  static const settingsBackButton = Key('group_settings_back_button');
+
+  // GroupInfoSection
+  static const infoSection = Key('group_info_section');
+  static const groupNameEditIcon = Key('group_settings_group_name_edit_icon');
+  static const inviteCodeCopyButton = Key('group_settings_invite_code_copy');
+
+  // GroupMembersSection
+  static const membersSection = Key('group_members_section');
+  static const creatorBadge = Key('group_member_creator_badge');
+
+  // GroupDangerSection
+  static const dangerSection = Key('group_danger_section');
+  static const leaveGroupTile = Key('group_leave_tile');
+  static const deleteGroupTile = Key('group_delete_tile');
+  static const leaveGroupDialog = Key('group_leave_dialog');
+  static const deleteGroupDialog = Key('group_delete_dialog');
+  static const leaveGroupConfirmButton = Key('group_leave_confirm_button');
+  static const deleteGroupConfirmButton = Key('group_delete_confirm_button');
+
+  // Parameterized keys for member list
+  static Key memberTile(String memberId) => Key('group_member_tile_$memberId');
+  static Key removeMemberButton(String memberId) =>
+      Key('group_member_remove_$memberId');
 }

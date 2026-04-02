@@ -234,6 +234,86 @@ class GroupService extends FirestoreRepository {
         .doc(memberId)
         .update({'displayName': displayName});
   }
+
+  /// Remove the current user from the group atomically.
+  ///
+  /// Batch operation: removes UID from memberIds array + deletes member
+  /// subcollection document. Callers must check balance == zero before
+  /// invoking (D-07 gate is UI-side).
+  Future<void> leaveGroup({required String groupId}) async {
+    final uid = FirebaseConfig.currentUser?.uid;
+    if (uid == null) throw Exception('Not authenticated');
+
+    final membersSnap = await db
+        .collection('groups')
+        .doc(groupId)
+        .collection('members')
+        .where('userId', isEqualTo: uid)
+        .limit(1)
+        .get();
+
+    if (membersSnap.docs.isEmpty) throw Exception('Member not found');
+
+    final batch = db.batch();
+    batch.update(db.collection('groups').doc(groupId), {
+      'memberIds': FieldValue.arrayRemove([uid]),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    batch.delete(membersSnap.docs.first.reference);
+    await batch.commit();
+  }
+
+  /// Remove a specific member from the group (creator action).
+  ///
+  /// Batch operation: removes the member's userId from memberIds +
+  /// deletes their member subcollection document. Callers must verify
+  /// the current user is the creator and the target has zero balance.
+  Future<void> removeMember({
+    required String groupId,
+    required String memberId,
+    required String userId,
+  }) async {
+    final batch = db.batch();
+    batch.update(db.collection('groups').doc(groupId), {
+      'memberIds': FieldValue.arrayRemove([userId]),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    batch.delete(
+      db.collection('groups').doc(groupId).collection('members').doc(memberId),
+    );
+    await batch.commit();
+  }
+
+  /// Delete a group and all its member documents atomically.
+  ///
+  /// Steps:
+  /// 1. Fetch all member subcollection docs
+  /// 2. Read group doc to get invite code
+  /// 3. Batch delete: all member docs + invite code doc + group doc
+  ///
+  /// Does NOT cascade-delete events (orphaned events are invisible
+  /// without group membership). Firestore batch limit is 500 ops —
+  /// safe for groups with <498 members.
+  Future<void> deleteGroup({required String groupId}) async {
+    final membersSnap = await db
+        .collection('groups')
+        .doc(groupId)
+        .collection('members')
+        .get();
+
+    final groupDoc = await db.collection('groups').doc(groupId).get();
+    final inviteCode = groupDoc.data()?['inviteCode'] as String?;
+
+    final batch = db.batch();
+    for (final memberDoc in membersSnap.docs) {
+      batch.delete(memberDoc.reference);
+    }
+    if (inviteCode != null) {
+      batch.delete(db.collection('inviteCodes').doc(inviteCode));
+    }
+    batch.delete(db.collection('groups').doc(groupId));
+    await batch.commit();
+  }
 }
 
 // ---------------------------------------------------------------------------
