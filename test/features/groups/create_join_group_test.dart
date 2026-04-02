@@ -1,14 +1,19 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/groups/screens/create_group_screen.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
 import 'package:safar/features/groups/screens/join_group_screen.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
 // CreateGroupScreen tests
@@ -292,13 +297,37 @@ void main() {
       createdAt: DateTime(2026, 1, 1),
     );
 
+    final _testMembers = [
+      GroupMember(
+        id: 'mem-1',
+        groupId: 'group-1',
+        userId: 'uid-creator',
+        displayName: 'Alice',
+        role: 'CREATOR',
+        joinedAt: DateTime(2026, 1, 1),
+      ),
+    ];
+
     Future<Widget> _buildSettingsScreen() async {
       final prefs = await SharedPreferences.getInstance();
       return ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          currentUserIdProvider.overrideWithValue('uid-creator'),
           groupDetailProvider('group-1').overrideWith(
             (ref) => Stream.value(_testGroup),
+          ),
+          groupMembersProvider('group-1').overrideWith(
+            (ref) => Stream.value(_testMembers),
+          ),
+          groupBalancesProvider('group-1').overrideWith(
+            (ref) => AsyncValue.data((
+              balances: <UserBalance>[],
+              totalSpent: Decimal.zero,
+              eventCount: 0,
+              perEventBreakdown: <String, Map<String, Decimal>>{},
+              memberNames: <String, String>{},
+            )),
           ),
         ],
         child: const MaterialApp(
@@ -307,10 +336,10 @@ void main() {
       );
     }
 
-    testWidgets('renders Group Settings AppBar title', (tester) async {
+    testWidgets('renders back button (no AppBar)', (tester) async {
       await tester.pumpWidget(await _buildSettingsScreen());
       await tester.pumpAndSettle();
-      expect(find.text('Group Settings'), findsOneWidget);
+      expect(find.byKey(const Key('group_settings_back_button')), findsOneWidget);
     });
 
     testWidgets('renders Group Name label', (tester) async {
@@ -344,13 +373,16 @@ void main() {
       expect(find.text('XYZ789'), findsOneWidget);
     });
 
-    testWidgets('shows loading indicator when group stream not yet emitted', (tester) async {
+    testWidgets('shows skeleton loader when group stream not yet emitted', (tester) async {
       final prefs = await SharedPreferences.getInstance();
       final widget = ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          // Return a stream that never emits so we stay in loading state
+          currentUserIdProvider.overrideWithValue('uid-creator'),
           groupDetailProvider('group-loading').overrideWith(
+            (ref) => const Stream.empty(),
+          ),
+          groupMembersProvider('group-loading').overrideWith(
             (ref) => const Stream.empty(),
           ),
         ],
@@ -359,8 +391,8 @@ void main() {
         ),
       );
       await tester.pumpWidget(widget);
-      await tester.pump(); // pump once without settling
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      await tester.pump();
+      expect(find.byType(SkeletonLoader), findsOneWidget);
     });
 
     testWidgets('shows error text when group stream errors', (tester) async {
@@ -368,8 +400,12 @@ void main() {
       final widget = ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          currentUserIdProvider.overrideWithValue('uid-creator'),
           groupDetailProvider('group-error').overrideWith(
             (ref) => Stream<Group?>.error(Exception('test error')),
+          ),
+          groupMembersProvider('group-error').overrideWith(
+            (ref) => const Stream.empty(),
           ),
         ],
         child: const MaterialApp(
@@ -378,7 +414,7 @@ void main() {
       );
       await tester.pumpWidget(widget);
       await tester.pumpAndSettle();
-      expect(find.text('Error loading settings'), findsOneWidget);
+      expect(find.text('Could not load settings'), findsOneWidget);
     });
   });
 }
