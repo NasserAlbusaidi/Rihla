@@ -351,6 +351,59 @@ void main() {
       expect(membersOffset.dy, lessThan(activityOffset.dy));
     });
 
+    testWidgets('has RefreshIndicator wrapping scrollable content (D-11)',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesEmpty),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // RefreshIndicator must be present in the widget tree
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+    });
+
+    testWidgets('shows inline error with retry button when group fails to load (D-12)',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            currentUserIdProvider.overrideWithValue('uid-creator'),
+            groupDetailProvider(_groupId).overrideWith(
+              (ref) => Stream.error(Exception('Network error')),
+            ),
+            groupMembersProvider(_groupId).overrideWith(
+              (ref) => Stream.value(_testMembers),
+            ),
+            groupEventsProvider(_groupId).overrideWith(
+              (ref) => Stream.value(const []),
+            ),
+            groupBalancesProvider(_groupId).overrideWith(
+              (ref) => AsyncValue.data(_balancesEmpty),
+            ),
+            groupActivityProvider(_groupId).overrideWith(
+              (ref) => Stream.value(const []),
+            ),
+          ],
+          child: const MaterialApp(
+            home: GroupDetailScreen(groupId: _groupId),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Error state shows inline message, not full-screen replacement
+      expect(find.text('Failed to load group'), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+
+      // ModuleHeader is still visible in error state (inline, not full replacement)
+      expect(find.text('Group'), findsOneWidget);
+    });
+
     testWidgets('event card shows personal balance when provided',
         (tester) async {
       final testEvent = Event(

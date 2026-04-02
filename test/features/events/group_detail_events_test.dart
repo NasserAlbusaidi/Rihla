@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/shared/animations/fade_in_list.dart';
+
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -264,6 +266,26 @@ void main() {
       expect(find.byKey(GroupKeys.eventsSection), findsOneWidget);
       // Count chip only appears when events.isNotEmpty per plan spec
       expect(find.byKey(GroupKeys.eventsCountChip), findsNothing);
+    });
+
+    testWidgets('event cards wrapped in FadeInList for staggered entrance (D-08)',
+        (tester) async {
+      final events = [
+        _makeEvent(id: 'evt-1', name: 'Beach Trip'),
+        _makeEvent(id: 'evt-2', name: 'Mountain Hike', type: EventType.camping),
+      ];
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          events: events,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // FadeInList widget must be present in the tree
+      expect(find.byType(FadeInList), findsOneWidget);
     });
 
     testWidgets('dims past events with 0.6 opacity', (tester) async {
