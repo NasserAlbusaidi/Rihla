@@ -35,8 +35,8 @@ Declared values from `AppSpacingTokens.standard`:
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| space4 | 4dp | Icon gaps, chip inner padding |
-| space8 | 8dp | Section header-to-card gap, tile vertical padding, inter-section gap |
+| space4 | 4dp | Icon gaps, chip inner padding, name-to-badge gap in member tile |
+| space8 | 8dp | Section header-to-card gap, tile vertical padding, inter-section gap, icon-to-label gap in section header |
 | space16 | 16dp | Tile horizontal padding inside card, inter-section gap (larger) |
 | space24 | 24dp | Horizontal page padding (D-09: must be 24px, not 16px) |
 | space32 | 32dp | Bottom scroll padding |
@@ -45,9 +45,11 @@ Border radii from `AppSpacingTokens.standard`:
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| radiusSmall | 8dp | Icon container rounding (`BorderRadius.circular(8)`), creator badge chip |
+| radiusSmall | 8dp | Creator badge chip |
 | radiusMedium | 12dp | — |
-| radiusLarge | 16dp | Card container `borderRadius` (all section cards) |
+| radiusLarge | 16dp | Card container `borderRadius` (all section cards) — matches actual `profile_about_section.dart` implementation (`BorderRadius.circular(16)`) |
+
+> Note: CONTEXT.md D-08 mentions "borderRadius: 24" but the canonical ProfileScreen implementation uses `BorderRadius.circular(16)`. The spec follows the code, not the aspirational description.
 
 Additional:
 - Button height: 52dp (`AppSpacingTokens.standard.buttonHeight`) — destructive action buttons
@@ -58,7 +60,7 @@ Exceptions:
 - Touch targets for tap targets inside cards: minimum 48dp tall (8dp vertical padding each side of 36dp icon row = 52dp effective)
 - Creator badge chip: inline, height ~24dp (compact, not a full-height chip)
 
-> Source: `AppSpacingTokens.standard`, `profile_about_section.dart`, `profile_notifications_section.dart` (D-09 from CONTEXT.md)
+> Source: `AppSpacingTokens.standard`, `profile_about_section.dart` line 38 (card radius), `profile_notifications_section.dart` (D-09 from CONTEXT.md)
 
 ---
 
@@ -158,12 +160,12 @@ Each section widget is a `ConsumerWidget` in its own file under `lib/features/gr
 ```
 Column
   crossAxisAlignment: CrossAxisAlignment.start
-  _buildSectionHeader()     — icon (16dp) + SizedBox(width:6) + uppercase label (11sp, w600, letterSpacing:1.5)
+  _buildSectionHeader()     — icon (16dp) + SizedBox(width:8) + uppercase label (11sp, w600, letterSpacing:1.5)
   SizedBox(height: 8)
   Container                 — card container
     decoration:
       color: cardSurface
-      borderRadius: BorderRadius.circular(16)   ← radiusLarge
+      borderRadius: BorderRadius.circular(16)   ← radiusLarge (matches actual profile_about_section.dart)
       boxShadow: AppShadowTokens.standard.raised
     child: Column
       [tiles separated by Divider(height:1, color:inputFill)]
@@ -210,7 +212,7 @@ Padding(horizontal: 16, vertical: 10)
     Expanded
       Column
         Text(member.displayName, 14sp, w600, textPrimary)
-        if isCreator: SizedBox(height:2) + _buildCreatorBadge()
+        if isCreator: SizedBox(height:4) + _buildCreatorBadge()   ← space4 (4dp grid-aligned)
     if canRemove (current user is creator AND this member is not current user):
       IconButton(
         icon: Iconsax.user_minus,
@@ -223,7 +225,7 @@ Padding(horizontal: 16, vertical: 10)
 Creator badge (`_buildCreatorBadge`):
 ```
 Container
-  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2)
+  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4)   ← vertical 4dp (space4, grid-aligned)
   decoration:
     color: selectionFill   ← #E6F5F3
     borderRadius: BorderRadius.circular(8)   ← radiusSmall
@@ -299,7 +301,7 @@ Padding(horizontal: 24)
     SizedBox(height: 4)
     Text('Check your connection and try again.', 14sp, w400, textSecondary)
     SizedBox(height: 16)
-    TextButton('Retry', primary) → triggers provider refresh
+    TextButton('Try again', primary) → triggers provider refresh
 ```
 
 No full-screen error replacement — stays within the scrollable body area.
@@ -353,7 +355,7 @@ Package: `flutter_animate` (`package:flutter_animate/flutter_animate.dart`)
 | Invite code copy snackbar | `Invite code copied` |
 | Loading error heading | `Could not load settings` |
 | Loading error body | `Check your connection and try again.` |
-| Loading error retry | `Retry` |
+| Loading error retry | `Try again` |
 
 ---
 
