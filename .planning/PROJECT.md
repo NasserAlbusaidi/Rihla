@@ -71,9 +71,10 @@ Groups persist across events and accumulate financial history — friends settle
 
 ### Active
 
-- [ ] Display name editing from profile page
-- [ ] Cross-group stats (total groups, events, spending)
+- ✓ Display name editing from profile page — v2.2 Phase 25
+- ✓ Cross-group stats (total groups, events, spending) — v2.2 Phase 25
 - ✓ Notification settings (FCM push toggles) — v2.2 Phase 26
+- ✓ FCM wiring (appBootstrapProvider activation) — v2.2 Phase 27
 - ✓ App info / about (version, feedback, licenses) — v2.2 Phase 26
 - ✓ "Buy me a coffee" placeholder — v2.2 Phase 26
 
@@ -95,6 +96,7 @@ Groups persist across events and accumulate financial history — friends settle
 **v2.2 started:** 2026-04-01 — Profile Page milestone.
 **Phase 25 complete:** 2026-04-01 — Profile screen with identity management (display name + initials circle) and cross-group stats (groups, events, OMR spending). Navigable from home header avatar and bottom nav Profile tab.
 **Phase 26 complete:** 2026-04-01 — Notification toggle, app version display, feedback mailto link, open-source licenses, "Buy me a coffee" placeholder. All added as new sections to ProfileScreen. 812 tests green.
+**Phase 27 complete:** 2026-04-02 — appBootstrapProvider wired into SafarApp.build() so push notification toggle triggers FCM initialize/removeToken. NOTIF-02 gap closed. v2.2 milestone complete.
 
 ### Out of Scope
 
@@ -174,4 +176,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after Phase 25 complete — Profile Screen Core*
+*Last updated: 2026-04-02 after Phase 27 complete — Wire Notification Service (v2.2 milestone complete)*
