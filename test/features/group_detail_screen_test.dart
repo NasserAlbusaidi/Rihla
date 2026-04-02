@@ -267,7 +267,7 @@ void main() {
       expect(find.byKey(GroupKeys.seeAllActivityButton), findsOneWidget);
     });
 
-    testWidgets('invite code section appears below events section (D-30)',
+    testWidgets('invite code section is not rendered (D-05 — moved to Phase 29)',
         (tester) async {
       await tester.pumpWidget(
         _wrap(
@@ -278,19 +278,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Both "Events" and "Invite Code" headers should be visible
-      expect(find.byKey(GroupKeys.eventsSection), findsOneWidget);
-      expect(find.byKey(GroupKeys.inviteCodeSection), findsOneWidget);
-
-      // Verify layout order: Events appears before Invite Code in the widget tree.
-      // We find their positions via renderObject coordinates.
-      final eventsOffset =
-          tester.getTopLeft(find.byKey(GroupKeys.eventsSection).first);
-      final inviteOffset =
-          tester.getTopLeft(find.byKey(GroupKeys.inviteCodeSection).first);
-
-      // Invite Code section must be below the Events section (higher Y coordinate)
-      expect(inviteOffset.dy, greaterThan(eventsOffset.dy));
+      // Invite code section removed from GroupDetailScreen per D-05
+      expect(find.byKey(GroupKeys.inviteCodeSection), findsNothing);
     });
 
     testWidgets('stats grid shows 4 stat tiles', (tester) async {
