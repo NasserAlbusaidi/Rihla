@@ -130,7 +130,7 @@ Plans:
   5. Error state is inline with retry, not full-screen replacement
 **Plans**: 2 plans
 Plans:
-- [ ] 28-01-PLAN.md — Screen cleanup: remove invite code, provider rebuild isolation, CTA gradient, FAB fix, spacing polish, test updates
+- [x] 28-01-PLAN.md — Screen cleanup: remove invite code, provider rebuild isolation, CTA gradient, FAB fix, spacing polish, test updates
 - [ ] 28-02-PLAN.md — New behaviors: RefreshIndicator, FadeInList, inline error state, member card polish, new widget tests
 **UI hint**: yes
 
@@ -201,7 +201,7 @@ Plans:
 | 25 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 26 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
-| 28 | v2.3 | 0/2 | Planned     | — |
+| 28 | v2.3 | 1/2 | In Progress|  |
 | 29 | v2.3 | 0/0 | Pending     | — |
 | 30 | v2.3 | 0/0 | Pending     | — |
 | 31 | v2.3 | 0/0 | Pending     | — |
