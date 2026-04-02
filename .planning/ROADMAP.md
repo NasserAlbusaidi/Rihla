@@ -67,7 +67,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 ### v2.3 Groups, Events & Modules
 
 - [x] **Phase 28: Group Detail** - Main group screen — stats, events list, member balances (completed 2026-04-02)
-- [ ] **Phase 29: Group Management** - Settings, invite flow, member management
+- [x] **Phase 29: Group Management** - Settings, invite flow, member management (completed 2026-04-02)
 - [ ] **Phase 30: Group Settle Up & Activity** - Group-level settlement, activity feed
 - [ ] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings
 - [ ] **Phase 32: Event Creation** - Type picker, create form, templates
@@ -144,7 +144,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 29-01-PLAN.md — Service methods (leaveGroup, removeMember, deleteGroup), test keys, test scaffold
-- [ ] 29-02-PLAN.md — Section widgets (GroupInfoSection, GroupMembersSection, GroupDangerSection), screen refactor, test updates
+- [x] 29-02-PLAN.md — Section widgets (GroupInfoSection, GroupMembersSection, GroupDangerSection), screen refactor, test updates
 **UI hint**: yes
 
 ### Phase 30: Group Settle Up & Activity
@@ -206,7 +206,7 @@ Plans:
 | 26 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
-| 29 | v2.3 | 1/2 | In Progress|  |
+| 29 | v2.3 | 2/2 | Complete   | 2026-04-02 |
 | 30 | v2.3 | 0/0 | Pending     | — |
 | 31 | v2.3 | 0/0 | Pending     | — |
 | 32 | v2.3 | 0/0 | Pending     | — |
