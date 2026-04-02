@@ -1,302 +1,162 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/config/firebase_config.dart';
-import '../../../core/services/haptic_service.dart';
-import '../keys/group_keys.dart';
-import '../providers/group_provider.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
+import '../keys/group_keys.dart';
+import '../providers/group_balance_provider.dart';
+import '../providers/group_provider.dart';
+import '../widgets/group_danger_section.dart';
+import '../widgets/group_info_section.dart';
+import '../widgets/group_members_section.dart';
 
-/// Screen for managing group settings — name (creator-only), currency, and
-/// invite code display (D-15, D-16, D-22).
-class GroupSettingsScreen extends ConsumerStatefulWidget {
+/// Screen for managing group settings — name (creator-only), currency, invite
+/// code, member management, and danger zone (leave / delete).
+///
+/// Follows the ProfileScreen layout pattern: no AppBar, inline back button,
+/// SingleChildScrollView with 24px horizontal padding, three section widgets
+/// with staggered entrance animations (D-08, D-09).
+class GroupSettingsScreen extends ConsumerWidget {
   final String groupId;
 
   const GroupSettingsScreen({super.key, required this.groupId});
 
   @override
-  ConsumerState<GroupSettingsScreen> createState() =>
-      _GroupSettingsScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupAsync = ref.watch(groupDetailProvider(groupId));
+    final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final currentUserId = ref.watch(currentUserIdProvider);
 
-class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
-  final _nameController = TextEditingController();
+    return Scaffold(
+      key: GroupKeys.settingsScreen,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      body: SafeArea(
+        child: groupAsync.when(
+          data: (group) {
+            if (group == null) {
+              return _buildError(context, ref, 'Group not found');
+            }
 
-  /// Whether the inline rename TextField is shown.
-  bool _isEditing = false;
+            final members = membersAsync.valueOrNull ?? [];
+            final isCreator = currentUserId == group.createdBy;
 
-  /// Whether a save operation is in progress.
-  bool _isSaving = false;
-
-  static const _currencies = [
-    'OMR',
-    'USD',
-    'EUR',
-    'GBP',
-    'SAR',
-    'AED',
-    'KWD',
-    'BHD',
-    'QAR',
-  ];
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  /// Save the renamed group name to Firestore.
-  ///
-  /// Shows a SnackBar on success or error.
-  Future<void> _saveGroupName(String groupId) async {
-    final trimmed = _nameController.text.trim();
-    if (trimmed.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Group name can't be empty."),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    try {
-      await ref
-          .read(groupServiceProvider)
-          .updateGroup(groupId: groupId, name: trimmed);
-      if (mounted) {
-        setState(() {
-          _isEditing = false;
-          _isSaving = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update name: $e'),
-            duration: const Duration(seconds: 3),
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildBackButton(context),
+                    const SizedBox(height: 16),
+                    GroupInfoSection(
+                      group: group,
+                      isCreator: isCreator,
+                    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+                    const SizedBox(height: 16),
+                    GroupMembersSection(
+                      groupId: groupId,
+                      members: members,
+                      currentUserId: currentUserId,
+                      isCurrentUserCreator: isCreator,
+                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                    const SizedBox(height: 16),
+                    GroupDangerSection(
+                      groupId: groupId,
+                      isCreator: isCreator,
+                    ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+            );
+          },
+          loading: () => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 16),
+                _buildBackButton(context),
+                const SizedBox(height: 16),
+                SkeletonLoader.generic(count: 3),
+              ],
+            ),
           ),
-        );
-      }
-    }
-  }
-
-  /// Show a modal bottom sheet currency picker and persist the selection.
-  Future<void> _showCurrencyPicker(BuildContext ctx, String groupId, String currentCurrency) async {
-    await showModalBottomSheet<void>(
-      context: ctx,
-      backgroundColor: AppColorTokens.light.cardSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetCtx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                24,
-                24,
-                24,
-                8,
-              ),
-              child: Text(
-                'Select Currency',
-                style: Theme.of(sheetCtx).textTheme.titleMedium,
-              ),
-            ),
-            ..._currencies.map(
-              (c) => ListTile(
-                title: Text(c),
-                trailing: c == currentCurrency
-                    ? Icon(Iconsax.tick_circle, color: AppColorTokens.light.primary)
-                    : null,
-                onTap: () async {
-                  Navigator.pop(sheetCtx);
-                  try {
-                    await ref.read(groupServiceProvider).updateGroup(
-                          groupId: groupId,
-                          currency: c,
-                        );
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to update currency: $e'),
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+          error: (e, st) => _buildError(context, ref, null),
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
-    String? currentUid;
-    try {
-      currentUid = FirebaseConfig.currentUser?.uid;
-    } catch (_) {}
-
-    return Scaffold(
-      key: GroupKeys.settingsScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
-      appBar: AppBar(
-        title: const Text('Group Settings', key: GroupKeys.settingsTitle),
-        backgroundColor: AppColorTokens.light.cardSurface,
-        foregroundColor: AppColorTokens.light.textPrimary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Iconsax.arrow_left),
-          onPressed: () => Navigator.of(context).pop(),
+  Widget _buildBackButton(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        key: GroupKeys.settingsBackButton,
+        decoration: BoxDecoration(
+          color: AppColorTokens.light.inputFill,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColorTokens.light.inputFill),
+        ),
+        child: IconButton(
+          icon: Icon(
+            Iconsax.arrow_left,
+            color: AppColorTokens.light.textPrimary,
+            size: 20,
+          ),
+          onPressed: () => GoRouter.of(context).pop(),
         ),
       ),
-      body: groupAsync.when(
-        data: (group) {
-          if (group == null) {
-            return const Center(child: Text('Group not found'));
-          }
+    );
+  }
 
-          final isCreator = currentUid == group.createdBy;
-
-          return ListView(
-            children: [
-              // ---- Group Name ----
-              ListTile(
-                key: GroupKeys.settingsGroupNameTile,
-                title: Text(
-                  'Group Name',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColorTokens.light.textSecondary,
-                      ),
-                ),
-                subtitle: _isEditing
-                    ? TextField(
-                        controller: _nameController,
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                          filled: false,
-                          suffixIcon: _isSaving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: Padding(
-                                    padding: EdgeInsets.all(12),
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                )
-                              : IconButton(
-                                  icon: Icon(
-                                    Iconsax.tick_circle,
-                                    color: AppColorTokens.light.primary,
-                                  ),
-                                  onPressed: () =>
-                                      _saveGroupName(group.id),
-                                ),
-                        ),
-                        onSubmitted: (_) => _saveGroupName(group.id),
-                      )
-                    : Text(
-                        group.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                trailing: isCreator && !_isEditing
-                    ? IconButton(
-                        icon: Icon(
-                          Iconsax.edit_2,
-                          color: AppColorTokens.light.textSecondary,
-                        ),
-                        onPressed: () => setState(() {
-                          _isEditing = true;
-                          _nameController.text = group.name;
-                        }),
-                      )
-                    : null,
-              ),
-
-              Divider(color: AppColorTokens.light.border, height: 1),
-
-              // ---- Currency ----
-              ListTile(
-                key: GroupKeys.settingsCurrencyTile,
-                title: Text(
-                  'Currency',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColorTokens.light.textSecondary,
-                      ),
-                ),
-                subtitle: Text(
-                  group.currency,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                trailing: Icon(
-                  Iconsax.arrow_right_3,
-                  color: AppColorTokens.light.textMuted,
-                ),
-                onTap: () => _showCurrencyPicker(
-                  context,
-                  group.id,
-                  group.currency,
-                ),
-              ),
-
-              Divider(color: AppColorTokens.light.border, height: 1),
-
-              // ---- Invite Code ----
-              ListTile(
-                key: GroupKeys.settingsInviteCodeTile,
-                title: Text(
-                  'Invite Code',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColorTokens.light.textSecondary,
-                      ),
-                ),
-                subtitle: Text(
-                  group.inviteCode,
+  Widget _buildError(BuildContext context, WidgetRef ref, String? message) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 16),
+          _buildBackButton(context),
+          const SizedBox(height: 48),
+          Center(
+            child: Column(
+              children: [
+                Icon(Iconsax.warning_2, size: 32, color: AppColorTokens.light.textSecondary),
+                const SizedBox(height: 8),
+                Text(
+                  'Could not load settings',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 4,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     color: AppColorTokens.light.textPrimary,
                   ),
                 ),
-                trailing: IconButton(
-                  icon: Icon(Iconsax.copy, color: AppColorTokens.light.textSecondary),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: group.inviteCode));
-                    HapticService.success();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Invite code copied'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
+                const SizedBox(height: 4),
+                Text(
+                  'Check your connection and try again.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: AppColorTokens.light.textSecondary,
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => const Center(child: Text('Error loading settings')),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => ref.invalidate(groupDetailProvider(groupId)),
+                  child: Text(
+                    'Try again',
+                    style: TextStyle(color: AppColorTokens.light.primary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

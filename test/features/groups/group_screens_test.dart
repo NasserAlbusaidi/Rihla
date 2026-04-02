@@ -329,13 +329,13 @@ void main() {
     // GroupSettingsScreen
     // -----------------------------------------------------------------------
     group('GroupSettingsScreen', () {
-      testWidgets('shows Group Settings appbar title', (tester) async {
+      testWidgets('shows back button instead of AppBar title', (tester) async {
         await tester.pumpWidget(
           _wrap(const GroupSettingsScreen(groupId: 'group-1'), prefs),
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(GroupKeys.settingsTitle), findsOneWidget);
+        expect(find.byKey(GroupKeys.settingsBackButton), findsOneWidget);
       });
 
       testWidgets('shows group name tile with current name (D-15)', (tester) async {
