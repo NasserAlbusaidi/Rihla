@@ -120,12 +120,19 @@ Plans:
 - [x] 27-01-PLAN.md — Wire appBootstrapProvider into SafarApp.build() + integration test
 
 ### Phase 28: Group Detail
-**Goal**: Full-stack group detail screen — UI/UX, data layer, and backend for stats, events list, and member balances
+**Goal**: Visual refresh and provider cleanup of GroupDetailScreen — earthy design language, animations, pull-to-refresh, inline error handling
 **Depends on**: Nothing (existing screen rebuild)
 **Success Criteria** (what must be TRUE):
   1. Group detail screen displays group stats, events list, and member balances with the v2.x design language
-  2. Data layer correctly fetches and caches group detail data
-**Plans**: TBD
+  2. Invite code section removed (deferred to Phase 29)
+  3. Pull-to-refresh triggers Firestore re-fetch
+  4. Event cards animate in with staggered fade-in
+  5. Error state is inline with retry, not full-screen replacement
+**Plans**: 2 plans
+Plans:
+- [ ] 28-01-PLAN.md — Screen cleanup: remove invite code, provider rebuild isolation, CTA gradient, FAB fix, spacing polish, test updates
+- [ ] 28-02-PLAN.md — New behaviors: RefreshIndicator, FadeInList, inline error state, member card polish, new widget tests
+**UI hint**: yes
 
 ### Phase 29: Group Management
 **Goal**: Full-stack group settings, invite flow, and member management
@@ -194,7 +201,7 @@ Plans:
 | 25 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 26 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
-| 28 | v2.3 | 0/0 | Pending     | — |
+| 28 | v2.3 | 0/2 | Planned     | — |
 | 29 | v2.3 | 0/0 | Pending     | — |
 | 30 | v2.3 | 0/0 | Pending     | — |
 | 31 | v2.3 | 0/0 | Pending     | — |
