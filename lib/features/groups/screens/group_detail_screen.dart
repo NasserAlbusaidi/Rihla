@@ -1,12 +1,10 @@
 import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
@@ -26,15 +24,16 @@ import '../providers/group_provider.dart';
 import '../widgets/group_activity_tile.dart';
 import '../widgets/group_member_balance_card.dart';
 import '../widgets/group_stats_grid.dart';
-import '../widgets/invite_code_display.dart';
 
-/// Group dashboard screen — Phase 20 redesign.
+/// Group dashboard screen — Phase 28 cleanup.
 ///
-/// Layout per D-07, D-08, D-09, D-10:
+/// Layout per D-04, D-05, D-10, D-13, D-14:
 /// - 2x2 stats grid above the fold (always visible, D-08)
-/// - Settle-up CTA when current user balance is non-zero (D-10)
-/// - Section order: Events → Members & Balances → Invite Code → Activity (D-09)
-/// - Skeleton loading replaces CircularProgressIndicator
+/// - Settle-up CTA with primaryGradient when current user balance is non-zero (D-10)
+/// - Section order: Header → Stats Grid → Settle-Up CTA → Events → Members & Balances → Activity (D-04)
+/// - Invite code section removed (D-05 — moved to Phase 29)
+/// - Provider rebuilds isolated via Consumer widget (D-02)
+/// - FAB icon uses textOnPrimary (D-14)
 ///
 /// Converted to ConsumerStatefulWidget to track accordion expand state
 /// (_expandedMemberId) for GroupMemberBalanceCard (D-13).
@@ -64,10 +63,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         label: 'Create event',
         button: true,
         child: FloatingActionButton(
-          onPressed: () => context.push('/group/$groupId/create-event'),
+          onPressed: () {
+            HapticService.lightClick();
+            context.push('/group/$groupId/create-event');
+          },
           backgroundColor: AppColorTokens.light.primary,
           shape: const CircleBorder(),
-          child: const Icon(Iconsax.add, color: Colors.black),
+          child: Icon(Iconsax.add, color: AppColorTokens.light.textOnPrimary),
         ),
       ),
       body: groupAsync.when(
@@ -84,29 +86,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   }
 
   Widget _buildContent(BuildContext context, Group group) {
-    final balancesAsync = ref.watch(groupBalancesProvider(groupId));
-
-    // Use injectable currentUserIdProvider for testability (Phase 18 P03 pattern)
-    final currentUid = ref.watch(currentUserIdProvider);
-
-    final balancesData = balancesAsync.valueOrNull;
-
-    // Find current user's balance for stats grid and settle-up CTA
-    UserBalance? currentUserBalance;
-    if (balancesData != null && currentUid != null) {
-      try {
-        currentUserBalance = balancesData.balances.firstWhere(
-          (b) => b.participantId == currentUid,
-        );
-      } catch (_) {
-        currentUserBalance = null;
-      }
-    }
-
-    // Settle-up CTA visibility: show only when user has a non-zero balance
-    final showSettleUpCta = currentUserBalance != null &&
-        currentUserBalance.netBalance != Decimal.zero;
-
     return Column(
       children: [
         ModuleHeader(
@@ -114,9 +93,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           subtitle: 'Created ${DateFormat('MMM d, yyyy').format(group.createdAt)}',
           actions: [
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Iconsax.setting_2,
-                color: Colors.white,
+                color: AppColorTokens.light.textOnPrimary,
                 size: 22,
               ),
               onPressed: () => context.push('/group/$groupId/settings'),
@@ -127,64 +106,107 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
-              horizontal: 24,
+              horizontal: 16,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
 
-                // --- 2x2 Stats grid (D-08: always visible) ---
-                GroupStatsGrid(
-                  userNetBalance:
-                      currentUserBalance?.netBalance ?? Decimal.zero,
-                  groupTotal: balancesData?.totalSpent ?? Decimal.zero,
-                  activeMembers: group.memberIds.length,
-                  eventCount: balancesData?.eventCount ?? 0,
-                  currency: group.currency,
+                // --- Stats grid + Settle-up CTA isolated in Consumer (D-02) ---
+                Consumer(
+                  builder: (context, ref, _) {
+                    final balancesAsync =
+                        ref.watch(groupBalancesProvider(groupId));
+                    final currentUid = ref.watch(currentUserIdProvider);
+                    final balancesData = balancesAsync.valueOrNull;
+
+                    // Find current user's balance
+                    UserBalance? currentUserBalance;
+                    if (balancesData != null && currentUid != null) {
+                      try {
+                        currentUserBalance = balancesData.balances.firstWhere(
+                          (b) => b.participantId == currentUid,
+                        );
+                      } catch (_) {
+                        currentUserBalance = null;
+                      }
+                    }
+
+                    final showSettleUpCta = currentUserBalance != null &&
+                        currentUserBalance.netBalance != Decimal.zero;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // --- 2x2 Stats grid (D-08: always visible) ---
+                        GroupStatsGrid(
+                          userNetBalance:
+                              currentUserBalance?.netBalance ?? Decimal.zero,
+                          groupTotal:
+                              balancesData?.totalSpent ?? Decimal.zero,
+                          activeMembers: group.memberIds.length,
+                          eventCount: balancesData?.eventCount ?? 0,
+                          currency: group.currency,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // --- Settle-up CTA with gradient (D-10) ---
+                        if (showSettleUpCta) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            height: AppSpacingTokens.standard.buttonHeight,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient:
+                                    AppColorTokens.light.primaryGradient,
+                                borderRadius: BorderRadius.circular(
+                                  AppSpacingTokens.standard.radiusMedium,
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                key: GroupKeys.settleUpCta,
+                                onPressed: () {
+                                  HapticService.medium();
+                                  context.push(
+                                      '/group/$groupId/settle-up');
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppSpacingTokens.standard.radiusMedium,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Settle Up',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        color: AppColorTokens
+                                            .light.textOnPrimary,
+                                      ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ] else
+                          const SizedBox(height: 8),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(height: 16),
 
-                // --- Settle-up CTA (D-10: conditional on non-zero balance) ---
-                if (showSettleUpCta) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      key: GroupKeys.settleUpCta,
-                      onPressed: () =>
-                          context.push('/group/$groupId/settle-up'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColorTokens.light.primary,
-                        foregroundColor: AppColorTokens.light.textOnPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Settle Up',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ] else
-                  const SizedBox(height: 8),
-
-                // --- Events (D-09: before Members) ---
-                _buildEventsSection(context, group, balancesData, currentUid),
+                // --- Events (D-04: before Members) ---
+                _buildEventsSection(context, group),
                 const SizedBox(height: 24),
 
                 // --- Members & Balances ---
-                _buildMembersBalancesSection(context, group, balancesAsync),
-                const SizedBox(height: 24),
-
-                // --- Invite Code (D-30: below events) ---
-                _buildInviteSection(context, group),
+                _buildMembersBalancesSection(context, group),
                 const SizedBox(height: 24),
 
                 // --- Recent Activity (D-34) ---
@@ -198,16 +220,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     );
   }
 
-  /// Events section — D-09: rendered before Members & Balances.
+  /// Events section — D-04: rendered before Members & Balances.
   ///
+  /// Watches groupBalancesProvider internally for per-event breakdown.
   /// Passes personalBalance from perEventBreakdown to each EventCard.
   Widget _buildEventsSection(
     BuildContext context,
     Group group,
-    GroupBalances? balancesData,
-    String? currentUid,
   ) {
     final eventsAsync = ref.watch(groupEventsProvider(groupId));
+    final balancesData =
+        ref.watch(groupBalancesProvider(groupId)).valueOrNull;
+    final currentUid = ref.watch(currentUserIdProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,8 +255,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: AppColorTokens.light.inputFill,
-                    borderRadius:
-                        BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${events.length}',
@@ -253,12 +276,14 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         eventsAsync.when(
           data: (events) {
             if (events.isEmpty) {
-              return const EmptyStateView(
+              return EmptyStateView(
                 key: GroupKeys.noEventsEmpty,
                 icon: Iconsax.calendar_add,
                 title: 'No events yet',
-                message:
-                    'Tap the + button to create the first event for this group.',
+                message: 'Create your first event to start planning together.',
+                actionLabel: 'Create Event',
+                onAction: () =>
+                    context.push('/group/$groupId/create-event'),
               );
             }
             // Pre-compute per-user event breakdown map for event card wiring
@@ -310,16 +335,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     );
   }
 
-  /// Members & Balances section — D-09: rendered after Events.
+  /// Members & Balances section — D-04: rendered after Events.
   ///
   /// Shows GroupMemberBalanceCard for each member with accordion expand control.
+  /// Watches groupBalancesProvider internally.
   /// onSettleUpTap is wired with preSelectedMemberId for D-22 entry point 2.
   /// onEventTap navigates to the event's LedgerScreen for FIN-01 per-event drill-down.
   Widget _buildMembersBalancesSection(
     BuildContext context,
     Group group,
-    AsyncValue<GroupBalances> balancesAsync,
   ) {
+    final balancesAsync = ref.watch(groupBalancesProvider(groupId));
+
     // Build event names map from the watched events list
     final eventsAsync = ref.watch(groupEventsProvider(groupId));
     final eventNames = <String, String>{};
@@ -391,76 +418,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     );
   }
 
-  /// Invite code section — moved below events per D-30.
-  Widget _buildInviteSection(BuildContext context, Group group) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Invite Code',
-          key: GroupKeys.inviteCodeSection,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 12),
-        InviteCodeDisplay(code: group.inviteCode),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 52,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Iconsax.copy, size: 16),
-                  label: const Text('Copy'),
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(text: group.inviteCode),
-                    );
-                    HapticService.success();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Invite code copied'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 52,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Iconsax.share, size: 16),
-                  label: const Text('Share'),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    Share.share(
-                      'Join my group on Rihla! Use code ${group.inviteCode} to join.',
-                      subject: 'Join ${group.name}',
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   /// Recent Activity section — shows last 5 entries with "See all" link (D-34).
   Widget _buildActivitySection(BuildContext context) {
     final activityAsync = ref.watch(groupActivityProvider(groupId));
@@ -477,11 +434,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         activityAsync.when(
           data: (activities) {
             if (activities.isEmpty) {
-              return Text(
-                'No activity yet',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColorTokens.light.textMuted,
-                    ),
+              return const EmptyStateView(
+                icon: Iconsax.activity,
+                title: 'No activity yet',
+                message:
+                    'Activity will appear here once events are created.',
               );
             }
             // Show up to 5 entries
@@ -504,7 +461,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           key: GroupKeys.seeAllActivityButton,
           onPressed: () => context.push('/group/$groupId/activity'),
           child: Text(
-            'See all activity',
+            'See all',
             style: TextStyle(
               color: AppColorTokens.light.primary,
               fontSize: 14,
@@ -527,7 +484,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
-              horizontal: 24,
+              horizontal: 16,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
