@@ -115,7 +115,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `appBootstrapProvider` is watched in SafarApp so its `ref.listen` fires on preference changes
   2. Toggling push notifications on/off calls `NotificationService.initialize()` / `removeToken()` respectively
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 27-01-PLAN.md — Wire appBootstrapProvider into SafarApp.build() + integration test
 
 ### Phase 28: Group Detail
 **Goal**: Full-stack group detail screen — UI/UX, data layer, and backend for stats, events list, and member balances
@@ -191,7 +193,7 @@ Plans:
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
 | 25 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 26 | v2.2 | 2/2 | Complete    | 2026-04-01 |
-| 27 | v2.2 | 0/0 | Pending     | — |
+| 27 | v2.2 | 0/1 | Planned     | — |
 | 28 | v2.3 | 0/0 | Pending     | — |
 | 29 | v2.3 | 0/0 | Pending     | — |
 | 30 | v2.3 | 0/0 | Pending     | — |
