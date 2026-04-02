@@ -68,27 +68,29 @@ Exceptions:
 
 Font: Plus Jakarta Sans throughout. All sizes from `AppTheme._buildTextTheme()` in `lib/core/theme/app_theme.dart`.
 
+Exactly 4 sizes, exactly 2 weights. All supplementary roles map to one of these four slots.
+
 | Role | TextTheme slot | Size | Weight | Line Height | Usage in this phase |
 |------|----------------|------|--------|-------------|---------------------|
-| Display | headlineLarge | 24sp | w700 | 1.2 | Group name in ModuleHeader |
+| Display | headlineLarge | 24sp | w600 | 1.2 | Group name in ModuleHeader |
 | Heading | headlineSmall | 18sp | w600 | 1.2 | Section headers (Events, Members & Balances, Recent Activity) |
-| Label | titleMedium | 15sp | w600 | 1.4 | Stat card labels, event card title, member name in balance card |
-| Body | bodyMedium | 14sp | w400 | 1.5 | Stat card values (secondary line), activity tile body text |
+| Label | titleMedium | 15sp | w600 | 1.4 | Stat card labels, event card title, member name and net balance in balance card, settle-up CTA label |
+| Body | bodyMedium | 14sp | w400 | 1.5 | Stat card values, header creation date, activity tile body text including timestamps, error state message, retry button label, event card date/type chip |
 
-Supplementary roles (used in this phase but not requiring new slots):
+All supplementary text roles resolved:
 
-| Usage | TextTheme slot | Size | Weight |
-|-------|----------------|------|--------|
-| Header subtitle (creation date) | bodyMedium | 14sp | w400 — textSecondary color |
-| Stat card value (amount) | labelLarge | 14sp | w600 — color-coded for YOUR BALANCE |
-| Event card date/type chip | bodySmall | 12sp | w400 — textMuted |
-| Member net balance amount | titleMedium | 15sp | w600 — color-coded |
-| Activity tile timestamp | labelSmall | 11sp | w500 — textMuted (decorative) |
-| Settle-up CTA label | elevatedButton style | 16sp | w700 — textOnPrimary |
-| Error state message | bodyMedium | 14sp | w400 — textSecondary |
-| Retry button label | labelLarge | 14sp | w600 — textOnPrimary |
+| Usage | Resolved slot | Rationale |
+|-------|---------------|-----------|
+| Header subtitle (creation date) | bodyMedium 14sp w400 | Body slot — textSecondary color |
+| Stat card value (amount) | bodyMedium 14sp w400 | Color-coded for YOUR BALANCE — weight distinguishes via color, not weight |
+| Event card date/type chip | bodyMedium 14sp w400 | 2sp reduction from 12sp is imperceptible; textMuted color marks it as decorative |
+| Member net balance amount | titleMedium 15sp w600 | Label slot — color-coded |
+| Activity tile timestamp | bodyMedium 14sp w400 | Timestamps are decorative — textMuted color sufficient; w500 removed |
+| Settle-up CTA label | titleMedium 15sp w600 | 1sp reduction from 16sp unnoticeable; w700 collapsed to w600 |
+| Error state message | bodyMedium 14sp w400 | Body slot — textSecondary color |
+| Retry button label | bodyMedium 14sp w400 | Body slot — textOnPrimary color on ElevatedButton |
 
-Constraint: `textMuted` (#9CA3AF) is decorative only — never use for functional text, amounts, or interactive labels. WCAG AA fails at 2.86:1 on white. Timestamps only.
+Constraint: `textMuted` (#9CA3AF) is decorative only — never use for functional text, amounts, or interactive labels. WCAG AA fails at 2.86:1 on white. Timestamps and decorative chips only.
 
 > Source: `lib/core/theme/app_theme.dart` `_buildTextTheme()` + CLAUDE.md WCAG note
 
@@ -119,7 +121,7 @@ Accent (`primary` #0D7B74) is reserved for:
 
 Header:
 - Background: `headerGradient` (headerGradientStart #111827 → headerGradientEnd #1F2937)
-- Group name text: `textOnPrimary` #FFFFFF (weight w700)
+- Group name text: `textOnPrimary` #FFFFFF (weight w600)
 - Creation date text: `textOnPrimary` #FFFFFF at 70% opacity via `.withValues(alpha: 0.7)`
 - Back button icon: `textOnPrimary` #FFFFFF
 
@@ -216,7 +218,7 @@ This phase requires explicit contracts for all 4 states of the GroupDetailScreen
 - Height: 52dp (`buttonHeight` token)
 - Style: `DecoratedBox` with `primaryGradient` + `ElevatedButton` with transparent background
 - Border radius: `radiusMedium` 12dp
-- Label: "Settle Up" — 16sp w700 `textOnPrimary`
+- Label: "Settle Up" — titleMedium 15sp w600 `textOnPrimary`
 - `onPressed`: `HapticService.mediumImpact()` then `context.push('/group/$groupId/settle-up')`
 - Key: `GroupKeys.settleUpCta`
 
