@@ -66,7 +66,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 
 ### v2.3 Groups, Events & Modules
 
-- [ ] **Phase 28: Group Detail** - Main group screen — stats, events list, member balances
+- [x] **Phase 28: Group Detail** - Main group screen — stats, events list, member balances (completed 2026-04-02)
 - [ ] **Phase 29: Group Management** - Settings, invite flow, member management
 - [ ] **Phase 30: Group Settle Up & Activity** - Group-level settlement, activity feed
 - [ ] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings
@@ -131,7 +131,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 28-01-PLAN.md — Screen cleanup: remove invite code, provider rebuild isolation, CTA gradient, FAB fix, spacing polish, test updates
-- [ ] 28-02-PLAN.md — New behaviors: RefreshIndicator, FadeInList, inline error state, member card polish, new widget tests
+- [x] 28-02-PLAN.md — New behaviors: RefreshIndicator, FadeInList, inline error state, member card polish, new widget tests
 **UI hint**: yes
 
 ### Phase 29: Group Management
@@ -201,7 +201,7 @@ Plans:
 | 25 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 26 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
-| 28 | v2.3 | 1/2 | In Progress|  |
+| 28 | v2.3 | 2/2 | Complete   | 2026-04-02 |
 | 29 | v2.3 | 0/0 | Pending     | — |
 | 30 | v2.3 | 0/0 | Pending     | — |
 | 31 | v2.3 | 0/0 | Pending     | — |
