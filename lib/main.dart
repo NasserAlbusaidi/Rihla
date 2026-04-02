@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/firebase_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
 import '../../core/theme/tokens/color_tokens.dart';
 
@@ -66,6 +67,8 @@ class SafarApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final settings = ref.watch(settingsProvider);
+    // Activate bootstrap listeners (notification sync, etc.)
+    ref.watch(appBootstrapProvider);
 
     return MaterialApp.router(
       title: 'Safar',
