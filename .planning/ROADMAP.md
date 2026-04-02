@@ -5,7 +5,8 @@
 - ✅ **v1.0 Groups, Events & Cross-Event Financials** — Phases 1-13 (shipped 2026-03-28)
 - ✅ **v2.0 Major UI/UX Overhaul** — Phases 14-22 (shipped 2026-03-31)
 - ✅ **v2.1 Home Screen Completion** — Phases 23-24 (shipped 2026-04-01)
-- [ ] **v2.2 Profile Page** — Phases 25-26
+- [ ] **v2.2 Profile Page** — Phases 25-27
+- [ ] **v2.3 Groups, Events & Modules** — Phases 28-35
 
 ## Phases
 
@@ -63,6 +64,17 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 - [x] **Phase 26: Settings & Support** - Notification toggles, app info, and support section (completed 2026-04-01)
 - [ ] **Phase 27: Wire Notification Service** - Connect appBootstrapProvider to widget tree so FCM toggle works end-to-end
 
+### v2.3 Groups, Events & Modules
+
+- [ ] **Phase 28: Group Detail** - Main group screen — stats, events list, member balances
+- [ ] **Phase 29: Group Management** - Settings, invite flow, member management
+- [ ] **Phase 30: Group Settle Up & Activity** - Group-level settlement, activity feed
+- [ ] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings
+- [ ] **Phase 32: Event Creation** - Type picker, create form, templates
+- [ ] **Phase 33: Ledger** - Expenses, add/edit, settle up
+- [ ] **Phase 34: Gear & Logistics** - Equipment inventory, sub-groups
+- [ ] **Phase 35: Vault & Memories** - Documents, photo timeline
+
 ## Phase Details
 
 ### Phase 25: Profile Screen Core
@@ -105,6 +117,71 @@ Plans:
   2. Toggling push notifications on/off calls `NotificationService.initialize()` / `removeToken()` respectively
 **Plans**: TBD
 
+### Phase 28: Group Detail
+**Goal**: Full-stack group detail screen — UI/UX, data layer, and backend for stats, events list, and member balances
+**Depends on**: Nothing (existing screen rebuild)
+**Success Criteria** (what must be TRUE):
+  1. Group detail screen displays group stats, events list, and member balances with the v2.x design language
+  2. Data layer correctly fetches and caches group detail data
+**Plans**: TBD
+
+### Phase 29: Group Management
+**Goal**: Full-stack group settings, invite flow, and member management
+**Depends on**: Phase 28
+**Success Criteria** (what must be TRUE):
+  1. Users can manage group settings (name, modules)
+  2. Invite flow works end-to-end (create code, share, join)
+  3. Member management (add/remove) functions correctly
+**Plans**: TBD
+
+### Phase 30: Group Settle Up & Activity
+**Goal**: Full-stack group-level settlement and activity feed
+**Depends on**: Phase 28
+**Success Criteria** (what must be TRUE):
+  1. Group-level settle up shows cross-event balances and generates optimized settlements
+  2. Activity feed displays group-wide actions in chronological order
+**Plans**: TBD
+
+### Phase 31: Event Command Center
+**Goal**: Full-stack event hub — header, module grid, event settings
+**Depends on**: Phase 28
+**Success Criteria** (what must be TRUE):
+  1. Event command center displays event info, module grid, and quick actions
+  2. Event settings are accessible and functional
+**Plans**: TBD
+
+### Phase 32: Event Creation
+**Goal**: Full-stack event creation — type picker, form, templates per event type
+**Depends on**: Phase 31
+**Success Criteria** (what must be TRUE):
+  1. Users can pick an event type and create an event with pre-filled template content
+  2. Event creation persists to backend and appears in group detail
+**Plans**: TBD
+
+### Phase 33: Ledger
+**Goal**: Full-stack ledger module — expenses, add/edit, settle up
+**Depends on**: Phase 31
+**Success Criteria** (what must be TRUE):
+  1. Expense list, add, edit, and delete work end-to-end
+  2. Event-level settle up calculates and records settlements correctly
+**Plans**: TBD
+
+### Phase 34: Gear & Logistics
+**Goal**: Full-stack gear inventory and logistics (sub-groups) modules
+**Depends on**: Phase 31
+**Success Criteria** (what must be TRUE):
+  1. Gear items can be added, claimed, and filtered
+  2. Logistics sub-groups (carpool/lodging) can be created and managed
+**Plans**: TBD
+
+### Phase 35: Vault & Memories
+**Goal**: Full-stack vault (documents) and memories (photos) modules
+**Depends on**: Phase 31
+**Success Criteria** (what must be TRUE):
+  1. Documents can be uploaded, viewed, and deleted
+  2. Photos can be uploaded and viewed in timeline/grid layout
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -115,3 +192,11 @@ Plans:
 | 25 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 26 | v2.2 | 2/2 | Complete    | 2026-04-01 |
 | 27 | v2.2 | 0/0 | Pending     | — |
+| 28 | v2.3 | 0/0 | Pending     | — |
+| 29 | v2.3 | 0/0 | Pending     | — |
+| 30 | v2.3 | 0/0 | Pending     | — |
+| 31 | v2.3 | 0/0 | Pending     | — |
+| 32 | v2.3 | 0/0 | Pending     | — |
+| 33 | v2.3 | 0/0 | Pending     | — |
+| 34 | v2.3 | 0/0 | Pending     | — |
+| 35 | v2.3 | 0/0 | Pending     | — |
