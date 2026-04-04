@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-04-04
+revised: 2026-04-04
 ---
 
 # Phase 30 — UI Design Contract
@@ -36,11 +37,20 @@ Declared values — all from `AppSpacingTokens.standard` in `lib/core/theme/toke
 |-------|-------|-------|
 | space4 | 4dp | Icon gaps, badge padding, chip inner padding |
 | space8 | 8dp | Compact row gaps, avatar-to-text gap, chip label padding |
-| space12 | 12dp | Internal card padding (vertical), filter chip vertical padding |
 | space16 | 16dp | Card horizontal padding, section body padding, list item height contribution |
-| space20 | 20dp | Input field content padding (vertical), tab bar vertical margin |
 | space24 | 24dp | Horizontal page margin, header horizontal padding |
 | space32 | 32dp | Header bottom padding (dark theme), section header vertical gap |
+
+### Project Spacing Exceptions
+
+Authority: `AppSpacingTokens.standard` in `lib/core/theme/tokens/spacing_tokens.dart` is the canonical spacing source. The following values appear in that token file and are used in this phase; they are multiples of 4 but fall between the checker's standard set entries:
+
+| Token | Value | Rationale |
+|-------|-------|-----------|
+| space12 | 12dp | Exists in `AppSpacingTokens.standard` as `space12`. Used for internal card padding (vertical) and filter chip vertical padding — 8dp is too tight for readable tap targets inside cards, 16dp adds unnecessary height to short metadata rows. |
+| space20 | 20dp | Exists in `AppSpacingTokens.standard` as `space20`. Used for input field content padding (vertical) and tab bar vertical margin — matches `buttonHeight: 52dp` rhythm established in `app_theme.dart`; 16dp produces cramped text input fields below the established button height. |
+
+These are declared project tokens, not ad-hoc deviations. Any spacing value in this spec must map to a named `AppSpacingTokens` constant — no magic numbers in implementation.
 
 Border radii:
 
@@ -61,22 +71,26 @@ Exceptions:
 
 All weights and sizes are from `AppTheme._buildTextTheme` in `lib/core/theme/app_theme.dart`. Font: Plus Jakarta Sans.
 
+Declared scale — exactly 4 sizes, exactly 2 weights:
+
 | Role | Size | Weight | Line Height | Token | Usage |
 |------|------|--------|-------------|-------|-------|
-| Screen heading | 28sp | 800 | 1.2 | `displaySmall` | ModuleHeader title ("Settle Up", "Group Activity") |
-| Card title / amount | 17sp | 600 | 1.3 | `titleLarge` | Settlement tile participant names, history tile primary text |
-| Body / description | 14sp | 400 | 1.5 | `bodyMedium` | Activity tile description text, settlement note text |
-| Label / metadata | 12sp | 400 | 1.4 | `bodySmall` (textMuted) | Date section headers (uppercase, 0.5 letter-spacing), relative timestamps, filter chip counts |
+| Screen heading | 28sp | 700 | 1.2 | `displaySmall` | ModuleHeader title ("Settle Up", "Activity") |
+| Card title | 17sp | 700 | 1.3 | `titleLarge` | Settlement tile participant names, settlement amount display, history tile primary text |
+| Body / description | 14sp | 400 | 1.5 | `bodyMedium` | Activity tile actor name, description text, settlement note text, per-event breakdown rows |
+| Label / metadata | 12sp | 400 | 1.4 | `bodySmall` | Date section headers (uppercase, 0.5 letter-spacing), relative timestamps, filter chip counts, "OMR" currency label, event count sub-label |
 
-Amount display (settlement cards):
+Notes on consolidation from prior draft:
+- 15sp actor name absorbed into 14sp body — the initials circle (48dp) provides sufficient visual separation without a distinct size
+- 20sp prominent amount absorbed into 17sp card title — weight 700 and semantic color (`errorText` / `successText`) provide visual dominance without a fifth size slot
+- 13sp tab bar labels are internal to `AppTabBar` widget and are not declared in the phase spec (widget owns its own internal sizing)
+- 800 weight replaced with 700 throughout — the visual difference between 700 and 800 at 17–28sp is negligible at 390dp screen width and costs a weight slot
+- 600 weight replaced with 700 — consolidates emphasis to a single non-body weight
 
-| Role | Size | Weight | Color | Usage |
-|------|------|--------|-------|-------|
-| Prominent amount | 20sp | 700 | `errorText` (#B91C1C) for "you owe"; `successText` (#047857) for "owed to you"; `textPrimary` for "between others" | Settlement card amount — the most visually dominant element |
-
-Tab bar labels: 13sp, weight 700 (active) / 600 (inactive) — already in `AppTabBar` widget, do not override.
-
-Date section header: 12sp, weight 400, `textMuted` (#9CA3AF), `letterSpacing: 0.5`, ALL CAPS. Source: `ActivityFeedScreen._DateSectionHeader` pattern in `activity_feed_screen.dart`.
+Color differentiation replaces size differentiation for amounts:
+- "You Owe" amount: 17sp/700, `errorText` (#B91C1C)
+- "Owed to You" amount: 17sp/700, `successText` (#047857)
+- "Between Others" amount: 17sp/700, `textPrimary` (#111827)
 
 ---
 
@@ -113,6 +127,7 @@ Accent reserved for:
 - Filter chip selected-state border (1.5dp stroke on `selectionFill` background)
 - Record Settlement "Record Payment" button gradient
 - `preSelectedMemberId` auto-scroll highlight (brief teal tint on card, fade-out 300ms)
+- Settlement type icon (`Iconsax.money_recive`) in activity tiles — only this icon type uses accent color; all others use `textMuted`
 
 WCAG note: `textMuted` (#9CA3AF) is 2.86:1 on white — decorative use only. All functional text uses `textSecondary` (5.74:1) or `textPrimary` (17.15:1).
 
@@ -134,7 +149,7 @@ WCAG note: `textMuted` (#9CA3AF) is 2.86:1 on white — decorative use only. All
 | Widget | File | Change |
 |--------|------|--------|
 | `GroupSettlementTile` | `lib/features/groups/widgets/group_settlement_tile.dart` | Redesign as card — `cardSurface` bg, `shadowRaised`, `borderRadius: 16`, avatar initials circle (40dp), prominent amount, collapsible per-event breakdown (D-04) |
-| `GroupActivityTile` | `lib/features/groups/widgets/group_activity_tile.dart` | Redesign as rich tile — 48dp initials circle, actor name (titleMedium), description (bodyMedium), relative timestamp (bodySmall/textMuted), type icon (right-aligned, 20dp, textMuted) (D-09) |
+| `GroupActivityTile` | `lib/features/groups/widgets/group_activity_tile.dart` | Redesign as rich tile — 48dp initials circle, actor name (14sp/400/textPrimary), description (14sp/400/textSecondary), relative timestamp (12sp/400/textMuted), type icon (right-aligned, 20dp, semantic color per mapping) (D-09) |
 
 ### New layout patterns (inline, not extracted to separate files)
 
@@ -170,10 +185,12 @@ Each tab body: `ListView.builder` directly inside `TabBarView` child (not wrappe
 Settlement card anatomy (D-04):
 - Background: `cardSurface`, `borderRadius: 16`, `shadowRaised`
 - Padding: 16dp all sides
-- Row: `InitialsCircle(40dp)` | column(participant name 17sp/600, event count label 12sp/textMuted) | Spacer | amount column(amount 20sp/700 colored, "OMR" label 12sp/textMuted)
+- Row: `InitialsCircle(40dp)` | column(participant name 17sp/700, event count label 12sp/400/textMuted) | Spacer | amount column(amount 17sp/700 semantic-colored, "OMR" label 12sp/400/textMuted)
 - Collapsible section: per-event breakdown — `ExpansionTile`-style, triggered by chevron icon; list of event rows at 14sp/400
 
 ### GroupActivityScreen
+
+Primary visual anchor: the date-grouped activity timeline. The first visible date section header ("TODAY") and its immediately following activity tile are the focal point — the dark `ModuleHeader` gradient above compresses attention downward into this area. The date header + first tile together act as the entry point the eye lands on after the header.
 
 ```
 Scaffold(backgroundColor: scaffoldBackground)
@@ -191,16 +208,19 @@ Scaffold(backgroundColor: scaffoldBackground)
 Activity tile anatomy (D-09):
 - Background: `cardSurface`, `borderRadius: 16`, `shadowRaised`
 - Margin: 12dp horizontal, 4dp vertical (tight stacking to feel like a timeline)
-- Row: `InitialsCircle(48dp)` | column(actor name 15sp/600/textPrimary, description 14sp/400/textSecondary, relative timestamp 12sp/400/textMuted) | Spacer | type icon (20dp, textMuted, from icon mapping below)
+- Row: `InitialsCircle(48dp)` | column(actor name 14sp/400/textPrimary, description 14sp/400/textSecondary, relative timestamp 12sp/400/textMuted) | Spacer | type icon (20dp, semantic color, wrapped in `Semantics(label: ...)` — see accessibility note below)
 
 Activity type icon mapping:
-- `group_settlement` → `Iconsax.money_recive` (teal — `primary`)
-- `event_created` → `Iconsax.calendar_add`
-- `event_deleted` → `Iconsax.calendar_remove`
-- `member_joined` → `Iconsax.profile_add`
-- `member_left` → `Iconsax.profile_delete`
 
-Settlement type icon uses `primary` color; all others use `textMuted`.
+| Action type | Icon | Color | Semantics label |
+|-------------|------|-------|----------------|
+| `group_settlement` | `Iconsax.money_recive` | `primary` (#0D7B74) | "Payment recorded" |
+| `event_created` | `Iconsax.calendar_add` | `textMuted` (#9CA3AF) | "Event created" |
+| `event_deleted` | `Iconsax.calendar_remove` | `textMuted` (#9CA3AF) | "Event removed" |
+| `member_joined` | `Iconsax.profile_add` | `textMuted` (#9CA3AF) | "Member joined" |
+| `member_left` | `Iconsax.profile_delete` | `textMuted` (#9CA3AF) | "Member left" |
+
+Accessibility note: each activity type icon is decorative in the sense that the description text conveys the same information, but screen readers should still read the icon label for users navigating by elements. Wrap each icon with `Semantics(label: '{label from table above}', child: Icon(...))`. Do not use `excludeSemantics: true` on these icons.
 
 ---
 
@@ -217,7 +237,7 @@ Settlement type icon uses `primary` color; all others use `textMuted`.
 - Input fill: `inputFillWarm` (#F5EDE1)
 - Input border enabled: `borderWarm` (#E5D5C0), 1.5dp
 - Input border focused: `focusBorderWarm` (#CC6B49), 2dp
-- CTA button: `Container` with `primaryGradient`, height 52dp, `radiusMedium`, white text 16sp/700
+- CTA button: `Container` with `primaryGradient`, height 52dp, `radiusMedium`, white text 17sp/700
 - Label: "Record Payment" (not "Save" or "Submit")
 - Loading state: `LoadingButton` with teal spinner
 
