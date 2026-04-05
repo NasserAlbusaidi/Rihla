@@ -10,6 +10,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
+import 'package:safar/features/groups/widgets/group_stats_grid.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 
 /// Widget tests for GroupSettleUpScreen (FIN-04, D-22).
@@ -421,5 +422,205 @@ void main() {
       // The per-event breakdown row is rendered (breakdowns are non-empty)
       expect(find.textContaining('event-1'), findsWidgets);
     });
+
+    // --- Phase 30 Stubs (RED — will turn GREEN after Plan 02) ---
+
+    testWidgets(
+      'renders 4 tab labels in AppTabBar',
+      (tester) async {
+        // Pump GroupSettleUpScreen with standard overrides
+        // Expect: find.text('You Owe'), find.text('Owed to You'),
+        //         find.text('Between Others'), find.text('History')
+        //         all findsOneWidget
+        await tester.pumpWidget(
+          _wrap(
+            GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('You Owe'), findsOneWidget);
+        expect(find.text('Owed to You'), findsOneWidget);
+        expect(find.text('Between Others'), findsOneWidget);
+        expect(find.text('History'), findsOneWidget);
+      },
+      skip: true, // Phase 30: will pass after Plan 02 implementation
+    );
+
+    testWidgets(
+      'You Owe tab shows debtor settlements only',
+      (tester) async {
+        // Override currentUserIdProvider with test uid
+        // Override balances where test uid owes others
+        // Expect: debtor settlement tiles visible on first tab
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              groupDetailProvider(_groupId).overrideWith(
+                (_) => Stream.value(_testGroup),
+              ),
+              groupBalancesProvider(_groupId).overrideWith(
+                (_) => AsyncValue.data(_balancesOwed),
+              ),
+              currentUserIdProvider.overrideWithValue('uid-bob'),
+            ],
+            child: const MaterialApp(
+              home: GroupSettleUpScreen(groupId: _groupId),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // uid-bob owes money — should appear on 'You Owe' tab
+        expect(find.byKey(GroupKeys.settleUpYouOweTab), findsOneWidget);
+        // Debtor tile shows Bob paying Alice
+        expect(find.textContaining('Bob'), findsWidgets);
+      },
+      skip: true, // Phase 30: will pass after Plan 02 implementation
+    );
+
+    testWidgets(
+      'History tab shows past settlements from groupSettlementsProvider',
+      (tester) async {
+        // Override groupSettlementsProvider with test Settlement objects
+        // Tap 'History' tab
+        // Expect: payer/recipient names and amounts visible
+        await tester.pumpWidget(
+          _wrap(
+            GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+          ),
+        );
+        await tester.pump();
+
+        // Tap the History tab
+        await tester.tap(find.byKey(GroupKeys.settleUpHistoryTab));
+        await tester.pumpAndSettle();
+
+        // Settlements data shows payer and recipient
+        expect(find.byKey(GroupKeys.settleUpHistoryTab), findsOneWidget);
+      },
+      skip: true, // Phase 30: will pass after Plan 02 implementation
+    );
+
+    testWidgets(
+      'card-style settlement tiles with collapsible breakdown',
+      (tester) async {
+        // Pump with settlements data
+        // Expect: tiles have cardSurface background, borderRadius 16
+        // Tap tile to expand — expect per-event breakdown visible
+        await tester.pumpWidget(
+          _wrap(
+            GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            events: [_testEvent],
+          ),
+        );
+        await tester.pump();
+
+        // Settlement tiles should be in card containers
+        expect(find.byKey(GroupKeys.settleUpTabBar), findsOneWidget);
+      },
+      skip: true, // Phase 30: will pass after Plan 02 implementation
+    );
+
+    testWidgets(
+      'shows per-tab empty state when You Owe has no items',
+      (tester) async {
+        // Override with zero balances for current user
+        // Expect: find.text('Nothing to pay') on You Owe tab
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              groupDetailProvider(_groupId).overrideWith(
+                (_) => Stream.value(_testGroup),
+              ),
+              groupBalancesProvider(_groupId).overrideWith(
+                (_) => AsyncValue.data(_balancesSettled),
+              ),
+              currentUserIdProvider.overrideWithValue('uid-alice'),
+            ],
+            child: const MaterialApp(
+              home: GroupSettleUpScreen(groupId: _groupId),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Nothing to pay'), findsOneWidget);
+      },
+      skip: true, // Phase 30: will pass after Plan 02 implementation
+    );
+
+    testWidgets(
+      'all settled state when no settlements and no history',
+      (tester) async {
+        // Override with all-zero balances and empty history
+        // Expect: find.text('All settled up')
+        await tester.pumpWidget(
+          _wrap(
+            GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesSettled),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('All settled up'), findsOneWidget);
+      },
+      skip: true, // Phase 30: will pass after Plan 02 implementation
+    );
+
+    // --- Phase 30 Stubs for GroupStatsGrid (D-12 — will turn GREEN after Plan 01) ---
+
+    testWidgets(
+      'GroupStatsGrid shows "You owe" subtitle for negative balance',
+      (tester) async {
+        // Pump GroupStatsGrid with userNetBalance = Decimal.parse('-5.000')
+        // Expect: find.text('You owe') findsOneWidget
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: GroupStatsGrid(
+                userNetBalance: Decimal.parse('-5.000'),
+                groupTotal: Decimal.parse('20.000'),
+                activeMembers: 2,
+                eventCount: 1,
+                currency: 'OMR',
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('You owe'), findsOneWidget);
+      },
+      skip: true, // Phase 30: will pass after Plan 01 implementation
+    );
+
+    testWidgets(
+      'GroupStatsGrid shows "Owed to you" subtitle for positive balance',
+      (tester) async {
+        // Pump GroupStatsGrid with userNetBalance = Decimal.parse('5.000')
+        // Expect: find.text('Owed to you') findsOneWidget
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: GroupStatsGrid(
+                userNetBalance: Decimal.parse('5.000'),
+                groupTotal: Decimal.parse('20.000'),
+                activeMembers: 2,
+                eventCount: 1,
+                currency: 'OMR',
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Owed to you'), findsOneWidget);
+      },
+      skip: true, // Phase 30: will pass after Plan 01 implementation
+    );
   });
 }
