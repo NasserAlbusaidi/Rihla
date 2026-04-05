@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../keys/group_keys.dart';
+import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
@@ -58,6 +60,24 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
             inviteCode: _codeController.text.trim(),
           );
       ref.read(groupLoadingProvider.notifier).state = false;
+
+      // Log member_joined activity (D-14) — fire-and-forget, no await
+      try {
+        final actorId = FirebaseConfig.currentUser?.uid ?? '';
+        final actorName =
+            FirebaseConfig.currentUser?.displayName ?? 'Someone';
+        ref.read(groupActivityServiceProvider).logGroupEvent(
+          groupId: group.id,
+          type: 'member_joined',
+          actorId: actorId,
+          actorName: actorName,
+          description: 'joined the group',
+          metadata: {'groupId': group.id},
+        );
+      } catch (_) {
+        // Activity logging failure must never crash the join flow.
+      }
+
       HapticService.success(); // D-02: double-tap "done" feel vs single mediumImpact
       if (mounted) {
         context.pushReplacement('/group/${group.id}');

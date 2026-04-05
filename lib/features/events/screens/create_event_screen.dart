@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../groups/models/group_member_model.dart';
+import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
@@ -117,6 +118,24 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
           );
       if (!mounted) return;
       ref.read(eventLoadingProvider.notifier).state = false;
+
+      // Log event_created activity (D-14) — fire-and-forget, no await
+      try {
+        final actorId = FirebaseConfig.currentUser?.uid ?? '';
+        final actorName =
+            FirebaseConfig.currentUser?.displayName ?? 'Someone';
+        ref.read(groupActivityServiceProvider).logGroupEvent(
+          groupId: widget.groupId,
+          type: 'event_created',
+          actorId: actorId,
+          actorName: actorName,
+          description: 'created ${event.name}',
+          metadata: {'eventId': event.id, 'eventName': event.name},
+        );
+      } catch (_) {
+        // Activity logging failure must never crash the creation flow.
+      }
+
       // context.go replaces the entire creation stack, navigating to the new
       // event hub. Back button returns to group detail, not the form (D-06/Pitfall 2).
       context.go('/group/${widget.groupId}/event/${event.id}');
