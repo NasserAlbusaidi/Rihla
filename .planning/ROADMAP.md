@@ -188,7 +188,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 32-00-PLAN.md — Wave 0: failing test stubs (Select All, camping color, ModuleHeader title assertions)
-- [ ] 32-01-PLAN.md — EventTypeConfig camping color fix + EventTypePickerScreen refresh (ModuleHeader, 80ms stagger, ConsumerWidget)
+- [x] 32-01-PLAN.md — EventTypeConfig camping color fix + EventTypePickerScreen refresh (ModuleHeader, 80ms stagger, ConsumerWidget)
 - [ ] 32-02-PLAN.md — CreateEventScreen refresh (ModuleHeader, type badge fix, Select All, card stagger) + all tests GREEN
 **UI hint**: yes
 
@@ -230,7 +230,7 @@ Plans:
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 31 | v2.3 | 4/4 | Complete    | 2026-04-05 |
-| 32 | v2.3 | 1/3 | In Progress|  |
+| 32 | v2.3 | 2/3 | In Progress|  |
 | 33 | v2.3 | 0/0 | Pending     | — |
 | 34 | v2.3 | 0/0 | Pending     | — |
 | 35 | v2.3 | 0/0 | Pending     | — |

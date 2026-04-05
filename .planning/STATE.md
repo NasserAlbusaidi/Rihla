@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Profile Page
 status: executing
-stopped_at: Completed 32-00-PLAN.md — Wave-0 test stubs for event creation redesign
-last_updated: "2026-04-05T10:23:35.708Z"
+stopped_at: Completed 32-01-PLAN.md — EventTypePickerScreen visual refresh
+last_updated: "2026-04-05T10:30:23.619Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 14
   completed_phases: 9
   total_plans: 23
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -142,8 +142,8 @@ None.
 ## Session Continuity
 
 <<<<<<< Updated upstream
-Last session: 2026-04-05T10:23:35.705Z
-Stopped at: Completed 32-00-PLAN.md — Wave-0 test stubs for event creation redesign
+Last session: 2026-04-05T10:30:23.615Z
+Stopped at: Completed 32-01-PLAN.md — EventTypePickerScreen visual refresh
 Next action: `/gsd:plan-phase 25` — plan Profile Screen Core
 =======
 Last session: 2026-03-28T10:00:00Z
