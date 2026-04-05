@@ -201,9 +201,9 @@ Plans:
   3. ledger_test.dart compiles and all tests pass
 **Plans**: 3 plans
 Plans:
-- [ ] 33-00-PLAN.md — Wave 0: fix ledger_test.dart compile failures (constructor update, eventDetailProvider override, new tests)
+- [x] 33-00-PLAN.md — Wave 0: fix ledger_test.dart compile failures (constructor update, eventDetailProvider override, new tests)
 - [ ] 33-01-PLAN.md — SettleUpScreen ModuleHeader replacement + CircularProgressIndicator → SkeletonLoader in SettleUpScreen + EditExpenseScreen
-- [ ] 33-02-PLAN.md — AddExpenseScreen ModuleHeader + SkeletonLoader in CategorySelectionStep + SplitScopeSelector
+- [x] 33-02-PLAN.md — AddExpenseScreen ModuleHeader + SkeletonLoader in CategorySelectionStep + SplitScopeSelector
 **UI hint**: yes
 
 ### Phase 34: Gear & Logistics
@@ -237,6 +237,6 @@ Plans:
 | 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 31 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 32 | v2.3 | 3/3 | Complete    | 2026-04-05 |
-| 33 | v2.3 | 0/3 | Pending     | — |
+| 33 | v2.3 | 2/3 | In Progress|  |
 | 34 | v2.3 | 0/0 | Pending     | — |
 | 35 | v2.3 | 0/0 | Pending     | — |
