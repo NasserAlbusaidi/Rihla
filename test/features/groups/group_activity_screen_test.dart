@@ -1,36 +1,104 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
+import 'package:safar/features/groups/models/group_activity_log_model.dart';
+import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_activity_screen.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+
+// ---------------------------------------------------------------------------
+// Test fixture data
+// ---------------------------------------------------------------------------
+
+final _todayActivity = GroupActivityLog(
+  id: 'act-1',
+  type: 'group_settlement',
+  actorId: 'uid-alice',
+  actorName: 'Alice',
+  description: 'paid Bob',
+  timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+);
+
+final _yesterdayActivity = GroupActivityLog(
+  id: 'act-2',
+  type: 'event_created',
+  actorId: 'uid-bob',
+  actorName: 'Bob',
+  description: 'created Camping Trip',
+  timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+);
+
+final _memberActivity = GroupActivityLog(
+  id: 'act-3',
+  type: 'member_joined',
+  actorId: 'uid-carol',
+  actorName: 'Carol',
+  description: 'joined the group',
+  timestamp: DateTime.now().subtract(const Duration(days: 2)),
+);
+
+// Minimal test Group used to satisfy groupDetailProvider override
+final _testGroup = Group(
+  id: 'grp-test',
+  name: 'Test Crew',
+  inviteCode: 'TC123',
+  createdBy: 'uid-alice',
+  memberIds: const ['uid-alice', 'uid-bob'],
+  createdAt: DateTime(2026, 1, 1),
+);
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Wraps GroupActivityScreen in ProviderScope + MaterialApp.
-///
-/// The screen uses [GroupActivityService.fetchActivityPageRaw] which
-/// needs a live Firestore. We inject [FakeFirebaseFirestore] via
-/// [groupActivityServiceProvider] override.
+/// Seeds a list of [GroupActivityLog] entries into [FakeFirebaseFirestore].
+Future<void> _seedActivities(
+  FakeFirebaseFirestore db,
+  String groupId,
+  List<GroupActivityLog> activities,
+) async {
+  for (final a in activities) {
+    await db
+        .collection('groups')
+        .doc(groupId)
+        .collection('activity')
+        .doc(a.id)
+        .set({
+      'id': a.id,
+      'type': a.type,
+      'actorId': a.actorId,
+      'actorName': a.actorName,
+      'description': a.description,
+      'metadata': a.metadata,
+      'timestamp': a.timestamp.toUtc().toIso8601String(),
+    });
+  }
+}
+
+/// Builds GroupActivityScreen with injected FakeFirebaseFirestore and
+/// a [groupDetailProvider] override that returns [_testGroup].
 Widget _buildActivityScreen({
   required String groupId,
+  required FakeFirebaseFirestore fakeDb,
   SharedPreferences? prefs,
 }) {
-  final fakeDb = FakeFirebaseFirestore();
   final activityService = GroupActivityService.withFirestore(fakeDb);
 
   return ProviderScope(
     overrides: [
       if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
       groupActivityServiceProvider.overrideWith((ref) => activityService),
+      groupDetailProvider(groupId).overrideWith(
+        (ref) => Stream.value(_testGroup),
+      ),
     ],
     child: MaterialApp(
       home: GroupActivityScreen(groupId: groupId),
@@ -48,326 +116,269 @@ void main() {
   });
 
   group('GroupActivityScreen', () {
-    testWidgets('renders Group Activity header', (tester) async {
+    testWidgets('renders Activity header via ModuleHeader', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
-        _buildActivityScreen(groupId: 'grp-1', prefs: prefs),
+        _buildActivityScreen(groupId: 'grp-1', fakeDb: fakeDb, prefs: prefs),
       );
-      // Pump once to start initState, then settle
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.byKey(GroupKeys.activityScreenTitle), findsOneWidget);
+      // ModuleHeader renders title as Text widget
+      expect(find.text('Activity'), findsOneWidget);
     });
 
-    testWidgets('renders empty state when no activity entries exist', (tester) async {
+    testWidgets('renders empty state when no activity entries exist',
+        (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
-        _buildActivityScreen(groupId: 'grp-empty', prefs: prefs),
+        _buildActivityScreen(
+            groupId: 'grp-empty', fakeDb: fakeDb, prefs: prefs),
       );
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // Empty state presence (title is passed as constructor arg to EmptyStateView)
+      // EmptyStateView is present
       expect(find.byKey(SharedKeys.emptyStateView), findsOneWidget);
     });
 
     testWidgets('renders empty state message', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
-        _buildActivityScreen(groupId: 'grp-empty2', prefs: prefs),
+        _buildActivityScreen(
+            groupId: 'grp-empty2', fakeDb: fakeDb, prefs: prefs),
       );
       await tester.pump();
       await tester.pumpAndSettle();
 
       expect(
         find.text(
-          'Actions like creating events and settling up will appear here.',
+          'Group events, payments, and member changes will appear here.',
         ),
         findsOneWidget,
       );
     });
 
-    testWidgets('renders back button', (tester) async {
+    testWidgets('renders back button via ModuleHeader', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
-        _buildActivityScreen(groupId: 'grp-1', prefs: prefs),
+        _buildActivityScreen(groupId: 'grp-1', fakeDb: fakeDb, prefs: prefs),
       );
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // Back button
-      expect(find.byKey(GroupKeys.activityBackButton), findsOneWidget);
+      // ModuleHeader renders a back button via SharedKeys.moduleHeaderBackButton
+      expect(find.byKey(SharedKeys.moduleHeaderBackButton), findsOneWidget);
     });
 
-    testWidgets('renders SafeArea as root layout', (tester) async {
+    testWidgets('renders SafeArea inside Scaffold body', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
-        _buildActivityScreen(groupId: 'grp-safearea', prefs: prefs),
+        _buildActivityScreen(
+            groupId: 'grp-safearea', fakeDb: fakeDb, prefs: prefs),
       );
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.byType(SafeArea), findsOneWidget);
+      // ModuleHeader wraps content in SafeArea — verify it exists
+      expect(find.byType(SafeArea), findsWidgets);
     });
 
-    // --- Phase 30 Stubs (RED — will turn GREEN after Plan 03) ---
+    // --- Phase 30 Plan 03 — unskipped stubs ---
 
-    testWidgets(
-      'renders date section headers (TODAY, YESTERDAY)',
-      (tester) async {
-        // Seed activities with today and yesterday timestamps
-        // Expect: find.text('TODAY'), find.text('YESTERDAY')
-        final fakeDb = FakeFirebaseFirestore();
-        final activityService = GroupActivityService.withFirestore(fakeDb);
+    testWidgets('renders date section headers (TODAY, YESTERDAY)',
+        (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
 
-        // Insert activity from today
-        final today = DateTime.now().toUtc();
+      await _seedActivities(fakeDb, 'grp-dates', [
+        _todayActivity,
+        _yesterdayActivity,
+      ]);
+
+      await tester.pumpWidget(
+        _buildActivityScreen(
+            groupId: 'grp-dates', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('TODAY'), findsOneWidget);
+      expect(find.text('YESTERDAY'), findsOneWidget);
+    });
+
+    testWidgets('renders 4 filter chips', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        _buildActivityScreen(groupId: 'grp-1', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.activityFilterAll), findsOneWidget);
+      expect(find.byKey(GroupKeys.activityFilterSettlements), findsOneWidget);
+      expect(find.byKey(GroupKeys.activityFilterEvents), findsOneWidget);
+      expect(find.byKey(GroupKeys.activityFilterMembers), findsOneWidget);
+    });
+
+    testWidgets('Settlements filter shows only settlement activities',
+        (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
+
+      await _seedActivities(fakeDb, 'grp-filter', [
+        _todayActivity, // group_settlement — 'paid Bob'
+        GroupActivityLog(
+          id: 'act-event',
+          type: 'event_created',
+          actorId: 'uid-bob',
+          actorName: 'Bob',
+          description: 'Bob created a camping event',
+          timestamp: DateTime.now().subtract(const Duration(minutes: 10)),
+        ),
+      ]);
+
+      await tester.pumpWidget(
+        _buildActivityScreen(
+            groupId: 'grp-filter', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // Tap Settlements filter chip
+      await tester.tap(find.byKey(GroupKeys.activityFilterSettlements));
+      await tester.pumpAndSettle();
+
+      // Only settlement activity visible
+      expect(find.text('paid Bob'), findsOneWidget);
+      expect(find.text('Bob created a camping event'), findsNothing);
+    });
+
+    testWidgets('renders activity tile with actor name and description',
+        (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
+
+      await _seedActivities(fakeDb, 'grp-tile', [
+        GroupActivityLog(
+          id: 'act-1',
+          type: 'event_created',
+          actorId: 'uid1',
+          actorName: 'Alice',
+          description: 'Alice created Weekend Trip',
+          timestamp: DateTime.now(),
+        ),
+      ]);
+
+      await tester.pumpWidget(
+        _buildActivityScreen(
+            groupId: 'grp-tile', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Alice'), findsWidgets);
+      expect(find.textContaining('Weekend Trip'), findsOneWidget);
+    });
+
+    testWidgets('no Load more button present (infinite scroll replaces it)',
+        (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
+
+      // Seed 3 activities — below page limit, _hasMore will be false
+      for (var i = 0; i < 3; i++) {
         await fakeDb
             .collection('groups')
-            .doc('grp-dates')
+            .doc('grp-scroll')
             .collection('activity')
-            .add({
-          'id': 'act-today',
+            .doc('act-$i')
+            .set({
+          'id': 'act-$i',
           'type': 'event_created',
           'actorId': 'uid1',
           'actorName': 'Alice',
-          'description': 'Alice created event today',
+          'description': 'Event $i',
           'metadata': <String, dynamic>{},
-          'timestamp': today.toIso8601String(),
-        });
-
-        // Insert activity from yesterday
-        final yesterday =
-            today.subtract(const Duration(days: 1));
-        await fakeDb
-            .collection('groups')
-            .doc('grp-dates')
-            .collection('activity')
-            .add({
-          'id': 'act-yesterday',
-          'type': 'member_joined',
-          'actorId': 'uid2',
-          'actorName': 'Bob',
-          'description': 'Bob joined yesterday',
-          'metadata': <String, dynamic>{},
-          'timestamp': yesterday.toIso8601String(),
-        });
-
-        final prefs = await SharedPreferences.getInstance();
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
-              groupActivityServiceProvider.overrideWith(
-                (ref) => activityService,
-              ),
-            ],
-            child: const MaterialApp(
-              home: GroupActivityScreen(groupId: 'grp-dates'),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.pumpAndSettle();
-
-        expect(find.text('TODAY'), findsOneWidget);
-        expect(find.text('YESTERDAY'), findsOneWidget);
-      },
-      skip: true, // Phase 30: will pass after Plan 03 implementation
-    );
-
-    testWidgets(
-      'renders 4 filter chips',
-      (tester) async {
-        // Pump screen
-        // Expect: find.byKey(GroupKeys.activityFilterAll),
-        //         find.byKey(GroupKeys.activityFilterSettlements),
-        //         find.byKey(GroupKeys.activityFilterEvents),
-        //         find.byKey(GroupKeys.activityFilterMembers)
-        final prefs = await SharedPreferences.getInstance();
-        await tester.pumpWidget(
-          _buildActivityScreen(groupId: 'grp-1', prefs: prefs),
-        );
-        await tester.pump();
-        await tester.pumpAndSettle();
-
-        expect(find.byKey(GroupKeys.activityFilterAll), findsOneWidget);
-        expect(
-          find.byKey(GroupKeys.activityFilterSettlements),
-          findsOneWidget,
-        );
-        expect(find.byKey(GroupKeys.activityFilterEvents), findsOneWidget);
-        expect(find.byKey(GroupKeys.activityFilterMembers), findsOneWidget);
-      },
-      skip: true, // Phase 30: will pass after Plan 03 implementation
-    );
-
-    testWidgets(
-      'Settlements filter shows only settlement activities',
-      (tester) async {
-        // Seed mixed activities (settlement + event + member)
-        // Tap Settlements filter chip
-        // Expect: only settlement description visible
-        final fakeDb = FakeFirebaseFirestore();
-        final activityService = GroupActivityService.withFirestore(fakeDb);
-
-        final now = DateTime.now().toUtc();
-        await fakeDb
-            .collection('groups')
-            .doc('grp-filter')
-            .collection('activity')
-            .doc('act-settlement')
-            .set({
-          'id': 'act-settlement',
-          'type': 'group_settlement',
-          'actorId': 'uid1',
-          'actorName': 'Alice',
-          'description': 'Alice settled with Bob',
-          'metadata': <String, dynamic>{},
-          'timestamp': now.toIso8601String(),
-        });
-        await fakeDb
-            .collection('groups')
-            .doc('grp-filter')
-            .collection('activity')
-            .doc('act-event')
-            .set({
-          'id': 'act-event',
-          'type': 'event_created',
-          'actorId': 'uid2',
-          'actorName': 'Bob',
-          'description': 'Bob created a camping event',
-          'metadata': <String, dynamic>{},
-          'timestamp': now
-              .subtract(const Duration(minutes: 1))
+          'timestamp': DateTime.now()
+              .subtract(Duration(minutes: i))
+              .toUtc()
               .toIso8601String(),
         });
+      }
 
-        final prefs = await SharedPreferences.getInstance();
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
-              groupActivityServiceProvider.overrideWith(
-                (ref) => activityService,
-              ),
-            ],
-            child: const MaterialApp(
-              home: GroupActivityScreen(groupId: 'grp-filter'),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildActivityScreen(
+            groupId: 'grp-scroll', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
 
-        // Tap Settlements filter chip
-        await tester.tap(find.byKey(GroupKeys.activityFilterSettlements));
-        await tester.pumpAndSettle();
+      // Infinite scroll replaces 'Load more' — must not exist
+      expect(find.text('Load more'), findsNothing);
+    });
 
-        // Only settlement description should be visible
-        expect(find.text('Alice settled with Bob'), findsOneWidget);
-        expect(find.text('Bob created a camping event'), findsNothing);
-      },
-      skip: true, // Phase 30: will pass after Plan 03 implementation
-    );
+    // --- Additional new tests ---
 
-    testWidgets(
-      'renders activity tile with actor name and description',
-      (tester) async {
-        // Seed one activity
-        // Expect: actor name and description text visible
-        final fakeDb = FakeFirebaseFirestore();
-        final activityService = GroupActivityService.withFirestore(fakeDb);
+    testWidgets('All filter shows all activities by default', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
 
-        final now = DateTime.now().toUtc();
-        await fakeDb
-            .collection('groups')
-            .doc('grp-tile')
-            .collection('activity')
-            .doc('act-1')
-            .set({
-          'id': 'act-1',
-          'type': 'event_created',
-          'actorId': 'uid1',
-          'actorName': 'Alice',
-          'description': 'Alice created Weekend Trip',
-          'metadata': <String, dynamic>{},
-          'timestamp': now.toIso8601String(),
-        });
+      await _seedActivities(fakeDb, 'grp-all', [
+        _todayActivity, // group_settlement
+        GroupActivityLog(
+          id: 'act-event',
+          type: 'event_created',
+          actorId: 'uid-bob',
+          actorName: 'Bob',
+          description: 'created Weekend Hike',
+          timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+        ),
+        _memberActivity, // member_joined
+      ]);
 
-        final prefs = await SharedPreferences.getInstance();
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
-              groupActivityServiceProvider.overrideWith(
-                (ref) => activityService,
-              ),
-            ],
-            child: const MaterialApp(
-              home: GroupActivityScreen(groupId: 'grp-tile'),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildActivityScreen(groupId: 'grp-all', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
 
-        expect(find.text('Alice'), findsWidgets);
-        expect(find.textContaining('Weekend Trip'), findsOneWidget);
-      },
-      skip: true, // Phase 30: will pass after Plan 03 implementation
-    );
+      // All activities visible with default 'All' filter
+      expect(find.text('paid Bob'), findsOneWidget);
+      expect(find.text('created Weekend Hike'), findsOneWidget);
+      expect(find.text('joined the group'), findsOneWidget);
+    });
 
-    testWidgets(
-      'no Load more button present (infinite scroll replaces it)',
-      (tester) async {
-        // Pump screen with activities
-        // Expect: find.text('Load more') findsNothing
-        final fakeDb = FakeFirebaseFirestore();
-        final activityService = GroupActivityService.withFirestore(fakeDb);
+    testWidgets('empty filter state shows no-results message', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
 
-        // Seed 3 activities (below page limit — _hasMore will be false)
-        final now = DateTime.now().toUtc();
-        for (var i = 0; i < 3; i++) {
-          await fakeDb
-              .collection('groups')
-              .doc('grp-scroll')
-              .collection('activity')
-              .doc('act-$i')
-              .set({
-            'id': 'act-$i',
-            'type': 'event_created',
-            'actorId': 'uid1',
-            'actorName': 'Alice',
-            'description': 'Event $i',
-            'metadata': <String, dynamic>{},
-            'timestamp':
-                now.subtract(Duration(minutes: i)).toIso8601String(),
-          });
-        }
+      // Seed only settlement activities
+      await _seedActivities(fakeDb, 'grp-no-member', [
+        _todayActivity, // group_settlement
+      ]);
 
-        final prefs = await SharedPreferences.getInstance();
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
-              groupActivityServiceProvider.overrideWith(
-                (ref) => activityService,
-              ),
-            ],
-            child: const MaterialApp(
-              home: GroupActivityScreen(groupId: 'grp-scroll'),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildActivityScreen(
+            groupId: 'grp-no-member', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      // Use pump with a generous duration to flush flutter_animate timers
+      await tester.pump(const Duration(seconds: 1));
 
-        // Infinite scroll replaces 'Load more' button — must not be present
-        expect(find.text('Load more'), findsNothing);
-      },
-      skip: true, // Phase 30: will pass after Plan 03 implementation
-    );
+      // Tap Members filter — no member activities exist
+      await tester.tap(find.byKey(GroupKeys.activityFilterMembers));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Filter-empty state shown
+      expect(find.text('No members activity'), findsOneWidget);
+    });
   });
 }
