@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../models/expense_category_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Category grid for expense classification.
 ///
@@ -26,12 +27,12 @@ class CategorySelectionStep extends StatelessWidget {
       data: (categories) => Column(
         children: [
           const SizedBox(height: 44),
-          Text(
+          const Text(
             'What was this for?',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,
-              color: AppColorTokens.light.textPrimary,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 44),
@@ -58,8 +59,8 @@ class CategorySelectionStep extends StatelessWidget {
           ),
         ],
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => NetworkErrorWidget(),
+      loading: () => SkeletonLoader.card(),
+      error: (e, _) => const NetworkErrorWidget(),
     );
   }
 }
@@ -89,12 +90,12 @@ class _CategoryTile extends StatelessWidget {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: isSelected ? AppColorTokens.light.primary : AppColorTokens.light.inputFill,
+              color: isSelected ? AppColors.mint : AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(20),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppColorTokens.light.primary.withValues(alpha: 0.3),
+                        color: AppColors.mint.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -103,7 +104,7 @@ class _CategoryTile extends StatelessWidget {
             ),
             child: Icon(
               category.iconData,
-              color: isSelected ? Colors.white : AppColorTokens.light.textSecondary,
+              color: isSelected ? Colors.white : AppColors.textSecondary,
               size: 26,
             ),
           ),
@@ -116,7 +117,7 @@ class _CategoryTile extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? AppColorTokens.light.textPrimary : AppColorTokens.light.textMuted,
+              color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
             ),
           ),
         ],

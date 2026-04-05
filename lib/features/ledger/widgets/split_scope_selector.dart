@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../events/models/event_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../trip/models/trip_model.dart';
+import '../../trip/providers/trip_provider.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Scope selector (global/subgroup/custom/personal) with custom participant
 /// picker and payer selector for leaders.
 class SplitScopeSelector extends ConsumerWidget {
-  final Event event;
+  final String tripId;
   final ExpenseScope scope;
   final ValueChanged<ExpenseScope> onScopeChanged;
   final Set<String> customSplitParticipants;
@@ -28,7 +26,7 @@ class SplitScopeSelector extends ConsumerWidget {
 
   const SplitScopeSelector({
     super.key,
-    required this.event,
+    required this.tripId,
     required this.scope,
     required this.onScopeChanged,
     required this.customSplitParticipants,
@@ -49,7 +47,7 @@ class SplitScopeSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: AppColors.surfaceLight,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -98,7 +96,7 @@ class SplitScopeSelector extends ConsumerWidget {
         if (scope == ExpenseScope.custom) ...[
           const SizedBox(height: 16),
           _CustomParticipantSelector(
-            event: event,
+            tripId: tripId,
             customSplitParticipants: customSplitParticipants,
             onCustomSplitChanged: onCustomSplitChanged,
           ),
@@ -106,7 +104,7 @@ class SplitScopeSelector extends ConsumerWidget {
         const SizedBox(height: 24),
         // Paid By selector (for leaders only)
         _PayerSelector(
-          event: event,
+          tripId: tripId,
           selectedPayerId: selectedPayerId,
           onPayerChanged: onPayerChanged,
         ),
@@ -149,9 +147,9 @@ class _ScopeTab extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColorTokens.light.cardSurface : Colors.transparent,
+            color: isSelected ? AppColors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected ? AppShadowTokens.standard.raised : null,
+            boxShadow: isSelected ? AppColors.cardShadow : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -159,7 +157,7 @@ class _ScopeTab extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? AppColorTokens.light.primary : AppColorTokens.light.textMuted,
+                color: isSelected ? AppColors.mint : AppColors.textMuted,
               ),
               const SizedBox(width: 8),
               Text(
@@ -168,8 +166,8 @@ class _ScopeTab extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: isSelected
-                      ? AppColorTokens.light.textPrimary
-                      : AppColorTokens.light.textMuted,
+                      ? AppColors.textPrimary
+                      : AppColors.textMuted,
                 ),
               ),
             ],
@@ -182,24 +180,24 @@ class _ScopeTab extends StatelessWidget {
 
 /// Multi-select participant list for custom splits.
 class _CustomParticipantSelector extends ConsumerWidget {
-  final Event event;
+  final String tripId;
   final Set<String> customSplitParticipants;
   final ValueChanged<Set<String>> onCustomSplitChanged;
 
   const _CustomParticipantSelector({
-    required this.event,
+    required this.tripId,
     required this.customSplitParticipants,
     required this.onCustomSplitChanged,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Use eventLogisticsParticipantsProvider which derives participants directly
-    // from the Firestore Event document — no SQLite lookup needed.
-    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
-    final participantsAsync = AsyncValue.data(participants);
-    // Use currentUid directly — participant IDs are Firebase UIDs
-    final currentUid = ref.watch(currentUserProvider)?.uid;
+    final participantsAsync = ref.watch(
+      tripLogisticsParticipantsProvider(tripId),
+    );
+    final currentParticipant = ref.watch(
+      currentParticipantProvider(tripId),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,12 +205,12 @@ class _CustomParticipantSelector extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            const Text(
               'SELECT PARTICIPANTS',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
-                color: AppColorTokens.light.textMuted,
+                color: AppColors.textMuted,
                 letterSpacing: 1.5,
               ),
             ),
@@ -222,8 +220,8 @@ class _CustomParticipantSelector extends ConsumerWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: customSplitParticipants.isNotEmpty
-                    ? AppColorTokens.light.primary
-                    : AppColorTokens.light.textMuted,
+                    ? AppColors.mint
+                    : AppColors.textMuted,
               ),
             ),
           ],
@@ -232,30 +230,19 @@ class _CustomParticipantSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: AppColors.surfaceLight,
             borderRadius: BorderRadius.circular(16),
           ),
           constraints: const BoxConstraints(maxHeight: 200),
           child: participantsAsync.when(
-            loading: () {
-              debugPrint('[SPLIT] _CustomParticipantSelector: participants LOADING');
-              return const Center(child: CircularProgressIndicator());
-            },
-            error: (e, _) {
-              debugPrint('[SPLIT] _CustomParticipantSelector: participants ERROR: $e');
-              return const InlineErrorWidget(message: 'Unable to load participants');
-            },
+            loading: () => SkeletonLoader.card(),
+            error: (e, _) =>
+                const InlineErrorWidget(message: 'Unable to load participants'),
             data: (participants) {
-              debugPrint('[SPLIT] _CustomParticipantSelector: ${participants.length} participants, '
-                  'currentUid=$currentUid');
-              for (final p in participants) {
-                debugPrint('[SPLIT]   p: id=${p.id}, userId=${p.userId}, name=${p.displayName}');
-              }
               // Exclude current user from selection (they're auto-included)
               final otherParticipants = participants
-                  .where((p) => p.id != currentUid)
+                  .where((p) => p.id != currentParticipant?.id)
                   .toList();
-              debugPrint('[SPLIT]   otherParticipants: ${otherParticipants.length}');
 
               if (otherParticipants.isEmpty) {
                 return const Padding(
@@ -317,8 +304,8 @@ class _ParticipantTile extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColorTokens.light.primary.withValues(alpha: 0.2)
-              : AppColorTokens.light.cardSurface,
+              ? AppColors.mint.withValues(alpha: 0.2)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Center(
@@ -326,7 +313,7 @@ class _ParticipantTile extends StatelessWidget {
             (participant.displayName ?? 'U')[0].toUpperCase(),
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: isSelected ? AppColorTokens.light.primary : AppColorTokens.light.textMuted,
+              color: isSelected ? AppColors.mint : AppColors.textMuted,
             ),
           ),
         ),
@@ -336,21 +323,21 @@ class _ParticipantTile extends StatelessWidget {
         style: TextStyle(
           fontSize: 14,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          color: AppColorTokens.light.textPrimary,
+          color: AppColors.textPrimary,
         ),
       ),
       subtitle: participant.isShadow
-          ? Text(
+          ? const Text(
               'Shadow Profile',
               style: TextStyle(
                 fontSize: 11,
-                color: AppColorTokens.light.textMuted,
+                color: AppColors.textMuted,
               ),
             )
           : null,
       trailing: Checkbox(
         value: isSelected,
-        activeColor: AppColorTokens.light.primary,
+        activeColor: AppColors.mint,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
         ),
@@ -363,45 +350,53 @@ class _ParticipantTile extends StatelessWidget {
 
 /// Dropdown to select who paid, visible only to leaders.
 class _PayerSelector extends ConsumerWidget {
-  final Event event;
+  final String tripId;
   final String? selectedPayerId;
   final ValueChanged<String?> onPayerChanged;
 
   const _PayerSelector({
-    required this.event,
+    required this.tripId,
     required this.selectedPayerId,
     required this.onPayerChanged,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Use eventLogisticsParticipantsProvider which derives participants directly
-    // from the Firestore Event document — no SQLite lookup needed.
-    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
+    final currentParticipant = ref.watch(
+      currentParticipantProvider(tripId),
+    );
+    final trip = ref
+        .watch(userTripsProvider)
+        .valueOrNull
+        ?.firstWhere(
+          (t) => t.id == tripId,
+          orElse: () => throw Exception('Trip not found'),
+        );
+    final participantsAsync = ref.watch(
+      tripLogisticsParticipantsProvider(tripId),
+    );
+    final participants = participantsAsync.valueOrNull ?? [];
 
-    // Check if current user is the event creator (leader)
-    final currentUid = ref.watch(currentUserProvider)?.uid;
-    final isLeader = currentUid != null && event.createdBy == currentUid;
+    // Check if current user is the leader
+    final isLeader = trip?.leaderId == ref.watch(currentUserProvider)?.id;
 
     // If not leader or no participants, don't show
     if (!isLeader || participants.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // Default to current user if no explicit payer set
-    // Participant IDs are Firebase UIDs, so currentUid works directly
-    final effectivePayerId = selectedPayerId ?? currentUid;
+    // Default to current participant if not set
+    final effectivePayerId = selectedPayerId ?? currentParticipant?.id;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          key: LedgerKeys.payerSectionLabel,
+        const Text(
           'PAID BY',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textMuted,
+            color: AppColors.textMuted,
             letterSpacing: 1.5,
           ),
         ),
@@ -409,10 +404,10 @@ class _PayerSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: AppColors.surfaceLight,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColorTokens.light.textMuted.withValues(alpha: 0.3),
+              color: AppColors.textMuted.withValues(alpha: 0.3),
             ),
           ),
           child: DropdownButtonHideUnderline(
@@ -421,20 +416,20 @@ class _PayerSelector extends ConsumerWidget {
               isExpanded: true,
               icon: const Icon(Iconsax.arrow_down_1),
               items: participants.map((p) {
-                final isMe = p.id == currentUid;
+                final isMe = p.id == currentParticipant?.id;
                 return DropdownMenuItem(
                   value: p.id,
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 14,
-                        backgroundColor: AppColorTokens.light.selectionFill,
+                        backgroundColor: AppColors.primaryLight,
                         child: Text(
-                          (p.displayName?.isNotEmpty == true ? p.displayName![0] : 'U').toUpperCase(),
-                          style: TextStyle(
+                          (p.displayName ?? 'U')[0].toUpperCase(),
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: AppColorTokens.light.primary,
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
