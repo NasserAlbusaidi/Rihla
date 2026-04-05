@@ -193,12 +193,18 @@ Plans:
 **UI hint**: yes
 
 ### Phase 33: Ledger
-**Goal**: Full-stack ledger module — expenses, add/edit, settle up
+**Goal**: Visual refresh of the ledger module — dark ModuleHeaders, earthy tokens, SkeletonLoader loading states, fix broken test suite
 **Depends on**: Phase 31
 **Success Criteria** (what must be TRUE):
-  1. Expense list, add, edit, and delete work end-to-end
-  2. Event-level settle up calculates and records settlements correctly
-**Plans**: TBD
+  1. All 4 ledger screens (LedgerScreen, AddExpenseScreen, EditExpenseScreen, SettleUpScreen) display dark ModuleHeader with earthy design language
+  2. No bare CircularProgressIndicator as full-page loading states in any ledger screen or widget
+  3. ledger_test.dart compiles and all tests pass
+**Plans**: 3 plans
+Plans:
+- [ ] 33-00-PLAN.md — Wave 0: fix ledger_test.dart compile failures (constructor update, eventDetailProvider override, new tests)
+- [ ] 33-01-PLAN.md — SettleUpScreen ModuleHeader replacement + CircularProgressIndicator → SkeletonLoader in SettleUpScreen + EditExpenseScreen
+- [ ] 33-02-PLAN.md — AddExpenseScreen ModuleHeader + SkeletonLoader in CategorySelectionStep + SplitScopeSelector
+**UI hint**: yes
 
 ### Phase 34: Gear & Logistics
 **Goal**: Full-stack gear inventory and logistics (sub-groups) modules
@@ -231,6 +237,6 @@ Plans:
 | 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 31 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 32 | v2.3 | 3/3 | Complete    | 2026-04-05 |
-| 33 | v2.3 | 0/0 | Pending     | — |
+| 33 | v2.3 | 0/3 | Pending     | — |
 | 34 | v2.3 | 0/0 | Pending     | — |
 | 35 | v2.3 | 0/0 | Pending     | — |
