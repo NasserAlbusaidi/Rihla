@@ -1,33 +1,45 @@
 import 'dart:io';
+import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../core/config/supabase_config.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../shared/widgets/module_header.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../events/models/event_model.dart';
+import '../../events/providers/event_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
-import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
+import '../keys/ledger_keys.dart';
+import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
-import '../../../shared/widgets/module_header.dart';
 import '../widgets/amount_input_section.dart';
 import '../widgets/category_selection_step.dart';
 import '../widgets/expense_success_dialog.dart';
 import '../widgets/receipt_picker_section.dart';
 import '../widgets/split_scope_selector.dart';
+import '../../../shared/widgets/dot_step_indicator.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Omni-Splitter (Add Expense Screen) - Redesigned with 3-step flow
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  final String tripId;
+  final String groupId;
+  final String eventId;
 
-  const AddExpenseScreen({super.key, required this.tripId});
+  const AddExpenseScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -39,6 +51,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   // Custom numeric entry state
   String _amount = '0';
   int _currentStep = 0; // 0: Amount, 1: Classify, 2: Split/Confirm
+
+  /// Tracks direction for SharedAxisTransition vertical animation.
+  /// true = going back (step decreases), false = going forward.
+  bool _goingBack = false;
 
   ExpenseScope _scope = ExpenseScope.global;
   String? _selectedCategoryId;
@@ -52,15 +68,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String? _receiptPath;
   bool _isUploadingReceipt = false;
 
-  /// Get the trip's currency code
+  /// Get the event's currency code
   String get _tripCurrency {
-    final trips = ref.read(userTripsProvider).valueOrNull;
-    if (trips == null) return 'OMR';
-    final trip = trips.cast<Trip?>().firstWhere(
-      (t) => t!.id == widget.tripId,
-      orElse: () => null,
-    );
-    return trip?.currency ?? 'OMR';
+    return ref
+        .read(eventDetailProvider(
+          (groupId: widget.groupId, eventId: widget.eventId),
+        ))
+        .valueOrNull
+        ?.currency ?? 'OMR';
   }
 
   @override
@@ -72,11 +87,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   /// Find and auto-select the user's current car sub-group
   void _autoSelectUserSubGroup() {
     final currentParticipant = ref.read(
-      currentParticipantProvider(widget.tripId),
+      currentParticipantProvider(widget.eventId),
     );
     if (currentParticipant == null) return;
 
-    final subGroupsAsync = ref.read(tripSubGroupsProvider(widget.tripId));
+    final EventRef eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final subGroupsAsync = ref.read(eventSubGroupsProvider(eventRef));
     final subGroups = subGroupsAsync.valueOrNull ?? [];
 
     // Find the first car sub-group the user is a member of
@@ -153,12 +169,22 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       }
       return;
     }
+    HapticService.success(); // D-02: fire on tap after validation, before async write
+
     final note = _noteController.text.trim();
 
+    debugPrint('[EXPENSE] _submit: tripId=${widget.eventId}');
+    debugPrint('[EXPENSE] _submit: looking up currentParticipant...');
+
     final currentParticipant = ref.read(
-      currentParticipantProvider(widget.tripId),
+      currentParticipantProvider(widget.eventId),
     );
+    debugPrint('[EXPENSE] _submit: currentParticipant=${currentParticipant?.id ?? "NULL"}');
     if (currentParticipant == null) {
+      debugPrint('[EXPENSE] _submit: currentParticipant is null, eventId=${widget.eventId}');
+      final user = ref.read(currentUserProvider);
+      debugPrint('[EXPENSE] _submit: currentUser userId=${user?.uid}');
+
       ref.read(expenseErrorProvider.notifier).state =
           'Could not identify your participant record.';
       return;
@@ -175,7 +201,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     final expenseService = ref.read(expenseServiceProvider);
     final expense = await expenseService.addExpense(
-      tripId: widget.tripId,
+      groupId: widget.groupId,
+      eventId: widget.eventId,
       payerParticipantId: _selectedPayerId ?? currentParticipant.id,
       amount: amount,
       description: note.isNotEmpty ? note : null,
@@ -188,7 +215,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       categoryId: _selectedCategoryId,
     );
 
-    if (expense != null && mounted) {
+    if (mounted) {
       _showSuccessDialog(expense);
     }
   }
@@ -211,22 +238,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
   }
 
-  /// Upload receipt to Supabase Storage
+  /// Upload receipt to Firebase Storage.
   Future<String?> _uploadReceipt(String filePath) async {
     try {
       final file = File(filePath);
       final fileName = filePath.split('/').last;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final storagePath = '${widget.tripId}/receipts/$timestamp-$fileName';
-
-      await SupabaseConfig.client.storage
-          .from('trip-documents')
-          .upload(storagePath, file);
-
-      final url = SupabaseConfig.client.storage
-          .from('trip-documents')
-          .getPublicUrl(storagePath);
-
+      final storagePath = '${widget.eventId}/receipts/$timestamp-$fileName';
+      final ref = FirebaseStorage.instance.ref().child(storagePath);
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
+      await ref.putFile(file, metadata);
+      final url = await ref.getDownloadURL();
       return url;
     } catch (e) {
       debugPrint('Receipt upload failed: $e');
@@ -260,57 +282,137 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   void _nextStep() {
     if (_currentStep == 0 && (Decimal.parse(_amount) <= Decimal.zero)) return;
     HapticService.medium();
-    setState(() => _currentStep++);
+    setState(() {
+      _goingBack = false;
+      _currentStep++;
+    });
   }
 
   void _prevStep() {
     HapticService.lightClick();
-    setState(() => _currentStep--);
+    setState(() {
+      _goingBack = true;
+      _currentStep--;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(expenseLoadingProvider);
     final error = ref.watch(expenseErrorProvider);
-    final categoriesAsync = ref.watch(tripCategoriesProvider(widget.tripId));
+    final categoriesAsync = ref.watch(tripCategoriesProvider(widget.eventId));
+    // Watch the Event object so SplitScopeSelector can use eventLogisticsParticipantsProvider
+    final eventAsync = ref.watch(eventDetailProvider(
+      (groupId: widget.groupId, eventId: widget.eventId),
+    ));
+
+    categoriesAsync.when(
+      data: (cats) => debugPrint('[EXPENSE] build: ${cats.length} categories for tripId=${widget.eventId}'),
+      loading: () => debugPrint('[EXPENSE] build: categories LOADING for tripId=${widget.eventId}'),
+      error: (e, _) => debugPrint('[EXPENSE] build: categories ERROR for tripId=${widget.eventId}: $e'),
+    );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      key: LedgerKeys.addExpenseScreen,
+      backgroundColor: AppColorTokens.light.scaffoldBackground,
       body: Column(
         children: [
-          const ModuleHeader(title: 'Add Expense', useDarkTheme: true),
+          const ModuleHeader(
+            title: 'Add Expense',
+            useDarkTheme: true,
+          ),
           _buildStepHeader(),
-          Expanded(
-            child: IndexedStack(
-              index: _currentStep,
-              children: [
-                SingleChildScrollView(
-                  child: AmountInputSection(
-                    amount: _amount,
-                    currency: _tripCurrency,
-                    onKeyPress: _onKeyPress,
-                  ),
+            Expanded(
+              child: PageTransitionSwitcher(
+                reverse: _goingBack,
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (child, primary, secondary) {
+                  return SharedAxisTransition(
+                    animation: primary,
+                    secondaryAnimation: secondary,
+                    transitionType: SharedAxisTransitionType.vertical,
+                    child: child,
+                  );
+                },
+                child: _buildCurrentStep(
+                  _currentStep,
+                  error,
+                  eventAsync,
+                  categoriesAsync,
                 ),
-                CategorySelectionStep(
-                  categoriesAsync: categoriesAsync,
-                  selectedCategoryId: _selectedCategoryId,
-                  onCategorySelected: (id) {
-                    setState(() => _selectedCategoryId = id);
-                  },
-                ),
-                _buildConfirmStep(error),
-              ],
+              ),
+            ),
+            _buildBottomAction(isLoading),
+          ],
+        ),
+    );
+  }
+
+  /// Returns the step widget for the given [step] index.
+  ///
+  /// Each step widget is wrapped with a [ValueKey] so [PageTransitionSwitcher]
+  /// detects the change and triggers the SharedAxisTransition animation.
+  Widget _buildCurrentStep(
+    int step,
+    String? error,
+    AsyncValue<Event?> eventAsync,
+    AsyncValue<List<ExpenseCategory>> categoriesAsync,
+  ) {
+    switch (step) {
+      case 0:
+        return KeyedSubtree(
+          key: const ValueKey<int>(0),
+          child: SingleChildScrollView(
+            child: Container(
+              margin:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColorTokens.light.cardSurface,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: AppShadowTokens.standard.raised,
+              ),
+              child: AmountInputSection(
+                amount: _amount,
+                currency: _tripCurrency,
+                onKeyPress: _onKeyPress,
+              ),
             ),
           ),
-          _buildBottomAction(isLoading),
-        ],
-      ),
-    );
+        );
+      case 1:
+        return KeyedSubtree(
+          key: const ValueKey<int>(1),
+          child: Container(
+            margin:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColorTokens.light.cardSurface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppShadowTokens.standard.raised,
+            ),
+            child: CategorySelectionStep(
+              categoriesAsync: categoriesAsync,
+              selectedCategoryId: _selectedCategoryId,
+              onCategorySelected: (id) {
+                setState(() => _selectedCategoryId = id);
+              },
+            ),
+          ),
+        );
+      case 2:
+      default:
+        return KeyedSubtree(
+          key: const ValueKey<int>(2),
+          child: _buildConfirmStep(error, eventAsync),
+        );
+    }
   }
 
   Widget _buildStepHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
           Row(
@@ -319,7 +421,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               IconButton(
                 icon: Icon(
                   _currentStep == 0 ? Icons.close : Iconsax.arrow_left,
-                  color: AppColors.textSecondary,
+                  color: AppColorTokens.light.textSecondary,
                 ),
                 onPressed: () =>
                     _currentStep == 0 ? context.pop() : _prevStep(),
@@ -330,35 +432,25 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   'SELECT CATEGORY',
                   'SPLIT & CONFIRM',
                 ][_currentStep],
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
-                  color: AppColors.textMuted,
+                  color: AppColorTokens.light.textMuted,
                 ),
               ),
               const SizedBox(width: 48), // Placeholder for balance
             ],
           ),
           const SizedBox(height: 8),
-          // Progress Bar
+          // DotStepIndicator (D-27)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: List.generate(3, (index) {
-                return Expanded(
-                  child: Container(
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: index <= _currentStep
-                          ? AppColors.mint
-                          : AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                );
-              }),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: DotStepIndicator(
+              stepCount: 3,
+              currentStep: _currentStep,
+              activeColor: AppColorTokens.light.focusBorderWarm,
+              showCheckmarks: true,
             ),
           ),
         ],
@@ -366,76 +458,112 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
-  Widget _buildConfirmStep(String? error) {
+  Widget _buildConfirmStep(String? error, AsyncValue<Event?> eventAsync) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Split Details',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+          // Split Details card
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColorTokens.light.cardSurface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppShadowTokens.standard.raised,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Split Details',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: AppColorTokens.light.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Pass Event to SplitScopeSelector for Firestore-native participant lookup
+                if (eventAsync.valueOrNull != null)
+                  SplitScopeSelector(
+                    event: eventAsync.valueOrNull!,
+                    scope: _scope,
+                    onScopeChanged: (scope) => setState(() => _scope = scope),
+                    customSplitParticipants: _customSplitParticipants,
+                    onCustomSplitChanged: (participants) {
+                      setState(() {
+                        _customSplitParticipants.clear();
+                        _customSplitParticipants.addAll(participants);
+                      });
+                    },
+                    selectedSubGroupId: _selectedSubGroupId,
+                    onAutoSelectSubGroup: _autoSelectUserSubGroup,
+                    onSubGroupIdCleared: (value) {
+                      setState(() => _selectedSubGroupId = value);
+                    },
+                    selectedPayerId: _selectedPayerId,
+                    onPayerChanged: (value) {
+                      setState(() => _selectedPayerId = value);
+                    },
+                  )
+                else
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          SplitScopeSelector(
-            tripId: widget.tripId,
-            scope: _scope,
-            onScopeChanged: (scope) => setState(() => _scope = scope),
-            customSplitParticipants: _customSplitParticipants,
-            onCustomSplitChanged: (participants) {
-              setState(() {
-                _customSplitParticipants.clear();
-                _customSplitParticipants.addAll(participants);
-              });
-            },
-            selectedSubGroupId: _selectedSubGroupId,
-            onAutoSelectSubGroup: _autoSelectUserSubGroup,
-            onSubGroupIdCleared: (value) {
-              setState(() => _selectedSubGroupId = value);
-            },
-            selectedPayerId: _selectedPayerId,
-            onPayerChanged: (value) {
-              setState(() => _selectedPayerId = value);
-            },
-          ),
-          const SizedBox(height: 24),
-          // Note Input
-          const Text(
-            'NOTE',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textMuted,
-              letterSpacing: 1.5,
+          // Note & Receipt card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColorTokens.light.cardSurface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppShadowTokens.standard.raised,
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _noteController,
-            maxLines: 2,
-            decoration: InputDecoration(
-              hintText: 'e.g. Lunch at trailhead...',
-              fillColor: AppColors.surfaceLight,
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'NOTE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: AppColorTokens.light.textMuted,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _noteController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Lunch at trailhead...',
+                    fillColor: AppColorTokens.light.inputFill,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ReceiptPickerSection(
+                  receiptPath: _receiptPath,
+                  isUploading: _isUploadingReceipt,
+                  onPick: _pickReceipt,
+                  onRemove: () => setState(() => _receiptPath = null),
+                ),
+              ],
             ),
-          ),
-          // Receipt Capture
-          const SizedBox(height: 24),
-          ReceiptPickerSection(
-            receiptPath: _receiptPath,
-            isUploading: _isUploadingReceipt,
-            onPick: _pickReceipt,
-            onRemove: () => setState(() => _receiptPath = null),
           ),
           if (error != null) _buildErrorBanner(error),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -446,17 +574,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       margin: const EdgeInsets.only(top: 24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.rose.withValues(alpha: 0.1),
+        color: AppColorTokens.light.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
-          const Icon(Iconsax.warning_2, color: AppColors.rose, size: 20),
+          Icon(Iconsax.warning_2, color: AppColorTokens.light.error, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               error,
-              style: const TextStyle(color: AppColors.rose, fontSize: 13),
+              style: TextStyle(color: AppColorTokens.light.error, fontSize: 13),
             ),
           ),
         ],
@@ -476,20 +604,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         height: 64,
         child: Container(
           decoration: BoxDecoration(
-            gradient: isLastStep ? AppColors.primaryGradient : null,
+            gradient: isLastStep ? AppColorTokens.light.primaryGradient : null,
             color: isLastStep
                 ? null
                 : (canContinue
-                      ? AppColors.textPrimary
-                      : AppColors.surfaceLight),
+                      ? AppColorTokens.light.textPrimary
+                      : AppColorTokens.light.inputFill),
             borderRadius: BorderRadius.circular(20),
             boxShadow: canContinue
                 ? [
                     BoxShadow(
                       color:
                           (isLastStep
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary)
+                                  ? AppColorTokens.light.primary
+                                  : AppColorTokens.light.textPrimary)
                               .withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
