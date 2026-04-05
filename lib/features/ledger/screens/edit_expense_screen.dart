@@ -13,6 +13,7 @@ import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
@@ -731,8 +732,14 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
 
     return expensesAsync.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      loading: () => Scaffold(
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
+            Expanded(child: SkeletonLoader.expenseList()),
+          ],
+        ),
       ),
       error: (e, _) => Scaffold(
         backgroundColor: AppColorTokens.light.scaffoldBackground,
