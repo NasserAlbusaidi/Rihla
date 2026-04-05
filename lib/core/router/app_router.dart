@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/events/models/event_model.dart';
 import '../../features/events/screens/create_event_screen.dart';
 import '../../features/events/screens/event_command_center.dart';
+import '../../features/events/screens/event_settings_screen.dart';
 import '../../features/events/screens/event_type_picker_screen.dart';
 import '../../features/gear/screens/gear_screen.dart';
 import '../../features/groups/screens/create_group_screen.dart';
@@ -395,18 +396,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ),
               ),
 
-              // Event settings (Phase 31) — placeholder until Plan 02 creates EventSettingsScreen
-              // TODO(Phase 31 P02): replace Scaffold child with EventSettingsScreen(...)
-              // TODO(Phase 31 P02): uncomment: import '../../features/events/screens/event_settings_screen.dart';
+              // Event settings (Phase 31 P02)
               GoRoute(
                 path: 'settings',
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
-                  child: Scaffold(
-                    body: Center(
-                      child: Text(
-                          'Settings for ${state.pathParameters['eid']}'),
-                    ),
+                  child: EventSettingsScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
                   ),
                   transitionsBuilder: _slideRightTransition,
                 ),
