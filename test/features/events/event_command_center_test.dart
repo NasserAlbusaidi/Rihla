@@ -489,4 +489,67 @@ void main() {
       expect(find.text('\u2013'), findsNothing);
     });
   });
+
+  group('ECC-03: member count in expense hero', () {
+    testWidgets('expense hero shows member count below the animated total',
+        (tester) async {
+      // _makeEvent creates event with 1 participantId ('uid-creator')
+      final event = _makeEvent();
+
+      await tester.pumpWidget(_wrapEventHub(event: event));
+      await tester.pumpAndSettle();
+
+      // Should show "1 member" (singular) in the stats row
+      expect(find.textContaining('1 member'), findsOneWidget);
+    });
+
+    testWidgets('expense hero shows plural "members" for multiple participants',
+        (tester) async {
+      final event = Event(
+        id: 'evt-multi',
+        name: 'Multi-Member Trip',
+        type: EventType.trip,
+        groupId: 'group-1',
+        createdBy: 'uid-creator',
+        participantIds: const ['uid-a', 'uid-b', 'uid-c'],
+        participantNames: const {
+          'uid-a': 'Alice',
+          'uid-b': 'Bob',
+          'uid-c': 'Carol',
+        },
+        modules: EventModules.forType(EventType.trip),
+        currency: 'OMR',
+        createdAt: DateTime(2026, 3, 1),
+      );
+
+      await tester.pumpWidget(_wrapEventHub(event: event));
+      await tester.pumpAndSettle();
+
+      // Should show "3 members" (plural)
+      expect(find.textContaining('3 members'), findsOneWidget);
+    });
+
+    testWidgets('expense count and member count appear together in stats row',
+        (tester) async {
+      final event = _makeEvent();
+      final testExpense = Expense(
+        id: 'exp-1',
+        tripId: event.id,
+        payerParticipantId: 'uid-creator',
+        amount: Decimal.parse('25.000'),
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026, 3, 1),
+      );
+
+      await tester.pumpWidget(
+        _wrapEventHub(event: event, expenses: [testExpense]),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      // Both expense count and member count should be visible
+      expect(find.textContaining('expense'), findsAtLeastNWidgets(1));
+      expect(find.textContaining('member'), findsOneWidget);
+    });
+  });
 }
