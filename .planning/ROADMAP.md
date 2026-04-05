@@ -172,7 +172,7 @@ Plans:
   2. Event settings screen allows editing name, dates, description and deleting the event (creator-only, balance-gated)
 **Plans**: 4 plans
 Plans:
-- [ ] 31-00-PLAN.md — Wave 0: failing test stubs for ECC-01/ECC-02 + _wrapEventHub settings route stub
+- [x] 31-00-PLAN.md — Wave 0: failing test stubs for ECC-01/ECC-02 + _wrapEventHub settings route stub
 - [ ] 31-01-PLAN.md — Event.description model extension, EventCommandCenter refresh (gear icon, date range, SkeletonLoader), AppRoutes.eventSettings + placeholder route
 - [ ] 31-02-PLAN.md — EventSettingsScreen + EventInfoSection + EventDangerSection + complete test file + wire real screen into router
 - [ ] 31-03-PLAN.md — EventExpenseHero member count display + earthy token audit + EventModuleList ordering verification
@@ -223,7 +223,7 @@ Plans:
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
-| 31 | v2.3 | 0/3 | Pending     | — |
+| 31 | v2.3 | 1/4 | In Progress|  |
 | 32 | v2.3 | 0/0 | Pending     | — |
 | 33 | v2.3 | 0/0 | Pending     | — |
 | 34 | v2.3 | 0/0 | Pending     | — |
