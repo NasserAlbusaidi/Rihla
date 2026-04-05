@@ -161,7 +161,7 @@ class EventService extends FirestoreRepository {
     }
   }
 
-  /// Update event metadata (name and/or dates).
+  /// Update event metadata (name, dates, and/or description).
   ///
   /// Only non-null fields are updated. Always updates [updatedAt].
   Future<void> updateEvent({
@@ -170,6 +170,7 @@ class EventService extends FirestoreRepository {
     String? name,
     DateTime? startDate,
     DateTime? endDate,
+    String? description,
   }) async {
     final updateMap = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
@@ -181,6 +182,7 @@ class EventService extends FirestoreRepository {
     if (endDate != null) {
       updateMap['endDate'] = Timestamp.fromDate(endDate);
     }
+    if (description != null) updateMap['description'] = description;
 
     try {
       await db

@@ -412,6 +412,81 @@ void main() {
         expect(docSnap.data()!['name'], equals('No Update Trip'));
         expect(docSnap.data()!['updatedAt'], isNotNull);
       });
+
+      // Phase 31: description parameter (ECC-01)
+      test('updateEvent writes description to Firestore when provided',
+          () async {
+        final service = buildService();
+
+        final event = await service.createEvent(
+          groupId: 'group-1',
+          name: 'Trip With Description',
+          type: EventType.trip,
+          participantIds: ['uid-1'],
+          participantNames: {'uid-1': 'Nasser'},
+          currency: 'OMR',
+          createdBy: 'uid-1',
+        );
+
+        await service.updateEvent(
+          groupId: 'group-1',
+          eventId: event.id,
+          description: 'A great trip to the mountains!',
+        );
+
+        final docSnap = await fakeDb
+            .collection('groups')
+            .doc('group-1')
+            .collection('events')
+            .doc(event.id)
+            .get();
+
+        expect(
+          docSnap.data()!['description'],
+          equals('A great trip to the mountains!'),
+        );
+      });
+
+      test(
+          'updateEvent does NOT overwrite description when description is null',
+          () async {
+        final service = buildService();
+
+        final event = await service.createEvent(
+          groupId: 'group-1',
+          name: 'No Description Trip',
+          type: EventType.trip,
+          participantIds: ['uid-1'],
+          participantNames: {'uid-1': 'Nasser'},
+          currency: 'OMR',
+          createdBy: 'uid-1',
+        );
+
+        // First set a description
+        await service.updateEvent(
+          groupId: 'group-1',
+          eventId: event.id,
+          description: 'Initial description',
+        );
+
+        // Then call updateEvent without description — should not clear it
+        await service.updateEvent(
+          groupId: 'group-1',
+          eventId: event.id,
+          name: 'Updated Name',
+          // description is null (not provided) — should not overwrite existing
+        );
+
+        final docSnap = await fakeDb
+            .collection('groups')
+            .doc('group-1')
+            .collection('events')
+            .doc(event.id)
+            .get();
+
+        // description should still be the initial value (not cleared by null)
+        expect(docSnap.data()!['description'], equals('Initial description'));
+      });
     });
 
     // ---------------------------------------------------------------------------

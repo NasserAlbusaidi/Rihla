@@ -167,6 +167,7 @@ class Event {
   final DateTime? deletedAt;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String? description;
 
   const Event({
     required this.id,
@@ -184,6 +185,7 @@ class Event {
     this.deletedAt,
     required this.createdAt,
     this.updatedAt,
+    this.description,
   });
 
   /// Deserializes an Event from a Firestore document snapshot.
@@ -246,6 +248,7 @@ class Event {
       deletedAt: deletedAt,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      description: data['description'] as String?,
     );
   }
 
@@ -271,6 +274,7 @@ class Event {
       'createdAt': createdAt.toIso8601String(),
       'serverCreatedAt': FieldValue.serverTimestamp(),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'description': description,
     };
   }
 
@@ -285,6 +289,7 @@ class Event {
     bool? isDeleted,
     DateTime? deletedAt,
     DateTime? updatedAt,
+    String? description,
   }) {
     return Event(
       id: id,
@@ -302,6 +307,7 @@ class Event {
       deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      description: description ?? this.description,
     );
   }
 

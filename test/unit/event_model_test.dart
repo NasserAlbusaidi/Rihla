@@ -324,5 +324,54 @@ void main() {
       final map = event.toFirestoreMap();
       expect(map.containsKey('serverCreatedAt'), isTrue);
     });
+
+    // -------------------------------------------------------------------------
+    // Phase 31: description field (ECC-01)
+    // -------------------------------------------------------------------------
+
+    test('Event.description is null by default when not in Firestore doc',
+        () async {
+      final doc = await _makeDoc(); // no 'description' key in data
+      final event = Event.fromDoc(doc);
+      expect(event.description, isNull);
+    });
+
+    test('fromDoc reads description field when present in Firestore data',
+        () async {
+      final doc = await _makeDoc(overrides: {'description': 'A fun trip!'});
+      final event = Event.fromDoc(doc);
+      expect(event.description, equals('A fun trip!'));
+    });
+
+    test('toFirestoreMap includes description key (null when not set)',
+        () async {
+      final doc = await _makeDoc();
+      final event = Event.fromDoc(doc);
+      final map = event.toFirestoreMap();
+      expect(map.containsKey('description'), isTrue);
+      expect(map['description'], isNull);
+    });
+
+    test('toFirestoreMap writes description value when set', () async {
+      final doc = await _makeDoc(overrides: {'description': 'Beach trip!'});
+      final event = Event.fromDoc(doc);
+      final map = event.toFirestoreMap();
+      expect(map['description'], equals('Beach trip!'));
+    });
+
+    test('copyWith propagates description field', () async {
+      final doc = await _makeDoc();
+      final event = Event.fromDoc(doc);
+      final updated = event.copyWith(description: 'Updated description');
+      expect(updated.description, equals('Updated description'));
+      expect(updated.id, equals(event.id)); // other fields unchanged
+    });
+
+    test('copyWith preserves existing description when not provided', () async {
+      final doc = await _makeDoc(overrides: {'description': 'Original'});
+      final event = Event.fromDoc(doc);
+      final updated = event.copyWith(name: 'New Name');
+      expect(updated.description, equals('Original'));
+    });
   });
 }
