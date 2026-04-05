@@ -19,6 +19,7 @@ import '../providers/sub_group_provider.dart';
 import '../widgets/sub_group_card.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../shared/widgets/offline_banner.dart';
 
 /// Logistics Screen — unified module template (D-08, D-23).
 ///
@@ -123,6 +124,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
               ),
             ],
           ),
+          const OfflineBanner(),
           Expanded(
             child: subGroupsAsync.when(
               data: (subGroups) =>
@@ -177,8 +179,8 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                   'Create sub-groups to organize transport, accommodation, or activities.',
               actionLabel: 'Create Sub-group',
               onAction: _showCreateDialog,
-              accentGradient: const LinearGradient(
-                colors: [Color(0xFF5B7B8C), Color(0xFF7B9BAC)],
+              accentGradient: LinearGradient(
+                colors: [AppColorTokens.light.moduleLogistics, AppColorTokens.light.moduleLogisticsLight],
               ),
             ),
           )
