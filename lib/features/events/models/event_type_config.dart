@@ -12,10 +12,10 @@ import '../../../core/theme/tokens/color_tokens.dart';
 /// - Event hub header accents
 ///
 /// Color assignments per UI-SPEC:
-/// - Trip: AppColorTokens.light.primary (#13EC92)
-/// - Camping: AppColorTokens.light.success (#10B981)
-/// - Travel: AppColorTokens.light.textSecondary (#0EA5E9)
-/// - Night/Day Out: AppColorTokens.light.textSecondary (#6366F1)
+/// - Trip: AppColorTokens.light.primary (#0D7B74)
+/// - Camping: AppColorTokens.light.successText (#047857) — WCAG 4.56:1
+/// - Travel: AppColorTokens.light.textSecondary (#6B7280)
+/// - Night/Day Out: AppColorTokens.light.textSecondary (#6B7280)
 /// - Custom: AppColorTokens.light.warning (#F59E0B)
 class EventTypeConfig {
   final EventType type;
@@ -47,7 +47,8 @@ class EventTypeConfig {
       label: 'Camping',
       description: 'Outdoor adventure with gear tracking',
       icon: Iconsax.tree,
-      color: Color(0xFF10B981), // AppColorTokens.light.success
+      color: Color(0xFF047857), // AppColorTokens.light.successText — WCAG 4.56:1 on white
+                               // (const map cannot reference ThemeExtension fields)
     ),
     EventType.travel: EventTypeConfig._(
       type: EventType.travel,
