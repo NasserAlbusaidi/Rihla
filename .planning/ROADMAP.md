@@ -148,12 +148,19 @@ Plans:
 **UI hint**: yes
 
 ### Phase 30: Group Settle Up & Activity
-**Goal**: Full-stack group-level settlement and activity feed
+**Goal**: Visual overhaul of settle-up and activity screens with tabbed layout, card tiles, date-grouped timeline, filter chips, infinite scroll, and functional bug fixes (balance sign, activity logging gaps)
 **Depends on**: Phase 28
 **Success Criteria** (what must be TRUE):
-  1. Group-level settle up shows cross-event balances and generates optimized settlements
-  2. Activity feed displays group-wide actions in chronological order
-**Plans**: TBD
+  1. Settle-up screen shows 4 tabs (You Owe / Owed to You / Between Others / History) with card-style settlement tiles
+  2. Activity feed displays date-grouped timeline with filter chips and infinite scroll
+  3. Balance sign bug fixed — YOUR BALANCE shows directional label
+  4. Activity logging covers all 5 action types (was only 1)
+**Plans**: 3 plans
+Plans:
+- [ ] 30-01-PLAN.md — Balance sign fix (D-12), activity logging gaps (D-14), Phase 30 test keys
+- [ ] 30-02-PLAN.md — Settle-up screen redesign: ModuleHeader, 4-tab AppTabBar, card tiles, History tab, bottom sheet polish, tests
+- [ ] 30-03-PLAN.md — Activity screen redesign: ModuleHeader, date-grouped list, filter chips, infinite scroll, rich tiles, tests
+**UI hint**: yes
 
 ### Phase 31: Event Command Center
 **Goal**: Full-stack event hub — header, module grid, event settings
@@ -207,7 +214,7 @@ Plans:
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
-| 30 | v2.3 | 0/0 | Pending     | — |
+| 30 | v2.3 | 0/3 | Planning    | — |
 | 31 | v2.3 | 0/0 | Pending     | — |
 | 32 | v2.3 | 0/0 | Pending     | — |
 | 33 | v2.3 | 0/0 | Pending     | — |
