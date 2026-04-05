@@ -105,6 +105,8 @@ Groups persist across events and accumulate financial history — friends settle
 **Phase 31 complete:** 2026-04-05 — EventCommandCenter refreshed with gear icon settings entry, date range in header, SkeletonLoader in hero, member count metric. New EventSettingsScreen with EventInfoSection (edit name/dates/description) and EventDangerSection (creator-only, balance-gated delete). Event.description model field added. 858 tests passing.
 **Phase 32 complete:** 2026-04-05 — EventTypePickerScreen refreshed with dark ModuleHeader, 80ms stagger, camping color #047857 (WCAG). CreateEventScreen refreshed with dark ModuleHeader, type-specific badge colors, Select All toggle, staggered card sections. 864 tests passing.
 **Phase 33 complete:** 2026-04-05 — Ledger module refreshed. SettleUpScreen + EditExpenseScreen + AddExpenseScreen: dark ModuleHeaders, SkeletonLoader loading states, WCAG textSecondary fix. CategorySelectionStep + SplitScopeSelector: SkeletonLoader.card(). SkeletonLoader.card() factory added. 8 ledger tests passing.
+**Phase 34 complete:** 2026-04-05 — Gear & Logistics: token gradient compliance, OfflineBanner added, SkeletonLoader.gearList upgrade, dead code deleted. 16 tests passing.
+**Phase 35 complete:** 2026-04-05 — Vault & Memories: token gradient compliance, OfflineBanner added to both screens. MemoriesScreen body restructured for Column wrapper. 869 tests passing. v2.3 milestone complete.
 
 ### Out of Scope
 
@@ -184,4 +186,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-05 after Phase 33 complete — Ledger (v2.3 milestone)*
+*Last updated: 2026-04-05 after Phase 35 complete — Vault & Memories (v2.3 milestone complete)*
