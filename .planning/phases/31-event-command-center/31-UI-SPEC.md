@@ -42,9 +42,9 @@ All values from `AppSpacingTokens.standard` in `lib/core/theme/tokens/spacing_to
 | space32 | 32dp | Bottom scroll buffer, header bottom padding (dark) |
 
 Border radii (from AppSpacingTokens.standard):
-- `radiusSmall` = 8dp — chips, type badge pill, back button container
+- `radiusSmall` = 8dp — chips, type badge pill
 - `radiusMedium` = 12dp — buttons, input fields
-- `radiusLarge` = 16dp — cards (EventExpenseHero, SmartModuleCard, section containers)
+- `radiusLarge` = 16dp — cards (EventExpenseHero, SmartModuleCard, section containers), back button container
 
 Button height: 52dp (AppSpacingTokens.standard.buttonHeight)
 
@@ -52,6 +52,7 @@ Exceptions:
 - Touch targets (back button, gear icon, FAB): minimum 44dp square
 - FAB: 56dp (Flutter FloatingActionButton default)
 - Dark header bottom padding: 32dp (matches established ModuleHeader dark pattern)
+- space12 (12dp) and space20 (20dp): established tokens from AppSpacingTokens.standard — on-grid at 4dp increments, used as defined by the token system
 
 ---
 
@@ -59,16 +60,20 @@ Exceptions:
 
 All text uses Plus Jakarta Sans. Source: `AppTheme._buildTextTheme` + established screen patterns.
 
+Declared type scale — 4 sizes, 2 weights:
+
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
-| Display | 28sp | 800 | 1.2 | Event name in header, settings screen page title |
-| Heading | 20sp | 600 | 1.2 | Section titles in EventSettingsScreen |
+| Display | 28sp | 700 | 1.2 | Event name in header, settings screen page title |
+| Heading | 20sp | 700 | 1.2 | Section titles in EventSettingsScreen |
 | Body | 14sp | 400 | 1.5 | Description fields, date range, supporting text |
-| Label | 13sp | 600 | 1.3 | Subtitle in dark header (type badge · group name), overline caps |
+| Label | 13sp | 700 | 1.3 | Subtitle in dark header (type badge · group name), overline caps, section header overlines |
 
-Overline (caps label for hero card): 10sp / weight 700 / letterSpacing 0.5 / textMuted — matches existing EventExpenseHero TOTAL EXPENSES overline. Do not change.
+Inherited implementation details (not new spec declarations — do not add to the declared scale):
+- Overline caps for hero card: 10sp / letterSpacing 0.5 / textMuted — matches existing EventExpenseHero TOTAL EXPENSES overline. Do not change.
+- Header subtitle in dark: `Colors.white.withValues(alpha: 0.5)` — matches existing ModuleHeader dark subtitle pattern. Do not change.
 
-Header subtitle in dark: 13sp / weight 600 / `Colors.white.withValues(alpha: 0.5)` — matches existing ModuleHeader dark subtitle pattern. Do not change.
+Weight remap: all previous weight 600 and weight 800 usages map to weight 700 (emphasis/bold). Weight 400 is regular/body.
 
 ---
 
@@ -112,7 +117,11 @@ Source: `AppColorTokens.light` in `lib/core/theme/tokens/color_tokens.dart`.
 - Back button container border: `Colors.white.withValues(alpha: 0.08)`
 - Back button container fill: `Colors.white.withValues(alpha: 0.05)`
 
-WCAG compliance: white text on #111827 = 16.1:1 — passes AAA. White at 50% opacity on #111827 = approximately 3.5:1 — passes AA large (subtitle is 13sp/600 which qualifies as large text per WCAG). Confirmed against established CLAUDE.md WCAG table.
+WCAG compliance: white text on #111827 = 16.1:1 — passes AAA. White at 50% opacity on #111827 = approximately 3.5:1 — passes AA large (subtitle is 13sp/700 which qualifies as large text per WCAG). Confirmed against established CLAUDE.md WCAG table.
+
+### Focal Point
+
+Primary visual anchor: EventExpenseHero card — animated total expense amount draws the eye first. The counter animation (TweenAnimationBuilder 0→total, 800ms) combined with the card's dominant size in the scroll hierarchy establishes it as the primary visual entry point on the screen.
 
 ---
 
@@ -144,9 +153,9 @@ Layout: `Scaffold` → `SafeArea` → `SingleChildScrollView`. No AppBar. Matche
 Horizontal padding: 24dp throughout. Top padding: 16dp.
 
 Section order:
-1. Back button row (44dp touch target, inputFill container, radiusSmall+6 = 14dp radius)
+1. Back button row (44dp touch target, inputFill container, radiusMedium = 16dp radius)
 2. `SizedBox(height: 16)`
-3. Page title: "Event Settings" — 28sp / weight 800 / textPrimary
+3. Page title: "Event Settings" — 28sp / weight 700 / textPrimary
 4. `SizedBox(height: 24)`
 5. `EventInfoSection` (stagger delay 100ms) — editable name, dates, description
 6. `SizedBox(height: 16)`
@@ -200,7 +209,7 @@ Section header overline: "DANGER ZONE" — 13sp / weight 700 / errorText (#B91C1
 
 Delete event button: text button style, `errorText` (#B91C1C) foreground, `Iconsax.trash` leading icon, label "Delete event". Visible only to creator. If non-creator: omit entire section.
 
-Balance-gate warning: if event has unsettled balances, show amber warning row above delete button. Icon: `Iconsax.warning_2` / `warning` (#F59E0B). Text: "This event has unsettled balances." — 13sp / weight 500 / textSecondary. Delete button remains tappable but dialog shows additional warning.
+Balance-gate warning: if event has unsettled balances, show amber warning row above delete button. Icon: `Iconsax.warning_2` / `warning` (#F59E0B). Text: "This event has unsettled balances." — 13sp / weight 400 / textSecondary. Delete button remains tappable but dialog shows additional warning.
 
 ---
 
@@ -220,7 +229,7 @@ Balance-gate warning: if event has unsettled balances, show amber warning row ab
 | Delete event — confirmation dialog body | "This will permanently delete the event and all its expenses, gear items, and documents. This cannot be undone." |
 | Delete event — balance-gate dialog additional line | "This event has unsettled balances. Settle up before deleting, or proceed anyway." |
 | Delete event — confirm button | "Delete event" (errorText color) |
-| Delete event — cancel button | "Cancel" |
+| Delete event — dismiss button | "Keep event" |
 | Save success snackbar | "Event updated" |
 | Save error snackbar | "Couldn't save changes. Try again." |
 | Date range format | "Mar 15 – Mar 20" (abbreviated month, en-dash, no year if current year, same year omitted) |
