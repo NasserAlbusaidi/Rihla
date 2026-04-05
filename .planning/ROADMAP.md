@@ -68,7 +68,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 
 - [x] **Phase 28: Group Detail** - Main group screen — stats, events list, member balances (completed 2026-04-02)
 - [x] **Phase 29: Group Management** - Settings, invite flow, member management (completed 2026-04-02)
-- [ ] **Phase 30: Group Settle Up & Activity** - Group-level settlement, activity feed
+- [x] **Phase 30: Group Settle Up & Activity** - Group-level settlement, activity feed (completed 2026-04-05)
 - [ ] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings
 - [ ] **Phase 32: Event Creation** - Type picker, create form, templates
 - [ ] **Phase 33: Ledger** - Expenses, add/edit, settle up
@@ -159,7 +159,7 @@ Plans:
 Plans:
 - [x] 30-00-PLAN.md — Wave 0: failing test stubs for settle-up, activity, and activity service
 - [x] 30-01-PLAN.md — Balance sign fix (D-12), activity logging gaps (D-14), Phase 30 test keys
-- [ ] 30-02-PLAN.md — Settle-up screen redesign: ModuleHeader, 4-tab AppTabBar, card tiles, History tab, bottom sheet polish, tests
+- [x] 30-02-PLAN.md — Settle-up screen redesign: ModuleHeader, 4-tab AppTabBar, card tiles, History tab, bottom sheet polish, tests
 - [x] 30-03-PLAN.md — Activity screen redesign: ModuleHeader, date-grouped list, filter chips (Settlements/Events/Members), infinite scroll, rich tiles, D-15 CTA verification, tests
 **UI hint**: yes
 
@@ -215,7 +215,7 @@ Plans:
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
-| 30 | v2.3 | 3/4 | In Progress|  |
+| 30 | v2.3 | 4/4 | Complete   | 2026-04-05 |
 | 31 | v2.3 | 0/0 | Pending     | — |
 | 32 | v2.3 | 0/0 | Pending     | — |
 | 33 | v2.3 | 0/0 | Pending     | — |
