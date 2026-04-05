@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/events/models/event_type_config.dart';
 
 void main() {
   group('EventType', () {
@@ -372,6 +374,31 @@ void main() {
       final event = Event.fromDoc(doc);
       final updated = event.copyWith(name: 'New Name');
       expect(updated.description, equals('Original'));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Phase 32 Wave 0: EventTypeConfig color assertions
+  // These tests define the target color values BEFORE Plan 01 implements them.
+  // ---------------------------------------------------------------------------
+
+  group('EventTypeConfig', () {
+    test('camping color uses successText token hex (#047857) for WCAG compliance',
+        () {
+      final campingConfig = EventTypeConfig.forType(EventType.camping);
+      // successText (#047857) not success (#10B981) — WCAG 4.56:1 on white
+      // const map cannot reference ThemeExtension fields; hex inline
+      expect(campingConfig.color, equals(const Color(0xFF047857)));
+    });
+
+    test('trip color uses primary token hex (#0D7B74)', () {
+      final tripConfig = EventTypeConfig.forType(EventType.trip);
+      expect(tripConfig.color, equals(const Color(0xFF0D7B74)));
+    });
+
+    test('custom color uses warning token hex (#F59E0B)', () {
+      final customConfig = EventTypeConfig.forType(EventType.custom);
+      expect(customConfig.color, equals(const Color(0xFFF59E0B)));
     });
   });
 }
