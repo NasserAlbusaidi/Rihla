@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../shared/animations/tap_bounce.dart';
+import '../../../shared/widgets/module_header.dart';
+import '../../groups/providers/group_provider.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
@@ -12,134 +15,149 @@ import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Full-screen event type picker — Step 1 of the event creation flow.
 ///
-/// Displays 5 visual type cards (Trip, Camping, Travel, Night/Day Out, Custom).
+/// Displays 5 visual type cards with dark ModuleHeader (group name subtitle).
 /// Each card shows the type's icon, name, description, and enabled module chips.
 /// Tapping a card navigates to [CreateEventScreen] with the selected type.
 ///
 /// Per D-02 and UI-SPEC: EventTypePickerScreen.
-class EventTypePickerScreen extends StatelessWidget {
+class EventTypePickerScreen extends ConsumerWidget {
   final String groupId;
 
   const EventTypePickerScreen({super.key, required this.groupId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final disableAnimations = MediaQuery.of(context).disableAnimations;
     final types = EventTypeConfig.allTypes;
+    final groupName =
+        ref.watch(groupDetailProvider(groupId)).valueOrNull?.name ?? '';
 
     return Scaffold(
       key: EventKeys.eventTypePickerScreen,
       backgroundColor: AppColorTokens.light.scaffoldBackground,
-      appBar: AppBar(
-        title: const Text('Choose Event Type', key: EventKeys.eventTypePickerTitle),
-        leading: CloseButton(
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(24),
-        itemCount: types.length,
-        separatorBuilder: (context, index) =>
-            const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final config = types[index];
-          final enabledModuleNames = _enabledModuleNames(config.type);
+      body: Column(
+        children: [
+          ModuleHeader(
+            useDarkTheme: true,
+            title: 'New Event',
+            subtitle: groupName.isEmpty ? null : groupName,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: List.generate(types.length, (index) {
+                  final config = types[index];
+                  final enabledModuleNames = _enabledModuleNames(config.type);
 
-          final card = Semantics(
-            label:
-                '${config.label}: ${config.description}. Modules: ${enabledModuleNames.join(", ")}',
-            button: true,
-            child: TapBounce(
-              key: EventKeys.eventTypeCard(config.label),
-              onTap: () => context.push(
-                '/group/$groupId/create-event/${config.type.value}',
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColorTokens.light.cardSurface,
-                  borderRadius:
-                      BorderRadius.circular(16),
-                  boxShadow: AppShadowTokens.standard.raised,
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // Type icon container
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: config.color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        config.icon,
-                        size: 24,
-                        color: config.color,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Text column
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            config.label,
-                            style:
-                                Theme.of(context).textTheme.titleMedium,
+                  final card = Column(
+                    children: [
+                      if (index > 0) const SizedBox(height: 12),
+                      Semantics(
+                        label:
+                            '${config.label}: ${config.description}. Modules: ${enabledModuleNames.join(", ")}',
+                        button: true,
+                        child: TapBounce(
+                          key: EventKeys.eventTypeCard(config.label),
+                          onTap: () => context.push(
+                            '/group/$groupId/create-event/${config.type.value}',
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            config.description,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColorTokens.light.cardSurface,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: AppShadowTokens.standard.raised,
+                            ),
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                // Type icon container
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: config.color.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Icon(
+                                    config.icon,
+                                    size: 24,
+                                    color: config.color,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Text column
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        config.label,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        config.description,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color:
+                                                  AppColorTokens.light.textMuted,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // Module chips
+                                      Wrap(
+                                        spacing: 4,
+                                        runSpacing: 4,
+                                        children: enabledModuleNames
+                                            .map(
+                                              (name) => _ModuleChip(name: name),
+                                            )
+                                            .toList(),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Trailing arrow
+                                Icon(
+                                  Iconsax.arrow_right_3,
+                                  size: 18,
                                   color: AppColorTokens.light.textMuted,
                                 ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          // Module chips
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: enabledModuleNames
-                                .map((name) => _ModuleChip(name: name))
-                                .toList(),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Trailing arrow
-                    Icon(
-                      Iconsax.arrow_right_3,
-                      size: 18,
-                      color: AppColorTokens.light.textMuted,
-                    ),
-                  ],
-                ),
+                    ],
+                  );
+
+                  if (disableAnimations) return card;
+
+                  return card
+                      .animate()
+                      .fadeIn(
+                        delay: (80 * index).ms,
+                        duration: 400.ms,
+                      )
+                      .slideY(
+                        begin: 0.05,
+                        end: 0,
+                        delay: (80 * index).ms,
+                        duration: 400.ms,
+                        curve: Curves.easeOutCubic,
+                      );
+                }),
               ),
             ),
-          );
-
-          if (disableAnimations) return card;
-
-          return card
-              .animate()
-              .fadeIn(
-                delay: (40 * index).ms,
-                duration: 400.ms,
-              )
-              .slideY(
-                begin: 0.05,
-                end: 0,
-                delay: (40 * index).ms,
-                duration: 400.ms,
-                curve: Curves.easeOutCubic,
-              );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -180,4 +198,3 @@ class _ModuleChip extends StatelessWidget {
     );
   }
 }
-
