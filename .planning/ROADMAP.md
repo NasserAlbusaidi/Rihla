@@ -215,7 +215,7 @@ Plans:
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
-| 30 | v2.3 | 0/4 | Planning    | — |
+| 30 | v2.3 | 0/4 | Planned    |  |
 | 31 | v2.3 | 0/0 | Pending     | — |
 | 32 | v2.3 | 0/0 | Pending     | — |
 | 33 | v2.3 | 0/0 | Pending     | — |

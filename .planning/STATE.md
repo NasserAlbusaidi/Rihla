@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Profile Page
 status: verifying
-stopped_at: Completed 29-02-PLAN.md
-last_updated: "2026-04-02T10:07:45.077Z"
+stopped_at: Completed 30-01-PLAN.md — balance sign fix + activity logging call sites
+last_updated: "2026-04-05T08:10:19.881Z"
 last_activity: 2026-04-02
 progress:
-  total_phases: 13
+  total_phases: 8
   completed_phases: 7
-  total_plans: 12
+  total_plans: 16
   completed_plans: 12
 ---
 
@@ -49,6 +49,7 @@ Phase 26 [██████████] 100%
 | Phase 28-group-detail P02 | 11 | 2 tasks | 5 files |
 | Phase 29-group-management P01 | 5 | 2 tasks | 3 files |
 | Phase 29-group-management P02 | 8 | 2 tasks | 5 files |
+| Phase 30 P01 | 6 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-02T10:00:33.990Z
-Stopped at: Completed 29-02-PLAN.md
+Last session: 2026-04-05T08:10:02.328Z
+Stopped at: Completed 30-01-PLAN.md — balance sign fix + activity logging call sites
 Next action: `/gsd:plan-phase 25` — plan Profile Screen Core
