@@ -261,5 +261,96 @@ void main() {
             isTrue);
       },
     );
+
+    // --- Phase 30 Stubs (D-14 — will turn GREEN after Plan 01 Task 2) ---
+
+    test(
+      'logGroupEvent writes event_created to Firestore',
+      () async {
+        // Create FakeFirebaseFirestore
+        // Call logGroupEvent with type: 'event_created'
+        // Verify document exists in groups/{gid}/activity with type == 'event_created'
+        service.logGroupEvent(
+          groupId: groupId,
+          type: 'event_created',
+          actorId: 'uid1',
+          actorName: 'Alice',
+          description: 'Alice created Weekend Trip',
+          metadata: {'eventId': 'evt-1'},
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('activity')
+            .where('type', isEqualTo: 'event_created')
+            .get();
+
+        expect(snap.docs, isNotEmpty);
+        expect(snap.docs.first.data()['type'], equals('event_created'));
+        expect(
+          snap.docs.first.data()['description'],
+          equals('Alice created Weekend Trip'),
+        );
+      },
+      skip: true, // Phase 30: will pass after Plan 01 Task 2
+    );
+
+    test(
+      'logGroupEvent writes member_joined to Firestore',
+      () async {
+        // Same pattern with type: 'member_joined'
+        service.logGroupEvent(
+          groupId: groupId,
+          type: 'member_joined',
+          actorId: 'uid3',
+          actorName: 'Carol',
+          description: 'Carol joined the group',
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('activity')
+            .where('type', isEqualTo: 'member_joined')
+            .get();
+
+        expect(snap.docs, isNotEmpty);
+        expect(snap.docs.first.data()['actorName'], equals('Carol'));
+      },
+      skip: true, // Phase 30: will pass after Plan 01 Task 2
+    );
+
+    test(
+      'logGroupEvent writes member_left to Firestore',
+      () async {
+        // Same pattern with type: 'member_left'
+        service.logGroupEvent(
+          groupId: groupId,
+          type: 'member_left',
+          actorId: 'uid4',
+          actorName: 'Dave',
+          description: 'Dave left the group',
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('activity')
+            .where('type', isEqualTo: 'member_left')
+            .get();
+
+        expect(snap.docs, isNotEmpty);
+        expect(snap.docs.first.data()['description'],
+            equals('Dave left the group'));
+      },
+      skip: true, // Phase 30: will pass after Plan 01 Task 2
+    );
   });
 }
