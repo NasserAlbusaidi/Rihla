@@ -70,7 +70,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 - [x] **Phase 29: Group Management** - Settings, invite flow, member management (completed 2026-04-02)
 - [x] **Phase 30: Group Settle Up & Activity** - Group-level settlement, activity feed (completed 2026-04-05)
 - [x] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings (completed 2026-04-05)
-- [ ] **Phase 32: Event Creation** - Type picker, create form, templates
+- [x] **Phase 32: Event Creation** - Type picker, create form, templates (completed 2026-04-05)
 - [ ] **Phase 33: Ledger** - Expenses, add/edit, settle up
 - [ ] **Phase 34: Gear & Logistics** - Equipment inventory, sub-groups
 - [ ] **Phase 35: Vault & Memories** - Documents, photo timeline
@@ -189,7 +189,7 @@ Plans:
 Plans:
 - [x] 32-00-PLAN.md — Wave 0: failing test stubs (Select All, camping color, ModuleHeader title assertions)
 - [x] 32-01-PLAN.md — EventTypeConfig camping color fix + EventTypePickerScreen refresh (ModuleHeader, 80ms stagger, ConsumerWidget)
-- [ ] 32-02-PLAN.md — CreateEventScreen refresh (ModuleHeader, type badge fix, Select All, card stagger) + all tests GREEN
+- [x] 32-02-PLAN.md — CreateEventScreen refresh (ModuleHeader, type badge fix, Select All, card stagger) + all tests GREEN
 **UI hint**: yes
 
 ### Phase 33: Ledger
@@ -230,7 +230,7 @@ Plans:
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 31 | v2.3 | 4/4 | Complete    | 2026-04-05 |
-| 32 | v2.3 | 2/3 | In Progress|  |
+| 32 | v2.3 | 3/3 | Complete   | 2026-04-05 |
 | 33 | v2.3 | 0/0 | Pending     | — |
 | 34 | v2.3 | 0/0 | Pending     | — |
 | 35 | v2.3 | 0/0 | Pending     | — |
