@@ -47,6 +47,18 @@ class SkeletonLoader extends StatelessWidget {
     );
   }
 
+  /// Skeleton for a single card loading state (widget-level loading)
+  static Widget card() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceLight,
+      highlightColor: AppColors.surface,
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: _SkeletonCard(height: 120),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(

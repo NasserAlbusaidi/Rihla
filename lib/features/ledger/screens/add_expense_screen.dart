@@ -16,6 +16,7 @@ import '../../trip/providers/trip_provider.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
+import '../../../shared/widgets/module_header.dart';
 import '../widgets/amount_input_section.dart';
 import '../widgets/category_selection_step.dart';
 import '../widgets/expense_success_dialog.dart';
@@ -275,42 +276,41 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildStepHeader(),
-            Expanded(
-              child: IndexedStack(
-                index: _currentStep,
-                children: [
-                  SingleChildScrollView(
-                    child: AmountInputSection(
-                      amount: _amount,
-                      currency: _tripCurrency,
-                      onKeyPress: _onKeyPress,
-                    ),
+      body: Column(
+        children: [
+          const ModuleHeader(title: 'Add Expense', useDarkTheme: true),
+          _buildStepHeader(),
+          Expanded(
+            child: IndexedStack(
+              index: _currentStep,
+              children: [
+                SingleChildScrollView(
+                  child: AmountInputSection(
+                    amount: _amount,
+                    currency: _tripCurrency,
+                    onKeyPress: _onKeyPress,
                   ),
-                  CategorySelectionStep(
-                    categoriesAsync: categoriesAsync,
-                    selectedCategoryId: _selectedCategoryId,
-                    onCategorySelected: (id) {
-                      setState(() => _selectedCategoryId = id);
-                    },
-                  ),
-                  _buildConfirmStep(error),
-                ],
-              ),
+                ),
+                CategorySelectionStep(
+                  categoriesAsync: categoriesAsync,
+                  selectedCategoryId: _selectedCategoryId,
+                  onCategorySelected: (id) {
+                    setState(() => _selectedCategoryId = id);
+                  },
+                ),
+                _buildConfirmStep(error),
+              ],
             ),
-            _buildBottomAction(isLoading),
-          ],
-        ),
+          ),
+          _buildBottomAction(isLoading),
+        ],
       ),
     );
   }
 
   Widget _buildStepHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Column(
         children: [
           Row(
