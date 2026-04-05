@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
@@ -6,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/module_header.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
@@ -191,295 +193,373 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     return Scaffold(
       key: EventKeys.createEventScreen,
       backgroundColor: AppColorTokens.light.scaffoldBackground,
-      appBar: AppBar(
-        title: Text('New ${typeConfig.label} Event'),
-      ),
-      body: membersAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err')),
-        data: (members) {
-          // Pre-populate participant selection once on first data load (D-04)
-          if (!_participantsInitialized && members.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                setState(() {
-                  _selectedParticipantIds = Set.unmodifiable(
-                    members.map((m) => m.userId).toSet(),
-                  );
-                  _participantsInitialized = true;
-                });
-              }
-            });
-          }
+      body: Column(
+        children: [
+          ModuleHeader(
+            useDarkTheme: true,
+            title: typeConfig.label,
+          ),
+          Expanded(
+            child: membersAsync.when(
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (err, _) => Center(child: Text('Error: $err')),
+              data: (members) {
+                // Pre-populate participant selection once on first data load (D-04)
+                if (!_participantsInitialized && members.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() {
+                        _selectedParticipantIds = Set.unmodifiable(
+                          members.map((m) => m.userId).toSet(),
+                        );
+                        _participantsInitialized = true;
+                      });
+                    }
+                  });
+                }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // --- Selected Event Type indicator card ---
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColorTokens.light.moduleLedgerLight,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(typeConfig.icon,
-                            size: 20, color: AppColorTokens.light.moduleLedger),
-                        const SizedBox(width: 8),
-                        Text(
-                          typeConfig.label,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColorTokens.light.moduleLedger,
-                          ),
-                        ),
-                      ],
-                    ),
+                final disableAnimations =
+                    MediaQuery.of(context).disableAnimations;
+
+                // --- Event type badge ---
+                final eventTypeBadge = Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: typeConfig.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(24),
                   ),
-
-                  // --- Event Details card ---
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColorTokens.light.cardSurface,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: AppShadowTokens.standard.raised,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // --- Event Name ---
-                        Text(
-                          'Event Name',
-                          style: Theme.of(context).textTheme.titleSmall,
+                  child: Row(
+                    children: [
+                      Icon(typeConfig.icon,
+                          size: 20, color: typeConfig.color),
+                      const SizedBox(width: 8),
+                      Text(
+                        typeConfig.label,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: typeConfig.color,
                         ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _nameController,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
-                            hintText: 'e.g. Summer camping trip',
-                          ),
-                          validator: (v) =>
-                              v == null || v.trim().isEmpty
-                                  ? "Event name can't be empty."
-                                  : null,
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // --- Dates ---
-                        Row(
-                          children: [
-                            Text(
-                              'Dates',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '(optional)',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: AppColorTokens.light.textMuted),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height: 48,
-                                child: OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                          12),
-                                    ),
-                                  ),
-                                  onPressed: _pickStartDate,
-                                  child: Text(
-                                    _startDate != null
-                                        ? DateFormat('MMM d, yyyy')
-                                            .format(_startDate!)
-                                        : 'Start date',
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: SizedBox(
-                                height: 48,
-                                child: OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                          12),
-                                    ),
-                                  ),
-                                  onPressed: _pickEndDate,
-                                  child: Text(
-                                    _endDate != null
-                                        ? DateFormat('MMM d, yyyy')
-                                            .format(_endDate!)
-                                        : 'End date',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // --- Participants card ---
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColorTokens.light.cardSurface,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: AppShadowTokens.standard.raised,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Participants',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        ...members.map(
-                          (member) => _ParticipantRow(
-                            member: member,
-                            isSelected: _selectedParticipantIds
-                                .contains(member.userId),
-                            onToggle: (selected) {
-                              // Immutable set update
-                              final updated = Set<String>.from(
-                                  _selectedParticipantIds);
-                              if (selected) {
-                                updated.add(member.userId);
-                              } else {
-                                updated.remove(member.userId);
-                              }
-                              setState(
-                                () => _selectedParticipantIds =
-                                    Set.unmodifiable(updated),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // --- Module Toggles card (Custom type only, per D-14) ---
-                  if (widget.eventType == EventType.custom)
-                    Container(
-                      margin:
-                          const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColorTokens.light.cardSurface,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: AppShadowTokens.standard.raised,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ],
+                  ),
+                );
+
+                // --- Event Details card ---
+                final eventDetailsCard = Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColorTokens.light.cardSurface,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: AppShadowTokens.standard.raised,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- Event Name ---
+                      Text(
+                        'Event Name',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _nameController,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. Summer camping trip',
+                        ),
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty
+                                ? "Event name can't be empty."
+                                : null,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // --- Dates ---
+                      Row(
                         children: [
                           Text(
-                            'Modules',
-                            key: EventKeys.modulesSection,
+                            'Dates',
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
-                          const SizedBox(height: 8),
-                          _ModuleToggleRow(
-                            key: EventKeys.moduleLedgerToggle,
-                            icon: Iconsax.dollar_circle,
-                            label: 'Ledger',
-                            color: AppColorTokens.light.success,
-                            value: _modules.ledger,
-                            onChanged: (v) => setState(
-                              () => _modules = _modules.copyWith(ledger: v),
+                          const SizedBox(width: 8),
+                          Text(
+                            '(optional)',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                    color: AppColorTokens.light.textMuted),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 48,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: _pickStartDate,
+                                child: Text(
+                                  _startDate != null
+                                      ? DateFormat('MMM d, yyyy')
+                                          .format(_startDate!)
+                                      : 'Start date',
+                                ),
+                              ),
                             ),
                           ),
-                          _ModuleToggleRow(
-                            key: EventKeys.moduleGearToggle,
-                            icon: Iconsax.bag,
-                            label: 'Gear',
-                            color: AppColorTokens.light.warning,
-                            value: _modules.gear,
-                            onChanged: (v) => setState(
-                              () => _modules = _modules.copyWith(gear: v),
-                            ),
-                          ),
-                          _ModuleToggleRow(
-                            key: EventKeys.moduleLogisticsToggle,
-                            icon: Iconsax.car,
-                            label: 'Logistics',
-                            color: AppColorTokens.light.textSecondary,
-                            value: _modules.logistics,
-                            onChanged: (v) => setState(
-                              () =>
-                                  _modules = _modules.copyWith(logistics: v),
-                            ),
-                          ),
-                          _ModuleToggleRow(
-                            key: EventKeys.moduleVaultToggle,
-                            icon: Iconsax.folder,
-                            label: 'Vault',
-                            color: AppColorTokens.light.textSecondary,
-                            value: _modules.vault,
-                            onChanged: (v) => setState(
-                              () => _modules = _modules.copyWith(vault: v),
-                            ),
-                          ),
-                          _ModuleToggleRow(
-                            key: EventKeys.moduleMemoriesToggle,
-                            icon: Iconsax.image,
-                            label: 'Memories',
-                            color: AppColorTokens.light.primary,
-                            value: _modules.memories,
-                            onChanged: (v) => setState(
-                              () =>
-                                  _modules = _modules.copyWith(memories: v),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SizedBox(
+                              height: 48,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: _pickEndDate,
+                                child: Text(
+                                  _endDate != null
+                                      ? DateFormat('MMM d, yyyy')
+                                          .format(_endDate!)
+                                      : 'End date',
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-
-                  // --- Submit button ---
-                  LoadingButton(
-                    key: EventKeys.createEventButton,
-                    label: isLoading ? 'Creating\u2026' : 'Create Event',
-                    isLoading: isLoading,
-                    onPressed: () => _submitForm(members),
+                    ],
                   ),
+                );
 
-                  const SizedBox(height: 32),
-                ],
-              ),
+                // --- Participants card ---
+                final participantsCard = Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColorTokens.light.cardSurface,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: AppShadowTokens.standard.raised,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Participants',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      // Select All row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Select All',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                          ),
+                          Checkbox(
+                            key: EventKeys.selectAllButton,
+                            value: members.isNotEmpty &&
+                                _selectedParticipantIds.length ==
+                                    members.length,
+                            checkColor: Colors.white,
+                            fillColor: WidgetStateProperty.resolveWith(
+                              (states) =>
+                                  states.contains(WidgetState.selected)
+                                      ? AppColorTokens.light.primary
+                                      : null,
+                            ),
+                            onChanged: (v) {
+                              final allIds = Set<String>.from(
+                                  members.map((m) => m.userId));
+                              setState(
+                                () => _selectedParticipantIds =
+                                    Set.unmodifiable(
+                                        v == true ? allIds : <String>{}),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 8),
+                      ...members.map(
+                        (member) => _ParticipantRow(
+                          member: member,
+                          isSelected: _selectedParticipantIds
+                              .contains(member.userId),
+                          onToggle: (selected) {
+                            // Immutable set update
+                            final updated = Set<String>.from(
+                                _selectedParticipantIds);
+                            if (selected) {
+                              updated.add(member.userId);
+                            } else {
+                              updated.remove(member.userId);
+                            }
+                            setState(
+                              () => _selectedParticipantIds =
+                                  Set.unmodifiable(updated),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                // --- Module Toggles card (Custom type only, per D-14) ---
+                final modulesCard = widget.eventType == EventType.custom
+                    ? Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColorTokens.light.cardSurface,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: AppShadowTokens.standard.raised,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Modules',
+                              key: EventKeys.modulesSection,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 8),
+                            _ModuleToggleRow(
+                              key: EventKeys.moduleLedgerToggle,
+                              icon: Iconsax.dollar_circle,
+                              label: 'Ledger',
+                              color: AppColorTokens.light.success,
+                              value: _modules.ledger,
+                              onChanged: (v) => setState(
+                                () => _modules = _modules.copyWith(ledger: v),
+                              ),
+                            ),
+                            _ModuleToggleRow(
+                              key: EventKeys.moduleGearToggle,
+                              icon: Iconsax.bag,
+                              label: 'Gear',
+                              color: AppColorTokens.light.warning,
+                              value: _modules.gear,
+                              onChanged: (v) => setState(
+                                () => _modules = _modules.copyWith(gear: v),
+                              ),
+                            ),
+                            _ModuleToggleRow(
+                              key: EventKeys.moduleLogisticsToggle,
+                              icon: Iconsax.car,
+                              label: 'Logistics',
+                              color: AppColorTokens.light.textSecondary,
+                              value: _modules.logistics,
+                              onChanged: (v) => setState(
+                                () => _modules =
+                                    _modules.copyWith(logistics: v),
+                              ),
+                            ),
+                            _ModuleToggleRow(
+                              key: EventKeys.moduleVaultToggle,
+                              icon: Iconsax.folder,
+                              label: 'Vault',
+                              color: AppColorTokens.light.textSecondary,
+                              value: _modules.vault,
+                              onChanged: (v) => setState(
+                                () => _modules = _modules.copyWith(vault: v),
+                              ),
+                            ),
+                            _ModuleToggleRow(
+                              key: EventKeys.moduleMemoriesToggle,
+                              icon: Iconsax.image,
+                              label: 'Memories',
+                              color: AppColorTokens.light.primary,
+                              value: _modules.memories,
+                              onChanged: (v) => setState(
+                                () => _modules =
+                                    _modules.copyWith(memories: v),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : null;
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Event type badge — subtle animation
+                        if (disableAnimations)
+                          eventTypeBadge
+                        else
+                          eventTypeBadge
+                              .animate()
+                              .fadeIn(delay: 60.ms)
+                              .slideY(begin: 0.05),
+
+                        // Event Details card
+                        if (disableAnimations)
+                          eventDetailsCard
+                        else
+                          eventDetailsCard
+                              .animate()
+                              .fadeIn(delay: 100.ms)
+                              .slideY(begin: 0.1),
+
+                        // Participants card
+                        if (disableAnimations)
+                          participantsCard
+                        else
+                          participantsCard
+                              .animate()
+                              .fadeIn(delay: 200.ms)
+                              .slideY(begin: 0.1),
+
+                        // Modules card (custom only)
+                        if (modulesCard != null)
+                          if (disableAnimations)
+                            modulesCard
+                          else
+                            modulesCard
+                                .animate()
+                                .fadeIn(delay: 300.ms)
+                                .slideY(begin: 0.1),
+
+                        // --- Submit button ---
+                        LoadingButton(
+                          key: EventKeys.createEventButton,
+                          label: isLoading ? 'Creating\u2026' : 'Create Event',
+                          isLoading: isLoading,
+                          onPressed: () => _submitForm(members),
+                        ),
+
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
