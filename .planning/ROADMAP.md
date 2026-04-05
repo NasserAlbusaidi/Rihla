@@ -170,11 +170,12 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Event command center header shows gear settings icon with date range and navigates to settings
   2. Event settings screen allows editing name, dates, description and deleting the event (creator-only, balance-gated)
-**Plans**: 3 plans
+**Plans**: 4 plans
 Plans:
 - [ ] 31-00-PLAN.md — Wave 0: failing test stubs for ECC-01/ECC-02 + _wrapEventHub settings route stub
-- [ ] 31-01-PLAN.md — Event.description model extension, EventCommandCenter refresh (gear icon, date range, loading state), AppRoutes.eventSettings + placeholder route
+- [ ] 31-01-PLAN.md — Event.description model extension, EventCommandCenter refresh (gear icon, date range, SkeletonLoader), AppRoutes.eventSettings + placeholder route
 - [ ] 31-02-PLAN.md — EventSettingsScreen + EventInfoSection + EventDangerSection + complete test file + wire real screen into router
+- [ ] 31-03-PLAN.md — EventExpenseHero member count display + earthy token audit + EventModuleList ordering verification
 **UI hint**: yes
 
 ### Phase 32: Event Creation
