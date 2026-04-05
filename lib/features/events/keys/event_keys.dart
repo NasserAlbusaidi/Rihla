@@ -19,6 +19,7 @@ abstract final class EventKeys {
   // Actions
   static const addExpenseFab = Key('event_add_expense_fab');
   static const createEventButton = Key('event_create_button');
+  static const selectAllButton = Key('event_select_all_button');
 
   // Sections
   static const spendingHero = Key('event_spending_hero');

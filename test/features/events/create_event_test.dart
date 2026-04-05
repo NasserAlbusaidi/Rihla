@@ -109,7 +109,7 @@ void main() {
       }
     });
 
-    testWidgets('shows AppBar title "Choose Event Type"', (tester) async {
+    testWidgets('shows ModuleHeader title "New Event"', (tester) async {
       await tester.pumpWidget(
         _wrapPicker(
           const EventTypePickerScreen(groupId: 'group-1'),
@@ -118,7 +118,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(EventKeys.eventTypePickerTitle), findsOneWidget);
+      expect(find.text('New Event'), findsOneWidget);
     });
 
     testWidgets('shows 5 type descriptions', (tester) async {
@@ -187,8 +187,9 @@ void main() {
       await tester.tap(find.byKey(EventKeys.eventTypeCard('Trip')));
       await tester.pumpAndSettle();
 
-      // Should now see the CreateEventScreen AppBar
-      expect(find.text('New Trip Event'), findsOneWidget);
+      // AppBar title is gone after Plan 02; event type appears in badge instead
+      expect(find.text('New Trip Event'), findsNothing);
+      expect(find.text('Trip'), findsOneWidget);
     });
   });
 
@@ -222,7 +223,8 @@ void main() {
       }
     });
 
-    testWidgets('shows AppBar title with event type name', (tester) async {
+    testWidgets('shows event type badge with type label, no AppBar title',
+        (tester) async {
       await tester.pumpWidget(
         _wrapCreate(
           const CreateEventScreen(
@@ -234,7 +236,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('New Camping Event'), findsOneWidget);
+      // After Plan 02: AppBar title is gone; type label shows in badge only
+      expect(find.text('New Camping Event'), findsNothing);
+      expect(find.text('Camping'), findsOneWidget);
     });
 
     testWidgets('shows module toggles for Custom type', (tester) async {
@@ -340,6 +344,75 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('e.g. Summer camping trip'), findsOneWidget);
+    });
+
+    testWidgets('shows Select All checkbox in participants card', (tester) async {
+      await tester.pumpWidget(
+        _wrapCreate(
+          const CreateEventScreen(
+            groupId: 'group-1',
+            eventType: EventType.trip,
+          ),
+          prefs,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(EventKeys.selectAllButton), findsOneWidget);
+    });
+
+    testWidgets('Select All selects all participants when tapped',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapCreate(
+          const CreateEventScreen(
+            groupId: 'group-1',
+            eventType: EventType.trip,
+          ),
+          prefs,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // First deselect Alice to ensure not all are selected
+      await tester.tap(find.text('Alice'));
+      await tester.pumpAndSettle();
+
+      // Tap Select All
+      await tester.tap(find.byKey(EventKeys.selectAllButton));
+      await tester.pumpAndSettle();
+
+      // All checkboxes (excluding the Select All checkbox itself) should be true
+      final checkboxes = tester.widgetList<Checkbox>(find.byType(Checkbox));
+      for (final cb in checkboxes) {
+        expect(cb.value, isTrue,
+            reason: 'All participants should be selected after Select All');
+      }
+    });
+
+    testWidgets('Select All deselects all when all participants are selected',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapCreate(
+          const CreateEventScreen(
+            groupId: 'group-1',
+            eventType: EventType.trip,
+          ),
+          prefs,
+        ),
+      );
+      await tester.pumpAndSettle();
+      // All participants pre-checked — tap Select All to deselect
+      await tester.tap(find.byKey(EventKeys.selectAllButton));
+      await tester.pumpAndSettle();
+      // Find the participant-only checkboxes: exclude the Select All checkbox
+      // by targeting only the ones inside _ParticipantRow (find by type Checkbox)
+      // The Select All Checkbox will also show value==false — all should be false
+      final checkboxes = tester.widgetList<Checkbox>(find.byType(Checkbox));
+      for (final cb in checkboxes) {
+        expect(cb.value, isFalse,
+            reason:
+                'All participants should be deselected after Select All toggle');
+      }
     });
   });
 }
