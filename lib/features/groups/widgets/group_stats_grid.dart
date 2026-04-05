@@ -47,6 +47,13 @@ class GroupStatsGrid extends StatelessWidget {
       _ => AppColorTokens.light.textPrimary,
     };
 
+    // Direction label for YOUR BALANCE — makes sign explicit (D-12)
+    final balanceSubtitle = switch (userNetBalance.compareTo(Decimal.zero)) {
+      < 0 => 'You owe',
+      > 0 => 'Owed to you',
+      _ => 'Settled',
+    };
+
     return GridView.count(
       key: GroupKeys.statsGrid,
       crossAxisCount: 2,
@@ -61,6 +68,7 @@ class GroupStatsGrid extends StatelessWidget {
           label: 'YOUR BALANCE',
           value: AppFormatters.formatCurrency(userNetBalance.abs(), currency),
           valueColor: balanceColor,
+          subtitle: balanceSubtitle,
         ),
         _StatCard(
           key: GroupKeys.statGroupTotal,
@@ -91,11 +99,16 @@ class _StatCard extends StatelessWidget {
   final String value;
   final Color valueColor;
 
+  /// Optional direction label rendered below the value (e.g. "You owe",
+  /// "Owed to you", "Settled"). Only used for YOUR BALANCE tile (D-12).
+  final String? subtitle;
+
   const _StatCard({
     super.key,
     required this.label,
     required this.value,
     required this.valueColor,
+    this.subtitle,
   });
 
   @override
@@ -133,6 +146,16 @@ class _StatCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (subtitle != null)
+            Text(
+              subtitle!,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: valueColor,
+                letterSpacing: 0.3,
+              ),
+            ),
         ],
       ),
     );
