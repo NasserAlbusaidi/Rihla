@@ -12,6 +12,7 @@ import 'package:safar/features/gear/keys/gear_keys.dart';
 import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/providers/gear_provider.dart';
 import 'package:safar/features/gear/screens/gear_screen.dart';
+import 'package:safar/shared/widgets/offline_banner.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -388,6 +389,19 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  group('GearScreen — offline banner', () {
+    testWidgets('GearScreen — OfflineBanner renders in body', (tester) async {
+      await tester.pumpWidget(_wrapGearScreen(
+        mockService: mockGearService,
+        mockUser: mockUser,
+        items: const [],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OfflineBanner), findsOneWidget);
     });
   });
 }

@@ -14,6 +14,7 @@ import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 import 'package:safar/features/logistics/screens/logistics_screen.dart';
 import 'package:safar/features/logistics/services/sub_group_service.dart';
 import 'package:safar/features/trip/models/trip_model.dart';
+import 'package:safar/shared/widgets/offline_banner.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -403,5 +404,19 @@ void main() {
         );
       },
     );
+  });
+
+  group('LogisticsScreen — offline banner', () {
+    testWidgets('LogisticsScreen — OfflineBanner renders in body',
+        (tester) async {
+      await tester.pumpWidget(_wrapLogisticsScreen(
+        mockService: mockSubGroupService,
+        mockUser: mockUser,
+        subGroups: const [],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OfflineBanner), findsOneWidget);
+    });
   });
 }
