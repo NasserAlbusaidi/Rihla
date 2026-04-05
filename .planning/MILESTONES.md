@@ -1,5 +1,42 @@
 # Milestones
 
+## v2.3 Groups, Events & Modules (Shipped: 2026-04-05)
+
+**Phases completed:** 14 phases, 30 plans, 52 tasks
+
+**Key accomplishments:**
+
+- 10 remaining test files migrated to find.byKey(), CI regression warning added at baseline 135, and rename resilience verified: Ledger→Treasury rename causes zero test failures across 624 tests
+- All 4 home screen quick actions fixed: Invite Friend now opens native share sheet with invite code, Activity navigates to new CrossGroupActivityScreen, 0-groups shows SnackBar for group-dependent actions
+- 1. [Rule 1 - Bug] Test assertions written for RED then fixed for GREEN
+- WeeklySpendingCard updated with 'Weekly Spending (OMR)' title and per-bar amount labels (toStringAsFixed(1)); dashboard spacing tightened to 12dp; 'Your Groups (N)' section header added above group list.
+- ProfileKeys
+- AppRoutes.settings → AppRoutes.profile
+- TDD GREEN phase: Three section widgets (Notifications, About, Support) implemented and wired into ProfileScreen — all 8 Phase 26 tests pass, 812 total tests green
+- TDD RED phase: 8 failing widget tests for notification toggle, version tile, feedback, licenses, and coffee-tip sections with MockNotificationService and FCM-safe provider overrides
+- appBootstrapProvider wired into SafarApp.build() so push notification toggle triggers FCM initialize/removeToken
+- GroupDetailScreen refactored: invite code removed, provider rebuilds isolated via Consumer, gradient settle-up CTA, FAB/settings icon token fix, 16dp padding, EmptyStateView for activity
+- GroupDetailScreen completed with pull-to-refresh, FadeInList staggered event entrance, inline error state with retry, and GroupMemberBalanceCard visual polish using design tokens
+- One-liner:
+- One-liner:
+- TDD Wave 0 — 16 skip-annotated test stubs establish Phase 30 behavioral contract across settle-up tabs, activity date grouping, filter chips, and logGroupEvent call verification
+- Balance direction label (You owe/Owed to you/Settled) on GroupStatsGrid YOUR BALANCE tile, plus 4 new logGroupEvent call sites for event_created, member_joined, and member_left (leave + remove paths)
+- 1. [Rule 1 - Bug] Duplicate key declarations in group_keys.dart
+- One-liner:
+- 1. [Rule 1 - Bug] Test expectation corrected for description null-guard
+- EventInfoSection
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- Ledger test suite fixed to compile against LedgerScreen(groupId:, eventId:) constructor with eventDetailProvider overrides; 8 tests pass including 2 new visual requirement tests
+- SettleUpScreen gets dark ModuleHeader with event subtitle and SkeletonLoader; EditExpenseScreen loading state gets ModuleHeader + SkeletonLoader; WCAG section headers fixed
+- Dark ModuleHeader added to AddExpenseScreen and three CircularProgressIndicator loading states replaced with SkeletonLoader.card() across the ledger add-expense flow
+- Two TDD RED-state test stubs asserting OfflineBanner renders in VaultScreen and MemoriesScreen bodies (Wave 0 before implementation)
+- 1. [Rule 1 - Bug] Fixed pre-existing EdgeInsets.fromLTRB const lint in VaultScreen
+
+---
+
 ## v2.1 Home Screen Completion (Shipped: 2026-04-01)
 
 **Phases:** 2 | **Plans:** 3 | **Tasks:** 4
