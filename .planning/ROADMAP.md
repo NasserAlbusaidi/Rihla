@@ -70,7 +70,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 - [x] **Phase 28: Group Detail** - Main group screen — stats, events list, member balances (completed 2026-04-02)
 - [x] **Phase 29: Group Management** - Settings, invite flow, member management (completed 2026-04-02)
 - [x] **Phase 30: Group Settle Up & Activity** - Group-level settlement, activity feed (completed 2026-04-05)
-- [ ] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings
+- [x] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings (completed 2026-04-05)
 - [ ] **Phase 32: Event Creation** - Type picker, create form, templates
 - [ ] **Phase 33: Ledger** - Expenses, add/edit, settle up
 - [ ] **Phase 34: Gear & Logistics** - Equipment inventory, sub-groups
@@ -203,7 +203,7 @@ Plans:
 Plans:
 - [x] 31-00-PLAN.md — Wave 0: failing test stubs for ECC-01/ECC-02 + _wrapEventHub settings route stub
 - [x] 31-01-PLAN.md — Event.description model extension, EventCommandCenter refresh (gear icon, date range, SkeletonLoader), AppRoutes.eventSettings + placeholder route
-- [ ] 31-02-PLAN.md — EventSettingsScreen + EventInfoSection + EventDangerSection + complete test file + wire real screen into router
+- [x] 31-02-PLAN.md — EventSettingsScreen + EventInfoSection + EventDangerSection + complete test file + wire real screen into router
 - [x] 31-03-PLAN.md — EventExpenseHero member count display + earthy token audit + EventModuleList ordering verification
 **UI hint**: yes
 
@@ -252,7 +252,7 @@ Plans:
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
-| 31 | v2.3 | 3/4 | In Progress|  |
+| 31 | v2.3 | 4/4 | Complete   | 2026-04-05 |
 | 32 | v2.3 | 0/0 | Pending     | — |
 | 33 | v2.3 | 0/0 | Pending     | — |
 | 34 | v2.3 | 0/0 | Pending     | — |
