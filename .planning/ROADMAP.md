@@ -157,7 +157,7 @@ Plans:
   4. Activity logging covers all 5 action types (was only 1)
 **Plans**: 4 plans
 Plans:
-- [ ] 30-00-PLAN.md — Wave 0: failing test stubs for settle-up, activity, and activity service
+- [x] 30-00-PLAN.md — Wave 0: failing test stubs for settle-up, activity, and activity service
 - [ ] 30-01-PLAN.md — Balance sign fix (D-12), activity logging gaps (D-14), Phase 30 test keys
 - [ ] 30-02-PLAN.md — Settle-up screen redesign: ModuleHeader, 4-tab AppTabBar, card tiles, History tab, bottom sheet polish, tests
 - [ ] 30-03-PLAN.md — Activity screen redesign: ModuleHeader, date-grouped list, filter chips (Settlements/Events/Members), infinite scroll, rich tiles, D-15 CTA verification, tests
@@ -215,7 +215,7 @@ Plans:
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
-| 30 | v2.3 | 0/4 | Planning    | — |
+| 30 | v2.3 | 1/4 | In Progress|  |
 | 31 | v2.3 | 0/0 | Pending     | — |
 | 32 | v2.3 | 0/0 | Pending     | — |
 | 33 | v2.3 | 0/0 | Pending     | — |
