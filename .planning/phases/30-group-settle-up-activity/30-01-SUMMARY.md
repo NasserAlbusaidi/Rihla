@@ -108,6 +108,18 @@ None — no external service configuration required.
 - Plan 03 (activity redesign) can use all `GroupKeys.activityFilter*` keys
 - GroupStatsGrid direction label provides correct visual context for users navigating to settle-up
 
+## Self-Check: PASSED
+
+- FOUND: group_stats_grid.dart
+- FOUND: group_keys.dart
+- FOUND: create_event_screen.dart
+- FOUND: join_group_screen.dart
+- FOUND: group_danger_section.dart
+- FOUND: group_members_section.dart
+- FOUND: commit eef11c7
+- FOUND: commit c6c6dde
+- FOUND: commit 2eef636
+
 ---
 *Phase: 30-group-settle-up-activity*
 *Completed: 2026-04-05*
