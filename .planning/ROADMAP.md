@@ -71,7 +71,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 - [x] **Phase 30: Group Settle Up & Activity** - Group-level settlement, activity feed (completed 2026-04-05)
 - [x] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings (completed 2026-04-05)
 - [x] **Phase 32: Event Creation** - Type picker, create form, templates (completed 2026-04-05)
-- [ ] **Phase 33: Ledger** - Expenses, add/edit, settle up
+- [x] **Phase 33: Ledger** - Expenses, add/edit, settle up (completed 2026-04-05)
 - [ ] **Phase 34: Gear & Logistics** - Equipment inventory, sub-groups
 - [ ] **Phase 35: Vault & Memories** - Documents, photo timeline
 
@@ -202,7 +202,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 33-00-PLAN.md — Wave 0: fix ledger_test.dart compile failures (constructor update, eventDetailProvider override, new tests)
-- [ ] 33-01-PLAN.md — SettleUpScreen ModuleHeader replacement + CircularProgressIndicator → SkeletonLoader in SettleUpScreen + EditExpenseScreen
+- [x] 33-01-PLAN.md — SettleUpScreen ModuleHeader replacement + CircularProgressIndicator → SkeletonLoader in SettleUpScreen + EditExpenseScreen
 - [x] 33-02-PLAN.md — AddExpenseScreen ModuleHeader + SkeletonLoader in CategorySelectionStep + SplitScopeSelector
 **UI hint**: yes
 
@@ -237,6 +237,6 @@ Plans:
 | 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 31 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 32 | v2.3 | 3/3 | Complete    | 2026-04-05 |
-| 33 | v2.3 | 2/3 | In Progress|  |
+| 33 | v2.3 | 3/3 | Complete   | 2026-04-05 |
 | 34 | v2.3 | 0/0 | Pending     | — |
 | 35 | v2.3 | 0/0 | Pending     | — |
