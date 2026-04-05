@@ -68,17 +68,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
     super.dispose();
   }
 
-  String? get _currentUid {
-    try {
-      return FirebaseConfig.currentUser?.uid;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  void _autoSelectTab(List<Map<String, dynamic>> optimalSettlements) {
+  void _autoSelectTab(
+    List<Map<String, dynamic>> optimalSettlements,
+    String? currentUid,
+  ) {
     if (widget.preSelectedMemberId == null) return;
-    final currentUid = _currentUid;
     final pid = widget.preSelectedMemberId!;
 
     // Check if any settlement in "You Owe" involves preSelectedMemberId
@@ -149,6 +143,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
       );
     }
 
+    // Read currentUid from provider for testability
+    final currentUid = ref.watch(currentUserIdProvider);
+
     final balancesAsync = ref.watch(groupBalancesProvider(widget.groupId));
     final eventsAsync = ref.watch(groupEventsProvider(widget.groupId));
     final settlementsAsync = ref.watch(groupSettlementsProvider(widget.groupId));
@@ -181,7 +178,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
                     userNames: balancesData.memberNames,
                   );
 
-                  _autoSelectTab(optimalSettlements);
+                  _autoSelectTab(optimalSettlements, currentUid);
 
                   return _buildTabLayout(
                     context,
@@ -190,6 +187,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
                     balancesData,
                     eventNameMap,
                     settlementsAsync,
+                    currentUid,
                   );
                 },
                 loading: () =>
@@ -236,9 +234,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
     GroupBalances balancesData,
     Map<String, ({String name, EventType type, DateTime date})> eventNameMap,
     AsyncValue<List<Settlement>> settlementsAsync,
+    String? currentUid,
   ) {
     const spacing = AppSpacingTokens.standard;
-    final currentUid = _currentUid;
 
     final youOwe = optimalSettlements
         .where((s) => s['fromUserId'] == currentUid)
