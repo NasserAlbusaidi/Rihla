@@ -13,6 +13,7 @@ import 'package:safar/features/ledger/models/transaction_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/providers/ledger_provider.dart';
 import 'package:safar/features/ledger/screens/ledger_screen.dart';
+import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/logistics/models/sub_group_model.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 
@@ -301,5 +302,52 @@ void main() {
 
     // SPENDING label from balance header confirms render
     expect(find.byKey(LedgerKeys.spendingLabel), findsOneWidget);
+  });
+
+  testWidgets('SettleUpScreen renders ModuleHeader with Settle Up title', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eventDetailProvider(_eventRef).overrideWith(
+            (ref) => Stream.value(_mockEvent),
+          ),
+          eventExpensesProvider(_eventRef).overrideWith(
+            (ref) => Stream.value(const <Expense>[]),
+          ),
+          eventSettlementsProvider(_eventRef).overrideWith(
+            (ref) => Stream.value(const <Settlement>[]),
+          ),
+          eventSubGroupsProvider(_eventRef).overrideWith(
+            (ref) => Stream.value(const <SubGroup>[]),
+          ),
+        ],
+        child: const MaterialApp(
+          home: SettleUpScreen(groupId: _mockGroupId, eventId: _mockEventId),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settle Up', skipOffstage: false), findsWidgets);
+  });
+
+  testWidgets('LedgerHeroCard shows Add Expense and Settle Up CTAs', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrapLedger(event: _mockEvent, expenses: const []),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add Expense', skipOffstage: false), findsWidgets);
+    expect(find.text('Settle Up', skipOffstage: false), findsWidgets);
   });
 }
