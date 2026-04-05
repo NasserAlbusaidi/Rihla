@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
@@ -171,6 +172,12 @@ Widget _wrapEventHub({
                 path: 'activity',
                 builder: (_, state) => Scaffold(
                   body: Text('EventActivity:${state.pathParameters['eid']}'),
+                ),
+              ),
+              GoRoute(
+                path: 'settings',
+                builder: (_, state) => Scaffold(
+                  body: Text('EventSettings:${state.pathParameters['eid']}'),
                 ),
               ),
             ],
@@ -438,6 +445,48 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(EventKeys.addExpenseChip), findsOneWidget);
+    });
+  });
+
+  group('ECC-01: gear icon and date range', () {
+    testWidgets('gear icon is visible in the header', (tester) async {
+      final event = _makeEvent();
+      await tester.pumpWidget(_wrapEventHub(event: event));
+      await tester.pumpAndSettle();
+
+      // Will fail until Plan 01 adds the gear icon
+      expect(find.byIcon(Iconsax.setting_2), findsOneWidget);
+    });
+
+    testWidgets('gear icon tap navigates to settings route', (tester) async {
+      final event = _makeEvent();
+      await tester.pumpWidget(_wrapEventHub(event: event));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Iconsax.setting_2));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EventSettings:evt-1'), findsOneWidget);
+    });
+
+    testWidgets('date range shown when event has startDate and endDate', (tester) async {
+      final event = _makeEvent().copyWith(
+        startDate: DateTime(2026, 3, 15),
+        endDate: DateTime(2026, 3, 20),
+      );
+      await tester.pumpWidget(_wrapEventHub(event: event));
+      await tester.pumpAndSettle();
+
+      // Will fail until Plan 01 adds date range display
+      expect(find.text('Mar 15 \u2013 Mar 20'), findsOneWidget);
+    });
+
+    testWidgets('date range hidden when both dates are null', (tester) async {
+      final event = _makeEvent(); // no startDate/endDate
+      await tester.pumpWidget(_wrapEventHub(event: event));
+      await tester.pumpAndSettle();
+
+      expect(find.text('\u2013'), findsNothing);
     });
   });
 }
