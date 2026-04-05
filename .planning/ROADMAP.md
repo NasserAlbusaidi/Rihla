@@ -73,7 +73,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 - [x] **Phase 32: Event Creation** - Type picker, create form, templates (completed 2026-04-05)
 - [x] **Phase 33: Ledger** - Expenses, add/edit, settle up (completed 2026-04-05)
 - [x] **Phase 34: Gear & Logistics** - Token compliance audit + OfflineBanner addition to both screens (completed 2026-04-05)
-- [ ] **Phase 35: Vault & Memories** - Documents, photo timeline
+- [x] **Phase 35: Vault & Memories** - Documents, photo timeline (completed 2026-04-05)
 
 ## Phase Details
 
@@ -231,7 +231,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 35-00-PLAN.md — Wave 0: create new failing OfflineBanner test stubs for both screens
-- [ ] 35-01-PLAN.md — Two targeted fixes: token gradients + OfflineBanner in both screens + tests GREEN
+- [x] 35-01-PLAN.md — Two targeted fixes: token gradients + OfflineBanner in both screens + tests GREEN
 
 ## Progress
 
@@ -250,4 +250,4 @@ Plans:
 | 32 | v2.3 | 3/3 | Complete    | 2026-04-05 |
 | 33 | v2.3 | 3/3 | Complete    | 2026-04-05 |
 | 34 | v2.3 | 2/2 | Complete    | 2026-04-05 |
-| 35 | v2.3 | 1/2 | In Progress|  |
+| 35 | v2.3 | 2/2 | Complete   | 2026-04-05 |
