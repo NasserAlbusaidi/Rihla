@@ -221,12 +221,17 @@ Plans:
 - [x] 34-01-PLAN.md — Four targeted fixes: token gradients, OfflineBanner, gearList skeleton, dead code deletion
 
 ### Phase 35: Vault & Memories
-**Goal**: Full-stack vault (documents) and memories (photos) modules
+**Goal**: Token compliance + OfflineBanner consistency pass for VaultScreen and MemoriesScreen
 **Depends on**: Phase 31
 **Success Criteria** (what must be TRUE):
-  1. Documents can be uploaded, viewed, and deleted
-  2. Photos can be uploaded and viewed in timeline/grid layout
-**Plans**: TBD
+  1. No hardcoded Color(0xFF...) literals remain in lib/features/vault/ or lib/features/memories/
+  2. OfflineBanner is rendered in VaultScreen body below ModuleHeader
+  3. OfflineBanner is rendered in MemoriesScreen data and error branches below ModuleHeader
+  4. All vault and memories tests pass
+**Plans**: 2 plans
+Plans:
+- [ ] 35-00-PLAN.md — Wave 0: create new failing OfflineBanner test stubs for both screens
+- [ ] 35-01-PLAN.md — Two targeted fixes: token gradients + OfflineBanner in both screens + tests GREEN
 
 ## Progress
 
@@ -245,4 +250,4 @@ Plans:
 | 32 | v2.3 | 3/3 | Complete    | 2026-04-05 |
 | 33 | v2.3 | 3/3 | Complete    | 2026-04-05 |
 | 34 | v2.3 | 2/2 | Complete    | 2026-04-05 |
-| 35 | v2.3 | 0/0 | Pending     | — |
+| 35 | v2.3 | 0/2 | In Progress | — |
