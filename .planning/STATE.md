@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Profile Page
-status: verifying
-stopped_at: Completed 30-01-PLAN.md — balance sign fix + activity logging call sites
-last_updated: "2026-04-05T08:10:19.881Z"
-last_activity: 2026-04-02
+status: executing
+stopped_at: Completed 30-00-PLAN.md — TDD Wave 0 stubs for Phase 30
+last_updated: "2026-04-05T08:09:15.423Z"
+last_activity: 2026-04-05
 progress:
-  total_phases: 8
+  total_phases: 13
   completed_phases: 7
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 29 — group-management
+**Current focus:** Phase 30 — group-settle-up-activity
 
 ## Current Position
 
-Phase: 30
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-02
+Phase: 30 (group-settle-up-activity) — EXECUTING
+Plan: 2 of 4
+Status: Plan 01 complete, Plan 02 ready
+Last activity: 2026-04-05
 
 ```
 Phase 25 [██████████] 100%
@@ -49,7 +49,8 @@ Phase 26 [██████████] 100%
 | Phase 28-group-detail P02 | 11 | 2 tasks | 5 files |
 | Phase 29-group-management P01 | 5 | 2 tasks | 3 files |
 | Phase 29-group-management P02 | 8 | 2 tasks | 5 files |
-| Phase 30 P01 | 6 | 2 tasks | 6 files |
+| Phase 30-group-settle-up-activity P00 | 5 | 2 tasks | 4 files |
+| Phase 30-group-settle-up-activity P01 | 6 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,12 @@ Phase 26 [██████████] 100%
 - Compact tile padding (8dp vertical) and section spacing (10-16dp) needed to fit 800x600 test viewport
 - ProfileNotificationsSection only calls setPushNotificationsEnabled() — appBootstrapProvider handles FCM per updated D-05
 
+**Phase 30 P01 decisions:**
+
+- Activity logging call sites wrapped in try/catch (not just unawaited) — FirebaseConfig.currentUser can throw in test environments; catch ensures logging failure never crashes the trigger flows
+- Balance direction label uses same valueColor as amount for visual consistency; no separate muted color
+- event_deleted logging deferred — no UI call site exists; will be added with deletion UI in Phase 31+
+
 ### Known Risks
 
 - Display name propagation (IDENT-03) writes to all group participant records — scope depends on how many groups a user belongs to; Firestore batch write needed.
@@ -81,6 +88,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-05T08:10:02.328Z
-Stopped at: Completed 30-01-PLAN.md — balance sign fix + activity logging call sites
+Last session: 2026-04-05T08:09:15.419Z
+Stopped at: Completed 30-00-PLAN.md — TDD Wave 0 stubs for Phase 30
 Next action: `/gsd:plan-phase 25` — plan Profile Screen Core

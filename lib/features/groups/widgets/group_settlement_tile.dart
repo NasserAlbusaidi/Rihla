@@ -1,23 +1,30 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../core/theme/tokens/spacing_tokens.dart';
 
-/// A single settlement row showing payer → payee and amount.
+/// A card-style settlement tile showing payer → payee, amount, and a
+/// collapsible per-event breakdown (D-04).
 ///
-/// Optionally shows a per-event breakdown list and a Record / Confirm button
-/// when the current user is the payer or recipient (isYourAction / isConfirm).
-class GroupSettlementTile extends StatelessWidget {
+/// Converted to StatefulWidget to support expand/collapse state.
+class GroupSettlementTile extends StatefulWidget {
   final String fromName;
   final String toName;
   final Decimal amount;
   final String currency;
   final Map<String, Decimal> breakdown;
-  final bool showDivider;
+
+  /// When true the tile belongs to the "You Owe" tab — amount shown in errorText.
   final bool isYourAction;
+
+  /// When true the tile belongs to the "Owed to You" tab — amount shown in successText.
+  final bool isCreditor;
+
   final bool isHighlighted;
   final GlobalKey? tileKey;
   final VoidCallback? onRecord;
@@ -29,47 +36,87 @@ class GroupSettlementTile extends StatelessWidget {
     required this.amount,
     required this.currency,
     required this.breakdown,
-    this.showDivider = true,
     required this.isYourAction,
+    this.isCreditor = false,
     this.isHighlighted = false,
     this.tileKey,
     this.onRecord,
   });
 
   @override
+  State<GroupSettlementTile> createState() => _GroupSettlementTileState();
+}
+
+class _GroupSettlementTileState extends State<GroupSettlementTile> {
+  bool _isExpanded = false;
+
+  Color get _amountColor {
+    if (widget.isYourAction) return AppColorTokens.light.errorText;
+    if (widget.isCreditor) return AppColorTokens.light.successText;
+    return AppColorTokens.light.textPrimary;
+  }
+
+  String get _subLabel {
+    if (widget.isYourAction) return 'You owe ${widget.toName}';
+    if (widget.isCreditor) return '${widget.fromName} owes you';
+    return '${widget.fromName} owes ${widget.toName}';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    const spacing = AppSpacingTokens.standard;
+
     return Container(
-      key: tileKey,
-      color: isHighlighted
-          ? AppColorTokens.light.primary.withValues(alpha: 0.05)
-          : null,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
+      key: widget.tileKey,
+      margin: EdgeInsets.only(bottom: spacing.space12),
+      decoration: BoxDecoration(
+        color: widget.isHighlighted
+            ? AppColorTokens.light.primary.withValues(alpha: 0.05)
+            : AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(spacing.radiusLarge),
+        boxShadow: AppShadowTokens.standard.raised,
+        border: Border.all(
+          color: widget.isHighlighted
+              ? AppColorTokens.light.primary.withValues(alpha: 0.2)
+              : AppColorTokens.light.border.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(spacing.radiusLarge),
+        child: InkWell(
+          onTap: widget.breakdown.isNotEmpty
+              ? () => setState(() => _isExpanded = !_isExpanded)
+              : null,
+          borderRadius: BorderRadius.circular(spacing.radiusLarge),
+          child: Padding(
+            padding: EdgeInsets.all(spacing.space16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Main row: avatar stack | names column | amount column | chevron
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Avatar stack
+                    // Overlapping avatar pair (40dp each, -12dp offset)
                     SizedBox(
-                      width: 52,
-                      height: 32,
+                      width: 60,
+                      height: 40,
                       child: Stack(
                         children: [
                           Positioned(
                             left: 0,
-                            child: _buildAvatar(fromName, isPayer: true),
+                            child: _buildAvatar(widget.fromName, isPayer: true),
                           ),
                           Positioned(
                             left: 20,
-                            child: _buildAvatar(toName),
+                            child: _buildAvatar(widget.toName, isPayer: false),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: spacing.space12),
+                    // Names + sub-label column
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,19 +129,19 @@ class GroupSettlementTile extends StatelessWidget {
                               ),
                               children: [
                                 TextSpan(
-                                  text: fromName,
+                                  text: widget.fromName,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 TextSpan(
-                                  text: ' pays ',
+                                  text: ' → ',
                                   style: TextStyle(
                                     color: AppColorTokens.light.textMuted,
                                   ),
                                 ),
                                 TextSpan(
-                                  text: toName,
+                                  text: widget.toName,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -102,90 +149,140 @@ class GroupSettlementTile extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: spacing.space4),
                           Text(
-                            AppFormatters.formatCurrency(amount, currency),
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: isYourAction
-                                  ? AppColorTokens.light.error
-                                  : AppColorTokens.light.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Per-event breakdown (D-24)
-                if (breakdown.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  ...breakdown.entries.map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.only(left: 64, top: 2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              e.key,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColorTokens.light.textMuted,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Text(
-                            ': ${AppFormatters.formatCurrency(e.value, currency)}',
+                            _subLabel,
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColorTokens.light.textMuted,
+                              color: AppColorTokens.light.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                    SizedBox(width: spacing.space8),
+                    // Amount + currency + chevron
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          AppFormatters.formatCurrency(
+                            widget.amount,
+                            widget.currency,
+                          ),
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: _amountColor,
+                          ),
+                        ),
+                        SizedBox(height: spacing.space4),
+                        if (widget.breakdown.isNotEmpty)
+                          AnimatedRotation(
+                            turns: _isExpanded ? 0.5 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeOutCubic,
+                            child: Icon(
+                              Iconsax.arrow_down_1,
+                              size: 16,
+                              color: AppColorTokens.light.textMuted,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
 
-                // Record Settlement button
-                if (onRecord != null) ...[
-                  const SizedBox(height: 12),
+                // Collapsible per-event breakdown
+                if (widget.breakdown.isNotEmpty)
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    child: _isExpanded
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: spacing.space12),
+                              Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: AppColorTokens.light.border
+                                    .withValues(alpha: 0.5),
+                              ),
+                              SizedBox(height: spacing.space8),
+                              ...widget.breakdown.entries.map(
+                                (e) => Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: spacing.space4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          e.key,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color:
+                                                AppColorTokens.light.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Text(
+                                        AppFormatters.formatCurrency(
+                                          e.value,
+                                          widget.currency,
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color:
+                                              AppColorTokens.light.textSecondary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+
+                // Record Payment button
+                if (widget.onRecord != null) ...[
+                  SizedBox(height: spacing.space12),
                   SizedBox(
                     width: double.infinity,
+                    height: spacing.buttonHeight,
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: AppColorTokens.light.primaryGradient,
-                        borderRadius:
-                            BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(spacing.radiusMedium),
                       ),
                       child: ElevatedButton(
-                        key: isYourAction
-                            ? GroupKeys.recordSettlementButton
-                            : null,
-                        onPressed: onRecord,
+                        key: GroupKeys.settleUpRecordPaymentButton,
+                        onPressed: widget.onRecord,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.black,
+                          foregroundColor: Colors.white,
                           shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(
+                            vertical: spacing.space16,
+                          ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              12,
-                            ),
+                            borderRadius:
+                                BorderRadius.circular(spacing.radiusMedium),
                           ),
                         ),
-                        child: Text(
-                          isYourAction ? 'Record Settlement' : 'Confirm Received',
-                          style: const TextStyle(
-                            fontSize: 14,
+                        child: const Text(
+                          'Record Payment',
+                          style: TextStyle(
+                            fontSize: 17,
                             fontWeight: FontWeight.w700,
-                            color: Colors.black,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -195,28 +292,24 @@ class GroupSettlementTile extends StatelessWidget {
               ],
             ),
           ),
-          if (showDivider)
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: AppColorTokens.light.border.withValues(alpha: 0.5),
-              indent: 16,
-              endIndent: 16,
-            ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildAvatar(String name, {bool isPayer = false}) {
+  Widget _buildAvatar(String name, {required bool isPayer}) {
     return Container(
-      width: 32,
-      height: 32,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        color: isPayer ? AppColorTokens.light.cardSurface : AppColorTokens.light.inputFill,
+        color: isPayer
+            ? AppColorTokens.light.primary.withValues(alpha: 0.15)
+            : AppColorTokens.light.inputFill,
         shape: BoxShape.circle,
         border: Border.all(
-          color: isPayer ? AppColorTokens.light.primary : AppColorTokens.light.border,
+          color: isPayer
+              ? AppColorTokens.light.primary.withValues(alpha: 0.4)
+              : AppColorTokens.light.border,
           width: isPayer ? 2 : 1,
         ),
         boxShadow: AppShadowTokens.standard.raised,
@@ -225,39 +318,14 @@ class GroupSettlementTile extends StatelessWidget {
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: isPayer ? AppColorTokens.light.textPrimary : AppColorTokens.light.textSecondary,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: isPayer
+                ? AppColorTokens.light.primary
+                : AppColorTokens.light.textSecondary,
           ),
         ),
       ),
-    );
-  }
-}
-
-/// A container card that renders a list of [GroupSettlementTile]s for a
-/// settlement group (e.g. "YOUR ACTIONS").
-class GroupSettlementGroupCard extends StatelessWidget {
-  final List<Widget> tiles;
-  final bool isYourAction;
-
-  const GroupSettlementGroupCard({
-    super.key,
-    required this.tiles,
-    this.isYourAction = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColorTokens.light.border.withValues(alpha: 0.5)),
-        boxShadow: isYourAction ? AppShadowTokens.standard.raised : null,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: tiles),
     );
   }
 }
