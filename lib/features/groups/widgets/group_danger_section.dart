@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/group_keys.dart';
+import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
 
 /// Danger zone section widget for GroupSettingsScreen.
@@ -262,6 +264,21 @@ class GroupDangerSection extends ConsumerWidget {
   }
 
   void _executeLeave(BuildContext context, WidgetRef ref) {
+    // Log member_left activity (D-14) — fire-and-forget before navigation.
+    try {
+      final actorId = FirebaseConfig.currentUser?.uid ?? '';
+      final actorName = FirebaseConfig.currentUser?.displayName ?? 'Someone';
+      ref.read(groupActivityServiceProvider).logGroupEvent(
+        groupId: groupId,
+        type: 'member_left',
+        actorId: actorId,
+        actorName: actorName,
+        description: 'left the group',
+      );
+    } catch (_) {
+      // Activity logging failure must never crash the leave flow.
+    }
+
     // Fire-and-forget — synchronous navigation per Phase 26 P01 decision.
     ref.read(groupServiceProvider).leaveGroup(groupId: groupId);
     if (context.mounted) {

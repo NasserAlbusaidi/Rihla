@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
@@ -183,6 +184,20 @@ class GroupMembersSection extends ConsumerWidget {
         );
         return;
       }
+    }
+
+    // Log member_left activity (D-14) — fire-and-forget before remove call.
+    try {
+      final actorId = FirebaseConfig.currentUser?.uid ?? '';
+      ref.read(groupActivityServiceProvider).logGroupEvent(
+        groupId: groupId,
+        type: 'member_left',
+        actorId: actorId,
+        actorName: FirebaseConfig.currentUser?.displayName ?? member.displayName,
+        description: '${member.displayName} was removed from the group',
+      );
+    } catch (_) {
+      // Activity logging failure must never crash the remove flow.
     }
 
     // Fire-and-forget — synchronous callback per Phase 26 P01 decision.
