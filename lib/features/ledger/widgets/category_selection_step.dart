@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../models/expense_category_model.dart';
 
 /// Category grid for expense classification.
@@ -58,7 +59,7 @@ class CategorySelectionStep extends StatelessWidget {
           ),
         ],
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => SkeletonLoader.card(),
       error: (e, _) => const NetworkErrorWidget(),
     );
   }

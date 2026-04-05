@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -234,7 +235,7 @@ class _CustomParticipantSelector extends ConsumerWidget {
           ),
           constraints: const BoxConstraints(maxHeight: 200),
           child: participantsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => SkeletonLoader.card(),
             error: (e, _) =>
                 const InlineErrorWidget(message: 'Unable to load participants'),
             data: (participants) {
