@@ -164,12 +164,18 @@ Plans:
 **UI hint**: yes
 
 ### Phase 31: Event Command Center
-**Goal**: Full-stack event hub — header, module grid, event settings
+**Goal**: Visual refresh of EventCommandCenter (gear icon, date range header, earthy tokens) plus new EventSettingsScreen with editable event fields and balance-gated delete
 **Depends on**: Phase 28
+**Requirements**: ECC-01, ECC-02
 **Success Criteria** (what must be TRUE):
-  1. Event command center displays event info, module grid, and quick actions
-  2. Event settings are accessible and functional
-**Plans**: TBD
+  1. Event command center header shows gear settings icon with date range and navigates to settings
+  2. Event settings screen allows editing name, dates, description and deleting the event (creator-only, balance-gated)
+**Plans**: 3 plans
+Plans:
+- [ ] 31-00-PLAN.md — Wave 0: failing test stubs for ECC-01/ECC-02 + _wrapEventHub settings route stub
+- [ ] 31-01-PLAN.md — Event.description model extension, EventCommandCenter refresh (gear icon, date range, loading state), AppRoutes.eventSettings + placeholder route
+- [ ] 31-02-PLAN.md — EventSettingsScreen + EventInfoSection + EventDangerSection + complete test file + wire real screen into router
+**UI hint**: yes
 
 ### Phase 32: Event Creation
 **Goal**: Full-stack event creation — type picker, form, templates per event type
@@ -215,8 +221,8 @@ Plans:
 | 27 | v2.2 | 1/1 | Complete    | 2026-04-02 |
 | 28 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
-| 30 | v2.3 | 4/4 | Complete   | 2026-04-05 |
-| 31 | v2.3 | 0/0 | Pending     | — |
+| 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
+| 31 | v2.3 | 0/3 | Pending     | — |
 | 32 | v2.3 | 0/0 | Pending     | — |
 | 33 | v2.3 | 0/0 | Pending     | — |
 | 34 | v2.3 | 0/0 | Pending     | — |
