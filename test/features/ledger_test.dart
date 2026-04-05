@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/models/event_model.dart';
-import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
@@ -23,16 +23,6 @@ import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 const _mockGroupId = 'group-1';
 const _mockEventId = 'evt-123';
 const EventRef _eventRef = (groupId: _mockGroupId, eventId: _mockEventId);
-
-final _mockGroup = Group(
-  id: _mockGroupId,
-  name: 'Test Group',
-  inviteCode: 'ABCDEF',
-  createdBy: 'uid-creator',
-  memberIds: const ['uid-creator', 'uid-member'],
-  currency: 'OMR',
-  createdAt: DateTime(2026, 1, 1),
-);
 
 final _mockEvent = Event(
   id: _mockEventId,
@@ -56,6 +46,9 @@ Widget _wrapLedger({
 }) {
   return ProviderScope(
     overrides: [
+      eventDetailProvider(_eventRef).overrideWith(
+        (ref) => Stream.value(event),
+      ),
       eventExpensesProvider(_eventRef).overrideWith(
         (ref) => Stream.value(expenses),
       ),
@@ -69,21 +62,16 @@ Widget _wrapLedger({
         (ref) => const AsyncValue.data(<Transaction>[]),
       ),
     ],
-    child: MaterialApp(home: LedgerScreen(event: event, group: _mockGroup)),
+    child: MaterialApp(
+      home: LedgerScreen(
+        groupId: _mockGroupId,
+        eventId: _mockEventId,
+      ),
+    ),
   );
 }
 
 void main() {
-  final mockGroup = Group(
-    id: 'group-1',
-    name: 'Test Group',
-    inviteCode: 'ABCDEF',
-    createdBy: 'uid-creator',
-    memberIds: const ['uid-creator', 'uid-member'],
-    currency: 'OMR',
-    createdAt: DateTime(2026, 1, 1),
-  );
-
   final mockEvent = Event(
     id: 'evt-123',
     name: 'Test Event',
@@ -118,6 +106,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          eventDetailProvider(eventRef).overrideWith(
+            (ref) => Stream.value(mockEvent),
+          ),
           eventExpensesProvider(eventRef).overrideWith(
             (ref) => Stream.value([mockExpense]),
           ),
@@ -127,8 +118,13 @@ void main() {
           eventSubGroupsProvider(eventRef).overrideWith(
             (ref) => Stream.value(const <SubGroup>[]),
           ),
+          eventUnifiedLedgerProvider(eventRef).overrideWith(
+            (ref) => const AsyncValue.data(<Transaction>[]),
+          ),
         ],
-        child: MaterialApp(home: LedgerScreen(event: mockEvent, group: mockGroup)),
+        child: MaterialApp(
+          home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
+        ),
       ),
     );
 
@@ -167,6 +163,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          eventDetailProvider(eventRef).overrideWith(
+            (ref) => Stream.value(mockEvent2),
+          ),
           eventExpensesProvider(eventRef).overrideWith(
             (ref) => Stream.value([mockExpense]),
           ),
@@ -176,8 +175,13 @@ void main() {
           eventSubGroupsProvider(eventRef).overrideWith(
             (ref) => Stream.value(const <SubGroup>[]),
           ),
+          eventUnifiedLedgerProvider(eventRef).overrideWith(
+            (ref) => const AsyncValue.data(<Transaction>[]),
+          ),
         ],
-        child: MaterialApp(home: LedgerScreen(event: mockEvent2, group: mockGroup)),
+        child: MaterialApp(
+          home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
+        ),
       ),
     );
 
@@ -269,6 +273,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          eventDetailProvider(eventRef).overrideWith(
+            (ref) => Stream.value(mockEvent),
+          ),
           eventExpensesProvider(eventRef).overrideWith(
             (ref) => Stream.value([mockExpense]),
           ),
@@ -278,8 +285,13 @@ void main() {
           eventSubGroupsProvider(eventRef).overrideWith(
             (ref) => Stream.value(const <SubGroup>[]),
           ),
+          eventUnifiedLedgerProvider(eventRef).overrideWith(
+            (ref) => const AsyncValue.data(<Transaction>[]),
+          ),
         ],
-        child: MaterialApp(home: LedgerScreen(event: mockEvent, group: mockGroup)),
+        child: MaterialApp(
+          home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
+        ),
       ),
     );
 

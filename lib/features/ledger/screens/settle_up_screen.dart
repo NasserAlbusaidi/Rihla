@@ -11,6 +11,8 @@ import '../../../core/theme/error_widgets.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/offline_banner.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
@@ -23,7 +25,6 @@ import '../keys/ledger_keys.dart';
 import '../widgets/settlement_summary_card.dart';
 import '../widgets/settlement_tile.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Settle Up Screen - Shows optimized settlements with payment actions.
 ///
@@ -48,8 +49,14 @@ class SettleUpScreen extends ConsumerWidget {
 
     // Loading state
     if (eventAsync.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        body: Column(
+          children: [
+            const ModuleHeader(title: 'Settle Up', useDarkTheme: true),
+            Expanded(child: SkeletonLoader.expenseList()),
+          ],
+        ),
       );
     }
 
@@ -96,89 +103,59 @@ class SettleUpScreen extends ConsumerWidget {
     return Scaffold(
       key: LedgerKeys.settleUpScreen,
       backgroundColor: AppColorTokens.light.scaffoldBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context).animate().fadeIn().slideY(begin: -0.2),
-            Expanded(
-              child: expensesAsync.when(
-                data: (expenses) {
-                  final settlementsRec = settlementsAsync.valueOrNull ?? [];
-                  final subGroups = subGroupsAsync.valueOrNull ?? [];
+      body: Column(
+        children: [
+          ModuleHeader(
+            title: 'Settle Up',
+            subtitle: event.name.toUpperCase(),
+            useDarkTheme: true,
+          ),
+          const OfflineBanner(),
+          Expanded(
+            child: expensesAsync.when(
+              data: (expenses) {
+                final settlementsRec = settlementsAsync.valueOrNull ?? [];
+                final subGroups = subGroupsAsync.valueOrNull ?? [];
 
-                  final balances = BalanceCalculator.calculateBalances(
-                    expenses: expenses,
-                    settlements: settlementsRec,
-                    participants: participants,
-                    subGroups: subGroups,
-                  );
+                final balances = BalanceCalculator.calculateBalances(
+                  expenses: expenses,
+                  settlements: settlementsRec,
+                  participants: participants,
+                  subGroups: subGroups,
+                );
 
-                  final Map<String, String> userNames = {
-                    for (var p in participants)
-                      p.id: p.displayName ?? 'Unknown',
-                  };
+                final Map<String, String> userNames = {
+                  for (var p in participants)
+                    p.id: p.displayName ?? 'Unknown',
+                };
 
-                  final optimalSettlements =
-                      BalanceCalculator.calculateOptimalSettlements(
-                        balances: balances,
-                        userNames: userNames,
-                      );
+                final optimalSettlements =
+                    BalanceCalculator.calculateOptimalSettlements(
+                      balances: balances,
+                      userNames: userNames,
+                    );
 
-                  return _buildContent(
-                    context,
-                    ref,
-                    event,
-                    optimalSettlements,
-                    userNames,
-                    balances,
-                    expenses,
-                    settlementsRec,
-                    participants,
-                  );
-                },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, _) => NetworkErrorWidget(
-                  onRetry: () => ref.invalidate(
-                    eventExpensesProvider(
-                        (groupId: groupId, eventId: eventId)),
-                  ),
+                return _buildContent(
+                  context,
+                  ref,
+                  event,
+                  optimalSettlements,
+                  userNames,
+                  balances,
+                  expenses,
+                  settlementsRec,
+                  participants,
+                );
+              },
+              loading: () => SkeletonLoader.expenseList(),
+              error: (e, _) => NetworkErrorWidget(
+                onRetry: () => ref.invalidate(
+                  eventExpensesProvider(
+                      (groupId: groupId, eventId: eventId)),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: AppColorTokens.light.cardSurface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColorTokens.light.inputFill),
-              boxShadow: AppShadowTokens.standard.raised,
-            ),
-            child: IconButton(
-              icon: const Icon(Iconsax.arrow_left, size: 20),
-              onPressed: () => context.pop(),
-            ),
           ),
-          const Text(
-            'Settle Up',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(width: 48),
         ],
       ),
     );
@@ -326,14 +303,14 @@ class SettleUpScreen extends ConsumerWidget {
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: AppColorTokens.light.textMuted),
+        Icon(icon, size: 14, color: AppColorTokens.light.textSecondary),
         const SizedBox(width: 8),
         Text(
           title,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textMuted,
+            color: AppColorTokens.light.textSecondary,
             letterSpacing: 1.2,
           ),
         ),
