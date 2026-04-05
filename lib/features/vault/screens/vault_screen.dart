@@ -17,6 +17,7 @@ import '../providers/document_provider.dart';
 import '../widgets/vault_hero_card.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../shared/widgets/offline_banner.dart';
 
 /// Vault Screen — unified module template (D-08, D-14, D-20).
 ///
@@ -121,6 +122,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             subtitle: event.name.toUpperCase(),
             useDarkTheme: true,
           ),
+          const OfflineBanner(),
           Expanded(
             child: documentsAsync.when(
               data: (docs) => _buildContent(context, docs, isUploading),
@@ -186,14 +188,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   'Upload tickets, booking confirmations, or any trip files.',
               actionLabel: 'Upload Document',
               onAction: () => _uploadDocument(context),
-              accentGradient: const LinearGradient(
-                colors: [Color(0xFF8B7355), Color(0xFFA89372)],
+              accentGradient: LinearGradient(
+                colors: [AppColorTokens.light.moduleVault, AppColorTokens.light.moduleVaultLight],
               ),
             ),
           )
         else ...[
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(
+            padding: const EdgeInsets.fromLTRB(
               16,
               12,
               16,
