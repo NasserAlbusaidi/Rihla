@@ -230,7 +230,7 @@ Plans:
   4. All vault and memories tests pass
 **Plans**: 2 plans
 Plans:
-- [ ] 35-00-PLAN.md — Wave 0: create new failing OfflineBanner test stubs for both screens
+- [x] 35-00-PLAN.md — Wave 0: create new failing OfflineBanner test stubs for both screens
 - [ ] 35-01-PLAN.md — Two targeted fixes: token gradients + OfflineBanner in both screens + tests GREEN
 
 ## Progress
@@ -250,4 +250,4 @@ Plans:
 | 32 | v2.3 | 3/3 | Complete    | 2026-04-05 |
 | 33 | v2.3 | 3/3 | Complete    | 2026-04-05 |
 | 34 | v2.3 | 2/2 | Complete    | 2026-04-05 |
-| 35 | v2.3 | 0/2 | In Progress | — |
+| 35 | v2.3 | 1/2 | In Progress|  |
