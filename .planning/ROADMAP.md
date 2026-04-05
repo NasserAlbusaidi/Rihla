@@ -72,7 +72,7 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 - [x] **Phase 31: Event Command Center** - Event hub — header, module grid, event settings (completed 2026-04-05)
 - [x] **Phase 32: Event Creation** - Type picker, create form, templates (completed 2026-04-05)
 - [x] **Phase 33: Ledger** - Expenses, add/edit, settle up (completed 2026-04-05)
-- [ ] **Phase 34: Gear & Logistics** - Token compliance audit + OfflineBanner addition to both screens
+- [x] **Phase 34: Gear & Logistics** - Token compliance audit + OfflineBanner addition to both screens (completed 2026-04-05)
 - [ ] **Phase 35: Vault & Memories** - Documents, photo timeline
 
 ## Phase Details
@@ -218,7 +218,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 34-00-PLAN.md — Wave 0: failing OfflineBanner test stubs in both test files
-- [ ] 34-01-PLAN.md — Four targeted fixes: token gradients, OfflineBanner, gearList skeleton, dead code deletion
+- [x] 34-01-PLAN.md — Four targeted fixes: token gradients, OfflineBanner, gearList skeleton, dead code deletion
 
 ### Phase 35: Vault & Memories
 **Goal**: Full-stack vault (documents) and memories (photos) modules
@@ -244,5 +244,5 @@ Plans:
 | 31 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 32 | v2.3 | 3/3 | Complete    | 2026-04-05 |
 | 33 | v2.3 | 3/3 | Complete    | 2026-04-05 |
-| 34 | v2.3 | 1/2 | In Progress|  |
+| 34 | v2.3 | 2/2 | Complete   | 2026-04-05 |
 | 35 | v2.3 | 0/0 | Pending     | — |
