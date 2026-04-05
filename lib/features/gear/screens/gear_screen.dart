@@ -19,6 +19,7 @@ import '../providers/gear_provider.dart';
 import '../widgets/gear_hero_card.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../shared/widgets/offline_banner.dart';
 
 /// Gear Screen — unified module template (D-08).
 ///
@@ -68,7 +69,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         body: Column(
           children: [
             const ModuleHeader(title: 'Gear', useDarkTheme: true),
-            Expanded(child: SkeletonLoader.cardList()),
+            Expanded(child: SkeletonLoader.gearList()),
           ],
         ),
       );
@@ -110,10 +111,11 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             subtitle: event.name.toUpperCase(),
             useDarkTheme: true,
           ),
+          const OfflineBanner(),
           Expanded(
             child: gearAsync.when(
               data: (items) => _buildContent(items, currentUserId),
-              loading: SkeletonLoader.cardList,
+              loading: SkeletonLoader.gearList,
               error: (e, _) => _buildErrorState(e.toString()),
             ),
           ),
@@ -205,8 +207,8 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                     'Add gear items to track what everyone needs to bring.',
                 actionLabel: 'Add Gear Item',
                 onAction: _focusAddField,
-                accentGradient: const LinearGradient(
-                  colors: [Color(0xFF7A8C5E), Color(0xFF96A876)],
+                accentGradient: LinearGradient(
+                  colors: [AppColorTokens.light.moduleGear, AppColorTokens.light.moduleGearLight],
                 ),
               ),
             )
