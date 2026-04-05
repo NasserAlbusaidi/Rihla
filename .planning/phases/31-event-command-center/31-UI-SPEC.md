@@ -250,8 +250,8 @@ Balance-gate warning: if event has unsettled balances, show amber warning row ab
 - Gear icon tap: `HapticService.medium()`
 - FAB tap: `HapticService.medium()` (existing — confirm present)
 - Delete event tap: `HapticService.medium()`
-- Save Changes tap: `HapticService.light()`
-- Module card tap: `HapticService.light()` (confirm existing pattern)
+- Save Changes tap: `HapticService.lightClick()`
+- Module card tap: `HapticService.lightClick()` (confirm existing pattern)
 
 ### Animations
 - EventSettingsScreen section entrance: `flutter_animate` `.fadeIn().slideY(begin: 0.1)` — delays 100ms / 200ms, duration 400ms, curve easeOutCubic
