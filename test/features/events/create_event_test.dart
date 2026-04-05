@@ -187,9 +187,10 @@ void main() {
       await tester.tap(find.byKey(EventKeys.eventTypeCard('Trip')));
       await tester.pumpAndSettle();
 
-      // AppBar title is gone after Plan 02; event type appears in badge instead
+      // AppBar title is gone after Plan 02; event type appears in ModuleHeader
+      // title AND in the badge — both are correct, so findsAtLeastNWidgets(1).
       expect(find.text('New Trip Event'), findsNothing);
-      expect(find.text('Trip'), findsOneWidget);
+      expect(find.text('Trip'), findsAtLeastNWidgets(1));
     });
   });
 
@@ -236,9 +237,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // After Plan 02: AppBar title is gone; type label shows in badge only
+      // After Plan 02: AppBar title is gone; type label shows in ModuleHeader
+      // title AND in the event type badge — both correct, so findsAtLeastNWidgets(1).
       expect(find.text('New Camping Event'), findsNothing);
-      expect(find.text('Camping'), findsOneWidget);
+      expect(find.text('Camping'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('shows module toggles for Custom type', (tester) async {
@@ -323,7 +325,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap submit without entering a name
+      // Scroll to and tap submit without entering a name
+      await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(EventKeys.createEventButton));
       await tester.pumpAndSettle();
 

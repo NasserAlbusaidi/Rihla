@@ -586,42 +586,46 @@ class _ParticipantRow extends StatelessWidget {
     return Semantics(
       label: member.displayName,
       checked: isSelected,
-      child: SizedBox(
-        height: 56,
-        child: Row(
-          children: [
-            // Avatar placeholder
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColorTokens.light.inputFill,
-                shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: () => onToggle(!isSelected),
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            children: [
+              // Avatar placeholder
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColorTokens.light.inputFill,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Iconsax.user,
+                  size: 16,
+                  color: AppColorTokens.light.textSecondary,
+                ),
               ),
-              child: Icon(
-                Iconsax.user,
-                size: 16,
-                color: AppColorTokens.light.textSecondary,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  member.displayName,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                member.displayName,
-                style: Theme.of(context).textTheme.titleSmall,
+              Checkbox(
+                value: isSelected,
+                checkColor: Colors.white,
+                fillColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? AppColorTokens.light.primary
+                      : null,
+                ),
+                onChanged: (v) => onToggle(v ?? isSelected),
               ),
-            ),
-            Checkbox(
-              value: isSelected,
-              checkColor: Colors.white,
-              fillColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.selected)
-                    ? AppColorTokens.light.primary
-                    : null,
-              ),
-              onChanged: (v) => onToggle(v ?? isSelected),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
