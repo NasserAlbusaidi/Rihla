@@ -103,6 +103,7 @@ Groups persist across events and accumulate financial history — friends settle
 **Phase 29 complete:** 2026-04-02 — GroupSettingsScreen visual refresh with ProfileScreen pattern. Three section widgets (info, members, danger zone). Creator badge, member remove with balance gate, leave/delete with confirmation dialogs. WriteBatch service methods.
 **Phase 30 complete:** 2026-04-05 — Group settle-up redesigned as 4-tab layout (You Owe / Owed to You / Between Others / History) with card tiles. Activity feed redesigned with date-grouped timeline, filter chips, infinite scroll. Balance sign flip fixed (D-12). Activity logging now covers all 5 action types (D-14). 97 group tests passing.
 **Phase 31 complete:** 2026-04-05 — EventCommandCenter refreshed with gear icon settings entry, date range in header, SkeletonLoader in hero, member count metric. New EventSettingsScreen with EventInfoSection (edit name/dates/description) and EventDangerSection (creator-only, balance-gated delete). Event.description model field added. 858 tests passing.
+**Phase 32 complete:** 2026-04-05 — EventTypePickerScreen refreshed with dark ModuleHeader, 80ms stagger, camping color #047857 (WCAG). CreateEventScreen refreshed with dark ModuleHeader, type-specific badge colors, Select All toggle, staggered card sections. 864 tests passing.
 
 ### Out of Scope
 
@@ -182,4 +183,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-05 after Phase 31 complete — Event Command Center (v2.3 milestone)*
+*Last updated: 2026-04-05 after Phase 32 complete — Event Creation (v2.3 milestone)*
