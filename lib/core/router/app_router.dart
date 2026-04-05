@@ -60,6 +60,7 @@ class AppRoutes {
   static const String eventMemoryDetail =
       '/group/:gid/event/:eid/memories/:memId';
   static const String eventActivity = '/group/:gid/event/:eid/activity';
+  static const String eventSettings = '/group/:gid/event/:eid/settings';
   // Cross-group activity (Phase 23)
   static const String activity = '/activity';
 }
@@ -389,6 +390,23 @@ final routerProvider = Provider<GoRouter>((ref) {
                   child: ActivityFeedScreen(
                     groupId: state.pathParameters['gid']!,
                     eventId: state.pathParameters['eid']!,
+                  ),
+                  transitionsBuilder: _slideRightTransition,
+                ),
+              ),
+
+              // Event settings (Phase 31) — placeholder until Plan 02 creates EventSettingsScreen
+              // TODO(Phase 31 P02): replace Scaffold child with EventSettingsScreen(...)
+              // TODO(Phase 31 P02): uncomment: import '../../features/events/screens/event_settings_screen.dart';
+              GoRoute(
+                path: 'settings',
+                pageBuilder: (context, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: Scaffold(
+                    body: Center(
+                      child: Text(
+                          'Settings for ${state.pathParameters['eid']}'),
+                    ),
                   ),
                   transitionsBuilder: _slideRightTransition,
                 ),
