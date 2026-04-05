@@ -217,7 +217,7 @@ Plans:
   5. All gear and logistics tests pass
 **Plans**: 2 plans
 Plans:
-- [ ] 34-00-PLAN.md — Wave 0: failing OfflineBanner test stubs in both test files
+- [x] 34-00-PLAN.md — Wave 0: failing OfflineBanner test stubs in both test files
 - [ ] 34-01-PLAN.md — Four targeted fixes: token gradients, OfflineBanner, gearList skeleton, dead code deletion
 
 ### Phase 35: Vault & Memories
@@ -244,5 +244,5 @@ Plans:
 | 31 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 32 | v2.3 | 3/3 | Complete    | 2026-04-05 |
 | 33 | v2.3 | 3/3 | Complete    | 2026-04-05 |
-| 34 | v2.3 | 0/2 | In Progress | — |
+| 34 | v2.3 | 1/2 | In Progress|  |
 | 35 | v2.3 | 0/0 | Pending     | — |
