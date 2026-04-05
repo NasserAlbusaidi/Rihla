@@ -32,6 +32,24 @@ class EventCommandCenter extends ConsumerWidget {
     required this.eventId,
   });
 
+  /// Formats a date range string for display in the header.
+  ///
+  /// Returns null when both dates are null (no bottom widget shown).
+  /// Returns a single date when only one is provided.
+  /// Returns "MMM d – MMM d" with an en-dash (U+2013) when both are set.
+  static String? _formatDateRange(DateTime? start, DateTime? end) {
+    if (start == null && end == null) return null;
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    if (start == null) return '${months[end!.month - 1]} ${end.day}';
+    if (end == null) return '${months[start.month - 1]} ${start.day}';
+    return '${months[start.month - 1]} ${start.day}'
+        ' \u2013 ' // en-dash U+2013
+        '${months[end.month - 1]} ${end.day}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final eventAsync = ref.watch(
@@ -112,24 +130,37 @@ class EventCommandCenter extends ConsumerWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          // Dark header with event name, type, and group
+          // Dark header with event name, type, group, and optional date range
           SliverToBoxAdapter(
             child: ModuleHeader(
               title: event.name,
               // Middle dot U+00B7 between type label and group name
               subtitle: '${config.label} \u00B7 ${group?.name ?? ''}',
+              bottom: _formatDateRange(event.startDate, event.endDate) != null
+                  ? Text(
+                      _formatDateRange(event.startDate, event.endDate)!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.5),
+                        letterSpacing: 0.5,
+                      ),
+                    )
+                  : null,
               actions: [
                 Semantics(
-                  label: 'Event options',
+                  key: EventKeys.settingsGearIcon,
+                  label: 'Event settings',
                   button: true,
                   child: IconButton(
                     icon: const Icon(
-                      Iconsax.more_circle,
+                      Iconsax.setting_2,
                       color: Colors.white,
                       size: 22,
                     ),
                     onPressed: () {
-                      // TODO(Phase 3+): Event options menu (edit name/dates, delete)
+                      HapticService.medium();
+                      context.push('/group/$groupId/event/$eventId/settings');
                     },
                   ),
                 ),

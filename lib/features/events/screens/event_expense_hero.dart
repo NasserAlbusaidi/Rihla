@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
@@ -130,15 +131,7 @@ class EventExpenseHero extends ConsumerWidget {
               ],
             );
           },
-          loading: () => SizedBox(
-            height: 80,
-            child: Center(
-              child: CircularProgressIndicator(
-                color: AppColorTokens.light.primary,
-                strokeWidth: 2,
-              ),
-            ),
-          ),
+          loading: () => SkeletonLoader.generic(count: 1),
           error: (e, st) => Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Text(

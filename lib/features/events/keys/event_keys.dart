@@ -48,4 +48,15 @@ abstract final class EventKeys {
   // Parameterized key for event type picker cards
   static Key eventTypeCard(String typeLabel) =>
       Key('event_type_card_${typeLabel.toLowerCase().replaceAll(' ', '_')}');
+
+  // Settings screen keys (Phase 31)
+  static const settingsScreen = Key('event_settings_screen');
+  static const settingsBackButton = Key('event_settings_back_button');
+  static const infoSection = Key('event_info_section');
+  static const dangerSection = Key('event_danger_section');
+  static const saveChangesButton = Key('event_save_changes_button');
+  static const deleteEventTile = Key('event_delete_tile');
+  static const deleteEventDialog = Key('event_delete_dialog');
+  static const deleteEventConfirmButton = Key('event_delete_confirm_button');
+  static const settingsGearIcon = Key('event_settings_gear_icon');
 }
