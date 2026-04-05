@@ -34,7 +34,6 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 <details>
 <summary>✅ v2.0 Major UI/UX Overhaul (Phases 14-22) — SHIPPED 2026-03-31</summary>
 
-<<<<<<< Updated upstream
 - [x] Phase 14: Test Hardening (3/3 plans) — completed 2026-03-28
 - [x] Phase 15: Design Token System (2/2 plans) — completed 2026-03-28
 - [x] Phase 16: Stitch Workflow & Design Reference (2/2 plans) — completed 2026-03-29
@@ -75,17 +74,6 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 - [ ] **Phase 33: Ledger** - Expenses, add/edit, settle up
 - [ ] **Phase 34: Gear & Logistics** - Equipment inventory, sub-groups
 - [ ] **Phase 35: Vault & Memories** - Documents, photo timeline
-=======
-- [x] **Phase 14: Test Hardening** - Convert structural test assertions to semantic Key identifiers to prevent cascade failures during visual changes (3/3 plans — completed 2026-03-28)
-- [ ] **Phase 15: Design Token System** - Build the ThemeExtension-based warm earthy token layer that all subsequent screen work depends on
-- [ ] **Phase 16: Stitch Workflow & Design Reference** - Establish Stitch as specification source, finalize palette, and add CI lint rule blocking hardcoded color values
-- [ ] **Phase 17: Animation Library & Loading States** - Build shared animation components and skeleton loading variants before any screen uses them
-- [ ] **Phase 18: Home Dashboard Redesign** - Deliver the single-scroll dashboard with balance hero, group cards, quick-action tray, and activity strip
-- [ ] **Phase 19: Navigation Restructuring** - Migrate 22 Navigator.push calls to GoRouter subroutes so all event-level screens are reachable within 2 taps
-- [ ] **Phase 20: Group Detail & Event Hub Redesign** - Redesign the group gateway and event hub with earthy tokens, type-specific color accents, and M3 transitions
-- [ ] **Phase 21: Module Screens Redesign** - Apply the new design language to all six module screens with card-style layouts and illustrated empty states
-- [ ] **Phase 22: Polish Pass & Token Cleanup** - Add haptic feedback, animated balance counters, texture overlays, M3 motion, and delete legacy AppColors
->>>>>>> Stashed changes
 
 ## Phase Details
 
@@ -99,25 +87,8 @@ Full details: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
   3. User can see their total group count, event count, and total spending in OMR on the profile screen
 **Plans**: 2 plans
 Plans:
-<<<<<<< Updated upstream
 - [x] 25-01-PLAN.md — Data layer + profile screen UI (keys, initials circle, stats provider, name propagation, screen, bottom sheet, tests)
 - [x] 25-02-PLAN.md — Navigation wiring (route /profile, home header avatar, bottom nav tab, delete old settings screen)
-=======
-- [x] 14-01-PLAN.md — Key infrastructure + migrate 4 heaviest test files (108 calls)
-- [x] 14-02-PLAN.md — Migrate 8 medium-priority test files (115 calls)
-- [x] 14-03-PLAN.md — Migrate remaining test files + CI warning + rename verification
-
-### Phase 15: Design Token System
-**Goal**: Every color and spacing value in the app flows from a single typed token system; no screen can reference a hardcoded color value
-**Depends on**: Phase 14
-**Requirements**: FOUND-01, FOUND-02, FOUND-04
-**Success Criteria** (what must be TRUE):
-  1. App renders with the warm earthy palette (terracotta, sand, olive, dark brown body text) after a hot restart
-  2. Every text-on-background combination in the app passes WCAG AA contrast (4.5:1 body, 3:1 large text and icons)
-  3. The CI lint step fails on any file outside app_theme.dart that introduces a Color(0xFF...) literal
-  4. All 895 existing AppColors references continue to compile and produce warm palette values without any call-site changes
-**Plans**: TBD
->>>>>>> Stashed changes
 **UI hint**: yes
 
 ### Phase 26: Settings & Support
@@ -208,12 +179,18 @@ Plans:
 **UI hint**: yes
 
 ### Phase 32: Event Creation
-**Goal**: Full-stack event creation — type picker, form, templates per event type
+**Goal**: Visual refresh of EventTypePickerScreen and CreateEventScreen — earthy tokens, dark ModuleHeader, card-section layout, stagger animations, camping color WCAG fix, Select All participants
 **Depends on**: Phase 31
 **Success Criteria** (what must be TRUE):
-  1. Users can pick an event type and create an event with pre-filled template content
-  2. Event creation persists to backend and appears in group detail
-**Plans**: TBD
+  1. EventTypePickerScreen shows dark ModuleHeader ('New Event' + group name subtitle) with 80ms stagger per card
+  2. CreateEventScreen shows dark ModuleHeader with type-specific badge color, card-section layout, and Select All in participants
+  3. Camping event type color uses successText (#047857) for WCAG 4.56:1 compliance
+**Plans**: 3 plans
+Plans:
+- [ ] 32-00-PLAN.md — Wave 0: failing test stubs (Select All, camping color, ModuleHeader title assertions)
+- [ ] 32-01-PLAN.md — EventTypeConfig camping color fix + EventTypePickerScreen refresh (ModuleHeader, 80ms stagger, ConsumerWidget)
+- [ ] 32-02-PLAN.md — CreateEventScreen refresh (ModuleHeader, type badge fix, Select All, card stagger) + all tests GREEN
+**UI hint**: yes
 
 ### Phase 33: Ledger
 **Goal**: Full-stack ledger module — expenses, add/edit, settle up
@@ -253,7 +230,7 @@ Plans:
 | 29 | v2.3 | 2/2 | Complete    | 2026-04-02 |
 | 30 | v2.3 | 4/4 | Complete    | 2026-04-05 |
 | 31 | v2.3 | 4/4 | Complete    | 2026-04-05 |
-| 32 | v2.3 | 0/0 | Pending     | — |
+| 32 | v2.3 | 0/3 | Pending     | — |
 | 33 | v2.3 | 0/0 | Pending     | — |
 | 34 | v2.3 | 0/0 | Pending     | — |
 | 35 | v2.3 | 0/0 | Pending     | — |
