@@ -1,20 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:intl/intl.dart';
 
+import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/module_header.dart';
 import '../keys/group_keys.dart';
 import '../models/group_activity_log_model.dart';
 import '../providers/group_balance_provider.dart';
+import '../providers/group_provider.dart';
 import '../widgets/group_activity_tile.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
-/// Full-screen paginated group activity log (GRP-05).
+/// Full-screen paginated group activity timeline (D-07, D-08, D-09, D-10, D-11).
 ///
-/// Uses cursor-based pagination via [GroupActivityService.fetchActivityPageRaw].
-/// Loads 50 entries per page. Shows a "Load more" button when [_hasMore] is true.
+/// Features:
+/// - ModuleHeader with dark gradient (D-07)
+/// - Date-grouped section headers: TODAY, YESTERDAY, MMM d (D-08)
+/// - Rich card tiles via GroupActivityTile (D-09)
+/// - Client-side filter chips: All / Settlements / Events / Members (D-10)
+/// - Infinite scroll — no "Load more" button (D-11)
 class GroupActivityScreen extends ConsumerStatefulWidget {
   final String groupId;
 
@@ -30,11 +38,31 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   DocumentSnapshot? _lastDocument;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  String _activeFilter = 'All';
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
     _loadPage();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Triggers next page load when within 200px of bottom.
+  void _onScroll() {
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200 &&
+        _hasMore &&
+        !_isLoadingMore) {
+      _loadPage();
+    }
   }
 
   /// Fetches the next page of activity entries using cursor-based pagination.
@@ -72,59 +100,124 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     }
   }
 
+  /// Client-side filtered view of [_activities] based on [_activeFilter].
+  ///
+  /// IMPORTANT: Never modify [_activities] directly. [_hasMore] uses raw
+  /// count, not filtered count (see RESEARCH Pitfall 3).
+  List<GroupActivityLog> get _filteredActivities {
+    if (_activeFilter == 'All') return _activities;
+    return _activities.where((a) {
+      return switch (_activeFilter) {
+        'Settlements' => a.type == 'group_settlement',
+        'Events' => a.type == 'event_created' || a.type == 'event_deleted',
+        'Members' => a.type == 'member_joined' || a.type == 'member_left',
+        _ => true,
+      };
+    }).toList();
+  }
+
+  /// Groups activity logs by date label (TODAY, YESTERDAY, or formatted date).
+  Map<String, List<GroupActivityLog>> _groupByDate(
+      List<GroupActivityLog> logs) {
+    final grouped = <String, List<GroupActivityLog>>{};
+    final now = DateTime.now();
+    for (final log in logs) {
+      final label = _dateLabel(log.timestamp, now);
+      grouped.putIfAbsent(label, () => []).add(log);
+    }
+    return grouped;
+  }
+
+  String _dateLabel(DateTime date, DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final logDate = DateTime(date.year, date.month, date.day);
+    if (logDate == today) return 'TODAY';
+    if (logDate == today.subtract(const Duration(days: 1))) return 'YESTERDAY';
+    return DateFormat('MMM d').format(date);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
+    final groupName = groupAsync.valueOrNull?.name;
+
     return Scaffold(
       key: GroupKeys.activityScreen,
       backgroundColor: AppColorTokens.light.scaffoldBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(child: _buildBody(context)),
-          ],
+      body: Column(
+        children: [
+          ModuleHeader(
+            title: 'Activity',
+            subtitle: groupName,
+            useDarkTheme: true,
+          ),
+          _buildFilterChips(),
+          Expanded(child: _buildBody(context)),
+        ],
+      ),
+    );
+  }
+
+  /// Horizontal filter chip row (D-10).
+  Widget _buildFilterChips() {
+    return SizedBox(
+      height: 52,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildFilterChip('All', GroupKeys.activityFilterAll),
+              const SizedBox(width: 8),
+              _buildFilterChip(
+                  'Settlements', GroupKeys.activityFilterSettlements),
+              const SizedBox(width: 8),
+              _buildFilterChip('Events', GroupKeys.activityFilterEvents),
+              const SizedBox(width: 8),
+              _buildFilterChip('Members', GroupKeys.activityFilterMembers),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: AppColorTokens.light.cardSurface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColorTokens.light.inputFill, width: 1),
-              boxShadow: AppShadowTokens.standard.raised,
-            ),
-            child: IconButton(
-              key: GroupKeys.activityBackButton,
-              icon: const Icon(Iconsax.arrow_left, size: 20),
-              onPressed: () => Navigator.pop(context),
-              tooltip: 'Back',
-              style: IconButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-          Text(
-            key: GroupKeys.activityScreenTitle,
-            'Group Activity',
+  Widget _buildFilterChip(String label, Key key) {
+    final isSelected = _activeFilter == label;
+    return GestureDetector(
+      key: key,
+      onTap: () {
+        HapticService.selection();
+        setState(() => _activeFilter = label);
+      },
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColorTokens.light.selectionFill
+              : AppColorTokens.light.inputFill,
+          borderRadius: BorderRadius.circular(8),
+          border: isSelected
+              ? Border.all(
+                  color: AppColorTokens.light.primary,
+                  width: 1.5,
+                )
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            label,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-              color: AppColorTokens.light.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isSelected
+                  ? AppColorTokens.light.textPrimary
+                  : AppColorTokens.light.textSecondary,
             ),
           ),
-          const SizedBox(width: 48),
-        ],
+        ),
       ),
     );
   }
@@ -135,80 +228,134 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       return _buildSkeleton();
     }
 
-    // Empty state
+    final filtered = _filteredActivities;
+
+    // Empty state — no activities at all
     if (_activities.isEmpty) {
       return const EmptyStateView(
         icon: Iconsax.activity,
-        title: 'No group activity yet',
+        title: 'No activity yet',
         message:
-            'Actions like creating events and settling up will appear here.',
+            'Group events, payments, and member changes will appear here.',
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      itemCount: _activities.length + (_hasMore ? 1 : 0),
-      separatorBuilder: (context, index) => Divider(
-        height: 1,
-        thickness: 1,
-        color: AppColorTokens.light.border,
-      ),
+    // Empty state — filter has no results
+    if (filtered.isEmpty) {
+      return EmptyStateView(
+        icon: Iconsax.search_normal,
+        title: 'No ${_activeFilter.toLowerCase()} activity',
+        message: 'Try selecting a different filter.',
+      );
+    }
+
+    final grouped = _groupByDate(filtered);
+
+    // Build flat items list: interleave date labels with activity logs
+    final flatItems = <dynamic>[];
+    for (final entry in grouped.entries) {
+      flatItems.add(entry.key); // date label String
+      flatItems.addAll(entry.value); // GroupActivityLog entries
+    }
+    if (_hasMore) flatItems.add('__loading__');
+
+    // Track overall index for stagger animation (reset per section)
+    int tileIndex = 0;
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: flatItems.length,
       itemBuilder: (context, index) {
-        if (index == _activities.length) {
-          // "Load more" row at the bottom
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: _isLoadingMore
-                ? const Center(child: CircularProgressIndicator())
-                : Center(
-                    child: TextButton(
-                      onPressed: _loadPage,
-                      child: Text(
-                        'Load more',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColorTokens.light.primary,
-                        ),
-                      ),
-                    ),
-                  ),
+        final item = flatItems[index];
+
+        // Loading sentinel at bottom
+        if (item == '__loading__') {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColorTokens.light.primary,
+                ),
+              ),
+            ),
           );
         }
-        return GroupActivityTile(activity: _activities[index]);
+
+        // Date section header — no animation stagger
+        if (item is String) {
+          tileIndex = 0; // reset stagger counter at each date boundary
+          return _DateSectionHeader(label: item);
+        }
+
+        // Activity tile with entrance animation
+        final activity = item as GroupActivityLog;
+        final delay = Duration(milliseconds: (tileIndex % 10) * 50);
+        tileIndex++;
+
+        return GroupActivityTile(activity: activity)
+            .animate()
+            .fadeIn(delay: delay)
+            .slideY(begin: 0.1, curve: Curves.easeOutCubic);
       },
     );
   }
 
   /// Skeleton placeholder rows shown while the first page loads.
   Widget _buildSkeleton() {
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       itemCount: 5,
-      separatorBuilder: (context, index) => Divider(
-        height: 1,
-        thickness: 1,
-        color: AppColorTokens.light.border,
-      ),
       itemBuilder: (context, index) => const _SkeletonRow(),
     );
   }
 }
 
-/// A 52px skeleton placeholder for a single activity row.
+/// Section header for date groups in the activity timeline (D-08).
+class _DateSectionHeader extends StatelessWidget {
+  final String label;
+
+  const _DateSectionHeader({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          color: AppColorTokens.light.textMuted,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+/// A skeleton placeholder tile shown during first-page loading.
 class _SkeletonRow extends StatelessWidget {
   const _SkeletonRow();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColorTokens.light.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: AppColorTokens.light.border,
               shape: BoxShape.circle,
@@ -218,7 +365,6 @@ class _SkeletonRow extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
                   height: 12,

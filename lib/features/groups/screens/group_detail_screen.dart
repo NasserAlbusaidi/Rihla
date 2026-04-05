@@ -240,6 +240,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                 key: GroupKeys.settleUpCta,
                                 onPressed: () {
                                   HapticService.medium();
+                                  // D-15: CTA entry point — do not remove
                                   context.push(
                                       '/group/$groupId/settle-up');
                                 },
@@ -471,9 +472,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                         _navigateToEventLedger(context, eventId, group),
                     onSettleUpTap:
                         balancesData.balances[i].netBalance != Decimal.zero
-                            ? () => context.push(
+                            ? () {
+                                // D-15: CTA entry point — do not remove
+                                context.push(
                                   '/group/$groupId/settle-up?memberId=${balancesData.balances[i].participantId}',
-                                )
+                                );
+                              }
                             : null,
                   ),
                 ],
@@ -515,11 +519,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                     'Activity will appear here once events are created.',
               );
             }
-            // Show up to 5 entries
+            // Show up to 5 entries (D-16: compact tile variant)
             final displayed = activities.take(5).toList();
             return Column(
               children: displayed
-                  .map((a) => GroupActivityTile(activity: a))
+                  .map((a) => GroupActivityTile(activity: a, compact: true))
                   .toList(),
             );
           },
@@ -533,6 +537,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         ),
         TextButton(
           key: GroupKeys.seeAllActivityButton,
+          // D-15: CTA entry point — do not remove
           onPressed: () => context.push('/group/$groupId/activity'),
           child: Text(
             'See all',
