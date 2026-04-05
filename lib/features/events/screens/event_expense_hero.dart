@@ -120,13 +120,33 @@ class EventExpenseHero extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  '${expenses.length} expense${expenses.length != 1 ? "s" : ""}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textSecondary,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '${expenses.length} expense${expenses.length != 1 ? "s" : ""}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColorTokens.light.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      ' \u00B7 ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColorTokens.light.textMuted,
+                      ),
+                    ),
+                    Text(
+                      '${event.participantIds.length} member${event.participantIds.length != 1 ? "s" : ""}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColorTokens.light.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
