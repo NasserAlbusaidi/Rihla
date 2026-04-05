@@ -15,6 +15,7 @@ import '../providers/memory_provider.dart';
 import '../widgets/full_screen_photo.dart';
 import '../widgets/memories_hero_card.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../shared/widgets/offline_banner.dart';
 
 /// Memories screen — Photo timeline for an event.
 ///
@@ -253,6 +254,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
               subtitle: event.name.toUpperCase(),
               useDarkTheme: true,
             ),
+            const OfflineBanner(),
             Expanded(
               child: EmptyStateView(
                 icon: Iconsax.gallery_slash,
@@ -265,43 +267,47 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
             ),
           ],
         ),
-        data: (memories) => CustomScrollView(
-          slivers: [
-            // 1. ModuleHeader (migrated from custom header)
-            SliverToBoxAdapter(
-              child: ModuleHeader(
-                title: 'Memories',
-                subtitle: event.name.toUpperCase(),
-                useDarkTheme: true,
-              ),
+        data: (memories) => Column(
+          children: [
+            ModuleHeader(
+              title: 'Memories',
+              subtitle: event.name.toUpperCase(),
+              useDarkTheme: true,
             ),
-            // 2. MemoriesHeroCard
-            SliverToBoxAdapter(
-              child: MemoriesHeroCard(
-                photoCount: memories.length,
-                dateRange: _buildDateRange(memories),
-                onAddPhoto: _isUploading ? () {} : _showSourcePicker,
-              ),
-            ),
-            // 3. Photo grid or empty state
-            if (memories.isEmpty)
-              SliverFillRemaining(
-                child: EmptyStateView(
-                  icon: Iconsax.gallery,
-                  title: 'No photos yet',
-                  message:
-                      'Add photos to capture the best moments of this trip.',
-                  actionLabel: 'Add Photo',
-                  onAction: _showSourcePicker,
-                  accentGradient: const LinearGradient(
-                    colors: [Color(0xFF9B7A5C), Color(0xFFB89878)],
+            const OfflineBanner(),
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  // 1. MemoriesHeroCard
+                  SliverToBoxAdapter(
+                    child: MemoriesHeroCard(
+                      photoCount: memories.length,
+                      dateRange: _buildDateRange(memories),
+                      onAddPhoto: _isUploading ? () {} : _showSourcePicker,
+                    ),
                   ),
-                ),
-              )
-            else
-              SliverToBoxAdapter(
-                child: _buildPhotoGrid(memories),
+                  // 2. Photo grid or empty state
+                  if (memories.isEmpty)
+                    SliverFillRemaining(
+                      child: EmptyStateView(
+                        icon: Iconsax.gallery,
+                        title: 'No photos yet',
+                        message:
+                            'Add photos to capture the best moments of this trip.',
+                        actionLabel: 'Add Photo',
+                        onAction: _showSourcePicker,
+                        accentGradient: LinearGradient(
+                          colors: [AppColorTokens.light.moduleMemories, AppColorTokens.light.moduleMemoriesLight],
+                        ),
+                      ),
+                    )
+                  else
+                    SliverToBoxAdapter(
+                      child: _buildPhotoGrid(memories),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
       ),
