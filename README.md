@@ -1,100 +1,164 @@
-# 🌍 Rihla - The Ultimate Group Trip Planner
+<!-- generated-by: gsd-doc-writer -->
+# Rihla
 
-Rihla (Arabic for "Journey") is a modern, high-performance Flutter mobile application designed to eliminate the friction of planning group trips. From complex expense splitting to collaborative gear lists and logistics management, Rihla keeps everyone in sync and on track.
+**Rihla** ("Journey" in Arabic) is a Flutter mobile app for group coordination and event planning. Users create or join persistent groups — friend circles, travel crews — then spin up events inside those groups (trips, camping weekends, dinners, or custom types). The app tracks finances at both the group and event level, so friends can settle up across multiple outings rather than one at a time.
 
----
-
-## ✨ Key Features
-
-### 💰 Omni-Splitter (The Ultimate Ledger)
-No more awkward spreadsheets. Rihla’s core engine handles complex trip finances effortlessly:
-- **Flexible Splitting**: Split equally, by sub-groups (e.g., only those in Car 1), or custom weights.
-- **Multi-Currency Support**: Automatic conversion using live rates or manual overrides.
-- **Settle Up Engine**: Smart balance calculation that minimizes the number of transactions needed to settle.
-- **QR Payments**: Generate payment QR codes for fast, error-free settlements.
-- **Audit Trail**: Every change is logged with a transaction timeline.
-
-### 🎒 Smart Gear Tracking
-Keep your group prepared with collaborative packing lists:
-- **Item Assignment**: Assign gear to specific participants.
-- **Real-time Progress**: A "Preparation Meter" on the dashboard shows packing progress.
-- **Priority Levels**: Flag essential gear to ensure nothing is left behind.
-- **Categorization**: Organize gear by person, category, or sub-group.
-
-### 🚗 Trip Logistics & Sub-Groups
-Manage the complex movement of people and equipment:
-- **Sub-Group Isolation**: Create sub-groups for different cars, camps, or flight groups.
-- **Travel Details**: Store and share flight numbers, hotel bookings, and vehicle assignments.
-- **Itinerary Timeline**: A unified view of the trip's schedule and logistics.
-
-### 🔐 Secure Vault
-A dedicated space for essential trip documents:
-- **Centralized Docs**: Store digital copies of passports, flight tickets, and insurance.
-- **Encrypted Storage**: Securely stored using Supabase Storage with strict RLS (Row Level Security) policies.
-- **Categorized Access**: Filter by ID, Booking, or Insurance.
-
-### 🔄 Real-time & Offline Ready
-- **Instant Sync**: Real-time updates across all devices via Supabase Realtime.
-- **Offline Mode**: Full local caching with Sqflite allows you to view and record data even in the middle of a desert.
-- **Background Sync**: Automatic queueing of changes for safe synchronization when connectivity returns.
+Package: `safar` · Android ID: `com.safar.safar` · Version: 1.1.0
 
 ---
 
-## 🚀 Tech Stack & Architecture
+## Key Features
 
-Rihla is built with a **Feature-First Architecture** for maximum maintainability:
-
-- **Framework**: Flutter (Current Stable)
-- **State Management**: Riverpod 2.x (using Generators)
-- **Backend**: Supabase (PostgreSQL, Realtime, Storage, Auth)
-- **Local Cache**: Sqflite
-- **Navigation**: GoRouter (Type-safe routing + deep links)
-- **Animations**: Flutter Animate
-- **Error Tracking**: Sentry
+- **Groups** — Create or join persistent groups with an invite-code flow. Group financial history accumulates across all events.
+- **Events** — Spin up typed events (trip, camping, dinner, custom) inside a group. Each type pre-loads relevant modules.
+- **Ledger** — Split expenses across all members or sub-groups. All money math uses the `Decimal` package (OMR, 3 decimal places). Settlement optimization finds the minimum number of transactions.
+- **Gear** — Track shared equipment per event.
+- **Logistics** — Itinerary and logistics planning per event.
+- **Vault** — Document storage backed by Firebase Storage (signed URLs, max 25 MB per file).
+- **Memories** — Photo/media uploads per event via Firebase Storage.
+- **Activity feeds** — Group-level and event-level activity logs.
+- **Offline-first** — All data is cached in SQLite (`safar_cache.db`). Writes are queued and synced to Firestore when connectivity returns.
+- **Push notifications** — Firebase Cloud Messaging (FCM) for real-time group/event updates.
+- **Frictionless auth** — Firebase anonymous sign-in on first launch; no login screen.
+- **Payments** — Thawani payment integration for Omani payment processing.
 
 ---
 
-## 🛠 Getting Started
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Flutter (Dart SDK ^3.10.1) |
+| State management | Riverpod 2.x (`flutter_riverpod ^2.4.9`) |
+| Navigation | GoRouter (`^13.2.0`) |
+| Backend | Firebase — Firestore, Auth, Storage, FCM |
+| Local cache | SQLite via `sqflite ^2.4.2` (v6 schema, `safar_cache.db`) |
+| Financial math | `decimal ^3.2.4` |
+| Error tracking | Sentry (`sentry_flutter ^9.0.0`) |
+| Typography | Plus Jakarta Sans via `google_fonts ^6.1.0` |
+| Animations | `flutter_animate ^4.5.0`, `animations ^2.0.0` |
+| Icons | `iconsax ^0.0.8` |
+| Testing | `mocktail`, `fake_cloud_firestore`, `firebase_auth_mocks` |
+
+---
+
+## Getting Started
 
 ### Prerequisites
-- Flutter SDK 3.10+
-- A Supabase Project ([Manual setup required](#1-set-up-supabase))
 
-### 1. Configuration
-Rihla uses compile-time variables for security. Create a `config.json` in the root directory:
+- Flutter stable channel (Dart SDK ^3.10.1)
+- A `config.json` at the project root (gitignored) containing runtime config values
+- Firebase platform config files (gitignored):
+  - `android/app/google-services.json`
+  - `ios/Runner/GoogleService-Info.plist`
+- `lib/firebase_options.dart` generated via `flutterfire configure`
 
-```json
-{
-  "SUPABASE_URL": "your-project-url",
-  "SUPABASE_ANON_KEY": "your-anon-key",
-  "SENTRY_DSN": "your-sentry-dsn"
-}
-```
+### Install and run
 
-### 2. Run the App
 ```bash
+# Install dependencies
 flutter pub get
+
+# Run in debug mode
 flutter run --dart-define-from-file=config.json
 ```
 
-### 3. Database Setup
-Migrations are located in `supabase/migrations`. Apply them in numerical order using the Supabase SQL Editor or CLI.
+### App bootstrap order
+
+`main()` initializes inside `SentryFlutter.init`: Firebase → anonymous auth session → SharedPreferences → `runApp`.
 
 ---
 
-## 🧪 Testing & CI/CD
-Rihla maintains a rigorous testing standard:
-- **Unit Tests**: Core logic and formatting.
-- **Widget Tests**: UI component stability.
-- **Integration Tests**: Full "Happy Path" E2E flows.
-- **CI/CD**: Automatic test execution and release builds via GitHub Actions.
+## Project Structure
 
-To run tests locally:
-```bash
-flutter test
+```
+lib/
+├── main.dart
+├── firebase_options.dart         # Auto-generated by flutterfire
+├── core/
+│   ├── config/                   # Environment config
+│   ├── models/                   # Shared models
+│   ├── providers/                # Cross-feature providers
+│   ├── router/                   # GoRouter definition (app_router.dart)
+│   ├── services/                 # Firestore repo, SQLite DB, cache service
+│   ├── theme/                    # AppTheme, color tokens, spacing tokens
+│   ├── types/                    # Shared types/enums
+│   └── utils/                    # Formatters, helpers
+├── features/                     # Feature-first modules
+│   ├── auth/
+│   ├── groups/                   # Persistent groups + invite flow
+│   ├── events/                   # Event creation + command center
+│   ├── ledger/                   # Expense splitting + settlement
+│   ├── gear/
+│   ├── logistics/
+│   ├── vault/                    # Document storage
+│   ├── memories/                 # Photo uploads
+│   ├── activity/                 # Activity feeds
+│   ├── home/
+│   ├── settings/
+│   └── onboarding/
+└── shared/
+    └── widgets/                  # ModuleHeader, AppTabBar, SkeletonLoader,
+                                  # OfflineBanner, EmptyStateView, LoadingButton, …
 ```
 
+Each feature follows the same internal shape: `models/`, `providers/`, `screens/`, `services/`, `widgets/`.
+
+### Key provider patterns
+
+- `StreamProvider` / `StreamProvider.family` for real-time Firestore subscriptions
+- `StateNotifierProvider` for complex mutable state (settings, connectivity)
+- `FutureProvider` for one-shot async reads
+- All routes use GoRouter path parameters; screens fetch their own data — no `state.extra`.
+
 ---
 
-## 📄 License
-MIT License - See [LICENSE](LICENSE) file for details.
+## Testing
+
+```bash
+# Run all tests
+flutter test
+
+# Run a specific file
+flutter test test/unit/balance_calculations_test.dart
+
+# Run a directory
+flutter test test/unit/
+
+# Static analysis
+flutter analyze
+```
+
+### Test types
+
+| Type | Location | What's covered |
+|---|---|---|
+| Unit | `test/unit/` | BalanceCalculator, formatters, services, providers, models, design tokens |
+| Widget/Feature | `test/features/` | Screen widgets — groups, ledger, gear, logistics, vault, memories |
+| Integration | `test/integration/` | Happy path, offline scenario, Firebase auth, money round-trips |
+
+Tests use `mocktail` for mocking and `fake_cloud_firestore` / `firebase_auth_mocks` to avoid real Firebase calls. Provider overrides swap `sharedPreferencesProvider` and other async deps in test scope.
+
+---
+
+## Building
+
+### Android release (AAB)
+
+```bash
+flutter build appbundle \
+  --release \
+  --obfuscate \
+  --split-debug-info=./build/app/outputs/symbols \
+  --dart-define-from-file=config.json
+```
+
+Requires a signed keystore configured in `android/key.properties` (gitignored).
+
+### CI/CD
+
+`.github/workflows/release_android.yml` triggers on manual dispatch or a `v*` tag push. It runs tests, builds the AAB, and uploads to Google Play alpha.
+
+Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`.
+
+iOS builds are manual — no iOS CI pipeline.
