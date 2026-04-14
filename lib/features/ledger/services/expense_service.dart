@@ -108,6 +108,8 @@ class ExpenseService extends FirestoreRepository {
     String? subGroupId,
     List<String>? customSplitParticipants,
     String? note,
+    String? categoryId,
+    String? payerParticipantId,
   }) async {
     final updates = <String, dynamic>{};
     if (amount != null) {
@@ -122,6 +124,10 @@ class ExpenseService extends FirestoreRepository {
       updates['customSplitParticipants'] = customSplitParticipants;
     }
     if (note != null) updates['note'] = note;
+    if (categoryId != null) updates['categoryId'] = categoryId;
+    if (payerParticipantId != null) {
+      updates['payerParticipantId'] = payerParticipantId;
+    }
     if (updates.isNotEmpty) {
       try {
         await eventSubcollection(groupId, eventId, 'expenses')

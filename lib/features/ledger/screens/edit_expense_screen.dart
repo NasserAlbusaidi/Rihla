@@ -123,6 +123,12 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
       customSplitParticipants: _scope == ExpenseScope.custom
           ? _customSplitParticipants.toList()
           : null,
+      categoryId: _selectedCategoryId != expense.categoryId
+          ? _selectedCategoryId
+          : null,
+      payerParticipantId: _selectedPayerId != expense.payerParticipantId
+          ? _selectedPayerId
+          : null,
     );
 
     setState(() => _isSubmitting = false);

@@ -190,33 +190,49 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       return;
     }
 
-    // Upload receipt if one was selected
-    String? receiptUrl;
-    if (_receiptPath != null) {
-      setState(() => _isUploadingReceipt = true);
-      receiptUrl = await _uploadReceipt(_receiptPath!);
-      if (!mounted) return;
-      setState(() => _isUploadingReceipt = false);
-    }
+    // Guard against double-tap: set loading true before any async work
+    ref.read(expenseLoadingProvider.notifier).state = true;
 
-    final expenseService = ref.read(expenseServiceProvider);
-    final expense = await expenseService.addExpense(
-      groupId: widget.groupId,
-      eventId: widget.eventId,
-      payerParticipantId: _selectedPayerId ?? currentParticipant.id,
-      amount: amount,
-      description: note.isNotEmpty ? note : null,
-      scope: _scope,
-      subGroupId: _selectedSubGroupId,
-      customSplitParticipants: _scope == ExpenseScope.custom
-          ? _customSplitParticipants.toList()
-          : null,
-      receiptUrl: receiptUrl,
-      categoryId: _selectedCategoryId,
-    );
+    try {
+      // Upload receipt if one was selected
+      String? receiptUrl;
+      if (_receiptPath != null) {
+        setState(() => _isUploadingReceipt = true);
+        receiptUrl = await _uploadReceipt(_receiptPath!);
+        if (!mounted) return;
+        setState(() => _isUploadingReceipt = false);
+      }
 
-    if (mounted) {
-      _showSuccessDialog(expense);
+      final expenseService = ref.read(expenseServiceProvider);
+      final expense = await expenseService.addExpense(
+        groupId: widget.groupId,
+        eventId: widget.eventId,
+        payerParticipantId: _selectedPayerId ?? currentParticipant.id,
+        amount: amount,
+        description: note.isNotEmpty ? note : null,
+        scope: _scope,
+        subGroupId: _selectedSubGroupId,
+        customSplitParticipants: _scope == ExpenseScope.custom
+            ? _customSplitParticipants.toList()
+            : null,
+        receiptUrl: receiptUrl,
+        categoryId: _selectedCategoryId,
+      );
+
+      if (mounted) {
+        _showSuccessDialog(expense);
+      }
+    } catch (e) {
+      debugPrint('[EXPENSE] addExpense failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add expense: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        ref.read(expenseLoadingProvider.notifier).state = false;
+      }
     }
   }
 
