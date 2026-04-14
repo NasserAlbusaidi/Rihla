@@ -86,9 +86,10 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260414-smu | Fix all 5 critical Firestore/Storage security vulnerabilities | 2026-04-14 | d068f6c | [260414-smu-fix-all-5-critical-firestore-storage-sec](./quick/260414-smu-fix-all-5-critical-firestore-storage-sec/) |
+| 260414-t2d | Fix 7 financial/ledger bugs — split rounding, currency, edit expense, double-tap, settle-up validation | 2026-04-14 | d8c4328 | [260414-t2d-fix-7-financial-ledger-bugs-split-roundi](./quick/260414-t2d-fix-7-financial-ledger-bugs-split-roundi/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-14 - Completed quick task 260414-smu: Fix all 5 critical Firestore/Storage security vulnerabilities
-Stopped at: Security rules hardened — 01-security.md review items resolved
-Next action: Continue with review priority #2 (02-financial-bugs.md) or deploy rules via `firebase deploy --only firestore:rules,storage`
+Last activity: 2026-04-14 - Completed quick task 260414-t2d: Fix 7 financial/ledger bugs
+Stopped at: Financial bugs resolved — 02-financial-bugs.md review items resolved
+Next action: Continue with remaining review items or other quick tasks
