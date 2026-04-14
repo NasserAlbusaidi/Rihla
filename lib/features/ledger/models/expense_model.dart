@@ -48,6 +48,9 @@ class Expense {
   final bool isDeleted;
   final DateTime? deletedAt;
 
+  // Currency for this expense (ISO 4217 code, e.g. 'OMR', 'USD')
+  final String _currency;
+
   const Expense({
     required this.id,
     required this.tripId,
@@ -67,7 +70,8 @@ class Expense {
     this.payerAvatarUrl,
     this.isDeleted = false,
     this.deletedAt,
-  });
+    String currency = 'OMR',
+  }) : _currency = currency;
 
   factory Expense.fromJson(Map<String, dynamic> json) {
     final category = json['expense_categories'] as Map<String, dynamic>?;
@@ -148,6 +152,7 @@ class Expense {
       tripId: data['eventId'] as String,
       payerParticipantId: data['payerParticipantId'] as String,
       amount: MoneySerializer.fromSubunits(amountFils, currency),
+      currency: currency,
       description: data['description'] as String?,
       scope: ExpenseScope.fromString(data['scope'] as String? ?? 'global'),
       subGroupId: data['subGroupId'] as String?,
@@ -190,10 +195,10 @@ class Expense {
     };
   }
 
-  /// The currency for this expense.
+  /// The currency for this expense (ISO 4217 code).
   ///
-  /// Expenses default to OMR (Omani Rial). Use [copyWith] to change.
-  String get currency => 'OMR';
+  /// Read from Firestore data. Defaults to 'OMR' (Omani Rial) when absent.
+  String get currency => _currency;
 
   /// Alias for receiptUrl for backward compatibility
   String? get receiptPath => receiptUrl;
@@ -203,6 +208,7 @@ class Expense {
     String? tripId,
     String? payerParticipantId,
     Decimal? amount,
+    String? currency,
     String? description,
     ExpenseScope? scope,
     String? subGroupId,
@@ -223,6 +229,7 @@ class Expense {
       tripId: tripId ?? this.tripId,
       payerParticipantId: payerParticipantId ?? this.payerParticipantId,
       amount: amount ?? this.amount,
+      currency: currency ?? _currency,
       description: description ?? this.description,
       scope: scope ?? this.scope,
       subGroupId: subGroupId ?? this.subGroupId,

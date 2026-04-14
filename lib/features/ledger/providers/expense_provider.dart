@@ -59,11 +59,7 @@ final eventExpensesProvider = StreamProvider.family<List<Expense>, EventRef>((
 ) {
   final service = ref.read(expenseServiceProvider);
   final cache = ref.read(balanceCacheRepositoryProvider);
-  return service.watchExpenses(eventRef.groupId, eventRef.eventId).handleError(
-    (e, st) {
-      debugPrint('[EXPENSES] eventExpensesProvider stream error: $e');
-    },
-  ).asyncMap(
+  return service.watchExpenses(eventRef.groupId, eventRef.eventId).asyncMap(
     (expenses) async {
       debugPrint('[EXPENSES] eventExpensesProvider asyncMap: ${expenses.length} expenses for ${eventRef.eventId}');
       // Side effect: write to SQLite for BalanceCalculator (D-15)
@@ -279,10 +275,18 @@ class BalanceCalculator {
         scaleOnInfinitePrecision: 3,
       );
 
-      // Add to each recipient's owed amount
-      for (final recipientId in splitRecipients) {
+      // Remainder-safe distribution: assign truncated perHead to all
+      // recipients except the last (sorted for determinism), who absorbs
+      // the rounding remainder so sum(shares) == expense.amount exactly.
+      final remainder =
+          expense.amount - (perHead * Decimal.fromInt(splitCount));
+      final sortedRecipients = splitRecipients.toList()..sort();
+      for (int i = 0; i < sortedRecipients.length; i++) {
+        final recipientId = sortedRecipients[i];
         if (owedMap.containsKey(recipientId)) {
-          owedMap[recipientId] = owedMap[recipientId]! + perHead;
+          final isLast = i == sortedRecipients.length - 1;
+          owedMap[recipientId] =
+              owedMap[recipientId]! + perHead + (isLast ? remainder : Decimal.zero);
         }
       }
     }
