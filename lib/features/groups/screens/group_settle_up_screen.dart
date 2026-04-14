@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
@@ -7,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import 'package:go_router/go_router.dart';
 import '../../../core/config/firebase_config.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -737,6 +739,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
                 controller: amountController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r'^\d*\.?\d{0,3}'),
+                  ),
+                ],
                 decoration: InputDecoration(
                   labelText: 'Amount (${group.currency})',
                   filled: true,
@@ -858,6 +865,29 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
     final noteText =
         noteController.text.trim().isEmpty ? null : noteController.text.trim();
 
+    // Validate amount before recording
+    if (editedAmount <= Decimal.zero) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Amount must be greater than zero')),
+        );
+      }
+      return;
+    }
+    if (editedAmount > suggestedAmount) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Amount cannot exceed the outstanding balance of '
+              '${AppFormatters.formatCurrency(suggestedAmount, group.currency)}',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     await _recordSettlement(
       context,
       group: group,
@@ -883,7 +913,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
     try {
       String? actorName;
       try {
-        actorName = FirebaseConfig.currentUser?.displayName ?? fromName;
+        actorName = ref.read(settingsProvider).deviceName.isNotEmpty
+            ? ref.read(settingsProvider).deviceName
+            : fromName;
       } catch (_) {
         actorName = fromName;
       }
