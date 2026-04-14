@@ -7,10 +7,23 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Invite codes: public read for joining, authenticated write
+    // FCM tokens: owner-only read/write (doc ID = user UID)
+    match /fcm_tokens/{userId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // Invite codes: authenticated read, shape-validated create, no updates
     match /inviteCodes/{code} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      // Read: authenticated users only (join flow needs to look up groupId)
+      allow read: if request.auth != null;
+      // Write: only via group create/delete batch (authenticated)
+      // The inviteCode doc stores {groupId, createdAt} -- validate shape
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['groupId', 'createdAt'])
+        && request.resource.data.groupId is string;
+      allow update: if false;
+      allow delete: if request.auth != null;
     }
 
     // Groups
@@ -41,7 +54,9 @@ service cloud.firestore {
       allow read: if isMember();
       allow create: if isValidGroupCreate();
       allow update: if isMember() || isValidJoin();
-      allow delete: if false;
+      // Creator-only delete via createdBy field (set at group creation, never updated)
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.createdBy;
 
       // Events subcollection -- more restrictive than generic subcollection rule (D-32)
       match /events/{eventId} {
@@ -75,25 +90,67 @@ service cloud.firestore {
         allow delete: if false;
 
         // Module subcollections (expenses, settlements, gear, etc.)
-        // Any event participant can read/write module data (D-11)
         match /{module}/{docId} {
+          // Read: any group member (avoids race condition when event doc
+          // hasn't committed on server yet -- group membership is already stable)
+          // Write: event participants only
+          function isGroupMemberForModule() {
+            return request.auth != null &&
+              request.auth.uid in
+                get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+          }
           function isEventParticipantForModule() {
             return request.auth != null &&
               request.auth.uid in
                 get(/databases/$(database)/documents/groups/$(groupId)/events/$(eventId)).data.participantIds;
           }
-          allow read, write: if isEventParticipantForModule();
+          allow read: if isGroupMemberForModule();
+          allow write: if isEventParticipantForModule();
+
+          // Nested subcollections (e.g., sub_groups/{sgId}/members/{memberId})
+          match /{nestedCol}/{nestedDocId} {
+            allow read: if isGroupMemberForModule();
+            allow write: if isEventParticipantForModule();
+          }
         }
       }
 
-      // Group subcollections -- ONE get() call to parent for membership
-      match /{subcollection}/{docId} {
-        function isGroupMember() {
+      // Members subcollection -- explicit rules with role-lock on updates
+      match /members/{memberId} {
+        function isGroupMemberForMembers() {
           return request.auth != null &&
             request.auth.uid in
               get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
         }
-        allow read, write: if isGroupMember();
+        allow read: if isGroupMemberForMembers();
+        allow create: if isGroupMemberForMembers();
+        // Lock role field on updates -- prevents MEMBER -> CREATOR escalation
+        allow update: if isGroupMemberForMembers()
+          && request.resource.data.role == resource.data.role;
+        allow delete: if isGroupMemberForMembers();
+      }
+
+      // Activity subcollection -- append-only (no updates or deletes)
+      match /activity/{activityId} {
+        function isGroupMemberForActivity() {
+          return request.auth != null &&
+            request.auth.uid in
+              get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+        }
+        allow read: if isGroupMemberForActivity();
+        allow create: if isGroupMemberForActivity();
+        // Activity logs are append-only (no updates or deletes)
+        allow update, delete: if false;
+      }
+
+      // Settlements subcollection
+      match /settlements/{settlementId} {
+        function isGroupMemberForSettlements() {
+          return request.auth != null &&
+            request.auth.uid in
+              get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+        }
+        allow read, write: if isGroupMemberForSettlements();
       }
     }
   }
