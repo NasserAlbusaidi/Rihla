@@ -1,0 +1,28 @@
+// NOTE: Storage rules cannot query Firestore for membership.
+// Membership-based access requires Cloud Functions custom claims (follow-up).
+// Current rules: authenticated + file size limit.
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Trip documents: authenticated users, 25MB max upload
+    match /trip-documents/{eventId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 25 * 1024 * 1024;
+    }
+
+    // Trip memories (photos): authenticated users, 25MB max upload
+    match /trip-memories/{eventId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 25 * 1024 * 1024;
+    }
+
+    // Default: deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
