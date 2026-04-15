@@ -89,9 +89,10 @@ None.
 | 260414-t2d | Fix 7 financial/ledger bugs — split rounding, currency, edit expense, double-tap, settle-up validation | 2026-04-14 | d8c4328 | [260414-t2d-fix-7-financial-ledger-bugs-split-roundi](./quick/260414-t2d-fix-7-financial-ledger-bugs-split-roundi/) |
 | 260415-9to | Fix 5 group management bugs — duplicate join, balance-gated leave/delete, awaited deletes, tab auto-select | 2026-04-15 | c07b2d4 | [260415-9to-fix-5-group-management-bugs](./quick/260415-9to-fix-5-group-management-bugs/) |
 | 260415-ers | Fix 4 auth/infrastructure bugs — rethrow auth, DB init hang, lifecycle connectivity, GoRouter nav | 2026-04-15 | 6223691 | [260415-ers-fix-4-auth-infrastructure-bugs](./quick/260415-ers-fix-4-auth-infrastructure-bugs/) |
+| 260415-g20 | Fix memory photos never displaying — resolve Firebase Storage download URLs in eventMemoriesProvider | 2026-04-15 | bba1a31 | [260415-g20-fix-memory-photos-never-displaying-resol](./quick/260415-g20-fix-memory-photos-never-displaying-resol/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-15 - Completed quick task 260415-ers: Fix 4 auth/infrastructure bugs
-Stopped at: Auth/infrastructure bugs resolved — 04-auth-infrastructure.md review items (Bugs 4, 20, 23, 24) resolved
-Next action: Continue with remaining review items or other quick tasks
+Last activity: 2026-04-15 - Completed quick task 260415-g20: Fix memory photos never displaying
+Stopped at: Memory photos fix — signedUrl now resolved via asyncMap + cached getDownloadUrl in provider pipeline
+Next action: Continue with remaining review items or update 05-broken-features.md
