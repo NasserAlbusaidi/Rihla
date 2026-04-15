@@ -1,14 +1,14 @@
 # Code Quality & Cleanup — LOW
 
-**5/11 FIXED | 6 remaining (larger scope)**
+**6/11 FIXED | 5 remaining (larger scope)**
 
 ## ~~26. ~750 Lines of Dead Code~~ FIXED
 
 Deleted 8 dead files (~1750 lines): event_spending_hero, timeline_card, photo_grid, unassigned_pool, transaction_list, member_balances_section, spending_summary_section, settings_keys. Removed dead GearStats class and LogisticsKeys.unassignedPool key.
 
-## 27. 50+ debugPrint Statements in Production — STILL OPEN
+## ~~27. 50+ debugPrint Statements in Production~~ FIXED
 
-Scattered throughout. Some fire on every Firestore snapshot. Should be gated behind `kDebugMode`.
+72 total: 32 verbose trace logs removed entirely, 40 service error logs gated behind `kDebugMode`. Zero unguarded `debugPrint` calls remain in production code.
 
 ## 28. 16 Swallowed Exceptions — STILL OPEN
 
