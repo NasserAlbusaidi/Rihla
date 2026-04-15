@@ -10,13 +10,22 @@ class LocalDatabase {
   static const String _databaseName = 'safar_cache.db';
   static const int _databaseVersion = 6; // Extended with groups tables
 
-  /// Get database instance (safe for concurrent access)
+  /// Get database instance (safe for concurrent access).
+  ///
+  /// If init fails, completes the completer with the error (unblocking
+  /// waiters) and resets it so the next access retries initialization.
   static Future<Database> get database async {
     if (_database != null) return _database!;
     if (_initCompleter != null) return _initCompleter!.future;
     _initCompleter = Completer<Database>();
-    _database = await _initDatabase();
-    _initCompleter!.complete(_database!);
+    try {
+      _database = await _initDatabase();
+      _initCompleter!.complete(_database!);
+    } catch (e, st) {
+      _initCompleter!.completeError(e, st);
+      _initCompleter = null;
+      rethrow;
+    }
     return _database!;
   }
 
@@ -486,12 +495,13 @@ class LocalDatabase {
     }
   }
 
-  /// Close database
+  /// Close database and reset completer so next access re-initializes.
   static Future<void> close() async {
     final db = _database;
     if (db != null) {
       await db.close();
       _database = null;
+      _initCompleter = null;
     }
   }
 

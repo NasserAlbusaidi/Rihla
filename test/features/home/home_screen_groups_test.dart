@@ -1,4 +1,3 @@
-import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -233,9 +232,9 @@ void main() {
       expect(find.byKey(HomeKeys.joinGroupOption), findsOneWidget);
     });
 
-    testWidgets('GroupCard is wrapped in OpenContainer for ContainerTransform', (tester) async {
-      // OpenContainer replaces TapBounce+GoRouter push (Phase 20 P02).
-      // Verify OpenContainer is present in the group cards section.
+    testWidgets('GroupCard navigates via GoRouter (not OpenContainer)', (tester) async {
+      // Bug 24 fix: OpenContainer bypassed GoRouter. GroupCard now uses
+      // context.push('/group/{id}') for deep link support.
       final groups = [_makeGroup('gXYZ', 'Friends')];
 
       await tester.pumpWidget(
@@ -252,8 +251,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // OpenContainer wraps GroupCard — verifies ContainerTransform is wired
-      expect(find.byType(OpenContainer<void>), findsWidgets);
+      // GroupCard renders without OpenContainer wrapper
+      expect(find.byType(GroupCard), findsWidgets);
     });
 
     test('does not reference userTripsProvider (trip code removed)', () {

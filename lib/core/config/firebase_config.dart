@@ -55,6 +55,7 @@ class FirebaseConfig {
     } on FirebaseAuthException catch (e) {
       log('Firebase anonymous sign-in failed: ${e.code} — ${e.message}',
           error: e);
+      rethrow;
     }
   }
 
