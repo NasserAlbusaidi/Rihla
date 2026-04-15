@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +11,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../shared/widgets/module_header.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../logistics/models/sub_group_model.dart';
@@ -173,17 +173,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     final note = _noteController.text.trim();
 
-    debugPrint('[EXPENSE] _submit: tripId=${widget.eventId}');
-    debugPrint('[EXPENSE] _submit: looking up currentParticipant...');
-
     final currentParticipant = ref.read(
       currentParticipantProvider(widget.eventId),
     );
-    debugPrint('[EXPENSE] _submit: currentParticipant=${currentParticipant?.id ?? "NULL"}');
     if (currentParticipant == null) {
-      debugPrint('[EXPENSE] _submit: currentParticipant is null, eventId=${widget.eventId}');
-      final user = ref.read(currentUserProvider);
-      debugPrint('[EXPENSE] _submit: currentUser userId=${user?.uid}');
 
       ref.read(expenseErrorProvider.notifier).state =
           'Could not identify your participant record.';
@@ -223,7 +216,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         _showSuccessDialog(expense);
       }
     } catch (e) {
-      debugPrint('[EXPENSE] addExpense failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to add expense: ${e.toString()}')),
@@ -267,7 +259,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       final url = await ref.getDownloadURL();
       return url;
     } catch (e) {
-      debugPrint('Receipt upload failed: $e');
+      if (kDebugMode) debugPrint('Receipt upload failed: $e');
       return null;
     }
   }
@@ -321,12 +313,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final eventAsync = ref.watch(eventDetailProvider(
       (groupId: widget.groupId, eventId: widget.eventId),
     ));
-
-    categoriesAsync.when(
-      data: (cats) => debugPrint('[EXPENSE] build: ${cats.length} categories for tripId=${widget.eventId}'),
-      loading: () => debugPrint('[EXPENSE] build: categories LOADING for tripId=${widget.eventId}'),
-      error: (e, _) => debugPrint('[EXPENSE] build: categories ERROR for tripId=${widget.eventId}: $e'),
-    );
 
     return Scaffold(
       key: LedgerKeys.addExpenseScreen,

@@ -90,7 +90,7 @@ class MemoryService extends FirestoreRepository {
       final metadata = SettableMetadata(contentType: 'image/$extension');
       await ref.putFile(File(pickedFile.path), metadata);
     } on FirebaseException catch (e) {
-      debugPrint('MemoryService.uploadPhoto storage upload failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('MemoryService.uploadPhoto storage upload failed: ${e.code} ${e.message}');
       rethrow;
     }
 
@@ -107,7 +107,7 @@ class MemoryService extends FirestoreRepository {
     try {
       await eventSubcollection(groupId, eventId, 'memories').doc(id).set(data);
     } on FirebaseException catch (e) {
-      debugPrint('MemoryService.uploadPhoto Firestore write failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('MemoryService.uploadPhoto Firestore write failed: ${e.code} ${e.message}');
       rethrow;
     }
 
@@ -122,7 +122,7 @@ class MemoryService extends FirestoreRepository {
     try {
       return await _storage.ref().child(storagePath).getDownloadURL();
     } catch (e) {
-      debugPrint('MemoryService: Failed to get download URL for $storagePath: $e');
+      if (kDebugMode) debugPrint('MemoryService: Failed to get download URL for $storagePath: $e');
       return null;
     }
   }
@@ -171,7 +171,7 @@ class MemoryService extends FirestoreRepository {
           .delete();
       return true;
     } catch (e) {
-      debugPrint('MemoryService: Failed to delete memory $memoryId: $e');
+      if (kDebugMode) debugPrint('MemoryService: Failed to delete memory $memoryId: $e');
       return false;
     }
   }

@@ -84,7 +84,7 @@ class DocumentService extends FirestoreRepository {
       final metadata = SettableMetadata(contentType: mimeType);
       await ref.putFile(File(filePath), metadata);
     } on FirebaseException catch (e) {
-      debugPrint('DocumentService.uploadFile storage upload failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('DocumentService.uploadFile storage upload failed: ${e.code} ${e.message}');
       rethrow;
     }
 
@@ -103,7 +103,7 @@ class DocumentService extends FirestoreRepository {
     try {
       await eventSubcollection(groupId, eventId, 'documents').doc(id).set(data);
     } on FirebaseException catch (e) {
-      debugPrint('DocumentService.uploadFile Firestore write failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('DocumentService.uploadFile Firestore write failed: ${e.code} ${e.message}');
       rethrow;
     }
     return Document.fromFirestore(data);
@@ -175,7 +175,7 @@ class DocumentService extends FirestoreRepository {
     try {
       return await _storage.ref().child(storagePath).getDownloadURL();
     } catch (e) {
-      debugPrint('DocumentService: Failed to get download URL for $storagePath: $e');
+      if (kDebugMode) debugPrint('DocumentService: Failed to get download URL for $storagePath: $e');
       return null;
     }
   }
@@ -210,7 +210,7 @@ class DocumentService extends FirestoreRepository {
           .delete();
       return true;
     } catch (e) {
-      debugPrint('DocumentService: Failed to delete document $documentId: $e');
+      if (kDebugMode) debugPrint('DocumentService: Failed to delete document $documentId: $e');
       return false;
     }
   }

@@ -96,7 +96,7 @@ class EventService extends FirestoreRepository {
           .doc(eventId)
           .set(event.toFirestoreMap());
     } on FirebaseException catch (e) {
-      debugPrint('EventService.createEvent failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('EventService.createEvent failed: ${e.code} ${e.message}');
       rethrow;
     }
 
@@ -156,7 +156,7 @@ class EventService extends FirestoreRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      debugPrint('EventService.deleteEvent failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('EventService.deleteEvent failed: ${e.code} ${e.message}');
       rethrow;
     }
   }
@@ -192,7 +192,7 @@ class EventService extends FirestoreRepository {
           .doc(eventId)
           .update(updateMap);
     } on FirebaseException catch (e) {
-      debugPrint('EventService.updateEvent failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('EventService.updateEvent failed: ${e.code} ${e.message}');
       rethrow;
     }
   }
@@ -219,7 +219,7 @@ class EventService extends FirestoreRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      debugPrint('EventService.updateParticipants failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('EventService.updateParticipants failed: ${e.code} ${e.message}');
       rethrow;
     }
   }

@@ -24,8 +24,6 @@ void main() async {
     appRunner: () async {
       // Initialize Firebase (includes Firestore offline persistence settings)
       await FirebaseConfig.initialize();
-      // Establish Firebase anonymous auth
-      await FirebaseConfig.ensureAnonymousSession();
 
       // Initialize SharedPreferences
       final prefs = await SharedPreferences.getInstance();
@@ -51,12 +49,118 @@ void main() async {
           bundle: SentryAssetBundle(),
           child: ProviderScope(
             overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-            child: const SafarApp(),
+            child: const _AuthGate(),
           ),
         ),
       );
     },
   );
+}
+
+/// Gates the app on successful Firebase anonymous auth.
+///
+/// Shows a retry screen if auth fails instead of crashing.
+/// On success, renders [SafarApp]. On retry success, transitions seamlessly.
+class _AuthGate extends StatefulWidget {
+  const _AuthGate();
+
+  @override
+  State<_AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<_AuthGate> {
+  late Future<void> _authFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _authFuture = FirebaseConfig.ensureAnonymousSession();
+  }
+
+  void _retry() {
+    setState(() {
+      _authFuture = FirebaseConfig.ensureAnonymousSession();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _authFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            home: const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          Sentry.captureException(
+            snapshot.error,
+            stackTrace: snapshot.stackTrace,
+          );
+          return _AuthRetryScreen(onRetry: _retry);
+        }
+        return const SafarApp();
+      },
+    );
+  }
+}
+
+/// Minimal retry screen shown when Firebase anonymous auth fails.
+class _AuthRetryScreen extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _AuthRetryScreen({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    const colors = AppColorTokens.light;
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      home: Scaffold(
+        backgroundColor: colors.scaffoldBackground,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.cloud_off_rounded, size: 64, color: colors.textMuted),
+                const SizedBox(height: 16),
+                Text(
+                  'Connection Error',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Unable to connect. Check your internet and try again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: colors.textSecondary),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: onRetry,
+                    child: const Text('Try Again'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Main application widget

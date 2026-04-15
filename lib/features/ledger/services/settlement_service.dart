@@ -77,7 +77,7 @@ class SettlementService extends FirestoreRepository {
     try {
       await eventSubcollection(groupId, eventId, 'settlements').doc(id).set(data);
     } on FirebaseException catch (e) {
-      debugPrint('SettlementService.addSettlement failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('SettlementService.addSettlement failed: ${e.code} ${e.message}');
       rethrow;
     }
     return Settlement.fromFirestore(data);
@@ -98,7 +98,7 @@ class SettlementService extends FirestoreRepository {
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
       });
     } on FirebaseException catch (e) {
-      debugPrint('SettlementService.deleteSettlement failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('SettlementService.deleteSettlement failed: ${e.code} ${e.message}');
       rethrow;
     }
   }

@@ -74,7 +74,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       ref.read(groupLoadingProvider.notifier).state = false;
       await _showSharePrompt(context, group);
     } catch (e) {
-      debugPrint('CreateGroup error: $e');
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
       ref.read(groupErrorProvider.notifier).state = e.toString();

@@ -83,7 +83,7 @@ class GroupSettlementService extends FirestoreRepository {
     try {
       await _settlementsRef(groupId).doc(id).set(data);
     } on FirebaseException catch (e) {
-      debugPrint('GroupSettlementService.addGroupSettlement failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('GroupSettlementService.addGroupSettlement failed: ${e.code} ${e.message}');
       rethrow;
     }
     return Settlement.fromFirestore(data);
@@ -100,7 +100,7 @@ class GroupSettlementService extends FirestoreRepository {
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
       });
     } on FirebaseException catch (e) {
-      debugPrint('GroupSettlementService.deleteGroupSettlement failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('GroupSettlementService.deleteGroupSettlement failed: ${e.code} ${e.message}');
       rethrow;
     }
   }

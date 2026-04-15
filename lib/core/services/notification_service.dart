@@ -72,12 +72,11 @@ class NotificationService {
 
       _initialized = false;
       _setStatus(NotificationStatus.permissionDenied);
-      debugPrint('FCM: Permission denied');
       return false;
     } catch (e) {
       _initialized = false;
       _setStatus(NotificationStatus.error);
-      debugPrint('FCM: Initialization failed: $e');
+      if (kDebugMode) debugPrint('FCM: Initialization failed: $e');
       return false;
     }
   }
@@ -100,7 +99,7 @@ class NotificationService {
         'updated_at': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
     } catch (e) {
-      debugPrint('FCM: Failed to save token: $e');
+      if (kDebugMode) debugPrint('FCM: Failed to save token: $e');
       _setStatus(NotificationStatus.error);
     }
   }
@@ -118,19 +117,17 @@ class NotificationService {
         'updated_at': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
     } catch (e) {
-      debugPrint('FCM: Token refresh save failed: $e');
+      if (kDebugMode) debugPrint('FCM: Token refresh save failed: $e');
       _setStatus(NotificationStatus.error);
     }
   }
 
   /// Handle foreground messages.
   void _onForegroundMessage(RemoteMessage message) {
-    debugPrint('FCM foreground: ${message.notification?.title}');
   }
 
   /// Handle when user taps a notification.
   void _onMessageTap(RemoteMessage message) {
-    debugPrint('FCM tap: ${message.data}');
   }
 
   /// Remove token when notifications are disabled.
@@ -145,7 +142,7 @@ class NotificationService {
             .delete();
       }
     } catch (e) {
-      debugPrint('FCM: Token removal failed: $e');
+      if (kDebugMode) debugPrint('FCM: Token removal failed: $e');
     } finally {
       _initialized = false;
       _setStatus(NotificationStatus.off);

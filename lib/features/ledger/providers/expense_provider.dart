@@ -1,5 +1,4 @@
 import 'package:decimal/decimal.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/balance_cache_repository.dart';
@@ -61,14 +60,13 @@ final eventExpensesProvider = StreamProvider.family<List<Expense>, EventRef>((
   final cache = ref.read(balanceCacheRepositoryProvider);
   return service.watchExpenses(eventRef.groupId, eventRef.eventId).asyncMap(
     (expenses) async {
-      debugPrint('[EXPENSES] eventExpensesProvider asyncMap: ${expenses.length} expenses for ${eventRef.eventId}');
       // Side effect: write to SQLite for BalanceCalculator (D-15)
       // Catch errors — SQLite FK constraints may fail for Firestore-only events
       // that have no corresponding row in the legacy trips table.
       try {
         await cache.cacheExpenses(eventRef.eventId, expenses);
-      } catch (e) {
-        debugPrint('[EXPENSES] SQLite cache failed (non-critical): $e');
+      } catch (_) {
+        // SQLite cache is non-critical; Firestore is the source of truth
       }
       return expenses; // pass through unchanged
     },

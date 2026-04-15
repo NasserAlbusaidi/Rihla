@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
@@ -36,7 +35,6 @@ final eventServiceProvider = Provider<EventService>(EventService.new);
 /// Client-side sort overrides the order for null-date events (D-25).
 final groupEventsProvider =
     StreamProvider.family<List<Event>, String>((ref, groupId) {
-  debugPrint('[EVENTS] groupEventsProvider: subscribing to groupId=$groupId');
   return FirebaseConfig.firestore
       .collection('groups')
       .doc(groupId)
@@ -44,20 +42,7 @@ final groupEventsProvider =
       .where('isDeleted', isEqualTo: false)
       .orderBy('createdAt', descending: true)
       .snapshots()
-      .handleError((e, st) {
-        debugPrint('[EVENTS] groupEventsProvider ERROR: $e');
-        debugPrint('[EVENTS]   stackTrace: $st');
-      })
       .map((snap) {
-    debugPrint('[EVENTS] groupEventsProvider: snapshot received, '
-        '${snap.docs.length} docs, metadata: fromCache=${snap.metadata.isFromCache}, '
-        'hasPendingWrites=${snap.metadata.hasPendingWrites}');
-    for (final doc in snap.docs) {
-      debugPrint('[EVENTS]   doc: id=${doc.id}, '
-          'name=${doc.data()['name']}, '
-          'isDeleted=${doc.data()['isDeleted']}, '
-          'type=${doc.data()['type']}');
-    }
     final events = snap.docs.map(Event.fromDoc).toList();
     events.sort((a, b) {
       if (a.startDate == null && b.startDate == null) {

@@ -33,7 +33,7 @@ class OcrResult {
 /// added back, receipts remain upload-only and the UI surfaces that explicitly.
 class OcrService {
   static Future<OcrResult> processReceipt(File imageFile) async {
-    debugPrint('OCR unavailable in this build for ${imageFile.path}');
+    if (kDebugMode) debugPrint('OCR unavailable in this build for ${imageFile.path}');
     return const OcrResult(
       status: OcrStatus.unavailable,
       rawText: '',

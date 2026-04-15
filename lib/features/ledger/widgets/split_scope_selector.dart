@@ -239,24 +239,16 @@ class _CustomParticipantSelector extends ConsumerWidget {
           constraints: const BoxConstraints(maxHeight: 200),
           child: participantsAsync.when(
             loading: () {
-              debugPrint('[SPLIT] _CustomParticipantSelector: participants LOADING');
               return SkeletonLoader.card();
             },
             error: (e, _) {
-              debugPrint('[SPLIT] _CustomParticipantSelector: participants ERROR: $e');
               return const InlineErrorWidget(message: 'Unable to load participants');
             },
             data: (participants) {
-              debugPrint('[SPLIT] _CustomParticipantSelector: ${participants.length} participants, '
-                  'currentUid=$currentUid');
-              for (final p in participants) {
-                debugPrint('[SPLIT]   p: id=${p.id}, userId=${p.userId}, name=${p.displayName}');
-              }
               // Exclude current user from selection (they're auto-included)
               final otherParticipants = participants
                   .where((p) => p.id != currentUid)
                   .toList();
-              debugPrint('[SPLIT]   otherParticipants: ${otherParticipants.length}');
 
               if (otherParticipants.isEmpty) {
                 return const Padding(

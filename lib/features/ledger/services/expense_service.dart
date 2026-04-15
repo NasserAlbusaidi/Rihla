@@ -86,7 +86,7 @@ class ExpenseService extends FirestoreRepository {
     try {
       await eventSubcollection(groupId, eventId, 'expenses').doc(id).set(data);
     } on FirebaseException catch (e) {
-      debugPrint('ExpenseService.addExpense failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('ExpenseService.addExpense failed: ${e.code} ${e.message}');
       rethrow;
     }
     return Expense.fromFirestore(data);
@@ -134,7 +134,7 @@ class ExpenseService extends FirestoreRepository {
             .doc(expenseId)
             .update(updates);
       } on FirebaseException catch (e) {
-        debugPrint('ExpenseService.updateExpense failed: ${e.code} ${e.message}');
+        if (kDebugMode) debugPrint('ExpenseService.updateExpense failed: ${e.code} ${e.message}');
         rethrow;
       }
     }
@@ -153,7 +153,7 @@ class ExpenseService extends FirestoreRepository {
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
       });
     } on FirebaseException catch (e) {
-      debugPrint('ExpenseService.deleteExpense failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('ExpenseService.deleteExpense failed: ${e.code} ${e.message}');
       rethrow;
     }
   }

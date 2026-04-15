@@ -52,7 +52,7 @@ class SubGroupService extends FirestoreRepository {
     try {
       await eventSubcollection(groupId, eventId, 'sub_groups').doc(id).set(data);
     } on FirebaseException catch (e) {
-      debugPrint('SubGroupService.createSubGroup failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('SubGroupService.createSubGroup failed: ${e.code} ${e.message}');
       rethrow;
     }
     return SubGroup.fromFirestore(data);
@@ -79,7 +79,7 @@ class SubGroupService extends FirestoreRepository {
         'createdAt': DateTime.now().toUtc().toIso8601String(),
       });
     } on FirebaseException catch (e) {
-      debugPrint('SubGroupService.addMember failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('SubGroupService.addMember failed: ${e.code} ${e.message}');
       rethrow;
     }
   }
@@ -98,7 +98,7 @@ class SubGroupService extends FirestoreRepository {
           .doc(memberId)
           .delete();
     } on FirebaseException catch (e) {
-      debugPrint('SubGroupService.removeMember failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('SubGroupService.removeMember failed: ${e.code} ${e.message}');
       rethrow;
     }
   }
@@ -114,7 +114,7 @@ class SubGroupService extends FirestoreRepository {
           .doc(subGroupId)
           .delete();
     } on FirebaseException catch (e) {
-      debugPrint('SubGroupService.deleteSubGroup failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('SubGroupService.deleteSubGroup failed: ${e.code} ${e.message}');
       rethrow;
     }
   }
@@ -136,7 +136,7 @@ class SubGroupService extends FirestoreRepository {
           .doc(subGroupId)
           .update(updates);
     } on FirebaseException catch (e) {
-      debugPrint('SubGroupService.updateSubGroup failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('SubGroupService.updateSubGroup failed: ${e.code} ${e.message}');
       rethrow;
     }
   }

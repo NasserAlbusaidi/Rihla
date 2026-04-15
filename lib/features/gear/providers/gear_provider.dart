@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/types/event_ref.dart';
@@ -21,7 +20,6 @@ final gearServiceProvider = Provider<GearService>((ref) => GearService());
 /// Use this for all new code. Replaces [tripGearProvider].
 final eventGearItemsProvider =
     StreamProvider.family<List<GearItem>, EventRef>((ref, eventRef) {
-  debugPrint('[GEAR] watchGearItems: groupId=${eventRef.groupId}, eventId=${eventRef.eventId}');
   return ref
       .read(gearServiceProvider)
       .watchGearItems(eventRef.groupId, eventRef.eventId);

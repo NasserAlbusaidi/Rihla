@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../groups/models/group_member_model.dart';
@@ -124,8 +125,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       // Log event_created activity (D-14) — fire-and-forget, no await
       try {
         final actorId = FirebaseConfig.currentUser?.uid ?? '';
-        final actorName =
-            FirebaseConfig.currentUser?.displayName ?? 'Someone';
+        final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
+            ? ref.read(settingsProvider).deviceName
+            : 'Someone';
         ref.read(groupActivityServiceProvider).logGroupEvent(
           groupId: widget.groupId,
           type: 'event_created',
@@ -142,7 +144,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       // event hub. Back button returns to group detail, not the form (D-06/Pitfall 2).
       context.go('/group/${widget.groupId}/event/${event.id}');
     } catch (e) {
-      debugPrint('[CreateEventScreen] Create event error: $e');
       if (!mounted) return;
       ref.read(eventLoadingProvider.notifier).state = false;
       ScaffoldMessenger.of(context).showSnackBar(

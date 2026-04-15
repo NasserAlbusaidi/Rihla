@@ -43,10 +43,10 @@ class ReceiptService {
       final ref = _storage.ref().child(storagePath);
       final metadata = SettableMetadata(contentType: 'image/jpeg');
       await ref.putFile(imageFile, metadata);
-      debugPrint('Receipt uploaded: $storagePath');
+      if (kDebugMode) debugPrint('Receipt uploaded: $storagePath');
       return storagePath;
     } catch (e) {
-      debugPrint('Receipt upload failed: $e');
+      if (kDebugMode) debugPrint('Receipt upload failed: $e');
       return null;
     }
   }
@@ -57,7 +57,7 @@ class ReceiptService {
       final ref = _storage.ref().child(storagePath);
       return await ref.getDownloadURL();
     } catch (e) {
-      debugPrint('Failed to get receipt URL: $e');
+      if (kDebugMode) debugPrint('Failed to get receipt URL: $e');
       return null;
     }
   }
@@ -68,7 +68,7 @@ class ReceiptService {
       await _storage.ref().child(storagePath).delete();
       return true;
     } catch (e) {
-      debugPrint('Failed to delete receipt: $e');
+      if (kDebugMode) debugPrint('Failed to delete receipt: $e');
       return false;
     }
   }

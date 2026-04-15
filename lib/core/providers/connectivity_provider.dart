@@ -85,9 +85,6 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
     if (!mounted) return;
 
     if (isOnline) {
-      if (state != ConnectivityStatus.online) {
-        debugPrint('Connectivity restored (Firestore reachable)');
-      }
       state = ConnectivityStatus.online;
     } else {
       state = ConnectivityStatus.offline;

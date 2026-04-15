@@ -57,7 +57,7 @@ class GearService extends FirestoreRepository {
     try {
       await eventSubcollection(groupId, eventId, 'gear_items').doc(id).set(data);
     } on FirebaseException catch (e) {
-      debugPrint('GearService.addGearItem failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('GearService.addGearItem failed: ${e.code} ${e.message}');
       rethrow;
     }
     return GearItem.fromFirestore(data);
@@ -75,7 +75,7 @@ class GearService extends FirestoreRepository {
           .doc(gearItemId)
           .update({'isPacked': isPacked});
     } on FirebaseException catch (e) {
-      debugPrint('GearService.togglePacked failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('GearService.togglePacked failed: ${e.code} ${e.message}');
       rethrow;
     }
   }
@@ -99,7 +99,7 @@ class GearService extends FirestoreRepository {
             .doc(gearItemId)
             .update(updates);
       } on FirebaseException catch (e) {
-        debugPrint('GearService.updateGearItem failed: ${e.code} ${e.message}');
+        if (kDebugMode) debugPrint('GearService.updateGearItem failed: ${e.code} ${e.message}');
         rethrow;
       }
     }
@@ -119,7 +119,7 @@ class GearService extends FirestoreRepository {
           .doc(gearItemId)
           .update({'assignedTo': null, 'isPacked': false});
     } on FirebaseException catch (e) {
-      debugPrint('GearService.unclaimGearItem failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('GearService.unclaimGearItem failed: ${e.code} ${e.message}');
       rethrow;
     }
   }
@@ -138,7 +138,7 @@ class GearService extends FirestoreRepository {
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
       });
     } on FirebaseException catch (e) {
-      debugPrint('GearService.deleteGearItem failed: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('GearService.deleteGearItem failed: ${e.code} ${e.message}');
       rethrow;
     }
   }

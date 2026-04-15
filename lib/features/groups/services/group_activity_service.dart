@@ -122,7 +122,7 @@ class GroupActivityService extends FirestoreRepository {
         'metadata': metadata ?? const <String, dynamic>{},
         'timestamp': now.toIso8601String(),
       })
-          .catchError((Object e) => debugPrint('[GroupActivity] log failed: $e')),
+          .catchError((Object e) { if (kDebugMode) debugPrint('[GroupActivity] log failed: $e'); }),
     );
   }
 }
