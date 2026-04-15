@@ -117,7 +117,7 @@ Reusable UI components used across features:
 
 ### Design Tokens (`lib/core/theme/app_theme.dart`)
 
-Spacing constants (`space4`–`space32`), border radii (`radiusSmall=12`, `radiusMedium=16`, `radiusLarge=20`), elevation shadows (`shadowFlat`, `shadowRaised`, `shadowFloating`), and `buttonHeight=52`. 
+Spacing constants (`space4`–`space32`), border radii (`radiusSmall=8`, `radiusMedium=16`, `radiusLarge=20`), elevation shadows (`shadowFlat`, `shadowRaised`, `shadowFloating`), and `buttonHeight=52`. 
 ### Page Transitions
 
 Transitions are handled by `CustomTransitionPage` in `lib/core/router/app_router.dart`. The shared `_slideRightTransition` function provides slide-right (Offset(1,0) → zero) for all module-level routes. Slide-up is used for /create-group and /join-group. `lib/core/utils/page_transitions.dart` was deleted in Phase 19 — `AppPageRoute` and `AppBottomSheetRoute` no longer exist.
@@ -192,7 +192,7 @@ Rihla is a Flutter mobile app for group coordination and event planning with a w
 | `material_symbols_icons` | Not yet in pubspec | Confirmed referenced in CLAUDE.md as "already in use" |
 | `iconsax` | `^0.0.8` | Already installed |
 | `cached_network_image` | `^3.3.1` | Already installed |
-| `go_router` | `^17.1.0` (upgraded in v1.0) | Already installed — StatefulShellRoute available |
+| `go_router` | `^13.2.0` | Already installed — StatefulShellRoute available |
 ## Recommended Stack
 ### Animation System
 | Technology | Version | Purpose | Why |
@@ -211,7 +211,7 @@ Rihla is a Flutter mobile app for group coordination and event planning with a w
 ### Navigation Enhancement
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `go_router` | `^17.1.0` (already installed) | Add `StatefulShellRoute` for persistent bottom nav | GoRouter 17.x includes `StatefulShellRoute.indexedStack()` — the standard pattern for M3 `NavigationBar` with persistent tab state. The current app uses GoRouter for top-level routes + `Navigator.push` for sub-screens. The overhaul adds a persistent `NavigationBar` at the top shell level. **No version upgrade needed** — 17.1.0 is already the installed version. |
+| `go_router` | `^13.2.0` (already installed) | Add `StatefulShellRoute` for persistent bottom nav | GoRouter 17.x includes `StatefulShellRoute.indexedStack()` — the standard pattern for M3 `NavigationBar` with persistent tab state. The current app uses GoRouter for top-level routes + `Navigator.push` for sub-screens. The overhaul adds a persistent `NavigationBar` at the top shell level. **No version upgrade needed** — 17.1.0 is already the installed version. |
 | Flutter `NavigationBar` widget (built-in) | Flutter SDK | M3 bottom navigation bar | Replaces any `BottomNavigationBar` usage. M3 `NavigationBar` is the current standard — taller container, indicator pill on active destination, `NavigationDestination` children, `onDestinationSelected` + `selectedIndex` API. No package needed. |
 ### Visual Richness — Icons
 | Technology | Version | Purpose | Why |
@@ -283,7 +283,7 @@ Rihla is a Flutter mobile app for group coordination and event planning with a w
 - [pub.dev: haptic_feedback 0.6.4+3](https://pub.dev/packages/haptic_feedback) — version confirmed December 2025
 - [pub.dev: smooth_page_indicator 2.0.1](https://pub.dev/packages/smooth_page_indicator) — version confirmed December 2025
 - [pub.dev: material_symbols_icons 4.2906.0](https://pub.dev/packages/material_symbols_icons) — version confirmed January 2026
-- [pub.dev: go_router 17.1.0](https://pub.dev/packages/go_router) — version confirmed, StatefulShellRoute available
+- [pub.dev: go_router 13.2.0](https://pub.dev/packages/go_router) — version confirmed, StatefulShellRoute available
 - [pub.dev: rive 0.14.4](https://pub.dev/packages/rive) — version confirmed (alternative to lottie, not recommended for this milestone)
 - [Flutter API: ThemeExtension](https://api.flutter.dev/flutter/material/ThemeExtension-class.html) — design token architecture
 - [Flutter API: ColorScheme.fromSeed](https://api.flutter.dev/flutter/material/ColorScheme/ColorScheme.fromSeed.html) — M3 tonal palette generation

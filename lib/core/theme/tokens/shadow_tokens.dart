@@ -21,7 +21,7 @@ final class AppShadowTokens extends ThemeExtension<AppShadowTokens> {
   final List<BoxShadow> floating;
 
   /// Default standard shadow instance using neutral gray-900 base (#111827).
-  static AppShadowTokens get standard => AppShadowTokens(
+  static final AppShadowTokens standard = AppShadowTokens(
         flat: const [],
         raised: [
           BoxShadow(

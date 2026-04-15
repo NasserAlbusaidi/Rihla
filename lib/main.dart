@@ -71,7 +71,7 @@ class SafarApp extends ConsumerWidget {
     ref.watch(appBootstrapProvider);
 
     return MaterialApp.router(
-      title: 'Safar',
+      title: 'Rihla',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme

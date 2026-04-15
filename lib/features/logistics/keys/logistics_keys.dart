@@ -10,9 +10,6 @@ abstract final class LogisticsKeys {
   static const deleteButton = Key('logistics_delete_button');
   static const createGroupTitle = Key('logistics_create_group_title');
 
-  // Sections
-  static const unassignedPool = Key('logistics_unassigned_pool');
-
   // Parameterized keys for list items
   static Key subgroupCard(String id) => Key('logistics_subgroup_card_$id');
 }
