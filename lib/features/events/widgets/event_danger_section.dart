@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
@@ -232,13 +233,14 @@ class EventDangerSection extends ConsumerWidget {
     );
   }
 
-  void _executeDelete(BuildContext context, WidgetRef ref) {
+  Future<void> _executeDelete(BuildContext context, WidgetRef ref) async {
     // Log event_deleted activity (deferred from Phase 30 P01 per STATE.md D-14).
     // Wrapped in try/catch — logging failure must never crash the delete flow.
     try {
       final actorId = FirebaseConfig.currentUser?.uid ?? '';
-      final actorName =
-          FirebaseConfig.currentUser?.displayName ?? 'Someone';
+      final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
+          ? ref.read(settingsProvider).deviceName
+          : 'Someone';
       ref.read(groupActivityServiceProvider).logGroupEvent(
             groupId: groupId,
             type: 'event_deleted',
@@ -250,14 +252,20 @@ class EventDangerSection extends ConsumerWidget {
       // Activity logging failure must never crash the delete flow.
     }
 
-    // Fire-and-forget delete — synchronous navigation per Phase 26 P01 decision.
-    ref.read(eventServiceProvider).deleteEvent(
-          groupId: groupId,
-          eventId: eventId,
+    try {
+      await ref.read(eventServiceProvider).deleteEvent(
+            groupId: groupId,
+            eventId: eventId,
+          );
+      if (context.mounted) {
+        context.go('/group/$groupId');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete event: $e')),
         );
-
-    if (context.mounted) {
-      context.go('/group/$groupId');
+      }
     }
   }
 }

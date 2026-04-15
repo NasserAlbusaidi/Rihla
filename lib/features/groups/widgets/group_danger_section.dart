@@ -1,9 +1,11 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
@@ -263,11 +265,38 @@ class GroupDangerSection extends ConsumerWidget {
     );
   }
 
-  void _executeLeave(BuildContext context, WidgetRef ref) {
+  Future<void> _executeLeave(BuildContext context, WidgetRef ref) async {
+    // Bug 9: Block leave if current user has an outstanding balance.
+    final uid = FirebaseConfig.currentUser?.uid;
+    final balancesAsync = ref.read(groupBalancesProvider(groupId));
+    final balances = balancesAsync.valueOrNull;
+    if (balances != null && uid != null) {
+      final userBalance = balances.balances.where(
+        (b) => b.participantId == uid,
+      );
+      if (userBalance.isNotEmpty &&
+          userBalance.first.netBalance != Decimal.zero) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Settle up before leaving the group.'),
+              action: SnackBarAction(
+                label: 'Settle Up',
+                onPressed: () => context.push('/group/$groupId/settle-up'),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     // Log member_left activity (D-14) — fire-and-forget before navigation.
     try {
       final actorId = FirebaseConfig.currentUser?.uid ?? '';
-      final actorName = FirebaseConfig.currentUser?.displayName ?? 'Someone';
+      final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
+          ? ref.read(settingsProvider).deviceName
+          : 'Someone';
       ref.read(groupActivityServiceProvider).logGroupEvent(
         groupId: groupId,
         type: 'member_left',
@@ -279,18 +308,53 @@ class GroupDangerSection extends ConsumerWidget {
       // Activity logging failure must never crash the leave flow.
     }
 
-    // Fire-and-forget — synchronous navigation per Phase 26 P01 decision.
-    ref.read(groupServiceProvider).leaveGroup(groupId: groupId);
-    if (context.mounted) {
-      context.go('/home');
+    try {
+      await ref.read(groupServiceProvider).leaveGroup(groupId: groupId);
+      if (context.mounted) {
+        context.go('/home');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to leave group: $e')),
+        );
+      }
     }
   }
 
-  void _executeDelete(BuildContext context, WidgetRef ref) {
-    // Fire-and-forget — synchronous navigation per Phase 26 P01 decision.
-    ref.read(groupServiceProvider).deleteGroup(groupId: groupId);
-    if (context.mounted) {
-      context.go('/home');
+  Future<void> _executeDelete(BuildContext context, WidgetRef ref) async {
+    // Bug 9: Block delete if ANY member has an outstanding balance.
+    final balancesAsync = ref.read(groupBalancesProvider(groupId));
+    final balances = balancesAsync.valueOrNull;
+    if (balances != null) {
+      final hasOutstanding = balances.balances.any(
+        (b) => b.netBalance != Decimal.zero,
+      );
+      if (hasOutstanding) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'All members must settle up before deleting the group.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    try {
+      await ref.read(groupServiceProvider).deleteGroup(groupId: groupId);
+      if (context.mounted) {
+        context.go('/home');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete group: $e')),
+        );
+      }
     }
   }
 }

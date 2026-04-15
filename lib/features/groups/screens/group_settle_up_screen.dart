@@ -58,6 +58,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
   /// [widget.preSelectedMemberId] is set.
   final Map<int, GlobalKey> _tileKeys = {};
 
+  /// Guard to prevent _autoSelectTab from re-running on every rebuild.
+  bool _hasAutoSelected = false;
+
   @override
   void initState() {
     super.initState();
@@ -74,7 +77,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
     List<Map<String, dynamic>> optimalSettlements,
     String? currentUid,
   ) {
+    if (_hasAutoSelected) return;
     if (widget.preSelectedMemberId == null) return;
+    _hasAutoSelected = true;
     final pid = widget.preSelectedMemberId!;
 
     // Check if any settlement in "You Owe" involves preSelectedMemberId

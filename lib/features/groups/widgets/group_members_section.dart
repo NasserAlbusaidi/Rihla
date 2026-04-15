@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
@@ -163,7 +164,7 @@ class GroupMembersSection extends ConsumerWidget {
     );
   }
 
-  void _handleRemove(BuildContext context, WidgetRef ref, GroupMember member) {
+  Future<void> _handleRemove(BuildContext context, WidgetRef ref, GroupMember member) async {
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
 
@@ -193,18 +194,27 @@ class GroupMembersSection extends ConsumerWidget {
         groupId: groupId,
         type: 'member_left',
         actorId: actorId,
-        actorName: FirebaseConfig.currentUser?.displayName ?? member.displayName,
+        actorName: ref.read(settingsProvider).deviceName.isNotEmpty
+            ? ref.read(settingsProvider).deviceName
+            : member.displayName,
         description: '${member.displayName} was removed from the group',
       );
     } catch (_) {
       // Activity logging failure must never crash the remove flow.
     }
 
-    // Fire-and-forget — synchronous callback per Phase 26 P01 decision.
-    ref.read(groupServiceProvider).removeMember(
-          groupId: groupId,
-          memberId: member.id,
-          userId: member.userId,
+    try {
+      await ref.read(groupServiceProvider).removeMember(
+            groupId: groupId,
+            memberId: member.id,
+            userId: member.userId,
+          );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to remove ${member.displayName}: $e')),
         );
+      }
+    }
   }
 }

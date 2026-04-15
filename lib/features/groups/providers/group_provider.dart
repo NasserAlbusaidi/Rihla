@@ -63,6 +63,14 @@ class GroupService extends FirestoreRepository {
   /// The creator is automatically added as a member with role CREATOR (D-09).
   /// Their display name is read from [settingsProvider] (D-06).
   ///
+  /// NOTE on atomicity: The member subcollection write (Step 2) is intentionally
+  /// separate from the group+inviteCode batch (Step 1). Firestore security rules
+  /// require the group document to exist with the user in `memberIds` before
+  /// allowing writes to the `members` subcollection (via `isGroupMember()`
+  /// helper). If Step 2 fails, the group exists without a member doc — this is
+  /// recoverable (retry on next app launch) vs. the alternative of relaxing
+  /// security rules. Same pattern applies to joinGroup.
+  ///
   /// Throws if the user is not authenticated.
   Future<Group> createGroup({
     required String name,
@@ -145,6 +153,13 @@ class GroupService extends FirestoreRepository {
   /// Throws [Exception('Invalid invite code')] if the code doesn't exist.
   /// Throws [Exception('Already a member')] if the user is already in the group.
   ///
+  /// NOTE on atomicity: The memberIds update (Step 1) and member doc creation
+  /// (Step 2) are intentionally separate writes. Security rules require the user
+  /// to be in `memberIds` before allowing member subcollection writes. If Step 2
+  /// fails after Step 1 succeeds, the user appears in memberIds but has no member
+  /// doc — this is recoverable on retry. Batching is not possible due to the
+  /// security rule dependency chain.
+  ///
   /// The invite code is uppercased before the Firestore lookup (D-13).
   Future<Group> joinGroup({required String inviteCode}) async {
     final uid = FirebaseConfig.currentUser?.uid;
@@ -165,6 +180,13 @@ class GroupService extends FirestoreRepository {
     }
 
     final groupId = codeDoc.data()!['groupId'] as String;
+
+    // Bug 8 guard: check if user is already a member before any write.
+    final groupDoc = await db.collection('groups').doc(groupId).get();
+    final memberIds = List<String>.from(groupDoc.data()?['memberIds'] ?? []);
+    if (memberIds.contains(uid)) {
+      throw Exception('Already a member');
+    }
 
     // Step 1: Add user to group's memberIds first.
     // The groups rule allows update if isMember(), but the joiner isn't
