@@ -18,6 +18,10 @@ import '../models/memory_model.dart';
 class MemoryService extends FirestoreRepository {
   static const _uuid = Uuid();
 
+  /// In-memory cache of storage path → download URL.
+  /// Firebase Storage URLs are long-lived; cache avoids redundant round-trips.
+  final Map<String, String> _urlCache = {};
+
   MemoryService() : super();
 
   @visibleForTesting
@@ -123,6 +127,19 @@ class MemoryService extends FirestoreRepository {
     }
   }
 
+  /// Cached variant of [getDownloadUrl]. Returns the cached URL if available,
+  /// otherwise fetches from Firebase Storage and caches the result.
+  Future<String?> getDownloadUrlCached(String storagePath) async {
+    if (storagePath.isEmpty) return null;
+    final cached = _urlCache[storagePath];
+    if (cached != null) return cached;
+    final url = await getDownloadUrl(storagePath);
+    if (url != null) {
+      _urlCache[storagePath] = url;
+    }
+    return url;
+  }
+
   /// Delete memory metadata from Firestore only.
   ///
   /// Use this in tests where Firebase Storage is not available.
@@ -147,6 +164,7 @@ class MemoryService extends FirestoreRepository {
     required String storagePath,
   }) async {
     try {
+      _urlCache.remove(storagePath);
       await _storage.ref().child(storagePath).delete();
       await eventSubcollection(groupId, eventId, 'memories')
           .doc(memoryId)
