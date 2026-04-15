@@ -51,12 +51,15 @@ class BalanceCacheRepository {
   /// Cache a list of [expenses] keyed by [eventId] (= Firestore event ID).
   ///
   /// Called as a side-effect inside [eventExpensesProvider]'s asyncMap.
-  /// Replaces the full list for the event (delete + batch-insert).
+  /// Deletes all existing rows for the event first, then batch-inserts the
+  /// fresh set. This prevents ghost rows from server-side deletes persisting
+  /// in SQLite (ConflictAlgorithm.replace alone cannot remove deleted records).
   Future<void> cacheExpenses(
     String eventId,
     List<Expense> expenses,
   ) async {
     final db = await LocalDatabase.database;
+    await db.delete('expenses', where: 'trip_id = ?', whereArgs: [eventId]);
     final syncedAt = DateTime.now().toIso8601String();
     final batch = db.batch();
     for (final expense in expenses) {
@@ -91,11 +94,14 @@ class BalanceCacheRepository {
   /// Cache a list of [settlements] keyed by [eventId].
   ///
   /// Called as a side-effect inside [eventSettlementsProvider]'s asyncMap.
+  /// Deletes all existing rows for the event first, then batch-inserts the
+  /// fresh set (same ghost-row prevention as [cacheExpenses]).
   Future<void> cacheSettlements(
     String eventId,
     List<Settlement> settlements,
   ) async {
     final db = await LocalDatabase.database;
+    await db.delete('settlements', where: 'trip_id = ?', whereArgs: [eventId]);
     final syncedAt = DateTime.now().toIso8601String();
     final batch = db.batch();
     for (final s in settlements) {
