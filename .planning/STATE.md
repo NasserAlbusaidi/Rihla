@@ -87,9 +87,10 @@ None.
 |---|-------------|------|--------|-----------|
 | 260414-smu | Fix all 5 critical Firestore/Storage security vulnerabilities | 2026-04-14 | d068f6c | [260414-smu-fix-all-5-critical-firestore-storage-sec](./quick/260414-smu-fix-all-5-critical-firestore-storage-sec/) |
 | 260414-t2d | Fix 7 financial/ledger bugs — split rounding, currency, edit expense, double-tap, settle-up validation | 2026-04-14 | d8c4328 | [260414-t2d-fix-7-financial-ledger-bugs-split-roundi](./quick/260414-t2d-fix-7-financial-ledger-bugs-split-roundi/) |
+| 260415-9to | Fix 5 group management bugs — duplicate join, balance-gated leave/delete, awaited deletes, tab auto-select | 2026-04-15 | c07b2d4 | [260415-9to-fix-5-group-management-bugs](./quick/260415-9to-fix-5-group-management-bugs/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-14 - Completed quick task 260414-t2d: Fix 7 financial/ledger bugs
-Stopped at: Financial bugs resolved — 02-financial-bugs.md review items resolved
+Last activity: 2026-04-15 - Completed quick task 260415-9to: Fix 5 group management bugs
+Stopped at: Group management bugs resolved — 03-group-management.md review items (Bugs 8, 9, 10, 13, 21) resolved
 Next action: Continue with remaining review items or other quick tasks
