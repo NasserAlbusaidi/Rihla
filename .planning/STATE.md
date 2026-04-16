@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Milestone: v2.4 Technical Debt & Dark Theme — ACTIVE
-Phase: 36 (architecture-refactor) — EXECUTING
-Plan: 5 of 8
-Status: Ready to execute
+Phase: 36 (architecture-refactor) — COMPLETE
+Plan: 8 of 8 complete
+Status: All ARCH-01..04 requirements met; 972 tests pass; ready for Phase 37 (Dark Theme Migration)
 Last activity: 2026-04-16
 
 ```
