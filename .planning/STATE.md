@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Technical Debt & Dark Theme
-status: active
-stopped_at: v2.4 milestone initiated — Phase 36 architecture refactor to be planned
-last_updated: "2026-04-16T05:37:00.000Z"
-last_activity: 2026-04-16
+status: executing
+stopped_at: Memory photos fix — signedUrl now resolved via asyncMap + cached getDownloadUrl in provider pipeline
+last_updated: "2026-04-16T06:38:23.014Z"
+last_activity: 2026-04-16 -- Phase 36 execution started
 progress:
   total_phases: 17
-  completed_phases: 14
-  total_plans: 31
-  completed_plans: 31
+  completed_phases: 13
+  total_plans: 38
+  completed_plans: 32
+  percent: 84
 ---
 
 # Project State
@@ -20,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** v2.4 — technical debt cleanup and dark theme migration (sourced from `.planning/review/`)
+**Current focus:** Phase 36 — architecture-refactor
 
 ## Current Position
 
 Milestone: v2.4 Technical Debt & Dark Theme — ACTIVE
-Phase: 36 (architecture-refactor) — planning
-Plan: not yet created
-Status: v2.4 milestone scaffolding in place; next step `/gsd-plan-phase 36`
-Last activity: 2026-04-16
+Phase: 36 (architecture-refactor) — EXECUTING
+Plan: 1 of 8
+Status: Executing Phase 36
+Last activity: 2026-04-16 -- Phase 36 execution started
 
 ```
 v1.0 Phases 1-13  [██████████] 100%
