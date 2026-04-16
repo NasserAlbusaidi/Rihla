@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Technical Debt & Dark Theme
 status: executing
-stopped_at: Memory photos fix — signedUrl now resolved via asyncMap + cached getDownloadUrl in provider pipeline
-last_updated: "2026-04-16T06:38:23.014Z"
-last_activity: 2026-04-16 -- Phase 36 execution started
+stopped_at: Completed 36-02-PLAN.md — edit_expense_screen decomposed to 318 LOC
+last_updated: "2026-04-16T13:26:50.442Z"
+last_activity: 2026-04-16
 progress:
   total_phases: 17
   completed_phases: 13
   total_plans: 38
-  completed_plans: 32
-  percent: 84
+  completed_plans: 36
+  percent: 95
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 Milestone: v2.4 Technical Debt & Dark Theme — ACTIVE
 Phase: 36 (architecture-refactor) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 36
-Last activity: 2026-04-16 -- Phase 36 execution started
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-04-16
 
 ```
 v1.0 Phases 1-13  [██████████] 100%
@@ -48,6 +48,7 @@ v2.3 Phases 28-35 [██████████] 100%
 | v2.1 | 2 | 3 | 789 | 1 day |
 | v2.2 | 3 | 5 | — | 1 day |
 | v2.3 | 8 | 22 | — | 3 days |
+| Phase 36-architecture-refactor P02 | 20 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -96,5 +97,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-04-15 - Completed quick task 260415-g20: Fix memory photos never displaying
-Stopped at: Memory photos fix — signedUrl now resolved via asyncMap + cached getDownloadUrl in provider pipeline
+Stopped at: Completed 36-02-PLAN.md — edit_expense_screen decomposed to 318 LOC
 Next action: Continue with remaining review items or update 05-broken-features.md
