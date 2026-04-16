@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
-import '../../../core/services/cache_service.dart';
+import '../../../core/services/cache/participant_cache_repository.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../models/trip_model.dart';
@@ -18,7 +18,8 @@ final userGroupsForParticipantProvider = Provider<List<String>>((ref) {
 /// @Deprecated('Will be migrated to Firestore stream in 04-05.')
 final tripLogisticsParticipantsProvider =
     StreamProvider.family<List<Participant>, String>((ref, tripId) async* {
-  yield await CacheService.getCachedParticipants(tripId);
+  final repo = ref.read(participantCacheRepositoryProvider);
+  yield await repo.getCachedParticipants(tripId);
 });
 
 /// Provider for the current user's participant record in an event.
