@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import '../../groups/models/group_activity_log_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../events/providers/event_provider.dart';
+import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -80,11 +83,93 @@ final crossGroupActivityProvider =
 /// [amount] is the total amount spent across all groups on that day.
 typedef DailySpending = ({DateTime date, Decimal amount});
 
-/// Aggregates expenses across all groups' events for the current week (Mon-Sun).
+// ---------------------------------------------------------------------------
+// ARCH-02: Per-group aggregate stream for weekly expenses.
+// Bounds the listener count to O(G), not O(G×E).
+// ---------------------------------------------------------------------------
+
+/// Returns all non-deleted expenses in the current week for one group,
+/// aggregated across all of that group's events via Firestore range queries.
 ///
-/// Watches [userGroupsProvider] → [groupEventsProvider] per group →
-/// [eventExpensesProvider] per event. Filters expenses by
-/// `createdAt >= startOfWeek` and sums per day.
+/// Server-side filter: `createdAt >= startOfWeek AND createdAt < startOfNextWeek`.
+/// ISO-8601 string comparison is lexicographically correct for UTC timestamps.
+///
+/// Does NOT watch [eventExpensesProvider] — that provider downloads all
+/// expenses (not just the current week) and would defeat the whole point
+/// of this refactor.
+final weeklyGroupExpensesProvider =
+    StreamProvider.family<List<Expense>, String>((ref, groupId) {
+  final eventsAsync = ref.watch(groupEventsProvider(groupId));
+  final events = eventsAsync.valueOrNull ?? const [];
+  if (events.isEmpty) return Stream.value(const []);
+
+  // Compute the week window in UTC (to match ISO-8601 storage).
+  final now = DateTime.now().toUtc();
+  final today = DateTime.utc(now.year, now.month, now.day);
+  final weekday = today.weekday; // 1 = Monday, 7 = Sunday
+  final startOfWeek = today.subtract(Duration(days: weekday - 1));
+  final startOfNextWeek = startOfWeek.add(const Duration(days: 7));
+
+  final service = ref.read(expenseServiceProvider);
+
+  final streams = events
+      .map((event) => service.watchExpensesInRange(
+            groupId: groupId,
+            eventId: event.id,
+            startUtc: startOfWeek,
+            endExclusiveUtc: startOfNextWeek,
+          ))
+      .toList();
+
+  return _combineExpenseStreams(streams);
+});
+
+/// Combines N `Stream<List<Expense>>` into one `Stream<List<Expense>>`.
+///
+/// Maintains a per-stream latest list and emits the flattened concatenation
+/// whenever any source emits. Emits only after all N sources have emitted at
+/// least once (prevents partial state from reaching consumers).
+Stream<List<Expense>> _combineExpenseStreams(
+  List<Stream<List<Expense>>> streams,
+) {
+  if (streams.isEmpty) return Stream.value(const []);
+
+  // ignore: close_sinks — closed via onCancel when the Riverpod subscriber disposes
+  final controller = StreamController<List<Expense>>();
+  final latest = List<List<Expense>?>.filled(streams.length, null);
+  var pendingCount = streams.length;
+  final subs = <StreamSubscription<List<Expense>>>[];
+
+  void tryEmit() {
+    if (pendingCount > 0) return; // not all streams have emitted yet
+    controller.add(latest.expand((l) => l!).toList());
+  }
+
+  for (var i = 0; i < streams.length; i++) {
+    final index = i;
+    subs.add(streams[index].listen(
+      (list) {
+        if (latest[index] == null) pendingCount--;
+        latest[index] = list;
+        tryEmit();
+      },
+      onError: controller.addError,
+      cancelOnError: false,
+    ));
+  }
+
+  controller.onCancel = () async {
+    for (final sub in subs) {
+      await sub.cancel();
+    }
+    await controller.close();
+  };
+
+  return controller.stream;
+}
+
+/// Aggregates weekly expenses across all groups using the per-group
+/// [weeklyGroupExpensesProvider] (O(G) listeners, not O(G×E)).
 ///
 /// Returns a list of exactly 7 [DailySpending] entries (one per day,
 /// Monday through Sunday). Days with no expenses have [DailySpending.amount]
@@ -100,7 +185,8 @@ final weeklyGroupSpendingProvider =
   }
   final groups = groupsAsync.valueOrNull ?? [];
 
-  // Compute start of current week (Monday 00:00:00 local)
+  // Compute start of current week in local time for day-bucket grouping.
+  // (createdAt deserialises to local DateTime via Expense.fromFirestore.)
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final weekday = today.weekday; // 1 = Monday, 7 = Sunday
@@ -110,37 +196,28 @@ final weeklyGroupSpendingProvider =
     return AsyncValue.data(_emptyWeek(startOfWeek));
   }
 
-  // Gather all expense amounts keyed by calendar date
   final allExpenseAmounts = <DateTime, Decimal>{};
   var anyLoading = false;
 
   for (final group in groups) {
-    final eventsAsync = ref.watch(groupEventsProvider(group.id));
-    if (eventsAsync.isLoading && !eventsAsync.hasValue) {
+    // ARCH-02: O(G) — one per-group provider, not one per event.
+    final expensesAsync = ref.watch(weeklyGroupExpensesProvider(group.id));
+    if (expensesAsync.isLoading && !expensesAsync.hasValue) {
       anyLoading = true;
       continue;
     }
-    final events = eventsAsync.valueOrNull ?? [];
-    for (final event in events) {
-      final eventRef = (groupId: group.id, eventId: event.id);
-      final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
-      if (expensesAsync.isLoading && !expensesAsync.hasValue) {
-        anyLoading = true;
-        continue;
-      }
-      final expenses = expensesAsync.valueOrNull ?? [];
-      for (final expense in expenses) {
-        final expenseDate = DateTime(
-          expense.createdAt.year,
-          expense.createdAt.month,
-          expense.createdAt.day,
-        );
-        // Only include expenses within the current week
-        if (expenseDate.isBefore(startOfWeek)) continue;
-        if (expenseDate.isAfter(today)) continue;
-        allExpenseAmounts[expenseDate] =
-            (allExpenseAmounts[expenseDate] ?? Decimal.zero) + expense.amount;
-      }
+    final expenses = expensesAsync.valueOrNull ?? const [];
+    for (final expense in expenses) {
+      final expenseDate = DateTime(
+        expense.createdAt.year,
+        expense.createdAt.month,
+        expense.createdAt.day,
+      );
+      // Defensive trim: Firestore range may include UTC boundary overlap
+      if (expenseDate.isBefore(startOfWeek)) continue;
+      if (expenseDate.isAfter(today)) continue;
+      allExpenseAmounts[expenseDate] =
+          (allExpenseAmounts[expenseDate] ?? Decimal.zero) + expense.amount;
     }
   }
 
@@ -148,13 +225,10 @@ final weeklyGroupSpendingProvider =
     return const AsyncValue.loading();
   }
 
-  // Build 7-day list (Mon-Sun)
-  final week = List.generate(7, (i) {
+  return AsyncValue.data(List.generate(7, (i) {
     final date = startOfWeek.add(Duration(days: i));
     return (date: date, amount: allExpenseAmounts[date] ?? Decimal.zero);
-  });
-
-  return AsyncValue.data(week);
+  }));
 });
 
 /// Returns a list of 7 [DailySpending] entries all with [Decimal.zero] amounts.
