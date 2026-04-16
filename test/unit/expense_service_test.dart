@@ -205,6 +205,116 @@ void main() {
       );
     });
 
+    // -------------------------------------------------------------------------
+    // ARCH-03: server-side range query
+    // -------------------------------------------------------------------------
+
+    group('watchExpensesInRange', () {
+      test(
+        'watchExpensesInRange filters server-side by createdAt: includes expenses in range, excludes before and after',
+        () async {
+          const groupId = 'g1';
+          const eventId = 'e1';
+
+          // Three expenses at different times
+          // Past: 2025-01-05 (before start)
+          // In-range: 2025-01-08 (within week Mon 6 – Sun 12)
+          // Future: 2025-01-15 (after endExclusive)
+          final pastTime = DateTime.utc(2025, 1, 5);
+          final inRangeTime = DateTime.utc(2025, 1, 8);
+          final futureTime = DateTime.utc(2025, 1, 15);
+
+          // Directly insert with custom createdAt to avoid DateTime.now() in addExpense
+          Future<void> insertWithTime(String id, DateTime time) async {
+            await fakeDb
+                .collection('groups')
+                .doc(groupId)
+                .collection('events')
+                .doc(eventId)
+                .collection('expenses')
+                .doc(id)
+                .set({
+              'id': id,
+              'eventId': eventId,
+              'payerParticipantId': 'p1',
+              'amountFils': 5000,
+              'currency': 'OMR',
+              'scope': 'global',
+              'customSplitParticipants': [],
+              'isDeleted': false,
+              'deletedAt': null,
+              'createdAt': time.toIso8601String(),
+            });
+          }
+
+          await insertWithTime('exp-past', pastTime);
+          await insertWithTime('exp-in-range', inRangeTime);
+          await insertWithTime('exp-future', futureTime);
+
+          final startUtc = DateTime.utc(2025, 1, 6);  // Monday
+          final endExclusiveUtc = DateTime.utc(2025, 1, 13); // next Monday
+
+          final results = await service
+              .watchExpensesInRange(
+                groupId: groupId,
+                eventId: eventId,
+                startUtc: startUtc,
+                endExclusiveUtc: endExclusiveUtc,
+              )
+              .first;
+
+          expect(results, hasLength(1));
+          expect(results.first.id, equals('exp-in-range'));
+        },
+      );
+
+      test(
+        'watchExpensesInRange excludes soft-deleted expenses',
+        () async {
+          const groupId = 'g2';
+          const eventId = 'e2';
+
+          final inRangeTime = DateTime.utc(2025, 1, 8);
+
+          await fakeDb
+              .collection('groups')
+              .doc(groupId)
+              .collection('events')
+              .doc(eventId)
+              .collection('expenses')
+              .doc('exp-deleted')
+              .set({
+            'id': 'exp-deleted',
+            'eventId': eventId,
+            'payerParticipantId': 'p1',
+            'amountFils': 3000,
+            'currency': 'OMR',
+            'scope': 'global',
+            'customSplitParticipants': [],
+            'isDeleted': true,
+            'deletedAt': DateTime.utc(2025, 1, 9).toIso8601String(),
+            'createdAt': inRangeTime.toIso8601String(),
+          });
+
+          final startUtc = DateTime.utc(2025, 1, 6);
+          final endExclusiveUtc = DateTime.utc(2025, 1, 13);
+
+          final results = await service
+              .watchExpensesInRange(
+                groupId: groupId,
+                eventId: eventId,
+                startUtc: startUtc,
+                endExclusiveUtc: endExclusiveUtc,
+              )
+              .first;
+
+          expect(results, isEmpty);
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+
     group('Expense serialization', () {
       test(
         'fromFirestore and toFirestore round-trip produces equivalent Expense',

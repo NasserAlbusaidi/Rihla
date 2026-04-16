@@ -44,6 +44,37 @@ class ExpenseService extends FirestoreRepository {
         );
   }
 
+  /// ARCH-03: Server-side Firestore range query on `createdAt` (ISO-8601 string).
+  ///
+  /// Returns a real-time stream of non-deleted expenses whose `createdAt`
+  /// falls within `[startUtc, endExclusiveUtc)`. Uses lexicographic string
+  /// comparison on the ISO-8601 field — correct for UTC timestamps.
+  ///
+  /// Firestore composite index required: `(isDeleted ASC, createdAt DESC)`.
+  /// The existing index in `firestore.indexes.json` covers this predicate
+  /// (verified 2026-04-16). If deployment returns FAILED_PRECONDITION,
+  /// follow the error URL to add the exact fields requested.
+  Stream<List<Expense>> watchExpensesInRange({
+    required String groupId,
+    required String eventId,
+    required DateTime startUtc,
+    required DateTime endExclusiveUtc,
+  }) {
+    return eventSubcollection(groupId, eventId, 'expenses')
+        .where('isDeleted', isEqualTo: false)
+        .where('createdAt', isGreaterThanOrEqualTo: startUtc.toIso8601String())
+        .where('createdAt', isLessThan: endExclusiveUtc.toIso8601String())
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map(
+                (doc) => Expense.fromFirestore({...doc.data(), 'id': doc.id}),
+              )
+              .toList(),
+        );
+  }
+
   /// Creates a new expense document in Firestore and returns the resulting
   /// [Expense] object.
   ///
