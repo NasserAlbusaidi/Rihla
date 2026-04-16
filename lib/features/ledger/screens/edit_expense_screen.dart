@@ -3,28 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../core/utils/formatters.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../events/providers/event_provider.dart';
-import '../../logistics/models/sub_group_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
-import '../../trip/models/trip_model.dart';
-import '../../trip/providers/trip_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
-import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
-import '../providers/category_provider.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
+import '../widgets/edit_expense_form.dart';
 
 /// Full-page screen for editing an existing expense.
 ///
 /// Converted from a modal bottom sheet to a GoRouter route per D-07.
 /// Takes expenseId as a string for deep-link compatibility — loads the
 /// expense from [eventExpensesProvider] internally.
+///
+/// This screen is an orchestrator: it owns all mutable state, the submit
+/// handler, and the delete handler. The form UI is delegated to
+/// [EditExpenseForm], which is a stateless controlled component.
 class EditExpenseScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String eventId;
@@ -56,14 +53,17 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
   // Payer selection (for leaders)
   String? _selectedPayerId;
 
-  /// Get the event's currency code
+  /// Currency code for this event.
   String get _tripCurrency {
     return ref
-        .read(eventDetailProvider(
-          (groupId: widget.groupId, eventId: widget.eventId),
-        ))
-        .valueOrNull
-        ?.currency ?? 'OMR';
+            .read(
+              eventDetailProvider(
+                (groupId: widget.groupId, eventId: widget.eventId),
+              ),
+            )
+            .valueOrNull
+            ?.currency ??
+        'OMR';
   }
 
   void _initializeControllers(Expense expense) {
@@ -75,8 +75,6 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
       text: expense.description ?? '',
     );
     _selectedCategoryId = expense.categoryId;
-
-    // Initialize scope from expense
     _scope = expense.scope;
     _selectedSubGroupId = expense.subGroupId;
     _customSplitParticipants =
@@ -119,44 +117,51 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
           ? _noteController.text.trim()
           : null,
       scope: _scope != expense.scope ? _scope : null,
-      subGroupId: _scope == ExpenseScope.subGroup ? _selectedSubGroupId : null,
+      subGroupId:
+          _scope == ExpenseScope.subGroup ? _selectedSubGroupId : null,
       customSplitParticipants: _scope == ExpenseScope.custom
           ? _customSplitParticipants.toList()
           : null,
       categoryId: _selectedCategoryId != expense.categoryId
           ? _selectedCategoryId
           : null,
-      payerParticipantId: _selectedPayerId != expense.payerParticipantId
-          ? _selectedPayerId
-          : null,
+      payerParticipantId:
+          _selectedPayerId != expense.payerParticipantId
+              ? _selectedPayerId
+              : null,
     );
 
     setState(() => _isSubmitting = false);
 
     if (mounted) {
-      // Invalidate to refresh the expenses list
-      ref.invalidate(eventExpensesProvider((groupId: widget.groupId, eventId: widget.eventId)));
-
+      ref.invalidate(
+        eventExpensesProvider(
+          (groupId: widget.groupId, eventId: widget.eventId),
+        ),
+      );
       HapticService.success();
       context.pop();
     }
   }
 
-  /// Confirm and delete the expense
+  /// Shows a confirmation dialog then deletes the expense.
   Future<void> _confirmDelete(Expense expense) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Icon(Iconsax.trash, color: AppColorTokens.light.error),
-            SizedBox(width: 12),
-            Text('Delete Expense?'),
+            const SizedBox(width: 12),
+            const Text('Delete Expense?'),
           ],
         ),
         content: Text(
-          'Are you sure you want to delete "${expense.description ?? expense.categoryName ?? "this expense"}"?\n\nThis will update everyone\'s balances.',
+          'Are you sure you want to delete '
+          '"${expense.description ?? expense.categoryName ?? "this expense"}"?\n\n'
+          "This will update everyone's balances.",
         ),
         actions: [
           TextButton(
@@ -177,9 +182,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     if (confirmed == true && mounted) {
       setState(() => _isSubmitting = true);
 
-      await ref
-          .read(expenseServiceProvider)
-          .deleteExpense(
+      await ref.read(expenseServiceProvider).deleteExpense(
             groupId: widget.groupId,
             eventId: widget.eventId,
             expenseId: expense.id,
@@ -188,13 +191,15 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
       setState(() => _isSubmitting = false);
 
       if (mounted) {
-        // Invalidate to refresh the expenses list
-        ref.invalidate(eventExpensesProvider((groupId: widget.groupId, eventId: widget.eventId)));
-
+        ref.invalidate(
+          eventExpensesProvider(
+            (groupId: widget.groupId, eventId: widget.eventId),
+          ),
+        );
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Expense deleted'),
+            content: const Text('Expense deleted'),
             backgroundColor: AppColorTokens.light.success,
           ),
         );
@@ -203,539 +208,11 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     }
   }
 
-  Widget _buildScopeSection() {
-    final EventRef eventRef = (groupId: widget.groupId, eventId: widget.eventId);
-    final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
-    // Participants are derived from EventModel directly in the parent screen.
-    // For the scope section we don't have direct access to Event here;
-    // use an empty participants list — scope editing can still change the scope type.
-    final participantsAsync = AsyncValue.data(const <Participant>[]);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'SPLIT TYPE',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textMuted,
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  _buildScopeTab('Global', ExpenseScope.global, Iconsax.global),
-                  _buildScopeTab('My Car', ExpenseScope.subGroup, Iconsax.car),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  _buildScopeTab('Custom', ExpenseScope.custom, Iconsax.people),
-                  _buildScopeTab(
-                    'Personal',
-                    ExpenseScope.personal,
-                    Iconsax.user,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        // Custom participant selection
-        if (_scope == ExpenseScope.custom) ...[
-          const SizedBox(height: 16),
-          _buildCustomParticipantSelector(participantsAsync),
-        ],
-        // Sub-group selector for car scope
-        if (_scope == ExpenseScope.subGroup)
-          subGroupsAsync.when(
-            loading: () => const SizedBox.shrink(),
-            error: (error, stack) => const SizedBox.shrink(),
-            data: (subGroups) {
-              final cars = subGroups
-                  .where((s) => s.type == SubGroupType.car)
-                  .toList();
-              if (cars.isEmpty) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Wrap(
-                  spacing: 8,
-                  children: cars.map((car) {
-                    final isSelected = car.id == _selectedSubGroupId;
-                    return ChoiceChip(
-                      label: Text(car.name),
-                      selected: isSelected,
-                      onSelected: (_) =>
-                          setState(() => _selectedSubGroupId = car.id),
-                    );
-                  }).toList(),
-                ),
-              );
-            },
-          ),
-      ],
-    );
-  }
-
-  Widget _buildScopeTab(String label, ExpenseScope scope, IconData icon) {
-    final isSelected = _scope == scope;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          HapticService.lightClick();
-          setState(() => _scope = scope);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColorTokens.light.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? Colors.white : AppColorTokens.light.textMuted,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white : AppColorTokens.light.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCustomParticipantSelector(
-    AsyncValue<List<Participant>> participantsAsync,
-  ) {
-    return participantsAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (error, stack) => const SizedBox.shrink(),
-      data: (participants) => Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: participants.map((p) {
-          final isSelected = _customSplitParticipants.contains(p.id);
-          return FilterChip(
-            label: Text(p.displayName ?? 'Unknown'),
-            selected: isSelected,
-            onSelected: (selected) {
-              HapticService.lightClick();
-              setState(() {
-                if (selected) {
-                  _customSplitParticipants = {..._customSplitParticipants, p.id};
-                } else {
-                  _customSplitParticipants = _customSplitParticipants
-                      .where((id) => id != p.id)
-                      .toSet();
-                }
-              });
-            },
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildPayerSelector() {
-    final currentParticipant = ref.watch(
-      currentParticipantProvider(widget.eventId),
-    );
-    final eventAsync = ref.watch(eventDetailProvider(
-      (groupId: widget.groupId, eventId: widget.eventId),
-    ));
-    final event = eventAsync.valueOrNull;
-    if (event == null) return const SizedBox.shrink();
-
-    final currentUid = ref.watch(currentUserProvider)?.uid;
-    final isLeader = currentUid != null && event.createdBy == currentUid;
-
-    if (!isLeader) return const SizedBox.shrink();
-
-    // Use eventLogisticsParticipantsProvider which derives participants directly
-    // from the Firestore Event document — no SQLite lookup needed.
-    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
-
-    if (participants.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'PAID BY',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textMuted,
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedPayerId ?? currentParticipant?.id,
-              isExpanded: true,
-              icon: const Icon(Iconsax.arrow_down_1),
-              items: participants.map((p) {
-                final isMe = p.id == currentParticipant?.id;
-                return DropdownMenuItem(
-                  value: p.id,
-                  child: Text(
-                    isMe
-                        ? '${p.displayName ?? 'Unknown'} (Me)'
-                        : p.displayName ?? 'Unknown',
-                  ),
-                );
-              }).toList(),
-              onChanged: (v) {
-                HapticService.lightClick();
-                setState(() => _selectedPayerId = v);
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildForm(BuildContext context, Expense expense) {
-    final categoriesAsync = ref.watch(tripCategoriesProvider(widget.eventId));
-
-    return Scaffold(
-      key: LedgerKeys.editExpenseSheet,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
-      body: Column(
-        children: [
-          ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title Row with delete
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColorTokens.light.selectionFill,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Iconsax.edit, color: AppColorTokens.light.primary),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Edit Expense',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColorTokens.light.textPrimary,
-                              ),
-                            ),
-                            Text(
-                              'Changes are tracked in history',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColorTokens.light.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Delete button
-                      IconButton(
-                        onPressed: _isSubmitting ? null : () => _confirmDelete(expense),
-                        icon: Icon(Iconsax.trash, color: AppColorTokens.light.error),
-                        tooltip: 'Delete expense',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  // Amount Field with Diff View
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'AMOUNT',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: AppColorTokens.light.textMuted,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      // Show original amount for reference
-                      Text(
-                        'was ${expense.amount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3)} $_tripCurrency',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColorTokens.light.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    onChanged: (_) => setState(() {}), // Trigger rebuild for diff
-                    decoration: InputDecoration(
-                      hintText: '0.000',
-                      suffixText: _tripCurrency,
-                      fillColor: AppColorTokens.light.inputFill,
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  // Diff indicator when amount changed
-                  Builder(
-                    builder: (context) {
-                      final newAmount = Decimal.tryParse(_amountController.text);
-                      final hasChanged =
-                          newAmount != null && newAmount != expense.amount;
-                      if (!hasChanged) return const SizedBox.shrink();
-
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColorTokens.light.warning.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: AppColorTokens.light.warning.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Iconsax.arrow_swap_horizontal,
-                                size: 16,
-                                color: AppColorTokens.light.warning,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                expense.amount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3),
-                                style: TextStyle(
-                                  decoration: TextDecoration.lineThrough,
-                                  color: AppColorTokens.light.textMuted,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                Icons.arrow_forward,
-                                size: 14,
-                                color: AppColorTokens.light.textMuted,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${newAmount.toStringAsFixed(AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3)} $_tripCurrency',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColorTokens.light.warning,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Category Selector
-                  Text(
-                    'CATEGORY',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: AppColorTokens.light.textMuted,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  categoriesAsync.when(
-                    loading: () => const SizedBox(height: 50),
-                    error: (error, stack) => const Text('Error loading categories'),
-                    data: (categories) {
-                      if (categories.isEmpty) {
-                        return const Text('No categories');
-                      }
-                      return SizedBox(
-                        height: 44,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: categories.length,
-                          itemBuilder: (context, index) {
-                            final cat = categories[index];
-                            final isSelected = cat.id == _selectedCategoryId;
-                            return GestureDetector(
-                              onTap: () {
-                                HapticService.lightClick();
-                                setState(() => _selectedCategoryId = cat.id);
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? AppColorTokens.light.primary
-                                      : AppColorTokens.light.inputFill,
-                                  borderRadius: BorderRadius.circular(22),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  cat.name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : AppColorTokens.light.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Scope Selection
-                  _buildScopeSection(),
-                  const SizedBox(height: 16),
-                  // Payer Selection (for leaders)
-                  _buildPayerSelector(),
-                  const SizedBox(height: 16),
-                  // Note Field
-                  Text(
-                    'NOTE',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: AppColorTokens.light.textMuted,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _noteController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      hintText: 'Add a note...',
-                      fillColor: AppColorTokens.light.inputFill,
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Action Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => context.pop(),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: _isSubmitting ? null : () => _save(expense),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColorTokens.light.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text(
-                                  'Save Changes',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final EventRef eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+    final eventAsync = ref.watch(eventDetailProvider(eventRef));
 
     return expensesAsync.when(
       loading: () => Scaffold(
@@ -766,14 +243,18 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         ),
       ),
       data: (expenses) {
-        final expense = expenses.where((e) => e.id == widget.expenseId).firstOrNull;
+        final expense =
+            expenses.where((e) => e.id == widget.expenseId).firstOrNull;
 
         if (expense == null) {
           return Scaffold(
             backgroundColor: AppColorTokens.light.scaffoldBackground,
             body: Column(
               children: [
-                const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
+                const ModuleHeader(
+                  title: 'Edit Expense',
+                  useDarkTheme: true,
+                ),
                 Expanded(
                   child: EmptyStateView(
                     icon: Iconsax.warning_2,
@@ -789,10 +270,48 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
           );
         }
 
-        // Initialize controllers on first data load
         _initializeControllers(expense);
 
-        return _buildForm(context, expense);
+        final event = eventAsync.valueOrNull;
+        if (event == null) {
+          return Scaffold(
+            backgroundColor: AppColorTokens.light.scaffoldBackground,
+            body: Column(
+              children: [
+                const ModuleHeader(
+                  title: 'Edit Expense',
+                  useDarkTheme: true,
+                ),
+                Expanded(child: SkeletonLoader.expenseList()),
+              ],
+            ),
+          );
+        }
+
+        return EditExpenseForm(
+          initialExpense: expense,
+          groupId: widget.groupId,
+          eventId: widget.eventId,
+          event: event,
+          tripCurrency: _tripCurrency,
+          amountController: _amountController,
+          noteController: _noteController,
+          selectedCategoryId: _selectedCategoryId,
+          onCategoryChanged: (id) => setState(() => _selectedCategoryId = id),
+          scope: _scope,
+          onScopeChanged: (s) => setState(() => _scope = s),
+          selectedSubGroupId: _selectedSubGroupId,
+          onSubGroupIdChanged: (id) =>
+              setState(() => _selectedSubGroupId = id),
+          customSplitParticipants: _customSplitParticipants,
+          onCustomSplitChanged: (set) =>
+              setState(() => _customSplitParticipants = set),
+          selectedPayerId: _selectedPayerId,
+          onPayerChanged: (id) => setState(() => _selectedPayerId = id),
+          onSubmit: () => _save(expense),
+          onDelete: () => _confirmDelete(expense),
+          isSaving: _isSubmitting,
+        );
       },
     );
   }
