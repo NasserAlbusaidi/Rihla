@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3
-milestone_name: Groups, Events & Modules
-status: complete
-stopped_at: v2.3 milestone complete — all phases shipped
-last_updated: "2026-04-06T00:00:00.000Z"
-last_activity: 2026-04-06
+milestone: v2.4
+milestone_name: Technical Debt & Dark Theme
+status: active
+stopped_at: v2.4 milestone initiated — Phase 36 architecture refactor to be planned
+last_updated: "2026-04-16T05:37:00.000Z"
+last_activity: 2026-04-16
 progress:
-  total_phases: 14
+  total_phases: 17
   completed_phases: 14
   total_plans: 31
   completed_plans: 31
@@ -20,14 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Post v2.3 — documentation update and UAT
+**Current focus:** v2.4 — technical debt cleanup and dark theme migration (sourced from `.planning/review/`)
 
 ## Current Position
 
-Phase: 35 (vault-memories) — COMPLETE
-Plan: All complete
-Status: v2.3 milestone shipped
-Last activity: 2026-04-06
+Milestone: v2.4 Technical Debt & Dark Theme — ACTIVE
+Phase: 36 (architecture-refactor) — planning
+Plan: not yet created
+Status: v2.4 milestone scaffolding in place; next step `/gsd-plan-phase 36`
+Last activity: 2026-04-16
 
 ```
 v1.0 Phases 1-13  [██████████] 100%

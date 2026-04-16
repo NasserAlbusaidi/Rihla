@@ -7,6 +7,7 @@
 - ✅ **v2.1 Home Screen Completion** — Phases 23-24 (shipped 2026-04-01)
 - ✅ **v2.2 Profile Page** — Phases 25-27 (shipped 2026-04-02)
 - ✅ **v2.3 Groups, Events & Modules** — Phases 28-35 (shipped 2026-04-05)
+- 🔄 **v2.4 Technical Debt & Dark Theme** — Phases 36-38 (active)
 
 ## Phases
 
@@ -85,6 +86,14 @@ Full details: [milestones/v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
 
 </details>
 
+### v2.4 Technical Debt & Dark Theme
+
+- [ ] **Phase 36: Architecture Refactor** — God screens (#15), provider watch explosion (#16), CacheService god class (#18)
+- [ ] **Phase 37: Dark Theme Migration** — Widget migration to `context.colors`, theme toggle, textMuted contrast (#17, #29, #31, #32)
+- [ ] **Phase 38: Storage Cloud Functions** — Enforce group-membership on Storage access (#1b)
+
+Full details: [milestones/v2.4-ROADMAP.md](milestones/v2.4-ROADMAP.md)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -94,3 +103,4 @@ Full details: [milestones/v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
 | 25-27 | v2.2 | 5/5 | Complete | 2026-04-02 |
 | 28-35 | v2.3 | 22/22 | Complete | 2026-04-05 |
+| 36-38 | v2.4 | 0/— | Active | — |
