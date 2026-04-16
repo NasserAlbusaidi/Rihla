@@ -116,7 +116,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             child: gearAsync.when(
               data: (items) => _buildContent(items, currentUserId),
               loading: SkeletonLoader.gearList,
-              error: (e, _) => _buildErrorState(e.toString()),
+              error: (e, st) {
+                return _buildErrorState(e.toString());
+              },
             ),
           ),
         ],

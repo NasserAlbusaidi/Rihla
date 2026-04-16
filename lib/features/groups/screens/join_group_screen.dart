@@ -64,8 +64,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       // Log member_joined activity (D-14) — fire-and-forget, no await
       try {
         final actorId = FirebaseConfig.currentUser?.uid ?? '';
-        final actorName =
-            FirebaseConfig.currentUser?.displayName ?? 'Someone';
+        final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
+            ? ref.read(settingsProvider).deviceName
+            : 'Someone';
         ref.read(groupActivityServiceProvider).logGroupEvent(
           groupId: group.id,
           type: 'member_joined',
@@ -104,7 +105,6 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (error.contains('Already a member')) {
       return "You're already in this group.";
     }
-    debugPrint('JoinGroup error: $error');
     return "Couldn't join the group. Check your connection and try again.";
   }
 

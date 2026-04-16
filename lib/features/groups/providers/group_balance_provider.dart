@@ -122,7 +122,15 @@ final groupBalancesProvider =
     return const AsyncValue.loading();
   }
   final members = membersAsync.valueOrNull ?? [];
-  if (members.isEmpty) return const AsyncValue.loading();
+  if (members.isEmpty) {
+    return AsyncValue.data((
+      balances: <UserBalance>[],
+      totalSpent: Decimal.zero,
+      eventCount: 0,
+      perEventBreakdown: <String, Map<String, Decimal>>{},
+      memberNames: <String, String>{},
+    ));
+  }
 
   // Step 3: Watch group-level settlements (D-07)
   final groupSettlementsAsync = ref.watch(groupSettlementsProvider(groupId));
@@ -143,6 +151,12 @@ final groupBalancesProvider =
       isLoadingAny = true;
       continue;
     }
+    // Skip events that errored (e.g., permission-denied) — treat as 0
+    // expenses/settlements rather than blocking the entire balance chain.
+    if ((expensesAsync.hasError && !expensesAsync.hasValue) ||
+        (settlementsAsync.hasError && !settlementsAsync.hasValue)) {
+      continue;
+    }
 
     allExpenses.addAll(expensesAsync.valueOrNull ?? []);
     allEventSettlements.addAll(settlementsAsync.valueOrNull ?? []);
@@ -154,9 +168,9 @@ final groupBalancesProvider =
     ...(groupSettlementsAsync.valueOrNull ?? []),
   ];
 
-  if (isLoadingAny && allExpenses.isEmpty) {
-    return const AsyncValue.loading();
-  }
+  // Proceed with available data even if some events are still loading —
+  // returning AsyncValue.loading() here deadlocks the balance card when
+  // new events have zero expenses.
 
   // Step 5: Build unified participant list from group members (D-04 UID-based identity)
   final participants = members
@@ -336,7 +350,13 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((ref) 
     net = net + (userBalance?.netBalance ?? Decimal.zero);
   }
 
-  if (anyLoading && net == Decimal.zero) return const AsyncValue.loading();
+  if (anyLoading && net == Decimal.zero) {
+    return AsyncValue.data((
+      net: Decimal.zero,
+      groupCount: groups.length,
+      isLoading: true,
+    ));
+  }
   return AsyncValue.data((
     net: net,
     groupCount: groups.length,

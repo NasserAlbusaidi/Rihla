@@ -179,7 +179,12 @@ class LedgerScreen extends ConsumerWidget {
       );
     }
 
-    final expenses = expensesAsync.valueOrNull ?? [];
+    final rawExpenses = expensesAsync.valueOrNull ?? [];
+    // Enrich expenses with payer display names from event participant data
+    final expenses = rawExpenses.map((e) {
+      final name = event.participantNames[e.payerParticipantId] as String?;
+      return name != null ? e.copyWith(payerName: name) : e;
+    }).toList();
     final settlements = settlementsAsync.valueOrNull ?? [];
 
     return Scaffold(
