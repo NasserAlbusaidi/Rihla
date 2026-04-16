@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -16,7 +14,9 @@ import '../../trip/models/trip_model.dart';
 import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
+import '../widgets/logistics_group_dialog.dart';
 import '../widgets/logistics_hero_card.dart';
+import '../widgets/logistics_member_picker_sheet.dart';
 import '../widgets/sub_group_card.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../shared/widgets/offline_banner.dart';
@@ -41,16 +41,6 @@ class LogisticsScreen extends ConsumerStatefulWidget {
 }
 
 class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
-  final _nameController = TextEditingController();
-  final _capacityController = TextEditingController(text: '4');
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _capacityController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
@@ -229,124 +219,17 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
   }
 
   void _showMemberPicker(SubGroup group) {
-    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
-    final event = ref.read(eventDetailProvider(eventRef)).valueOrNull;
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Consumer(
-        builder: (context, ref, _) {
-          final participants = event != null
-              ? ref.watch(eventLogisticsParticipantsProvider(event))
-              : <Participant>[];
-          final localEventRef = eventRef;
-          final allGroupsAsync = ref.watch(eventSubGroupsProvider(localEventRef));
-          return Container(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-            decoration: BoxDecoration(
-              color: AppColorTokens.light.cardSurface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'SELECT MEMBER',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                    color: AppColorTokens.light.textMuted,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                allGroupsAsync.when(
-                  data: (groups) {
-                    final assignedUserIds = groups
-                        .expand((g) => g.members)
-                        .map((m) => m.participantId)
-                        .toSet();
-
-                    final unassigned = participants
-                        .where((p) => !assignedUserIds.contains(p.id))
-                        .toList();
-
-                    if (unassigned.isEmpty) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Center(
-                          child: Text(
-                            'No unassigned members',
-                            style: TextStyle(color: AppColorTokens.light.textMuted),
-                          ),
-                        ),
-                      );
-                    }
-
-                    return Flexible(
-                      child: ListView.builder(
-                        itemCount: unassigned.length,
-                        itemBuilder: (context, index) {
-                          final p = unassigned[index];
-                          return ListTile(
-                            leading: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: AppColorTokens.light.scaffoldBackground,
-                              backgroundImage:
-                                  p.avatarUrl != null &&
-                                      p.avatarUrl!.startsWith('http')
-                                  ? NetworkImage(p.avatarUrl!)
-                                  : null,
-                              child: p.avatarUrl == null ||
-                                      !p.avatarUrl!.startsWith('http')
-                                  ? Text(
-                                      p.displayName?[0] ?? 'U',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColorTokens.light.moduleLedger,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                            title: Text(
-                              p.displayName ?? 'Unknown',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            onTap: () {
-                              HapticService.lightClick();
-                              Navigator.pop(context);
-                              _addMemberToGroup(
-                                group: group,
-                                participant: p,
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    );
-                  },
-                  loading: () => Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Text(
-                        'Loading...',
-                        style: TextStyle(color: AppColorTokens.light.textMuted),
-                      ),
-                    ),
-                  ),
-                  error: (e, _) =>
-                      const InlineErrorWidget(message: 'Unable to load'),
-                ),
-              ],
-            ),
-          );
-        },
+      builder: (_) => LogisticsMemberPickerSheet(
+        subGroup: group,
+        groupId: widget.groupId,
+        eventId: widget.eventId,
+        onMemberSelected: (participant) => _addMemberToGroup(
+          group: group,
+          participant: participant,
+        ),
       ),
     );
   }
@@ -445,133 +328,21 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
   }
 
   void _showCreateDialog({SubGroup? group}) {
-    if (group != null) {
-      _nameController.text = group.name;
-      _capacityController.text = group.capacity.toString();
-    } else {
-      _nameController.clear();
-      _capacityController.text = '4';
-    }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          24,
-          24,
-          24 + MediaQuery.of(context).viewInsets.bottom,
+      builder: (_) => LogisticsGroupDialog(
+        initialGroup: group,
+        onCreateGroup: (name, capacity) => _createGroup(
+          name: name,
+          type: SubGroupType.car,
+          capacity: capacity,
         ),
-        decoration: BoxDecoration(
-          color: AppColorTokens.light.cardSurface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              group != null ? 'EDIT GROUP' : 'NEW GROUP',
-              key: group != null ? null : LogisticsKeys.createGroupTitle,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
-                color: AppColorTokens.light.textMuted,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _nameController,
-              autofocus: true,
-              inputFormatters: [LengthLimitingTextInputFormatter(50)],
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: AppColorTokens.light.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'CAR NAME (e.g. DEFENDER 1)',
-                prefixIcon: Icon(Iconsax.car, color: AppColorTokens.light.textMuted),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _capacityController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                LengthLimitingTextInputFormatter(2),
-                FilteringTextInputFormatter.digitsOnly,
-              ],
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: AppColorTokens.light.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'CAPACITY',
-                prefixIcon:
-                    Icon(Iconsax.people, color: AppColorTokens.light.textMuted),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Consumer(
-              builder: (context, ref, _) {
-                final isLoading = ref.watch(subGroupLoadingProvider);
-                return SizedBox(
-                  height: 64,
-                  child: ElevatedButton(
-                    key:
-                        group != null ? null : LogisticsKeys.createGroupButton,
-                    onPressed: isLoading
-                        ? null
-                        : () {
-                            final name = _nameController.text.trim();
-                            final capacity =
-                                int.tryParse(_capacityController.text) ?? 4;
-
-                            if (name.isEmpty) return;
-
-                            HapticService.lightClick();
-                            Navigator.pop(context);
-
-                            if (group != null) {
-                              _updateGroup(
-                                group: group,
-                                name: name,
-                                capacity: capacity,
-                              );
-                            } else {
-                              _createGroup(
-                                name: name,
-                                type: SubGroupType.car,
-                                capacity: capacity,
-                              );
-                            }
-                          },
-                    child: isLoading
-                        ? const Text(
-                            'SAVING...',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1,
-                            ),
-                          )
-                        : Text(
-                            group != null ? 'SAVE CHANGES' : 'CREATE GROUP',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                  ),
-                );
-              },
-            ),
-          ],
+        onUpdateGroup: (name, capacity) => _updateGroup(
+          group: group!,
+          name: name,
+          capacity: capacity,
         ),
       ),
     );
