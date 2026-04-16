@@ -17,8 +17,8 @@ import '../keys/gear_keys.dart';
 import '../models/gear_item_model.dart';
 import '../providers/gear_provider.dart';
 import '../widgets/gear_hero_card.dart';
+import '../widgets/gear_item_card.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../shared/widgets/offline_banner.dart';
 
 /// Gear Screen — unified module template (D-08).
@@ -74,7 +74,6 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         ),
       );
     }
-
 
     final event = eventAsync.valueOrNull;
 
@@ -179,12 +178,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           // Add item input — always shown regardless of list state
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                8,
-                16,
-                8,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: _buildAddItemInput(),
             ),
           ),
@@ -210,18 +204,16 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                 actionLabel: 'Add Gear Item',
                 onAction: _focusAddField,
                 accentGradient: LinearGradient(
-                  colors: [AppColorTokens.light.moduleGear, AppColorTokens.light.moduleGearLight],
+                  colors: [
+                    AppColorTokens.light.moduleGear,
+                    AppColorTokens.light.moduleGearLight
+                  ],
                 ),
               ),
             )
           else ...[
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                12,
-                16,
-                4,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               sliver: SliverToBoxAdapter(
                 child: Text(
                   'GEAR ITEMS',
@@ -235,234 +227,24 @@ class _GearScreenState extends ConsumerState<GearScreen> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                0,
-                16,
-                32,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
               sliver: SliverToBoxAdapter(
                 child: FadeInList(
                   children: filteredItems.map((item) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: _buildGearItemCard(item, currentUserId),
+                      child: GearItemCard(
+                        item: item,
+                        currentUserId: currentUserId,
+                        onTogglePacked: _togglePacked,
+                        onMenuAction: _handleMenuAction,
+                      ),
                     );
                   }).toList(),
                 ),
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGearItemCard(GearItem item, String? currentUserId) {
-    final isMine = item.assignedTo == currentUserId;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: item.isHighPriority
-              ? AppColorTokens.light.error.withValues(alpha: 0.3)
-              : AppColorTokens.light.inputFill,
-          width: item.isHighPriority ? 2 : 1.5,
-        ),
-        boxShadow: AppShadowTokens.standard.raised,
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () {
-              HapticService.selection();
-              _togglePacked(item, isMine);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: item.isPacked ? AppColorTokens.light.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: item.isPacked ? AppColorTokens.light.primary : AppColorTokens.light.border,
-                  width: 2,
-                ),
-                boxShadow: item.isPacked
-                    ? [
-                        BoxShadow(
-                          color: AppColorTokens.light.primary.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: item.isPacked
-                  ? const Icon(Icons.check, color: Colors.white, size: 18)
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.itemName.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3,
-                          color: item.isPacked
-                              ? AppColorTokens.light.textMuted
-                              : AppColorTokens.light.textPrimary,
-                          decoration: item.isPacked
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                      ),
-                    ),
-                    if (item.isHighPriority) _buildPriorityBadge(),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    _buildStatusChip(item.status),
-                    if (item.assignedTo != null) ...[
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColorTokens.light.inputFill,
-                          borderRadius:
-                              BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 8,
-                              backgroundColor: AppColorTokens.light.textMuted,
-                              child: Text(
-                                item.assigneeInitials,
-                                style: const TextStyle(
-                                  fontSize: 6,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              isMine
-                                  ? 'YOU'
-                                  : (item.assignedToName
-                                            ?.split(' ')[0]
-                                            .toUpperCase() ??
-                                        'NONE'),
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                                color: AppColorTokens.light.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            icon: Icon(
-              Iconsax.more,
-              color: AppColorTokens.light.textMuted,
-              size: 20,
-            ),
-            onSelected: (value) => _handleMenuAction(value, item),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'priority',
-                child: Text('Toggle Priority'),
-              ),
-              if (item.assignedTo != null)
-                const PopupMenuItem(
-                  value: 'unclaim',
-                  child: Text('Unclaim Item'),
-                ),
-              if (item.assignedTo == null)
-                const PopupMenuItem(value: 'claim', child: Text('Claim Item')),
-              PopupMenuItem(
-                value: 'delete',
-                child: Text('Delete', style: TextStyle(color: AppColorTokens.light.errorText)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(GearStatus status) {
-    final color = switch (status) {
-      GearStatus.unclaimed => AppColorTokens.light.textMuted,
-      GearStatus.claimed => AppColorTokens.light.warning,
-      GearStatus.packed => AppColorTokens.light.moduleLedger,
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        status.displayName.toUpperCase(),
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.5,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPriorityBadge() {
-    return Container(
-      margin: const EdgeInsets.only(left: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColorTokens.light.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8 / 2),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Iconsax.flash, color: AppColorTokens.light.errorText, size: 10),
-          SizedBox(width: 4),
-          Text(
-            'HIGH',
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w900,
-              color: AppColorTokens.light.errorText,
-            ),
-          ),
         ],
       ),
     );
@@ -481,7 +263,9 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           IconButton(
             icon: Icon(
               Iconsax.flash,
-              color: _isHighPriority ? AppColorTokens.light.errorText : AppColorTokens.light.textMuted,
+              color: _isHighPriority
+                  ? AppColorTokens.light.errorText
+                  : AppColorTokens.light.textMuted,
               size: 20,
             ),
             onPressed: () {
@@ -503,7 +287,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                   color: AppColorTokens.light.textMuted,
                 ),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               ),
               onSubmitted: (_) => _addItem(),
             ),
