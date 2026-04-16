@@ -88,7 +88,15 @@ Full details: [milestones/v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
 
 ### v2.4 Technical Debt & Dark Theme
 
-- [ ] **Phase 36: Architecture Refactor** — God screens (#15), provider watch explosion (#16), CacheService god class (#18)
+- [ ] **Phase 36: Architecture Refactor** (8 plans) — God screens (#15), provider watch explosion (#16), CacheService god class (#18)
+  - [ ] 36-00 — Wave 0 TDD test scaffolding (ARCH-01..04)
+  - [ ] 36-01 — Decompose group_settle_up_screen.dart (ARCH-01)
+  - [ ] 36-02 — Decompose edit_expense_screen.dart (ARCH-01)
+  - [ ] 36-03 — Decompose gear_screen.dart (ARCH-01)
+  - [ ] 36-04 — Decompose logistics_screen.dart (ARCH-01)
+  - [ ] 36-05 — Decompose create_event_screen.dart (ARCH-01)
+  - [ ] 36-06 — Split CacheService + rename BalanceCacheRepository (ARCH-04)
+  - [ ] 36-07 — Bound dashboard fan-out + Firestore date-range query (ARCH-02, ARCH-03)
 - [ ] **Phase 37: Dark Theme Migration** — Widget migration to `context.colors`, theme toggle, textMuted contrast (#17, #29, #31, #32)
 - [ ] **Phase 38: Storage Cloud Functions** — Enforce group-membership on Storage access (#1b)
 
