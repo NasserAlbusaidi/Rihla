@@ -3,7 +3,8 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:safar/core/services/balance_cache_repository.dart';
+import 'package:safar/core/services/cache/expense_cache_repository.dart';
+import 'package:safar/core/services/cache/settlement_cache_repository.dart';
 import 'package:safar/core/services/local_database.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -52,7 +53,7 @@ void main() {
         () async {
       final fakeDb = FakeFirebaseFirestore();
       final expenseService = ExpenseService.withFirestore(fakeDb);
-      final repo = BalanceCacheRepository();
+      final repo = ExpenseCacheRepository();
 
       // Write an expense via ExpenseService (writes to FakeFirebaseFirestore)
       final expense = await expenseService.addExpense(
@@ -79,7 +80,6 @@ void main() {
       );
       expect(cached.first.id, equals(expense.id));
 
-      repo.dispose();
     });
 
     // -----------------------------------------------------------------------
@@ -92,7 +92,8 @@ void main() {
       final fakeDb = FakeFirebaseFirestore();
       final expenseService = ExpenseService.withFirestore(fakeDb);
       final settlementService = SettlementService.withFirestore(fakeDb);
-      final repo = BalanceCacheRepository();
+      final expenseRepo = ExpenseCacheRepository();
+      final settlementRepo = SettlementCacheRepository();
 
       // Write expense: Alice paid 30.000 OMR for a shared expense
       final expense = await expenseService.addExpense(
@@ -116,12 +117,12 @@ void main() {
       );
 
       // Cache both to SQLite — simulating asyncMap side-writes in production
-      await repo.cacheExpenses(eventId, [expense]);
-      await repo.cacheSettlements(eventId, [settlement]);
+      await expenseRepo.cacheExpenses(eventId, [expense]);
+      await settlementRepo.cacheSettlements(eventId, [settlement]);
 
-      // Read from SQLite via BalanceCacheRepository
-      final cachedExpenses = await repo.getExpenses(eventId);
-      final cachedSettlements = await repo.getSettlements(eventId);
+      // Read from SQLite via the new split cache repositories
+      final cachedExpenses = await expenseRepo.getExpenses(eventId);
+      final cachedSettlements = await settlementRepo.getSettlements(eventId);
 
       // Feed cached data to BalanceCalculator
       final participants = [
@@ -167,7 +168,6 @@ void main() {
         reason: 'Bob net balance should be zero after settlement',
       );
 
-      repo.dispose();
     });
 
     // -----------------------------------------------------------------------
@@ -179,7 +179,7 @@ void main() {
         () async {
       final fakeDb = FakeFirebaseFirestore();
       final expenseService = ExpenseService.withFirestore(fakeDb);
-      final repo = BalanceCacheRepository();
+      final repo = ExpenseCacheRepository();
 
       // Write 3 expenses with different amounts
       final expense1 = await expenseService.addExpense(
@@ -244,7 +244,6 @@ void main() {
         reason: 'expense3 amount must match',
       );
 
-      repo.dispose();
     });
   });
 }
