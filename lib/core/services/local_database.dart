@@ -436,7 +436,9 @@ class LocalDatabase {
         await db.execute(
           "ALTER TABLE trips ADD COLUMN currency TEXT DEFAULT 'OMR'",
         );
-      } catch (_) {}
+      } catch (_) {
+        // Column already exists from a previous migration — safe to ignore.
+      }
     }
 
     if (oldVersion < 6) {

@@ -22,13 +22,15 @@ class DotStepIndicator extends StatelessWidget {
     super.key,
     required this.stepCount,
     required this.currentStep,
-    this.activeColor = const Color(0xFFCC6B49), // AppColorTokens.light.focusBorderWarm
+    Color? activeColor,
     this.showCheckmarks = true,
-  });
+  }) : activeColor = activeColor ?? AppColorTokens.light.focusBorderWarm;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Semantics(
+      label: 'Step ${currentStep + 1} of $stepCount',
+      child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(stepCount, (index) {
         if (showCheckmarks && index < currentStep) {
@@ -42,6 +44,7 @@ class DotStepIndicator extends StatelessWidget {
           return _buildDot(filled: false, isCheck: false, index: index);
         }
       }),
+    ),
     );
   }
 

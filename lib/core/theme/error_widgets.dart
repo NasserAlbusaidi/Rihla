@@ -18,8 +18,8 @@ class NetworkErrorWidget extends StatelessWidget {
         'Unable to load data. Please check your internet connection and try again.',
     this.onRetry,
     this.icon = Iconsax.wifi_square,
-    this.iconColor = const Color(0xFFF59E0B), // AppColorTokens.light.warning
-  });
+    Color? iconColor,
+  }) : iconColor = iconColor ?? AppColorTokens.light.warning;
 
   /// Factory for generic loading error
   factory NetworkErrorWidget.loadingError({

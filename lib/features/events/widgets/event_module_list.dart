@@ -1,30 +1,23 @@
-import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 import '../keys/event_keys.dart';
-import '../../activity/screens/activity_feed_screen.dart';
 import '../../gear/models/gear_item_model.dart';
 import '../../gear/providers/gear_provider.dart';
-import '../../gear/screens/gear_screen.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
-import '../../ledger/screens/ledger_screen.dart';
 import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
-import '../../logistics/screens/logistics_screen.dart';
-import '../../memories/screens/memories_screen.dart';
 import '../../vault/models/document_model.dart';
 import '../../vault/providers/document_provider.dart';
-import '../../vault/screens/vault_screen.dart';
 import '../models/event_model.dart';
 
 /// 2x3 grid of module cards for an event hub.
@@ -34,8 +27,8 @@ import '../models/event_model.dart';
 /// Uses AppColorTokens.light for corrected module accent colors.
 /// Part of Phase 20 P02 redesign (D-11, D-12, D-13, D-14).
 ///
-/// Phase 22 P03: Each SmartModuleCard is wrapped in OpenContainer for
-/// ContainerTransform expand animation to the destination screen (D-05).
+/// Phase 22 P03 (updated): Cards navigate via GoRouter instead of
+/// OpenContainer, so deep links and redirect guards work correctly.
 class EventModuleList extends ConsumerWidget {
   final String groupId;
   final String eventId;
@@ -103,32 +96,16 @@ class EventModuleList extends ConsumerWidget {
       childAspectRatio: 2.0,
       children: [
         for (int i = 0; i < cards.length; i++)
-          OpenContainer<void>(
-            closedColor: Colors.transparent,
-            openColor: AppColorTokens.light.scaffoldBackground,
-            closedElevation: 0,
-            openElevation: 0,
-            closedShape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                AppSpacingTokens.standard.radiusMedium,
-              ),
-            ),
-            openShape: const RoundedRectangleBorder(),
-            transitionDuration: const Duration(milliseconds: 400),
-            transitionType: ContainerTransitionType.fade,
-            useRootNavigator: false,
-            closedBuilder: (context, openContainer) => SmartModuleCard(
-              key: cards[i].widgetKey,
-              icon: cards[i].icon,
-              title: cards[i].title,
-              description: cards[i].description,
-              color: cards[i].color,
-              onTap: openContainer,
-              summaryText: cards[i].summaryText,
-              actionText: cards[i].actionText,
-              isEmpty: cards[i].isEmpty,
-            ),
-            openBuilder: (context, _) => cards[i].screenBuilder(),
+          SmartModuleCard(
+            key: cards[i].widgetKey,
+            icon: cards[i].icon,
+            title: cards[i].title,
+            description: cards[i].description,
+            color: cards[i].color,
+            onTap: () => context.push(cards[i].routePath),
+            summaryText: cards[i].summaryText,
+            actionText: cards[i].actionText,
+            isEmpty: cards[i].isEmpty,
           )
               .animate()
               .fadeIn(delay: (80 * i).ms, duration: 400.ms)
@@ -170,7 +147,7 @@ class EventModuleList extends ConsumerWidget {
       title: 'Ledger',
       description: 'Track shared expenses and split costs fairly',
       color: AppColorTokens.light.moduleLedger,
-      screenBuilder: () => LedgerScreen(groupId: groupId, eventId: eventId),
+      routePath: '/group/$groupId/event/$eventId/ledger',
       summaryText: ledgerSummary,
       isEmpty: ledgerEmpty,
     ));
@@ -205,7 +182,7 @@ class EventModuleList extends ConsumerWidget {
       title: 'Gear',
       description: 'Create a shared packing list and claim items',
       color: AppColorTokens.light.moduleGear,
-      screenBuilder: () => GearScreen(groupId: groupId, eventId: eventId),
+      routePath: '/group/$groupId/event/$eventId/gear',
       summaryText: gearSummary,
       actionText: gearAction,
       isEmpty: gearEmpty,
@@ -235,8 +212,7 @@ class EventModuleList extends ConsumerWidget {
       title: 'Logistics',
       description: 'Organize cars, rooms, and teams for your group',
       color: AppColorTokens.light.moduleLogistics,
-      screenBuilder: () =>
-          LogisticsScreen(groupId: groupId, eventId: eventId),
+      routePath: '/group/$groupId/event/$eventId/logistics',
       summaryText: logisticsSummary,
       isEmpty: logisticsEmpty,
     ));
@@ -261,7 +237,7 @@ class EventModuleList extends ConsumerWidget {
       title: 'Vault',
       description: 'Store tickets, permits, and trip documents',
       color: AppColorTokens.light.moduleVault,
-      screenBuilder: () => VaultScreen(groupId: groupId, eventId: eventId),
+      routePath: '/group/$groupId/event/$eventId/vault',
       summaryText: vaultSummary,
       isEmpty: vaultEmpty,
     ));
@@ -274,8 +250,7 @@ class EventModuleList extends ConsumerWidget {
       title: 'Activity',
       description: 'Timeline logs',
       color: AppColorTokens.light.moduleActivity,
-      screenBuilder: () =>
-          ActivityFeedScreen(groupId: groupId, eventId: eventId),
+      routePath: '/group/$groupId/event/$eventId/activity',
       isEmpty: true,
     ));
   }
@@ -287,8 +262,7 @@ class EventModuleList extends ConsumerWidget {
       title: 'Memories',
       description: 'Capture and share photos from your event',
       color: AppColorTokens.light.moduleMemories,
-      screenBuilder: () =>
-          MemoriesScreen(groupId: groupId, eventId: eventId),
+      routePath: '/group/$groupId/event/$eventId/memories',
       isEmpty: true,
     ));
   }
@@ -296,9 +270,7 @@ class EventModuleList extends ConsumerWidget {
 
 /// Internal config for building module cards in fixed-order grid.
 ///
-/// [screenBuilder] provides the destination screen widget for OpenContainer.
-/// The old [onTap] field is removed — OpenContainer's closedBuilder calls
-/// [openContainer] directly for the ContainerTransform animation.
+/// [routePath] is the GoRouter path for the destination screen.
 class _ModuleCardConfig {
   final Key? widgetKey;
   final IconData icon;
@@ -306,8 +278,8 @@ class _ModuleCardConfig {
   final String description;
   final Color color;
 
-  /// Returns the destination screen for OpenContainer's openBuilder.
-  final Widget Function() screenBuilder;
+  /// GoRouter path for navigation.
+  final String routePath;
 
   final String? summaryText;
   final String? actionText;
@@ -319,7 +291,7 @@ class _ModuleCardConfig {
     required this.title,
     required this.description,
     required this.color,
-    required this.screenBuilder,
+    required this.routePath,
     this.summaryText,
     this.actionText,
     this.isEmpty = true,

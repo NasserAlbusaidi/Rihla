@@ -1,6 +1,6 @@
 # Auth & Core Infrastructure — CRITICAL + MEDIUM
 
-**3/4 FIXED | 1 partially fixed**
+**4/4 FIXED | 1 partially fixed (connectivity)**
 
 ## ~~4. Anonymous Auth Failure Is Silent~~ FIXED
 
@@ -16,11 +16,9 @@ Still reads from `inviteCodes` every 60 seconds, but since inviteCodes now requi
 
 **Fix:** Use Firebase `.info/connected` listener. Pause timer when backgrounded.
 
-## ~~24. OpenContainer Bypasses GoRouter~~ STILL OPEN
+## ~~24. OpenContainer Bypasses GoRouter~~ FIXED
 
-`home_screen.dart:204-228` — Group cards still use `OpenContainer` from animations package, creating routes outside GoRouter. Deep links won't match, redirect guards don't apply.
-
-**Fix:** Replace with GoRouter navigation + custom hero animation within the router.
+Replaced `OpenContainer` with GoRouter `context.push()` in both `group_detail_screen.dart` (event cards) and `event_module_list.dart` (module cards). Deep links and redirect guards now apply to all navigation. Removed unused `animations` import from both files.
 
 ## Files Involved
 

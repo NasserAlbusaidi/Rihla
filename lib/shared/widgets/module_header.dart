@@ -49,7 +49,13 @@ class ModuleHeader extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _LightBackButton(onTap: () => context.pop()),
+                  _LightBackButton(onTap: () {
+                if (GoRouter.of(context).canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/home');
+                }
+              }),
                   if (actions != null) Row(children: actions!),
                 ],
               ),
@@ -113,7 +119,13 @@ class ModuleHeader extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _DarkBackButton(onTap: () => context.pop()),
+                  _DarkBackButton(onTap: () {
+                  if (GoRouter.of(context).canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/home');
+                  }
+                }),
                   if (actions != null) Row(children: actions!),
                 ],
               ),
@@ -164,8 +176,8 @@ class _LightBackButton extends StatelessWidget {
         key: SharedKeys.moduleHeaderBackButton,
         onTap: onTap,
         child: Container(
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           alignment: Alignment.center,
           child: Icon(Iconsax.arrow_left, color: AppColorTokens.light.textPrimary, size: 20),
         ),
@@ -187,8 +199,8 @@ class _DarkBackButton extends StatelessWidget {
         key: SharedKeys.moduleHeaderBackButton,
         onTap: onTap,
         child: Container(
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(8 + 2),

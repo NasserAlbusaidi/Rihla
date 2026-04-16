@@ -35,7 +35,10 @@ class SmartModuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TapBounce(
+    return Semantics(
+      label: '$title module${actionText != null ? ', action needed: $actionText' : ''}',
+      button: true,
+      child: TapBounce(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -154,6 +157,7 @@ class SmartModuleCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

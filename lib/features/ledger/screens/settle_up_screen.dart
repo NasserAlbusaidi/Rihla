@@ -176,7 +176,9 @@ class SettleUpScreen extends ConsumerWidget {
     String? currentUserId;
     try {
       currentUserId = FirebaseConfig.currentUser?.uid;
-    } catch (_) {}
+    } catch (_) {
+      // Firebase not initialized (e.g. in tests) — proceed without user ID.
+    }
     final myBalance = balances.firstWhere(
       (b) => b.participantId == currentUserId,
       orElse: () => UserBalance(

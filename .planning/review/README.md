@@ -4,9 +4,9 @@ Source: journal.md entry "Full Project Review: 32,592 Lines Under the Microscope
 
 **Grade: B-** | Architecture: A- | Financial Math: A | Security: D+ | Error Handling: C-
 
-## Progress: 26 fixed | 3 partial | 1 deferred | 10 open
+## Progress: 30 fixed | 4 partial | 1 deferred | 5 open
 
-Last checked: 2026-04-15
+Last checked: 2026-04-16
 
 ## Scoreboard
 
@@ -39,15 +39,15 @@ Last checked: 2026-04-15
 | 21 | Non-atomic group create/join | MEDIUM | PARTIAL — Firestore constraint |
 | 22 | copyWith can't clear fields | MEDIUM | DEFERRED — no active callers |
 | 23 | Connectivity burns reads | MEDIUM | PARTIAL — auth-gated now |
-| 24 | OpenContainer bypasses router | MEDIUM | **OPEN** |
+| 24 | OpenContainer bypasses router | MEDIUM | FIXED |
 | 25 | Hardcoded OMR | MEDIUM | FIXED |
 | 26 | ~750 lines dead code | LOW | FIXED |
 | 27 | 50+ debugPrint in prod | LOW | FIXED |
-| 28 | 16 swallowed exceptions | LOW | **OPEN** |
-| 29 | Accessibility gaps | LOW | **OPEN** |
+| 28 | 16 swallowed exceptions | LOW | FIXED |
+| 29 | Accessibility gaps | LOW | PARTIAL — textMuted contrast open |
 | 30 | Shadow tokens alloc per access | LOW | FIXED |
 | 31 | Spacing tokens unused | LOW | **OPEN** |
-| 32 | Hardcoded colors | LOW | **OPEN** |
+| 32 | Hardcoded colors | LOW | PARTIAL — const maps justified |
 | 33 | Test coverage gaps | LOW | **OPEN** |
 | 34 | App says "Safar" | LOW | FIXED |
 | 35 | CLAUDE.md radiusSmall wrong | LOW | FIXED |
@@ -56,8 +56,10 @@ Last checked: 2026-04-15
 ## Remaining Priority
 
 1. Storage membership rules (#1b) — requires Cloud Functions follow-up
-2. **God screens** (#15) — 5 files over 800 lines, refactoring needed
-3. **Swallowed exceptions** (#28) — 16 empty catch blocks
+2. **God screens** (#15) — 5 files over 600 lines, refactoring needed
+3. **Provider watch explosion** (#16) — O(G x E) Firestore listeners on dashboard
+4. **Broken dark theme** (#17) — no AppColorTokens.dark exists
+5. **CacheService god class** (#18) — 660 lines, all static
 
 ## By Category
 
@@ -66,8 +68,8 @@ Last checked: 2026-04-15
 | [01-security.md](01-security.md) | 4/5 fixed | Storage needs Cloud Functions |
 | [02-financial-bugs.md](02-financial-bugs.md) | 7/7 fixed | All resolved |
 | [03-group-management.md](03-group-management.md) | 4/5 fixed | Non-atomic is Firestore constraint |
-| [04-auth-infrastructure.md](04-auth-infrastructure.md) | 2/4 fixed | Connectivity partial, router open |
+| [04-auth-infrastructure.md](04-auth-infrastructure.md) | 3/4 fixed | Connectivity partial |
 | [05-broken-features.md](05-broken-features.md) | 2/2 fixed | All resolved |
 | [06-architecture-debt.md](06-architecture-debt.md) | 1/6 fixed | God screens, dark theme, cache class |
-| [07-code-quality.md](07-code-quality.md) | 6/11 fixed | debugPrint cleaned, 5 remaining |
+| [07-code-quality.md](07-code-quality.md) | 9/11 fixed | 2 remaining (spacing, tests) |
 | [08-patterns-and-priorities.md](08-patterns-and-priorities.md) | — | Cross-cutting observations |
