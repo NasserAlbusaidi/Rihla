@@ -16,9 +16,9 @@ import '../../trip/models/trip_model.dart';
 import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
+import '../widgets/logistics_hero_card.dart';
 import '../widgets/sub_group_card.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../shared/widgets/offline_banner.dart';
 
 /// Logistics Screen — unified module template (D-08, D-23).
@@ -163,10 +163,11 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
       slivers: [
         // Hero card with stats
         SliverToBoxAdapter(
-          child: _buildHeroCard(
+          child: LogisticsHeroCard(
             groupCount: subGroups.length,
             memberCount: memberCount,
             unassignedCount: unassignedCount,
+            onCreateTapped: _showCreateDialog,
           ),
         ),
 
@@ -224,70 +225,6 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
           sliver: SliverToBoxAdapter(child: SizedBox()),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeroCard({
-    required int groupCount,
-    required int memberCount,
-    required int unassignedCount,
-  }) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        8,
-      ),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ORGANIZATION',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: AppColorTokens.light.textMuted,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '$groupCount groups · $memberCount members',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColorTokens.light.textPrimary,
-            ),
-          ),
-          if (unassignedCount > 0) ...[
-            const SizedBox(height: 8),
-            Text(
-              '$unassignedCount unassigned',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: AppColorTokens.light.errorText,
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _showCreateDialog,
-              child: const Text('Create Group'),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
