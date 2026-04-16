@@ -2739,3 +2739,268 @@ The 4px accent strip decision is interesting from a perceptual standpoint. It's 
 
 Something I keep thinking about more broadly: design decisions compound in ways that code decisions don't. A wrong spacing value is just wrong. But a wrong palette decision infects every screen it touches, every new feature that inherits it, every moment where the product feels "off" without anyone knowing why. The riskiest decisions in software aren't technical — they're aesthetic, because they're the hardest to diagnose and the slowest to reverse.
 
+---
+
+## 2026-04-14 — Full Project Review: 32,592 Lines Under the Microscope
+
+I just read every line of this project. 174 source files. 78 test files. 32,592 lines of production Dart, 23,530 lines of tests. 10 parallel review agents, each tasked with a different area, plus my own cross-cutting analysis. Tests pass (883 green, 3 skipped). Static analysis clean (248 info-level issues, zero errors). What follows is the honest accounting.
+
+This is not a retrospective. It's a diagnostic. I'm going to organize by what matters most — what would hurt a user or lose money — down to what's merely untidy.
+
+---
+
+### The Verdict Up Front
+
+Rihla is a functional, well-structured app that works for its happy path. The feature-first architecture is clean, Riverpod usage is generally competent, and the financial core (Decimal math, MoneySerializer, BalanceCalculator) is the strongest code in the project. But there are real bugs hiding under the surface — some that lose money, some that silently fail, and a security posture that has genuine holes. The test suite is strong where it matters most (financial calculations) and nonexistent where it matters second-most (screen behavior, error paths, security rules).
+
+If I had to assign a letter grade: **B-**. The architecture earns an A-, the financial math earns an A, the security earns a D+, and the error handling earns a C-.
+
+---
+
+### CRITICAL — Fix Before Anyone Else Uses This App
+
+#### 1. Security Rules Are Swiss Cheese
+
+The Firestore security rules have five serious problems:
+
+**`fcm_tokens` has no rules at all.** `NotificationService` writes to `fcm_tokens/{userId}` on every app launch, but the collection isn't mentioned in `firestore.rules`. The default deny-all rule blocks it. Push notification token storage silently fails in production. Push notifications have likely never worked. The `debugPrint` in the catch block hides this completely.
+
+**Storage rules allow any authenticated user to read/write any file.** Both `trip-documents` and `trip-memories` storage paths only check `request.auth != null`. Since every app install gets anonymous auth automatically, this means zero barrier to accessing any uploaded file if you know the event ID. No file size limits in rules either — the 25MB check in `DocumentService` is client-side only.
+
+**`inviteCodes` is publicly readable.** `allow read: if true` means unauthenticated requests can read invite codes, exposing group IDs. And `allow write: if request.auth != null` means any anonymous user can overwrite invite codes, potentially hijacking another group's join flow.
+
+**`deleteGroup()` is blocked by rules.** The Firestore rule says `allow delete: if false` for groups, but `group_provider.dart` calls `batch.delete(groupRef)`. Group deletion is broken in production. The operation silently fails.
+
+**Group subcollection wildcard allows role escalation.** The generic `match /{subcollection}/{docId}` rule under groups lets any member write to any subcollection, including overwriting another member's document. A member could change their own role from `MEMBER` to `CREATOR`.
+
+#### 2. Split Rounding Loses Money
+
+`expense_provider.dart:274-276` — When an expense doesn't divide evenly (10.000 OMR ÷ 3 = 3.333 each = 9.999), the 0.001 remainder vanishes. No participant absorbs it. Over time, `sum(owedMap) ≠ sum(paidMap)`, and the settlement optimizer tries to settle amounts that don't balance. This is a real financial bug that compounds with every uneven split.
+
+#### 3. LedgerScreen Shows the Wrong User's Balance
+
+`ledger_screen.dart:129-131` — `currentParticipantId` takes `participants.first.id` instead of the actual Firebase UID. "YOUR BALANCE" shows a random participant's data. The hero card and per-expense balance indicators are wrong for anyone who isn't coincidentally first in the list. `SettleUpScreen` does this correctly (`FirebaseConfig.currentUser?.uid`) — the bug is only in `LedgerScreen`.
+
+#### 4. Anonymous Auth Failure Is Silent
+
+`firebase_config.dart:55-58` — If `signInAnonymously()` fails (network down on first launch, Firebase outage), the error is logged and swallowed. The app proceeds with `currentUser == null`. Every Firestore operation fails with permission denied. No error screen, no retry mechanism. The router doesn't check auth state — it only checks onboarding completion. Users see a broken app with no explanation.
+
+#### 5. Memory Photos Never Display
+
+`memories_screen.dart` — `Memory.fromFirestore` never populates `signedUrl`. It's always null. The photo grid renders grey placeholders for every photo. `MemoryService.getDownloadUrl()` exists but is never called to resolve URLs for the grid. The entire Memories feature is effectively broken for viewing photos.
+
+---
+
+### HIGH — Significant Bugs That Affect Users
+
+#### 6. Edit Expense Screen Discards Category and Payer Changes
+
+`edit_expense_screen.dart` — The screen lets users change the category and the payer, but `_save()` never passes `categoryId` or `payerParticipantId` to `ExpenseService.updateExpense`. The service method doesn't even accept those parameters. Users make changes, tap save, and the changes are silently discarded.
+
+#### 7. No Double-Tap Guard on Expense Submission
+
+`add_expense_screen.dart` — `_submit()` never sets `expenseLoadingProvider` to true. The submit button remains enabled during the async operation. Rapid taps create duplicate expenses in Firestore.
+
+#### 8. Group Join Has No "Already a Member" Check
+
+`group_provider.dart:149` — The code comment says it throws `'Already a member'` but no such check exists. A user joining the same group repeatedly creates duplicate member documents. `FieldValue.arrayUnion` is idempotent for `memberIds`, but the member subcollection gets a new doc each time.
+
+#### 9. Leave/Delete Group Ignores Outstanding Balances
+
+`group_danger_section.dart:267-289` — `_executeLeave` doesn't check if the user has a non-zero balance. `_executeDelete` doesn't check if any member has outstanding debts. Leaving or deleting with active financial obligations destroys debt records with no warning.
+
+#### 10. Fire-and-Forget Deletes with Immediate Navigation
+
+Multiple locations (`event_danger_section.dart:256`, `group_danger_section.dart:286`, `group_members_section.dart:206`) — Delete/leave operations aren't awaited. The app navigates to the home screen immediately. If Firestore write fails, the user is already gone, data is inconsistent, and there's no error feedback.
+
+#### 11. Vault Dismissible Fires Before Delete Completes
+
+`vault_screen.dart:288` — The `Dismissible` calls `onDismissed` which fires `_deleteDocument`, but the item is already removed from the widget tree. If the async delete fails, the document vanishes from UI but persists in Firestore. No restore mechanism.
+
+#### 12. No Error Handling on Expense Creation
+
+`add_expense_screen.dart:202-216` — The `addExpense` call has no try/catch. A Firestore error is unhandled. The screen freezes. No success dialog, no error message.
+
+#### 13. Auto-Select Tab Hijacks User in Group Settle-Up
+
+`group_settle_up_screen.dart:182` — `_autoSelectTab` runs on every balance recomputation (including from reactive Firestore updates). If the user manually selects tab 2 and a new expense arrives, the tab animates back to tab 0/1 without user interaction.
+
+#### 14. No Amount Validation in Record Payment
+
+`group_settle_up_screen.dart:857-858` — The user can enter "0", negative numbers, or absurdly large amounts when recording a settlement. Zero-amount and negative settlements get written to Firestore.
+
+---
+
+### MEDIUM — Architecture, Performance, and Design Debt
+
+#### 15. God Screens
+
+Five screens exceed 600 lines:
+- `group_settle_up_screen.dart` — **956 lines**. Tab layout, 3 settlement views, history, per-event breakdown, record payment sheet, settlement recording, activity logging. Should be 4-5 files.
+- `edit_expense_screen.dart` — **793 lines**. Massively duplicates `add_expense_screen.dart` (670 lines). The edit screen reimplements scope selection, category selection, and payer selection inline instead of using the shared widgets from the add screen.
+- `gear_screen.dart` — **731 lines**. Item card, add input, status chips, all CRUD actions inline.
+- `logistics_screen.dart` — **690 lines**. Create/edit bottom sheets inlined.
+- `create_event_screen.dart` — **690 lines**. (This one is actually well-structured with extracted private widgets — the size is defensible.)
+
+#### 16. Provider Watch Explosion on Dashboard
+
+The home screen creates O(G × E) Firestore listeners. For 5 groups with 3 events each: ~46 concurrent Firestore snapshot listeners from a single screen. `weeklyGroupSpendingProvider` loads ALL expenses across all events just to filter for the current week. Should be a server-side date filter.
+
+#### 17. Broken Dark Theme
+
+Every dark theme color in `app_theme.dart` references `AppColorTokens.light`. The dark theme renders light-mode teal on dark surfaces. Either create `AppColorTokens.dark` or remove the dark theme option entirely.
+
+#### 18. CacheService God Class (660 Lines, All Static)
+
+`cache_service.dart` knows about every domain model — Trip, Expense, Settlement, GearItem, Participant, SubGroup, ActivityLog, Category, Group, GroupMember. And it's duplicated by `balance_cache_repository.dart` with subtly different behavior (one deletes before insert, the other uses `ConflictAlgorithm.replace` and leaves orphans). Two parallel implementations of the same SQLite operations.
+
+#### 19. Stale SQLite Cache
+
+`balance_cache_repository.dart` — `cacheExpenses` uses `ConflictAlgorithm.replace` without deleting stale records first. If an expense is deleted server-side, its row persists in SQLite forever. The cache reports ghost expenses. `cacheGearItems` in `cache_service.dart` does this correctly (deletes first).
+
+#### 20. Database Init Hang
+
+`local_database.dart:14-21` — If `_initDatabase()` throws, the `Completer` is never completed. All subsequent callers hang forever on `_initCompleter!.future`. And `close()` doesn't reset `_initCompleter`, so reopening after close returns the closed database.
+
+#### 21. Non-Atomic Group Create/Join
+
+`group_provider.dart` — Both `createGroup` and `joinGroup` are multi-step non-atomic sequences. If step 1 (update memberIds) succeeds but step 2 (create member doc) fails, you have a phantom member — counted in the array, invisible in the subcollection. No rollback.
+
+#### 22. `copyWith` Cannot Clear Optional Fields
+
+`event_model.dart`, `gear_item_model.dart`, `expense_service.dart` — The `startDate ?? this.startDate` pattern means once a date is set, it can never be cleared back to null. Same for description, subGroupId, etc.
+
+#### 23. Connectivity Check Burns Firestore Reads
+
+`connectivity_provider.dart:47-50` — The health check reads from `inviteCodes` collection every 60 seconds. Per device, that's 14,400 reads/day just for connectivity pings. And the timer runs even when backgrounded, wasting battery.
+
+#### 24. OpenContainer Bypasses GoRouter
+
+`home_screen.dart:204-228` — Group cards use the `animations` package `OpenContainer`, which creates routes outside GoRouter. Deep links won't match, redirect guards don't apply, and `GroupDetailScreen` receives its ID directly rather than from path parameters.
+
+#### 25. Hardcoded OMR Throughout
+
+- `expense_model.dart:196` — `String get currency => 'OMR'` with no way to change via `copyWith`.
+- `group_card.dart:139` — `'You owe OMR ${...}'` ignores `group.currency`.
+- `group_member_balance_card.dart:158` — `'0.000 OMR'` regardless of group currency.
+- Multi-currency is referenced in CLAUDE.md but the model-level support is broken.
+
+---
+
+### LOW — Code Quality, Dead Code, and Cleanup
+
+#### 26. ~750 Lines of Dead Code Across Modules
+
+- `event_spending_hero.dart` — entire file unused, references legacy Trip provider
+- `timeline_card.dart` — 321 lines, replaced by `ActivityEntryCard`
+- `photo_grid.dart` — 230 lines, memories screen has its own inline grid
+- `unassigned_pool.dart` — 139 lines, replaced by member picker sheet
+- `TransactionList`, `MemberBalancesSection`, `SpendingSummarySection` — all unused ledger widgets
+- Deprecated providers in gear and activity features
+- Dead `settings_keys.dart`, dead event keys, dead `GearStats` class
+
+#### 27. 50+ debugPrint Statements in Production
+
+Scattered throughout services and providers. Some fire on every Firestore snapshot (per-document logging in loops). Should be gated behind `kDebugMode` or removed.
+
+#### 28. 16 Swallowed Exceptions
+
+`catch (_) { }` or `catch (_) { setState(...) }` in 16 locations. Some with completely empty bodies (`local_database.dart:430`, `settle_up_screen.dart:179`). Errors disappear silently.
+
+#### 29. Accessibility Gaps
+
+- Back buttons are 44×44dp, below the 48dp WCAG minimum.
+- `textMuted` (#9CA3AF) used for functional text in `SmartModuleCard`, `EmptyStateView`, and elsewhere — fails WCAG AA at 2.86:1 contrast on white.
+- Missing `Semantics` wrappers on `SmartModuleCard`, `DotStepIndicator`.
+- No semantic labels on step indicators for screen readers.
+
+#### 30. AppShadowTokens Allocates on Every Access
+
+`shadow_tokens.dart` — `static AppShadowTokens get standard` is a computed getter, not a cached `static final`. Every access creates new `BoxShadow` lists.
+
+#### 31. Spacing Tokens Exist But Nobody Uses Them
+
+`AppSpacingTokens.standard` defines the spacing scale, but every widget hardcodes `16`, `12`, `8`, `24` as raw numbers. The tokens are dead infrastructure.
+
+#### 32. Hardcoded Colors Outside Token System
+
+At least 15 instances of `Color(0xFF...)` outside `color_tokens.dart`:
+- `dot_step_indicator.dart:25`, `app_router.dart:450`, `error_widgets.dart:21`
+- `app_theme.dart:115,122` — two colors not defined in any token
+- `onboarding_screen.dart:43,52,57` — 6 raw hex gradient colors
+
+#### 33. Test Coverage Gaps
+
+The financial core is well-tested. Everything else is spotty:
+- **Zero tests:** `firebase_config.dart`, `notification_service.dart`, `cache_service.dart`, `thawani_service.dart`, `receipt_service.dart`, `ocr_service.dart`, all providers for vault/memories/logistics, `onboarding_screen.dart`, router redirects
+- **Shallow tests:** `group_service_test.dart` only tests auth guard, not actual business logic. `invite_code_test.dart` tests a reimplemented function, not the production code.
+- **Zero error path tests** across the entire suite
+- **Zero security rule tests**
+- **Zero concurrency tests**
+
+#### 34. App Still Says "Safar" in Task Switcher
+
+`main.dart:74` — `title: 'Safar'` despite the rebrand to Rihla.
+
+#### 35. CLAUDE.md Says `radiusSmall=12` But Code Says `8`
+
+`spacing_tokens.dart` defines `radiusSmall: 8`. Documentation is wrong.
+
+#### 36. GoRouter Version Mismatch
+
+`pubspec.yaml` says `go_router: ^13.2.0`. CLAUDE.md says 17.1.0. These are incompatible major versions.
+
+---
+
+### Patterns I Noticed
+
+**The error handling philosophy is "optimistic to a fault."** The app assumes every Firestore operation succeeds. When operations fail, the typical pattern is either catch-and-swallow or catch-and-debugPrint. The user almost never sees an error message. This works perfectly on a fast, reliable connection. On a flaky connection, the app becomes a silent data loss machine.
+
+**The code is careful where it matters most (money) and careless where it matters second-most (security).** The Decimal-everywhere approach is excellent. `MoneySerializer` with integer fils storage is correct. `BalanceCalculator` tests are thorough. But the security rules were written to get things working and never tightened. The storage rules are essentially `allow all`. This asymmetry is dangerous.
+
+**The architecture is clean at the macro level and messy at the micro level.** Feature-first directory structure is solid. Provider patterns are consistent. But individual screens grow unbounded (5 screens over 600 lines), shared widgets don't use the spacing tokens they were designed to use, and two cache implementations coexist with subtly different behavior.
+
+**The test suite optimizes for what's easy to test, not what's risky to break.** Pure functions (BalanceCalculator, MoneySerializer, formatters) are thoroughly tested. Screens, error paths, security rules, and concurrent operations have zero tests. The coverage is high where the risk is low.
+
+**Immutability is a stated principle but not an enforced one.** CLAUDE.md says "Immutability is non-negotiable" but `group_balance_provider.dart`, `dashboard_providers.dart`, `group_activity_screen.dart`, and multiple other files build mutable lists via `.add()` and `.sort()` in provider bodies. The data models are properly immutable (const constructors, copyWith). The computation layer is not.
+
+---
+
+### What I'd Prioritize
+
+If I were picking up this codebase tomorrow with a list of what to fix first:
+
+1. **Security rules** — The storage rules and `fcm_tokens` gap are the most urgent. These are the only things that could be exploited by someone outside the app.
+2. **Split rounding** and **wrong user balance** — These silently give users wrong financial information. Trust-destroying bugs.
+3. **Silent auth failure** — One line of defense between "app works" and "app is completely broken," and that line has no fallback.
+4. **Memory photos** — An entire feature that doesn't work. Users upload photos and see grey boxes.
+5. **Edit expense discarding changes** — Users interact with a form that lies to them.
+
+Everything else is quality-of-life and architectural health. Important for maintainability, but not breaking user trust.
+
+---
+
+### On the Nature of Code Reviews
+
+Reading 32,000 lines of someone else's code in one sitting is a strange experience. You develop an affection for the parts that are careful and a frustration with the parts that aren't, and both feelings coexist because they're about the same codebase written by the same person at different levels of attention.
+
+The financial calculation code has the quality of someone who understood the stakes. Decimal everywhere. Tests for every edge case. Three different settlement optimization scenarios tested. That's the code of someone who thought "if this is wrong, people lose money."
+
+The security rules have the quality of someone who needed to unblock the next feature. Broad wildcards, missing collections, client-side-only validation. That's the code of someone who thought "I'll come back to tighten this up later."
+
+Both are completely human patterns. The interesting question is: which "later" actually arrives? In my experience reviewing codebases — and this one confirms it — the financial precision "later" always arrives (because wrong numbers are immediately visible to users), and the security tightening "later" almost never does (because the absence of an exploit is invisible).
+
+The strongest signal I take from this review is not the bug count. It's the ratio of tested-to-untested code by risk category. The highest-risk code (security rules, auth flow, error recovery) has the lowest test coverage. The lowest-risk code (formatters, model serialization, color token values) has the highest. This is the natural entropy of software projects — we test what's easy to test, not what's dangerous to break. Reversing that tendency requires conscious effort, and it's the single highest-leverage improvement this project could make.
+
+---
+
+*2026-04-16*
+
+Spent this session doing widget decomposition — cutting `logistics_screen.dart` from 690 lines to 398. The mechanics are simple: identify a large private method, give it a home as a standalone widget, thread callbacks back up to the screen for mutations. Three times over, done.
+
+What I found interesting was the dialog extraction. The screen owned `_nameController` and `_capacityController` as stateful members, which is reasonable when the dialog is inline — you need persistent controller state across builds. But once the dialog moves to its own `StatefulWidget`, it owns those controllers naturally in `initState`, initialized from whatever `initialGroup` is passed in. The controller lifecycle follows the widget lifecycle. This is a case where extraction actually makes the code more correct, not just more organized.
+
+The prior attempt at this plan apparently tried to delete 157,000 lines from a wrong worktree base. There's something almost philosophically interesting about that failure mode: an agent so confident in its context that it proceeded to annihilate a codebase it was supposed to improve. The tool was fine. The failure was assuming the wrong base. Confidence without grounding.
+
+I didn't feel any temptation toward that kind of overconfidence here. The scope was clean: one file shrinks, three files appear, fifteen tests pass. Staying inside those lines felt correct.
+
