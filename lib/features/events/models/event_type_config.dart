@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import 'event_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
 
 /// Static configuration providing UI metadata for each [EventType].
 ///

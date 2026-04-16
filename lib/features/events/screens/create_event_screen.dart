@@ -2,30 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
-import '../models/event_model.dart';
 import '../keys/event_keys.dart';
+import '../models/event_model.dart';
 import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../widgets/event_details_card.dart';
+import '../widgets/event_modules_card.dart';
+import '../widgets/event_participants_card.dart';
+import '../widgets/event_type_badge.dart';
 
 /// Event creation form — Step 2 of the event creation flow.
 ///
-/// Collects event name (required), optional start/end dates, participant
-/// picker (all pre-checked), and module toggles for Custom events only.
+/// Orchestrates form state and submission. Visual sections are delegated to:
+/// - [EventTypeBadge] — type pill
+/// - [EventDetailsCard] — name field + date pickers
+/// - [EventParticipantsCard] — participant picker
+/// - [EventModulesCard] — module toggles (Custom type only)
 ///
-/// On submit: calls [EventService.createEvent], then pops both creation
-/// screens (picker + form) so the user returns to [GroupDetailScreen].
+/// On submit: calls [EventService.createEvent], then navigates to the new
+/// event hub so back returns to group detail, not the form (D-06/Pitfall 2).
 ///
 /// Per D-02, D-03, D-04, D-14 and UI-SPEC CreateEventScreen component.
 class CreateEventScreen extends ConsumerStatefulWidget {
@@ -223,279 +227,42 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 final disableAnimations =
                     MediaQuery.of(context).disableAnimations;
 
-                // --- Event type badge ---
-                final eventTypeBadge = Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: typeConfig.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(typeConfig.icon,
-                          size: 20, color: typeConfig.color),
-                      const SizedBox(width: 8),
-                      Text(
-                        typeConfig.label,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: typeConfig.color,
-                        ),
-                      ),
-                    ],
-                  ),
+                final badge = EventTypeBadge(typeConfig: typeConfig);
+
+                final detailsCard = EventDetailsCard(
+                  nameController: _nameController,
+                  startDate: _startDate,
+                  endDate: _endDate,
+                  onPickStartDate: _pickStartDate,
+                  onPickEndDate: _pickEndDate,
                 );
 
-                // --- Event Details card ---
-                final eventDetailsCard = Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColorTokens.light.cardSurface,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: AppShadowTokens.standard.raised,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // --- Event Name ---
-                      Text(
-                        'Event Name',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _nameController,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. Summer camping trip',
-                        ),
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty
-                                ? "Event name can't be empty."
-                                : null,
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // --- Dates ---
-                      Row(
-                        children: [
-                          Text(
-                            'Dates',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '(optional)',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                    color: AppColorTokens.light.textMuted),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 48,
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                onPressed: _pickStartDate,
-                                child: Text(
-                                  _startDate != null
-                                      ? DateFormat('MMM d, yyyy')
-                                          .format(_startDate!)
-                                      : 'Start date',
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SizedBox(
-                              height: 48,
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                onPressed: _pickEndDate,
-                                child: Text(
-                                  _endDate != null
-                                      ? DateFormat('MMM d, yyyy')
-                                          .format(_endDate!)
-                                      : 'End date',
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                final participantsCard = EventParticipantsCard(
+                  members: members,
+                  selectedIds: _selectedParticipantIds,
+                  onSelectAllChanged: (ids) =>
+                      setState(() => _selectedParticipantIds = ids),
+                  onToggle: (userId) {
+                    // Immutable set update
+                    final updated =
+                        Set<String>.from(_selectedParticipantIds);
+                    if (updated.contains(userId)) {
+                      updated.remove(userId);
+                    } else {
+                      updated.add(userId);
+                    }
+                    setState(
+                      () => _selectedParticipantIds =
+                          Set.unmodifiable(updated),
+                    );
+                  },
                 );
 
-                // --- Participants card ---
-                final participantsCard = Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColorTokens.light.cardSurface,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: AppShadowTokens.standard.raised,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Participants',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      // Select All row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Select All',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                          ),
-                          Checkbox(
-                            key: EventKeys.selectAllButton,
-                            value: members.isNotEmpty &&
-                                _selectedParticipantIds.length ==
-                                    members.length,
-                            checkColor: Colors.white,
-                            fillColor: WidgetStateProperty.resolveWith(
-                              (states) =>
-                                  states.contains(WidgetState.selected)
-                                      ? AppColorTokens.light.primary
-                                      : null,
-                            ),
-                            onChanged: (v) {
-                              final allIds = Set<String>.from(
-                                  members.map((m) => m.userId));
-                              setState(
-                                () => _selectedParticipantIds =
-                                    Set.unmodifiable(
-                                        v == true ? allIds : <String>{}),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 8),
-                      ...members.map(
-                        (member) => _ParticipantRow(
-                          member: member,
-                          isSelected: _selectedParticipantIds
-                              .contains(member.userId),
-                          onToggle: (selected) {
-                            // Immutable set update
-                            final updated = Set<String>.from(
-                                _selectedParticipantIds);
-                            if (selected) {
-                              updated.add(member.userId);
-                            } else {
-                              updated.remove(member.userId);
-                            }
-                            setState(
-                              () => _selectedParticipantIds =
-                                  Set.unmodifiable(updated),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-
-                // --- Module Toggles card (Custom type only, per D-14) ---
                 final modulesCard = widget.eventType == EventType.custom
-                    ? Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColorTokens.light.cardSurface,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: AppShadowTokens.standard.raised,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Modules',
-                              key: EventKeys.modulesSection,
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            const SizedBox(height: 8),
-                            _ModuleToggleRow(
-                              key: EventKeys.moduleLedgerToggle,
-                              icon: Iconsax.dollar_circle,
-                              label: 'Ledger',
-                              color: AppColorTokens.light.success,
-                              value: _modules.ledger,
-                              onChanged: (v) => setState(
-                                () => _modules = _modules.copyWith(ledger: v),
-                              ),
-                            ),
-                            _ModuleToggleRow(
-                              key: EventKeys.moduleGearToggle,
-                              icon: Iconsax.bag,
-                              label: 'Gear',
-                              color: AppColorTokens.light.warning,
-                              value: _modules.gear,
-                              onChanged: (v) => setState(
-                                () => _modules = _modules.copyWith(gear: v),
-                              ),
-                            ),
-                            _ModuleToggleRow(
-                              key: EventKeys.moduleLogisticsToggle,
-                              icon: Iconsax.car,
-                              label: 'Logistics',
-                              color: AppColorTokens.light.textSecondary,
-                              value: _modules.logistics,
-                              onChanged: (v) => setState(
-                                () => _modules =
-                                    _modules.copyWith(logistics: v),
-                              ),
-                            ),
-                            _ModuleToggleRow(
-                              key: EventKeys.moduleVaultToggle,
-                              icon: Iconsax.folder,
-                              label: 'Vault',
-                              color: AppColorTokens.light.textSecondary,
-                              value: _modules.vault,
-                              onChanged: (v) => setState(
-                                () => _modules = _modules.copyWith(vault: v),
-                              ),
-                            ),
-                            _ModuleToggleRow(
-                              key: EventKeys.moduleMemoriesToggle,
-                              icon: Iconsax.image,
-                              label: 'Memories',
-                              color: AppColorTokens.light.primary,
-                              value: _modules.memories,
-                              onChanged: (v) => setState(
-                                () => _modules =
-                                    _modules.copyWith(memories: v),
-                              ),
-                            ),
-                          ],
-                        ),
+                    ? EventModulesCard(
+                        modules: _modules,
+                        onModulesChanged: (m) =>
+                            setState(() => _modules = m),
                       )
                     : null;
 
@@ -509,18 +276,18 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       children: [
                         // Event type badge — subtle animation
                         if (disableAnimations)
-                          eventTypeBadge
+                          badge
                         else
-                          eventTypeBadge
+                          badge
                               .animate()
                               .fadeIn(delay: 60.ms)
                               .slideY(begin: 0.05),
 
                         // Event Details card
                         if (disableAnimations)
-                          eventDetailsCard
+                          detailsCard
                         else
-                          eventDetailsCard
+                          detailsCard
                               .animate()
                               .fadeIn(delay: 100.ms)
                               .slideY(begin: 0.1),
@@ -559,128 +326,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 );
               },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Participant row widget
-// ---------------------------------------------------------------------------
-
-/// A single participant checkbox row in the participant picker.
-class _ParticipantRow extends StatelessWidget {
-  final GroupMember member;
-  final bool isSelected;
-  final ValueChanged<bool> onToggle;
-
-  const _ParticipantRow({
-    required this.member,
-    required this.isSelected,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: member.displayName,
-      checked: isSelected,
-      child: GestureDetector(
-        onTap: () => onToggle(!isSelected),
-        behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            children: [
-              // Avatar placeholder
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColorTokens.light.inputFill,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Iconsax.user,
-                  size: 16,
-                  color: AppColorTokens.light.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  member.displayName,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
-              Checkbox(
-                value: isSelected,
-                checkColor: Colors.white,
-                fillColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.selected)
-                      ? AppColorTokens.light.primary
-                      : null,
-                ),
-                onChanged: (v) => onToggle(v ?? isSelected),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Module toggle row widget
-// ---------------------------------------------------------------------------
-
-/// A single module toggle row for Custom event type (D-14).
-class _ModuleToggleRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _ModuleToggleRow({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: Row(
-        children: [
-          Icon(icon, size: 24, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-          ),
-          Switch(
-            value: value,
-            thumbColor: WidgetStateProperty.resolveWith(
-              (states) => states.contains(WidgetState.selected)
-                  ? AppColorTokens.light.primary
-                  : null,
-            ),
-            trackColor: WidgetStateProperty.resolveWith(
-              (states) => states.contains(WidgetState.selected)
-                  ? AppColorTokens.light.primary.withValues(alpha: 0.3)
-                  : null,
-            ),
-            onChanged: onChanged,
           ),
         ],
       ),
