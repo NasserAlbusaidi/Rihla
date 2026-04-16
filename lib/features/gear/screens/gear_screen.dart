@@ -1,30 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/types/event_ref.dart';
-import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
-import '../../../shared/widgets/search_filter_bar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/providers/event_provider.dart';
 import '../keys/gear_keys.dart';
 import '../models/gear_item_model.dart';
 import '../providers/gear_provider.dart';
-import '../widgets/gear_hero_card.dart';
-import '../widgets/gear_item_card.dart';
+import '../widgets/gear_list_view.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../shared/widgets/offline_banner.dart';
 
-/// Gear Screen — unified module template (D-08).
+/// Gear Screen — orchestrator (D-08).
 ///
-/// Layout: dark ModuleHeader → GearHeroCard → SearchFilterBar → gear item list.
-/// Loading: SkeletonLoader. Empty: EmptyStateView with olive earthy gradient.
+/// Owns state + mutation handlers. Layout delegated to GearListView.
 class GearScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String eventId;
@@ -113,198 +108,31 @@ class _GearScreenState extends ConsumerState<GearScreen> {
           const OfflineBanner(),
           Expanded(
             child: gearAsync.when(
-              data: (items) => _buildContent(items, currentUserId),
+              data: (items) => GearListView(
+                items: items,
+                currentUserId: currentUserId,
+                searchQuery: _searchQuery,
+                statusFilter: _statusFilter,
+                hideClaimed: _hideClaimed,
+                onTogglePacked: _togglePacked,
+                onMenuAction: _handleMenuAction,
+                onSearchChanged: (q) => setState(() => _searchQuery = q),
+                onStatusFilterChanged: (f) =>
+                    setState(() => _statusFilter = f),
+                onRefresh: () => ref.invalidate(eventGearItemsProvider(_eventRef)),
+                onAddItem: _focusAddField,
+                addController: _itemController,
+                isHighPriority: _isHighPriority,
+                onPriorityChanged: (v) => setState(() => _isHighPriority = v),
+                onSubmitAdd: _addItem,
+              ),
               loading: SkeletonLoader.gearList,
-              error: (e, st) {
-                return _buildErrorState(e.toString());
-              },
+              error: (e, st) => _buildErrorState(e.toString()),
             ),
           ),
         ],
       ),
       floatingActionButton: _buildFloatingAction(),
-    );
-  }
-
-  Widget _buildContent(List<GearItem> items, String? currentUserId) {
-    final packedCount = items.where((i) => i.isPacked).length;
-    final totalCount = items.length;
-    final priorityCount =
-        items.where((i) => i.isHighPriority && !i.isPacked).length;
-
-    final filteredItems = items.where((item) {
-      if (_searchQuery.isNotEmpty) {
-        if (!item.itemName.toLowerCase().contains(_searchQuery.toLowerCase())) {
-          return false;
-        }
-      }
-      if (_statusFilter != null) {
-        switch (_statusFilter) {
-          case 'Unclaimed':
-            if (item.assignedTo != null) return false;
-          case 'Claimed':
-            if (item.assignedTo == null || item.isPacked) return false;
-          case 'Packed':
-            if (!item.isPacked) return false;
-        }
-      }
-      if (_hideClaimed && item.status != GearStatus.unclaimed) return false;
-      return true;
-    }).toList();
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(eventGearItemsProvider(_eventRef));
-      },
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: GearHeroCard(
-              packedCount: packedCount,
-              totalCount: totalCount,
-              priorityCount: priorityCount,
-              onAddItem: _focusAddField,
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SearchFilterBar(
-              onSearchChanged: (q) => setState(() => _searchQuery = q),
-              hintText: 'Search gear...',
-              filters: const ['Unclaimed', 'Claimed', 'Packed'],
-              activeFilter: _statusFilter,
-              onFilterChanged: (f) => setState(() => _statusFilter = f),
-            ),
-          ),
-          // Add item input — always shown regardless of list state
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: _buildAddItemInput(),
-            ),
-          ),
-          if (filteredItems.isEmpty && items.isNotEmpty)
-            SliverFillRemaining(
-              child: Center(
-                child: Text(
-                  'No items match your filter',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColorTokens.light.textSecondary,
-                  ),
-                ),
-              ),
-            )
-          else if (items.isEmpty)
-            SliverFillRemaining(
-              child: EmptyStateView(
-                icon: Iconsax.bag_2,
-                title: 'Nothing packed yet',
-                message:
-                    'Add gear items to track what everyone needs to bring.',
-                actionLabel: 'Add Gear Item',
-                onAction: _focusAddField,
-                accentGradient: LinearGradient(
-                  colors: [
-                    AppColorTokens.light.moduleGear,
-                    AppColorTokens.light.moduleGearLight
-                  ],
-                ),
-              ),
-            )
-          else ...[
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              sliver: SliverToBoxAdapter(
-                child: Text(
-                  'GEAR ITEMS',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: AppColorTokens.light.textMuted,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-              sliver: SliverToBoxAdapter(
-                child: FadeInList(
-                  children: filteredItems.map((item) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: GearItemCard(
-                        item: item,
-                        currentUserId: currentUserId,
-                        onTogglePacked: _togglePacked,
-                        onMenuAction: _handleMenuAction,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddItemInput() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColorTokens.light.inputFill),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: Icon(
-              Iconsax.flash,
-              color: _isHighPriority
-                  ? AppColorTokens.light.errorText
-                  : AppColorTokens.light.textMuted,
-              size: 20,
-            ),
-            onPressed: () {
-              HapticService.lightClick();
-              setState(() => _isHighPriority = !_isHighPriority);
-            },
-          ),
-          Expanded(
-            child: TextField(
-              controller: _itemController,
-              inputFormatters: [LengthLimitingTextInputFormatter(100)],
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              decoration: InputDecoration(
-                hintText: 'ADD GEAR ITEM...',
-                hintStyle: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                  color: AppColorTokens.light.textMuted,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              onSubmitted: (_) => _addItem(),
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              Iconsax.add_circle,
-              color: AppColorTokens.light.primary,
-              size: 28,
-            ),
-            onPressed: () {
-              HapticService.lightClick();
-              _addItem();
-            },
-          ),
-        ],
-      ),
     );
   }
 
