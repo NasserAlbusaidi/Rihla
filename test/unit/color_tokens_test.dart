@@ -82,4 +82,41 @@ void main() {
       );
     });
   });
+
+  group('AppColorTokens.dark foundation (review #17)', () {
+    test('dark.scaffoldBackground equals Slate 900 #0F172A', () {
+      expect(
+        AppColorTokens.dark.scaffoldBackground,
+        equals(const Color(0xFF0F172A)),
+      );
+    });
+
+    test('dark.cardSurface equals Slate 800 #1E293B', () {
+      expect(
+        AppColorTokens.dark.cardSurface,
+        equals(const Color(0xFF1E293B)),
+      );
+    });
+
+    test('dark.primary equals Teal 500 #14B8A6 (lighter for dark background)', () {
+      expect(
+        AppColorTokens.dark.primary,
+        equals(const Color(0xFF14B8A6)),
+      );
+    });
+
+    test('dark.textPrimary equals Slate 50 #F1F5F9', () {
+      expect(
+        AppColorTokens.dark.textPrimary,
+        equals(const Color(0xFFF1F5F9)),
+      );
+    });
+
+    test('dark and light share the same field set (schema parity)', () {
+      // Both are `const AppColorTokens(...)` so this compiles only if every
+      // required field is provided. The assertion here just pins the type.
+      expect(AppColorTokens.dark, isA<AppColorTokens>());
+      expect(AppColorTokens.light, isA<AppColorTokens>());
+    });
+  });
 }

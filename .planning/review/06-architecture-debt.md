@@ -1,6 +1,6 @@
 # Architecture & Design Debt — MEDIUM
 
-**1/6 FIXED | 4 deferred (large refactors) | 1 theoretical (no active callers)**
+**1/6 FIXED | 1 partial | 3 deferred (large refactors) | 1 theoretical (no active callers)**
 
 ## 15. God Screens — STILL OPEN
 
@@ -18,9 +18,11 @@ All five still exceed 600 lines:
 
 Home screen creates O(G x E) Firestore listeners. `weeklyGroupSpendingProvider` loads ALL expenses to filter for current week client-side.
 
-## 17. Broken Dark Theme — STILL OPEN
+## 17. Broken Dark Theme — PARTIALLY FIXED (foundation in place)
 
-Dark theme still references `AppColorTokens.light` throughout (primary, secondary, error, surfaces). No `AppColorTokens.dark` exists.
+`AppColorTokens.dark` static instance now defined in `color_tokens.dart` with Slate-based dark palette. `darkTheme` in `app_theme.dart` now references `AppColorTokens.dark` throughout instead of `AppColorTokens.light`. Extensions registered in darkTheme. 5 tests added.
+
+**Still open:** Widget-level migration. 898 direct `AppColorTokens.light` calls across the codebase still render light colors regardless of theme. Full dark-mode support requires migrating widgets to `context.colors` — a separate milestone.
 
 ## 18. CacheService God Class — STILL OPEN
 

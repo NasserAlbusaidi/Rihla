@@ -181,27 +181,28 @@ class AppTheme {
     );
   }
 
-  /// Dark theme — deferred (DARK-01, DARK-02). Values left as-is.
-  /// Will be updated with earthy dark variant in a future milestone.
+  /// Dark theme — foundation in place via AppColorTokens.dark (DARK-01).
+  /// Widget-level migration from direct AppColorTokens.light to context.colors
+  /// is a separate effort (DARK-02, review #17).
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF0F172A), // Slate 900
+      scaffoldBackgroundColor: AppColorTokens.dark.scaffoldBackground,
       colorScheme: ColorScheme.dark(
-        primary: AppColorTokens.light.primary,
-        secondary: AppColorTokens.light.textSecondary,
-        surface: const Color(0xFF1E293B), // Slate 800
-        error: AppColorTokens.light.error,
-        onPrimary: AppColorTokens.light.textOnPrimary,
-        onSecondary: AppColorTokens.light.textOnPrimary,
-        onSurface: Colors.white,
-        onError: AppColorTokens.light.textOnPrimary,
+        primary: AppColorTokens.dark.primary,
+        secondary: AppColorTokens.dark.textSecondary,
+        surface: AppColorTokens.dark.cardSurface,
+        error: AppColorTokens.dark.error,
+        onPrimary: AppColorTokens.dark.textOnPrimary,
+        onSecondary: AppColorTokens.dark.textOnPrimary,
+        onSurface: AppColorTokens.dark.textPrimary,
+        onError: AppColorTokens.dark.textOnPrimary,
       ),
       textTheme: _buildTextTheme(Brightness.dark),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColorTokens.dark.textPrimary,
         elevation: 0,
         centerTitle: true,
         scrolledUnderElevation: 0,
@@ -209,18 +210,18 @@ class AppTheme {
           fontFamily,
           fontSize: 18,
           fontWeight: FontWeight.w700,
-          color: Colors.white,
+          color: AppColorTokens.dark.textPrimary,
         ),
       ),
-      cardTheme: const CardThemeData(
-        color: Color(0xFF1E293B),
+      cardTheme: CardThemeData(
+        color: AppColorTokens.dark.cardSurface,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColorTokens.light.primary,
-          foregroundColor: AppColorTokens.light.textOnPrimary,
+          backgroundColor: AppColorTokens.dark.primary,
+          foregroundColor: AppColorTokens.dark.textOnPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
@@ -235,7 +236,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF1E293B).withValues(alpha: 0.8),
+        fillColor: AppColorTokens.dark.cardSurface.withValues(alpha: 0.8),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 24,
           vertical: 20,
@@ -247,47 +248,52 @@ class AppTheme {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: AppColorTokens.dark.border,
             width: 1.5,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColorTokens.light.primary, width: 2),
+          borderSide: BorderSide(color: AppColorTokens.dark.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColorTokens.light.error, width: 1.5),
+          borderSide: BorderSide(color: AppColorTokens.dark.error, width: 1.5),
         ),
         hintStyle: GoogleFonts.getFont(
           fontFamily,
-          color: AppColorTokens.light.textMuted,
+          color: AppColorTokens.dark.textMuted,
           fontSize: 15,
           fontWeight: FontWeight.w500,
         ),
         labelStyle: GoogleFonts.getFont(
           fontFamily,
-          color: Colors.white70,
+          color: AppColorTokens.dark.textSecondary,
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
         floatingLabelStyle: GoogleFonts.getFont(
           fontFamily,
-          color: AppColorTokens.light.primary,
+          color: AppColorTokens.dark.primary,
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
       ),
+      extensions: <ThemeExtension>[
+        AppColorTokens.dark,
+        AppSpacingTokens.standard,
+        AppShadowTokens.standard,
+      ],
     );
   }
 
   static TextTheme _buildTextTheme(Brightness brightness) {
     final color = brightness == Brightness.light
         ? AppColorTokens.light.textPrimary
-        : Colors.white;
+        : AppColorTokens.dark.textPrimary;
     final secondaryColor = brightness == Brightness.light
         ? AppColorTokens.light.textSecondary
-        : const Color(0xFF94A3B8); // Slate 400
+        : AppColorTokens.dark.textSecondary;
 
     return TextTheme(
       displayLarge: GoogleFonts.getFont(

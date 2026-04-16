@@ -228,6 +228,59 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     primaryDark: Color(0xFF0A6B65),
   );
 
+  /// Dark palette instance — Slate-based with teal primary retained.
+  ///
+  /// Scaffold/surface uses Slate 900/800 per existing darkTheme in app_theme.dart.
+  /// Semantic colors (success/error) lightened for contrast on dark backgrounds.
+  /// Module colors shifted toward lighter variants for visibility.
+  ///
+  /// Note: Full dark-mode support also requires widgets to migrate from direct
+  /// `AppColorTokens.light` access to `context.colors` (Theme.of extension).
+  /// This instance enables the theme-level foundation; widget migration is a
+  /// separate effort tracked in review #17.
+  static const AppColorTokens dark = AppColorTokens(
+    primary: Color(0xFF14B8A6), // Teal 500 — lighter for dark background contrast
+    scaffoldBackground: Color(0xFF0F172A), // Slate 900
+    cardSurface: Color(0xFF1E293B), // Slate 800
+    inputFill: Color(0xFF273349), // Slate 800 shifted warmer
+    border: Color(0xFF334155), // Slate 700
+    textPrimary: Color(0xFFF1F5F9), // Slate 50 — 17.8:1 on Slate 900
+    textSecondary: Color(0xFFCBD5E1), // Slate 300 — 11.5:1 on Slate 900
+    textMuted: Color(0xFF94A3B8), // Slate 400 — decorative only
+    textOnPrimary: Color(0xFF0F172A), // Slate 900 text on light teal
+    success: Color(0xFF10B981), // Emerald 500
+    successText: Color(0xFF6EE7B7), // Emerald 300 — readable on dark
+    error: Color(0xFFEF4444), // Red 500
+    errorText: Color(0xFFFCA5A5), // Red 300 — readable on dark
+    disabled: Color(0xFF334155), // Slate 700
+    disabledText: Color(0xFF64748B), // Slate 500
+    focusRing: Color(0xFF14B8A6), // Teal 500
+    selectionFill: Color(0xFF164E4A), // Dark teal tint
+    moduleLedger: Color(0xFF14B8A6), // Teal 500
+    moduleLedgerLight: Color(0xFF164E4A),
+    moduleGear: Color(0xFF94A3B8), // Slate 400
+    moduleGearLight: Color(0xFF1E293B),
+    moduleLogistics: Color(0xFF94A3B8),
+    moduleLogisticsLight: Color(0xFF1E293B),
+    moduleVault: Color(0xFF94A3B8),
+    moduleVaultLight: Color(0xFF1E293B),
+    moduleActivity: Color(0xFF94A3B8),
+    moduleActivityLight: Color(0xFF1E293B),
+    moduleMemories: Color(0xFF94A3B8),
+    moduleMemoriesLight: Color(0xFF1E293B),
+    headerGradientStart: Color(0xFF0F172A),
+    headerGradientEnd: Color(0xFF1E293B),
+    offlineBannerBackground: Color(0xFFFBBF24), // Amber 400
+    bottomNavBackground: Color(0xFF1E293B),
+    bottomNavActiveIcon: Color(0xFF14B8A6),
+    bottomNavInactiveIcon: Color(0xFF64748B),
+    inputFillWarm: Color(0xFF2A241B), // Dark warm brown
+    focusBorderWarm: Color(0xFFEBA480), // Lighter terracotta
+    borderWarm: Color(0xFF4A3D32), // Dark warm gray
+    warning: Color(0xFFFBBF24), // Amber 400
+    primaryDark: Color(0xFF0D7B74), // Original teal — acts as "darker" in dark mode
+  );
+
   @override
   AppColorTokens copyWith({
     Color? primary,

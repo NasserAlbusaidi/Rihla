@@ -4,7 +4,7 @@ Source: journal.md entry "Full Project Review: 32,592 Lines Under the Microscope
 
 **Grade: B-** | Architecture: A- | Financial Math: A | Security: D+ | Error Handling: C-
 
-## Progress: 30 fixed | 4 partial | 1 deferred | 5 open
+## Progress: 30 fixed | 5 partial | 1 deferred | 4 open
 
 Last checked: 2026-04-16
 
@@ -32,7 +32,7 @@ Last checked: 2026-04-16
 | 14 | No amount validation | HIGH | FIXED |
 | 15 | God screens (5 files) | MEDIUM | **OPEN** |
 | 16 | Provider watch explosion | MEDIUM | **OPEN** |
-| 17 | Broken dark theme | MEDIUM | **OPEN** |
+| 17 | Broken dark theme | MEDIUM | PARTIAL — foundation in place, widget migration open |
 | 18 | CacheService god class | MEDIUM | **OPEN** |
 | 19 | Stale SQLite cache | MEDIUM | FIXED |
 | 20 | Database init hang | MEDIUM | FIXED |
@@ -70,6 +70,6 @@ Last checked: 2026-04-16
 | [03-group-management.md](03-group-management.md) | 4/5 fixed | Non-atomic is Firestore constraint |
 | [04-auth-infrastructure.md](04-auth-infrastructure.md) | 3/4 fixed | Connectivity partial |
 | [05-broken-features.md](05-broken-features.md) | 2/2 fixed | All resolved |
-| [06-architecture-debt.md](06-architecture-debt.md) | 1/6 fixed | God screens, dark theme, cache class |
+| [06-architecture-debt.md](06-architecture-debt.md) | 1/6 fixed | God screens, cache class; dark theme foundation in place |
 | [07-code-quality.md](07-code-quality.md) | 9/11 fixed | 2 remaining (spacing, tests) |
 | [08-patterns-and-priorities.md](08-patterns-and-priorities.md) | — | Cross-cutting observations |
