@@ -5,6 +5,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/config/firebase_config.dart';
+import 'core/models/app_settings_model.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/app_bootstrap_provider.dart';
@@ -174,14 +175,60 @@ class SafarApp extends ConsumerWidget {
     // Activate bootstrap listeners (notification sync, etc.)
     ref.watch(appBootstrapProvider);
 
-    return MaterialApp.router(
-      title: 'Rihla',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme
-          .darkTheme, // Assuming AppTheme.darkTheme exists or should be added
-      themeMode: settings.theme,
-      routerConfig: router,
+    return _SystemChromeThemeSync(
+      child: MaterialApp.router(
+        title: 'Rihla',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: settings.themeMode.toMaterialThemeMode(),
+        routerConfig: router,
+      ),
     );
+  }
+}
+
+/// Keeps the OS status-bar + navigation-bar overlay in sync with the active
+/// app theme (resolves `AppThemeMode.system` against the platform brightness).
+///
+/// Inserted inside [SafarApp.build] AFTER `settingsProvider` is read so a
+/// theme change triggers a rebuild that repaints the overlay. The initial
+/// `SystemChrome.setSystemUIOverlayStyle` call in `main()` remains a
+/// first-paint light default covering pre-hydration (auth/bootstrap).
+class _SystemChromeThemeSync extends ConsumerWidget {
+  const _SystemChromeThemeSync({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(settingsProvider.select((s) => s.themeMode));
+    final platform = MediaQuery.platformBrightnessOf(context);
+    final effective = switch (mode) {
+      AppThemeMode.light => Brightness.light,
+      AppThemeMode.dark => Brightness.dark,
+      AppThemeMode.system => platform,
+    };
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // design-token-justified: SystemChrome overlay must resolve both brightness variants before widget tree builds
+      final darkStyle = SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        // design-token-justified: SystemChrome overlay must resolve both brightness variants before widget tree builds
+        systemNavigationBarColor: AppColorTokens.dark.scaffoldBackground,
+        systemNavigationBarIconBrightness: Brightness.light,
+      );
+      // design-token-justified: SystemChrome overlay must resolve both brightness variants before widget tree builds
+      final lightStyle = SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        // design-token-justified: SystemChrome overlay must resolve both brightness variants before widget tree builds
+        systemNavigationBarColor: AppColorTokens.light.scaffoldBackground,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      );
+      SystemChrome.setSystemUIOverlayStyle(
+        effective == Brightness.dark ? darkStyle : lightStyle,
+      );
+    });
+    return child;
   }
 }
