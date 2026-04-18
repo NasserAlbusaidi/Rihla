@@ -6,5 +6,4 @@ setGlobalOptions({ region: 'us-central1' });
 export { getSignedUploadUrl } from './callables/getSignedUploadUrl';
 export { listDocumentsWithUrls } from './callables/listDocumentsWithUrls';
 export { listMemoriesWithUrls } from './callables/listMemoriesWithUrls';
-// Wave 2 continued:
-// export { deleteStorageObject } from './callables/deleteStorageObject';
+export { deleteStorageObject } from './callables/deleteStorageObject';
