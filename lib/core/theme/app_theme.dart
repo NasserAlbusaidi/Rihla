@@ -20,9 +20,9 @@ class AppTheme {
         surface: AppColorTokens.light.cardSurface,
         error: AppColorTokens.light.error,
         onPrimary: AppColorTokens.light.textOnPrimary,
-        onSecondary: const Color(0xFFFFFFFF),
+        onSecondary: AppColorTokens.light.textOnPrimary,
         onSurface: AppColorTokens.light.textPrimary,
-        onError: const Color(0xFFFFFFFF),
+        onError: AppColorTokens.light.textOnPrimary,
       ),
       textTheme: _buildTextTheme(Brightness.light),
       appBarTheme: AppBarTheme(
@@ -112,12 +112,14 @@ class AppTheme {
         ),
         labelStyle: GoogleFonts.getFont(
           AppTheme.fontFamily,
+          // design-token-justified: warm input label color paired with inputFillWarm; candidate for textOnWarm token in W4
           color: const Color(0xFF2C1A0E),
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
         hintStyle: GoogleFonts.getFont(
           AppTheme.fontFamily,
+          // design-token-justified: warm input hint color paired with inputFillWarm; candidate for hintOnWarm token in W4
           color: const Color(0xFFA89888),
           fontSize: 15,
           fontWeight: FontWeight.w500,
@@ -288,12 +290,14 @@ class AppTheme {
   }
 
   static TextTheme _buildTextTheme(Brightness brightness) {
-    final color = brightness == Brightness.light
-        ? AppColorTokens.light.textPrimary
-        : AppColorTokens.dark.textPrimary;
-    final secondaryColor = brightness == Brightness.light
-        ? AppColorTokens.light.textSecondary
-        : AppColorTokens.dark.textSecondary;
+    final tokens = brightness == Brightness.dark
+        ? AppColorTokens.dark
+        : AppColorTokens.light;
+    final color = tokens.textPrimary;
+    final secondaryColor = tokens.textSecondary;
+    // B4 correction: bodySmall and labelSmall MUST use textSecondary (WCAG AA).
+    // textMuted (#9CA3AF light / #94A3B8 dark, both <4.5:1 contrast) is
+    // intentionally sub-AA per D-11 — decorative-only; never on functional roles.
 
     return TextTheme(
       displayLarge: GoogleFonts.getFont(
@@ -370,7 +374,7 @@ class AppTheme {
         fontFamily,
         fontSize: 12,
         fontWeight: FontWeight.w400,
-        color: AppColorTokens.light.textMuted,
+        color: tokens.textSecondary,
       ),
       labelLarge: GoogleFonts.getFont(
         fontFamily,
@@ -388,7 +392,7 @@ class AppTheme {
         fontFamily,
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        color: AppColorTokens.light.textMuted,
+        color: tokens.textSecondary,
         letterSpacing: 0.3,
       ),
     );
