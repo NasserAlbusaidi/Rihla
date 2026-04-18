@@ -246,15 +246,14 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // textMuted-decorative-justified: 'RECENT ACTIVITY' section overline —
-          // decorative overline label, not functional text. Functional text
-          // (descriptions, names, timestamps) all route through textSecondary
-          // elsewhere on this screen.
           Text(
             'RECENT ACTIVITY',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
+              // textMuted-decorative-justified: 'RECENT ACTIVITY' section
+              // overline is decorative; functional text on this screen
+              // (descriptions, names, timestamps) routes via textSecondary.
               color: context.colors.textMuted,
               letterSpacing: 1.2,
             ),

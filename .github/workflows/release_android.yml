@@ -45,6 +45,9 @@ jobs:
       - name: 🔍 Static Analysis
         run: flutter analyze --no-fatal-infos
 
+      - name: Theme purity check
+        run: bash tool/check_theme_purity.sh
+
       - name: Run Tests with Coverage
         run: |
           rm -f coverage/lcov.info
@@ -58,25 +61,6 @@ jobs:
             echo "::warning::find.text() calls increased from $BASELINE to $CURRENT. New structural assertions should use find.byKey() instead."
           fi
           echo "find.text() calls: $CURRENT (baseline: $BASELINE)"
-
-      - name: Hardcoded color lint
-        run: |
-          VIOLATIONS=$(grep -rn "Color(0x" lib/ \
-            --include="*.dart" \
-            | grep -v "lib/core/theme/app_theme.dart" \
-            | grep -v "lib/core/theme/tokens/" \
-            | grep -v "lib/features/ledger/models/expense_category_model.dart" \
-            | wc -l | tr -d ' ')
-          if [ "$VIOLATIONS" -gt "0" ]; then
-            echo "::error::$VIOLATIONS hardcoded Color(0xFF...) literal(s) found outside the token system."
-            grep -rn "Color(0x" lib/ \
-              --include="*.dart" \
-              | grep -v "lib/core/theme/app_theme.dart" \
-              | grep -v "lib/core/theme/tokens/" \
-              | grep -v "lib/features/ledger/models/expense_category_model.dart"
-            exit 1
-          fi
-          echo "Hardcoded color lint: PASS (0 violations)"
 
       - name: Install lcov
         run: sudo apt-get install -y lcov
