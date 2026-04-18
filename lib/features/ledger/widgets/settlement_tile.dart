@@ -4,7 +4,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// A card containing a group of settlement tiles.
 /// Renders pending settlements for a specific category (e.g., "Your Actions").
@@ -33,7 +32,7 @@ class SettlementGroupCard extends StatelessWidget {
               ? context.colors.error.withValues(alpha: 0.2)
               : context.colors.border.withValues(alpha: 0.5),
         ),
-        boxShadow: isUrgent ? AppShadowTokens.standard.raised : null,
+        boxShadow: isUrgent ? context.shadows.raised : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -205,7 +204,7 @@ class SettlementTile extends StatelessWidget {
           color: isPayer ? context.colors.primary : context.colors.border,
           width: isPayer ? 2 : 1,
         ),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: Center(
         child: Text(

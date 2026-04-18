@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
@@ -131,7 +130,7 @@ class ProfileStatsSection extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colors.cardSurface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: AppShadowTokens.standard.raised,
+          boxShadow: context.shadows.raised,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

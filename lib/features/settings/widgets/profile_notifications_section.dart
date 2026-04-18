@@ -8,7 +8,6 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/profile_keys.dart';
 
 /// Notifications section widget for ProfileScreen.
@@ -74,7 +73,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(

@@ -5,7 +5,6 @@ import '../../../core/services/haptic_service.dart';
 import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Card for a single sub-group in the Logistics screen (D-22).
 ///
@@ -44,7 +43,7 @@ class SubGroupCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
         border: Border(
           top: BorderSide(color: context.colors.moduleLogistics, width: 3),
         ),

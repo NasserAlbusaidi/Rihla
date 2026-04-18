@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Stats hero card for the Logistics screen (D-22).
 ///
@@ -29,7 +28,7 @@ class LogisticsHeroCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

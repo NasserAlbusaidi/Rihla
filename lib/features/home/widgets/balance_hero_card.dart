@@ -8,7 +8,6 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../keys/home_keys.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Balance hero card for the home dashboard.
 ///
@@ -62,7 +61,7 @@ class BalanceHeroCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,
@@ -120,7 +119,7 @@ class BalanceHeroCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,

@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Premium bento-style summary card for the Settle Up screen.
 /// Displays the current user's net balance, total pending, and total paid.
@@ -45,7 +44,7 @@ class SettlementSummaryCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1),
-        boxShadow: AppShadowTokens.standard.floating,
+        boxShadow: context.shadows.floating,
       ),
       padding: const EdgeInsets.all(24),
       child: Column(

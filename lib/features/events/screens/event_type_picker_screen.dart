@@ -11,7 +11,6 @@ import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Full-screen event type picker — Step 1 of the event creation flow.
 ///
@@ -66,7 +65,7 @@ class EventTypePickerScreen extends ConsumerWidget {
                             decoration: BoxDecoration(
                               color: context.colors.cardSurface,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: AppShadowTokens.standard.raised,
+                              boxShadow: context.shadows.raised,
                             ),
                             padding: const EdgeInsets.all(16),
                             child: Row(

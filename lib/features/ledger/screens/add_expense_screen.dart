@@ -28,7 +28,6 @@ import '../widgets/receipt_picker_section.dart';
 import '../widgets/split_scope_selector.dart';
 import '../../../shared/widgets/dot_step_indicator.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Omni-Splitter (Add Expense Screen) - Redesigned with 3-step flow
 class AddExpenseScreen extends ConsumerStatefulWidget {
@@ -372,7 +371,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               decoration: BoxDecoration(
                 color: context.colors.cardSurface,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: AppShadowTokens.standard.raised,
+                boxShadow: context.shadows.raised,
               ),
               child: AmountInputSection(
                 amount: _amount,
@@ -392,7 +391,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             decoration: BoxDecoration(
               color: context.colors.cardSurface,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: AppShadowTokens.standard.raised,
+              boxShadow: context.shadows.raised,
             ),
             child: CategorySelectionStep(
               categoriesAsync: categoriesAsync,
@@ -473,7 +472,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             decoration: BoxDecoration(
               color: context.colors.cardSurface,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: AppShadowTokens.standard.raised,
+              boxShadow: context.shadows.raised,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -526,7 +525,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             decoration: BoxDecoration(
               color: context.colors.cardSurface,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: AppShadowTokens.standard.raised,
+              boxShadow: context.shadows.raised,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

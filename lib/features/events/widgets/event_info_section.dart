@@ -4,7 +4,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../providers/event_provider.dart';
@@ -167,7 +166,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
           decoration: BoxDecoration(
             color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           padding: const EdgeInsets.all(16),
           child: Column(

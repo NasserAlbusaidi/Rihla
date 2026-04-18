@@ -7,7 +7,6 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
@@ -60,7 +59,7 @@ class EventDangerSection extends ConsumerWidget {
             border: Border.all(
               color: context.colors.error.withValues(alpha: 0.3),
             ),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

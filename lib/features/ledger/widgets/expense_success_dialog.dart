@@ -4,7 +4,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Success dialog shown after saving an expense.
 class ExpenseSuccessDialog extends StatelessWidget {
@@ -162,7 +161,7 @@ class _ExpenseSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: Column(
         children: [

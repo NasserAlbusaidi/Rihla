@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../providers/dashboard_providers.dart';
 import '../widgets/activity_row.dart';
 
@@ -50,7 +49,7 @@ class CrossGroupActivityScreen extends ConsumerWidget {
               color: context.colors.cardSurface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: context.colors.inputFill, width: 1),
-              boxShadow: AppShadowTokens.standard.raised,
+              boxShadow: context.shadows.raised,
             ),
             child: IconButton(
               icon: const Icon(Iconsax.arrow_left, size: 20),

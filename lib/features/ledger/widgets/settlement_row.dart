@@ -4,7 +4,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/settlement_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Inline settlement entry for the Ledger timeline.
 ///
@@ -37,7 +36,7 @@ class SettlementRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
         border: Border(
           left: BorderSide(color: context.colors.moduleLedger, width: 3),
         ),

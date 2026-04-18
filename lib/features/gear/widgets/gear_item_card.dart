@@ -3,7 +3,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../models/gear_item_model.dart';
 
 /// Card widget for a single gear item in the packing checklist.
@@ -44,7 +43,7 @@ class GearItemCard extends StatelessWidget {
               : context.colors.inputFill,
           width: item.isHighPriority ? 2 : 1.5,
         ),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: Row(
         children: [

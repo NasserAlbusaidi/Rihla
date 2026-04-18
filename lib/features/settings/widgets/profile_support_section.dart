@@ -3,7 +3,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/profile_keys.dart';
 
 /// Support section widget for ProfileScreen.
@@ -24,7 +23,7 @@ class ProfileSupportSection extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           child: _buildCoffeeTile(context),
         ),

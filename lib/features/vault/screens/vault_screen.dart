@@ -16,7 +16,6 @@ import '../models/document_model.dart';
 import '../providers/document_provider.dart';
 import '../widgets/vault_hero_card.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../shared/widgets/offline_banner.dart';
 
 /// Vault Screen — unified module template (D-08, D-14, D-20).
@@ -243,7 +242,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: context.colors.inputFill, width: 1.5),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),

@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/animated_currency_text.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Balance hero card for the Ledger screen.
 ///
@@ -51,7 +50,7 @@ class LedgerHeroCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
         image: const DecorationImage(
           image: AssetImage('assets/textures/grain.png'),
           repeat: ImageRepeat.repeat,

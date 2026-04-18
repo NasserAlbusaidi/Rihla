@@ -7,7 +7,6 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/home_keys.dart';
 import '../providers/dashboard_providers.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Weekly spending bar chart card for the home dashboard.
 ///
@@ -148,7 +147,7 @@ class WeeklySpendingCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       padding: EdgeInsets.all(context.spacing.space16),
       child: child,

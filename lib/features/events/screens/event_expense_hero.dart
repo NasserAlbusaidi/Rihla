@@ -8,7 +8,6 @@ import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Light-themed hero card showing total event spending.
 ///
@@ -40,7 +39,7 @@ class EventExpenseHero extends ConsumerWidget {
           color: context.colors.cardSurface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: context.colors.border),
-          boxShadow: AppShadowTokens.standard.raised,
+          boxShadow: context.shadows.raised,
           image: const DecorationImage(
             image: AssetImage('assets/textures/grain.png'),
             repeat: ImageRepeat.repeat,

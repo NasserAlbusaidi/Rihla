@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/models/app_settings_model.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import 'theme_picker_sheet.dart';
 
 /// Display section widget for ProfileScreen (D-05 / Phase 37).
@@ -37,7 +36,7 @@ class ProfileDisplaySection extends ConsumerWidget {
           decoration: BoxDecoration(
             color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           child: _buildThemeTile(context, label),
         ),

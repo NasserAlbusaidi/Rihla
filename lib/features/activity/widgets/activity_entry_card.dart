@@ -3,7 +3,6 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../models/activity_log_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Activity entry card for the date-grouped timeline — D-21.
 ///
@@ -33,7 +32,7 @@ class ActivityEntryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16 + 8),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

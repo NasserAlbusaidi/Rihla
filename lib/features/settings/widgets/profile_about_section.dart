@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_metadata.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/profile_keys.dart';
 
 /// About section widget for ProfileScreen.
@@ -35,7 +34,7 @@ class ProfileAboutSection extends ConsumerWidget {
           decoration: BoxDecoration(
             color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

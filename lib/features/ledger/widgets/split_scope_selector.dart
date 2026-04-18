@@ -11,7 +11,6 @@ import '../../auth/providers/auth_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Scope selector (global/subgroup/custom/personal) with custom participant
 /// picker and payer selector for leaders.
@@ -152,7 +151,7 @@ class _ScopeTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected ? context.colors.cardSurface : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected ? AppShadowTokens.standard.raised : null,
+            boxShadow: isSelected ? context.shadows.raised : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
