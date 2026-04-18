@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../groups/models/group_member_model.dart';
 import '../keys/event_keys.dart';
@@ -37,7 +37,7 @@ class EventParticipantsCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppShadowTokens.standard.raised,
       ),
@@ -65,7 +65,7 @@ class EventParticipantsCard extends StatelessWidget {
                 checkColor: Colors.white,
                 fillColor: WidgetStateProperty.resolveWith(
                   (states) => states.contains(WidgetState.selected)
-                      ? AppColorTokens.light.primary
+                      ? context.colors.primary
                       : null,
                 ),
                 onChanged: (v) {
@@ -126,13 +126,13 @@ class _ParticipantRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColorTokens.light.inputFill,
+                  color: context.colors.inputFill,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Iconsax.user,
                   size: 16,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -147,7 +147,7 @@ class _ParticipantRow extends StatelessWidget {
                 checkColor: Colors.white,
                 fillColor: WidgetStateProperty.resolveWith(
                   (states) => states.contains(WidgetState.selected)
-                      ? AppColorTokens.light.primary
+                      ? context.colors.primary
                       : null,
                 ),
                 onChanged: (v) => onToggle(v ?? isSelected),

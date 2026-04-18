@@ -14,7 +14,7 @@ import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
 import '../widgets/event_module_list.dart';
 import 'event_expense_hero.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Per-event hub (CommandCenter equivalent) for events.
 ///
@@ -60,7 +60,7 @@ class EventCommandCenter extends ConsumerWidget {
     // Loading state — skeleton instead of CircularProgressIndicator
     if (eventAsync.isLoading || groupAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Loading...', useDarkTheme: true),
@@ -93,7 +93,7 @@ class EventCommandCenter extends ConsumerWidget {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -105,7 +105,7 @@ class EventCommandCenter extends ConsumerWidget {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -117,14 +117,14 @@ class EventCommandCenter extends ConsumerWidget {
 
     return Scaffold(
       key: EventKeys.screen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       floatingActionButton: FloatingActionButton(
         key: EventKeys.addExpenseFab,
         onPressed: () {
           HapticService.medium();
           context.push('/group/$groupId/event/$eventId/ledger/add');
         },
-        backgroundColor: AppColorTokens.light.primary,
+        backgroundColor: context.colors.primary,
         shape: const CircleBorder(),
         child: const Icon(Iconsax.add, color: Colors.black),
       ),

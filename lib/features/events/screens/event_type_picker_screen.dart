@@ -10,7 +10,7 @@ import '../../groups/providers/group_provider.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Full-screen event type picker — Step 1 of the event creation flow.
@@ -34,7 +34,7 @@ class EventTypePickerScreen extends ConsumerWidget {
 
     return Scaffold(
       key: EventKeys.eventTypePickerScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -64,7 +64,7 @@ class EventTypePickerScreen extends ConsumerWidget {
                           ),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: AppColorTokens.light.cardSurface,
+                              color: context.colors.cardSurface,
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: AppShadowTokens.standard.raised,
                             ),
@@ -106,7 +106,7 @@ class EventTypePickerScreen extends ConsumerWidget {
                                             .bodySmall
                                             ?.copyWith(
                                               color:
-                                                  AppColorTokens.light.textMuted,
+                                                  context.colors.textSecondary,
                                             ),
                                       ),
                                       const SizedBox(height: 8),
@@ -128,7 +128,7 @@ class EventTypePickerScreen extends ConsumerWidget {
                                 Icon(
                                   Iconsax.arrow_right_3,
                                   size: 18,
-                                  color: AppColorTokens.light.textMuted,
+                                  color: context.colors.textSecondary,
                                 ),
                               ],
                             ),
@@ -188,7 +188,7 @@ class _ModuleChip extends StatelessWidget {
         name,
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
       ),
-      backgroundColor: AppColorTokens.light.inputFill,
+      backgroundColor: context.colors.inputFill,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
       ),
