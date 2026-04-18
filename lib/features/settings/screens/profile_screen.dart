@@ -6,7 +6,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/initials_circle.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
@@ -31,21 +31,21 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       key: ProfileKeys.screen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Optional back button (shown when pushed on nav stack)
                 if (canPop) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.spacing.space12),
                   _buildBackButton(context),
                 ],
 
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.space12),
 
                 // Identity section
                 _buildIdentitySection(context, ref, settings.deviceName)
@@ -53,7 +53,7 @@ class ProfileScreen extends ConsumerWidget {
                     .fadeIn(delay: 100.ms)
                     .slideY(begin: 0.1),
 
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
 
                 // Stats section
                 ProfileStatsSection(stats: stats)
@@ -69,7 +69,7 @@ class ProfileScreen extends ConsumerWidget {
                     .fadeIn(delay: 300.ms)
                     .slideY(begin: 0.1),
 
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.space12),
 
                 // About section
                 const ProfileAboutSection()
@@ -77,7 +77,7 @@ class ProfileScreen extends ConsumerWidget {
                     .fadeIn(delay: 400.ms)
                     .slideY(begin: 0.1),
 
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.space12),
 
                 // Support section
                 const ProfileSupportSection()
@@ -85,7 +85,7 @@ class ProfileScreen extends ConsumerWidget {
                     .fadeIn(delay: 500.ms)
                     .slideY(begin: 0.1),
 
-                const SizedBox(height: 24),
+                SizedBox(height: context.spacing.space24),
               ],
             ),
           ),
@@ -99,14 +99,14 @@ class ProfileScreen extends ConsumerWidget {
       alignment: Alignment.centerLeft,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColorTokens.light.inputFill,
+          color: context.colors.inputFill,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColorTokens.light.inputFill),
+          border: Border.all(color: context.colors.inputFill),
         ),
         child: IconButton(
           icon: Icon(
             Iconsax.arrow_left,
-            color: AppColorTokens.light.textPrimary,
+            color: context.colors.textPrimary,
             size: 20,
           ),
           onPressed: () => GoRouter.of(context).pop(),
@@ -130,7 +130,7 @@ class ProfileScreen extends ConsumerWidget {
             size: 64,
             name: deviceName,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.spacing.space12),
           // Name display or "Set your name" prompt
           if (deviceName.isNotEmpty)
             GestureDetector(
@@ -144,14 +144,14 @@ class ProfileScreen extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.spacing.space8),
                   Icon(
                     Iconsax.edit_2,
                     size: 16,
-                    color: AppColorTokens.light.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ],
               ),
@@ -165,7 +165,7 @@ class ProfileScreen extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: AppColorTokens.light.primary,
+                  color: context.colors.primary,
                 ),
               ),
             ),
@@ -183,7 +183,7 @@ class ProfileScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColorTokens.light.cardSurface,
+      backgroundColor: context.colors.cardSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),

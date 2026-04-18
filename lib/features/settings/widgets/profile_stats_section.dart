@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/profile_keys.dart';
@@ -30,7 +30,7 @@ class ProfileStatsSection extends StatelessWidget {
             Icon(
               Iconsax.chart,
               size: 16,
-              color: AppColorTokens.light.textSecondary,
+              color: context.colors.textSecondary,
             ),
             const SizedBox(width: 6),
             Text(
@@ -38,44 +38,47 @@ class ProfileStatsSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
                 letterSpacing: 1.5,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: context.spacing.space12),
         // Stats row
         Row(
-          children: _buildStatCards(),
+          children: _buildStatCards(context),
         ),
       ],
     );
   }
 
-  List<Widget> _buildStatCards() {
+  List<Widget> _buildStatCards(BuildContext context) {
     if (stats.isLoading) {
       // Placeholder cards while loading
       return [
         _buildStatCard(
+          context: context,
           key: ProfileKeys.statGroups,
           value: '–',
           label: 'Groups',
-          accent: AppColorTokens.light.primary,
+          accent: context.colors.primary,
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: context.spacing.space8),
         _buildStatCard(
+          context: context,
           key: ProfileKeys.statEvents,
           value: '–',
           label: 'Events',
-          accent: AppColorTokens.light.successText,
+          accent: context.colors.successText,
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: context.spacing.space8),
         _buildStatCard(
+          context: context,
           key: ProfileKeys.statSpent,
           value: '–',
           label: 'Spent',
-          accent: AppColorTokens.light.primaryDark,
+          accent: context.colors.primaryDark,
         ),
       ];
     }
@@ -86,29 +89,33 @@ class ProfileStatsSection extends StatelessWidget {
 
     return [
       _buildStatCard(
+        context: context,
         key: ProfileKeys.statGroups,
         value: data.groupCount.toString(),
         label: 'Groups',
-        accent: AppColorTokens.light.primary,
+        accent: context.colors.primary,
       ),
-      const SizedBox(width: 8),
+      SizedBox(width: context.spacing.space8),
       _buildStatCard(
+        context: context,
         key: ProfileKeys.statEvents,
         value: data.eventCount.toString(),
         label: 'Events',
-        accent: AppColorTokens.light.successText,
+        accent: context.colors.successText,
       ),
-      const SizedBox(width: 8),
+      SizedBox(width: context.spacing.space8),
       _buildStatCard(
+        context: context,
         key: ProfileKeys.statSpent,
         value: AppFormatters.formatCurrency(data.totalSpent, 'OMR'),
         label: 'Spent',
-        accent: AppColorTokens.light.primaryDark,
+        accent: context.colors.primaryDark,
       ),
     ];
   }
 
   Widget _buildStatCard({
+    required BuildContext context,
     required Key key,
     required String value,
     required String label,
@@ -117,9 +124,12 @@ class ProfileStatsSection extends StatelessWidget {
     return Expanded(
       child: Container(
         key: key,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: EdgeInsets.symmetric(
+          vertical: context.spacing.space16,
+          horizontal: context.spacing.space12,
+        ),
         decoration: BoxDecoration(
-          color: AppColorTokens.light.cardSurface,
+          color: context.colors.cardSurface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppShadowTokens.standard.raised,
         ),
@@ -137,13 +147,13 @@ class ProfileStatsSection extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: context.spacing.space4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
                 letterSpacing: 0.5,
               ),
               textAlign: TextAlign.center,

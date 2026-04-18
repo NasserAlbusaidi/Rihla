@@ -7,7 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/profile_keys.dart';
 
@@ -34,20 +34,20 @@ class ProfileNotificationsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(),
-        const SizedBox(height: 8),
+        _buildSectionHeader(context),
+        SizedBox(height: context.spacing.space8),
         _buildNotificationTile(context, ref, isOn: isOn, isPermDenied: isPermDenied),
       ],
     );
   }
 
-  Widget _buildSectionHeader() {
+  Widget _buildSectionHeader(BuildContext context) {
     return Row(
       children: [
         Icon(
           Iconsax.notification,
           size: 16,
-          color: AppColorTokens.light.textSecondary,
+          color: context.colors.textSecondary,
         ),
         const SizedBox(width: 6),
         Text(
@@ -55,7 +55,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -72,12 +72,15 @@ class ProfileNotificationsSection extends ConsumerWidget {
     final tile = Container(
       key: ProfileKeys.notificationToggleTile,
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppShadowTokens.standard.raised,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space16,
+          vertical: context.spacing.space8,
+        ),
         child: Row(
           children: [
             // 36px icon container (D-03)
@@ -85,18 +88,18 @@ class ProfileNotificationsSection extends ConsumerWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.inputFill,
+                color: context.colors.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
                   Iconsax.notification,
                   size: 18,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,7 +110,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                   if (isPermDenied) ...[
@@ -116,7 +119,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
                       'Enable in device Settings',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColorTokens.light.textSecondary,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ],
@@ -134,9 +137,9 @@ class ProfileNotificationsSection extends ConsumerWidget {
                           .read(settingsProvider.notifier)
                           .setPushNotificationsEnabled(value);
                     },
-              activeThumbColor: AppColorTokens.light.primary,
-              activeTrackColor: AppColorTokens.light.primary,
-              inactiveTrackColor: AppColorTokens.light.inputFill,
+              activeThumbColor: context.colors.primary,
+              activeTrackColor: context.colors.primary,
+              inactiveTrackColor: context.colors.inputFill,
             ),
           ],
         ),

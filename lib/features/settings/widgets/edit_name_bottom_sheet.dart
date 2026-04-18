@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../keys/profile_keys.dart';
 
 /// Bottom sheet for editing the user's display name.
@@ -86,22 +86,22 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 12),
+          SizedBox(height: context.spacing.space12),
           // Handle bar
           Center(
             child: Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.border,
+                color: context.colors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: context.spacing.space20),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24).copyWith(bottom: 24),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space24)
+                .copyWith(bottom: context.spacing.space24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -111,10 +111,10 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 TextField(
                   key: ProfileKeys.nameTextField,
                   controller: _controller,
@@ -124,23 +124,23 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                     labelText: 'Display name',
                     hintText: 'e.g. Nasser',
                     filled: true,
-                    fillColor: AppColorTokens.light.inputFillWarm,
+                    fillColor: context.colors.inputFillWarm,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColorTokens.light.borderWarm,
+                        color: context.colors.borderWarm,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppColorTokens.light.focusBorderWarm,
+                        color: context.colors.focusBorderWarm,
                         width: 2,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: context.spacing.space24),
                 // Save button
                 SizedBox(
                   width: double.infinity,
@@ -150,15 +150,15 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                     onPressed: isButtonEnabled ? _handleSave : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isButtonEnabled
-                          ? AppColorTokens.light.primary
-                          : AppColorTokens.light.primary.withValues(alpha: 0.5),
-                      foregroundColor: AppColorTokens.light.textOnPrimary,
+                          ? context.colors.primary
+                          : context.colors.primary.withValues(alpha: 0.5),
+                      foregroundColor: context.colors.textOnPrimary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
                     ),
-                    child: _buildButtonChild(),
+                    child: _buildButtonChild(context),
                   ),
                 ),
               ],
@@ -169,12 +169,12 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
     );
   }
 
-  Widget _buildButtonChild() {
+  Widget _buildButtonChild(BuildContext context) {
     if (_showCheck) {
       return Icon(
         Icons.check_rounded,
         size: 20,
-        color: AppColorTokens.light.textOnPrimary,
+        color: context.colors.textOnPrimary,
       );
     }
     if (_isSaving) {
@@ -182,7 +182,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
         width: 20,
         height: 20,
         child: CircularProgressIndicator(
-          color: AppColorTokens.light.textOnPrimary,
+          color: context.colors.textOnPrimary,
           strokeWidth: 2,
         ),
       );
@@ -192,7 +192,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
       style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: AppColorTokens.light.textOnPrimary,
+        color: context.colors.textOnPrimary,
       ),
     );
   }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/profile_keys.dart';
 
@@ -18,11 +18,11 @@ class ProfileSupportSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(),
-        const SizedBox(height: 8),
+        _buildSectionHeader(context),
+        SizedBox(height: context.spacing.space8),
         Container(
           decoration: BoxDecoration(
-            color: AppColorTokens.light.cardSurface,
+            color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: AppShadowTokens.standard.raised,
           ),
@@ -32,13 +32,13 @@ class ProfileSupportSection extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader() {
+  Widget _buildSectionHeader(BuildContext context) {
     return Row(
       children: [
         Icon(
           Iconsax.heart,
           size: 16,
-          color: AppColorTokens.light.textSecondary,
+          color: context.colors.textSecondary,
         ),
         const SizedBox(width: 6),
         Text(
@@ -46,7 +46,7 @@ class ProfileSupportSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -65,7 +65,10 @@ class ProfileSupportSection extends StatelessWidget {
       },
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space16,
+          vertical: context.spacing.space8,
+        ),
         child: Row(
           children: [
             // 36px icon container (D-03)
@@ -73,32 +76,32 @@ class ProfileSupportSection extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.inputFill,
+                color: context.colors.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
                   Iconsax.coffee,
                   size: 18,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             Expanded(
               child: Text(
                 'Buy me a coffee',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColorTokens.light.textPrimary,
+                  color: context.colors.textPrimary,
                 ),
               ),
             ),
             Icon(
               Iconsax.arrow_right_3,
               size: 16,
-              color: AppColorTokens.light.textSecondary,
+              color: context.colors.textSecondary,
             ),
           ],
         ),
