@@ -447,10 +447,9 @@ class _SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // design-token-justified: warm-sand brand background for the splash/
-      // pre-hydration frame is a deliberate identity choice and NOT a
-      // theme-aware surface. Keeps the brand consistent regardless of the
-      // user's eventual light/dark preference.
+      // Warm-sand splash/pre-hydration frame — deliberate brand identity,
+      // intentionally NOT theme-aware. Stays constant across light/dark.
+      // design-token-justified: splash brand background, pre-hydration frame
       backgroundColor: const Color(0xFFF2E8D6),
       body: Center(
         child: Text(
