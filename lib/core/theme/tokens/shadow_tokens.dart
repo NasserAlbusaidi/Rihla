@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 /// Typed shadow token set — elevation shadow levels using neutral gray-900 base.
 ///
 /// Note: [List<BoxShadow>] is not const-constructable, so this class does NOT
-/// use a const constructor. Use [AppShadowTokens.standard] for the default instance.
+/// use a const constructor. Widget code should read shadows via
+/// `context.shadows.*` (theme-aware); use [AppShadowTokens.light] /
+/// [AppShadowTokens.dark] only at ThemeExtension registration sites.
 final class AppShadowTokens extends ThemeExtension<AppShadowTokens> {
   AppShadowTokens({
     required this.flat,
@@ -19,10 +21,6 @@ final class AppShadowTokens extends ThemeExtension<AppShadowTokens> {
 
   /// Floating/modal elevation — two warm-brown shadows at higher opacity.
   final List<BoxShadow> floating;
-
-  /// Default standard shadow instance using neutral gray-900 base (#111827).
-  /// Alias for [light] — retained for backward compatibility with existing call sites.
-  static final AppShadowTokens standard = light;
 
   /// Light-theme shadow instance — neutral gray-900 base (#111827) at low opacity.
   static final AppShadowTokens light = AppShadowTokens(

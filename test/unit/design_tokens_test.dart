@@ -16,7 +16,7 @@ ThemeData _testTheme() {
     extensions: <ThemeExtension>[
       AppColorTokens.light,
       AppSpacingTokens.standard,
-      AppShadowTokens.standard,
+      AppShadowTokens.light,
     ],
   );
 }
@@ -232,19 +232,19 @@ void main() {
   // ---------------------------------------------------------------------------
   group('AppShadowTokens', () {
     test('standard.raised has exactly 2 BoxShadow entries', () {
-      expect(AppShadowTokens.standard.raised.length, equals(2));
+      expect(AppShadowTokens.light.raised.length, equals(2));
     });
 
     test('standard.floating has exactly 2 BoxShadow entries', () {
-      expect(AppShadowTokens.standard.floating.length, equals(2));
+      expect(AppShadowTokens.light.floating.length, equals(2));
     });
 
     test('standard.flat is empty', () {
-      expect(AppShadowTokens.standard.flat, isEmpty);
+      expect(AppShadowTokens.light.flat, isEmpty);
     });
 
     test('raised shadows use neutral gray-900 base #111827', () {
-      final raised = AppShadowTokens.standard.raised;
+      final raised = AppShadowTokens.light.raised;
       // Both shadows should use the neutral gray-900 color base
       for (final shadow in raised) {
         expect(shadow.color.r, closeTo(const Color(0xFF111827).r, 0.01));

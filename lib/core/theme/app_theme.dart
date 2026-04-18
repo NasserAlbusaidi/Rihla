@@ -178,7 +178,7 @@ class AppTheme {
       extensions: <ThemeExtension>[
         AppColorTokens.light,
         AppSpacingTokens.standard,
-        AppShadowTokens.standard,
+        AppShadowTokens.light,
       ],
     );
   }
