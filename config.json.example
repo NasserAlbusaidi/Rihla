@@ -1,0 +1,6 @@
+{
+  "SUPABASE_URL": "",
+  "SUPABASE_ANON_KEY": "",
+  "SENTRY_DSN": "",
+  "USE_FIREBASE_EMULATOR": false
+}
