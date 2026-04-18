@@ -118,6 +118,7 @@ class _AuthRetryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // design-token-justified: auth retry renders before settingsProvider hydration; light palette is the only safe default.
     const colors = AppColorTokens.light;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
