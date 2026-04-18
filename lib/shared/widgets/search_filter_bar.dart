@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/services/haptic_service.dart';
-import '../../core/theme/tokens/color_tokens.dart';
+import '../../core/theme/tokens/domain_aliases.dart';
 
 class SearchFilterBar extends StatefulWidget {
   final ValueChanged<String> onSearchChanged;
@@ -36,7 +36,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: Column(
         children: [
           Row(
@@ -58,9 +58,9 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                         hintText: widget.hintText,
                         prefixIcon:
                             const Icon(Iconsax.search_normal, size: 18),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: context.spacing.space16,
+                          vertical: context.spacing.space12,
                         ),
                         suffixIcon: _controller.text.isNotEmpty
                             ? IconButton(
@@ -77,7 +77,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.space8),
               Tooltip(
                 message: _isExpanded ? 'Close search' : 'Toggle search',
                 child: GestureDetector(
@@ -94,21 +94,21 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                     height: 44,
                     decoration: BoxDecoration(
                       color: _isExpanded
-                          ? AppColorTokens.light.primary.withValues(alpha: 0.1)
-                          : AppColorTokens.light.inputFill,
+                          ? context.colors.primary.withValues(alpha: 0.1)
+                          : context.colors.inputFill,
                       borderRadius:
-                          BorderRadius.circular(8),
+                          BorderRadius.circular(context.spacing.radiusSmall),
                       border: Border.all(
                         color: _isExpanded
-                            ? AppColorTokens.light.primary.withValues(alpha: 0.3)
-                            : AppColorTokens.light.inputFill,
+                            ? context.colors.primary.withValues(alpha: 0.3)
+                            : context.colors.inputFill,
                       ),
                     ),
                     child: Icon(
                       _isExpanded ? Icons.close : Iconsax.search_normal,
                       size: 18,
                       color:
-                          _isExpanded ? AppColorTokens.light.primary : AppColorTokens.light.textMuted,
+                          _isExpanded ? context.colors.primary : context.colors.textSecondary,
                     ),
                   ),
                 ),
@@ -116,14 +116,14 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
             ],
           ),
           if (widget.filters != null && widget.filters!.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.space8),
             SizedBox(
               height: 36,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.filters!.length,
                 separatorBuilder: (_, _) =>
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacing.space8),
                 itemBuilder: (context, index) {
                   final filter = widget.filters![index];
                   final isActive = filter == widget.activeFilter;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/shared/animations/tap_bounce.dart';
 
@@ -7,7 +8,7 @@ void main() {
   group('TapBounce', () {
     testWidgets('renders its child widget', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: TapBounce(
               onTap: () {},
@@ -22,7 +23,7 @@ void main() {
     testWidgets('with null onTap renders child without GestureDetector',
         (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: TapBounce(
               child: Text('No tap'),
@@ -37,7 +38,7 @@ void main() {
     testWidgets('with enabled=false renders child without GestureDetector',
         (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: TapBounce(
               onTap: () {},
@@ -54,7 +55,7 @@ void main() {
     testWidgets('onTapDown initiates animation — ScaleTransition present',
         (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: TapBounce(
               onTap: () {},
@@ -78,7 +79,7 @@ void main() {
     testWidgets('onTapUp calls onTap callback', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: TapBounce(
               onTap: () => tapped = true,
@@ -97,7 +98,7 @@ void main() {
     testWidgets('onTapCancel does not call onTap callback', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: TapBounce(
               onTap: () => tapped = true,
@@ -121,7 +122,7 @@ void main() {
     testWidgets('disposes cleanly without ticker leak', (tester) async {
       // Pump TapBounce, then replace with another widget — framework checks ticker
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: TapBounce(
               onTap: () {},
@@ -134,7 +135,7 @@ void main() {
 
       // Replace with a different widget tree — triggers dispose
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Text('Replaced'),
           ),

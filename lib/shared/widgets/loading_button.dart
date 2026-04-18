@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/tokens/color_tokens.dart';
-import '../../core/theme/tokens/shadow_tokens.dart';
+import '../../core/theme/tokens/domain_aliases.dart';
 
 /// Loading button widget with animated state
 class LoadingButton extends StatelessWidget {
@@ -23,11 +22,11 @@ class LoadingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 52,
+      height: context.spacing.buttonHeight,
       decoration: BoxDecoration(
         gradient: gradient,
-        color: gradient == null ? AppColorTokens.light.primary : null,
-        borderRadius: BorderRadius.circular(12),
+        color: gradient == null ? context.colors.primary : null,
+        borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
       ),
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
@@ -35,7 +34,7 @@ class LoadingButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
           ),
         ),
         child: isLoading
@@ -50,7 +49,10 @@ class LoadingButton extends StatelessWidget {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (icon != null) ...[Icon(icon), const SizedBox(width: 8)],
+                  if (icon != null) ...[
+                    Icon(icon),
+                    SizedBox(width: context.spacing.space8),
+                  ],
                   Text(label),
                 ],
               ),
@@ -59,7 +61,7 @@ class LoadingButton extends StatelessWidget {
   }
 }
 
-/// Glass card widget - now using solid surface for light theme
+/// Glass card widget - now using solid surface from the active theme.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -75,11 +77,11 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: padding ?? const EdgeInsets.all(16),
+      padding: padding ?? EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: child,
     );
@@ -104,13 +106,13 @@ class GradientContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: padding ?? const EdgeInsets.all(16),
+      padding: padding ?? EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
-        gradient: gradient ?? AppColorTokens.light.primaryGradient,
+        gradient: gradient ?? context.colors.primaryGradient,
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: AppColorTokens.light.primary.withValues(alpha: 0.3),
+            color: context.colors.primary.withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -175,9 +177,9 @@ class _ShimmerPlaceholderState extends State<ShimmerPlaceholder>
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: [
-                AppColorTokens.light.inputFill,
-                AppColorTokens.light.border,
-                AppColorTokens.light.inputFill,
+                context.colors.inputFill,
+                context.colors.border,
+                context.colors.inputFill,
               ],
               stops: [
                 _animation.value - 0.3,

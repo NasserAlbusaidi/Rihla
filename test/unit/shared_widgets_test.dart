@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/shared/widgets/loading_button.dart';
 import 'package:safar/shared/widgets/search_filter_bar.dart';
@@ -15,7 +16,7 @@ void main() {
   group('SearchFilterBar', () {
     testWidgets('renders search toggle button', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (_) {},
@@ -32,7 +33,7 @@ void main() {
 
     testWidgets('expands search field when toggle is tapped', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (_) {},
@@ -54,7 +55,7 @@ void main() {
     testWidgets('notifies onSearchChanged when text is entered', (tester) async {
       String? lastQuery;
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (q) => lastQuery = q,
@@ -79,7 +80,7 @@ void main() {
     testWidgets('collapses search on second toggle tap and clears query', (tester) async {
       String? lastQuery;
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (q) => lastQuery = q,
@@ -109,7 +110,7 @@ void main() {
 
     testWidgets('renders filter chips when filters are provided', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (_) {},
@@ -129,7 +130,7 @@ void main() {
 
     testWidgets('renders no filter chips when filters list is empty', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (_) {},
@@ -145,7 +146,7 @@ void main() {
 
     testWidgets('renders no filter chips when filters is null', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (_) {},
@@ -160,7 +161,7 @@ void main() {
 
     testWidgets('active filter chip appears selected', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (_) {},
@@ -183,7 +184,7 @@ void main() {
     testWidgets('tapping filter chip calls onFilterChanged', (tester) async {
       String? changedFilter;
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SearchFilterBar(
               onSearchChanged: (_) {},
@@ -210,7 +211,7 @@ void main() {
   group('LoadingButton', () {
     testWidgets('renders label text when not loading', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: LoadingButton(
               isLoading: false,
@@ -227,7 +228,7 @@ void main() {
 
     testWidgets('renders CircularProgressIndicator when loading', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: LoadingButton(
               isLoading: true,
@@ -246,7 +247,7 @@ void main() {
     testWidgets('calls onPressed when tapped and not loading', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: LoadingButton(
               isLoading: false,
@@ -267,7 +268,7 @@ void main() {
     testWidgets('does not call onPressed when loading (button disabled)', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: LoadingButton(
               isLoading: true,
@@ -287,7 +288,7 @@ void main() {
 
     testWidgets('renders icon when icon is provided', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: LoadingButton(
               isLoading: false,
@@ -306,7 +307,7 @@ void main() {
 
     testWidgets('renders without icon when icon is null', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: LoadingButton(
               isLoading: false,
@@ -323,7 +324,7 @@ void main() {
 
     testWidgets('is disabled when onPressed is null', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: LoadingButton(
               isLoading: false,
@@ -347,7 +348,7 @@ void main() {
   group('GlassCard', () {
     testWidgets('renders child widget', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GlassCard(
               child: const Text('Card Content'),
@@ -362,7 +363,7 @@ void main() {
 
     testWidgets('renders with custom padding', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GlassCard(
               padding: const EdgeInsets.all(32),
@@ -384,7 +385,7 @@ void main() {
   group('GradientContainer', () {
     testWidgets('renders child widget', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GradientContainer(
               child: const Text('Gradient Content'),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/tokens/color_tokens.dart';
+import '../../core/theme/tokens/domain_aliases.dart';
 
 /// A circular avatar displaying the initials of the given [name].
 ///
@@ -25,11 +25,11 @@ class InitialsCircle extends StatelessWidget {
   /// Name to extract initials from.
   final String name;
 
-  /// Background fill color. Defaults to [AppColorTokens.light.focusBorderWarm]
-  /// (terracotta #CC6B49).
+  /// Background fill color. Defaults to the current theme's
+  /// `focusBorderWarm` (terracotta in light, warm accent in dark).
   final Color? backgroundColor;
 
-  /// Text color. Defaults to [AppColorTokens.light.textOnPrimary] (#FFFFFF).
+  /// Text color. Defaults to the current theme's `textOnPrimary`.
   final Color? textColor;
 
   /// Extract up to 2 initials from a display name.
@@ -48,8 +48,8 @@ class InitialsCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = backgroundColor ?? AppColorTokens.light.focusBorderWarm;
-    final fg = textColor ?? AppColorTokens.light.textOnPrimary;
+    final bg = backgroundColor ?? context.colors.focusBorderWarm;
+    final fg = textColor ?? context.colors.textOnPrimary;
     final fontSize = size * 0.38;
     final initials = _extractInitials(name);
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/keys/shared_keys.dart';
-import '../../core/theme/tokens/color_tokens.dart';
+import '../../core/theme/tokens/domain_aliases.dart';
 
 class EmptyStateView extends StatelessWidget {
   final IconData icon;
@@ -25,13 +25,13 @@ class EmptyStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? AppColorTokens.light.textMuted;
+    final color = iconColor ?? context.colors.textSecondary;
     final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     Widget result = Center(
       key: SharedKeys.emptyStateView,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(context.spacing.space32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -45,7 +45,7 @@ class EmptyStateView extends StatelessWidget {
                     )
                   : BoxDecoration(
                       color: color.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
                     ),
               child: Icon(
                 icon,
@@ -53,28 +53,28 @@ class EmptyStateView extends StatelessWidget {
                 color: accentGradient != null ? Colors.white : color,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: context.spacing.space20),
             Text(
               title,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.space8),
             Text(
               message,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: AppColorTokens.light.textMuted,
+                color: context.colors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 24),
+              SizedBox(height: context.spacing.space24),
               SizedBox(
                 height: 52,
                 child: ElevatedButton(

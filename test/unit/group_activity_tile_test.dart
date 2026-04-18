@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/widgets/group_activity_tile.dart';
@@ -22,7 +23,7 @@ void main() {
   group('GroupActivityTile', () {
     testWidgets('renders event_deleted activity type', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GroupActivityTile(activity: _makeLog('event_deleted')),
           ),
@@ -34,7 +35,7 @@ void main() {
 
     testWidgets('renders group_settlement activity type', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GroupActivityTile(activity: _makeLog('group_settlement')),
           ),
@@ -46,7 +47,7 @@ void main() {
 
     testWidgets('renders member_joined activity type', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GroupActivityTile(activity: _makeLog('member_joined')),
           ),
@@ -58,7 +59,7 @@ void main() {
 
     testWidgets('renders member_left activity type', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GroupActivityTile(activity: _makeLog('member_left')),
           ),
@@ -70,7 +71,7 @@ void main() {
 
     testWidgets('renders unknown activity type (default case)', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GroupActivityTile(activity: _makeLog('unknown_type')),
           ),

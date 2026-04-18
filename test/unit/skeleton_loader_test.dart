@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:safar/shared/widgets/skeleton_loader.dart';
@@ -13,7 +14,7 @@ void main() {
   group('SkeletonCircle', () {
     testWidgets('renders a Container with the specified size', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(child: SkeletonCircle(size: 40)),
           ),
@@ -30,7 +31,7 @@ void main() {
 
     testWidgets('renders with circular shape decoration', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(child: SkeletonCircle(size: 32)),
           ),
@@ -56,7 +57,7 @@ void main() {
   group('SkeletonBar', () {
     testWidgets('renders with the specified width and default height 14.0', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(child: SkeletonBar(width: 120)),
           ),
@@ -73,7 +74,7 @@ void main() {
 
     testWidgets('accepts custom height', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(child: SkeletonBar(width: 80, height: 10)),
           ),
@@ -87,7 +88,7 @@ void main() {
 
     testWidgets('renders with rounded corners', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(child: SkeletonBar(width: 100)),
           ),
@@ -113,7 +114,7 @@ void main() {
   group('SkeletonBlock', () {
     testWidgets('renders with the specified width and height', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(child: SkeletonBlock(width: 200, height: 80)),
           ),
@@ -130,7 +131,7 @@ void main() {
 
     testWidgets('renders with rounded corners', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(child: SkeletonBlock(width: 150, height: 60)),
           ),
@@ -156,7 +157,7 @@ void main() {
   group('SkeletonRow', () {
     testWidgets('renders a Row with a SkeletonCircle and SkeletonBars', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -176,7 +177,7 @@ void main() {
 
     testWidgets('renders a Row widget at the top level', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -199,7 +200,7 @@ void main() {
   group('SkeletonCard', () {
     testWidgets('renders with the default height 72 and rounded corners', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -220,7 +221,7 @@ void main() {
 
     testWidgets('accepts custom height', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -239,7 +240,7 @@ void main() {
 
     testWidgets('renders with rounded corners at radiusLarge', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -270,7 +271,7 @@ void main() {
   group('SkeletonLoader.dashboardHero', () {
     testWidgets('renders Shimmer with SkeletonBlock children', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,
@@ -290,7 +291,7 @@ void main() {
   group('SkeletonLoader.eventCard', () {
     testWidgets('renders Shimmer with SkeletonCircle, SkeletonBar, and SkeletonBlock', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,
@@ -312,7 +313,7 @@ void main() {
   group('SkeletonLoader.groupList', () {
     testWidgets('renders Shimmer with SkeletonRow children', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,
@@ -332,7 +333,7 @@ void main() {
   group('SkeletonLoader.expenseList', () {
     testWidgets('renders Shimmer with SkeletonRow children matching expense layout', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,
@@ -353,7 +354,7 @@ void main() {
   group('SkeletonLoader.gearList', () {
     testWidgets('renders Shimmer with SkeletonBlock checkbox and SkeletonBar items', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,
@@ -374,7 +375,7 @@ void main() {
   group('SkeletonLoader.generic', () {
     testWidgets('renders Shimmer wrapping SkeletonCard items', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,
@@ -394,7 +395,7 @@ void main() {
   group('SkeletonLoader shimmer colors', () {
     testWidgets('gradient contains AppColorTokens.light.inputFill and AppColorTokens.light.cardSurface', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,
@@ -418,7 +419,7 @@ void main() {
   group('SkeletonLoader backward compatibility', () {
     testWidgets('cardList still renders', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,
@@ -434,7 +435,7 @@ void main() {
 
     testWidgets('documentList still renders', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               width: 400,

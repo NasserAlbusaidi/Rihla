@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
 
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/shared/widgets/app_tab_bar.dart';
@@ -37,7 +38,7 @@ void main() {
       required List<String> tabs,
       Color? activeColor,
     }) {
-      return MaterialApp(
+      return MaterialApp(theme: AppTheme.lightTheme,
         home: Scaffold(
           body: DefaultTabController(
             length: tabs.length,
@@ -109,7 +110,7 @@ void main() {
 
   group('ModuleHeader', () {
     Widget _wrap(Widget child) =>
-        MaterialApp(home: Scaffold(body: child));
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
 
     testWidgets('renders title in light theme', (tester) async {
       await tester.pumpWidget(
@@ -262,7 +263,7 @@ void main() {
 
   group('InviteCodeDisplay', () {
     Widget _wrap(Widget child) =>
-        MaterialApp(home: Scaffold(body: child));
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
 
     testWidgets('renders invite code text', (tester) async {
       await tester.pumpWidget(
@@ -360,7 +361,7 @@ void main() {
 
   group('GroupBalanceHero', () {
     Widget _wrap(Widget child) =>
-        MaterialApp(home: Scaffold(body: SingleChildScrollView(child: child)));
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: SingleChildScrollView(child: child)));
 
     testWidgets('renders GROUP BALANCES label', (tester) async {
       await tester.pumpWidget(
@@ -511,7 +512,7 @@ void main() {
 
   group('SmartModuleCard', () {
     Widget _wrap(Widget child) =>
-        MaterialApp(home: Scaffold(body: child));
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
 
     testWidgets('renders title text', (tester) async {
       await tester.pumpWidget(
@@ -634,7 +635,7 @@ void main() {
 
   group('ShimmerPlaceholder', () {
     Widget _wrap(Widget child) =>
-        MaterialApp(home: Scaffold(body: child));
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
 
     testWidgets('renders with specified width and height', (tester) async {
       await tester.pumpWidget(
@@ -698,7 +699,7 @@ void main() {
               (ref) => ConnectivityNotifier()..setOffline(),
             ),
           ],
-          child: const MaterialApp(
+          child: MaterialApp(theme: AppTheme.lightTheme,
             home: Scaffold(body: OfflineBanner()),
           ),
         ),
@@ -720,7 +721,7 @@ void main() {
               (ref) => ConnectivityNotifier()..setOnline(),
             ),
           ],
-          child: const MaterialApp(
+          child: MaterialApp(theme: AppTheme.lightTheme,
             home: Scaffold(body: OfflineBanner()),
           ),
         ),
@@ -739,7 +740,7 @@ void main() {
   group('SkeletonLoader', () {
     testWidgets('cardList factory renders without error', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               height: 400,
@@ -755,7 +756,7 @@ void main() {
 
     testWidgets('documentList factory renders without error', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               height: 400,
@@ -771,7 +772,7 @@ void main() {
 
     testWidgets('groupList factory renders without error', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               height: 500,

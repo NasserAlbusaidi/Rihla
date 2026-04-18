@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/shared/animations/fade_in_list.dart';
 
@@ -7,7 +8,7 @@ void main() {
   group('FadeInList', () {
     testWidgets('renders all child widgets', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: FadeInList(
               children: const [
@@ -28,7 +29,7 @@ void main() {
 
     testWidgets('renders empty children without error', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: Scaffold(
             body: FadeInList(children: []),
           ),
@@ -42,7 +43,7 @@ void main() {
     testWidgets('with disableAnimations=true children render without Animate',
         (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        MaterialApp(theme: AppTheme.lightTheme,
           home: MediaQuery(
             data: const MediaQueryData(disableAnimations: true),
             child: Scaffold(

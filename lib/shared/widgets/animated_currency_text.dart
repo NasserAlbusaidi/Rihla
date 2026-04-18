@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:safar/core/theme/tokens/color_tokens.dart';
+import 'package:safar/core/theme/tokens/domain_aliases.dart';
 import 'package:safar/core/utils/formatters.dart';
 
 /// Animated currency text that smoothly interpolates between Decimal values.
@@ -65,8 +66,11 @@ class _AnimatedCurrencyTextState extends State<AnimatedCurrencyText> {
   }
 
   /// Resolve sign-based color from the animated double value.
-  Color _colorForValue(double value) {
-    final tokens = AppColorTokens.light;
+  ///
+  /// Takes an explicit [AppColorTokens] instance because it's invoked from
+  /// the [TweenAnimationBuilder] builder which has a BuildContext of its own;
+  /// pulling tokens from that context keeps the color theme-aware.
+  Color _colorForValue(double value, AppColorTokens tokens) {
     return switch (value.compareTo(0.0)) {
       > 0 => tokens.successText,
       < 0 => tokens.errorText,
@@ -95,7 +99,7 @@ class _AnimatedCurrencyTextState extends State<AnimatedCurrencyText> {
       duration: widget.duration,
       curve: Curves.easeOutCubic,
       builder: (context, animatedValue, _) {
-        final color = _colorForValue(animatedValue);
+        final color = _colorForValue(animatedValue, context.colors);
         final formattedText = _formatValue(animatedValue, widget.currency);
         final effectiveStyle =
             (widget.style ?? const TextStyle()).copyWith(color: color);

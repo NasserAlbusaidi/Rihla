@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/tokens/color_tokens.dart';
+import '../../core/theme/tokens/domain_aliases.dart';
 
 /// Composable skeleton building blocks for content-aware loading placeholders.
 ///
-/// All primitives use [AppColorTokens.light.cardSurface] as fill color. The shimmer animation
-/// is handled by the parent [Shimmer.fromColors] in [SkeletonLoader] — children
-/// only need an opaque fill.
+/// All primitives use the active theme's `cardSurface` as fill color. The
+/// shimmer animation is handled by the parent [Shimmer.fromColors] in
+/// [SkeletonLoader] — children only need an opaque fill.
 ///
-/// See [SkeletonLoader] for named factory variants that assemble these primitives
-/// into screen-specific layouts.
+/// See [SkeletonLoader] for named factory variants that assemble these
+/// primitives into screen-specific layouts.
 
 /// A circular skeleton placeholder.
 ///
@@ -26,7 +26,7 @@ class SkeletonCircle extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         shape: BoxShape.circle,
       ),
     );
@@ -59,7 +59,7 @@ class SkeletonBar extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(borderRadius ?? 8),
       ),
     );
@@ -94,7 +94,7 @@ class SkeletonBlock extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(borderRadius ?? 12),
       ),
     );
@@ -175,7 +175,7 @@ class SkeletonCard extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(borderRadius ?? 16),
       ),
     );

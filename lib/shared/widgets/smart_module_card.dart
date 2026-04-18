@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../animations/tap_bounce.dart';
-import '../../core/theme/tokens/color_tokens.dart';
+import '../../core/theme/tokens/domain_aliases.dart';
 
 /// A smart module card that shows live data summaries or contextual nudges.
 ///
@@ -41,12 +41,12 @@ class SmartModuleCard extends StatelessWidget {
       child: TapBounce(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacing.space16),
         decoration: BoxDecoration(
-          color: AppColorTokens.light.cardSurface,
+          color: context.colors.cardSurface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: actionText != null ? color.withValues(alpha: 0.3) : AppColorTokens.light.inputFill,
+            color: actionText != null ? color.withValues(alpha: 0.3) : context.colors.inputFill,
             width: 1.5,
           ),
           boxShadow: [
@@ -82,7 +82,7 @@ class SmartModuleCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColorTokens.light.cardSurface, width: 1.5),
+                        border: Border.all(color: context.colors.cardSurface, width: 1.5),
                       ),
                     ),
                   ),
@@ -102,7 +102,7 @@ class SmartModuleCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                       letterSpacing: -0.3,
                     ),
                     maxLines: 1,
@@ -126,7 +126,7 @@ class SmartModuleCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColorTokens.light.textSecondary,
+                        color: context.colors.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -137,7 +137,7 @@ class SmartModuleCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColorTokens.light.textMuted,
+                        color: context.colors.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -146,13 +146,13 @@ class SmartModuleCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacing.space8),
 
             // Chevron
             Icon(
               Iconsax.arrow_right_3,
               size: 18,
-              color: isEmpty ? AppColorTokens.light.textMuted : AppColorTokens.light.textSecondary,
+              color: isEmpty ? context.colors.textSecondary : context.colors.textSecondary,
             ),
           ],
         ),

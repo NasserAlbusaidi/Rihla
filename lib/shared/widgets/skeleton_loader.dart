@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'skeleton_primitives.dart';
-import '../../core/theme/tokens/color_tokens.dart';
+import '../../core/theme/tokens/domain_aliases.dart';
 
 /// Reusable skeleton loading placeholders.
 ///
 /// Named factory variants produce content-aware skeletons that mirror real
 /// widget layouts, preventing layout jump when data loads.
 ///
-/// All variants wrap their children in [Shimmer.fromColors] using warm-neutral
-/// AppColors tokens:
-/// - baseColor: [AppColorTokens.light.inputFill] (#F3F4F6)
-/// - highlightColor: [AppColorTokens.light.cardSurface] (#F8F9FA)
+/// All variants wrap their children in [Shimmer.fromColors] using the active
+/// theme's warm-neutral tokens: `baseColor` uses `context.colors.inputFill`
+/// and `highlightColor` uses `context.colors.cardSurface`.
 ///
 /// ## Named factories (content-aware)
 /// - [SkeletonLoader.dashboardHero] — balance hero card + stats row
@@ -48,30 +47,33 @@ class SkeletonLoader extends StatelessWidget {
   factory SkeletonLoader.dashboardHero({int count = 1}) {
     return SkeletonLoader(
       itemCount: count,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space24,
+          vertical: context.spacing.space8,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SkeletonBlock(
+            const SkeletonBlock(
               width: double.infinity,
               height: 120,
               borderRadius: 16,
             ),
-            SizedBox(height: 16),
+            SizedBox(height: context.spacing.space16),
             Row(
               children: [
-                Expanded(child: SkeletonBlock(width: double.infinity, height: 56)),
-                SizedBox(width: 12),
-                Expanded(child: SkeletonBlock(width: double.infinity, height: 56)),
-                SizedBox(width: 12),
-                Expanded(child: SkeletonBlock(width: double.infinity, height: 56)),
+                const Expanded(child: SkeletonBlock(width: double.infinity, height: 56)),
+                SizedBox(width: context.spacing.space12),
+                const Expanded(child: SkeletonBlock(width: double.infinity, height: 56)),
+                SizedBox(width: context.spacing.space12),
+                const Expanded(child: SkeletonBlock(width: double.infinity, height: 56)),
               ],
             ),
-            SizedBox(height: 16),
-            SkeletonRow(),
-            SizedBox(height: 12),
-            SkeletonRow(),
+            SizedBox(height: context.spacing.space16),
+            const SkeletonRow(),
+            SizedBox(height: context.spacing.space12),
+            const SkeletonRow(),
           ],
         ),
       ),
@@ -84,13 +86,16 @@ class SkeletonLoader extends StatelessWidget {
   factory SkeletonLoader.eventCard({int count = 3}) {
     return SkeletonLoader(
       itemCount: count,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space24,
+          vertical: context.spacing.space8,
+        ),
         child: Row(
           children: [
-            SkeletonCircle(size: 40),
-            SizedBox(width: 12),
-            Expanded(
+            const SkeletonCircle(size: 40),
+            SizedBox(width: context.spacing.space12),
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -100,7 +105,7 @@ class SkeletonLoader extends StatelessWidget {
                 ],
               ),
             ),
-            SkeletonBlock(width: 48, height: 20),
+            const SkeletonBlock(width: 48, height: 20),
           ],
         ),
       ),
@@ -113,14 +118,17 @@ class SkeletonLoader extends StatelessWidget {
   factory SkeletonLoader.groupList({int count = 3}) {
     return SkeletonLoader(
       itemCount: count,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space24,
+          vertical: context.spacing.space8,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SkeletonRow(circleSize: 44, barWidth: 160, smallBarWidth: 100),
-            SizedBox(height: 12),
-            SkeletonBar(width: 200, height: 12),
+            const SkeletonRow(circleSize: 44, barWidth: 160, smallBarWidth: 100),
+            SizedBox(height: context.spacing.space12),
+            const SkeletonBar(width: 200, height: 12),
           ],
         ),
       ),
@@ -133,19 +141,22 @@ class SkeletonLoader extends StatelessWidget {
   factory SkeletonLoader.expenseList({int count = 5}) {
     return SkeletonLoader(
       itemCount: count,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space24,
+          vertical: context.spacing.space8,
+        ),
         child: Row(
           children: [
-            Expanded(
+            const Expanded(
               child: SkeletonRow(
                 circleSize: 40,
                 barWidth: 140,
                 smallBarWidth: 80,
               ),
             ),
-            SizedBox(width: 8),
-            SkeletonBar(width: 60, height: 16),
+            SizedBox(width: context.spacing.space8),
+            const SkeletonBar(width: 60, height: 16),
           ],
         ),
       ),
@@ -158,13 +169,16 @@ class SkeletonLoader extends StatelessWidget {
   factory SkeletonLoader.gearList({int count = 5}) {
     return SkeletonLoader(
       itemCount: count,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space24,
+          vertical: context.spacing.space8,
+        ),
         child: Row(
           children: [
-            SkeletonBlock(width: 24, height: 24, borderRadius: 4),
-            SizedBox(width: 12),
-            Expanded(
+            const SkeletonBlock(width: 24, height: 24, borderRadius: 4),
+            SizedBox(width: context.spacing.space12),
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -188,7 +202,10 @@ class SkeletonLoader extends StatelessWidget {
     return SkeletonLoader(
       itemCount: 1,
       itemBuilder: (context, index) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space16,
+          vertical: context.spacing.space8,
+        ),
         child: GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -214,9 +231,12 @@ class SkeletonLoader extends StatelessWidget {
   factory SkeletonLoader.generic({int count = 5}) {
     return SkeletonLoader(
       itemCount: count,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-        child: SkeletonCard(height: 72),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space24,
+          vertical: 6,
+        ),
+        child: const SkeletonCard(height: 72),
       ),
     );
   }
@@ -231,9 +251,12 @@ class SkeletonLoader extends StatelessWidget {
   factory SkeletonLoader.cardList({int count = 5}) {
     return SkeletonLoader(
       itemCount: count,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-        child: SkeletonCard(height: 72),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space24,
+          vertical: 6,
+        ),
+        child: const SkeletonCard(height: 72),
       ),
     );
   }
@@ -244,21 +267,32 @@ class SkeletonLoader extends StatelessWidget {
   factory SkeletonLoader.documentList({int count = 4}) {
     return SkeletonLoader(
       itemCount: count,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        child: SkeletonCard(height: 80),
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space20,
+          vertical: 6,
+        ),
+        child: const SkeletonCard(height: 80),
       ),
     );
   }
 
   /// Skeleton for a single card loading state (widget-level loading).
+  ///
+  /// Returns a [Builder] so the shimmer colors resolve against the active
+  /// theme via `context.colors` inside the nearest BuildContext.
   static Widget card() {
-    return Shimmer.fromColors(
-      baseColor: AppColorTokens.light.inputFill,
-      highlightColor: AppColorTokens.light.cardSurface,
-      child: const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: SkeletonCard(height: 120),
+    return Builder(
+      builder: (context) => Shimmer.fromColors(
+        baseColor: context.colors.inputFill,
+        highlightColor: context.colors.cardSurface,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.space24,
+            vertical: context.spacing.space12,
+          ),
+          child: const SkeletonCard(height: 120),
+        ),
       ),
     );
   }
@@ -270,8 +304,8 @@ class SkeletonLoader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: AppColorTokens.light.inputFill, // #F3F4F6 — warm-neutral base
-      highlightColor: AppColorTokens.light.cardSurface, // #F8F9FA — warm-neutral highlight
+      baseColor: context.colors.inputFill, // warm-neutral base (theme-aware)
+      highlightColor: context.colors.cardSurface, // warm-neutral highlight (theme-aware)
       child: SingleChildScrollView(
         // NeverScrollableScrollPhysics prevents user scroll while keeping
         // Column items clipped to bounded parent height (e.g. inside Expanded).
@@ -279,7 +313,7 @@ class SkeletonLoader extends StatelessWidget {
         // unbounded parents (e.g. inside a vertical Column without Expanded).
         physics: const NeverScrollableScrollPhysics(),
         child: Padding(
-          padding: const EdgeInsets.only(top: 12),
+          padding: EdgeInsets.only(top: context.spacing.space12),
           child: Column(
             children: List.generate(itemCount, (index) => itemBuilder(context, index)),
           ),
