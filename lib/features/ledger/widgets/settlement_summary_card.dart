@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Premium bento-style summary card for the Settle Up screen.
@@ -30,7 +30,7 @@ class SettlementSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = netBalance >= Decimal.zero;
-    final accentColor = isPositive ? AppColorTokens.light.success : AppColorTokens.light.error;
+    final accentColor = isPositive ? context.colors.success : context.colors.error;
 
     return Container(
       width: double.infinity,
@@ -40,7 +40,7 @@ class SettlementSummaryCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             accentColor.withValues(alpha: 0.15),
-            AppColorTokens.light.cardSurface.withValues(alpha: 0.8),
+            context.colors.cardSurface.withValues(alpha: 0.8),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
@@ -76,7 +76,7 @@ class SettlementSummaryCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.w900,
-                          color: AppColorTokens.light.textPrimary,
+                          color: context.colors.textPrimary,
                           letterSpacing: -1,
                         ),
                       ),
@@ -99,17 +99,19 @@ class SettlementSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          Divider(height: 1, color: AppColorTokens.light.border),
+          Divider(height: 1, color: context.colors.border),
           const SizedBox(height: 16),
           Row(
             children: [
               _buildSummaryMiniItem(
+                context,
                 'Trip Total Pending',
                 AppFormatters.formatCurrency(totalPending, currency),
                 Iconsax.status_up,
               ),
               const SizedBox(width: 32),
               _buildSummaryMiniItem(
+                context,
                 'Total Paid by You',
                 AppFormatters.formatCurrency(myBalance.totalPaid, currency),
                 Iconsax.wallet_check,
@@ -122,11 +124,11 @@ class SettlementSummaryCard extends StatelessWidget {
               width: double.infinity,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: AppColorTokens.light.primaryGradient,
+                  gradient: context.colors.primaryGradient,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColorTokens.light.primary.withValues(alpha: 0.3),
+                      color: context.colors.primary.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -154,11 +156,11 @@ class SettlementSummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryMiniItem(String label, String value, IconData icon) {
+  Widget _buildSummaryMiniItem(BuildContext context, String label, String value, IconData icon) {
     return Expanded(
       child: Row(
         children: [
-          Icon(icon, size: 14, color: AppColorTokens.light.textMuted),
+          Icon(icon, size: 14, color: context.colors.textSecondary),
           const SizedBox(width: 8),
           Flexible(
             child: Column(
@@ -169,7 +171,7 @@ class SettlementSummaryCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textMuted,
+                    color: context.colors.textSecondary,
                   ),
                 ),
                 Text(
@@ -177,7 +179,7 @@ class SettlementSummaryCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
               ],

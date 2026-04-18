@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/animated_currency_text.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Balance hero card for the Ledger screen.
@@ -49,7 +49,7 @@ class LedgerHeroCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
@@ -76,7 +76,7 @@ class LedgerHeroCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: AppColorTokens.light.textMuted,
+                        color: context.colors.textSecondary,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -101,7 +101,7 @@ class LedgerHeroCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
-                      color: AppColorTokens.light.textMuted,
+                      color: context.colors.textSecondary,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -111,7 +111,7 @@ class LedgerHeroCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                 ],
@@ -128,7 +128,7 @@ class LedgerHeroCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
               Text(
@@ -136,7 +136,7 @@ class LedgerHeroCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
               Text(
@@ -144,7 +144,7 @@ class LedgerHeroCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
             ],

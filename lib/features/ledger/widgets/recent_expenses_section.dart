@@ -3,7 +3,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Collapsible section showing the 5 most recent expenses.
 class RecentExpensesSection extends StatelessWidget {
@@ -31,22 +31,22 @@ class RecentExpensesSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textMuted,
+            color: context.colors.textSecondary,
             letterSpacing: 1.0,
           ),
         ),
         trailing: Icon(
           Iconsax.arrow_down_1,
           size: 16,
-          color: AppColorTokens.light.textMuted,
+          color: context.colors.textSecondary,
         ),
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColorTokens.light.cardSurface,
+              color: context.colors.cardSurface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColorTokens.light.border.withValues(alpha: 0.5),
+                color: context.colors.border.withValues(alpha: 0.5),
               ),
             ),
             child: Column(
@@ -54,7 +54,7 @@ class RecentExpensesSection extends StatelessWidget {
                 final index = entry.key;
                 final expense = entry.value;
                 final isLast = index == recentExpenses.length - 1;
-                return _buildExpenseItem(expense, !isLast);
+                return _buildExpenseItem(context, expense, !isLast);
               }).toList(),
             ),
           ),
@@ -63,7 +63,7 @@ class RecentExpensesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildExpenseItem(Expense expense, bool showDivider) {
+  Widget _buildExpenseItem(BuildContext context, Expense expense, bool showDivider) {
     return Column(
       children: [
         Padding(
@@ -74,7 +74,7 @@ class RecentExpensesSection extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColorTokens.light.scaffoldBackground,
+                  color: context.colors.scaffoldBackground,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -94,7 +94,7 @@ class RecentExpensesSection extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: AppColorTokens.light.textPrimary,
+                        color: context.colors.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -103,7 +103,7 @@ class RecentExpensesSection extends StatelessWidget {
                       expense.categoryName ?? 'General',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColorTokens.light.textMuted,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ],
@@ -114,14 +114,14 @@ class RecentExpensesSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: AppColorTokens.light.textPrimary,
+                  color: context.colors.textPrimary,
                 ),
               ),
             ],
           ),
         ),
         if (showDivider)
-          Divider(height: 1, thickness: 1, color: AppColorTokens.light.border),
+          Divider(height: 1, thickness: 1, color: context.colors.border),
       ],
     );
   }

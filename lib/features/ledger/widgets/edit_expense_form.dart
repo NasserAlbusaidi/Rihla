@@ -9,7 +9,7 @@ import '../../events/models/event_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/module_header.dart';
 import 'edit_expense_payer_selector.dart';
 import 'edit_expense_scope_section.dart';
@@ -74,7 +74,7 @@ class EditExpenseForm extends ConsumerWidget {
 
     return Scaffold(
       key: LedgerKeys.editExpenseSheet,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: Column(
         children: [
           const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
@@ -95,12 +95,12 @@ class EditExpenseForm extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColorTokens.light.selectionFill,
+                          color: context.colors.selectionFill,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           Iconsax.edit,
-                          color: AppColorTokens.light.primary,
+                          color: context.colors.primary,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -113,14 +113,14 @@ class EditExpenseForm extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: AppColorTokens.light.textPrimary,
+                                color: context.colors.textPrimary,
                               ),
                             ),
                             Text(
                               'Changes are tracked in history',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColorTokens.light.textMuted,
+                                color: context.colors.textSecondary,
                               ),
                             ),
                           ],
@@ -130,7 +130,7 @@ class EditExpenseForm extends ConsumerWidget {
                         onPressed: isSaving ? null : onDelete,
                         icon: Icon(
                           Iconsax.trash,
-                          color: AppColorTokens.light.error,
+                          color: context.colors.error,
                         ),
                         tooltip: 'Delete expense',
                       ),
@@ -147,7 +147,7 @@ class EditExpenseForm extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
-                          color: AppColorTokens.light.textMuted,
+                          color: context.colors.textSecondary,
                           letterSpacing: 1.5,
                         ),
                       ),
@@ -155,7 +155,7 @@ class EditExpenseForm extends ConsumerWidget {
                         'was ${initialExpense.amount.toStringAsFixed(decimals)} $tripCurrency',
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppColorTokens.light.textMuted,
+                          color: context.colors.textSecondary,
                         ),
                       ),
                     ],
@@ -174,7 +174,7 @@ class EditExpenseForm extends ConsumerWidget {
                     decoration: InputDecoration(
                       hintText: '0.000',
                       suffixText: tripCurrency,
-                      fillColor: AppColorTokens.light.inputFill,
+                      fillColor: context.colors.inputFill,
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -198,11 +198,11 @@ class EditExpenseForm extends ConsumerWidget {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColorTokens.light.warning
+                            color: context.colors.warning
                                 .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: AppColorTokens.light.warning
+                              color: context.colors.warning
                                   .withValues(alpha: 0.3),
                             ),
                           ),
@@ -211,7 +211,7 @@ class EditExpenseForm extends ConsumerWidget {
                               Icon(
                                 Iconsax.arrow_swap_horizontal,
                                 size: 16,
-                                color: AppColorTokens.light.warning,
+                                color: context.colors.warning,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -219,7 +219,7 @@ class EditExpenseForm extends ConsumerWidget {
                                     .toStringAsFixed(decimals),
                                 style: TextStyle(
                                   decoration: TextDecoration.lineThrough,
-                                  color: AppColorTokens.light.textMuted,
+                                  color: context.colors.textSecondary,
                                   fontSize: 13,
                                 ),
                               ),
@@ -227,14 +227,14 @@ class EditExpenseForm extends ConsumerWidget {
                               Icon(
                                 Icons.arrow_forward,
                                 size: 14,
-                                color: AppColorTokens.light.textMuted,
+                                color: context.colors.textSecondary,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 '${newAmount.toStringAsFixed(decimals)} $tripCurrency',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: AppColorTokens.light.warning,
+                                  color: context.colors.warning,
                                   fontSize: 13,
                                 ),
                               ),
@@ -252,7 +252,7 @@ class EditExpenseForm extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
-                      color: AppColorTokens.light.textMuted,
+                      color: context.colors.textSecondary,
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -286,8 +286,8 @@ class EditExpenseForm extends ConsumerWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? AppColorTokens.light.primary
-                                      : AppColorTokens.light.inputFill,
+                                      ? context.colors.primary
+                                      : context.colors.inputFill,
                                   borderRadius: BorderRadius.circular(22),
                                 ),
                                 alignment: Alignment.center,
@@ -297,8 +297,7 @@ class EditExpenseForm extends ConsumerWidget {
                                     fontWeight: FontWeight.w600,
                                     color: isSelected
                                         ? Colors.white
-                                        : AppColorTokens
-                                            .light.textSecondary,
+                                        : context.colors.textSecondary,
                                   ),
                                 ),
                               ),
@@ -338,7 +337,7 @@ class EditExpenseForm extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
-                      color: AppColorTokens.light.textMuted,
+                      color: context.colors.textSecondary,
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -348,7 +347,7 @@ class EditExpenseForm extends ConsumerWidget {
                     maxLines: 2,
                     decoration: InputDecoration(
                       hintText: 'Add a note...',
-                      fillColor: AppColorTokens.light.inputFill,
+                      fillColor: context.colors.inputFill,
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -381,7 +380,7 @@ class EditExpenseForm extends ConsumerWidget {
                           onPressed: isSaving ? null : onSubmit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
-                                AppColorTokens.light.primary,
+                                context.colors.primary,
                             foregroundColor: Colors.white,
                             padding:
                                 const EdgeInsets.symmetric(vertical: 16),
