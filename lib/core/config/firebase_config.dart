@@ -1,6 +1,7 @@
 import 'dart:developer' as dev;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -14,6 +15,15 @@ import '../../firebase_options.dart';
 class FirebaseConfig {
   static FirebaseAuth get auth => FirebaseAuth.instance;
   static FirebaseFirestore get firestore => FirebaseFirestore.instance;
+
+  /// Region-pinned Cloud Functions accessor.
+  ///
+  /// Server-side callables are deployed with `setGlobalOptions({region:
+  /// 'us-central1'})`, so the client must use the same region to resolve.
+  /// Emulator hookup (when `USE_FIREBASE_EMULATOR=true`) is wired in
+  /// `main.dart` against this same instance.
+  static FirebaseFunctions get functions =>
+      FirebaseFunctions.instanceFor(region: 'us-central1');
 
   /// Initialize Firebase and configure Firestore offline persistence.
   ///
