@@ -520,6 +520,11 @@ void main() {
       await _pumpWithAnimations(tester);
 
       expect(find.byKey(ProfileKeys.coffeeTile), findsOneWidget);
+      // Phase 37 Wave 5: new Display section pushes Support below the
+      // initial viewport on the 600x800 test surface. Scroll the tile
+      // into view before tapping.
+      await tester.ensureVisible(find.byKey(ProfileKeys.coffeeTile));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(ProfileKeys.coffeeTile));
       await tester.pump();
 
