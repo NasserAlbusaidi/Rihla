@@ -3,7 +3,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../shared/animations/tap_bounce.dart';
 import '../keys/home_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Quick action tray for the home dashboard.
 ///
@@ -30,9 +30,9 @@ class QuickActionTray extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: HomeKeys.quickActionTray,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 8,
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space16,
+        vertical: context.spacing.space8,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -89,14 +89,14 @@ class _QuickActionButton extends StatelessWidget {
           SizedBox(
             width: 48,
             height: 48,
-            child: Icon(icon, size: 24, color: AppColorTokens.light.primary),
+            child: Icon(icon, size: 24, color: context.colors.primary),
           ),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColorTokens.light.textSecondary,
+              color: context.colors.textSecondary,
             ),
           ),
         ],

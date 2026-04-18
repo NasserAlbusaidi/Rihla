@@ -22,7 +22,7 @@ import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
 import '../widgets/quick_action_tray.dart';
 import '../widgets/weekly_spending_card.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Groups-first home dashboard (Phase 18).
 ///
@@ -69,10 +69,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                24,
-                16,
-                16,
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.space24,
+                context.spacing.space16,
+                context.spacing.space16,
                 0,
               ),
               child: Row(
@@ -93,11 +93,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                       FloatingActionButton.small(
                         key: HomeKeys.createGroupFab,
                         onPressed: () => _showFabBottomSheet(context),
-                        backgroundColor: AppColorTokens.light.primary,
+                        backgroundColor: context.colors.primary,
                         heroTag: 'home_fab',
-                        child: Icon(Iconsax.add, color: AppColorTokens.light.textOnPrimary),
+                        child: Icon(Iconsax.add, color: context.colors.textOnPrimary),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.spacing.space8),
                       Semantics(
                         label: 'Open profile',
                         button: true,
@@ -152,15 +152,15 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
         ref.invalidate(userGroupsProvider);
         await ref.read(userGroupsProvider.future);
       },
-      color: AppColorTokens.light.primary,
+      color: context.colors.primary,
       child: CustomScrollView(
         // Large cache extent ensures all slivers are built even when
         // off-screen, which is required for widget tests to find them.
         cacheExtent: 2000,
         slivers: [
           // 1. Balance Hero Card
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 12),
+          SliverToBoxAdapter(
+            child: SizedBox(height: context.spacing.space12),
           ),
           const SliverToBoxAdapter(child: BalanceHeroCard()),
 
@@ -176,7 +176,12 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
 
           // 2a. "Your Groups (N)" section header (D-13, LAYT-02)
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.space16,
+              context.spacing.space12,
+              context.spacing.space16,
+              context.spacing.space8,
+            ),
             sliver: SliverToBoxAdapter(
               child: Text(
                 'Your Groups (${groups.length})',
@@ -191,14 +196,14 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           // not a Sliver, so SliverToBoxAdapter bridges the gap.
           // This is safe for typical group counts (<20 groups per user).
           SliverPadding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space16,
             ),
             sliver: SliverToBoxAdapter(
               child: FadeInList(
                 children: groups.map((group) {
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.only(bottom: context.spacing.space8),
                     child: GroupCard(
                       group: group,
                       onTap: () => context.push('/group/${group.id}'),
@@ -218,8 +223,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           const SliverToBoxAdapter(child: WeeklySpendingCard()),
 
           // Bottom padding for scroll clearance above bottom nav
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 32),
+          SliverToBoxAdapter(
+            child: SizedBox(height: context.spacing.space32),
           ),
         ],
       ),
@@ -232,34 +237,36 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   ) {
     return Padding(
       key: HomeKeys.activitySection,
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        8,
+      padding: EdgeInsets.fromLTRB(
+        context.spacing.space16,
+        context.spacing.space12,
+        context.spacing.space16,
+        context.spacing.space8,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // textMuted-decorative-justified: 'RECENT ACTIVITY' section overline —
+          // decorative overline label, not functional text. Functional text
+          // (descriptions, names, timestamps) all route through textSecondary
+          // elsewhere on this screen.
           Text(
             'RECENT ACTIVITY',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              // textMuted (#9CA3AF) is DECORATIVE ONLY here — section overline label.
-              // Functional text (descriptions, names) uses textSecondary.
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textMuted,
               letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.space8),
           activityAsync.when(
             data: (entries) => entries.isEmpty
                 ? Text(
                     'No activity yet',
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppColorTokens.light.textSecondary,
+                      color: context.colors.textSecondary,
                     ),
                   )
                 : Column(
@@ -308,7 +315,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
         Expanded(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(context.spacing.space24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -325,7 +332,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                     onPressed: () {},
                     child: Text(
                       'View Offline Data',
-                      style: TextStyle(color: AppColorTokens.light.primary),
+                      style: TextStyle(color: context.colors.primary),
                     ),
                   ),
                 ],
@@ -364,7 +371,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     HapticFeedback.lightImpact();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColorTokens.light.cardSurface,
+      backgroundColor: context.colors.cardSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -375,11 +382,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             // Create a Group
             ListTile(
               key: HomeKeys.createGroupOption,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: context.spacing.space16,
               ),
               minTileHeight: 64,
-              leading: Icon(Iconsax.people, color: AppColorTokens.light.primary),
+              leading: Icon(Iconsax.people, color: context.colors.primary),
               title: Text(
                 'Create a Group',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -392,13 +399,13 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             // Join a Group
             ListTile(
               key: HomeKeys.joinGroupOption,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: context.spacing.space16,
               ),
               minTileHeight: 64,
               leading: Icon(
                 Iconsax.login_1,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
               title: Text(
                 'Join a Group',
@@ -447,7 +454,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     // 2+ groups — show picker
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColorTokens.light.cardSurface,
+      backgroundColor: context.colors.cardSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -457,19 +464,26 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.space16,
+                context.spacing.space16,
+                context.spacing.space16,
+                context.spacing.space8,
+              ),
               child: Text(
                 'Choose a group',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: AppColorTokens.light.textPrimary,
+                  color: context.colors.textPrimary,
                 ),
               ),
             ),
             ...groups.map(
               (group) => ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.space16,
+                ),
                 title: Text(group.name),
                 onTap: () {
                   Navigator.pop(sheetContext);

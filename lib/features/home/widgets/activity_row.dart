@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../groups/models/group_activity_log_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// A single row in the cross-group activity feed.
 ///
@@ -46,7 +46,7 @@ class ActivityRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -62,7 +62,7 @@ class ActivityRow extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacing.space8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,17 +74,17 @@ class ActivityRow extends StatelessWidget {
                         activity.actorName,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: AppColorTokens.light.textPrimary,
+                          color: context.colors.textPrimary,
                           fontSize: 14,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: context.spacing.space4),
                       Flexible(
                         child: Text(
                           activity.description,
                           style: TextStyle(
                             fontSize: 14,
-                            color: AppColorTokens.light.textSecondary,
+                            color: context.colors.textSecondary,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -96,7 +96,7 @@ class ActivityRow extends StatelessWidget {
                     children: [
                       Container(
                         decoration: BoxDecoration(
-                          color: AppColorTokens.light.inputFill,
+                          color: context.colors.inputFill,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -104,16 +104,18 @@ class ActivityRow extends StatelessWidget {
                           groupName,
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColorTokens.light.textSecondary,
+                            color: context.colors.textSecondary,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.spacing.space8),
+                      // Relative timestamp — functional metadata per D-11
+                      // → textSecondary (was textMuted prior to Phase 37).
                       Text(
                         timeago.format(activity.timestamp),
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColorTokens.light.textMuted,
+                          color: context.colors.textSecondary,
                         ),
                       ),
                     ],

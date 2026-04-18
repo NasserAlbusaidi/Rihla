@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/home_keys.dart';
 import '../providers/dashboard_providers.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Weekly spending bar chart card for the home dashboard.
@@ -26,24 +26,26 @@ class WeeklySpendingCard extends ConsumerWidget {
 
     return spendingAsync.when(
       loading: () => _buildCardShell(
+        context: context,
         key: HomeKeys.weeklySpendingCard,
         child: SkeletonLoader.generic(count: 3),
       ),
       error: (error, stack) => _buildCardShell(
+        context: context,
         key: HomeKeys.weeklySpendingCard,
         child: Text(
           'Spending data unavailable',
           style: TextStyle(
             fontSize: 14,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
           ),
         ),
       ),
-      data: _buildCard,
+      data: (weekData) => _buildCard(context, weekData),
     );
   }
 
-  Widget _buildCard(List<DailySpending> weekData) {
+  Widget _buildCard(BuildContext context, List<DailySpending> weekData) {
     final maxAmount = weekData.fold(
       Decimal.zero,
       (prev, entry) => entry.amount > prev ? entry.amount : prev,
@@ -51,6 +53,7 @@ class WeeklySpendingCard extends ConsumerWidget {
     final allZero = maxAmount == Decimal.zero;
 
     return _buildCardShell(
+      context: context,
       key: HomeKeys.weeklySpendingCard,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,16 +64,16 @@ class WeeklySpendingCard extends ConsumerWidget {
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 14,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.space16),
           if (allZero)
             Text(
               'No spending this week',
               style: TextStyle(
                 fontSize: 14,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
             )
           else
@@ -97,28 +100,30 @@ class WeeklySpendingCard extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
-                              color: AppColorTokens.light.textSecondary,
+                              color: context.colors.textSecondary,
                             ),
                           ),
                         if (entry.amount > Decimal.zero)
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.spacing.space4),
                         Container(
                           height: barHeight > 0 ? barHeight : 2,
                           decoration: BoxDecoration(
                             color: barHeight > 0
-                                ? AppColorTokens.light.primary
-                                : AppColorTokens.light.inputFill,
+                                ? context.colors.primary
+                                : context.colors.inputFill,
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(4),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.spacing.space4),
+                        // Day label (Mon/Tue/...) — functional data label per D-11
+                        // → textSecondary (was textMuted prior to Phase 37).
                         Text(
                           dayLabel,
                           style: TextStyle(
                             fontSize: 10,
-                            color: AppColorTokens.light.textMuted,
+                            color: context.colors.textSecondary,
                           ),
                         ),
                       ],
@@ -132,16 +137,20 @@ class WeeklySpendingCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildCardShell({required Key key, required Widget child}) {
+  Widget _buildCardShell({
+    required BuildContext context,
+    required Key key,
+    required Widget child,
+  }) {
     return Container(
       key: key,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: context.spacing.space16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppShadowTokens.standard.raised,
       ),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.space16),
       child: child,
     );
   }

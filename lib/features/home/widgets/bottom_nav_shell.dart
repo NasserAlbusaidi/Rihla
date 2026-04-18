@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../features/settings/screens/profile_screen.dart';
 import '../../../shared/widgets/grain_overlay.dart';
 import '../keys/home_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Bottom navigation shell for the home dashboard.
 ///
@@ -40,9 +40,9 @@ class _BottomNavShellState extends State<BottomNavShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: widget.scaffoldKey,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: _buildBody(),
-      bottomNavigationBar: _buildNavBar(),
+      bottomNavigationBar: _buildNavBar(context),
     );
   }
 
@@ -71,13 +71,13 @@ class _BottomNavShellState extends State<BottomNavShell> {
     );
   }
 
-  Widget _buildNavBar() {
+  Widget _buildNavBar(BuildContext context) {
     return BottomNavigationBar(
       currentIndex: _currentIndex,
       onTap: (i) => setState(() => _currentIndex = i),
-      backgroundColor: AppColorTokens.light.bottomNavBackground,
-      selectedItemColor: AppColorTokens.light.bottomNavActiveIcon,
-      unselectedItemColor: AppColorTokens.light.bottomNavInactiveIcon,
+      backgroundColor: context.colors.bottomNavBackground,
+      selectedItemColor: context.colors.bottomNavActiveIcon,
+      unselectedItemColor: context.colors.bottomNavInactiveIcon,
       // REQUIRED for 4 tabs: fixed type shows all labels (RESEARCH Pitfall 3)
       type: BottomNavigationBarType.fixed,
       showUnselectedLabels: true,
@@ -115,7 +115,7 @@ class _PlaceholderTab extends StatelessWidget {
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w400,
-          color: AppColorTokens.light.textSecondary,
+          color: context.colors.textSecondary,
         ),
       ),
     );

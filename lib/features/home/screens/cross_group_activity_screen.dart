@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../providers/dashboard_providers.dart';
 import '../widgets/activity_row.dart';
@@ -24,7 +24,7 @@ class CrossGroupActivityScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activityAsync = ref.watch(crossGroupActivityProvider);
     return Scaffold(
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -38,15 +38,18 @@ class CrossGroupActivityScreen extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space16,
+        vertical: context.spacing.space8,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColorTokens.light.cardSurface,
+              color: context.colors.cardSurface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColorTokens.light.inputFill, width: 1),
+              border: Border.all(color: context.colors.inputFill, width: 1),
               boxShadow: AppShadowTokens.standard.raised,
             ),
             child: IconButton(
@@ -66,7 +69,7 @@ class CrossGroupActivityScreen extends ConsumerWidget {
               fontSize: 20,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.5,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
           const SizedBox(width: 48), // balance the back button
@@ -95,12 +98,15 @@ class CrossGroupActivityScreen extends ConsumerWidget {
           );
         }
         return ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.space24,
+            vertical: context.spacing.space12,
+          ),
           itemCount: entries.length,
           separatorBuilder: (context, index) => Divider(
             height: 1,
             thickness: 1,
-            color: AppColorTokens.light.border,
+            color: context.colors.border,
           ),
           itemBuilder: (context, index) {
             final entry = entries[index];
@@ -124,7 +130,7 @@ class CrossGroupActivityScreen extends ConsumerWidget {
       separatorBuilder: (context, index) => Divider(
         height: 1,
         thickness: 1,
-        color: AppColorTokens.light.border,
+        color: context.colors.border,
       ),
       itemBuilder: (context, index) => const _SkeletonRow(),
     );
@@ -139,18 +145,18 @@ class _SkeletonRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 52,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
       child: Row(
         children: [
           Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColorTokens.light.border,
+              color: context.colors.border,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.space12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,7 +166,7 @@ class _SkeletonRow extends StatelessWidget {
                   height: 12,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: AppColorTokens.light.border,
+                    color: context.colors.border,
                     borderRadius: BorderRadius.circular(6),
                   ),
                 ),
@@ -169,7 +175,7 @@ class _SkeletonRow extends StatelessWidget {
                   height: 10,
                   width: 80,
                   decoration: BoxDecoration(
-                    color: AppColorTokens.light.inputFill,
+                    color: context.colors.inputFill,
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),
