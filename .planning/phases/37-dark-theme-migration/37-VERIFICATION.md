@@ -1,40 +1,51 @@
 ---
 phase: 37-dark-theme-migration
-verified: 2026-04-18T08:07:07Z
-status: gaps_found
-score: 4/5 must-haves verified
+verified: 2026-04-18T10:17:00Z
+status: human_needed
+score: 5/5 must-haves verified
 overrides_applied: 0
-gaps:
-  - truth: "Dark theme renders with the slate-based palette end-to-end (SC5)"
-    status: partial
-    reason: "32 files in lib/features/ and lib/features/settings/ still read `AppShadowTokens.standard.raised`/`.floating` directly. `AppShadowTokens.standard` is declared as an alias for `AppShadowTokens.light` in shadow_tokens.dart line 25 (`static final AppShadowTokens standard = light;`), so every consumer gets the light shadow set even under `ThemeMode.dark`. The dark theme registers `AppShadowTokens.dark` on `Theme.of(context).extension<AppShadowTokens>()` and `context.shadows.*` would resolve correctly, but 37 direct reads bypass that extension. The palette claim 'end-to-end' is therefore false for elevation/shadow layer — only color/text/gradient tokens flip with brightness. Goldens cannot detect this because the synthetic harness at test/goldens/golden_harness.dart:149,205 itself uses `AppShadowTokens.standard.raised`, so the light→dark diff for shadows is zero in the baseline — the gap is masked by the harness. Plan 02 did migrate shared-widget shadows (~14 context.shadows reads), and Plan 03b opportunistically migrated 10 refs in groups/, but Plans 03a/03c/03d/04 did not sweep shadow reads. No later phase in the v2.4 roadmap addresses this."
-    artifacts:
-      - path: "lib/features/settings/widgets/profile_stats_section.dart"
-        issue: "boxShadow: AppShadowTokens.standard.raised (line 134) — reads light shadow in dark mode"
-      - path: "lib/features/settings/widgets/profile_display_section.dart"
-        issue: "boxShadow: AppShadowTokens.standard.raised (line 40) — newly added in Wave 5 yet still light-only"
-      - path: "lib/features/home/widgets/balance_hero_card.dart"
-        issue: "2 reads (lines 65, 123) of AppShadowTokens.standard.raised"
-      - path: "lib/features/ledger/screens/add_expense_screen.dart"
-        issue: "4 reads of AppShadowTokens.standard.raised (lines 375, 395, 476, 529)"
-      - path: "lib/features/ledger/widgets/*"
-        issue: "7 files with .standard shadow reads (expense_card, split_scope_selector, settlement_tile×2, settlement_summary_card, settlement_row, expense_success_dialog)"
-      - path: "test/goldens/golden_harness.dart"
-        issue: "Lines 149 and 205 use AppShadowTokens.standard.raised — the harness itself masks this gap"
-    missing:
-      - "Replace every `AppShadowTokens.standard.raised|floating` read in lib/features/ and lib/features/settings/ with `context.shadows.raised|floating` (32 files, 37 call sites)"
-      - "Fix golden_harness.dart lines 149, 205 to read `context.shadows.raised` via a Builder so elevation surfaces render differently between light and dark baselines"
-      - "Decide whether to deprecate `AppShadowTokens.standard` (remove the alias) or keep it explicitly for documented pre-hydration cases with `// design-token-justified:` comments, then extend `tool/check_theme_purity.sh` with a Check 4 that forbids unjustified `AppShadowTokens.standard` reads"
-      - "Regenerate the 10 dark-theme golden baselines after the harness fix — expect visible shadow tint delta (light shadow uses `Color(0x14111827)`, dark uses `Color(0x59000000)`)"
+re_verification:
+  previous_verified: 2026-04-18T08:07:07Z
+  previous_status: gaps_found
+  previous_score: 4/5
+  gaps_closed:
+    - "Dark theme renders with the slate-based palette end-to-end (SC5) — shadow layer"
+  gaps_remaining: []
+  regressions: []
+  closure_plan: 37-06 (5 commits: ae5e7b2, 61393fb, c7845c4, 51cd53b, 0b7f5d6)
+gaps: []
 deferred: []
+human_verification:
+  - test: "Launch app on a real Android device with `flutter run --dart-define-from-file=config.json`; cycle System → Light → Dark via Settings → Display → Theme."
+    expected: "All cards/heroes render with richer black shadow tint in Dark (Color(0x59000000)), lighter slate tint in Light (Color(0x14111827)). System-chrome (status bar / navigation bar) icon brightness flips immediately without navigating away. Setting persists across app restart."
+    why_human: "Visual delta between shadow tints (35% black vs 8% slate) and perceived elevation is inherently visual; golden baselines confirm pixel-level change but only humans can judge whether the dark shadow reads as 'rich, legible elevation' rather than 'muddy halo' on real OLED/LCD hardware."
+  - test: "Walk through MANUAL-QA.md §2 (22-screen walkthrough) in Dark mode: Home → Group Detail → Event Command Center → Ledger → Add Expense → Settle Up → Gear → Logistics → Vault → Memories → Activity → Settings."
+    expected: "Every elevated surface (hero cards, list rows, floating action buttons, dialogs, bottom sheets) shows the darker shadow tint in Dark mode. No card appears 'flat' or loses separation from the background. No residual light-theme artifact (pale borders, unexpected white fills) on any screen."
+    why_human: "Requires eye-on-device judgment of perceived depth and background separation across 22 screens; the 10 golden screens (Home/Group/Event/Ledger/Gear/Logistics/Vault/Memories/Onboarding/Settings-profile/Add-expense/Group-settle-up) cover only ~half of the surface area listed in MANUAL-QA.md."
+  - test: "Toggle between Light and Dark 5 times in rapid succession; observe for flicker, stale shadows, or content jump."
+    expected: "Smooth cross-fade via MaterialApp themeMode; no layout shift, no single-frame flash of the wrong theme, no shadow ghosting."
+    why_human: "Real-time theme animation quality can only be evaluated by watching the transition on-device at 60/120 Hz refresh."
 ---
 
 # Phase 37: Dark Theme Migration Verification Report
 
 **Phase Goal:** Dark Theme Migration — Widget migration to `context.colors`, theme toggle, textMuted contrast (#17, #29, #31, #32)
-**Verified:** 2026-04-18T08:07:07Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-04-18T10:17:00Z
+**Status:** human_needed
+**Re-verification:** Yes — after Plan 37-06 gap closure (previous status `gaps_found` at 4/5)
+
+## Re-verification Summary
+
+| Item | Previous | Current |
+|------|----------|---------|
+| Status | gaps_found | **human_needed** |
+| Score | 4/5 | **5/5** |
+| Open gaps | 1 (SC5 — elevation layer not theme-aware) | **0** |
+| Regressions introduced | — | **0** (1088/3/0 preserved) |
+
+Plan 37-06 closed the single remaining gap from the prior verification by (a) migrating 37 call sites across 32 feature/settings files from `AppShadowTokens.standard.*` to `context.shadows.*`, (b) fixing the golden harness to resolve shadows through a `Builder` + `context.shadows.raised`, (c) deleting the `AppShadowTokens.standard = light` alias in `shadow_tokens.dart`, (d) adding Check 4 to `tool/check_theme_purity.sh`, and (e) regenerating the 10 dark golden baselines. All four "missing" deliverables from gaps[0].missing independently reverified in this run.
+
+The phase is now structurally complete. Status is **human_needed** (not `passed`) because elevation/shadow tint is an inherently visual outcome that golden baselines confirm at the pixel level but only on-device viewing in Dark mode can validate as "rich, legible depth" across all 22 screens listed in MANUAL-QA.md.
 
 ## Goal Achievement
 
@@ -42,100 +53,121 @@ deferred: []
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Zero direct `AppColorTokens.light.*` references in rendered widget code (enforced by lint or CI check) | ✓ VERIFIED | `grep -rn "AppColorTokens\.light\." lib/ --include='*.dart' | grep -v "lib/core/theme/tokens/" | grep -v "lib/core/theme/app_theme.dart" | grep -v "lib/main.dart" | wc -l` = 0. `bash tool/check_theme_purity.sh` exits 0. CI wired in release_android.yml before tests. |
-| 2 | Settings exposes a theme toggle (System / Light / Dark) persisted via SharedPreferences | ✓ VERIFIED | ProfileDisplaySection at lib/features/settings/widgets/profile_display_section.dart:72 calls `ThemePickerSheet.show(context)`. Sheet at lib/features/settings/widgets/theme_picker_sheet.dart:94 calls `settingsProvider.notifier.setThemeMode(v)`. 3 `RadioListTile<AppThemeMode>` values verified. main.dart:184-185 passes `AppTheme.darkTheme` + `settings.themeMode.toMaterialThemeMode()` to MaterialApp.router. theme_picker_test (3 tests) exercises persistence round-trip. |
-| 3 | textMuted no longer used for functional text; contrast audit passes WCAG AA on all text/background pairs in both themes | ✓ VERIFIED | test/unit/dark_theme_contrast_test.dart: 11 WCAG AA pair assertions pass (8 dark-palette pairs + 2 functional-text-in-both-themes + 1 light-textMuted-below-AA encoding the decorative-only rule). Triage tallies across waves: 6+21+14+52 functional → textSecondary conversions; 0+6+1+6=13 decorative retentions all carrying `// textMuted-decorative-justified:` comments. CI Check 3 enforces this. |
-| 4 | Spacing tokens adopted where semantically meaningful; remaining `Color(0xFF…)` hardcoded literals justified inline or removed | ✓ VERIFIED | ~60+40+7 opportunistic `context.spacing.*` replacements across waves. `grep -c "Color(0xFF" lib/core/theme/app_theme.dart` = 2 (both with `// design-token-justified:` on preceding line — warm input label/hint). `grep -c "Color(0xFF" lib/features/ledger/models/expense_category_model.dart` = 0 after Plan 04's `resolveColor(AppColorTokens)` refactor. Avatar slots and gradient literals now live in `lib/core/theme/tokens/{group_avatar_colors,gradient_tokens}.dart` as named tokens. |
-| 5 | Screenshot diffs show light theme unchanged and dark theme renders with the slate-based palette end-to-end | ✗ FAILED | 20 golden baselines exist (10 screens × 2 themes) but use a synthetic `GoldenHarness` shell, not real feature screens. Real feature code still reads `AppShadowTokens.standard.*` in 32 files — and `standard` is aliased to `.light` (shadow_tokens.dart:25) — so dark-mode shadows render as light shadows. The harness itself (lines 149, 205) uses the same alias, masking the diff in goldens. "End-to-end" is only true for color/text/gradient tokens, not elevation. |
+| 1 | Zero direct `AppColorTokens.light.*` references in rendered widget code (enforced by lint or CI check) | ✓ VERIFIED | `grep -rn "AppColorTokens\.light\." lib/ \| grep -v "lib/core/theme/tokens/" \| grep -v "lib/core/theme/app_theme.dart" \| grep -v "lib/main.dart"` = 0. `bash tool/check_theme_purity.sh` exits 0 on all 4 checks. |
+| 2 | Settings exposes a theme toggle (System / Light / Dark) persisted via SharedPreferences | ✓ VERIFIED | `ProfileDisplaySection` opens `ThemePickerSheet.show(context)`; sheet writes via `settingsProvider.notifier.setThemeMode(v)`; `theme_picker_test` (3 tests) asserts round-trip; `MaterialApp.router` consumes `settings.themeMode.toMaterialThemeMode()` in main.dart:184-185. |
+| 3 | textMuted no longer used for functional text; contrast audit passes WCAG AA on all text/background pairs in both themes | ✓ VERIFIED | `test/unit/dark_theme_contrast_test.dart` — 11 WCAG assertions pass; `tool/check_theme_purity.sh` Check 3 enforces `// textMuted-decorative-justified:` justification window. |
+| 4 | Spacing tokens adopted where semantically meaningful; remaining `Color(0xFF…)` hardcoded literals justified inline or removed | ✓ VERIFIED | Avatar slots + 4 gradient pairs + category colors promoted to tokens in Plan 04; Check 2 enforces 5-line `// design-token-justified:` window for any remaining literal. |
+| 5 | Screenshot diffs show light theme unchanged and dark theme renders with the slate-based palette end-to-end | ✓ VERIFIED | **GAP CLOSED.** 0 `AppShadowTokens.standard.*` reads anywhere in `lib/` or `test/`. Alias deleted from `shadow_tokens.dart`. Harness reads via `context.shadows.raised` inside a Builder at lines 150 and 208. 10 dark golden PNGs regenerated with visible byte-delta (+363 to +687 bytes per file, consistent with `Color(0x59000000)` shadow tint replacing `Color(0x14111827)`). 10 light baselines byte-identical (no regression). `flutter test test/goldens/` passes 10/10 without `--update-goldens`. |
 
-**Score:** 4/5 truths verified
+**Score:** 5/5 truths verified
+
+### Deliverable Closure — Previous `gaps[0].missing`
+
+Each item from the prior VERIFICATION.md re-checked against current repo state.
+
+| # | Missing deliverable | Current state | Status |
+|---|---------------------|---------------|--------|
+| 1 | Replace every `AppShadowTokens.standard.raised\|floating` read in `lib/features/` with `context.shadows.*` (32 files, 37 sites) | `grep -rn 'AppShadowTokens\.standard\.' lib/features/` = **0**; `grep -rn 'context\.shadows\.' lib/features/` = **49** (37 new + 12 pre-existing from Wave 2) | ✓ CLOSED |
+| 2 | Fix `golden_harness.dart` lines 149/205 to read `context.shadows.raised` via a Builder | Harness now has `Builder(builder: (context) => ...)` at lines 144 and 203, each containing `boxShadow: context.shadows.raised` at lines 150 and 208 | ✓ CLOSED |
+| 3 | Deprecate the `AppShadowTokens.standard` alias OR document remaining uses with `// design-token-justified:` + extend purity script with Check 4 | Default branch taken: alias deleted (not present in shadow_tokens.dart). Doc comment at line 7-8 now points consumers to `context.shadows.*`. Check 4 added to `tool/check_theme_purity.sh` (no-justification-window — any occurrence is a pure regression signal). | ✓ CLOSED |
+| 4 | Regenerate 10 dark-theme golden baselines after the harness fix | Commit `0b7f5d6` regenerated all 10 `*_dark.png` files with byte-size delta ranging +363 to +687 bytes. Light baselines unchanged (byte-identical). `flutter test test/goldens/` → 10 pass without `--update-goldens`. | ✓ CLOSED |
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `lib/core/theme/app_theme.dart` | darkTheme + 5 bug fixes | ✓ VERIFIED | `AppTheme.darkTheme` registers brightness + 3 extensions (theme_wiring_test passes). `_buildTextTheme(Brightness)` resolves `tokens` once per theme. 2 remaining `Color(0xFF...)` literals both carry `// design-token-justified:` per Plan 01 revision B6 Q3. |
-| `lib/core/theme/tokens/group_avatar_colors.dart` | AppGroupAvatarColors.lightSlots/darkSlots (5 each) | ✓ VERIFIED | File exists (1.6k). token_promotions_test asserts lightSlots.length == 5, darkSlots.length == 5, lightSlots != darkSlots. |
-| `lib/core/theme/tokens/gradient_tokens.dart` | AppGradientPair + terracotta/olive/teal/gray | ✓ VERIFIED | File exists (3.1k). All 4 pairs have light+dark LinearGradients with identical begin/end. |
-| `lib/features/settings/widgets/theme_picker_sheet.dart` | ConsumerWidget bottom sheet | ✓ VERIFIED | `ThemePickerSheet.show(context)` static method. Calls `setThemeMode(v)` + `Navigator.of(c).pop()`. Uses `context.spacing.space24` / `space16`. |
-| `lib/features/settings/widgets/profile_display_section.dart` | Display section with Theme tile | ✓ VERIFIED | Section widget with icon (brightness_6_outlined), trailing current-mode label, tap opens ThemePickerSheet. Referenced at profile_screen.dart:76. |
-| `tool/check_theme_purity.sh` | Executable 3-check CI guard | ✓ VERIFIED | File mode `-rwxr-xr-x`. `set -euo pipefail`. Exempt paths: tokens/, app_theme.dart, main.dart. Exits 0 on clean repo. Check 2 uses 5-line preceding window (W5 correction). Check 3 extended to 5-line window per Plan 05 decision. |
-| `test/unit/dark_theme_contrast_test.dart` | 11 WCAG assertions | ✓ VERIFIED | 11 tests pass: 8 AppColorTokens.dark pairs at appropriate AA thresholds + 2 functional-text-both-themes + 1 light-textMuted below-AA. |
-| `test/unit/shared_test_contrast_helpers.dart` | Extracted helpers | ✓ VERIFIED | `relativeLuminance(Color)` + `contrastRatio(Color, Color)` public API. Consumed by both dark_theme_contrast_test and design_tokens_test. |
-| `test/features/settings/theme_picker_test.dart` | Persistence round-trip | ✓ VERIFIED | 3 tests pass: renders 3 radios, tapping Dark writes AppThemeMode.dark.index to SharedPreferences, tapping Light updates settingsProvider.state.themeMode. |
-| `test/goldens/ 10 files + 20 PNGs` | 10 screens × 2 themes | ⚠️ PRESENT-BUT-SYNTHETIC | 10 `*_golden_test.dart` files + 20 PNGs under `test/goldens/goldens/`. All use `GoldenHarness` synthetic shell + bespoke `_goldenTheme(brightness:)` that skips google_fonts. Baselines discriminate color tokens but NOT elevation (harness uses the aliased `AppShadowTokens.standard`). Counted as VERIFIED for "baselines exist and pass" but contributes to SC5 failure. |
-| `.planning/phases/37-dark-theme-migration/MANUAL-QA.md` | Pre-merge checklist | ✓ VERIFIED | File exists (3.4k) with 22-screen walkthrough + theme toggle UX + OS chrome + edge cases. |
+| `lib/core/theme/tokens/shadow_tokens.dart` | No `standard` alias; `.light` + `.dark` only | ✓ VERIFIED | `grep -n 'standard' shadow_tokens.dart` → 0 matches. `.light` at line 26, `.dark` at line 57. Doc comment at 7-8 steers consumers. |
+| `tool/check_theme_purity.sh` | 4-check guard; Check 4 added | ✓ VERIFIED | `grep -c 'Check 4'` = 2 (header + echo label). Script runs 4 checks sequentially, outputs `Theme purity check PASS` on clean repo, exit code 0. Still executable (mode `-rwxr-xr-x@`). |
+| `test/goldens/golden_harness.dart` | Builder wrapping + `context.shadows.raised` | ✓ VERIFIED | `Builder(` at lines 144, 203. `context.shadows.raised` at lines 150, 208. No `AppShadowTokens.standard.*` anywhere in file. |
+| `test/goldens/goldens/*_dark.png` | 10 regenerated baselines | ✓ VERIFIED | 10 files under `test/goldens/goldens/*_dark.png`. Commit `0b7f5d6` touched all 10 with Bin size delta. |
+| 32 feature/settings source files | Migrated to `context.shadows.*` | ✓ VERIFIED | All 32 files in 37-06-SUMMARY's `files_modified` list show `context.shadows.raised\|floating` and zero `AppShadowTokens.standard`. Spot-checks: `balance_hero_card.dart` lines 64,122 ✓; `add_expense_screen.dart` lines 374,394,475,528 ✓. |
+| `lib/core/theme/app_theme.dart` | Light ThemeData registers `AppShadowTokens.light` explicitly (no alias) | ✓ VERIFIED | Executor auto-fixed a Rule-3 blocker — light ThemeData line 181 now uses `.light` instead of `.standard`. Behaviour identical. |
+| `test/unit/design_tokens_test.dart` | 5 `.standard` refs swapped to `.light` | ✓ VERIFIED | Behavior identical (alias was `= light`), deletion would have compile-failed otherwise. Full suite remains 1088/3/0 — test body still valid. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| profile_screen.dart | profile_display_section.dart | `const ProfileDisplaySection()` at line 76 | ✓ WIRED | Reads from profile_screen structure above About section |
-| profile_display_section.dart | theme_picker_sheet.dart | `ThemePickerSheet.show(context)` at line 72 | ✓ WIRED | onTap handler opens sheet |
-| theme_picker_sheet.dart | settingsProvider | `ref.read(settingsProvider.notifier).setThemeMode(v)` line 94 | ✓ WIRED | Calls into existing provider (no parallel themeModeProvider) |
-| main.dart (SafarApp.build) | AppTheme.darkTheme | `darkTheme: AppTheme.darkTheme` line 184 | ✓ WIRED | MaterialApp.router consumes dark theme |
-| main.dart | settingsProvider | `settings.themeMode.toMaterialThemeMode()` line 185 + `_SystemChromeThemeSync` at line 205 | ✓ WIRED | Both MaterialApp themeMode and SystemChrome overlay track settings |
-| .github/workflows/release_android.yml | tool/check_theme_purity.sh | `run: bash tool/check_theme_purity.sh` line 49 | ✓ WIRED | Runs AFTER flutter analyze and BEFORE flutter test. Obsolete "Hardcoded color lint" step removed. |
-| AppColorTokens (color_tokens.dart) | AppGroupAvatarColors.{light,dark}Slots | `groupAvatarSlot(String groupId)` method uses `brightness` field to dispatch | ✓ WIRED | group_card.dart:2 occurrences of `context.colors.groupAvatarSlot` confirmed |
-| onboarding/ledger/activity hero | AppGradients via context.gradient | 5+ call sites found | ✓ WIRED | grep confirms AppGradients.terracotta / .gray usage |
-| Shared widgets | context.shadows (theme-aware) | 14 reads across Wave 2 surface | ⚠️ PARTIAL | Shared widgets read `context.shadows`. Feature widgets read `AppShadowTokens.standard.*` (32 files, 37 reads) — NOT wired to theme. Aliased to light. |
+| 32 feature/settings widgets | `Theme.of(context).extension<AppShadowTokens>()` | `context.shadows.raised \| .floating` | ✓ WIRED | 49 call sites across `lib/features/` now read via the theme-aware extension; dark ThemeData registers `AppShadowTokens.dark`, so these reads resolve differently between themes. |
+| `golden_harness.dart` card builders | `context.shadows.raised` | `Builder(builder: (context) => ...)` | ✓ WIRED | Builder confines the shadow read to a theme-scoped BuildContext — defensive against future refactors inserting a Theme override. |
+| `tool/check_theme_purity.sh` Check 4 | `AppShadowTokens.standard` regression guard | `grep -rn 'AppShadowTokens\.standard\.' lib/ --include='*.dart' \| grep -v '^lib/core/theme/tokens/'` | ✓ WIRED | Inserted before final exit block. Exits 1 with `::error::` annotation on any match. Negative-test verified in Task 4. |
+| `.github/workflows/release_android.yml:49` | `tool/check_theme_purity.sh` | `run: bash tool/check_theme_purity.sh` | ✓ WIRED | CI workflow was wired in Plan 37-05; Check 4 runs automatically on every release build. |
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 |----------|---------------|--------|--------------------|--------|
-| ThemePickerSheet | `current` mode | `ref.watch(settingsProvider.select((s) => s.themeMode))` | Yes — flows from StateNotifier backed by SettingsService + SharedPreferences | ✓ FLOWING |
-| _SystemChromeThemeSync | `mode` | `ref.watch(settingsProvider.select((s) => s.themeMode))` + `MediaQuery.platformBrightnessOf(context)` | Yes — resolves system brightness correctly | ✓ FLOWING |
-| MaterialApp.router themeMode | `settings.themeMode` | `ref.watch(settingsProvider)` | Yes — triggers app-wide rebuild on theme change | ✓ FLOWING |
-| Any feature widget shadows | `AppShadowTokens.standard.raised` | Static alias to `AppShadowTokens.light` — does NOT read `Theme.of(context)` | No — static, theme-independent | ⚠️ STATIC (masked alias) |
+| Any feature hero card | `context.shadows.raised` | `Theme.of(context).extension<AppShadowTokens>()` via `domain_aliases.dart:29` | Yes — resolves to `.light` or `.dark` based on `Theme.of(context).brightness` | ✓ FLOWING |
+| Golden harness hero card | `context.shadows.raised` (via Builder) | Same extension, but now under a Builder-created context | Yes — golden output captures the tint for current theme | ✓ FLOWING |
+| Prior "masked alias" state | `AppShadowTokens.standard.raised` | DELETED (compile-error path if reintroduced) | N/A | ✓ REMOVED |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| CI purity script passes on clean repo | `bash tool/check_theme_purity.sh` | "Theme purity check PASS" exit 0 | ✓ PASS |
-| Zero unjustified AppColorTokens.light outside exempt paths | `grep -rn "AppColorTokens\.light\." lib/ ... | wc -l` | 0 | ✓ PASS |
-| Display section wired to picker sheet | `grep "ThemePickerSheet" lib/features/settings/screens/profile_screen.dart lib/features/settings/widgets/profile_display_section.dart` | 2 hits (reference in docs + actual call) | ✓ PASS |
-| MaterialApp.router uses darkTheme | `grep "darkTheme: AppTheme.darkTheme" lib/main.dart` | 1 hit | ✓ PASS |
-| Full test suite green | Summary reports 1088 pass / 3 skip / 0 fail (Plan 05 gate) | 1088/3/0 | ✓ PASS |
-| Contrast test passes | `flutter test test/unit/dark_theme_contrast_test.dart` | 11 pass per Plan 05 SUMMARY | ✓ PASS |
-| Shadow tokens dark variant registered on darkTheme | theme_wiring_test: `identical(...) == false` | Pass — distinct AppShadowTokens instances | ✓ PASS |
-| Feature widgets read shadow via theme | `grep -rn "AppShadowTokens\.standard\." lib/ | grep -v "lib/core/theme/tokens/" | wc -l` | **37 direct reads across 32 files** | ✗ FAIL |
-| Dark shadow alias behavior | `grep "standard = " lib/core/theme/tokens/shadow_tokens.dart` | `static final AppShadowTokens standard = light;` | ✗ FAIL (silent aliasing) |
+| Purity script 4/4 PASS | `bash tool/check_theme_purity.sh` | Outputs all 4 check labels + `Theme purity check PASS`, exit 0 | ✓ PASS |
+| Zero shadow-alias reads in features | `grep -rn 'AppShadowTokens\.standard\.' lib/features/ --include='*.dart' \| wc -l` | 0 | ✓ PASS |
+| Zero shadow-alias refs repo-wide | `grep -rn 'AppShadowTokens\.standard' lib/ test/ --include='*.dart'` | (no output — 0 matches) | ✓ PASS |
+| Harness uses `context.shadows.raised` | `grep -n 'context\.shadows\.' test/goldens/golden_harness.dart` | 2 hits (lines 150, 208) | ✓ PASS |
+| Harness wraps in Builder | `grep -n 'Builder(' test/goldens/golden_harness.dart` | 2 hits (lines 144, 203) | ✓ PASS |
+| Alias line deleted | `grep -n 'static final AppShadowTokens standard' lib/core/theme/tokens/shadow_tokens.dart` | (no output — 0 matches) | ✓ PASS |
+| 10 dark baselines exist | `ls test/goldens/goldens/*_dark.png \| wc -l` | 10 | ✓ PASS |
+| 10 dark baselines regenerated by commit `0b7f5d6` | `git log --stat 0b7f5d6` | 10 `Bin N -> M bytes` entries, all growing by +363…+687 bytes | ✓ PASS |
+| Full test suite green | `flutter test` | `+1088 ~3: All tests passed!` | ✓ PASS |
+| Flutter analyze 0 errors | `flutter analyze` | `348 issues found.` — 0 errors, all info-level, baseline-matching | ✓ PASS |
+| Check 4 wired into CI | `grep -c 'Check 4' tool/check_theme_purity.sh` | 2 | ✓ PASS |
+| Golden re-run passes without regen flag | `flutter test test/goldens/` | 10 pass (per executor); 10 golden tests all green in full-suite run at lines 1074-1082 | ✓ PASS |
 
 ### Requirements Coverage
 
-| Requirement | Source Plan(s) | Description | Status | Evidence |
-|-------------|----------------|-------------|--------|----------|
-| DARK-01 | 37-02, 37-03a, 37-03b, 37-03c, 37-03d | Every widget reads colors via `context.colors` | ✓ SATISFIED | CI guard exits 0; grep confirms 0 unjustified direct reads |
-| DARK-02 | 37-01, 37-02, 37-03a-d, 37-04, 37-05 | Dark theme toggle persisted in Settings | ✓ SATISFIED | ThemePickerSheet + ProfileDisplaySection wired end-to-end; theme_picker_test asserts persistence round-trip |
-| DARK-03 | 37-02, 37-03a-d, 37-05 | textMuted removed from functional roles; WCAG AA pass | ✓ SATISFIED | Triage complete (73+ functional migrations, 13 decorative-kept with justifications); contrast test passes 11 pairs; CI Check 3 enforces |
-| DARK-04 | 37-02, 37-03a-d, 37-04 | `AppSpacingTokens.standard` actively used | ✓ SATISFIED | ~60+40+7+ opportunistic adoptions across waves; Plan 05's ThemePickerSheet uses context.spacing.space* |
-| DARK-05 | 37-04, 37-05 | Hardcoded `Color(0xFF…)` literals eliminated or justified | ✓ SATISFIED | Avatar slots + 4 gradient pairs + event/expense category roles all promoted to tokens in Plan 04; CI Check 2 enforces remaining literals to have `// design-token-justified:` within 5 preceding lines |
+**Note on REQUIREMENTS.md:** The current `.planning/REQUIREMENTS.md` is scoped to v2.2 (Profile Page) and does not contain explicit `DARK-01..DARK-05` entries. The DARK-* requirement IDs are carried in the ROADMAP Phase 37 summary (lines 100-109) and every plan's frontmatter. Treating the ROADMAP entries as the authoritative source since REQUIREMENTS.md is stale relative to v2.4.
+
+| Requirement | Source Plan(s) | Description (from ROADMAP + plan context) | Status | Evidence |
+|-------------|----------------|-------------------------------------------|--------|----------|
+| DARK-01 | 37-02, 37-03a, 37-03b, 37-03c, 37-03d, 37-06 | Every widget reads colors via `context.colors` | ✓ SATISFIED | Check 1 passes; 0 unjustified `AppColorTokens.light.*` reads. Plan 37-06 extends coverage to shadows via `context.shadows.*`. |
+| DARK-02 | 37-01, 37-02, 37-03a-d, 37-04, 37-05 | Dark theme toggle persisted in Settings | ✓ SATISFIED | `ThemePickerSheet` → `settingsProvider.setThemeMode` → `SharedPreferences`; `theme_picker_test` asserts round-trip. |
+| DARK-03 | 37-02, 37-03a-d, 37-05 | textMuted removed from functional roles; WCAG AA pass | ✓ SATISFIED | 11 contrast assertions in `dark_theme_contrast_test`; Check 3 enforces `// textMuted-decorative-justified:` window. |
+| DARK-04 | 37-02, 37-03a-d, 37-04 | `AppSpacingTokens.standard` actively used | ✓ SATISFIED | ~107+ opportunistic adoptions across waves; ThemePickerSheet and new profile sections use `context.spacing.*`. |
+| DARK-05 | 37-04, 37-05 | Hardcoded `Color(0xFF…)` literals eliminated or justified | ✓ SATISFIED | Avatar slots / gradient pairs / category colors promoted; Check 2 enforces 5-line justification window for remainders. |
+
+No orphan requirement IDs — every ID from every plan frontmatter is satisfied. Plan 37-06 re-declared `requirements: [DARK-01]` because the shadow sweep extends the same `context.*` token contract to elevation.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| lib/core/theme/tokens/shadow_tokens.dart | 25 | `static final AppShadowTokens standard = light;` (alias) | ⚠️ Warning | Allows 32 consumer files to silently get light shadows in dark mode. Breaks SC5 "end-to-end". Tests pass because the alias exists; the reality is that shadows don't flip. |
-| test/goldens/golden_harness.dart | 149, 205 | `boxShadow: AppShadowTokens.standard.raised` inside the golden harness | ⚠️ Warning | Golden baselines cannot distinguish shadow regressions because the harness itself is theme-independent for elevation. Creates a false-green on SC5's visual coverage. |
-| 32 files under lib/features/ and lib/features/settings/ | various | `AppShadowTokens.standard.raised` / `.floating` reads | ⚠️ Warning | Main body of the gap. Not blocker per se — app still renders — but dark theme loses shadow contrast. |
+| — | — | — | — | No new anti-patterns. Prior `AppShadowTokens.standard` alias warning is ELIMINATED — alias deleted, Check 4 guards against regression. |
 
 ### Human Verification Required
 
-None gating the phase status. (Status is `gaps_found`, not `human_needed`.) However, manual confirmation of MANUAL-QA.md's visual walkthrough on a real device would be the natural final check once the shadow gap is closed.
+Three items requiring on-device validation. All three are about visual/motion quality that the automated golden + contrast checks bound but cannot fully ratify:
+
+#### 1. Theme toggle on real device
+
+**Test:** Launch app on Android device via `flutter run --dart-define-from-file=config.json`. Cycle System → Light → Dark via Settings → Display → Theme.
+**Expected:** All cards/heroes render with richer black shadow tint in Dark (`Color(0x59000000)`, 35% black) vs lighter slate tint in Light (`Color(0x14111827)`, 8% slate). System-chrome status bar / navigation bar icon brightness flips immediately. Setting persists across app restart.
+**Why human:** Perceived elevation is inherently visual; goldens confirm pixel-level change, but only humans can judge whether the dark shadow reads as "rich legible depth" vs "muddy halo" on OLED/LCD hardware.
+
+#### 2. MANUAL-QA.md 22-screen walkthrough in Dark
+
+**Test:** Walk through every screen listed in `.planning/phases/37-dark-theme-migration/MANUAL-QA.md` §2 in Dark mode: Home, Group Detail, Event Command Center, Ledger, Add Expense, Settle Up, Gear, Logistics, Vault, Memories, Activity, Settings, and 10 more sub-screens.
+**Expected:** Every elevated surface shows the darker shadow tint. No card appears flat. No residual light-theme artifact (pale borders, unexpected white fills) on any screen.
+**Why human:** The 10 golden screens cover only a subset of MANUAL-QA.md's 22-screen inventory; remaining surfaces need eye-on-device verification.
+
+#### 3. Theme-toggle motion quality
+
+**Test:** Toggle between Light and Dark 5 times in rapid succession.
+**Expected:** Smooth cross-fade; no flicker, no single-frame flash of wrong theme, no shadow ghosting.
+**Why human:** Real-time theme-change animation on 60/120 Hz displays cannot be evaluated programmatically.
 
 ### Gaps Summary
 
-The phase successfully delivered 4 of the 5 ROADMAP success criteria cleanly: color-migration is complete (DARK-01), the Settings toggle persists and wires into `settingsProvider` without a parallel provider (DARK-02), `textMuted` is retired from functional roles with both runtime contrast assertions and a CI comment-based guard (DARK-03), spacing tokens and token-justified literals are enforced by CI (DARK-04 + DARK-05).
+None. All 5 success criteria are now structurally verified. The phase is mechanically complete — all mandatory deliverables, CI guards, test suites, and golden baselines are in place. The three outstanding human-verification items above are visual/motion-quality checks that belong in MANUAL-QA.md's on-device sign-off step, not in the automated verification layer.
 
-The single remaining gap is that **elevation does not track brightness**. `AppShadowTokens.standard` is a static alias for `AppShadowTokens.light`, and 32 files (37 call sites) across lib/features/ and lib/features/settings/ read this alias directly instead of going through `context.shadows.*`. Plan 02 migrated shared-widget shadows and Plan 03b opportunistically migrated 10 refs in groups/, but Plans 03a/03c/03d/04 did not sweep shadow reads — they were not in those plans' must_haves. Wave 1's theme_wiring_test confirms `AppShadowTokens.dark` is registered on `AppTheme.darkTheme`, but direct `AppShadowTokens.standard.*` consumers bypass the extension. The golden suite does not catch this because the synthetic harness itself reads the same alias.
-
-This is a material defect against SC5 ("dark theme renders with the slate-based palette end-to-end"). It's a focused, mechanical fix: roughly the same shape as the Wave 2 shared-widget migration but on a smaller surface. No later phase on the v2.4 roadmap addresses it, so it is not deferrable.
-
-**Recommendation for planner:** Follow-up plan with three tasks — (1) replace every unjustified `AppShadowTokens.standard.*` read with `context.shadows.*` (32 files, scope comparable to Wave 3's smaller folders); (2) fix the golden harness to use `context.shadows` and regenerate the 10 dark baselines; (3) add a Check 4 to `tool/check_theme_purity.sh` forbidding unjustified `AppShadowTokens.standard` reads, then either delete the `standard = light` alias in shadow_tokens.dart or mark the remaining uses with `// design-token-justified:` comments for documented pre-hydration surfaces (if any).
+If all three human items pass on-device, Phase 37 is fully closed and can be marked complete on the ROADMAP. If any human item reveals a visual regression (e.g., a screen where shadows look wrong), a small Plan 37-07 follow-up would be justified — but based on the golden-suite green + Check 4 CI guard + 1088/3/0 test pass, no further structural gap is expected.
 
 ---
 
-_Verified: 2026-04-18T08:07:07Z_
+_Re-verified: 2026-04-18T10:17:00Z_
 _Verifier: Claude (gsd-verifier)_
+_Gap-closure plan: 37-06 (5 commits: ae5e7b2, 61393fb, c7845c4, 51cd53b, 0b7f5d6)_
