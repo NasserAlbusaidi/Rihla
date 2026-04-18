@@ -113,6 +113,7 @@ void main() {
 
     test('lerp at t=0.0 returns this', () {
       const other = AppColorTokens(
+        brightness: Brightness.light,
         primary: Color(0xFF000000),
         scaffoldBackground: Color(0xFF000000),
         cardSurface: Color(0xFF000000),
@@ -160,6 +161,7 @@ void main() {
 
     test('lerp at t=1.0 returns other values', () {
       const other = AppColorTokens(
+        brightness: Brightness.light,
         primary: Color(0xFF000000),
         scaffoldBackground: Color(0xFF000000),
         cardSurface: Color(0xFF000000),

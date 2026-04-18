@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'group_avatar_colors.dart';
+
 /// Typed color token set for the neutral + teal palette.
 ///
 /// All fields are final Color values. Gradient tokens are computed getters
@@ -8,6 +10,7 @@ import 'package:flutter/material.dart';
 /// Use [AppColorTokens.light] for the default light palette instance.
 final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   const AppColorTokens({
+    required this.brightness,
     required this.primary,
     required this.scaffoldBackground,
     required this.cardSurface,
@@ -49,6 +52,10 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     required this.warning,
     required this.primaryDark,
   });
+
+  /// Which brightness variant this instance represents.
+  /// Used by [groupAvatarSlot] to dispatch between light/dark slot palettes.
+  final Brightness brightness;
 
   /// Teal — primary action color (buttons, FABs, focused inputs, links)
   final Color primary;
@@ -184,8 +191,22 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
         colors: [primary, primaryDark],
       );
 
+  /// Deterministic avatar color for [groupId], theme-aware.
+  ///
+  /// Uses a stable FNV-like hash over `codeUnits` — not `String.hashCode`,
+  /// which is not guaranteed stable across Dart versions. The return value
+  /// comes from [AppGroupAvatarColors.lightSlots] or `.darkSlots` based on
+  /// the active [brightness] on this token instance.
+  Color groupAvatarSlot(String groupId) {
+    final slots = brightness == Brightness.dark
+        ? AppGroupAvatarColors.darkSlots
+        : AppGroupAvatarColors.lightSlots;
+    return slots[_stableGroupHash(groupId) % slots.length];
+  }
+
   /// Default neutral + teal light palette instance.
   static const AppColorTokens light = AppColorTokens(
+    brightness: Brightness.light,
     primary: Color(0xFF0D7B74),
     scaffoldBackground: Color(0xFFFFFFFF),
     cardSurface: Color(0xFFF8F9FA),
@@ -239,6 +260,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// This instance enables the theme-level foundation; widget migration is a
   /// separate effort tracked in review #17.
   static const AppColorTokens dark = AppColorTokens(
+    brightness: Brightness.dark,
     primary: Color(0xFF14B8A6), // Teal 500 — lighter for dark background contrast
     scaffoldBackground: Color(0xFF0F172A), // Slate 900
     cardSurface: Color(0xFF1E293B), // Slate 800
@@ -283,6 +305,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
 
   @override
   AppColorTokens copyWith({
+    Brightness? brightness,
     Color? primary,
     Color? scaffoldBackground,
     Color? cardSurface,
@@ -325,6 +348,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     Color? primaryDark,
   }) {
     return AppColorTokens(
+      brightness: brightness ?? this.brightness,
       primary: primary ?? this.primary,
       scaffoldBackground: scaffoldBackground ?? this.scaffoldBackground,
       cardSurface: cardSurface ?? this.cardSurface,
@@ -372,6 +396,8 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   AppColorTokens lerp(ThemeExtension<AppColorTokens>? other, double t) {
     if (other is! AppColorTokens) return this;
     return AppColorTokens(
+      // Brightness is discrete — snap to `other` once t >= 0.5.
+      brightness: t < 0.5 ? brightness : other.brightness,
       primary: Color.lerp(primary, other.primary, t)!,
       scaffoldBackground: Color.lerp(scaffoldBackground, other.scaffoldBackground, t)!,
       cardSurface: Color.lerp(cardSurface, other.cardSurface, t)!,
@@ -415,3 +441,17 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     );
   }
 }
+
+/// Deterministic string hash — folds `codeUnits` with a 31-constant FNV-like
+/// loop. Stable across Dart versions (unlike `String.hashCode`).
+///
+/// Used by [AppColorTokens.groupAvatarSlot] so that a given group ID maps to
+/// the same avatar slot across app upgrades and platform differences.
+int _stableGroupHash(String id) {
+  var h = 0;
+  for (final c in id.codeUnits) {
+    h = (h * 31 + c) & 0xffffffff;
+  }
+  return h;
+}
+

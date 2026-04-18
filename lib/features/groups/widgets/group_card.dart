@@ -30,27 +30,10 @@ class GroupCard extends ConsumerWidget {
   });
 
   // ---------------------------------------------------------------------------
-  // Accent strip — 5 earthy colors, hash-selected per group ID (CARD-01)
-  //
-  // These 5 literals are Plan 04 handoff — they become
-  // context.colors.groupAvatarSlot(index) when AppGroupAvatarColors lands.
+  // Accent strip — resolves theme-aware via context.colors.groupAvatarSlot.
+  // 5 deterministic slots backed by AppGroupAvatarColors.{lightSlots,darkSlots}.
+  // (Plan 37-04 promotion from inline palette.)
   // ---------------------------------------------------------------------------
-
-  static const List<Color> _accentColors = [
-    // design-token-justified: avatar slot 0 — pending Plan 04 AppGroupAvatarColors.lightSlots[0]
-    Color(0xFF0D7B74),
-    // design-token-justified: avatar slot 1 — pending Plan 04 AppGroupAvatarColors.lightSlots[1]
-    Color(0xFFCC6B49),
-    // design-token-justified: avatar slot 2 — pending Plan 04 AppGroupAvatarColors.lightSlots[2]
-    Color(0xFF10B981),
-    // design-token-justified: avatar slot 3 — pending Plan 04 AppGroupAvatarColors.lightSlots[3]
-    Color(0xFFF59E0B),
-    // design-token-justified: avatar slot 4 — pending Plan 04 AppGroupAvatarColors.lightSlots[4]
-    Color(0xFF7C6E5A),
-  ];
-
-  static Color _accentColor(String groupId) =>
-      _accentColors[groupId.hashCode.abs() % _accentColors.length];
 
   // ---------------------------------------------------------------------------
   // Build
@@ -76,7 +59,7 @@ class GroupCard extends ConsumerWidget {
               // 4dp accent strip on the left edge (CARD-01)
               Container(
                 width: 4,
-                color: _accentColor(group.id),
+                color: context.colors.groupAvatarSlot(group.id),
               ),
               // Card content
               Expanded(
