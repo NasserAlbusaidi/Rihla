@@ -21,7 +21,11 @@ final class AppShadowTokens extends ThemeExtension<AppShadowTokens> {
   final List<BoxShadow> floating;
 
   /// Default standard shadow instance using neutral gray-900 base (#111827).
-  static final AppShadowTokens standard = AppShadowTokens(
+  /// Alias for [light] — retained for backward compatibility with existing call sites.
+  static final AppShadowTokens standard = light;
+
+  /// Light-theme shadow instance — neutral gray-900 base (#111827) at low opacity.
+  static final AppShadowTokens light = AppShadowTokens(
         flat: const [],
         raised: [
           BoxShadow(
@@ -43,6 +47,37 @@ final class AppShadowTokens extends ThemeExtension<AppShadowTokens> {
           ),
           BoxShadow(
             color: const Color(0xFF111827).withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      );
+
+  /// Dark-theme shadow instance — pure black base at higher opacity for
+  /// visibility against dark surfaces. Separate instance so theme extensions
+  /// resolve distinct objects per brightness.
+  static final AppShadowTokens dark = AppShadowTokens(
+        flat: const [],
+        raised: [
+          BoxShadow(
+            color: const Color(0xFF000000).withValues(alpha: 0.35),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: const Color(0xFF000000).withValues(alpha: 0.20),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        floating: [
+          BoxShadow(
+            color: const Color(0xFF000000).withValues(alpha: 0.50),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: const Color(0xFF000000).withValues(alpha: 0.25),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

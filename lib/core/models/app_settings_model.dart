@@ -36,7 +36,15 @@ class AppSettings {
     );
   }
 
-  ThemeMode get theme => switch (themeMode) {
+  ThemeMode get theme => themeMode.toMaterialThemeMode();
+}
+
+/// Convert an [AppThemeMode] to Flutter's [ThemeMode] consumed by MaterialApp.
+///
+/// Preferred call site over [AppSettings.theme] when the caller only has the
+/// enum value (e.g. reading via `ref.watch(settingsProvider.select((s) => s.themeMode))`).
+extension AppThemeModeX on AppThemeMode {
+  ThemeMode toMaterialThemeMode() => switch (this) {
     AppThemeMode.light => ThemeMode.light,
     AppThemeMode.dark => ThemeMode.dark,
     AppThemeMode.system => ThemeMode.system,
