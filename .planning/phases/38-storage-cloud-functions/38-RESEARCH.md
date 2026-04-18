@@ -760,7 +760,7 @@ Future<Document> uploadFile({ ... }) async {
 | A7 | `FirebaseFunctions.instanceFor(region: 'us-central1').useFunctionsEmulator(...)` applies to the same instance used by later callable calls | Example 5 | LOW — documented behavior. |
 | A8 | No existing Flutter `http` or `dio` dep is needed beyond current pubspec — `http` is already transitively available | Pattern 4 | LOW — worst case: plan task adds `http: ^1.2.0` explicitly. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`collectionGroup('events')` vs. passing `groupId` explicitly.**
    - What we know: CONTEXT D-04 proposes a collectionGroup lookup; the codebase's Event model already carries `groupId`.
