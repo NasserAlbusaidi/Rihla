@@ -94,6 +94,24 @@ done < <(grep -rn '\.textMuted\b' lib/ \
            | grep -v '^lib/core/theme/app_theme.dart:' \
            | grep -v '^lib/main.dart:')
 
+# ---------------------------------------------------------------------------
+# Check 4: Direct AppShadowTokens.standard.* reads outside tokens/
+# ---------------------------------------------------------------------------
+# The `standard` alias was removed in Plan 37-06 — every shadow read must go
+# through `context.shadows.*` so elevation tracks Theme.of(context).brightness.
+# Exempt paths: lib/core/theme/tokens/ (source of truth). No justification
+# window — the alias is eliminated, so any usage is a regression.
+echo "Check 4: Direct AppShadowTokens.standard.* reads outside lib/core/theme/tokens/"
+V4=$(grep -rn 'AppShadowTokens\.standard\.' lib/ \
+    --include='*.dart' \
+    | grep -v '^lib/core/theme/tokens/' \
+    || true)
+if [ -n "$V4" ]; then
+  echo "::error::Direct AppShadowTokens.standard.* reads found. Use context.shadows.* (theme-aware) instead."
+  echo "$V4"
+  EXIT_CODE=1
+fi
+
 if [ "$EXIT_CODE" -ne 0 ]; then
   echo "Theme purity check FAILED"
   exit 1
