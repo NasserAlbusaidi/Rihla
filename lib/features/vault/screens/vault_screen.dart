@@ -452,7 +452,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   void _openDocument(BuildContext context, Document doc) async {
     try {
       final service = ref.read(documentServiceProvider);
-      final url = await service.getDownloadUrl(doc.fileUrl);
+      final url = await service.getDownloadUrl(
+        groupId: widget.groupId,
+        eventId: widget.eventId,
+        storagePath: doc.fileUrl,
+      );
       if (url == null) throw Exception('Could not generate access link');
 
       final uri = Uri.parse(url);

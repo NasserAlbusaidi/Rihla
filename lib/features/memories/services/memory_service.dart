@@ -1,37 +1,51 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/firestore_repository.dart';
+import '../../../core/services/storage_exceptions.dart';
+import '../../../core/services/storage_gateway.dart';
 import '../models/memory_model.dart';
 
-/// Firestore + Firebase Storage backed memory service.
+/// Firestore + gated-storage memory service.
 ///
-/// Extends [FirestoreRepository] for consistent Firestore path conventions.
-/// Photos are uploaded to Firebase Storage; metadata is stored in the event's
-/// `memories` subcollection at `groups/{groupId}/events/{eventId}/memories`.
+/// Extends [FirestoreRepository] for Firestore path conventions. All trip
+/// storage I/O routes through [StorageGateway] — `storage.rules` denies
+/// direct SDK access to `trip-memories/*` (Phase 38 INFRA-01 #3).
 class MemoryService extends FirestoreRepository {
   static const _uuid = Uuid();
+  static const int _maxFileSizeBytes = 25 * 1024 * 1024;
 
-  /// In-memory cache of storage path → download URL.
-  /// Firebase Storage URLs are long-lived; cache avoids redundant round-trips.
-  final Map<String, String> _urlCache = {};
+  final StorageGateway _gateway;
+  final http.Client _httpClient;
+  final bool _ownsHttpClient;
 
-  MemoryService() : super();
+  MemoryService({StorageGateway? gateway, http.Client? httpClient})
+      : _gateway = gateway ?? StorageGateway(),
+        _httpClient = httpClient ?? http.Client(),
+        _ownsHttpClient = httpClient == null,
+        super();
 
   @visibleForTesting
-  MemoryService.withFirestore(FirebaseFirestore db) : super.withFirestore(db);
+  MemoryService.withFirestore(
+    FirebaseFirestore db, {
+    StorageGateway? gateway,
+    http.Client? httpClient,
+  })  : _gateway = gateway ?? StorageGateway(),
+        _httpClient = httpClient ?? http.Client(),
+        _ownsHttpClient = httpClient == null,
+        super.withFirestore(db);
 
-  FirebaseStorage get _storage => FirebaseStorage.instance;
+  void dispose() {
+    if (_ownsHttpClient) _httpClient.close();
+  }
 
   /// Watch all memories for an event as a live stream.
-  ///
-  /// Returns a [Stream<List<Memory>>] ordered by [createdAt] descending.
   Stream<List<Memory>> watchMemories(String groupId, String eventId) {
     return eventSubcollection(groupId, eventId, 'memories')
         .orderBy('createdAt', descending: true)
@@ -41,10 +55,7 @@ class MemoryService extends FirestoreRepository {
             .toList());
   }
 
-  /// Write memory metadata directly to Firestore.
-  ///
-  /// Exposed [visibleForTesting] to allow unit tests to exercise the Firestore
-  /// path without triggering actual Firebase Storage uploads.
+  /// Test hook for writing memory metadata directly to Firestore.
   @visibleForTesting
   Future<void> writeMetadataToFirestore({
     required String groupId,
@@ -52,20 +63,20 @@ class MemoryService extends FirestoreRepository {
     required String memoryId,
     required Map<String, dynamic> data,
   }) async {
-    await eventSubcollection(groupId, eventId, 'memories').doc(memoryId).set(data);
+    await eventSubcollection(groupId, eventId, 'memories')
+        .doc(memoryId)
+        .set(data);
   }
 
-  /// Pick an image and upload to Firebase Storage, writing metadata to Firestore.
+  /// Pick an image, request a signed upload URL, PUT the bytes, and write metadata.
   ///
-  /// Returns the created [Memory] on success, null if user cancelled.
-  /// Throws [Exception] if the user is not authenticated.
+  /// Returns the created [Memory] on success, or null if the user cancels.
   Future<Memory?> uploadPhoto({
     required String groupId,
     required String eventId,
     required ImageSource source,
     String? caption,
   }) async {
-    // 1. Pick image using ImagePicker
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: source,
@@ -75,74 +86,79 @@ class MemoryService extends FirestoreRepository {
     );
     if (pickedFile == null) return null;
 
-    // 2. Get current user for uploader attribution
     final uid = FirebaseConfig.currentUser?.uid;
-    if (uid == null) throw Exception('Not authenticated');
+    if (uid == null) throw const StorageException.notSignedIn();
 
-    // 3. Build storage path and upload to Firebase Storage
     final id = _uuid.v4();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
     final extension = pickedFile.path.split('.').last.toLowerCase();
-    final storagePath = 'trip-memories/$eventId/$timestamp.$extension';
+    final contentType = 'image/$extension';
+    final fileName = '$id.$extension';
+    final bytes = await File(pickedFile.path).readAsBytes();
 
-    try {
-      final ref = _storage.ref().child(storagePath);
-      final metadata = SettableMetadata(contentType: 'image/$extension');
-      await ref.putFile(File(pickedFile.path), metadata);
-    } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('MemoryService.uploadPhoto storage upload failed: ${e.code} ${e.message}');
-      rethrow;
+    // 1. Signed upload URL from callable.
+    final signed = await _gateway.getSignedUploadUrl(
+      bucket: 'memories',
+      groupId: groupId,
+      eventId: eventId,
+      fileName: fileName,
+      contentType: contentType,
+      sizeBytes: bytes.length,
+    );
+
+    // 2. PUT direct-to-GCS.
+    final response = await _httpClient.put(
+      Uri.parse(signed.uploadUrl),
+      headers: {
+        'Content-Type': contentType,
+        'x-goog-content-length-range': '0,$_maxFileSizeBytes',
+      },
+      body: bytes,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (kDebugMode) {
+        debugPrint(
+          'MemoryService.uploadPhoto PUT failed: ${response.statusCode}',
+        );
+      }
+      throw StorageException.uploadFailed(response.statusCode, response.body);
     }
 
-    // 4. Write metadata to Firestore subcollection
+    // 3. Firestore metadata with server-authoritative storagePath.
     final now = DateTime.now().toUtc();
-    final data = {
+    final data = <String, dynamic>{
       'id': id,
       'eventId': eventId,
       'uploadedBy': uid,
-      'storagePath': storagePath,
+      'storagePath': signed.storagePath,
       'caption': caption,
       'createdAt': now.toIso8601String(),
     };
     try {
       await eventSubcollection(groupId, eventId, 'memories').doc(id).set(data);
     } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('MemoryService.uploadPhoto Firestore write failed: ${e.code} ${e.message}');
+      if (kDebugMode) {
+        debugPrint(
+          'MemoryService.uploadPhoto Firestore write failed: ${e.code} ${e.message}',
+        );
+      }
       rethrow;
     }
 
-    // 5. Return Memory model from the written data
     return Memory.fromFirestore(data);
   }
 
-  /// Get the Firebase Storage download URL for a given storage path.
+  /// Batch-list memories with pre-issued signed download URLs.
   ///
-  /// Returns null on error (e.g. file not found or network unavailable).
-  Future<String?> getDownloadUrl(String storagePath) async {
-    try {
-      return await _storage.ref().child(storagePath).getDownloadURL();
-    } catch (e) {
-      if (kDebugMode) debugPrint('MemoryService: Failed to get download URL for $storagePath: $e');
-      return null;
-    }
+  /// Replaces per-item `getDownloadURL` — single callable round-trip,
+  /// server pre-signs all URLs in parallel (D-03).
+  Future<List<MemoryWithUrl>> listMemoriesWithUrls({
+    required String groupId,
+    required String eventId,
+  }) {
+    return _gateway.listMemoriesWithUrls(groupId: groupId, eventId: eventId);
   }
 
-  /// Cached variant of [getDownloadUrl]. Returns the cached URL if available,
-  /// otherwise fetches from Firebase Storage and caches the result.
-  Future<String?> getDownloadUrlCached(String storagePath) async {
-    if (storagePath.isEmpty) return null;
-    final cached = _urlCache[storagePath];
-    if (cached != null) return cached;
-    final url = await getDownloadUrl(storagePath);
-    if (url != null) {
-      _urlCache[storagePath] = url;
-    }
-    return url;
-  }
-
-  /// Delete memory metadata from Firestore only.
-  ///
-  /// Use this in tests where Firebase Storage is not available.
+  /// Test-only metadata delete (no storage side effect).
   @visibleForTesting
   Future<void> deleteMemoryMetadata({
     required String groupId,
@@ -154,9 +170,7 @@ class MemoryService extends FirestoreRepository {
         .delete();
   }
 
-  /// Delete a memory from both Firebase Storage and Firestore.
-  ///
-  /// Returns true on success, false on any error.
+  /// Delete a memory from both gated storage and Firestore.
   Future<bool> deleteMemory({
     required String groupId,
     required String eventId,
@@ -164,14 +178,18 @@ class MemoryService extends FirestoreRepository {
     required String storagePath,
   }) async {
     try {
-      _urlCache.remove(storagePath);
-      await _storage.ref().child(storagePath).delete();
+      await _gateway.deleteStorageObject(
+        storagePath: storagePath,
+        groupId: groupId,
+      );
       await eventSubcollection(groupId, eventId, 'memories')
           .doc(memoryId)
           .delete();
       return true;
     } catch (e) {
-      if (kDebugMode) debugPrint('MemoryService: Failed to delete memory $memoryId: $e');
+      if (kDebugMode) {
+        debugPrint('MemoryService: Failed to delete memory $memoryId: $e');
+      }
       return false;
     }
   }

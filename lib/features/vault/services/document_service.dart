@@ -2,20 +2,23 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/firestore_repository.dart';
+import '../../../core/services/storage_exceptions.dart';
+import '../../../core/services/storage_gateway.dart';
 import '../models/document_model.dart';
 
-/// Firestore + Firebase Storage backed document service.
+/// Firestore + gated-storage document service.
 ///
-/// Extends [FirestoreRepository] for consistent Firestore path conventions.
-/// Files are uploaded to Firebase Storage; metadata is stored in the event's
-/// `documents` subcollection at `groups/{groupId}/events/{eventId}/documents`.
+/// Extends [FirestoreRepository] for Firestore path conventions. All trip
+/// storage I/O routes through [StorageGateway] — the Firebase Storage SDK is
+/// never invoked directly for `trip-documents/*` because `storage.rules`
+/// denies it (Phase 38 INFRA-01 #3).
 class DocumentService extends FirestoreRepository {
   static const int maxFileSizeBytes = 25 * 1024 * 1024; // 25 MB
   static const List<String> _allowedExtensions = [
@@ -23,16 +26,33 @@ class DocumentService extends FirestoreRepository {
     'xls', 'xlsx', 'txt', 'csv', 'heic', 'webp',
   ];
 
-  DocumentService() : super();
+  final StorageGateway _gateway;
+  final http.Client _httpClient;
+  final bool _ownsHttpClient;
+
+  DocumentService({StorageGateway? gateway, http.Client? httpClient})
+      : _gateway = gateway ?? StorageGateway(),
+        _httpClient = httpClient ?? http.Client(),
+        _ownsHttpClient = httpClient == null,
+        super();
 
   @visibleForTesting
-  DocumentService.withFirestore(FirebaseFirestore db) : super.withFirestore(db);
+  DocumentService.withFirestore(
+    FirebaseFirestore db, {
+    StorageGateway? gateway,
+    http.Client? httpClient,
+  })  : _gateway = gateway ?? StorageGateway(),
+        _httpClient = httpClient ?? http.Client(),
+        _ownsHttpClient = httpClient == null,
+        super.withFirestore(db);
 
-  FirebaseStorage get _storage => FirebaseStorage.instance;
+  /// Releases the internally-managed http client. Callers that injected a
+  /// client are responsible for their own cleanup.
+  void dispose() {
+    if (_ownsHttpClient) _httpClient.close();
+  }
 
   /// Watch all documents for an event as a live stream.
-  ///
-  /// Returns a [Stream<List<Document>>] ordered by [createdAt] descending.
   Stream<List<Document>> watchDocuments(String groupId, String eventId) {
     return eventSubcollection(groupId, eventId, 'documents')
         .orderBy('createdAt', descending: true)
@@ -42,11 +62,7 @@ class DocumentService extends FirestoreRepository {
             .toList());
   }
 
-  /// Write document metadata directly to Firestore (used in tests and
-  /// after successful Storage upload).
-  ///
-  /// This is [visibleForTesting] to allow unit tests to exercise the
-  /// Firestore path without triggering actual Firebase Storage uploads.
+  /// Write document metadata directly to Firestore (tests + post-upload).
   @visibleForTesting
   Future<void> writeMetadataToFirestore({
     required String groupId,
@@ -59,10 +75,9 @@ class DocumentService extends FirestoreRepository {
         .set(data);
   }
 
-  /// Upload a file to Firebase Storage and write metadata to Firestore.
+  /// Request a signed upload URL, PUT the bytes, then write Firestore metadata.
   ///
-  /// Returns the created [Document] on success.
-  /// Throws [Exception] if the user is not authenticated.
+  /// Throws [StorageException] on any gateway or HTTP PUT failure.
   Future<Document> uploadFile({
     required String groupId,
     required String eventId,
@@ -72,47 +87,69 @@ class DocumentService extends FirestoreRepository {
     String? mimeType,
   }) async {
     final uid = FirebaseConfig.currentUser?.uid;
-    if (uid == null) throw Exception('Not authenticated');
+    if (uid == null) throw const StorageException.notSignedIn();
 
-    final id = const Uuid().v4();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final storagePath = 'trip-documents/$eventId/$timestamp-$fileName';
+    final contentType = mimeType ?? 'application/octet-stream';
 
-    // Upload to Firebase Storage
-    try {
-      final ref = _storage.ref().child(storagePath);
-      final metadata = SettableMetadata(contentType: mimeType);
-      await ref.putFile(File(filePath), metadata);
-    } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('DocumentService.uploadFile storage upload failed: ${e.code} ${e.message}');
-      rethrow;
+    // 1. Ask the callable for a signed PUT URL.
+    final signed = await _gateway.getSignedUploadUrl(
+      bucket: 'documents',
+      groupId: groupId,
+      eventId: eventId,
+      fileName: fileName,
+      contentType: contentType,
+      sizeBytes: fileSize,
+    );
+
+    // 2. PUT the bytes direct-to-GCS using the signed URL.
+    final bytes = await File(filePath).readAsBytes();
+    final response = await _httpClient.put(
+      Uri.parse(signed.uploadUrl),
+      headers: {
+        'Content-Type': contentType,
+        'x-goog-content-length-range': '0,$maxFileSizeBytes',
+      },
+      body: bytes,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (kDebugMode) {
+        debugPrint(
+          'DocumentService.uploadFile PUT failed: ${response.statusCode}',
+        );
+      }
+      throw StorageException.uploadFailed(response.statusCode, response.body);
     }
 
-    // Write metadata to Firestore subcollection
+    // 3. Write Firestore metadata with the server-authoritative storagePath.
+    final id = const Uuid().v4();
     final now = DateTime.now().toUtc();
-    final data = {
+    final data = <String, dynamic>{
       'id': id,
       'eventId': eventId,
       'uploaderId': uid,
-      'storagePath': storagePath,
+      'uploadedBy': uid,
+      'storagePath': signed.storagePath,
       'fileName': fileName,
       'fileSize': fileSize,
+      'sizeBytes': fileSize,
       'mimeType': mimeType,
       'createdAt': now.toIso8601String(),
+      'isDeleted': false,
     };
     try {
       await eventSubcollection(groupId, eventId, 'documents').doc(id).set(data);
     } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('DocumentService.uploadFile Firestore write failed: ${e.code} ${e.message}');
+      if (kDebugMode) {
+        debugPrint(
+          'DocumentService.uploadFile Firestore write failed: ${e.code} ${e.message}',
+        );
+      }
       rethrow;
     }
     return Document.fromFirestore(data);
   }
 
-  /// Pick a file using FilePicker and upload it.
-  ///
-  /// Updates loading/error/progress state providers if [ref] is provided.
-  /// Returns the created [Document] on success, null if user cancelled.
+  /// Pick a file via [FilePicker] and upload it.
   Future<Document?> pickAndUpload({
     required String groupId,
     required String eventId,
@@ -168,21 +205,43 @@ class DocumentService extends FirestoreRepository {
     }
   }
 
-  /// Get the Firebase Storage download URL for a given storage path.
+  /// Fetch a signed download URL for a single document via the callable.
   ///
-  /// Returns null on error (e.g. file not found or not authenticated).
-  Future<String?> getDownloadUrl(String storagePath) async {
+  /// Returns null on failure. For bulk listing, use [listDocumentsWithUrls]
+  /// which pre-issues URLs in a single round-trip.
+  Future<String?> getDownloadUrl({
+    required String groupId,
+    required String eventId,
+    required String storagePath,
+  }) async {
     try {
-      return await _storage.ref().child(storagePath).getDownloadURL();
-    } catch (e) {
-      if (kDebugMode) debugPrint('DocumentService: Failed to get download URL for $storagePath: $e');
+      final docs = await _gateway.listDocumentsWithUrls(
+        groupId: groupId,
+        eventId: eventId,
+      );
+      for (final d in docs) {
+        if (d.fields['storagePath'] == storagePath) return d.signedUrl;
+      }
+      return null;
+    } on StorageException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          'DocumentService.getDownloadUrl failed for $storagePath: $e',
+        );
+      }
       return null;
     }
   }
 
-  /// Delete document metadata from Firestore only.
-  ///
-  /// Use this in tests where Firebase Storage is not available.
+  /// Batch-list documents with pre-issued signed URLs (single callable trip).
+  Future<List<DocumentWithUrl>> listDocumentsWithUrls({
+    required String groupId,
+    required String eventId,
+  }) {
+    return _gateway.listDocumentsWithUrls(groupId: groupId, eventId: eventId);
+  }
+
+  /// Delete document metadata from Firestore only (tests).
   @visibleForTesting
   Future<void> deleteDocumentMetadata({
     required String groupId,
@@ -194,9 +253,7 @@ class DocumentService extends FirestoreRepository {
         .delete();
   }
 
-  /// Delete a document from both Firebase Storage and Firestore.
-  ///
-  /// Returns true on success, false on any error.
+  /// Delete a document from both gated storage and Firestore.
   Future<bool> deleteDocument({
     required String groupId,
     required String eventId,
@@ -204,18 +261,22 @@ class DocumentService extends FirestoreRepository {
     required String storagePath,
   }) async {
     try {
-      await _storage.ref().child(storagePath).delete();
+      await _gateway.deleteStorageObject(
+        storagePath: storagePath,
+        groupId: groupId,
+      );
       await eventSubcollection(groupId, eventId, 'documents')
           .doc(documentId)
           .delete();
       return true;
     } catch (e) {
-      if (kDebugMode) debugPrint('DocumentService: Failed to delete document $documentId: $e');
+      if (kDebugMode) {
+        debugPrint('DocumentService: Failed to delete document $documentId: $e');
+      }
       return false;
     }
   }
 
-  /// Mime type helper derived from file extension.
   String _getMimeType(String extension) {
     final ext = extension.toLowerCase();
     switch (ext) {

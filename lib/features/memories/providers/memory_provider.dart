@@ -1,45 +1,64 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/storage_gateway.dart';
 import '../../../core/types/event_ref.dart';
 import '../models/memory_model.dart';
 import '../services/memory_service.dart';
 
 /// Memory service provider
 final memoryServiceProvider = Provider<MemoryService>((ref) {
-  return MemoryService();
+  final service = MemoryService();
+  ref.onDispose(service.dispose);
+  return service;
 });
 
-/// Stream of memories for an event (Firestore-backed), with download URLs
-/// resolved in parallel before each emission.
+/// Stream of memories for an event with batch pre-issued signed URLs.
 ///
-/// Keyed on [EventRef] for group + event co-location.
-/// Uses [MemoryService.getDownloadUrlCached] so repeated stream events
-/// reuse cached URLs without hitting Firebase Storage again.
+/// Uses [MemoryService.listMemoriesWithUrls] so every refresh performs a
+/// single callable round-trip that pre-signs all URLs server-side (D-03).
+/// Replaces per-item `getDownloadURL` calls that went through the direct
+/// Storage SDK — those paths are now denied by `storage.rules`.
 final eventMemoriesProvider =
-    StreamProvider.family<List<Memory>, EventRef>((ref, eventRef) {
+    StreamProvider.family<List<Memory>, EventRef>((ref, eventRef) async* {
   final service = ref.watch(memoryServiceProvider);
-  return service
-      .watchMemories(eventRef.groupId, eventRef.eventId)
-      .asyncMap((memories) async {
-    final resolved = await Future.wait(
-      memories.map((m) async {
-        if (m.storagePath.isEmpty) return m;
-        final url = await service.getDownloadUrlCached(m.storagePath);
-        return url != null ? m.copyWith(signedUrl: url) : m;
-      }),
-    );
-    return resolved;
-  });
+  await for (final memories in service.watchMemories(
+    eventRef.groupId,
+    eventRef.eventId,
+  )) {
+    if (memories.isEmpty) {
+      yield memories;
+      continue;
+    }
+    try {
+      final withUrls = await service.listMemoriesWithUrls(
+        groupId: eventRef.groupId,
+        eventId: eventRef.eventId,
+      );
+      final urlByPath = <String, String>{
+        for (final m in withUrls)
+          if (m.fields['storagePath'] is String)
+            m.fields['storagePath'] as String: m.signedUrl,
+      };
+      yield memories
+          .map((m) => urlByPath[m.storagePath] != null
+              ? m.copyWith(signedUrl: urlByPath[m.storagePath])
+              : m)
+          .toList();
+    } catch (_) {
+      // If the callable fails (auth/transient), fall back to metadata without
+      // URLs — screens render placeholders rather than crashing the stream.
+      yield memories;
+    }
+  }
 });
 
-/// Backward-compatible shim for existing screens still on the trip-ID API.
-///
-/// Screens referencing [tripMemoriesProvider] will continue to compile.
-/// Migrate callers to [eventMemoriesProvider] once EventRef is propagated.
+/// Backward-compatible shim for screens still on the trip-ID API.
 @Deprecated('Use eventMemoriesProvider with EventRef instead')
 final tripMemoriesProvider =
     FutureProvider.family<List<Memory>, String>((ref, tripId) async {
-  // Cannot resolve groupId from tripId at this layer — return empty list
-  // until callers are migrated to eventMemoriesProvider.
   return const [];
 });
+
+/// Keep [MemoryWithUrl] exported here so providers don't have to import the
+/// gateway directly for type references.
+typedef MemoryListing = MemoryWithUrl;

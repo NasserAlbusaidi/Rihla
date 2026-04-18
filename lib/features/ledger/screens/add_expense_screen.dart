@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -21,6 +21,7 @@ import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
+import '../services/receipt_service.dart';
 import '../widgets/amount_input_section.dart';
 import '../widgets/category_selection_step.dart';
 import '../widgets/expense_success_dialog.dart';
@@ -245,22 +246,23 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
   }
 
-  /// Upload receipt to Firebase Storage.
+  /// Upload receipt via the gated callable.
+  ///
+  /// Storage rules deny direct SDK access to `receipts/*`, so uploads must
+  /// flow through [ReceiptService] → StorageGateway → signed PUT URL. An
+  /// expense id is pre-generated client-side because the expense row has
+  /// not been persisted yet; this id is then used for both the receipt
+  /// storage path and the Firestore expense document.
   Future<String?> _uploadReceipt(String filePath) async {
-    try {
-      final file = File(filePath);
-      final fileName = filePath.split('/').last;
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final storagePath = '${widget.eventId}/receipts/$timestamp-$fileName';
-      final ref = FirebaseStorage.instance.ref().child(storagePath);
-      final metadata = SettableMetadata(contentType: 'image/jpeg');
-      await ref.putFile(file, metadata);
-      final url = await ref.getDownloadURL();
-      return url;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Receipt upload failed: $e');
-      return null;
-    }
+    final file = File(filePath);
+    final expenseId = const Uuid().v4();
+    final service = ref.read(receiptServiceProvider);
+    return service.uploadReceipt(
+      groupId: widget.groupId,
+      eventId: widget.eventId,
+      expenseId: expenseId,
+      imageFile: file,
+    );
   }
 
   void _showSuccessDialog(Expense expense) {
