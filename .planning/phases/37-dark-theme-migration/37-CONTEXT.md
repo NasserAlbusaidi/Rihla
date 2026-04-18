@@ -49,10 +49,10 @@ Out of scope (deferred):
 - **D-04:** Default mode = `ThemeMode.system`. Respects OS setting; user can override.
 - **D-05:** Placement = new "Display" section in `lib/features/settings/screens/profile_screen.dart`, positioned above the existing About section. Single tile labeled "Theme" showing current mode (e.g., "System • Following device").
 - **D-06:** Tap opens a bottom sheet (`showModalBottomSheet`) with three radio options: System / Light / Dark, each with a one-line description ("Follow device setting" / "Always light" / "Always dark"). Selection persists immediately and dismisses sheet.
-- **D-07:** Persistence = SharedPreferences key `theme_mode` storing string `'system' | 'light' | 'dark'`. Reuse existing `sharedPreferencesProvider` in `lib/main.dart`. Hydration in `themeModeProvider` constructor (synchronous read like `onboardingCompleteProvider`).
-- **D-08:** State = `themeModeProvider` is a `StateNotifierProvider<ThemeModeNotifier, ThemeMode>`. Place in `lib/features/settings/providers/theme_mode_provider.dart`.
+- **D-07:** ~~Persistence = SharedPreferences key `theme_mode` storing string `'system' | 'light' | 'dark'`. Reuse existing `sharedPreferencesProvider` in `lib/main.dart`. Hydration in `themeModeProvider` constructor (synchronous read like `onboardingCompleteProvider`).~~ **Superseded by D-07a (2026-04-18):** Persistence already exists on `settingsProvider` — `AppSettings.theme: AppThemeMode` is already stored via SharedPreferences and exposed via `SettingsNotifier.setThemeMode(AppThemeMode)`. Reuse this — no new persistence layer.
+- **D-08:** ~~State = `themeModeProvider` is a `StateNotifierProvider<ThemeModeNotifier, ThemeMode>`. Place in `lib/features/settings/providers/theme_mode_provider.dart`.~~ **Superseded by D-08a (2026-04-18):** No new provider. Read theme via `ref.watch(settingsProvider.select((s) => s.theme.toMaterialThemeMode()))`. Writes call `ref.read(settingsProvider.notifier).setThemeMode(AppThemeMode)`. Rationale: creating a parallel `themeModeProvider` produces dual source of truth against the existing `AppSettings.theme` field. Add `AppThemeMode.toMaterialThemeMode()` extension if it does not yet exist.
 - **D-09:** Animation = none (instant). Flutter's `MaterialApp.themeMode` swap is acceptable. No `AnimatedTheme` wrapper — adds rebuild cost during full-tree theme change with no UX win.
-- **D-10:** Wiring = `MaterialApp.router(theme: AppTheme.lightTheme, darkTheme: AppTheme.darkTheme, themeMode: ref.watch(themeModeProvider))` in the root.
+- **D-10:** ~~Wiring = `MaterialApp.router(theme: AppTheme.lightTheme, darkTheme: AppTheme.darkTheme, themeMode: ref.watch(themeModeProvider))` in the root.~~ **Superseded by D-10a (2026-04-18):** Wiring = `MaterialApp.router(theme: AppTheme.lightTheme, darkTheme: AppTheme.darkTheme, themeMode: ref.watch(settingsProvider.select((s) => s.theme.toMaterialThemeMode())))` in the root.
 
 ### textMuted Replacement Strategy
 
@@ -191,6 +191,7 @@ Out of scope (deferred):
 - **Spacing-only sweep across untouched files** — D-21 defers this. Could be a Phase 39+ "tech-debt: spacing tokens" cleanup.
 - **High-contrast accessibility theme** (WCAG AAA) — separate phase. This phase targets AA only.
 - **Dark theme for golden test runner CI image** — assume default test runner handles `MediaQueryData(platformBrightness: Brightness.dark)` injection in test setup; if not, add infra in a follow-up.
+- **Ledger hero gradient palette** — current implementation uses terracotta (`Color(0xFFCC6B49), Color(0xFFE0896A)`) which contradicts CLAUDE.md module accent rule (Ledger = primary teal). Preserved in Phase 37 per D-03 (mechanical migration only, no redesign). Revisit in a follow-up phase with user review — the visual change is non-trivial and affects ledger-screen branding.
 
 </deferred>
 

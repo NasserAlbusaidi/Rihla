@@ -11,7 +11,7 @@ files_modified:
   - lib/features/memories/**/*.dart
   - lib/features/activity/**/*.dart
 autonomous: true
-requirements: [DARK-01, DARK-02, DARK-03, DARK-04]
+requirements: [DARK-01, DARK-03, DARK-04]
 task_ids: [37-03d-01, 37-03d-02, 37-03d-03, 37-03d-04]
 tags: [theme, dark-mode, migration, features]
 

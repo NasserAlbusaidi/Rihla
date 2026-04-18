@@ -8,7 +8,7 @@ files_modified:
   - lib/features/events/**/*.dart
   - lib/features/ledger/**/*.dart
 autonomous: true
-requirements: [DARK-01, DARK-02, DARK-03, DARK-04]
+requirements: [DARK-01, DARK-03, DARK-04]
 task_ids: [37-03c-01, 37-03c-02, 37-03c-03]
 tags: [theme, dark-mode, migration, features, events, ledger]
 

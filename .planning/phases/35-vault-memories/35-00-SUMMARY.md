@@ -121,3 +121,11 @@ These stubs are intentional — RED state is the goal of Plan 00.
 ---
 *Phase: 35-vault-memories*
 *Completed: 2026-04-05*
+
+## Self-Check: PASSED
+
+- FOUND: test/features/vault_screen_mutations_test.dart
+- FOUND: test/features/memories_screen_mutations_test.dart
+- FOUND: .planning/phases/35-vault-memories/35-00-SUMMARY.md
+- FOUND: commit 2847667 (vault test stub)
+- FOUND: commit 5edf69d (memories test stub)

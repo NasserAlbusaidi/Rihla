@@ -10,7 +10,7 @@ files_modified:
   - lib/features/settings/**/*.dart
   - lib/features/home/**/*.dart
 autonomous: true
-requirements: [DARK-01, DARK-02, DARK-03, DARK-04]
+requirements: [DARK-01, DARK-03, DARK-04]
 task_ids: [37-03a-01, 37-03a-02, 37-03a-03, 37-03a-04]
 tags: [theme, dark-mode, migration, features]
 

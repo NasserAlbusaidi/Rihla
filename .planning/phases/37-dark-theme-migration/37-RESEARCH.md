@@ -677,11 +677,11 @@ Given `flutter_animate: ^4.5.0` is in `pubspec.yaml`, recommended mitigation set
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Golden generator environment.** Dev's Mac (macOS 14 arm64) or CI Linux runner? Recommend Mac-local generation + commit, then verify on CI. If CI produces different pixels, regenerate on CI and commit those as baseline. Decision: Nasser to pick in W5.
-2. **`_AuthRetryScreen` (main.dart:116-163).** Migrate to theme-aware, or leave hardcoded-light with justification? Shown before `themeMode` can hydrate from SharedPreferences, so arguably hardcoded-light is correct. Recommend: keep hardcoded, add justification comment. Planner can decide.
-3. **Warm label/hint colors in light input theme** (app_theme.dart:115, 121 — #2C1A0E dark brown, #A89888 warm gray). These are used only with the "warm" inputFill (#F5EDE1). Options: (a) add `textOnWarm` + `hintOnWarm` tokens to `AppColorTokens.light` (and matching dark variants), (b) accept them as design-token-justified literals, (c) remove the warm input style entirely and use neutral. Recommend (a) — follows D-15 promote-to-tokens pattern. Planner to decide.
+1. **Golden generator environment.** Dev's Mac (macOS 14 arm64) or CI Linux runner? Recommend Mac-local generation + commit, then verify on CI. If CI produces different pixels, regenerate on CI and commit those as baseline. **RESOLVED:** Plan 05 Task 37-05-05 documents env choice at run time (`test/goldens/README.md` records generator env after first successful baseline generation).
+2. **`_AuthRetryScreen` (main.dart:116-163).** Migrate to theme-aware, or leave hardcoded-light with justification? Shown before `themeMode` can hydrate from SharedPreferences, so arguably hardcoded-light is correct. **RESOLVED:** Plan 01 Task 37-01-04 keeps `_AuthRetryScreen` hardcoded-light with `// design-token-justified: pre-hydration error fallback` comment.
+3. **Warm label/hint colors in light input theme** (app_theme.dart:115, 121 — #2C1A0E dark brown, #A89888 warm gray). These are used only with the "warm" inputFill (#F5EDE1). Options: (a) add `textOnWarm` + `hintOnWarm` tokens to `AppColorTokens.light` (and matching dark variants), (b) accept them as design-token-justified literals, (c) remove the warm input style entirely and use neutral. **RESOLVED:** Plan 01 Task 37-01-02 keeps literals at app_theme.dart lines 115/121 with `// design-token-justified:` comments (option b); promotion to `textOnWarm` / `hintOnWarm` tokens deferred to a follow-up phase.
 
 ---
 
