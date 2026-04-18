@@ -15,7 +15,7 @@ import '../models/activity_log_model.dart';
 import '../services/activity_service.dart';
 import '../widgets/activity_entry_card.dart';
 import '../widgets/activity_hero_card.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Activity feed screen — Date-grouped timeline per D-21.
 ///
@@ -40,7 +40,7 @@ class ActivityFeedScreen extends ConsumerWidget {
     // Loading state — skeleton while event loads
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(
@@ -58,7 +58,7 @@ class ActivityFeedScreen extends ConsumerWidget {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found'),
@@ -70,7 +70,7 @@ class ActivityFeedScreen extends ConsumerWidget {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -80,7 +80,7 @@ class ActivityFeedScreen extends ConsumerWidget {
 
     return Scaffold(
       key: ActivityKeys.screen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: activityAsync.when(
         loading: () => CustomScrollView(
           slivers: [
@@ -110,7 +110,7 @@ class ActivityFeedScreen extends ConsumerWidget {
                 message: 'Check your connection and try again.',
                 actionLabel: 'Reload',
                 onAction: () => ref.invalidate(eventActivityProvider(eventRef)),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -147,6 +147,7 @@ class ActivityFeedScreen extends ConsumerWidget {
                     message:
                         'Actions by you and your group members will appear here.',
                     accentGradient: const LinearGradient(
+                      // design-token-justified: activity hero gradient — pending Plan 04 AppGradients
                       colors: [Color(0xFFA67C5B), Color(0xFFC29A7A)],
                     ),
                   ),
@@ -226,7 +227,7 @@ class _DateSectionHeader extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w400,
-          color: AppColorTokens.light.textMuted,
+          color: context.colors.textSecondary,
           letterSpacing: 0.5,
         ),
       ),

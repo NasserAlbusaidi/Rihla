@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../models/gear_item_model.dart';
 
@@ -34,14 +34,14 @@ class GearItemCard extends StatelessWidget {
     final isMine = item.assignedTo == currentUserId;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
-        borderRadius: BorderRadius.circular(16),
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
         border: Border.all(
           color: item.isHighPriority
-              ? AppColorTokens.light.error.withValues(alpha: 0.3)
-              : AppColorTokens.light.inputFill,
+              ? context.colors.error.withValues(alpha: 0.3)
+              : context.colors.inputFill,
           width: item.isHighPriority ? 2 : 1.5,
         ),
         boxShadow: AppShadowTokens.standard.raised,
@@ -59,19 +59,19 @@ class GearItemCard extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 color: item.isPacked
-                    ? AppColorTokens.light.primary
+                    ? context.colors.primary
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: item.isPacked
-                      ? AppColorTokens.light.primary
-                      : AppColorTokens.light.border,
+                      ? context.colors.primary
+                      : context.colors.border,
                   width: 2,
                 ),
                 boxShadow: item.isPacked
                     ? [
                         BoxShadow(
-                          color: AppColorTokens.light.primary
+                          color: context.colors.primary
                               .withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
@@ -84,7 +84,7 @@ class GearItemCard extends StatelessWidget {
                   : null,
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: context.spacing.space16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,8 +99,8 @@ class GearItemCard extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.3,
                           color: item.isPacked
-                              ? AppColorTokens.light.textMuted
-                              : AppColorTokens.light.textPrimary,
+                              ? context.colors.textSecondary
+                              : context.colors.textPrimary,
                           decoration: item.isPacked
                               ? TextDecoration.lineThrough
                               : null,
@@ -115,7 +115,7 @@ class GearItemCard extends StatelessWidget {
                   children: [
                     _StatusChip(status: item.status),
                     if (item.assignedTo != null) ...[
-                      const SizedBox(width: 12),
+                      SizedBox(width: context.spacing.space12),
                       _AssigneeChip(
                         item: item,
                         isMine: isMine,
@@ -129,7 +129,8 @@ class GearItemCard extends StatelessWidget {
           PopupMenuButton<String>(
             icon: Icon(
               Iconsax.more,
-              color: AppColorTokens.light.textMuted,
+              // textMuted-decorative-justified: popup "more" affordance icon
+              color: context.colors.textMuted,
               size: 20,
             ),
             onSelected: (value) => onMenuAction(value, item),
@@ -151,7 +152,7 @@ class GearItemCard extends StatelessWidget {
                 child: Text(
                   'Delete',
                   style:
-                      TextStyle(color: AppColorTokens.light.errorText),
+                      TextStyle(color: context.colors.errorText),
                 ),
               ),
             ],
@@ -174,9 +175,9 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (status) {
-      GearStatus.unclaimed => AppColorTokens.light.textMuted,
-      GearStatus.claimed => AppColorTokens.light.warning,
-      GearStatus.packed => AppColorTokens.light.moduleLedger,
+      GearStatus.unclaimed => context.colors.textSecondary,
+      GearStatus.claimed => context.colors.warning,
+      GearStatus.packed => context.colors.moduleLedger,
     };
 
     return Container(
@@ -208,21 +209,21 @@ class _PriorityBadge extends StatelessWidget {
       margin: const EdgeInsets.only(left: 8),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.error.withValues(alpha: 0.1),
+        color: context.colors.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Iconsax.flash,
-              color: AppColorTokens.light.errorText, size: 10),
+              color: context.colors.errorText, size: 10),
           const SizedBox(width: 4),
           Text(
             'HIGH',
             style: TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.w900,
-              color: AppColorTokens.light.errorText,
+              color: context.colors.errorText,
             ),
           ),
         ],
@@ -242,14 +243,14 @@ class _AssigneeChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.inputFill,
+        color: context.colors.inputFill,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 8,
-            backgroundColor: AppColorTokens.light.textMuted,
+            backgroundColor: context.colors.textSecondary,
             child: Text(
               item.assigneeInitials,
               style: const TextStyle(
@@ -270,7 +271,7 @@ class _AssigneeChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w900,
-              color: AppColorTokens.light.textSecondary,
+              color: context.colors.textSecondary,
             ),
           ),
         ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Hero card for the Vault screen (D-14).
@@ -29,7 +29,7 @@ class VaultHeroCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
@@ -49,7 +49,7 @@ class VaultHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
@@ -60,7 +60,7 @@ class VaultHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),

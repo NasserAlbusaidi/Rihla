@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../models/activity_log_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Activity entry card for the date-grouped timeline — D-21.
@@ -31,7 +31,7 @@ class ActivityEntryCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16 + 8),
         boxShadow: AppShadowTokens.standard.raised,
       ),
@@ -69,7 +69,7 @@ class ActivityEntryCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                     height: 1.4,
                   ),
                 ),
@@ -80,7 +80,7 @@ class ActivityEntryCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: AppColorTokens.light.textMuted,
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ],

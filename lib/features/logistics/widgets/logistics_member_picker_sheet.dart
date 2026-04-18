@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/error_widgets.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../events/providers/event_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/sub_group_model.dart';
@@ -49,7 +49,7 @@ class LogisticsMemberPickerSheet extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
@@ -62,7 +62,7 @@ class LogisticsMemberPickerSheet extends ConsumerWidget {
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -84,7 +84,7 @@ class LogisticsMemberPickerSheet extends ConsumerWidget {
                   child: Center(
                     child: Text(
                       'No unassigned members',
-                      style: TextStyle(color: AppColorTokens.light.textMuted),
+                      style: TextStyle(color: context.colors.textSecondary),
                     ),
                   ),
                 );
@@ -99,7 +99,7 @@ class LogisticsMemberPickerSheet extends ConsumerWidget {
                     return ListTile(
                       leading: CircleAvatar(
                         radius: 18,
-                        backgroundColor: AppColorTokens.light.scaffoldBackground,
+                        backgroundColor: context.colors.scaffoldBackground,
                         backgroundImage: p.avatarUrl != null &&
                                 p.avatarUrl!.startsWith('http')
                             ? NetworkImage(p.avatarUrl!)
@@ -111,7 +111,7 @@ class LogisticsMemberPickerSheet extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColorTokens.light.moduleLedger,
+                                  color: context.colors.moduleLedger,
                                 ),
                               )
                             : null,
@@ -135,7 +135,7 @@ class LogisticsMemberPickerSheet extends ConsumerWidget {
               child: Center(
                 child: Text(
                   'Loading...',
-                  style: TextStyle(color: AppColorTokens.light.textMuted),
+                  style: TextStyle(color: context.colors.textSecondary),
                 ),
               ),
             ),

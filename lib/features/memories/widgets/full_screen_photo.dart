@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../models/memory_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Full-screen photo viewer with pinch-to-zoom and a delete action.
 ///
@@ -99,7 +99,7 @@ class FullScreenPhoto extends StatelessWidget {
                                 },
                                 child: Text(
                                   'Delete',
-                                  style: TextStyle(color: AppColorTokens.light.error),
+                                  style: TextStyle(color: context.colors.error),
                                 ),
                               ),
                             ],
