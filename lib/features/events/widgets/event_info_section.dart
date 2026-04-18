@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
@@ -128,7 +128,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
               'Event updated',
               style: TextStyle(color: Colors.white),
             ),
-            backgroundColor: AppColorTokens.light.textPrimary,
+            backgroundColor: context.colors.textPrimary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -165,7 +165,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
         Container(
           key: EventKeys.infoSection,
           decoration: BoxDecoration(
-            color: AppColorTokens.light.cardSurface,
+            color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: AppShadowTokens.standard.raised,
           ),
@@ -193,7 +193,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
         Icon(
           Iconsax.setting_2,
           size: 16,
-          color: AppColorTokens.light.textSecondary,
+          color: context.colors.textSecondary,
         ),
         const SizedBox(width: 6),
         Text(
@@ -201,7 +201,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -218,18 +218,18 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
       prefixIcon: Icon(
         icon,
         size: 18,
-        color: AppColorTokens.light.textSecondary,
+        color: context.colors.textSecondary,
       ),
       filled: true,
-      fillColor: AppColorTokens.light.inputFillWarm,
+      fillColor: context.colors.inputFillWarm,
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: AppColorTokens.light.borderWarm),
+        borderSide: BorderSide(color: context.colors.borderWarm),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: AppColorTokens.light.focusBorderWarm,
+          color: context.colors.focusBorderWarm,
           width: 1.5,
         ),
       ),
@@ -243,7 +243,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
       style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        color: AppColorTokens.light.textPrimary,
+        color: context.colors.textPrimary,
       ),
       decoration: _fieldDecoration(
         labelText: 'Event Name',
@@ -279,8 +279,8 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
             fontSize: 13,
             fontWeight: FontWeight.w400,
             color: date == null
-                ? AppColorTokens.light.textSecondary
-                : AppColorTokens.light.textPrimary,
+                ? context.colors.textSecondary
+                : context.colors.textPrimary,
           ),
           decoration: _fieldDecoration(
             labelText: label,
@@ -298,7 +298,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
       style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        color: AppColorTokens.light.textPrimary,
+        color: context.colors.textPrimary,
       ),
       decoration: _fieldDecoration(
         labelText: 'Description',
@@ -323,7 +323,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
                 _save();
               },
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColorTokens.light.primary,
+          backgroundColor: context.colors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(

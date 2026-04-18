@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Receipt image picker and preview for expense entry.
 class ReceiptPickerSection extends StatelessWidget {
@@ -29,7 +29,7 @@ class ReceiptPickerSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textMuted,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -39,11 +39,11 @@ class ReceiptPickerSection extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColorTokens.light.inputFill,
+              color: context.colors.inputFill,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: receiptPath != null
-                    ? AppColorTokens.light.primary
+                    ? context.colors.primary
                     : Colors.transparent,
                 width: 2,
               ),
@@ -108,14 +108,14 @@ class _ReceiptPreview extends StatelessWidget {
                 'Receipt attached',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: AppColorTokens.light.textPrimary,
+                  color: context.colors.textPrimary,
                 ),
               ),
               Text(
                 'Tap to change',
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                 ),
               ),
             ],
@@ -129,13 +129,13 @@ class _ReceiptPreview extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColorTokens.light.error.withValues(alpha: 0.1),
+              color: context.colors.error.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               Iconsax.trash,
               size: 18,
-              color: AppColorTokens.light.error,
+              color: context.colors.error,
             ),
           ),
         ),
@@ -153,20 +153,20 @@ class _ReceiptPlaceholder extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.cardSurface,
+            color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             Iconsax.camera,
             size: 20,
-            color: AppColorTokens.light.textMuted,
+            color: context.colors.textSecondary,
           ),
         ),
         const SizedBox(width: 12),
         Text(
           'Add a receipt photo',
           style: TextStyle(
-            color: AppColorTokens.light.textMuted,
+            color: context.colors.textSecondary,
             fontWeight: FontWeight.w500,
           ),
         ),

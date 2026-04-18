@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Numeric keypad and amount display for expense entry.
 ///
@@ -33,7 +33,7 @@ class AmountInputSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w300,
-                color: AppColorTokens.light.textMuted,
+                color: context.colors.textSecondary,
               ),
             ),
             const SizedBox(width: 8),
@@ -42,7 +42,7 @@ class AmountInputSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 64,
                 fontWeight: FontWeight.w900,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
           ],
@@ -67,19 +67,19 @@ class _Numpad extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Column(
         children: [
-          _buildRow(['1', '2', '3']),
+          _buildRow(context, ['1', '2', '3']),
           const SizedBox(height: 20),
-          _buildRow(['4', '5', '6']),
+          _buildRow(context, ['4', '5', '6']),
           const SizedBox(height: 20),
-          _buildRow(['7', '8', '9']),
+          _buildRow(context, ['7', '8', '9']),
           const SizedBox(height: 20),
-          _buildRow(['.', '0', 'back']),
+          _buildRow(context, ['.', '0', 'back']),
         ],
       ),
     );
   }
 
-  Widget _buildRow(List<String> keys) {
+  Widget _buildRow(BuildContext context, List<String> keys) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: keys.map((key) {
@@ -87,7 +87,7 @@ class _Numpad extends StatelessWidget {
           return _NumpadKey(
             child: Icon(
               Icons.backspace_outlined,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
             onTap: () => onKeyPress('back'),
           );
@@ -98,7 +98,7 @@ class _Numpad extends StatelessWidget {
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w600,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
           onTap: () => onKeyPress(key),

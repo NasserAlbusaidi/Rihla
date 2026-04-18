@@ -3,7 +3,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../models/settlement_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Inline settlement entry for the Ledger timeline.
@@ -35,18 +35,18 @@ class SettlementRow extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppShadowTokens.standard.raised,
         border: Border(
-          left: BorderSide(color: AppColorTokens.light.moduleLedger, width: 3),
+          left: BorderSide(color: context.colors.moduleLedger, width: 3),
         ),
       ),
       child: Row(
         children: [
           Icon(
             Iconsax.tick_circle,
-            color: AppColorTokens.light.moduleLedger,
+            color: context.colors.moduleLedger,
             size: 18,
           ),
           const SizedBox(width: 8),
@@ -59,7 +59,7 @@ class SettlementRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -70,7 +70,7 @@ class SettlementRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: AppColorTokens.light.successText,
+                        color: context.colors.successText,
                       ),
                     ),
                     const Spacer(),
@@ -79,7 +79,7 @@ class SettlementRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: AppColorTokens.light.textMuted,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ],

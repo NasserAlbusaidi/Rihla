@@ -6,7 +6,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Payer dropdown for the edit-expense screen. Visible only to the event
 /// creator (leader). Non-leaders see a zero-height widget.
@@ -49,7 +49,7 @@ class EditExpensePayerSelector extends ConsumerWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textMuted,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -57,7 +57,7 @@ class EditExpensePayerSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
           child: DropdownButtonHideUnderline(

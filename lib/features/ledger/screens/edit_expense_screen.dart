@@ -10,7 +10,7 @@ import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../widgets/edit_expense_form.dart';
 
 /// Full-page screen for editing an existing expense.
@@ -153,7 +153,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Iconsax.trash, color: AppColorTokens.light.error),
+            Icon(Iconsax.trash, color: context.colors.error),
             const SizedBox(width: 12),
             const Text('Delete Expense?'),
           ],
@@ -172,7 +172,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
             onPressed: () => Navigator.pop(context, true),
             child: Text(
               'Delete',
-              style: TextStyle(color: AppColorTokens.light.error),
+              style: TextStyle(color: context.colors.error),
             ),
           ),
         ],
@@ -200,7 +200,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Expense deleted'),
-            backgroundColor: AppColorTokens.light.success,
+            backgroundColor: context.colors.success,
           ),
         );
         context.pop();
@@ -216,7 +216,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
 
     return expensesAsync.when(
       loading: () => Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
@@ -225,7 +225,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         ),
       ),
       error: (e, _) => Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
@@ -236,7 +236,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                 message: 'Could not load the expense data.',
                 actionLabel: 'Go Back',
                 onAction: () => context.pop(),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -248,7 +248,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
 
         if (expense == null) {
           return Scaffold(
-            backgroundColor: AppColorTokens.light.scaffoldBackground,
+            backgroundColor: context.colors.scaffoldBackground,
             body: Column(
               children: [
                 const ModuleHeader(
@@ -262,7 +262,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
                     message: 'This expense may have been deleted.',
                     actionLabel: 'Go Back',
                     onAction: () => context.pop(),
-                    iconColor: AppColorTokens.light.textSecondary,
+                    iconColor: context.colors.textSecondary,
                   ),
                 ),
               ],
@@ -275,7 +275,7 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
         final event = eventAsync.valueOrNull;
         if (event == null) {
           return Scaffold(
-            backgroundColor: AppColorTokens.light.scaffoldBackground,
+            backgroundColor: context.colors.scaffoldBackground,
             body: Column(
               children: [
                 const ModuleHeader(

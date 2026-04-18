@@ -6,7 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
@@ -51,23 +51,23 @@ class EventDangerSection extends ConsumerWidget {
       key: EventKeys.dangerSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(),
+        _buildSectionHeader(context),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: AppColorTokens.light.cardSurface,
+            color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColorTokens.light.error.withValues(alpha: 0.3),
+              color: context.colors.error.withValues(alpha: 0.3),
             ),
             boxShadow: AppShadowTokens.standard.raised,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (hasUnsettled) _buildBalanceWarning(),
+              if (hasUnsettled) _buildBalanceWarning(context),
               if (hasUnsettled)
-                Divider(height: 1, color: AppColorTokens.light.inputFill),
+                Divider(height: 1, color: context.colors.inputFill),
               _buildDeleteTile(context, ref, hasUnsettled),
             ],
           ),
@@ -76,13 +76,13 @@ class EventDangerSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader() {
+  Widget _buildSectionHeader(BuildContext context) {
     return Row(
       children: [
         Icon(
           Iconsax.warning_2,
           size: 16,
-          color: AppColorTokens.light.errorText,
+          color: context.colors.errorText,
         ),
         const SizedBox(width: 6),
         Text(
@@ -90,7 +90,7 @@ class EventDangerSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.errorText,
+            color: context.colors.errorText,
             letterSpacing: 1.5,
           ),
         ),
@@ -98,7 +98,7 @@ class EventDangerSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildBalanceWarning() {
+  Widget _buildBalanceWarning(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -106,7 +106,7 @@ class EventDangerSection extends ConsumerWidget {
           Icon(
             Iconsax.warning_2,
             size: 16,
-            color: AppColorTokens.light.warning,
+            color: context.colors.warning,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -115,7 +115,7 @@ class EventDangerSection extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
             ),
           ),
@@ -144,14 +144,14 @@ class EventDangerSection extends ConsumerWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.error.withValues(alpha: 0.1),
+                color: context.colors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
                   Iconsax.trash,
                   size: 18,
-                  color: AppColorTokens.light.errorText,
+                  color: context.colors.errorText,
                 ),
               ),
             ),
@@ -162,7 +162,7 @@ class EventDangerSection extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColorTokens.light.errorText,
+                  color: context.colors.errorText,
                 ),
               ),
             ),
@@ -194,7 +194,7 @@ class EventDangerSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
-            color: AppColorTokens.light.textPrimary,
+            color: context.colors.textPrimary,
           ),
         ),
         content: Text(
@@ -202,7 +202,7 @@ class EventDangerSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w400,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
           ),
         ),
         actions: [
@@ -210,7 +210,7 @@ class EventDangerSection extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'Keep event',
-              style: TextStyle(color: AppColorTokens.light.textSecondary),
+              style: TextStyle(color: context.colors.textSecondary),
             ),
           ),
           TextButton(
@@ -223,7 +223,7 @@ class EventDangerSection extends ConsumerWidget {
             child: Text(
               'Delete event',
               style: TextStyle(
-                color: AppColorTokens.light.errorText,
+                color: context.colors.errorText,
                 fontWeight: FontWeight.w700,
               ),
             ),

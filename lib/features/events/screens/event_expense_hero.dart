@@ -7,7 +7,7 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Light-themed hero card showing total event spending.
@@ -37,9 +37,9 @@ class EventExpenseHero extends ConsumerWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColorTokens.light.cardSurface,
+          color: context.colors.cardSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColorTokens.light.border),
+          border: Border.all(color: context.colors.border),
           boxShadow: AppShadowTokens.standard.raised,
           image: const DecorationImage(
             image: AssetImage('assets/textures/grain.png'),
@@ -69,7 +69,7 @@ class EventExpenseHero extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: AppColorTokens.light.textMuted,
+                        color: context.colors.textSecondary,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -84,7 +84,7 @@ class EventExpenseHero extends ConsumerWidget {
                           fontSize: 12,
                         ),
                       ),
-                      backgroundColor: AppColorTokens.light.primary,
+                      backgroundColor: context.colors.primary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 0,
@@ -113,7 +113,7 @@ class EventExpenseHero extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.w800,
-                        color: AppColorTokens.light.textPrimary,
+                        color: context.colors.textPrimary,
                         letterSpacing: -1,
                       ),
                     );
@@ -127,7 +127,7 @@ class EventExpenseHero extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColorTokens.light.textSecondary,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                     Text(
@@ -135,7 +135,7 @@ class EventExpenseHero extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColorTokens.light.textMuted,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                     Text(
@@ -143,7 +143,7 @@ class EventExpenseHero extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColorTokens.light.textSecondary,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ],
@@ -157,7 +157,7 @@ class EventExpenseHero extends ConsumerWidget {
             child: Text(
               'Could not load expenses',
               style: TextStyle(
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),

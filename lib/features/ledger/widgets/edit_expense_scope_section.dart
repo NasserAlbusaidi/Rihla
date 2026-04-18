@@ -23,7 +23,7 @@ import '../../logistics/models/sub_group_model.dart';
 import '../../logistics/providers/sub_group_provider.dart';
 import '../../../core/types/event_ref.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Scope tab (Global / My Car / Custom / Personal) plus car sub-group picker
 /// for edit-expense. All mutable state lives on the parent screen; this widget
@@ -63,7 +63,7 @@ class EditExpenseScopeSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textMuted,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -71,7 +71,7 @@ class EditExpenseScopeSection extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -177,7 +177,7 @@ class _ScopeTab extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected
-                ? AppColorTokens.light.primary
+                ? context.colors.primary
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -189,7 +189,7 @@ class _ScopeTab extends StatelessWidget {
                 size: 16,
                 color: isSelected
                     ? Colors.white
-                    : AppColorTokens.light.textMuted,
+                    : context.colors.textSecondary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -199,7 +199,7 @@ class _ScopeTab extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: isSelected
                       ? Colors.white
-                      : AppColorTokens.light.textMuted,
+                      : context.colors.textSecondary,
                 ),
               ),
             ],

@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/smart_module_card.dart';
 import '../keys/event_keys.dart';
@@ -69,21 +69,21 @@ class EventModuleList extends ConsumerWidget {
 
     // Fixed order: Ledger → Gear → Logistics → Vault → Activity → Memories
     if (showLedger) {
-      _addLedgerCard(cards, expensesAsync, settlementsAsync, eventRef);
+      _addLedgerCard(context, cards, expensesAsync, settlementsAsync, eventRef);
     }
     if (showGear) {
-      _addGearCard(cards, gearAsync);
+      _addGearCard(context, cards, gearAsync);
     }
     if (showLogistics) {
-      _addLogisticsCard(cards, subGroupsAsync);
+      _addLogisticsCard(context, cards, subGroupsAsync);
     }
     if (showVault) {
-      _addVaultCard(cards, docsAsync);
+      _addVaultCard(context, cards, docsAsync);
     }
     // Activity card always appears (position 5)
-    _addActivityCard(cards);
+    _addActivityCard(context, cards);
     if (showMemories) {
-      _addMemoriesCard(cards);
+      _addMemoriesCard(context, cards);
     }
 
     return GridView.count(
@@ -120,6 +120,7 @@ class EventModuleList extends ConsumerWidget {
   }
 
   void _addLedgerCard(
+    BuildContext context,
     List<_ModuleCardConfig> cards,
     AsyncValue<List<Expense>> expensesAsync,
     AsyncValue<List<Settlement>> settlementsAsync,
@@ -146,7 +147,7 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.wallet_3,
       title: 'Ledger',
       description: 'Track shared expenses and split costs fairly',
-      color: AppColorTokens.light.moduleLedger,
+      color: context.colors.moduleLedger,
       routePath: '/group/$groupId/event/$eventId/ledger',
       summaryText: ledgerSummary,
       isEmpty: ledgerEmpty,
@@ -154,6 +155,7 @@ class EventModuleList extends ConsumerWidget {
   }
 
   void _addGearCard(
+    BuildContext context,
     List<_ModuleCardConfig> cards,
     AsyncValue<List<GearItem>>? gearAsync,
   ) {
@@ -181,7 +183,7 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.bag_2,
       title: 'Gear',
       description: 'Create a shared packing list and claim items',
-      color: AppColorTokens.light.moduleGear,
+      color: context.colors.moduleGear,
       routePath: '/group/$groupId/event/$eventId/gear',
       summaryText: gearSummary,
       actionText: gearAction,
@@ -190,6 +192,7 @@ class EventModuleList extends ConsumerWidget {
   }
 
   void _addLogisticsCard(
+    BuildContext context,
     List<_ModuleCardConfig> cards,
     AsyncValue<List<SubGroup>>? subGroupsAsync,
   ) {
@@ -211,7 +214,7 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.car,
       title: 'Logistics',
       description: 'Organize cars, rooms, and teams for your group',
-      color: AppColorTokens.light.moduleLogistics,
+      color: context.colors.moduleLogistics,
       routePath: '/group/$groupId/event/$eventId/logistics',
       summaryText: logisticsSummary,
       isEmpty: logisticsEmpty,
@@ -219,6 +222,7 @@ class EventModuleList extends ConsumerWidget {
   }
 
   void _addVaultCard(
+    BuildContext context,
     List<_ModuleCardConfig> cards,
     AsyncValue<List<Document>>? docsAsync,
   ) {
@@ -236,32 +240,32 @@ class EventModuleList extends ConsumerWidget {
       icon: Iconsax.document_text,
       title: 'Vault',
       description: 'Store tickets, permits, and trip documents',
-      color: AppColorTokens.light.moduleVault,
+      color: context.colors.moduleVault,
       routePath: '/group/$groupId/event/$eventId/vault',
       summaryText: vaultSummary,
       isEmpty: vaultEmpty,
     ));
   }
 
-  void _addActivityCard(List<_ModuleCardConfig> cards) {
+  void _addActivityCard(BuildContext context, List<_ModuleCardConfig> cards) {
     cards.add(_ModuleCardConfig(
       widgetKey: EventKeys.activityCard,
       icon: Iconsax.activity,
       title: 'Activity',
       description: 'Timeline logs',
-      color: AppColorTokens.light.moduleActivity,
+      color: context.colors.moduleActivity,
       routePath: '/group/$groupId/event/$eventId/activity',
       isEmpty: true,
     ));
   }
 
-  void _addMemoriesCard(List<_ModuleCardConfig> cards) {
+  void _addMemoriesCard(BuildContext context, List<_ModuleCardConfig> cards) {
     cards.add(_ModuleCardConfig(
       widgetKey: EventKeys.memoriesCard,
       icon: Iconsax.gallery,
       title: 'Memories',
       description: 'Capture and share photos from your event',
-      color: AppColorTokens.light.moduleMemories,
+      color: context.colors.moduleMemories,
       routePath: '/group/$groupId/event/$eventId/memories',
       isEmpty: true,
     ));

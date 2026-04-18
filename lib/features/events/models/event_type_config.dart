@@ -11,11 +11,11 @@ import 'event_model.dart';
 /// - Event hub header accents
 ///
 /// Color assignments per UI-SPEC:
-/// - Trip: AppColorTokens.light.primary (#0D7B74)
-/// - Camping: AppColorTokens.light.successText (#047857) — WCAG 4.56:1
-/// - Travel: AppColorTokens.light.textSecondary (#6B7280)
-/// - Night/Day Out: AppColorTokens.light.textSecondary (#6B7280)
-/// - Custom: AppColorTokens.light.warning (#F59E0B)
+/// - Trip: context.colors.primary (#0D7B74)
+/// - Camping: context.colors.successText (#047857) — WCAG 4.56:1
+/// - Travel: context.colors.textSecondary (#6B7280)
+/// - Night/Day Out: context.colors.textSecondary (#6B7280)
+/// - Custom: context.colors.warning (#F59E0B)
 class EventTypeConfig {
   final EventType type;
   final String label;
@@ -39,36 +39,40 @@ class EventTypeConfig {
       label: 'Trip',
       description: 'Full travel experience with all modules',
       icon: Iconsax.airplane,
-      color: Color(0xFF0D7B74), // AppColorTokens.light.primary
+      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.primary)
+      color: Color(0xFF0D7B74),
     ),
     EventType.camping: EventTypeConfig._(
       type: EventType.camping,
       label: 'Camping',
       description: 'Outdoor adventure with gear tracking',
       icon: Iconsax.tree,
-      color: Color(0xFF047857), // AppColorTokens.light.successText — WCAG 4.56:1 on white
-                               // (const map cannot reference ThemeExtension fields)
+      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.successText)
+      color: Color(0xFF047857),
     ),
     EventType.travel: EventTypeConfig._(
       type: EventType.travel,
       label: 'Travel',
       description: 'Journey with logistics and documents',
       icon: Iconsax.car,
-      color: Color(0xFF6B7280), // AppColorTokens.light.textSecondary
+      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.textSecondary)
+      color: Color(0xFF6B7280),
     ),
     EventType.nightDayOut: EventTypeConfig._(
       type: EventType.nightDayOut,
       label: 'Night/Day Out',
       description: 'Quick outing with expense splitting',
       icon: Iconsax.moon,
-      color: Color(0xFF6B7280), // AppColorTokens.light.textSecondary
+      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.textSecondary)
+      color: Color(0xFF6B7280),
     ),
     EventType.custom: EventTypeConfig._(
       type: EventType.custom,
       label: 'Custom',
       description: 'Pick your own modules',
       icon: Iconsax.element_3,
-      color: Color(0xFFF59E0B), // AppColorTokens.light.warning
+      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.warning)
+      color: Color(0xFFF59E0B),
     ),
   };
 

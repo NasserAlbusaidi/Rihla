@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Card widget containing the event name field and start/end date pickers.
@@ -32,7 +32,7 @@ class EventDetailsCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppShadowTokens.standard.raised,
       ),
@@ -72,7 +72,7 @@ class EventDetailsCard extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
-                    ?.copyWith(color: AppColorTokens.light.textMuted),
+                    ?.copyWith(color: context.colors.textSecondary),
               ),
             ],
           ),

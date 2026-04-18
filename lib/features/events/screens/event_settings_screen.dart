@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../keys/event_keys.dart';
@@ -37,7 +37,7 @@ class EventSettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       key: EventKeys.settingsScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
         child: eventAsync.when(
           data: (event) {
@@ -62,7 +62,7 @@ class EventSettingsScreen extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
-                        color: AppColorTokens.light.textPrimary,
+                        color: context.colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -111,14 +111,14 @@ class EventSettingsScreen extends ConsumerWidget {
       child: Container(
         key: EventKeys.settingsBackButton,
         decoration: BoxDecoration(
-          color: AppColorTokens.light.inputFill,
+          color: context.colors.inputFill,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColorTokens.light.inputFill),
+          border: Border.all(color: context.colors.inputFill),
         ),
         child: IconButton(
           icon: Icon(
             Iconsax.arrow_left,
-            color: AppColorTokens.light.textPrimary,
+            color: context.colors.textPrimary,
             size: 20,
           ),
           onPressed: () => GoRouter.of(context).pop(),
@@ -142,7 +142,7 @@ class EventSettingsScreen extends ConsumerWidget {
                 Icon(
                   Iconsax.warning_2,
                   size: 32,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -150,7 +150,7 @@ class EventSettingsScreen extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -159,7 +159,7 @@ class EventSettingsScreen extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: AppColorTokens.light.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -170,7 +170,7 @@ class EventSettingsScreen extends ConsumerWidget {
                   ),
                   child: Text(
                     'Try again',
-                    style: TextStyle(color: AppColorTokens.light.primary),
+                    style: TextStyle(color: context.colors.primary),
                   ),
                 ),
               ],

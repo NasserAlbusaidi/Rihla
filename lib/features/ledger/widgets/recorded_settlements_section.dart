@@ -3,7 +3,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../models/settlement_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Collapsible history section showing recorded/completed settlements.
 class RecordedSettlementsSection extends StatelessWidget {
@@ -31,22 +31,22 @@ class RecordedSettlementsSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textMuted,
+            color: context.colors.textSecondary,
             letterSpacing: 1.0,
           ),
         ),
         trailing: Icon(
           Iconsax.arrow_down_1,
           size: 16,
-          color: AppColorTokens.light.textMuted,
+          color: context.colors.textSecondary,
         ),
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppColorTokens.light.cardSurface,
+              color: context.colors.cardSurface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColorTokens.light.border.withValues(alpha: 0.5),
+                color: context.colors.border.withValues(alpha: 0.5),
               ),
             ),
             child: Column(
@@ -54,7 +54,7 @@ class RecordedSettlementsSection extends StatelessWidget {
                 final index = entry.key;
                 final s = entry.value;
                 final isLast = index == settlements.length - 1;
-                return _buildHistoryItem(s, !isLast);
+                return _buildHistoryItem(context, s, !isLast);
               }).toList(),
             ),
           ),
@@ -63,7 +63,7 @@ class RecordedSettlementsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryItem(Settlement settlement, bool showDivider) {
+  Widget _buildHistoryItem(BuildContext context, Settlement settlement, bool showDivider) {
     final payerName =
         participantNames[settlement.payerParticipantId] ?? 'Unknown';
     final recipientName =
@@ -77,14 +77,14 @@ class RecordedSettlementsSection extends StatelessWidget {
               Icon(
                 Iconsax.tick_circle,
                 size: 18,
-                color: AppColorTokens.light.success,
+                color: context.colors.success,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: RichText(
                   text: TextSpan(
                     style: TextStyle(
-                      color: AppColorTokens.light.textSecondary,
+                      color: context.colors.textSecondary,
                       fontSize: 13,
                     ),
                     children: [
@@ -92,7 +92,7 @@ class RecordedSettlementsSection extends StatelessWidget {
                         text: payerName,
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: AppColorTokens.light.textPrimary,
+                          color: context.colors.textPrimary,
                         ),
                       ),
                       const TextSpan(text: ' paid '),
@@ -100,7 +100,7 @@ class RecordedSettlementsSection extends StatelessWidget {
                         text: recipientName,
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: AppColorTokens.light.textPrimary,
+                          color: context.colors.textPrimary,
                         ),
                       ),
                     ],
@@ -115,14 +115,14 @@ class RecordedSettlementsSection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColorTokens.light.success,
+                      color: context.colors.success,
                     ),
                   ),
                   Text(
                     AppFormatters.formatRelativeDate(settlement.settledAt),
                     style: TextStyle(
                       fontSize: 10,
-                      color: AppColorTokens.light.textMuted,
+                      color: context.colors.textSecondary,
                     ),
                   ),
                 ],
@@ -131,7 +131,7 @@ class RecordedSettlementsSection extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          Divider(height: 1, thickness: 1, color: AppColorTokens.light.border),
+          Divider(height: 1, thickness: 1, color: context.colors.border),
       ],
     );
   }

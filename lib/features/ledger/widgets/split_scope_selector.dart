@@ -10,7 +10,7 @@ import '../../trip/models/trip_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Scope selector (global/subgroup/custom/personal) with custom participant
@@ -50,7 +50,7 @@ class SplitScopeSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -150,7 +150,7 @@ class _ScopeTab extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColorTokens.light.cardSurface : Colors.transparent,
+            color: isSelected ? context.colors.cardSurface : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             boxShadow: isSelected ? AppShadowTokens.standard.raised : null,
           ),
@@ -160,7 +160,7 @@ class _ScopeTab extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? AppColorTokens.light.primary : AppColorTokens.light.textMuted,
+                color: isSelected ? context.colors.primary : context.colors.textSecondary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -169,8 +169,8 @@ class _ScopeTab extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: isSelected
-                      ? AppColorTokens.light.textPrimary
-                      : AppColorTokens.light.textMuted,
+                      ? context.colors.textPrimary
+                      : context.colors.textSecondary,
                 ),
               ),
             ],
@@ -213,7 +213,7 @@ class _CustomParticipantSelector extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
-                color: AppColorTokens.light.textMuted,
+                color: context.colors.textSecondary,
                 letterSpacing: 1.5,
               ),
             ),
@@ -223,8 +223,8 @@ class _CustomParticipantSelector extends ConsumerWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: customSplitParticipants.isNotEmpty
-                    ? AppColorTokens.light.primary
-                    : AppColorTokens.light.textMuted,
+                    ? context.colors.primary
+                    : context.colors.textSecondary,
               ),
             ),
           ],
@@ -233,7 +233,7 @@ class _CustomParticipantSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
           constraints: const BoxConstraints(maxHeight: 200),
@@ -310,8 +310,8 @@ class _ParticipantTile extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColorTokens.light.primary.withValues(alpha: 0.2)
-              : AppColorTokens.light.cardSurface,
+              ? context.colors.primary.withValues(alpha: 0.2)
+              : context.colors.cardSurface,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Center(
@@ -319,7 +319,7 @@ class _ParticipantTile extends StatelessWidget {
             (participant.displayName ?? 'U')[0].toUpperCase(),
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: isSelected ? AppColorTokens.light.primary : AppColorTokens.light.textMuted,
+              color: isSelected ? context.colors.primary : context.colors.textSecondary,
             ),
           ),
         ),
@@ -329,7 +329,7 @@ class _ParticipantTile extends StatelessWidget {
         style: TextStyle(
           fontSize: 14,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          color: AppColorTokens.light.textPrimary,
+          color: context.colors.textPrimary,
         ),
       ),
       subtitle: participant.isShadow
@@ -337,13 +337,13 @@ class _ParticipantTile extends StatelessWidget {
               'Shadow Profile',
               style: TextStyle(
                 fontSize: 11,
-                color: AppColorTokens.light.textMuted,
+                color: context.colors.textSecondary,
               ),
             )
           : null,
       trailing: Checkbox(
         value: isSelected,
-        activeColor: AppColorTokens.light.primary,
+        activeColor: context.colors.primary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
         ),
@@ -394,7 +394,7 @@ class _PayerSelector extends ConsumerWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textMuted,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -402,10 +402,10 @@ class _PayerSelector extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColorTokens.light.textMuted.withValues(alpha: 0.3),
+              color: context.colors.textSecondary.withValues(alpha: 0.3),
             ),
           ),
           child: DropdownButtonHideUnderline(
@@ -421,13 +421,13 @@ class _PayerSelector extends ConsumerWidget {
                     children: [
                       CircleAvatar(
                         radius: 14,
-                        backgroundColor: AppColorTokens.light.selectionFill,
+                        backgroundColor: context.colors.selectionFill,
                         child: Text(
                           (p.displayName?.isNotEmpty == true ? p.displayName![0] : 'U').toUpperCase(),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: AppColorTokens.light.primary,
+                            color: context.colors.primary,
                           ),
                         ),
                       ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
@@ -31,7 +31,7 @@ class EventModulesCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppShadowTokens.standard.raised,
       ),
@@ -48,7 +48,7 @@ class EventModulesCard extends StatelessWidget {
             key: EventKeys.moduleLedgerToggle,
             icon: Iconsax.dollar_circle,
             label: 'Ledger',
-            color: AppColorTokens.light.success,
+            color: context.colors.success,
             value: modules.ledger,
             onChanged: (v) =>
                 onModulesChanged(modules.copyWith(ledger: v)),
@@ -57,7 +57,7 @@ class EventModulesCard extends StatelessWidget {
             key: EventKeys.moduleGearToggle,
             icon: Iconsax.bag,
             label: 'Gear',
-            color: AppColorTokens.light.warning,
+            color: context.colors.warning,
             value: modules.gear,
             onChanged: (v) =>
                 onModulesChanged(modules.copyWith(gear: v)),
@@ -66,7 +66,7 @@ class EventModulesCard extends StatelessWidget {
             key: EventKeys.moduleLogisticsToggle,
             icon: Iconsax.car,
             label: 'Logistics',
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
             value: modules.logistics,
             onChanged: (v) =>
                 onModulesChanged(modules.copyWith(logistics: v)),
@@ -75,7 +75,7 @@ class EventModulesCard extends StatelessWidget {
             key: EventKeys.moduleVaultToggle,
             icon: Iconsax.folder,
             label: 'Vault',
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
             value: modules.vault,
             onChanged: (v) =>
                 onModulesChanged(modules.copyWith(vault: v)),
@@ -84,7 +84,7 @@ class EventModulesCard extends StatelessWidget {
             key: EventKeys.moduleMemoriesToggle,
             icon: Iconsax.image,
             label: 'Memories',
-            color: AppColorTokens.light.primary,
+            color: context.colors.primary,
             value: modules.memories,
             onChanged: (v) =>
                 onModulesChanged(modules.copyWith(memories: v)),
@@ -136,12 +136,12 @@ class _ModuleToggleRow extends StatelessWidget {
             value: value,
             thumbColor: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.selected)
-                  ? AppColorTokens.light.primary
+                  ? context.colors.primary
                   : null,
             ),
             trackColor: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.selected)
-                  ? AppColorTokens.light.primary.withValues(alpha: 0.3)
+                  ? context.colors.primary.withValues(alpha: 0.3)
                   : null,
             ),
             onChanged: onChanged,

@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Three-line expense card for the Ledger timeline.
@@ -41,15 +41,15 @@ class ExpenseCard extends StatelessWidget {
     };
   }
 
-  (String, Color) get _balanceStatus {
+  (String, Color) _balanceStatus(BuildContext context) {
     final config = AppFormatters.currencyConfig[currency];
     final decimals = config?.decimals ?? 3;
     final absStr = userBalance.abs().toStringAsFixed(decimals);
     final cmp = userBalance.compareTo(Decimal.zero);
     return switch (cmp) {
-      > 0 => ('Owed to you $currency $absStr', AppColorTokens.light.successText),
-      < 0 => ('You owe $currency $absStr', AppColorTokens.light.errorText),
-      _ => ('Settled', AppColorTokens.light.textSecondary),
+      > 0 => ('Owed to you $currency $absStr', context.colors.successText),
+      < 0 => ('You owe $currency $absStr', context.colors.errorText),
+      _ => ('Settled', context.colors.textSecondary),
     };
   }
 
@@ -65,7 +65,7 @@ class ExpenseCard extends StatelessWidget {
     final participantCount = expense.customSplitParticipants?.length ?? 0;
     final peopleStr = participantCount > 0 ? '$participantCount people' : 'group';
 
-    final (statusText, statusColor) = _balanceStatus;
+    final (statusText, statusColor) = _balanceStatus(context);
     final icon = _categoryIcon(expense.categoryName);
 
     return GestureDetector(
@@ -74,7 +74,7 @@ class ExpenseCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColorTokens.light.cardSurface,
+          color: context.colors.cardSurface,
           borderRadius: BorderRadius.circular(24),
           boxShadow: AppShadowTokens.standard.raised,
         ),
@@ -84,7 +84,7 @@ class ExpenseCard extends StatelessWidget {
             // Line 1: icon + title + amount
             Row(
               children: [
-                Icon(icon, size: 20, color: AppColorTokens.light.textSecondary),
+                Icon(icon, size: 20, color: context.colors.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -92,7 +92,7 @@ class ExpenseCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -102,7 +102,7 @@ class ExpenseCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
               ],
@@ -115,7 +115,7 @@ class ExpenseCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
             ),
 

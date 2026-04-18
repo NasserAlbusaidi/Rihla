@@ -6,8 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../shared/animations/tap_bounce.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/event_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Card widget for displaying an event in the group timeline.
 ///
@@ -23,9 +22,9 @@ class EventCard extends ConsumerWidget {
   /// Optional personal balance for the current user in this event.
   ///
   /// When non-null, renders an inline balance text with color coding:
-  /// - Negative (you owe): AppColorTokens.light.errorText
-  /// - Positive (you are owed): AppColorTokens.light.successText
-  /// - Zero (settled): AppColorTokens.light.textSecondary
+  /// - Negative (you owe): context.colors.errorText
+  /// - Positive (you are owed): context.colors.successText
+  /// - Zero (settled): context.colors.textSecondary
   ///
   /// When null, shows the event's live total spent amount.
   final Decimal? personalBalance;
@@ -61,9 +60,9 @@ class EventCard extends ConsumerWidget {
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: AppColorTokens.light.cardSurface,
+            color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           child: IntrinsicHeight(
             child: Row(
@@ -74,8 +73,8 @@ class EventCard extends ConsumerWidget {
                   width: 3.0,
                   decoration: BoxDecoration(
                     color: event.isPast
-                        ? AppColorTokens.light.textMuted
-                        : AppColorTokens.light.primary,
+                        ? context.colors.textSecondary
+                        : context.colors.primary,
                     borderRadius: const BorderRadius.horizontal(
                       left: Radius.circular(16),
                     ),
@@ -102,7 +101,7 @@ class EventCard extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: AppColorTokens.light.textSecondary,
+                            color: context.colors.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -140,13 +139,13 @@ class EventCard extends ConsumerWidget {
     final (text, color) = switch (personalBalance!.compareTo(Decimal.zero)) {
       < 0 => (
           'You owe ${personalBalance!.abs().toStringAsFixed(3)} ${ event.currency}',
-          AppColorTokens.light.errorText,
+          context.colors.errorText,
         ),
       > 0 => (
           'You are owed ${personalBalance!.toStringAsFixed(3)} ${event.currency}',
-          AppColorTokens.light.successText,
+          context.colors.successText,
         ),
-      _ => ('Settled', AppColorTokens.light.textSecondary),
+      _ => ('Settled', context.colors.textSecondary),
     };
 
     return Text(
@@ -170,7 +169,7 @@ class EventCard extends ConsumerWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: AppColorTokens.light.textSecondary,
+          color: context.colors.textSecondary,
         ),
       );
     }
@@ -180,7 +179,7 @@ class EventCard extends ConsumerWidget {
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w700,
-        color: AppColorTokens.light.textSecondary,
+        color: context.colors.textSecondary,
       ),
     );
   }

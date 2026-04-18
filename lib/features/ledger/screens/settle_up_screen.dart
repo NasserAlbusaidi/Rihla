@@ -24,7 +24,7 @@ import '../widgets/recorded_settlements_section.dart';
 import '../keys/ledger_keys.dart';
 import '../widgets/settlement_summary_card.dart';
 import '../widgets/settlement_tile.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Settle Up Screen - Shows optimized settlements with payment actions.
 ///
@@ -50,7 +50,7 @@ class SettleUpScreen extends ConsumerWidget {
     // Loading state
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Settle Up', useDarkTheme: true),
@@ -65,7 +65,7 @@ class SettleUpScreen extends ConsumerWidget {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -77,7 +77,7 @@ class SettleUpScreen extends ConsumerWidget {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -102,7 +102,7 @@ class SettleUpScreen extends ConsumerWidget {
 
     return Scaffold(
       key: LedgerKeys.settleUpScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -240,7 +240,7 @@ class SettleUpScreen extends ConsumerWidget {
           // 2. Suggestions Sections
           if (pendingSettlements.isNotEmpty) ...[
             if (myDebts.isNotEmpty) ...[
-              _buildSectionHeader('YOUR ACTIONS', Iconsax.wallet_3),
+              _buildSectionHeader(context, 'YOUR ACTIONS', Iconsax.wallet_3),
               const SizedBox(height: 12),
               SettlementGroupCard(
                 settlements: myDebts,
@@ -252,7 +252,7 @@ class SettleUpScreen extends ConsumerWidget {
             ],
 
             if (debtToMe.isNotEmpty) ...[
-              _buildSectionHeader('WAITING FOR OTHERS', Iconsax.timer_1),
+              _buildSectionHeader(context, 'WAITING FOR OTHERS', Iconsax.timer_1),
               const SizedBox(height: 12),
               SettlementGroupCard(
                 settlements: debtToMe,
@@ -263,7 +263,7 @@ class SettleUpScreen extends ConsumerWidget {
             ],
 
             if (others.isNotEmpty) ...[
-              _buildSectionHeader('OTHERS SETTLING', Iconsax.people),
+              _buildSectionHeader(context, 'OTHERS SETTLING', Iconsax.people),
               const SizedBox(height: 12),
               SettlementGroupCard(
                 settlements: others,
@@ -302,17 +302,17 @@ class SettleUpScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: AppColorTokens.light.textSecondary),
+        Icon(icon, size: 14, color: context.colors.textSecondary),
         const SizedBox(width: 8),
         Text(
           title,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w900,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
             letterSpacing: 1.2,
           ),
         ),
@@ -328,12 +328,12 @@ class SettleUpScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColorTokens.light.success.withValues(alpha: 0.1),
+              color: context.colors.success.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Iconsax.tick_circle,
-              color: AppColorTokens.light.success,
+              color: context.colors.success,
               size: 32,
             ),
           ),
@@ -343,12 +343,12 @@ class SettleUpScreen extends ConsumerWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
           Text(
             'No payments needed',
-            style: TextStyle(fontSize: 14, color: AppColorTokens.light.textMuted),
+            style: TextStyle(fontSize: 14, color: context.colors.textSecondary),
           ),
         ],
       ),
@@ -388,7 +388,7 @@ class SettleUpScreen extends ConsumerWidget {
                 Text('Payment recorded!'),
               ],
             ),
-            backgroundColor: AppColorTokens.light.success,
+            backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
@@ -400,7 +400,7 @@ class SettleUpScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error recording payment: $e'),
-            backgroundColor: AppColorTokens.light.error,
+            backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
@@ -428,7 +428,7 @@ class SettleUpScreen extends ConsumerWidget {
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColorTokens.light.cardSurface,
+          color: context.colors.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
@@ -438,7 +438,7 @@ class SettleUpScreen extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.border,
+                color: context.colors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -448,7 +448,7 @@ class SettleUpScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -456,7 +456,7 @@ class SettleUpScreen extends ConsumerWidget {
               '$fromName paid $amountFormatted to $toName',
               style: TextStyle(
                 fontSize: 14,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -465,7 +465,7 @@ class SettleUpScreen extends ConsumerWidget {
               'Record this as settled? (via cash, bank transfer, or other method)',
               style: TextStyle(
                 fontSize: 13,
-                color: AppColorTokens.light.textMuted.withValues(alpha: 0.7),
+                color: context.colors.textSecondary.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -476,11 +476,11 @@ class SettleUpScreen extends ConsumerWidget {
               width: double.infinity,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: AppColorTokens.light.primaryGradient,
+                  gradient: context.colors.primaryGradient,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColorTokens.light.primary.withValues(alpha: 0.3),
+                      color: context.colors.primary.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -515,7 +515,7 @@ class SettleUpScreen extends ConsumerWidget {
               child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),

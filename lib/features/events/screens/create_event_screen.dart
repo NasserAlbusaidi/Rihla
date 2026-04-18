@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../groups/models/group_member_model.dart';
@@ -197,7 +197,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
     return Scaffold(
       key: EventKeys.createEventScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(

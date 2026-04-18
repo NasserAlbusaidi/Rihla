@@ -70,6 +70,7 @@ class ExpenseCategory {
       final hex = color.replaceFirst('#', '');
       return Color(int.parse('FF$hex', radix: 16));
     } catch (_) {
+      // design-token-justified: expense category color — pending Plan 04 token-sourced mapping
       return const Color(0xFF22C55E);
     }
   }
