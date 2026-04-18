@@ -6,9 +6,8 @@ import 'package:intl/intl.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../ledger/models/settlement_model.dart';
 
 /// History tab widget showing past recorded payments for a group.
@@ -64,7 +63,7 @@ class SettleUpHistoryTab extends StatelessWidget {
         icon: Iconsax.warning_2,
         title: 'Couldn\'t load history',
         message: 'Check your connection and try again.',
-        iconColor: AppColorTokens.light.textSecondary,
+        iconColor: context.colors.textSecondary,
       ),
     );
   }
@@ -92,11 +91,11 @@ class _HistoryTile extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(bottom: spacing.space12),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(spacing.radiusLarge),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
         border: Border.all(
-          color: AppColorTokens.light.border.withValues(alpha: 0.5),
+          color: context.colors.border.withValues(alpha: 0.5),
         ),
       ),
       child: Padding(
@@ -130,7 +129,7 @@ class _HistoryTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                   SizedBox(height: spacing.space4),
@@ -139,7 +138,7 @@ class _HistoryTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
-                      color: AppColorTokens.light.textMuted,
+                      color: context.colors.textSecondary,
                     ),
                   ),
                 ],
@@ -150,7 +149,7 @@ class _HistoryTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
           ],
@@ -180,13 +179,13 @@ class _HistoryAvatar extends StatelessWidget {
       height: 32,
       decoration: BoxDecoration(
         color: isPayer
-            ? AppColorTokens.light.primary.withValues(alpha: 0.15)
-            : AppColorTokens.light.inputFill,
+            ? context.colors.primary.withValues(alpha: 0.15)
+            : context.colors.inputFill,
         shape: BoxShape.circle,
         border: Border.all(
           color: isPayer
-              ? AppColorTokens.light.primary.withValues(alpha: 0.4)
-              : AppColorTokens.light.border,
+              ? context.colors.primary.withValues(alpha: 0.4)
+              : context.colors.border,
           width: isPayer ? 2 : 1,
         ),
       ),
@@ -197,8 +196,8 @@ class _HistoryAvatar extends StatelessWidget {
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: isPayer
-                ? AppColorTokens.light.primary
-                : AppColorTokens.light.textSecondary,
+                ? context.colors.primary
+                : context.colors.textSecondary,
           ),
         ),
       ),

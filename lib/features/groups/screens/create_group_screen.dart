@@ -11,8 +11,7 @@ import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
 import '../widgets/invite_code_display.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Screen for creating a new group.
 ///
@@ -89,7 +88,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   Future<void> _showSharePrompt(BuildContext context, Group group) async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColorTokens.light.cardSurface,
+      backgroundColor: context.colors.cardSurface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -138,9 +137,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColorTokens.light.cardSurface,
+                  color: context.colors.cardSurface,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: AppShadowTokens.standard.raised,
+                  boxShadow: context.shadows.raised,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,7 +274,7 @@ class _SharePrompt extends StatelessWidget {
             Text(
               'Share this code with your group',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColorTokens.light.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
             ),
             const SizedBox(height: 24),

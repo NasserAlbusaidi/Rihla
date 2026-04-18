@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
 import 'group_settlement_tile.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Presentational widget that renders a single tab of settlement tiles.
 ///
@@ -70,7 +70,7 @@ class SettlementTabContent extends StatelessWidget {
         icon: emptyIcon,
         title: emptyTitle,
         message: emptyMessage,
-        iconColor: AppColorTokens.light.textSecondary,
+        iconColor: context.colors.textSecondary,
       );
     }
 

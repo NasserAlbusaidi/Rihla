@@ -7,13 +7,12 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../shared/widgets/initials_circle.dart';
 import '../keys/group_keys.dart';
 import '../models/group_member_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Members section widget for GroupSettingsScreen.
 ///
@@ -41,13 +40,13 @@ class GroupMembersSection extends ConsumerWidget {
       key: GroupKeys.membersSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(),
+        _buildSectionHeader(context),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: AppColorTokens.light.cardSurface,
+            color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -58,13 +57,13 @@ class GroupMembersSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader() {
+  Widget _buildSectionHeader(BuildContext context) {
     return Row(
       children: [
         Icon(
           Iconsax.people,
           size: 16,
-          color: AppColorTokens.light.textSecondary,
+          color: context.colors.textSecondary,
         ),
         const SizedBox(width: 6),
         Text(
@@ -72,7 +71,7 @@ class GroupMembersSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -84,7 +83,7 @@ class GroupMembersSection extends ConsumerWidget {
     final tiles = <Widget>[];
     for (var i = 0; i < members.length; i++) {
       if (i > 0) {
-        tiles.add(Divider(height: 1, color: AppColorTokens.light.inputFill));
+        tiles.add(Divider(height: 1, color: context.colors.inputFill));
       }
       tiles.add(_buildMemberTile(context, ref, members[i]));
     }
@@ -116,12 +115,12 @@ class GroupMembersSection extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 if (member.isCreator) ...[
                   const SizedBox(height: 4),
-                  _buildCreatorBadge(),
+                  _buildCreatorBadge(context),
                 ],
               ],
             ),
@@ -132,7 +131,7 @@ class GroupMembersSection extends ConsumerWidget {
               icon: Icon(
                 Iconsax.user_minus,
                 size: 20,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
               tooltip: 'Remove ${member.displayName} from group',
               onPressed: () {
@@ -145,12 +144,12 @@ class GroupMembersSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildCreatorBadge() {
+  Widget _buildCreatorBadge(BuildContext context) {
     return Container(
       key: GroupKeys.creatorBadge,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.selectionFill,
+        color: context.colors.selectionFill,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -158,7 +157,7 @@ class GroupMembersSection extends ConsumerWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: AppColorTokens.light.primary,
+          color: context.colors.primary,
         ),
       ),
     );

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/keys/shared_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Widget that displays a formatted invite code in a mintSurface pill.
 ///
@@ -33,7 +33,7 @@ class InviteCodeDisplay extends StatelessWidget {
             vertical: 16,
           ),
           decoration: BoxDecoration(
-            color: AppColorTokens.light.selectionFill,
+            color: context.colors.selectionFill,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
@@ -43,7 +43,7 @@ class InviteCodeDisplay extends StatelessWidget {
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 8,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
           ),

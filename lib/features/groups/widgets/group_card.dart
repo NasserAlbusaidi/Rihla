@@ -8,15 +8,14 @@ import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../../events/models/event_type_config.dart';
 import '../../events/providers/event_provider.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// A card widget for displaying a group summary in the home screen list.
 ///
 /// Shows the group name, member count badge, and the current user's personal
-/// net balance in this group (D-08/D-09). Uses [AppColorTokens.light.errorText] for
-/// negative (owes), [AppColorTokens.light.successText] for positive (owed), and
-/// [AppColorTokens.light.textSecondary] for zero (settled).
+/// net balance in this group (D-08/D-09). Uses `context.colors.errorText` for
+/// negative (owes), `context.colors.successText` for positive (owed), and
+/// `context.colors.textSecondary` for zero (settled).
 ///
 /// Phase 24: Adds a 4dp colored accent strip on the left edge (CARD-01) and
 /// an event context line showing the most recent event (CARD-02).
@@ -32,14 +31,22 @@ class GroupCard extends ConsumerWidget {
 
   // ---------------------------------------------------------------------------
   // Accent strip — 5 earthy colors, hash-selected per group ID (CARD-01)
+  //
+  // These 5 literals are Plan 04 handoff — they become
+  // context.colors.groupAvatarSlot(index) when AppGroupAvatarColors lands.
   // ---------------------------------------------------------------------------
 
   static const List<Color> _accentColors = [
-    Color(0xFF0D7B74), // slot 0 — primary teal
-    Color(0xFFCC6B49), // slot 1 — terracotta (focusBorderWarm)
-    Color(0xFF10B981), // slot 2 — success emerald
-    Color(0xFFF59E0B), // slot 3 — warning amber
-    Color(0xFF7C6E5A), // slot 4 — warm umber (inline const, no token)
+    // design-token-justified: avatar slot 0 — pending Plan 04 AppGroupAvatarColors.lightSlots[0]
+    Color(0xFF0D7B74),
+    // design-token-justified: avatar slot 1 — pending Plan 04 AppGroupAvatarColors.lightSlots[1]
+    Color(0xFFCC6B49),
+    // design-token-justified: avatar slot 2 — pending Plan 04 AppGroupAvatarColors.lightSlots[2]
+    Color(0xFF10B981),
+    // design-token-justified: avatar slot 3 — pending Plan 04 AppGroupAvatarColors.lightSlots[3]
+    Color(0xFFF59E0B),
+    // design-token-justified: avatar slot 4 — pending Plan 04 AppGroupAvatarColors.lightSlots[4]
+    Color(0xFF7C6E5A),
   ];
 
   static Color _accentColor(String groupId) =>
@@ -58,9 +65,9 @@ class GroupCard extends ConsumerWidget {
       child: Container(
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
-          color: AppColorTokens.light.cardSurface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: AppShadowTokens.standard.raised,
+          color: context.colors.cardSurface,
+          borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
+          boxShadow: context.shadows.raised,
         ),
         child: IntrinsicHeight(
           child: Row(
@@ -74,7 +81,7 @@ class GroupCard extends ConsumerWidget {
               // Card content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(context.spacing.space16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -89,16 +96,18 @@ class GroupCard extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: context.spacing.space8),
                           // Member count badge
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacing.space8,
+                              vertical: context.spacing.space4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColorTokens.light.inputFill,
-                              borderRadius: BorderRadius.circular(8),
+                              color: context.colors.inputFill,
+                              borderRadius: BorderRadius.circular(
+                                context.spacing.radiusSmall,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -106,17 +115,16 @@ class GroupCard extends ConsumerWidget {
                                 Icon(
                                   Iconsax.people,
                                   size: 14,
-                                  color: AppColorTokens.light.textSecondary,
+                                  color: context.colors.textSecondary,
                                 ),
-                                const SizedBox(width: 4),
+                                SizedBox(width: context.spacing.space4),
                                 Text(
                                   '${group.memberIds.length}',
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodySmall
                                       ?.copyWith(
-                                        color:
-                                            AppColorTokens.light.textSecondary,
+                                        color: context.colors.textSecondary,
                                       ),
                                 ),
                               ],
@@ -124,7 +132,7 @@ class GroupCard extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.spacing.space8),
                       // Personal balance for current user (D-08/D-09)
                       balancesAsync.when(
                         data: (balances) {
@@ -137,15 +145,15 @@ class GroupCard extends ConsumerWidget {
                               switch (net.compareTo(Decimal.zero)) {
                             < 0 => (
                                 'You owe OMR ${net.abs().toStringAsFixed(3)}',
-                                AppColorTokens.light.errorText,
+                                context.colors.errorText,
                               ),
                             > 0 => (
                                 'You are owed OMR ${net.toStringAsFixed(3)}',
-                                AppColorTokens.light.successText,
+                                context.colors.successText,
                               ),
                             _ => (
                                 'Settled',
-                                AppColorTokens.light.textSecondary
+                                context.colors.textSecondary
                               ),
                           };
                           return Text(
@@ -162,7 +170,7 @@ class GroupCard extends ConsumerWidget {
                               .textTheme
                               .bodyMedium
                               ?.copyWith(
-                                color: AppColorTokens.light.textMuted,
+                                color: context.colors.textSecondary,
                               ),
                         ),
                         error: (e, _) => Text(
@@ -171,11 +179,11 @@ class GroupCard extends ConsumerWidget {
                               .textTheme
                               .bodyMedium
                               ?.copyWith(
-                                color: AppColorTokens.light.textSecondary,
+                                color: context.colors.textSecondary,
                               ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: context.spacing.space4),
                       // Event context line — last event + type icon + relative date (CARD-02)
                       _buildEventContextLine(context, ref),
                     ],
@@ -201,7 +209,7 @@ class GroupCard extends ConsumerWidget {
           return Text(
             'No events yet',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                 ),
           );
         }
@@ -209,13 +217,14 @@ class GroupCard extends ConsumerWidget {
         final config = EventTypeConfig.forType(latest.type);
         return Row(
           children: [
-            Icon(config.icon, size: 16, color: AppColorTokens.light.textMuted),
-            const SizedBox(width: 4),
+            // textMuted-decorative-justified: event type glyph in subtitle row, functional color carried by adjacent text
+            Icon(config.icon, size: 16, color: context.colors.textMuted),
+            SizedBox(width: context.spacing.space4),
             Expanded(
               child: Text(
                 '${latest.name} \u2014 ${timeago.format(latest.createdAt)}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColorTokens.light.textSecondary,
+                      color: context.colors.textSecondary,
                     ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -227,13 +236,13 @@ class GroupCard extends ConsumerWidget {
       loading: () => Text(
         'No events yet',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
             ),
       ),
       error: (e, _) => Text(
         'No events yet',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
             ),
       ),
     );

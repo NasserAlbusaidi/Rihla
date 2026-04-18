@@ -5,7 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/keys/shared_keys.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Dark gradient hero card showing total group spending and the current
 /// user's net position, with a Settle Up CTA.
@@ -50,10 +50,10 @@ class GroupBalanceHero extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
-          gradient: AppColorTokens.light.headerGradient,
+          gradient: context.colors.headerGradient,
           boxShadow: [
             BoxShadow(
-              color: AppColorTokens.light.headerGradientStart.withValues(alpha: 0.2),
+              color: context.colors.headerGradientStart.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -110,14 +110,14 @@ class GroupBalanceHero extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: (isOwed ? AppColorTokens.light.success : AppColorTokens.light.error)
+                            color: (isOwed ? context.colors.success : context.colors.error)
                                 .withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             isOwed ? 'YOU ARE OWED' : 'YOU OWE',
                             style: TextStyle(
-                              color: isOwed ? AppColorTokens.light.primary : AppColorTokens.light.error,
+                              color: isOwed ? context.colors.primary : context.colors.error,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -183,7 +183,7 @@ class GroupBalanceHero extends StatelessWidget {
                               : 'You owe $formatted',
                           style: TextStyle(
                             color:
-                                isOwed ? AppColorTokens.light.primary : AppColorTokens.light.error,
+                                isOwed ? context.colors.primary : context.colors.error,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
@@ -214,7 +214,7 @@ class GroupBalanceHero extends StatelessWidget {
                                 vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                gradient: AppColorTokens.light.primaryGradient,
+                                gradient: context.colors.primaryGradient,
                                 borderRadius: BorderRadius.circular(
                                   12,
                                 ),

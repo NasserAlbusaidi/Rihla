@@ -6,7 +6,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../keys/group_keys.dart';
@@ -14,6 +13,7 @@ import '../models/group_activity_log_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
 import '../widgets/group_activity_tile.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Full-screen paginated group activity timeline (D-07, D-08, D-09, D-10, D-11).
 ///
@@ -143,7 +143,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
 
     return Scaffold(
       key: GroupKeys.activityScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -196,12 +196,12 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColorTokens.light.selectionFill
-              : AppColorTokens.light.inputFill,
+              ? context.colors.selectionFill
+              : context.colors.inputFill,
           borderRadius: BorderRadius.circular(8),
           border: isSelected
               ? Border.all(
-                  color: AppColorTokens.light.primary,
+                  color: context.colors.primary,
                   width: 1.5,
                 )
               : null,
@@ -213,8 +213,8 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
               fontSize: 13,
               fontWeight: FontWeight.w500,
               color: isSelected
-                  ? AppColorTokens.light.textPrimary
-                  : AppColorTokens.light.textSecondary,
+                  ? context.colors.textPrimary
+                  : context.colors.textSecondary,
             ),
           ),
         ),
@@ -279,7 +279,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppColorTokens.light.primary,
+                  color: context.colors.primary,
                 ),
               ),
             ),
@@ -330,7 +330,7 @@ class _DateSectionHeader extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w400,
-          color: AppColorTokens.light.textMuted,
+          color: context.colors.textSecondary,
           letterSpacing: 0.5,
         ),
       ),
@@ -348,7 +348,7 @@ class _SkeletonRow extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -357,7 +357,7 @@ class _SkeletonRow extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColorTokens.light.border,
+              color: context.colors.border,
               shape: BoxShape.circle,
             ),
           ),
@@ -370,7 +370,7 @@ class _SkeletonRow extends StatelessWidget {
                   height: 12,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: AppColorTokens.light.border,
+                    color: context.colors.border,
                     borderRadius: BorderRadius.circular(6),
                   ),
                 ),
@@ -379,7 +379,7 @@ class _SkeletonRow extends StatelessWidget {
                   height: 10,
                   width: 80,
                   decoration: BoxDecoration(
-                    color: AppColorTokens.light.inputFill,
+                    color: context.colors.inputFill,
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),

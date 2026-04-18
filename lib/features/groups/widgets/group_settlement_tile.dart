@@ -4,9 +4,8 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// A card-style settlement tile showing payer → payee, amount, and a
 /// collapsible per-event breakdown (D-04).
@@ -51,9 +50,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
   bool _isExpanded = false;
 
   Color get _amountColor {
-    if (widget.isYourAction) return AppColorTokens.light.errorText;
-    if (widget.isCreditor) return AppColorTokens.light.successText;
-    return AppColorTokens.light.textPrimary;
+    if (widget.isYourAction) return context.colors.errorText;
+    if (widget.isCreditor) return context.colors.successText;
+    return context.colors.textPrimary;
   }
 
   String get _subLabel {
@@ -71,14 +70,14 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
       margin: EdgeInsets.only(bottom: spacing.space12),
       decoration: BoxDecoration(
         color: widget.isHighlighted
-            ? AppColorTokens.light.primary.withValues(alpha: 0.05)
-            : AppColorTokens.light.cardSurface,
+            ? context.colors.primary.withValues(alpha: 0.05)
+            : context.colors.cardSurface,
         borderRadius: BorderRadius.circular(spacing.radiusLarge),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
         border: Border.all(
           color: widget.isHighlighted
-              ? AppColorTokens.light.primary.withValues(alpha: 0.2)
-              : AppColorTokens.light.border.withValues(alpha: 0.5),
+              ? context.colors.primary.withValues(alpha: 0.2)
+              : context.colors.border.withValues(alpha: 0.5),
         ),
       ),
       child: Material(
@@ -125,7 +124,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                             text: TextSpan(
                               style: TextStyle(
                                 fontSize: 14,
-                                color: AppColorTokens.light.textPrimary,
+                                color: context.colors.textPrimary,
                               ),
                               children: [
                                 TextSpan(
@@ -137,7 +136,8 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                 TextSpan(
                                   text: ' → ',
                                   style: TextStyle(
-                                    color: AppColorTokens.light.textMuted,
+                                    // textMuted-decorative-justified: arrow glyph connecting payer → payee names, purely visual separator
+                                    color: context.colors.textMuted,
                                   ),
                                 ),
                                 TextSpan(
@@ -154,7 +154,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                             _subLabel,
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColorTokens.light.textSecondary,
+                              color: context.colors.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -186,7 +186,8 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                             child: Icon(
                               Iconsax.arrow_down_1,
                               size: 16,
-                              color: AppColorTokens.light.textMuted,
+                              // textMuted-decorative-justified: expand/collapse chevron affordance — meaning is carried by the state change, icon is decorative
+                              color: context.colors.textMuted,
                             ),
                           ),
                       ],
@@ -207,7 +208,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                               Divider(
                                 height: 1,
                                 thickness: 1,
-                                color: AppColorTokens.light.border
+                                color: context.colors.border
                                     .withValues(alpha: 0.5),
                               ),
                               SizedBox(height: spacing.space8),
@@ -224,7 +225,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                           style: TextStyle(
                                             fontSize: 12,
                                             color:
-                                                AppColorTokens.light.textSecondary,
+                                                context.colors.textSecondary,
                                             fontWeight: FontWeight.w500,
                                           ),
                                           overflow: TextOverflow.ellipsis,
@@ -238,7 +239,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                         style: TextStyle(
                                           fontSize: 12,
                                           color:
-                                              AppColorTokens.light.textSecondary,
+                                              context.colors.textSecondary,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -259,7 +260,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                     height: spacing.buttonHeight,
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: AppColorTokens.light.primaryGradient,
+                        gradient: context.colors.primaryGradient,
                         borderRadius: BorderRadius.circular(spacing.radiusMedium),
                       ),
                       child: ElevatedButton(
@@ -303,16 +304,16 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
       height: 40,
       decoration: BoxDecoration(
         color: isPayer
-            ? AppColorTokens.light.primary.withValues(alpha: 0.15)
-            : AppColorTokens.light.inputFill,
+            ? context.colors.primary.withValues(alpha: 0.15)
+            : context.colors.inputFill,
         shape: BoxShape.circle,
         border: Border.all(
           color: isPayer
-              ? AppColorTokens.light.primary.withValues(alpha: 0.4)
-              : AppColorTokens.light.border,
+              ? context.colors.primary.withValues(alpha: 0.4)
+              : context.colors.border,
           width: isPayer ? 2 : 1,
         ),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: Center(
         child: Text(
@@ -321,8 +322,8 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: isPayer
-                ? AppColorTokens.light.primary
-                : AppColorTokens.light.textSecondary,
+                ? context.colors.primary
+                : context.colors.textSecondary,
           ),
         ),
       ),

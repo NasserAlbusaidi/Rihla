@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Summary card displayed at the top of the Group Settle-Up screen.
 ///
@@ -30,16 +29,16 @@ class GroupSettlementSummaryCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColorTokens.light.primary.withValues(alpha: 0.12),
-            AppColorTokens.light.cardSurface.withValues(alpha: 0.9),
+            context.colors.primary.withValues(alpha: 0.12),
+            context.colors.cardSurface.withValues(alpha: 0.9),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppColorTokens.light.primary.withValues(alpha: 0.2),
+          color: context.colors.primary.withValues(alpha: 0.2),
           width: 1,
         ),
-        boxShadow: AppShadowTokens.standard.floating,
+        boxShadow: context.shadows.floating,
       ),
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -52,7 +51,7 @@ class GroupSettlementSummaryCard extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
@@ -61,7 +60,7 @@ class GroupSettlementSummaryCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w700,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
               letterSpacing: -1,
             ),
           ),
@@ -72,7 +71,7 @@ class GroupSettlementSummaryCard extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
             ),
           ),
         ],

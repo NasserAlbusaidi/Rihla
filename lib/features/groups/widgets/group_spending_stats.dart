@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/utils/formatters.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Horizontal scrollable stats chips showing total group spending and top
 /// spenders.
@@ -85,20 +85,20 @@ class _StatsChip extends StatelessWidget {
         vertical: 4,
       ),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.inputFill,
+        color: context.colors.inputFill,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColorTokens.light.textSecondary),
+          Icon(icon, size: 14, color: context.colors.textSecondary),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
         ],
