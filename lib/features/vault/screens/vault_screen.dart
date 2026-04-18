@@ -15,7 +15,7 @@ import '../keys/vault_keys.dart';
 import '../models/document_model.dart';
 import '../providers/document_provider.dart';
 import '../widgets/vault_hero_card.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../shared/widgets/offline_banner.dart';
 
@@ -52,7 +52,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Vault', useDarkTheme: true),
@@ -67,7 +67,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -79,7 +79,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -91,7 +91,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     if (connectivity == ConnectivityStatus.offline) {
       return Scaffold(
         key: VaultKeys.screen,
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             ModuleHeader(
@@ -114,7 +114,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
     return Scaffold(
       key: VaultKeys.screen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -137,7 +137,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     (groupId: widget.groupId, eventId: widget.eventId),
                   ),
                 ),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ),
@@ -189,7 +189,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               actionLabel: 'Upload Document',
               onAction: () => _uploadDocument(context),
               accentGradient: LinearGradient(
-                colors: [AppColorTokens.light.moduleVault, AppColorTokens.light.moduleVaultLight],
+                colors: [context.colors.moduleVault, context.colors.moduleVaultLight],
               ),
             ),
           )
@@ -207,7 +207,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -240,9 +240,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   Widget _buildDocumentCard(BuildContext context, Document doc) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColorTokens.light.inputFill, width: 1.5),
+        border: Border.all(color: context.colors.inputFill, width: 1.5),
         boxShadow: AppShadowTokens.standard.raised,
       ),
       child: ClipRRect(
@@ -253,14 +253,14 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           background: Container(
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 24),
-            color: AppColorTokens.light.error.withValues(alpha: 0.1),
-            child: Icon(Iconsax.trash, color: AppColorTokens.light.errorText),
+            color: context.colors.error.withValues(alpha: 0.1),
+            child: Icon(Iconsax.trash, color: context.colors.errorText),
           ),
           confirmDismiss: (direction) async {
             return await showDialog<bool>(
               context: context,
               builder: (context) => AlertDialog(
-                backgroundColor: AppColorTokens.light.cardSurface,
+                backgroundColor: context.colors.cardSurface,
                 title: const Text(
                   'DELETE FILE',
                   style: TextStyle(
@@ -278,7 +278,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     onPressed: () => Navigator.pop(context, true),
                     child: Text(
                       'Delete',
-                      style: TextStyle(color: AppColorTokens.light.errorText),
+                      style: TextStyle(color: context.colors.errorText),
                     ),
                   ),
                 ],
@@ -297,13 +297,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: AppColorTokens.light.moduleVaultLight,
+                      color: context.colors.moduleVaultLight,
                       borderRadius: BorderRadius.circular(
                           12),
                     ),
                     child: Icon(
                       _getTypeIcon(doc.type),
-                      color: AppColorTokens.light.moduleVault,
+                      color: context.colors.moduleVault,
                       size: 24,
                     ),
                   ),
@@ -317,7 +317,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColorTokens.light.textPrimary,
+                            color: context.colors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -328,7 +328,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
-                            color: AppColorTokens.light.textSecondary,
+                            color: context.colors.textSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -343,7 +343,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColorTokens.light.inputFill,
+                      color: context.colors.inputFill,
                       borderRadius:
                           BorderRadius.circular(8),
                     ),
@@ -352,7 +352,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: AppColorTokens.light.textSecondary,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ),
@@ -427,7 +427,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               Text('${result.fileName} uploaded'),
             ],
           ),
-          backgroundColor: AppColorTokens.light.primary,
+          backgroundColor: context.colors.primary,
         ),
       );
     } else {
@@ -442,7 +442,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 Expanded(child: Text('Upload failed: $error')),
               ],
             ),
-            backgroundColor: AppColorTokens.light.error,
+            backgroundColor: context.colors.error,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -462,7 +462,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Could not open file: $e'),
-          backgroundColor: AppColorTokens.light.error,
+          backgroundColor: context.colors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),

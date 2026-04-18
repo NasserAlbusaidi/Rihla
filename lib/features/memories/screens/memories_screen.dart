@@ -14,7 +14,7 @@ import '../models/memory_model.dart';
 import '../providers/memory_provider.dart';
 import '../widgets/full_screen_photo.dart';
 import '../widgets/memories_hero_card.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/offline_banner.dart';
 
 /// Memories screen — Photo timeline for an event.
@@ -65,7 +65,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Photo added to memories!'),
-            backgroundColor: AppColorTokens.light.success,
+            backgroundColor: context.colors.success,
           ),
         );
       }
@@ -80,7 +80,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColorTokens.light.cardSurface,
+          color: context.colors.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
@@ -90,7 +90,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.border,
+                color: context.colors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -100,7 +100,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
             const SizedBox(height: 24),
@@ -110,7 +110,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                   child: _buildSourceOption(
                     icon: Iconsax.camera,
                     label: 'Camera',
-                    color: AppColorTokens.light.primary,
+                    color: context.colors.primary,
                     onTap: () {
                       Navigator.pop(context);
                       _addPhoto(ImageSource.camera);
@@ -122,7 +122,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                   child: _buildSourceOption(
                     icon: Iconsax.gallery,
                     label: 'Gallery',
-                    color: AppColorTokens.light.primary,
+                    color: context.colors.primary,
                     onTap: () {
                       Navigator.pop(context);
                       _addPhoto(ImageSource.gallery);
@@ -137,7 +137,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
               child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -191,7 +191,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     // Loading state — skeleton while event loads
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(
@@ -209,7 +209,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found'),
@@ -221,7 +221,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -231,7 +231,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
 
     return Scaffold(
       key: MemoriesKeys.screen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: memoriesAsync.when(
         loading: () => CustomScrollView(
           slivers: [
@@ -262,7 +262,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                 message: 'Check your connection and try again.',
                 actionLabel: 'Reload',
                 onAction: () => ref.invalidate(eventMemoriesProvider(eventRef)),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -297,7 +297,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                         actionLabel: 'Add Photo',
                         onAction: _showSourcePicker,
                         accentGradient: LinearGradient(
-                          colors: [AppColorTokens.light.moduleMemories, AppColorTokens.light.moduleMemoriesLight],
+                          colors: [context.colors.moduleMemories, context.colors.moduleMemoriesLight],
                         ),
                       ),
                     )
@@ -346,18 +346,20 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> {
                     memory.signedUrl!,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
-                      color: AppColorTokens.light.inputFill,
+                      color: context.colors.inputFill,
                       child: Icon(
                         Iconsax.gallery_slash,
-                        color: AppColorTokens.light.textMuted,
+                        // textMuted-decorative-justified: faded glyph in image-load error placeholder
+                        color: context.colors.textMuted,
                       ),
                     ),
                   )
                 : Container(
-                    color: AppColorTokens.light.inputFill,
+                    color: context.colors.inputFill,
                     child: Icon(
                       Iconsax.image,
-                      color: AppColorTokens.light.textMuted,
+                      // textMuted-decorative-justified: faded image-placeholder glyph
+                      color: context.colors.textMuted,
                     ),
                   ),
           ),

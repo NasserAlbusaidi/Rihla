@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Hero card for the Memories screen — D-15.
@@ -37,7 +37,7 @@ class MemoriesHeroCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16 + 8),
         boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
@@ -57,13 +57,13 @@ class MemoriesHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 8),
           // Row 2: photo count + optional date range
-          _buildCountRow(),
+          _buildCountRow(context),
           const SizedBox(height: 16),
           // Row 3: Add Photo CTA
           SizedBox(
@@ -79,14 +79,14 @@ class MemoriesHeroCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCountRow() {
+  Widget _buildCountRow(BuildContext context) {
     if (dateRange.isEmpty) {
       return Text(
         '0 photos',
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          color: AppColorTokens.light.textPrimary,
+          color: context.colors.textPrimary,
         ),
       );
     }
@@ -99,7 +99,7 @@ class MemoriesHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
           TextSpan(
@@ -107,7 +107,7 @@ class MemoriesHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: AppColorTokens.light.textSecondary,
+              color: context.colors.textSecondary,
             ),
           ),
         ],
