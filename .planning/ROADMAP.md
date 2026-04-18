@@ -119,6 +119,12 @@ Full details: [milestones/v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
   3. Integration test confirms a non-member cannot read/write a trip's bucket paths
   4. Client code updated to call the new signed-URL endpoint where needed; no regressions in document upload/download or memories flows
 **UI hint**: no
+**Plans**: 4 plans
+Plans:
+- [ ] 38-01-PLAN.md — Bootstrap functions/ codebase + firebase.json emulators + cloud_functions dep + Blaze checkpoint
+- [ ] 38-02-PLAN.md — Membership + signing + validation libs + getSignedUploadUrl callable
+- [ ] 38-03-PLAN.md — listDocumentsWithUrls + listMemoriesWithUrls + deleteStorageObject + storage-rules direct-access test
+- [ ] 38-04-PLAN.md — Flutter StorageGateway + service migration + tighten storage.rules + emulator wire + deploy checkpoint
 
 Full details: [milestones/v2.4-ROADMAP.md](milestones/v2.4-ROADMAP.md)
 
