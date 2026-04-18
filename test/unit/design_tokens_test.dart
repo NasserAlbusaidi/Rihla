@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,32 +7,7 @@ import 'package:safar/core/theme/tokens/domain_aliases.dart';
 import 'package:safar/core/theme/tokens/shadow_tokens.dart';
 import 'package:safar/core/theme/tokens/spacing_tokens.dart';
 
-// ---------------------------------------------------------------------------
-// WCAG 2.1 contrast helpers
-// ---------------------------------------------------------------------------
-
-/// WCAG 2.1 relative luminance and contrast ratio calculation.
-/// Used for compile-time verification of color token accessibility.
-double _relativeLuminance(Color color) {
-  double linearize(double channel) {
-    return channel <= 0.03928
-        ? channel / 12.92
-        : math.pow((channel + 0.055) / 1.055, 2.4).toDouble();
-  }
-
-  final r = linearize(color.r);
-  final g = linearize(color.g);
-  final b = linearize(color.b);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-double _contrastRatio(Color foreground, Color background) {
-  final l1 = _relativeLuminance(foreground);
-  final l2 = _relativeLuminance(background);
-  final lighter = math.max(l1, l2);
-  final darker = math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
-}
+import 'shared_test_contrast_helpers.dart';
 
 /// Builds a test-friendly ThemeData that includes the design token extensions
 /// but uses the default system font to avoid google_fonts HTTP requests in tests.
@@ -385,28 +358,28 @@ void main() {
 
     test('textPrimary (#111827) on white (#FFFFFF) >= 4.5:1', () {
       const textPrimary = Color(0xFF111827);
-      final ratio = _contrastRatio(textPrimary, white);
+      final ratio = contrastRatio(textPrimary, white);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'Primary text contrast: ${ratio.toStringAsFixed(2)}:1');
     });
 
     test('textSecondary (#6B7280) on white (#FFFFFF) >= 4.5:1', () {
       const textSecondary = Color(0xFF6B7280);
-      final ratio = _contrastRatio(textSecondary, white);
+      final ratio = contrastRatio(textSecondary, white);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'Secondary text contrast: ${ratio.toStringAsFixed(2)}:1');
     });
 
     test('successText (#047857) on white (#FFFFFF) >= 4.5:1', () {
       const successText = Color(0xFF047857);
-      final ratio = _contrastRatio(successText, white);
+      final ratio = contrastRatio(successText, white);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'Success text contrast: ${ratio.toStringAsFixed(2)}:1');
     });
 
     test('errorText (#B91C1C) on white (#FFFFFF) >= 4.5:1', () {
       const errorText = Color(0xFFB91C1C);
-      final ratio = _contrastRatio(errorText, white);
+      final ratio = contrastRatio(errorText, white);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'Error text contrast: ${ratio.toStringAsFixed(2)}:1');
     });
@@ -414,7 +387,7 @@ void main() {
     test('white (#FFFFFF) on teal (#0D7B74) >= 4.5:1 (AA normal text)', () {
       const whiteText = Color(0xFFFFFFFF);
       const teal = Color(0xFF0D7B74);
-      final ratio = _contrastRatio(whiteText, teal);
+      final ratio = contrastRatio(whiteText, teal);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'White on teal contrast: ${ratio.toStringAsFixed(2)}:1');
     });
