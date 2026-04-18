@@ -82,11 +82,15 @@ class MemoryWithUrl {
 /// Never call the Firebase Storage SDK directly for trip-documents/,
 /// trip-memories/, or receipts/ paths — storage.rules denies them all.
 class StorageGateway {
-  StorageGateway({FirebaseFunctions? functions})
-      : _functions =
-            functions ?? FirebaseFunctions.instanceFor(region: 'us-central1');
+  StorageGateway({FirebaseFunctions? functions}) : _injected = functions;
 
-  final FirebaseFunctions _functions;
+  final FirebaseFunctions? _injected;
+
+  /// Lazy accessor: [FirebaseFunctions.instanceFor] requires `Firebase.initializeApp`
+  /// to have already run. Deferring the lookup until the first callable invocation
+  /// lets callers (including tests) construct services without bootstrapping Firebase.
+  FirebaseFunctions get _functions =>
+      _injected ?? FirebaseFunctions.instanceFor(region: 'us-central1');
 
   /// Request a short-lived signed PUT URL for a single upload.
   ///
