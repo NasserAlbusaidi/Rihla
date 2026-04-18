@@ -34,7 +34,7 @@ ThemeData _goldenTheme({required Brightness brightness}) {
       AppSpacingTokens.standard,
       brightness == Brightness.dark
           ? AppShadowTokens.dark
-          : AppShadowTokens.standard,
+          : AppShadowTokens.light,
     ],
   );
 }
@@ -141,102 +141,106 @@ class GoldenHarness extends StatelessWidget {
   }
 
   Widget _buildHeroCard(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(context.spacing.space20),
-      decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'PRIMARY',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: context.colors.textSecondary,
-                    letterSpacing: 1.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: context.spacing.space4),
-                Text(
-                  '124.500',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: context.colors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacing.space12,
-              vertical: context.spacing.space8,
-            ),
-            decoration: BoxDecoration(
-              color: context.colors.primary,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              'Action',
-              style: TextStyle(
-                color: context.colors.textOnPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRowsCard(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0)
-              Divider(height: 1, color: context.colors.border),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacing.space16,
-                vertical: context.spacing.space12,
-              ),
-              child: Row(
+    return Builder(
+      builder: (context) => Container(
+        padding: EdgeInsets.all(context.spacing.space20),
+        decoration: BoxDecoration(
+          color: context.colors.cardSurface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: context.shadows.raised,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      rows[i].label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: context.colors.textPrimary,
-                      ),
+                  Text(
+                    'PRIMARY',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.colors.textSecondary,
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
+                  SizedBox(height: context.spacing.space4),
                   Text(
-                    rows[i].value,
+                    '124.500',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: context.colors.textSecondary,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                 ],
               ),
             ),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.space12,
+                vertical: context.spacing.space8,
+              ),
+              decoration: BoxDecoration(
+                color: context.colors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Action',
+                style: TextStyle(
+                  color: context.colors.textOnPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRowsCard(BuildContext context) {
+    return Builder(
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: context.colors.cardSurface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: context.shadows.raised,
+        ),
+        child: Column(
+          children: [
+            for (var i = 0; i < rows.length; i++) ...[
+              if (i > 0)
+                Divider(height: 1, color: context.colors.border),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.space16,
+                  vertical: context.spacing.space12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        rows[i].label,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: context.colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      rows[i].value,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: context.colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
