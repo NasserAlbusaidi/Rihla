@@ -72,19 +72,23 @@ class EventTypePickerScreen extends ConsumerWidget {
                             child: Row(
                               children: [
                                 // Type icon container
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: config.color.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Icon(
-                                    config.icon,
-                                    size: 24,
-                                    color: config.color,
-                                  ),
-                                ),
+                                Builder(builder: (context) {
+                                  final typeColor =
+                                      config.resolveColor(context.colors);
+                                  return Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: typeColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(
+                                      config.icon,
+                                      size: 24,
+                                      color: typeColor,
+                                    ),
+                                  );
+                                }),
                                 const SizedBox(width: 12),
                                 // Text column
                                 Expanded(

@@ -3,6 +3,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/core/theme/tokens/color_tokens.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/models/event_type_config.dart';
 
@@ -383,22 +384,57 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('EventTypeConfig', () {
-    test('camping color uses successText token hex (#047857) for WCAG compliance',
+    test('camping role resolves to successText (WCAG 4.56:1 on white, #047857)',
         () {
       final campingConfig = EventTypeConfig.forType(EventType.camping);
-      // successText (#047857) not success (#10B981) — WCAG 4.56:1 on white
-      // const map cannot reference ThemeExtension fields; hex inline
-      expect(campingConfig.color, equals(const Color(0xFF047857)));
+      expect(campingConfig.colorRole, EventTypeColorRole.success);
+      expect(
+        campingConfig.resolveColor(AppColorTokens.light),
+        equals(AppColorTokens.light.successText),
+      );
+      expect(
+          campingConfig.resolveColor(AppColorTokens.light),
+          equals(const Color(0xFF047857)));
     });
 
-    test('trip color uses primary token hex (#0D7B74)', () {
+    test('trip role resolves to primary (#0D7B74)', () {
       final tripConfig = EventTypeConfig.forType(EventType.trip);
-      expect(tripConfig.color, equals(const Color(0xFF0D7B74)));
+      expect(tripConfig.colorRole, EventTypeColorRole.primary);
+      expect(
+        tripConfig.resolveColor(AppColorTokens.light),
+        equals(AppColorTokens.light.primary),
+      );
+      expect(
+          tripConfig.resolveColor(AppColorTokens.light),
+          equals(const Color(0xFF0D7B74)));
     });
 
-    test('custom color uses warning token hex (#F59E0B)', () {
+    test('custom role resolves to warning (#F59E0B)', () {
       final customConfig = EventTypeConfig.forType(EventType.custom);
-      expect(customConfig.color, equals(const Color(0xFFF59E0B)));
+      expect(customConfig.colorRole, EventTypeColorRole.warning);
+      expect(
+        customConfig.resolveColor(AppColorTokens.light),
+        equals(AppColorTokens.light.warning),
+      );
+      expect(
+          customConfig.resolveColor(AppColorTokens.light),
+          equals(const Color(0xFFF59E0B)));
+    });
+
+    test('colors flip between light and dark palettes', () {
+      final tripConfig = EventTypeConfig.forType(EventType.trip);
+      expect(
+        tripConfig.resolveColor(AppColorTokens.light),
+        equals(AppColorTokens.light.primary),
+      );
+      expect(
+        tripConfig.resolveColor(AppColorTokens.dark),
+        equals(AppColorTokens.dark.primary),
+      );
+      expect(
+        tripConfig.resolveColor(AppColorTokens.light),
+        isNot(equals(tripConfig.resolveColor(AppColorTokens.dark))),
+      );
     });
   });
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/theme/tokens/color_tokens.dart';
+
 /// Expense category model
 class ExpenseCategory {
   final String id;
@@ -64,14 +66,19 @@ class ExpenseCategory {
     }
   }
 
-  /// Parse hex color string to Color
-  Color get colorValue {
+  /// Resolve the theme-aware display color for this category.
+  ///
+  /// The persisted `color` field is a hex string (Firebase-round-trippable).
+  /// This method parses it; if parsing fails the fallback sources from
+  /// `tokens.success` so dark/light themes both get a valid semantic color.
+  ///
+  /// Callers pass `context.colors` so the fallback flips with the theme.
+  Color resolveColor(AppColorTokens tokens) {
     try {
       final hex = color.replaceFirst('#', '');
       return Color(int.parse('FF$hex', radix: 16));
     } catch (_) {
-      // design-token-justified: expense category color — pending Plan 04 token-sourced mapping
-      return const Color(0xFF22C55E);
+      return tokens.success;
     }
   }
 }

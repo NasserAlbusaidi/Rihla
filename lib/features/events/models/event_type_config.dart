@@ -1,7 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/theme/tokens/color_tokens.dart';
 import 'event_model.dart';
+
+/// Semantic color role assigned to each [EventType].
+///
+/// Resolves to a concrete [Color] at build time via [EventTypeConfig.resolveColor],
+/// sourcing from the active [AppColorTokens] instance so light/dark themes
+/// render correctly.
+enum EventTypeColorRole {
+  /// Maps to [AppColorTokens.primary] (teal).
+  primary,
+
+  /// Maps to [AppColorTokens.successText] (WCAG 4.56:1 on white).
+  success,
+
+  /// Maps to [AppColorTokens.textSecondary] (neutral gray).
+  secondary,
+
+  /// Maps to [AppColorTokens.warning] (amber).
+  warning,
+}
 
 /// Static configuration providing UI metadata for each [EventType].
 ///
@@ -11,68 +31,76 @@ import 'event_model.dart';
 /// - Event hub header accents
 ///
 /// Color assignments per UI-SPEC:
-/// - Trip: context.colors.primary (#0D7B74)
-/// - Camping: context.colors.successText (#047857) — WCAG 4.56:1
-/// - Travel: context.colors.textSecondary (#6B7280)
-/// - Night/Day Out: context.colors.textSecondary (#6B7280)
-/// - Custom: context.colors.warning (#F59E0B)
+/// - Trip: primary (teal)
+/// - Camping: successText (WCAG 4.56:1)
+/// - Travel: textSecondary
+/// - Night/Day Out: textSecondary
+/// - Custom: warning (amber)
+///
+/// Theme-aware color resolution: call [resolveColor] with the active
+/// [AppColorTokens] (typically `context.colors`) to get the correct color
+/// for the current theme brightness.
 class EventTypeConfig {
   final EventType type;
   final String label;
   final String description;
   final IconData icon;
-  final Color color;
+  final EventTypeColorRole colorRole;
 
   const EventTypeConfig._({
     required this.type,
     required this.label,
     required this.description,
     required this.icon,
-    required this.color,
+    required this.colorRole,
   });
 
-  // Colors use inline const literals since const Map cannot reference ThemeExtension fields.
-  // Values match AppColorTokens.light exactly.
+  /// Resolve the theme-aware color for this event type.
+  ///
+  /// Pass `context.colors` from a `BuildContext` to get a color that flips
+  /// between light and dark automatically.
+  Color resolveColor(AppColorTokens tokens) => switch (colorRole) {
+        EventTypeColorRole.primary => tokens.primary,
+        EventTypeColorRole.success => tokens.successText,
+        EventTypeColorRole.secondary => tokens.textSecondary,
+        EventTypeColorRole.warning => tokens.warning,
+      };
+
   static const Map<EventType, EventTypeConfig> _configs = {
     EventType.trip: EventTypeConfig._(
       type: EventType.trip,
       label: 'Trip',
       description: 'Full travel experience with all modules',
       icon: Iconsax.airplane,
-      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.primary)
-      color: Color(0xFF0D7B74),
+      colorRole: EventTypeColorRole.primary,
     ),
     EventType.camping: EventTypeConfig._(
       type: EventType.camping,
       label: 'Camping',
       description: 'Outdoor adventure with gear tracking',
       icon: Iconsax.tree,
-      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.successText)
-      color: Color(0xFF047857),
+      colorRole: EventTypeColorRole.success,
     ),
     EventType.travel: EventTypeConfig._(
       type: EventType.travel,
       label: 'Travel',
       description: 'Journey with logistics and documents',
       icon: Iconsax.car,
-      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.textSecondary)
-      color: Color(0xFF6B7280),
+      colorRole: EventTypeColorRole.secondary,
     ),
     EventType.nightDayOut: EventTypeConfig._(
       type: EventType.nightDayOut,
       label: 'Night/Day Out',
       description: 'Quick outing with expense splitting',
       icon: Iconsax.moon,
-      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.textSecondary)
-      color: Color(0xFF6B7280),
+      colorRole: EventTypeColorRole.secondary,
     ),
     EventType.custom: EventTypeConfig._(
       type: EventType.custom,
       label: 'Custom',
       description: 'Pick your own modules',
       icon: Iconsax.element_3,
-      // design-token-justified: event type color — pending Plan 04 category token migration (maps to context.colors.warning)
-      color: Color(0xFFF59E0B),
+      colorRole: EventTypeColorRole.warning,
     ),
   };
 
