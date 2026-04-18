@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/features/gear/widgets/gear_add_input.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 void main() {
   group('GearAddInput — rendering', () {
@@ -10,6 +11,7 @@ void main() {
       final controller = TextEditingController();
       await tester.pumpWidget(
         MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GearAddInput(
               controller: controller,
@@ -29,6 +31,7 @@ void main() {
       final controller = TextEditingController();
       await tester.pumpWidget(
         MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GearAddInput(
               controller: controller,
@@ -53,6 +56,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GearAddInput(
               controller: controller,
@@ -78,6 +82,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GearAddInput(
               controller: controller,
@@ -103,6 +108,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GearAddInput(
               controller: controller,

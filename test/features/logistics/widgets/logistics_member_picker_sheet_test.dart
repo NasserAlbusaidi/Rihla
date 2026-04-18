@@ -9,6 +9,7 @@ import 'package:safar/features/logistics/models/sub_group_model.dart';
 import 'package:safar/features/logistics/providers/sub_group_provider.dart';
 import 'package:safar/features/logistics/widgets/logistics_member_picker_sheet.dart';
 import 'package:safar/features/trip/models/trip_model.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -78,6 +79,7 @@ Widget _wrap({
       ),
     ],
     child: MaterialApp(
+      theme: AppTheme.lightTheme,
       home: Scaffold(
         body: LogisticsMemberPickerSheet(
           subGroup: sg,
