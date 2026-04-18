@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../shared/widgets/dot_step_indicator.dart';
 import '../keys/onboarding_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Onboarding screen shown to first-time users
 class OnboardingScreen extends StatefulWidget {
@@ -40,21 +40,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Every journey\nstarts here',
       subtitle:
           'Plan trips with your crew. Split costs, pack gear, share moments — all in one place.',
-      gradientColors: [Color(0xFFCC6B49), Color(0xFFD4845F)], // terracotta
+      // design-token-justified: onboarding gradient — pending Plan 04 promotion to AppGradients.terracotta
+      gradientColors: [Color(0xFFCC6B49), Color(0xFFD4845F)],
     ),
     _OnboardingPageData(
       icon: Iconsax.people,
       title: 'Travel is better\ntogether',
       subtitle:
           'Invite friends with a code. Everyone sees expenses, gear lists, and documents in real time.',
-      gradientColors: [Color(0xFF7A8C5E), Color(0xFF8EA06E)], // olive
+      // design-token-justified: onboarding gradient — pending Plan 04 promotion to AppGradients.olive
+      gradientColors: [Color(0xFF7A8C5E), Color(0xFF8EA06E)],
     ),
     _OnboardingPageData(
       icon: Iconsax.camera,
       title: 'Capture the\nmoments',
       subtitle:
           'Share photos, settle debts instantly, and keep every memory from every adventure.',
-      gradientColors: [Color(0xFF0D7B74), Color(0xFF0A9187)], // dusty teal
+      // design-token-justified: onboarding gradient — pending Plan 04 promotion to AppGradients.teal
+      gradientColors: [Color(0xFF0D7B74), Color(0xFF0A9187)],
     ),
   ];
 
@@ -86,7 +89,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: OnboardingKeys.screen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -94,14 +97,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: Padding(
-                padding: const EdgeInsets.only(right: 24, top: 12),
+                padding: EdgeInsets.only(
+                  right: context.spacing.space24,
+                  top: context.spacing.space12,
+                ),
                 child: _currentPage < _pages.length - 1
                     ? TextButton(
                         onPressed: _completeOnboarding,
                         child: Text(
                           'Skip',
                           style: TextStyle(
-                            color: AppColorTokens.light.textSecondary,
+                            color: context.colors.textSecondary,
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                           ),
@@ -126,7 +132,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
 
             // Bottom controls
-            _buildBottomControls(),
+            _buildBottomControls(context),
             const SizedBox(height: 40),
           ],
         ),
@@ -157,7 +163,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Icon(data.icon, size: 48, color: Colors.white),
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: context.spacing.space24),
 
           // Title
           Text(
@@ -165,13 +171,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
               height: 1.3,
             ),
             textAlign: TextAlign.center,
           ),
 
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.space8),
 
           // Subtitle
           Text(
@@ -179,7 +185,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: AppColorTokens.light.textSecondary,
+              color: context.colors.textSecondary,
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -191,7 +197,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildBottomControls() {
+  Widget _buildBottomControls(BuildContext context) {
     final isLastPage = _currentPage == _pages.length - 1;
 
     return Padding(
@@ -202,7 +208,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           DotStepIndicator(
             stepCount: 3,
             currentStep: _currentPage,
-            activeColor: AppColorTokens.light.focusBorderWarm,
+            activeColor: context.colors.focusBorderWarm,
             showCheckmarks: false,
           ),
           const SizedBox(height: 40),
@@ -215,8 +221,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: ElevatedButton(
                 onPressed: _completeOnboarding,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColorTokens.light.focusBorderWarm,
-                  foregroundColor: AppColorTokens.light.textOnPrimary,
+                  backgroundColor: context.colors.focusBorderWarm,
+                  foregroundColor: context.colors.textOnPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -238,8 +244,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: ElevatedButton(
                 onPressed: _nextPage,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColorTokens.light.primary,
-                  foregroundColor: AppColorTokens.light.textOnPrimary,
+                  backgroundColor: context.colors.primary,
+                  foregroundColor: context.colors.textOnPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -272,4 +278,3 @@ class _OnboardingPageData {
     required this.gradientColors,
   });
 }
-
