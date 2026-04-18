@@ -14,7 +14,7 @@ import '../keys/gear_keys.dart';
 import '../models/gear_item_model.dart';
 import '../providers/gear_provider.dart';
 import '../widgets/gear_list_view.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/offline_banner.dart';
 
 /// Gear Screen — orchestrator (D-08).
@@ -60,7 +60,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Gear', useDarkTheme: true),
@@ -75,7 +75,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -87,7 +87,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -97,7 +97,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
 
     return Scaffold(
       key: GearKeys.screen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -142,7 +142,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
         HapticService.lightClick();
         setState(() => _hideClaimed = !_hideClaimed);
       },
-      backgroundColor: AppColorTokens.light.textPrimary,
+      backgroundColor: context.colors.textPrimary,
       elevation: 4,
       shape: const CircleBorder(),
       tooltip: _hideClaimed ? 'Show All' : 'Hide Claimed',
@@ -161,7 +161,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
       message: 'Check your connection and try again.',
       actionLabel: 'Reload',
       onAction: () => ref.invalidate(eventGearItemsProvider(_eventRef)),
-      iconColor: AppColorTokens.light.textSecondary,
+      iconColor: context.colors.textSecondary,
     );
   }
 
@@ -237,7 +237,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColorTokens.light.cardSurface,
+        backgroundColor: context.colors.cardSurface,
         title: const Text(
           'DELETE ITEM',
           style: TextStyle(fontWeight: FontWeight.w900),
@@ -253,7 +253,7 @@ class _GearScreenState extends ConsumerState<GearScreen> {
             onPressed: () => Navigator.pop(context, true),
             child: Text(
               'DELETE',
-              style: TextStyle(color: AppColorTokens.light.errorText),
+              style: TextStyle(color: context.colors.errorText),
             ),
           ),
         ],

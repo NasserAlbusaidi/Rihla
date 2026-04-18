@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
 import '../providers/sub_group_provider.dart';
@@ -65,7 +65,7 @@ class _LogisticsGroupDialogState extends State<LogisticsGroupDialog> {
         24 + MediaQuery.of(context).viewInsets.bottom,
       ),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
@@ -79,7 +79,7 @@ class _LogisticsGroupDialogState extends State<LogisticsGroupDialog> {
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -91,12 +91,12 @@ class _LogisticsGroupDialogState extends State<LogisticsGroupDialog> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
             decoration: InputDecoration(
               hintText: 'CAR NAME (e.g. DEFENDER 1)',
               prefixIcon:
-                  Icon(Iconsax.car, color: AppColorTokens.light.textMuted),
+                  Icon(Iconsax.car, color: context.colors.textSecondary),
             ),
           ),
           const SizedBox(height: 16),
@@ -110,12 +110,12 @@ class _LogisticsGroupDialogState extends State<LogisticsGroupDialog> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
             decoration: InputDecoration(
               hintText: 'CAPACITY',
               prefixIcon:
-                  Icon(Iconsax.people, color: AppColorTokens.light.textMuted),
+                  Icon(Iconsax.people, color: context.colors.textSecondary),
             ),
           ),
           const SizedBox(height: 24),

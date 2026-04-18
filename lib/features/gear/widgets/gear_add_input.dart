@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Input row for adding a new gear item.
 ///
@@ -32,9 +32,9 @@ class GearAddInput extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColorTokens.light.inputFill),
+        border: Border.all(color: context.colors.inputFill),
       ),
       child: Row(
         children: [
@@ -42,8 +42,9 @@ class GearAddInput extends StatelessWidget {
             icon: Icon(
               Iconsax.flash,
               color: isHighPriority
-                  ? AppColorTokens.light.errorText
-                  : AppColorTokens.light.textMuted,
+                  ? context.colors.errorText
+                  // textMuted-decorative-justified: inactive priority flash affordance
+                  : context.colors.textMuted,
               size: 20,
             ),
             onPressed: () {
@@ -63,7 +64,7 @@ class GearAddInput extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1,
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
@@ -74,7 +75,7 @@ class GearAddInput extends StatelessWidget {
           IconButton(
             icon: Icon(
               Iconsax.add_circle,
-              color: AppColorTokens.light.primary,
+              color: context.colors.primary,
               size: 28,
             ),
             onPressed: () {

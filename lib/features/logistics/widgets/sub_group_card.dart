@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/services/haptic_service.dart';
 import '../keys/logistics_keys.dart';
 import '../models/sub_group_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Card for a single sub-group in the Logistics screen (D-22).
@@ -42,11 +42,11 @@ class SubGroupCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppShadowTokens.standard.raised,
         border: Border(
-          top: BorderSide(color: AppColorTokens.light.moduleLogistics, width: 3),
+          top: BorderSide(color: context.colors.moduleLogistics, width: 3),
         ),
       ),
       child: Column(
@@ -58,7 +58,7 @@ class SubGroupCard extends StatelessWidget {
               Icon(
                 _iconForType(subGroup.type),
                 size: 20,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -67,7 +67,7 @@ class SubGroupCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
               ),
@@ -76,14 +76,15 @@ class SubGroupCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
               IconButton(
                 icon: Icon(
                   Iconsax.more,
                   size: 20,
-                  color: AppColorTokens.light.textMuted,
+                  // textMuted-decorative-justified: inactive "more" affordance
+                  color: context.colors.textMuted,
                 ),
                 onPressed: () => onDeleteGroup(subGroup),
               ),
@@ -94,8 +95,8 @@ class SubGroupCard extends StatelessWidget {
           LinearProgressIndicator(
             value: progress,
             minHeight: 4,
-            backgroundColor: AppColorTokens.light.border,
-            valueColor: AlwaysStoppedAnimation(AppColorTokens.light.moduleLogistics),
+            backgroundColor: context.colors.border,
+            valueColor: AlwaysStoppedAnimation(context.colors.moduleLogistics),
             borderRadius: BorderRadius.circular(2),
           ),
           if (subGroup.members.isNotEmpty) ...[
@@ -113,7 +114,7 @@ class SubGroupCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColorTokens.light.selectionFill,
+                      color: context.colors.selectionFill,
                       borderRadius:
                           BorderRadius.circular(8),
                     ),
@@ -122,7 +123,7 @@ class SubGroupCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: AppColorTokens.light.textSecondary,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ),
@@ -137,20 +138,23 @@ class SubGroupCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColorTokens.light.border,
+                  color: context.colors.border,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Iconsax.add, size: 12, color: AppColorTokens.light.textMuted),
+                    Icon(Iconsax.add,
+                        size: 12,
+                        // textMuted-decorative-justified: faint inline + glyph for "open slot" hint
+                        color: context.colors.textMuted),
                     const SizedBox(width: 4),
                     Text(
                       '${subGroup.capacity - subGroup.members.length} open',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: AppColorTokens.light.textMuted,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ],
@@ -167,7 +171,7 @@ class SubGroupCard extends StatelessWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColorTokens.light.cardSurface,
+        backgroundColor: context.colors.cardSurface,
         title: const Text(
           'REMOVE MEMBER',
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
@@ -186,7 +190,7 @@ class SubGroupCard extends StatelessWidget {
             child: Text(
               'REMOVE',
               style: TextStyle(
-                color: AppColorTokens.light.errorText,
+                color: context.colors.errorText,
                 fontWeight: FontWeight.bold,
               ),
             ),

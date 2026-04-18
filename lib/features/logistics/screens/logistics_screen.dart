@@ -18,7 +18,7 @@ import '../widgets/logistics_group_dialog.dart';
 import '../widgets/logistics_hero_card.dart';
 import '../widgets/logistics_member_picker_sheet.dart';
 import '../widgets/sub_group_card.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/offline_banner.dart';
 
 /// Logistics Screen — unified module template (D-08, D-23).
@@ -50,7 +50,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
     // Loading state — use skeleton instead of spinner
     if (eventAsync.isLoading) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Logistics', useDarkTheme: true),
@@ -65,7 +65,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
     // Not-found state per D-11
     if (event == null) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -77,7 +77,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                     'It may have been deleted. Tap below to go back to your groups.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -87,7 +87,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
 
     return Scaffold(
       key: LogisticsKeys.screen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: Column(
         children: [
           ModuleHeader(
@@ -171,7 +171,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
               actionLabel: 'Create Sub-group',
               onAction: _showCreateDialog,
               accentGradient: LinearGradient(
-                colors: [AppColorTokens.light.moduleLogistics, AppColorTokens.light.moduleLogisticsLight],
+                colors: [context.colors.moduleLogistics, context.colors.moduleLogisticsLight],
               ),
             ),
           )
@@ -189,7 +189,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -283,7 +283,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColorTokens.light.cardSurface,
+        backgroundColor: context.colors.cardSurface,
         title: const Text('Delete Group?'),
         content: Text(
           'This will remove ${group.name} and all its assignments.',
@@ -301,7 +301,7 @@ class _LogisticsScreenState extends ConsumerState<LogisticsScreen> {
             },
             child: Text(
               'DELETE',
-              style: TextStyle(color: AppColorTokens.light.errorText),
+              style: TextStyle(color: context.colors.errorText),
             ),
           ),
         ],

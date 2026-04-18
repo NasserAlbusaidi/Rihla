@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Stats hero card for the Logistics screen (D-22).
@@ -27,7 +27,7 @@ class LogisticsHeroCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppShadowTokens.standard.raised,
       ),
@@ -39,7 +39,7 @@ class LogisticsHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
@@ -49,7 +49,7 @@ class LogisticsHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
           if (unassignedCount > 0) ...[
@@ -59,7 +59,7 @@ class LogisticsHeroCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: AppColorTokens.light.errorText,
+                color: context.colors.errorText,
               ),
             ),
           ],

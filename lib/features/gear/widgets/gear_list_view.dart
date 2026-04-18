@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/search_filter_bar.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../models/gear_item_model.dart';
 import '../widgets/gear_add_input.dart';
 import '../widgets/gear_hero_card.dart';
@@ -128,7 +128,7 @@ class GearListView extends StatelessWidget {
                   'No items match your filter',
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColorTokens.light.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ),
@@ -144,8 +144,8 @@ class GearListView extends StatelessWidget {
                 onAction: onAddItem,
                 accentGradient: LinearGradient(
                   colors: [
-                    AppColorTokens.light.moduleGear,
-                    AppColorTokens.light.moduleGearLight,
+                    context.colors.moduleGear,
+                    context.colors.moduleGearLight,
                   ],
                 ),
               ),
@@ -159,7 +159,7 @@ class GearListView extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: AppColorTokens.light.textMuted,
+                    color: context.colors.textSecondary,
                     letterSpacing: 0.5,
                   ),
                 ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/shadow_tokens.dart';
 
 /// Hero card for the Gear screen (D-12).
@@ -34,7 +34,7 @@ class GearHeroCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppShadowTokens.standard.raised,
         image: const DecorationImage(
@@ -54,7 +54,7 @@ class GearHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
@@ -65,7 +65,7 @@ class GearHeroCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -73,8 +73,8 @@ class GearHeroCard extends StatelessWidget {
           LinearProgressIndicator(
             value: progress,
             minHeight: 4,
-            backgroundColor: AppColorTokens.light.border,
-            valueColor: AlwaysStoppedAnimation(AppColorTokens.light.moduleLedger),
+            backgroundColor: context.colors.border,
+            valueColor: AlwaysStoppedAnimation(context.colors.moduleLedger),
             borderRadius: BorderRadius.circular(2),
           ),
           if (priorityCount > 0) ...[
@@ -82,7 +82,7 @@ class GearHeroCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColorTokens.light.error.withValues(alpha: 0.1),
+                color: context.colors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -90,7 +90,7 @@ class GearHeroCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColorTokens.light.errorText,
+                  color: context.colors.errorText,
                 ),
               ),
             ),
