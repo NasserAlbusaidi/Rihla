@@ -10,8 +10,7 @@ import '../../../shared/widgets/loading_button.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Screen for joining a group via a 6-character invite code.
 ///
@@ -135,9 +134,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColorTokens.light.cardSurface,
+                color: context.colors.cardSurface,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: AppShadowTokens.standard.raised,
+                boxShadow: context.shadows.raised,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -165,7 +164,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                   Text(
                     'Ask a group member for their 6-character code',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColorTokens.light.textSecondary,
+                          color: context.colors.textSecondary,
                         ),
                   ),
                   const SizedBox(height: 16),

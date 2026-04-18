@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/formatters.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 
@@ -37,7 +37,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColorTokens.light.scaffoldBackground,
+          color: context.colors.scaffoldBackground,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -48,7 +48,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.border,
+                color: context.colors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -59,7 +59,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
                 letterSpacing: -0.5,
               ),
             ),
@@ -68,7 +68,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
               '$fromName paid ${AppFormatters.formatCurrency(suggestedAmount, group.currency)} to $toName.',
               style: TextStyle(
                 fontSize: 14,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -86,18 +86,18 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
               decoration: InputDecoration(
                 labelText: 'Amount (${group.currency})',
                 filled: true,
-                fillColor: AppColorTokens.light.inputFillWarm,
+                fillColor: context.colors.inputFillWarm,
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(spacing.radiusMedium),
                   borderSide: BorderSide(
-                    color: AppColorTokens.light.borderWarm,
+                    color: context.colors.borderWarm,
                     width: 1.5,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(spacing.radiusMedium),
                   borderSide: BorderSide(
-                    color: AppColorTokens.light.focusBorderWarm,
+                    color: context.colors.focusBorderWarm,
                     width: 2,
                   ),
                 ),
@@ -117,18 +117,18 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
               decoration: InputDecoration(
                 labelText: 'Optional note (e.g. Venmo, cash)',
                 filled: true,
-                fillColor: AppColorTokens.light.inputFillWarm,
+                fillColor: context.colors.inputFillWarm,
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(spacing.radiusMedium),
                   borderSide: BorderSide(
-                    color: AppColorTokens.light.borderWarm,
+                    color: context.colors.borderWarm,
                     width: 1.5,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(spacing.radiusMedium),
                   borderSide: BorderSide(
-                    color: AppColorTokens.light.focusBorderWarm,
+                    color: context.colors.focusBorderWarm,
                     width: 2,
                   ),
                 ),
@@ -148,7 +148,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
               height: spacing.buttonHeight,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: AppColorTokens.light.primaryGradient,
+                  gradient: context.colors.primaryGradient,
                   borderRadius: BorderRadius.circular(spacing.radiusMedium),
                 ),
                 child: ElevatedButton(
@@ -192,7 +192,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                 ),
               ),
             ),

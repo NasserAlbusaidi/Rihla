@@ -17,9 +17,9 @@ import '../../ledger/providers/expense_provider.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
 import '../widgets/record_payment_sheet.dart';
 import '../widgets/settle_up_tab_layout.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Full-screen cross-event settlement UI with 4-tab layout (D-01, D-02, D-03, D-05, D-06).
 ///
@@ -130,7 +130,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
     // Not-found state per D-11
     if (group == null) {
       return Scaffold(
-        backgroundColor: AppColorTokens.light.scaffoldBackground,
+        backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
             const ModuleHeader(title: 'Not Found', useDarkTheme: true),
@@ -142,7 +142,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
                     'You may have been removed. Tap below to go back home.',
                 actionLabel: 'Go Home',
                 onAction: () => context.go('/home'),
-                iconColor: AppColorTokens.light.textSecondary,
+                iconColor: context.colors.textSecondary,
               ),
             ),
           ],
@@ -169,7 +169,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
 
     return Scaffold(
       key: GroupKeys.settleUpScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -234,14 +234,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Iconsax.warning_2,
-                            size: 40, color: AppColorTokens.light.error),
+                            size: 40, color: context.colors.error),
                         const SizedBox(height: 16),
                         Text(
                           'Couldn\'t load balances.',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: AppColorTokens.light.textPrimary,
+                            color: context.colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -427,7 +427,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Settlement recorded.'),
-            backgroundColor: AppColorTokens.light.success,
+            backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -442,7 +442,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
             content: const Text(
               'Couldn\'t record settlement. Check your connection and try again.',
             ),
-            backgroundColor: AppColorTokens.light.error,
+            backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/spacing_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/animations/fade_in_list.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -57,7 +57,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
     return Scaffold(
       key: GroupKeys.detailScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       floatingActionButton: Semantics(
         label: 'Create event',
         button: true,
@@ -66,9 +66,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             HapticService.lightClick();
             context.push('/group/$groupId/create-event');
           },
-          backgroundColor: AppColorTokens.light.primary,
+          backgroundColor: context.colors.primary,
           shape: const CircleBorder(),
-          child: Icon(Iconsax.add, color: AppColorTokens.light.textOnPrimary),
+          child: Icon(Iconsax.add, color: context.colors.textOnPrimary),
         ),
       ),
       body: groupAsync.when(
@@ -94,27 +94,27 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                     Icon(
                       Iconsax.warning_2,
                       size: 48,
-                      color: AppColorTokens.light.textMuted,
+                      color: context.colors.textSecondary,
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'Failed to load group',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColorTokens.light.textSecondary,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
-                      height: AppSpacingTokens.standard.buttonHeight,
+                      height: context.spacing.buttonHeight,
                       child: ElevatedButton(
                         onPressed: () =>
                             ref.invalidate(groupDetailProvider(groupId)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColorTokens.light.primary,
-                          foregroundColor: AppColorTokens.light.textOnPrimary,
+                          backgroundColor: context.colors.primary,
+                          foregroundColor: context.colors.textOnPrimary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
-                              AppSpacingTokens.standard.radiusMedium,
+                              context.spacing.radiusMedium,
                             ),
                           ),
                         ),
@@ -124,7 +124,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                               .textTheme
                               .bodyMedium
                               ?.copyWith(
-                                color: AppColorTokens.light.textOnPrimary,
+                                color: context.colors.textOnPrimary,
                               ),
                         ),
                       ),
@@ -149,7 +149,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             IconButton(
               icon: Icon(
                 Iconsax.setting_2,
-                color: AppColorTokens.light.textOnPrimary,
+                color: context.colors.textOnPrimary,
                 size: 22,
               ),
               onPressed: () => context.push('/group/$groupId/settings'),
@@ -159,8 +159,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         ),
         Expanded(
           child: RefreshIndicator(
-            color: AppColorTokens.light.primary,
-            backgroundColor: AppColorTokens.light.cardSurface,
+            color: context.colors.primary,
+            backgroundColor: context.colors.cardSurface,
             onRefresh: () async {
               // Invalidate Firestore-backed stream providers.
               // groupBalancesProvider is a computed Provider.family that
@@ -225,13 +225,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                         if (showSettleUpCta) ...[
                           SizedBox(
                             width: double.infinity,
-                            height: AppSpacingTokens.standard.buttonHeight,
+                            height: context.spacing.buttonHeight,
                             child: DecoratedBox(
                               decoration: BoxDecoration(
                                 gradient:
-                                    AppColorTokens.light.primaryGradient,
+                                    context.colors.primaryGradient,
                                 borderRadius: BorderRadius.circular(
-                                  AppSpacingTokens.standard.radiusMedium,
+                                  context.spacing.radiusMedium,
                                 ),
                               ),
                               child: ElevatedButton(
@@ -247,7 +247,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                   shadowColor: Colors.transparent,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
-                                      AppSpacingTokens.standard.radiusMedium,
+                                      context.spacing.radiusMedium,
                                     ),
                                   ),
                                 ),
@@ -326,13 +326,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColorTokens.light.inputFill,
+                    color: context.colors.inputFill,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${events.length}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColorTokens.light.textSecondary,
+                          color: context.colors.textSecondary,
                         ),
                   ),
                 ),
@@ -383,7 +383,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load events",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                 ),
           ),
         ),
@@ -425,7 +425,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
               return Text(
                 'No members yet',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColorTokens.light.textMuted,
+                      color: context.colors.textSecondary,
                     ),
               );
             }
@@ -469,7 +469,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load balances",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                 ),
           ),
         ),
@@ -512,7 +512,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load activity",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                 ),
           ),
         ),
@@ -523,7 +523,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           child: Text(
             'See all',
             style: TextStyle(
-              color: AppColorTokens.light.primary,
+              color: context.colors.primary,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),

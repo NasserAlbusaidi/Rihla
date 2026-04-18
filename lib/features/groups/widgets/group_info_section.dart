@@ -4,11 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Group info section widget for GroupSettingsScreen.
 ///
@@ -94,7 +93,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
   Future<void> _showCurrencyPicker(BuildContext ctx) async {
     await showModalBottomSheet<void>(
       context: ctx,
-      backgroundColor: AppColorTokens.light.cardSurface,
+      backgroundColor: context.colors.cardSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -109,7 +108,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: AppColorTokens.light.textPrimary,
+                  color: context.colors.textPrimary,
                 ),
               ),
             ),
@@ -117,7 +116,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
               (c) => ListTile(
                 title: Text(c),
                 trailing: c == widget.group.currency
-                    ? Icon(Iconsax.tick_circle, color: AppColorTokens.light.primary)
+                    ? Icon(Iconsax.tick_circle, color: context.colors.primary)
                     : null,
                 onTap: () async {
                   Navigator.pop(sheetCtx);
@@ -156,17 +155,17 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: AppColorTokens.light.cardSurface,
+            color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildGroupNameTile(),
-              Divider(height: 1, color: AppColorTokens.light.inputFill),
+              Divider(height: 1, color: context.colors.inputFill),
               _buildCurrencyTile(),
-              Divider(height: 1, color: AppColorTokens.light.inputFill),
+              Divider(height: 1, color: context.colors.inputFill),
               _buildInviteCodeTile(),
             ],
           ),
@@ -181,7 +180,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
         Icon(
           Iconsax.setting_2,
           size: 16,
-          color: AppColorTokens.light.textSecondary,
+          color: context.colors.textSecondary,
         ),
         const SizedBox(width: 6),
         Text(
@@ -189,7 +188,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
@@ -210,14 +209,14 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColorTokens.light.inputFill,
+                  color: context.colors.inputFill,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
                   child: Icon(
                     Iconsax.text,
                     size: 18,
-                    color: AppColorTokens.light.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ),
@@ -229,7 +228,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -251,7 +250,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                   : IconButton(
                       icon: Icon(
                         Iconsax.tick_circle,
-                        color: AppColorTokens.light.primary,
+                        color: context.colors.primary,
                       ),
                       onPressed: _saveGroupName,
                     ),
@@ -273,14 +272,14 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.inputFill,
+                color: context.colors.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
                   Iconsax.text,
                   size: 18,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
             ),
@@ -294,7 +293,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -303,7 +302,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                 ],
@@ -322,7 +321,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 child: Icon(
                   Iconsax.edit_2,
                   size: 18,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                   semanticLabel: 'Edit group name',
                 ),
               ),
@@ -348,14 +347,14 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.inputFill,
+                color: context.colors.inputFill,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
                   Iconsax.money_4,
                   size: 18,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
             ),
@@ -369,7 +368,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -378,7 +377,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
-                      color: AppColorTokens.light.textPrimary,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                 ],
@@ -387,7 +386,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
             Icon(
               Iconsax.arrow_right_3,
               size: 16,
-              color: AppColorTokens.light.textSecondary,
+              color: context.colors.textSecondary,
               semanticLabel: 'Change currency',
             ),
           ],
@@ -406,14 +405,14 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColorTokens.light.inputFill,
+              color: context.colors.inputFill,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
               child: Icon(
                 Iconsax.link,
                 size: 18,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
             ),
           ),
@@ -427,7 +426,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -437,7 +436,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 4,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
               ],
@@ -447,7 +446,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
             key: GroupKeys.inviteCodeCopyButton,
             icon: Icon(
               Iconsax.copy,
-              color: AppColorTokens.light.textSecondary,
+              color: context.colors.textSecondary,
               semanticLabel: 'Copy invite code',
             ),
             onPressed: () {

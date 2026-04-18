@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// 2x2 stats grid for the GroupDetailScreen above-the-fold summary.
 ///
@@ -42,9 +42,9 @@ class GroupStatsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     // Dart 3 switch expression for YOUR BALANCE color coding (D-01)
     final balanceColor = switch (userNetBalance.compareTo(Decimal.zero)) {
-      < 0 => AppColorTokens.light.errorText,
-      > 0 => AppColorTokens.light.successText,
-      _ => AppColorTokens.light.textPrimary,
+      < 0 => context.colors.errorText,
+      > 0 => context.colors.successText,
+      _ => context.colors.textPrimary,
     };
 
     // Direction label for YOUR BALANCE — makes sign explicit (D-12)
@@ -74,19 +74,19 @@ class GroupStatsGrid extends StatelessWidget {
           key: GroupKeys.statGroupTotal,
           label: 'GROUP TOTAL',
           value: AppFormatters.formatCurrency(groupTotal, currency),
-          valueColor: AppColorTokens.light.textPrimary,
+          valueColor: context.colors.textPrimary,
         ),
         _StatCard(
           key: GroupKeys.statActiveMembers,
           label: 'ACTIVE MEMBERS',
           value: '$activeMembers',
-          valueColor: AppColorTokens.light.textPrimary,
+          valueColor: context.colors.textPrimary,
         ),
         _StatCard(
           key: GroupKeys.statEvents,
           label: 'EVENTS',
           value: '$eventCount',
-          valueColor: AppColorTokens.light.textPrimary,
+          valueColor: context.colors.textPrimary,
         ),
       ],
     );
@@ -115,8 +115,8 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
-        border: Border.all(color: AppColorTokens.light.border),
+        color: context.colors.cardSurface,
+        border: Border.all(color: context.colors.border),
         borderRadius: BorderRadius.circular(8),
       ),
       padding: const EdgeInsets.all(12),
@@ -129,7 +129,7 @@ class _StatCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
               letterSpacing: 0.5,
             ),
           ),

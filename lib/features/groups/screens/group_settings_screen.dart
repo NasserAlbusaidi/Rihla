@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
@@ -12,6 +11,7 @@ import '../providers/group_provider.dart';
 import '../widgets/group_danger_section.dart';
 import '../widgets/group_info_section.dart';
 import '../widgets/group_members_section.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Screen for managing group settings — name (creator-only), currency, invite
 /// code, member management, and danger zone (leave / delete).
@@ -32,7 +32,7 @@ class GroupSettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       key: GroupKeys.settingsScreen,
-      backgroundColor: AppColorTokens.light.scaffoldBackground,
+      backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
         child: groupAsync.when(
           data: (group) {
@@ -98,14 +98,14 @@ class GroupSettingsScreen extends ConsumerWidget {
       child: Container(
         key: GroupKeys.settingsBackButton,
         decoration: BoxDecoration(
-          color: AppColorTokens.light.inputFill,
+          color: context.colors.inputFill,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColorTokens.light.inputFill),
+          border: Border.all(color: context.colors.inputFill),
         ),
         child: IconButton(
           icon: Icon(
             Iconsax.arrow_left,
-            color: AppColorTokens.light.textPrimary,
+            color: context.colors.textPrimary,
             size: 20,
           ),
           onPressed: () => GoRouter.of(context).pop(),
@@ -126,14 +126,14 @@ class GroupSettingsScreen extends ConsumerWidget {
           Center(
             child: Column(
               children: [
-                Icon(Iconsax.warning_2, size: 32, color: AppColorTokens.light.textSecondary),
+                Icon(Iconsax.warning_2, size: 32, color: context.colors.textSecondary),
                 const SizedBox(height: 8),
                 Text(
                   'Could not load settings',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColorTokens.light.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -142,7 +142,7 @@ class GroupSettingsScreen extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: AppColorTokens.light.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -150,7 +150,7 @@ class GroupSettingsScreen extends ConsumerWidget {
                   onPressed: () => ref.invalidate(groupDetailProvider(groupId)),
                   child: Text(
                     'Try again',
-                    style: TextStyle(color: AppColorTokens.light.primary),
+                    style: TextStyle(color: context.colors.primary),
                   ),
                 ),
               ],

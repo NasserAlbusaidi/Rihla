@@ -7,11 +7,10 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Danger zone section widget for GroupSettingsScreen.
 ///
@@ -34,20 +33,20 @@ class GroupDangerSection extends ConsumerWidget {
       key: GroupKeys.dangerSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(),
+        _buildSectionHeader(context),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: AppColorTokens.light.cardSurface,
+            color: context.colors.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadowTokens.standard.raised,
+            boxShadow: context.shadows.raised,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildLeaveGroupTile(context, ref),
               if (isCreator) ...[
-                Divider(height: 1, color: AppColorTokens.light.inputFill),
+                Divider(height: 1, color: context.colors.inputFill),
                 _buildDeleteGroupTile(context, ref),
               ],
             ],
@@ -57,13 +56,13 @@ class GroupDangerSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader() {
+  Widget _buildSectionHeader(BuildContext context) {
     return Row(
       children: [
         Icon(
           Iconsax.warning_2,
           size: 16,
-          color: AppColorTokens.light.errorText,
+          color: context.colors.errorText,
         ),
         const SizedBox(width: 6),
         Text(
@@ -71,7 +70,7 @@ class GroupDangerSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.errorText,
+            color: context.colors.errorText,
             letterSpacing: 1.5,
           ),
         ),
@@ -95,14 +94,14 @@ class GroupDangerSection extends ConsumerWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.error.withValues(alpha: 0.1),
+                color: context.colors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
                   Iconsax.logout,
                   size: 18,
-                  color: AppColorTokens.light.errorText,
+                  color: context.colors.errorText,
                 ),
               ),
             ),
@@ -113,7 +112,7 @@ class GroupDangerSection extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColorTokens.light.errorText,
+                  color: context.colors.errorText,
                 ),
               ),
             ),
@@ -139,14 +138,14 @@ class GroupDangerSection extends ConsumerWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColorTokens.light.error.withValues(alpha: 0.1),
+                color: context.colors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Icon(
                   Iconsax.trash,
                   size: 18,
-                  color: AppColorTokens.light.errorText,
+                  color: context.colors.errorText,
                 ),
               ),
             ),
@@ -157,7 +156,7 @@ class GroupDangerSection extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColorTokens.light.errorText,
+                  color: context.colors.errorText,
                 ),
               ),
             ),
@@ -177,7 +176,7 @@ class GroupDangerSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textPrimary,
+            color: context.colors.textPrimary,
           ),
         ),
         content: Text(
@@ -185,7 +184,7 @@ class GroupDangerSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w400,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
           ),
         ),
         actions: [
@@ -193,7 +192,7 @@ class GroupDangerSection extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'Stay in group',
-              style: TextStyle(color: AppColorTokens.light.textSecondary),
+              style: TextStyle(color: context.colors.textSecondary),
             ),
           ),
           TextButton(
@@ -206,7 +205,7 @@ class GroupDangerSection extends ConsumerWidget {
             child: Text(
               'Leave group',
               style: TextStyle(
-                color: AppColorTokens.light.errorText,
+                color: context.colors.errorText,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -226,7 +225,7 @@ class GroupDangerSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textPrimary,
+            color: context.colors.textPrimary,
           ),
         ),
         content: Text(
@@ -234,7 +233,7 @@ class GroupDangerSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w400,
-            color: AppColorTokens.light.textSecondary,
+            color: context.colors.textSecondary,
           ),
         ),
         actions: [
@@ -242,7 +241,7 @@ class GroupDangerSection extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'Keep group',
-              style: TextStyle(color: AppColorTokens.light.textSecondary),
+              style: TextStyle(color: context.colors.textSecondary),
             ),
           ),
           TextButton(
@@ -255,7 +254,7 @@ class GroupDangerSection extends ConsumerWidget {
             child: Text(
               'Delete group',
               style: TextStyle(
-                color: AppColorTokens.light.errorText,
+                color: context.colors.errorText,
                 fontWeight: FontWeight.w600,
               ),
             ),

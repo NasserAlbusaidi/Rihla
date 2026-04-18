@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/theme/tokens/color_tokens.dart';
-import '../../../core/theme/tokens/shadow_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/group_activity_log_model.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// A single activity log entry tile (D-09).
 ///
@@ -38,7 +37,7 @@ class GroupActivityTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color, semanticsLabel) = _iconColorAndLabel(activity.type);
+    final (icon, color, semanticsLabel) = _iconColorAndLabel(context, activity.type);
 
     final content = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -48,7 +47,7 @@ class GroupActivityTile extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: AppColorTokens.light.inputFill,
+            color: context.colors.inputFill,
             shape: BoxShape.circle,
           ),
           child: Center(
@@ -59,7 +58,7 @@ class GroupActivityTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
           ),
@@ -77,7 +76,7 @@ class GroupActivityTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textPrimary,
+                  color: context.colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 2),
@@ -86,7 +85,7 @@ class GroupActivityTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -95,7 +94,7 @@ class GroupActivityTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
-                  color: AppColorTokens.light.textMuted,
+                  color: context.colors.textSecondary,
                 ),
               ),
             ],
@@ -121,45 +120,52 @@ class GroupActivityTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.cardSurface,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadowTokens.standard.raised,
+        boxShadow: context.shadows.raised,
       ),
       child: content,
     );
   }
 
   /// Returns (icon, color, semanticsLabel) for the given activity type.
-  (IconData, Color, String) _iconColorAndLabel(String type) {
+  (IconData, Color, String) _iconColorAndLabel(
+    BuildContext context,
+    String type,
+  ) {
+    // textMuted-decorative-justified: activity-type glyph tint in leading
+    // icon cell; semantic meaning is carried by the text + semanticsLabel,
+    // icon is a decorative adjunct that should recede visually.
+    final mutedTint = context.colors.textMuted;
     return switch (type) {
       'group_settlement' => (
           Iconsax.money_recive,
-          AppColorTokens.light.primary,
+          context.colors.primary,
           'Payment recorded',
         ),
       'event_created' => (
           Iconsax.calendar_add,
-          AppColorTokens.light.textMuted,
+          mutedTint,
           'Event created',
         ),
       'event_deleted' => (
           Iconsax.calendar_remove,
-          AppColorTokens.light.textMuted,
+          mutedTint,
           'Event removed',
         ),
       'member_joined' => (
           Iconsax.profile_add,
-          AppColorTokens.light.textMuted,
+          mutedTint,
           'Member joined',
         ),
       'member_left' => (
           Iconsax.profile_delete,
-          AppColorTokens.light.textMuted,
+          mutedTint,
           'Member left',
         ),
       _ => (
           Iconsax.info_circle,
-          AppColorTokens.light.textMuted,
+          mutedTint,
           'Activity',
         ),
     };

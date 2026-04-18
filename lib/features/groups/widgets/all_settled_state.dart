@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../keys/group_keys.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Empty-state widget displayed when all balances are settled.
 ///
@@ -20,12 +20,12 @@ class AllSettledState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColorTokens.light.success.withValues(alpha: 0.12),
+              color: context.colors.success.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Iconsax.tick_circle,
-              color: AppColorTokens.light.success,
+              color: context.colors.success,
               size: 48,
             ),
           ),
@@ -36,7 +36,7 @@ class AllSettledState extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: AppColorTokens.light.textPrimary,
+              color: context.colors.textPrimary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -46,7 +46,7 @@ class AllSettledState extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: AppColorTokens.light.textMuted,
+              color: context.colors.textSecondary,
             ),
             textAlign: TextAlign.center,
           ),

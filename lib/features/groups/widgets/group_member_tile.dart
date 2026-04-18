@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/group_member_model.dart';
-import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// A tile widget for displaying a group member in a member list.
 ///
@@ -26,13 +26,13 @@ class GroupMemberTile extends StatelessWidget {
           // Avatar with initial
           CircleAvatar(
             radius: 20,
-            backgroundColor: AppColorTokens.light.inputFill,
+            backgroundColor: context.colors.inputFill,
             child: Text(
               member.displayName.isNotEmpty
                   ? member.displayName[0].toUpperCase()
                   : '?',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColorTokens.light.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
             ),
           ),
@@ -56,13 +56,13 @@ class GroupMemberTile extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColorTokens.light.inputFill,
+                    color: context.colors.inputFill,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     member.role,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColorTokens.light.textSecondary,
+                          color: context.colors.textSecondary,
                         ),
                   ),
                 ),
