@@ -21,6 +21,7 @@ import '../widgets/expense_card.dart';
 import '../widgets/ledger_hero_card.dart';
 import '../widgets/settlement_row.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/gradient_tokens.dart';
 
 /// Sealed type for a merged timeline item (expense or settlement).
 sealed class _TimelineItem {
@@ -373,10 +374,7 @@ class _LedgerBody extends StatelessWidget {
                   onAction: () => context.push(
                     '/group/$groupId/event/$eventId/ledger/add',
                   ),
-                  accentGradient: const LinearGradient(
-                    // design-token-justified: ledger hero gradient — pending Plan 04 AppGradients.terracotta
-                    colors: [Color(0xFFCC6B49), Color(0xFFE0896A)],
-                  ),
+                  accentGradient: context.gradient(AppGradients.terracotta),
                 )
               : FadeInList(
                   children: timeline.map((item) {

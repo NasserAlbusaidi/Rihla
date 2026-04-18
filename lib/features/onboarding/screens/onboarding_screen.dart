@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/widgets/dot_step_indicator.dart';
 import '../keys/onboarding_keys.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/gradient_tokens.dart';
 
 /// Onboarding screen shown to first-time users
 class OnboardingScreen extends StatefulWidget {
@@ -40,24 +41,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Every journey\nstarts here',
       subtitle:
           'Plan trips with your crew. Split costs, pack gear, share moments — all in one place.',
-      // design-token-justified: onboarding gradient — pending Plan 04 promotion to AppGradients.terracotta
-      gradientColors: [Color(0xFFCC6B49), Color(0xFFD4845F)],
+      gradient: AppGradients.terracotta,
     ),
     _OnboardingPageData(
       icon: Iconsax.people,
       title: 'Travel is better\ntogether',
       subtitle:
           'Invite friends with a code. Everyone sees expenses, gear lists, and documents in real time.',
-      // design-token-justified: onboarding gradient — pending Plan 04 promotion to AppGradients.olive
-      gradientColors: [Color(0xFF7A8C5E), Color(0xFF8EA06E)],
+      gradient: AppGradients.olive,
     ),
     _OnboardingPageData(
       icon: Iconsax.camera,
       title: 'Capture the\nmoments',
       subtitle:
           'Share photos, settle debts instantly, and keep every memory from every adventure.',
-      // design-token-justified: onboarding gradient — pending Plan 04 promotion to AppGradients.teal
-      gradientColors: [Color(0xFF0D7B74), Color(0xFF0A9187)],
+      gradient: AppGradients.teal,
     ),
   ];
 
@@ -126,7 +124,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 },
                 itemCount: _pages.length,
                 itemBuilder: (context, index) {
-                  return _buildPage(_pages[index], index);
+                  return _buildPage(context, _pages[index], index);
                 },
               ),
             ),
@@ -140,7 +138,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildPage(_OnboardingPageData data, int index) {
+  Widget _buildPage(BuildContext context, _OnboardingPageData data, int index) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Column(
@@ -154,11 +152,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             height: 72,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: data.gradientColors,
-              ),
+              gradient: context.gradient(data.gradient),
             ),
             child: Icon(data.icon, size: 48, color: Colors.white),
           ),
@@ -269,12 +263,12 @@ class _OnboardingPageData {
   final IconData icon;
   final String title;
   final String subtitle;
-  final List<Color> gradientColors;
+  final AppGradientPair gradient;
 
   const _OnboardingPageData({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.gradientColors,
+    required this.gradient,
   });
 }

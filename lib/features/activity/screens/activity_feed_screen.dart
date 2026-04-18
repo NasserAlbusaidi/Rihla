@@ -16,6 +16,7 @@ import '../services/activity_service.dart';
 import '../widgets/activity_entry_card.dart';
 import '../widgets/activity_hero_card.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/gradient_tokens.dart';
 
 /// Activity feed screen — Date-grouped timeline per D-21.
 ///
@@ -146,10 +147,7 @@ class ActivityFeedScreen extends ConsumerWidget {
                     title: 'No activity yet',
                     message:
                         'Actions by you and your group members will appear here.',
-                    accentGradient: const LinearGradient(
-                      // design-token-justified: activity hero gradient — pending Plan 04 AppGradients
-                      colors: [Color(0xFFA67C5B), Color(0xFFC29A7A)],
-                    ),
+                    accentGradient: context.gradient(AppGradients.gray),
                   ),
                 )
               else
