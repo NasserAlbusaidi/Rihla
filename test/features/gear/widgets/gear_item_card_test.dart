@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/widgets/gear_item_card.dart';
@@ -38,8 +39,7 @@ void main() {
     testWidgets('renders item name in uppercase', (tester) async {
       final item = _buildItem(id: 'i1', name: 'Flashlight');
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: GearItemCard(
               item: item,
               currentUserId: 'uid-me',
@@ -56,8 +56,7 @@ void main() {
     testWidgets('renders status chip with status text', (tester) async {
       final item = _buildItem(id: 'i1');
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: GearItemCard(
               item: item,
               currentUserId: 'uid-me',
@@ -76,8 +75,7 @@ void main() {
         (tester) async {
       final item = _buildItem(id: 'i1', isHighPriority: true);
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: GearItemCard(
               item: item,
               currentUserId: 'uid-me',
@@ -95,8 +93,7 @@ void main() {
         (tester) async {
       final item = _buildItem(id: 'i1', isHighPriority: false);
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: GearItemCard(
               item: item,
               currentUserId: 'uid-me',
@@ -119,8 +116,7 @@ void main() {
       bool? tappedIsMine;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: GearItemCard(
               item: item,
               currentUserId: 'uid-me',
@@ -151,8 +147,7 @@ void main() {
       GearItem? capturedItem;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: GearItemCard(
               item: item,
               currentUserId: 'uid-me',

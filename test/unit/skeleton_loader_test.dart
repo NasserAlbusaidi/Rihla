@@ -5,7 +5,6 @@ import 'package:shimmer/shimmer.dart';
 
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/shared/widgets/skeleton_primitives.dart';
-import 'package:safar/core/theme/tokens/color_tokens.dart';
 
 void main() {
   // ---------------------------------------------------------------------------

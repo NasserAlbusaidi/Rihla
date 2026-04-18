@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/groups/widgets/all_settled_state.dart';
 
@@ -8,7 +9,8 @@ void main() {
     testWidgets('renders all-settled empty state with icon and message',
         (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+           theme: AppTheme.lightTheme,
           home: Scaffold(body: AllSettledState()),
         ),
       );

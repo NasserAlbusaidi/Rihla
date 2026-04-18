@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/widgets/group_member_balance_card.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -25,7 +26,7 @@ UserBalance _balance({
   );
 }
 
-Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
 
 // ---------------------------------------------------------------------------
 // Tests

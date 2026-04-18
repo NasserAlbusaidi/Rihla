@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/grain_overlay.dart';
 
 void main() {
   group('GrainOverlay', () {
     testWidgets('renders child widget', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+           theme: AppTheme.lightTheme,
           home: GrainOverlay(
             child: Text('test child'),
           ),
@@ -18,7 +20,8 @@ void main() {
 
     testWidgets('renders a DecoratedBox', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+           theme: AppTheme.lightTheme,
           home: GrainOverlay(
             child: SizedBox(),
           ),
@@ -40,7 +43,8 @@ void main() {
 
     testWidgets('GrainOverlay widget tree contains DecoratedBox with grain image', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+           theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GrainOverlay(
               child: Text('content'),
@@ -67,7 +71,8 @@ void main() {
 
     testWidgets('grain image uses ImageRepeat.repeat', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+           theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GrainOverlay(
               child: SizedBox(),
@@ -94,7 +99,8 @@ void main() {
     testWidgets('grain image uses configured opacity', (tester) async {
       const testOpacity = 0.05;
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+           theme: AppTheme.lightTheme,
           home: Scaffold(
             body: GrainOverlay(
               opacity: testOpacity,

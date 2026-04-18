@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -120,7 +121,7 @@ Widget _wrapSettings({
     ],
   );
 
-  return MaterialApp.router(routerConfig: router);
+  return MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router);
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +236,7 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpWidget(MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router));
       await tester.pumpAndSettle();
 
       // Change name

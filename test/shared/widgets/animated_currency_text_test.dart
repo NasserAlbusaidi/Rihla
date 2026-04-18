@@ -1,14 +1,14 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/animated_currency_text.dart';
 
 void main() {
   group('AnimatedCurrencyText', () {
     testWidgets('renders without errors for initial value', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: AnimatedCurrencyText(
+        MaterialApp(theme: AppTheme.lightTheme, home: AnimatedCurrencyText(
             value: Decimal.parse('10.500'),
             currency: 'OMR',
           ),
@@ -20,8 +20,7 @@ void main() {
 
     testWidgets('renders TweenAnimationBuilder', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: AnimatedCurrencyText(
+        MaterialApp(theme: AppTheme.lightTheme, home: AnimatedCurrencyText(
             value: Decimal.parse('10.500'),
             currency: 'OMR',
           ),
@@ -34,8 +33,7 @@ void main() {
 
     testWidgets('displays formatted currency text', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: AnimatedCurrencyText(
+        MaterialApp(theme: AppTheme.lightTheme, home: AnimatedCurrencyText(
             value: Decimal.parse('10.500'),
             currency: 'OMR',
           ),
@@ -70,8 +68,7 @@ void main() {
 
     testWidgets('accepts custom TextStyle', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: AnimatedCurrencyText(
+        MaterialApp(theme: AppTheme.lightTheme, home: AnimatedCurrencyText(
             value: Decimal.parse('10.500'),
             currency: 'OMR',
             style: const TextStyle(fontSize: 24),
@@ -86,8 +83,7 @@ void main() {
       Decimal currentValue = Decimal.parse('10.500');
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: StatefulBuilder(
+        MaterialApp(theme: AppTheme.lightTheme, home: StatefulBuilder(
             builder: (context, setState) {
               return GestureDetector(
                 onTap: () => setState(() => currentValue = Decimal.parse('20.000')),
@@ -117,8 +113,7 @@ void main() {
 
     testWidgets('zero value renders textSecondary color', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: AnimatedCurrencyText(
+        MaterialApp(theme: AppTheme.lightTheme, home: AnimatedCurrencyText(
             value: Decimal.zero,
             currency: 'OMR',
           ),

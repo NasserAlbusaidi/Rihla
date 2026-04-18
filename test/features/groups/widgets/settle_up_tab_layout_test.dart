@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -61,8 +62,7 @@ class _TabHostState extends State<_TabHost> with SingleTickerProviderStateMixin 
 }
 
 Widget _wrap(Widget Function(TabController) builder) => ProviderScope(
-      child: MaterialApp(
-        home: Scaffold(
+      child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
           body: _TabHost(builder: builder),
         ),
       ),

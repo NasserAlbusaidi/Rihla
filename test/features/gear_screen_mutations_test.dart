@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:safar/core/types/event_ref.dart';
@@ -91,8 +92,7 @@ Widget _wrapGearScreen({
       currentUserProvider.overrideWith((ref) => mockUser),
       gearLoadingProvider.overrideWith((ref) => false),
     ],
-    child: MaterialApp(
-      home: GearScreen(groupId: _testEvent.groupId, eventId: _testEvent.id),
+    child: MaterialApp(theme: AppTheme.lightTheme, home: GearScreen(groupId: _testEvent.groupId, eventId: _testEvent.id),
     ),
   );
 }

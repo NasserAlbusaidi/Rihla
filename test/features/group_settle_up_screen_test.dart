@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -102,7 +103,7 @@ Widget _wrap(
           .overrideWith((_) => Stream.value(<Settlement>[])),
       currentUserIdProvider.overrideWithValue(null),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
   );
 }
 
@@ -257,8 +258,7 @@ void main() {
                 .overrideWith((_) => const Stream<Group?>.empty()),
             currentUserIdProvider.overrideWithValue(null),
           ],
-          child: MaterialApp(
-            home: GroupSettleUpScreen(groupId: _groupId),
+          child: MaterialApp(theme: AppTheme.lightTheme, home: GroupSettleUpScreen(groupId: _groupId),
           ),
         ),
       );

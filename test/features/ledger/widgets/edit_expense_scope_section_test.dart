@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -27,8 +28,7 @@ Widget _wrap({
         (ref) => Stream.value(subGroups),
       ),
     ],
-    child: MaterialApp(
-      home: Scaffold(
+    child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
         body: EditExpenseScopeSection(
           groupId: _groupId,
           eventId: _eventId,

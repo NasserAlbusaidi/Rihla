@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -142,7 +143,7 @@ Widget _wrap(Widget child, SharedPreferences prefs) {
         (ref) => Stream.value(const []),
       ),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
   );
 }
 
@@ -169,7 +170,7 @@ Widget _wrapWithBalances(Widget child, SharedPreferences prefs) {
         (ref) => Stream.value(const []),
       ),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
   );
 }
 

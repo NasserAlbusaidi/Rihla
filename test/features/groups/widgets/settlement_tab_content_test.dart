@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/features/groups/widgets/settlement_tab_content.dart';
@@ -27,7 +28,7 @@ Map<String, dynamic> _buildSettlement({
 }
 
 Widget _wrap(Widget child) =>
-    MaterialApp(home: Scaffold(body: child));
+    MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
 
 // ---------------------------------------------------------------------------
 // Tests

@@ -1,56 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import 'tokens/color_tokens.dart';
+import 'tokens/domain_aliases.dart';
 
-/// Reusable error state widget for network/connection errors
+/// Reusable error state widget for network/connection errors.
+///
+/// Uses a private `_IconTint` enum to express "which theme role drives the
+/// icon color" without pinning a literal `Color` at construction time. The
+/// tint resolves against the active theme inside [build].
+enum _IconTint { warning, secondary }
+
 class NetworkErrorWidget extends StatelessWidget {
   final String title;
   final String message;
   final VoidCallback? onRetry;
   final IconData icon;
-  final Color iconColor;
 
-  NetworkErrorWidget({
+  /// Explicit override for the icon color. When null, [_iconTint] drives it.
+  final Color? iconColor;
+  final _IconTint _iconTint;
+
+  const NetworkErrorWidget({
     super.key,
     this.title = 'Connection Issue',
     this.message =
         'Unable to load data. Please check your internet connection and try again.',
     this.onRetry,
     this.icon = Iconsax.wifi_square,
-    Color? iconColor,
-  }) : iconColor = iconColor ?? AppColorTokens.light.warning;
+    this.iconColor,
+  }) : _iconTint = _IconTint.warning;
+
+  const NetworkErrorWidget._withTint({
+    required this.title,
+    required this.message,
+    this.onRetry,
+    required this.icon,
+    required _IconTint tint,
+  })  : iconColor = null,
+        _iconTint = tint;
 
   /// Factory for generic loading error
   factory NetworkErrorWidget.loadingError({
     String? customMessage,
     VoidCallback? onRetry,
   }) {
-    return NetworkErrorWidget(
+    return NetworkErrorWidget._withTint(
       title: 'Something Went Wrong',
       message: customMessage ?? 'We couldn\'t load the data. Please try again.',
       onRetry: onRetry,
       icon: Iconsax.warning_2,
-      iconColor: AppColorTokens.light.warning,
+      tint: _IconTint.warning,
     );
   }
 
   /// Factory for offline state
   factory NetworkErrorWidget.offline({VoidCallback? onRetry}) {
-    return NetworkErrorWidget(
+    return NetworkErrorWidget._withTint(
       title: 'You\'re Offline',
       message: 'Please check your internet connection and try again.',
       onRetry: onRetry,
       icon: Iconsax.wifi_square,
-      iconColor: AppColorTokens.light.textSecondary,
+      tint: _IconTint.secondary,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final resolvedIconColor = iconColor ??
+        switch (_iconTint) {
+          _IconTint.warning => context.colors.warning,
+          _IconTint.secondary => context.colors.textSecondary,
+        };
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(context.spacing.space32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
@@ -59,45 +82,45 @@ class NetworkErrorWidget extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.15),
+                color: resolvedIconColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(icon, size: 40, color: iconColor),
+              child: Icon(icon, size: 40, color: resolvedIconColor),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacing.space24),
             Text(
               title,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColorTokens.light.textPrimary,
+                color: context.colors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.space8),
             Text(
               message,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 24),
+              SizedBox(height: context.spacing.space24),
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Iconsax.refresh),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColorTokens.light.primary,
+                  backgroundColor: context.colors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.space24,
+                    vertical: context.spacing.space12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
                   ),
                 ),
               ),
@@ -123,21 +146,21 @@ class InlineErrorWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
-        color: AppColorTokens.light.warning.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: context.colors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
       ),
       child: Row(
         children: [
-          Icon(Iconsax.warning_2, color: AppColorTokens.light.warning, size: 20),
-          const SizedBox(width: 12),
+          Icon(Iconsax.warning_2, color: context.colors.warning, size: 20),
+          SizedBox(width: context.spacing.space12),
           Expanded(
             child: Text(
               message,
               style: TextStyle(
                 fontSize: 13,
-                color: AppColorTokens.light.textSecondary,
+                color: context.colors.textSecondary,
               ),
             ),
           ),

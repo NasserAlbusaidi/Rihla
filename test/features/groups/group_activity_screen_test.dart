@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -100,8 +101,7 @@ Widget _buildActivityScreen({
         (ref) => Stream.value(_testGroup),
       ),
     ],
-    child: MaterialApp(
-      home: GroupActivityScreen(groupId: groupId),
+    child: MaterialApp(theme: AppTheme.lightTheme, home: GroupActivityScreen(groupId: groupId),
     ),
   );
 }

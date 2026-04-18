@@ -17,7 +17,7 @@ void main() {
     return ProviderScope(
       overrides: overrides,
       child: MaterialApp(
-        theme: AppTheme.lightTheme,
+               theme: AppTheme.lightTheme,
         home: Scaffold(body: SingleChildScrollView(child: child)),
       ),
     );
@@ -125,7 +125,7 @@ void main() {
     testWidgets('Test 6: renders 4 buttons with correct labels', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.lightTheme,
+                   theme: AppTheme.lightTheme,
           home: Scaffold(
             body: QuickActionTray(
               onAddExpense: () {},
@@ -147,7 +147,7 @@ void main() {
     testWidgets('Test 7: buttons have correct keys', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.lightTheme,
+                   theme: AppTheme.lightTheme,
           home: Scaffold(
             body: QuickActionTray(
               onAddExpense: () {},
@@ -175,7 +175,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.lightTheme,
+                   theme: AppTheme.lightTheme,
           home: Scaffold(
             body: QuickActionTray(
               onAddExpense: () => addExpenseCalled = true,

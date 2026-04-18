@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -33,7 +34,7 @@ void main() {
           groupLoadingProvider.overrideWith((ref) => loading),
           groupErrorProvider.overrideWith((ref) => null),
         ],
-        child: const MaterialApp(home: CreateGroupScreen()),
+        child: MaterialApp(theme: AppTheme.lightTheme, home: CreateGroupScreen()),
       );
     }
 
@@ -81,7 +82,7 @@ void main() {
             groupLoadingProvider.overrideWith((ref) => false),
             groupErrorProvider.overrideWith((ref) => null),
           ],
-          child: const MaterialApp(home: CreateGroupScreen()),
+          child: MaterialApp(theme: AppTheme.lightTheme, home: CreateGroupScreen()),
         ),
       );
       await tester.pump();
@@ -125,7 +126,7 @@ void main() {
             groupLoadingProvider.overrideWith((ref) => false),
             groupErrorProvider.overrideWith((ref) => null),
           ],
-          child: const MaterialApp(home: CreateGroupScreen()),
+          child: MaterialApp(theme: AppTheme.lightTheme, home: CreateGroupScreen()),
         ),
       );
       await tester.pump();
@@ -185,7 +186,7 @@ void main() {
           groupLoadingProvider.overrideWith((ref) => loading),
           groupErrorProvider.overrideWith((ref) => null),
         ],
-        child: const MaterialApp(home: JoinGroupScreen()),
+        child: MaterialApp(theme: AppTheme.lightTheme, home: JoinGroupScreen()),
       );
     }
 
@@ -211,7 +212,7 @@ void main() {
             groupLoadingProvider.overrideWith((ref) => false),
             groupErrorProvider.overrideWith((ref) => null),
           ],
-          child: const MaterialApp(home: JoinGroupScreen()),
+          child: MaterialApp(theme: AppTheme.lightTheme, home: JoinGroupScreen()),
         ),
       );
       await tester.pump();
@@ -330,7 +331,8 @@ void main() {
             )),
           ),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
+           theme: AppTheme.lightTheme,
           home: GroupSettingsScreen(groupId: 'group-1'),
         ),
       );
@@ -386,7 +388,8 @@ void main() {
             (ref) => const Stream.empty(),
           ),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
+           theme: AppTheme.lightTheme,
           home: GroupSettingsScreen(groupId: 'group-loading'),
         ),
       );
@@ -408,7 +411,8 @@ void main() {
             (ref) => const Stream.empty(),
           ),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
+           theme: AppTheme.lightTheme,
           home: GroupSettingsScreen(groupId: 'group-error'),
         ),
       );

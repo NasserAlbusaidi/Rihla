@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:safar/core/types/event_ref.dart';
@@ -93,8 +94,7 @@ Widget _wrapForm({
       eventLogisticsParticipantsProvider(_testEvent)
           .overrideWith((ref) => const []),
     ],
-    child: MaterialApp(
-      home: EditExpenseForm(
+    child: MaterialApp(theme: AppTheme.lightTheme, home: EditExpenseForm(
         initialExpense: _testExpense,
         groupId: _groupId,
         eventId: _eventId,

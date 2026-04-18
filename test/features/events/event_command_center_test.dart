@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -189,7 +190,7 @@ Widget _wrapEventHub({
 
   return ProviderScope(
     overrides: _providerOverrides(eventRef, expenses: expenses, event: event, group: group),
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
   );
 }
 

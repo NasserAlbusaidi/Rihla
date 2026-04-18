@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -157,7 +158,7 @@ Widget _wrap(
         (ref) => Stream.value(activities),
       ),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
   );
 }
 
@@ -389,7 +390,8 @@ void main() {
               (ref) => Stream.value(const []),
             ),
           ],
-          child: const MaterialApp(
+          child: MaterialApp(
+           theme: AppTheme.lightTheme,
             home: GroupDetailScreen(groupId: _groupId),
           ),
         ),
@@ -427,8 +429,7 @@ void main() {
               (groupId: _groupId, eventId: 'event-1'),
             ).overrideWith((ref) => Stream.value(const [])),
           ],
-          child: MaterialApp(
-            home: Scaffold(
+          child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
               body: EventCard(
                 event: testEvent,
                 personalBalance: Decimal.parse('-5.000'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/logistics/keys/logistics_keys.dart';
 import 'package:safar/features/logistics/models/sub_group_model.dart';
@@ -28,8 +29,7 @@ Widget _wrap({
     overrides: [
       subGroupLoadingProvider.overrideWith((ref) => false),
     ],
-    child: MaterialApp(
-      home: Scaffold(
+    child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
         body: LogisticsGroupDialog(
           initialGroup: initialGroup,
           onCreateGroup: onCreateGroup ?? (_, __) async {},

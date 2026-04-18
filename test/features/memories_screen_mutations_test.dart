@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/core/types/event_ref.dart';
 import 'package:safar/features/events/models/event_model.dart';
@@ -51,7 +52,8 @@ Widget _wrapMemoriesScreen() {
         (ref) => Stream.value([]),
       ),
     ],
-    child: const MaterialApp(
+    child: MaterialApp(
+           theme: AppTheme.lightTheme,
       home: MemoriesScreen(groupId: 'group-1', eventId: 'event-1'),
     ),
   );

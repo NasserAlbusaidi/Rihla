@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/gear/models/gear_item_model.dart';
 import 'package:safar/features/gear/widgets/gear_item_card.dart';
@@ -21,8 +22,7 @@ GearItem _buildItem({required String id, String name = 'Sleeping bag'}) {
 
 /// Wraps GearListView with MediaQuery.disableAnimations=true so FadeInList
 /// uses a plain Column, avoiding pending animation timers in tests.
-Widget _wrap(GearListView view) => MaterialApp(
-      home: MediaQuery(
+Widget _wrap(GearListView view) => MaterialApp(theme: AppTheme.lightTheme, home: MediaQuery(
         data: const MediaQueryData(disableAnimations: true),
         child: Scaffold(body: view),
       ),

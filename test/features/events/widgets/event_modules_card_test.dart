@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/widgets/event_modules_card.dart';
@@ -8,7 +9,7 @@ import 'package:safar/features/events/widgets/event_modules_card.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
 
 const _allOn = EventModules(
   ledger: true,

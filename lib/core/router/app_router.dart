@@ -28,7 +28,7 @@ import '../../features/memories/screens/memories_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
 import '../../features/vault/screens/vault_screen.dart';
-import '../theme/tokens/color_tokens.dart';
+import '../theme/tokens/domain_aliases.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
@@ -447,14 +447,18 @@ class _SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF2E8D6), // warm sand per D-30
+      // design-token-justified: warm-sand brand background for the splash/
+      // pre-hydration frame is a deliberate identity choice and NOT a
+      // theme-aware surface. Keeps the brand consistent regardless of the
+      // user's eventual light/dark preference.
+      backgroundColor: const Color(0xFFF2E8D6),
       body: Center(
         child: Text(
           'Rihla',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w600,
-            color: AppColorTokens.light.textPrimary,
+            color: context.colors.textPrimary,
             fontFamily: 'Plus Jakarta Sans',
           ),
         ),

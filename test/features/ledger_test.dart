@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:safar/core/types/event_ref.dart';
@@ -63,8 +64,7 @@ Widget _wrapLedger({
         (ref) => const AsyncValue.data(<Transaction>[]),
       ),
     ],
-    child: MaterialApp(
-      home: LedgerScreen(
+    child: MaterialApp(theme: AppTheme.lightTheme, home: LedgerScreen(
         groupId: _mockGroupId,
         eventId: _mockEventId,
       ),
@@ -123,8 +123,7 @@ void main() {
             (ref) => const AsyncValue.data(<Transaction>[]),
           ),
         ],
-        child: MaterialApp(
-          home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
+        child: MaterialApp(theme: AppTheme.lightTheme, home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
         ),
       ),
     );
@@ -180,8 +179,7 @@ void main() {
             (ref) => const AsyncValue.data(<Transaction>[]),
           ),
         ],
-        child: MaterialApp(
-          home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
+        child: MaterialApp(theme: AppTheme.lightTheme, home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
         ),
       ),
     );
@@ -290,8 +288,7 @@ void main() {
             (ref) => const AsyncValue.data(<Transaction>[]),
           ),
         ],
-        child: MaterialApp(
-          home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
+        child: MaterialApp(theme: AppTheme.lightTheme, home: LedgerScreen(groupId: 'group-1', eventId: 'evt-123'),
         ),
       ),
     );
@@ -323,7 +320,8 @@ void main() {
             (ref) => Stream.value(const <SubGroup>[]),
           ),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
+           theme: AppTheme.lightTheme,
           home: SettleUpScreen(groupId: _mockGroupId, eventId: _mockEventId),
         ),
       ),

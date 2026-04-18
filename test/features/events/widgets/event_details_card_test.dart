@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/events/widgets/event_details_card.dart';
 
@@ -17,8 +18,7 @@ void main() {
 
     testWidgets('renders name field and date tiles', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: Form(
               child: EventDetailsCard(
                 nameController: nameController,
@@ -40,8 +40,7 @@ void main() {
 
     testWidgets('shows formatted start date when provided', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: Form(
               child: EventDetailsCard(
                 nameController: nameController,
@@ -64,8 +63,7 @@ void main() {
       var startTapped = false;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: Form(
               child: EventDetailsCard(
                 nameController: nameController,
@@ -88,8 +86,7 @@ void main() {
       var endTapped = false;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: Form(
               child: EventDetailsCard(
                 nameController: nameController,
@@ -111,8 +108,7 @@ void main() {
       final formKey = GlobalKey<FormState>();
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
             body: Form(
               key: formKey,
               child: EventDetailsCard(

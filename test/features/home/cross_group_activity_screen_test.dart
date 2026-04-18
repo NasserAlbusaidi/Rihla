@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
@@ -54,7 +55,7 @@ Widget _buildTestApp(
 
   return ProviderScope(
     overrides: overrides,
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
   );
 }
 
@@ -200,7 +201,7 @@ void main() {
           overrides: _baseOverrides(
             activityOverride: const AsyncValue.data([]),
           ),
-          child: MaterialApp.router(routerConfig: router),
+          child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();

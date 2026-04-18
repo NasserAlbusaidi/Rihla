@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/events/widgets/event_participants_card.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
@@ -19,7 +20,7 @@ GroupMember _buildMember({required String id, required String name}) {
   );
 }
 
-Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
 
 // ---------------------------------------------------------------------------
 // Tests

@@ -12,6 +12,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
@@ -110,8 +111,7 @@ Widget _buildList({
           (_) => Stream.value(documents),
         ),
     ],
-    child: MaterialApp(
-      home: Scaffold(
+    child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
         body: SingleChildScrollView(
           child: EventModuleList(
             groupId: event.groupId,

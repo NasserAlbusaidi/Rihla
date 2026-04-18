@@ -59,7 +59,7 @@ void main() {
     return ProviderScope(
       overrides: overrides,
       child: MaterialApp(
-        theme: AppTheme.lightTheme,
+               theme: AppTheme.lightTheme,
         home: Scaffold(body: SingleChildScrollView(child: child)),
       ),
     );
@@ -78,7 +78,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.lightTheme,
+                   theme: AppTheme.lightTheme,
           home: Scaffold(
             body: ActivityRow(
               activity: activity,
@@ -102,7 +102,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.lightTheme,
+                   theme: AppTheme.lightTheme,
           home: Scaffold(
             body: ActivityRow(
               activity: activity,
@@ -261,7 +261,7 @@ void main() {
       );
       return ProviderScope(
         overrides: overrides,
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
       );
     }
 

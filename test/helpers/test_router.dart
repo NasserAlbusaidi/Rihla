@@ -13,7 +13,7 @@ import 'package:go_router/go_router.dart';
 /// await tester.pumpWidget(
 ///   ProviderScope(
 ///     overrides: [...],
-///     child: MaterialApp.router(routerConfig: router),
+///     child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
 ///   ),
 /// );
 /// ```

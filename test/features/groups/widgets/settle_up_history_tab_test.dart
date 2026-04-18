@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/groups/widgets/settle_up_history_tab.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
@@ -31,7 +32,7 @@ Settlement _buildSettlement({
 }
 
 Widget _wrap(Widget child) => ProviderScope(
-      child: MaterialApp(home: Scaffold(body: child)),
+      child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child)),
     );
 
 // ---------------------------------------------------------------------------

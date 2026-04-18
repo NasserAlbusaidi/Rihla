@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:safar/features/auth/providers/auth_provider.dart';
@@ -91,8 +92,7 @@ Widget _wrapSplitScopeSelector({
         (ref) => Stream.value(event),
       ),
     ],
-    child: MaterialApp(
-      home: Scaffold(
+    child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
         body: SingleChildScrollView(
           child: SplitScopeSelector(
             event: event,

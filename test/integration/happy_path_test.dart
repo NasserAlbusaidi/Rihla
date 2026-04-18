@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -87,7 +88,7 @@ void main() {
         child: Consumer(
           builder: (context, ref, _) {
             final router = ref.watch(routerProvider);
-            return MaterialApp.router(routerConfig: router);
+            return MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router);
           },
         ),
       ),

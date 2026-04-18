@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -165,7 +166,7 @@ Widget _wrap(
     // from remaining pending after widget disposal.
     child: MediaQuery(
       data: const MediaQueryData(disableAnimations: true),
-      child: MaterialApp(home: child),
+      child: MaterialApp(theme: AppTheme.lightTheme, home: child),
     ),
   );
 }
@@ -577,8 +578,7 @@ void main() {
       'GroupStatsGrid shows "You owe" subtitle for negative balance',
       (tester) async {
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
+          MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
               body: GroupStatsGrid(
                 userNetBalance: Decimal.parse('-5.000'),
                 groupTotal: Decimal.parse('20.000'),
@@ -599,8 +599,7 @@ void main() {
       'GroupStatsGrid shows "Owed to you" subtitle for positive balance',
       (tester) async {
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
+          MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
               body: GroupStatsGrid(
                 userNetBalance: Decimal.parse('5.000'),
                 groupTotal: Decimal.parse('20.000'),
