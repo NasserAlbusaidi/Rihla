@@ -12,6 +12,7 @@ import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
 import '../widgets/profile_about_section.dart';
+import '../widgets/profile_display_section.dart';
 import '../widgets/profile_notifications_section.dart';
 import '../widgets/profile_stats_section.dart';
 import '../widgets/profile_support_section.dart';
@@ -67,6 +68,14 @@ class ProfileScreen extends ConsumerWidget {
                 const ProfileNotificationsSection()
                     .animate()
                     .fadeIn(delay: 300.ms)
+                    .slideY(begin: 0.1),
+
+                SizedBox(height: context.spacing.space12),
+
+                // Display section (D-05 / Phase 37) — above About
+                const ProfileDisplaySection()
+                    .animate()
+                    .fadeIn(delay: 350.ms)
                     .slideY(begin: 0.1),
 
                 SizedBox(height: context.spacing.space12),
