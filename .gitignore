@@ -55,3 +55,8 @@ ios/Runner/GoogleService-Info.plist
 # Agent run logs and generated skill files
 data/run-logs/
 SKILL.md
+
+# Firebase Cloud Functions build artifacts
+functions/lib/
+functions/node_modules/
+functions/coverage/
