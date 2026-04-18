@@ -109,6 +109,17 @@ Full details: [milestones/v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
   - [x] 37-05 — Settings UX + verification (theme picker, goldens, contrast test, CI guard) (Wave 5) (DARK-02, DARK-03, DARK-05)
 - [ ] **Phase 38: Storage Cloud Functions** — Enforce group-membership on Storage access (#1b)
 
+### Phase 38: Storage Cloud Functions
+**Goal**: Enforce group-membership checks on Firebase Storage access via Cloud Functions (or callable signed-URL gate), closing the "any authenticated user can read buckets" security gap.
+**Depends on**: none (can run in parallel with 36/37 but scheduled after to avoid deploy churn)
+**Requirements**: INFRA-01
+**Success Criteria** (what must be TRUE):
+  1. Storage rules no longer allow unrestricted read/write for any authenticated user on trip-documents or trip-memories buckets
+  2. A Cloud Function (or equivalent server-side gate) verifies `groupMembers/{gid}/{uid}` before issuing signed URLs or handling direct object access
+  3. Integration test confirms a non-member cannot read/write a trip's bucket paths
+  4. Client code updated to call the new signed-URL endpoint where needed; no regressions in document upload/download or memories flows
+**UI hint**: no
+
 Full details: [milestones/v2.4-ROADMAP.md](milestones/v2.4-ROADMAP.md)
 
 ## Progress
