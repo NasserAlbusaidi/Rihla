@@ -1,3 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +17,16 @@ import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
 import '../../core/theme/tokens/color_tokens.dart';
 
+/// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
+///
+/// Reads from `--dart-define-from-file=config.json`. Production builds MUST
+/// omit this key (or set it to `false`) — the value is baked into the binary
+/// and cannot be flipped at runtime (T-38-13 mitigation).
+const bool _useFirebaseEmulator = bool.fromEnvironment(
+  'USE_FIREBASE_EMULATOR',
+  defaultValue: false,
+);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -25,6 +40,21 @@ void main() async {
     appRunner: () async {
       // Initialize Firebase (includes Firestore offline persistence settings)
       await FirebaseConfig.initialize();
+
+      // Emulator hookup MUST run AFTER Firebase.initializeApp and BEFORE any
+      // service construction or auth call (Pitfall 2 in 38-RESEARCH.md).
+      if (_useFirebaseEmulator) {
+        FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+        FirebaseFunctions.instanceFor(region: 'us-central1')
+            .useFunctionsEmulator('localhost', 5001);
+        await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+        if (kDebugMode) {
+          debugPrint(
+            'Firebase emulators ON (auth:9099 firestore:8080 functions:5001 storage:9199)',
+          );
+        }
+      }
 
       // Initialize SharedPreferences
       final prefs = await SharedPreferences.getInstance();

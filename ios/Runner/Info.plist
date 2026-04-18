@@ -49,6 +49,13 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Phase 38: permit localhost-only connections for Firebase emulator (debug builds).
+		     Does NOT weaken ATS for any other host. Apple-sanctioned. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Rihla needs camera access to capture receipt photos and trip memories.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
