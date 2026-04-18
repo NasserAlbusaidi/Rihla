@@ -28,7 +28,63 @@ export async function clearFirestore(): Promise<void> {
   const groups = await db.collection('groups').listDocuments();
   for (const g of groups) {
     const events = await g.collection('events').listDocuments();
-    for (const e of events) { await e.delete(); }
+    for (const e of events) {
+      const docsCol = await e.collection('documents').listDocuments();
+      for (const d of docsCol) { await d.delete(); }
+      const memsCol = await e.collection('memories').listDocuments();
+      for (const m of memsCol) { await m.delete(); }
+      await e.delete();
+    }
     await g.delete();
+  }
+}
+
+export interface DocSeed {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  storagePath: string;
+  sizeBytes: number;
+  isDeleted?: boolean;
+}
+
+export interface MemorySeed {
+  id: string;
+  storagePath: string;
+}
+
+export async function seedDocuments(
+  groupId: string,
+  eventId: string,
+  docs: DocSeed[],
+): Promise<void> {
+  const db = getFirestore();
+  for (const d of docs) {
+    await db.doc(`groups/${groupId}/events/${eventId}/documents/${d.id}`).set({
+      id: d.id,
+      fileName: d.fileName,
+      mimeType: d.mimeType,
+      storagePath: d.storagePath,
+      sizeBytes: d.sizeBytes,
+      uploadedBy: 'alice',
+      uploadedAt: new Date(),
+      isDeleted: d.isDeleted ?? false,
+    });
+  }
+}
+
+export async function seedMemories(
+  groupId: string,
+  eventId: string,
+  mems: MemorySeed[],
+): Promise<void> {
+  const db = getFirestore();
+  for (const m of mems) {
+    await db.doc(`groups/${groupId}/events/${eventId}/memories/${m.id}`).set({
+      id: m.id,
+      storagePath: m.storagePath,
+      uploadedBy: 'alice',
+      createdAt: new Date(),
+    });
   }
 }
