@@ -87,6 +87,10 @@ v2.3 Phases 28-35 [██████████] 100%
 
 None.
 
+### Roadmap Evolution
+
+- 2026-04-26: Phase 39 added — Strip to Shippable v1: remove memories, vault, logistics, onboarding, gear, multi-currency/Thawani. See `.planning/phases/39-strip-to-shippable-v1-remove-memories-vault-logistics-onboar/39-CONTEXT.md` for the cut spec.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
