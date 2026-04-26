@@ -138,50 +138,19 @@ class Trip {
 }
 
 /// Trip modules configuration
+/// Empty after Phase 39 strip — all module flags (docs, gear, itinerary,
+/// logistics) belonged to features that were removed. Kept as a marker
+/// type so the Trip API and existing Firestore/SQLite documents that may
+/// still carry a `modules: {...}` map continue to deserialize cleanly.
 class TripModules {
-  final bool docs;
-  final bool gear;
-  final bool itinerary;
-  final bool logistics;
+  const TripModules();
 
-  const TripModules({
-    this.docs = true,
-    this.gear = true,
-    this.itinerary = false,
-    this.logistics = true,
-  });
+  /// Tolerate any keys on persisted data — every legacy flag is silently dropped.
+  factory TripModules.fromJson(Map<String, dynamic> _) => const TripModules();
 
-  factory TripModules.fromJson(Map<String, dynamic> json) {
-    return TripModules(
-      docs: json['docs'] as bool? ?? true,
-      gear: json['gear'] as bool? ?? true,
-      itinerary: json['itinerary'] as bool? ?? false,
-      logistics: json['logistics'] as bool? ?? true,
-    );
-  }
+  Map<String, dynamic> toJson() => const <String, dynamic>{};
 
-  Map<String, dynamic> toJson() {
-    return {
-      'docs': docs,
-      'gear': gear,
-      'itinerary': itinerary,
-      'logistics': logistics,
-    };
-  }
-
-  TripModules copyWith({
-    bool? docs,
-    bool? gear,
-    bool? itinerary,
-    bool? logistics,
-  }) {
-    return TripModules(
-      docs: docs ?? this.docs,
-      gear: gear ?? this.gear,
-      itinerary: itinerary ?? this.itinerary,
-      logistics: logistics ?? this.logistics,
-    );
-  }
+  TripModules copyWith() => const TripModules();
 }
 
 /// Participant role in a trip
