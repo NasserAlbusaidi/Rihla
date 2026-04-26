@@ -9,7 +9,6 @@ import '../../features/events/screens/create_event_screen.dart';
 import '../../features/events/screens/event_command_center.dart';
 import '../../features/events/screens/event_settings_screen.dart';
 import '../../features/events/screens/event_type_picker_screen.dart';
-import '../../features/gear/screens/gear_screen.dart';
 import '../../features/groups/screens/create_group_screen.dart';
 import '../../features/groups/screens/group_activity_screen.dart';
 import '../../features/groups/screens/group_detail_screen.dart';
@@ -22,18 +21,13 @@ import '../../features/ledger/screens/add_expense_screen.dart';
 import '../../features/ledger/screens/edit_expense_screen.dart';
 import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
-import '../../features/logistics/screens/logistics_screen.dart';
 import '../../features/activity/screens/activity_feed_screen.dart';
-import '../../features/memories/screens/memories_screen.dart';
-import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
-import '../../features/vault/screens/vault_screen.dart';
 import '../theme/tokens/domain_aliases.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
   static const String splash = '/';
-  static const String onboarding = '/onboarding';
   static const String home = '/home';
   static const String profile = '/profile';
   // Groups routes (Phase 2)
@@ -54,12 +48,6 @@ class AppRoutes {
       '/group/:gid/event/:eid/ledger/edit/:expId';
   static const String eventLedgerSettleUp =
       '/group/:gid/event/:eid/ledger/settle-up';
-  static const String eventGear = '/group/:gid/event/:eid/gear';
-  static const String eventLogistics = '/group/:gid/event/:eid/logistics';
-  static const String eventVault = '/group/:gid/event/:eid/vault';
-  static const String eventMemories = '/group/:gid/event/:eid/memories';
-  static const String eventMemoryDetail =
-      '/group/:gid/event/:eid/memories/:memId';
   static const String eventActivity = '/group/:gid/event/:eid/activity';
   static const String eventSettings = '/group/:gid/event/:eid/settings';
   // Cross-group activity (Phase 23)
@@ -84,49 +72,22 @@ Widget _slideRightTransition(
   );
 }
 
-/// Provider to track onboarding completion state
-final onboardingCompleteProvider = FutureProvider<bool>((ref) async {
-  return await OnboardingScreen.isCompleted();
-});
-
-/// Router provider with onboarding-aware redirects
+/// Router provider — splash always redirects to /home (no onboarding).
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: kDebugMode,
     redirect: (context, state) {
-      final isSplash = state.matchedLocation == AppRoutes.splash;
-      final isOnboarding = state.matchedLocation == AppRoutes.onboarding;
-      final onboardingDone =
-          ref.read(onboardingCompleteProvider).valueOrNull ?? false;
-
-      // If on splash, redirect based on onboarding state
-      if (isSplash) {
-        return onboardingDone ? AppRoutes.home : AppRoutes.onboarding;
+      if (state.matchedLocation == AppRoutes.splash) {
+        return AppRoutes.home;
       }
-
-      // Allow onboarding screen
-      if (isOnboarding) return null;
-
       return null;
     },
     routes: [
-      // Splash - auto-redirects based on onboarding
+      // Splash - auto-redirects to /home
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const _SplashScreen(),
-      ),
-
-      // Onboarding
-      GoRoute(
-        path: AppRoutes.onboarding,
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const OnboardingScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
       ),
 
       // Home / Trip List
@@ -308,74 +269,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                       child: SettleUpScreen(
                         groupId: state.pathParameters['gid']!,
                         eventId: state.pathParameters['eid']!,
-                      ),
-                      transitionsBuilder: _slideRightTransition,
-                    ),
-                  ),
-                ],
-              ),
-
-              // Gear module
-              GoRoute(
-                path: 'gear',
-                pageBuilder: (context, state) => CustomTransitionPage(
-                  key: state.pageKey,
-                  child: GearScreen(
-                    groupId: state.pathParameters['gid']!,
-                    eventId: state.pathParameters['eid']!,
-                  ),
-                  transitionsBuilder: _slideRightTransition,
-                ),
-              ),
-
-              // Logistics module
-              GoRoute(
-                path: 'logistics',
-                pageBuilder: (context, state) => CustomTransitionPage(
-                  key: state.pageKey,
-                  child: LogisticsScreen(
-                    groupId: state.pathParameters['gid']!,
-                    eventId: state.pathParameters['eid']!,
-                  ),
-                  transitionsBuilder: _slideRightTransition,
-                ),
-              ),
-
-              // Vault module
-              GoRoute(
-                path: 'vault',
-                pageBuilder: (context, state) => CustomTransitionPage(
-                  key: state.pageKey,
-                  child: VaultScreen(
-                    groupId: state.pathParameters['gid']!,
-                    eventId: state.pathParameters['eid']!,
-                  ),
-                  transitionsBuilder: _slideRightTransition,
-                ),
-              ),
-
-              // Memories module
-              GoRoute(
-                path: 'memories',
-                pageBuilder: (context, state) => CustomTransitionPage(
-                  key: state.pageKey,
-                  child: MemoriesScreen(
-                    groupId: state.pathParameters['gid']!,
-                    eventId: state.pathParameters['eid']!,
-                  ),
-                  transitionsBuilder: _slideRightTransition,
-                ),
-                routes: [
-                  // Memory detail — Plan 03 scope (no MemoryDetailScreen yet)
-                  GoRoute(
-                    path: ':memId',
-                    pageBuilder: (context, state) => CustomTransitionPage(
-                      key: state.pageKey,
-                      child: Scaffold(
-                        body: Center(
-                          child: Text(
-                              'MemoryDetail:${state.pathParameters['memId']}'),
-                        ),
                       ),
                       transitionsBuilder: _slideRightTransition,
                     ),
