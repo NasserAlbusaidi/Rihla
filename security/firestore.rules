@@ -89,11 +89,11 @@ service cloud.firestore {
         // No hard deletes -- soft delete only via update (D-09)
         allow delete: if false;
 
-        // Module subcollections (expenses, settlements, gear, etc.)
+        // Module subcollections — Phase 39 (SHIP-01) restricts the wildcard
+        // to enumerate only surviving subcollection names. Cut: gear,
+        // gear_items, documents, memories, trip_memories, logistics,
+        // sub_groups (these MUST NOT match any allow rule).
         match /{module}/{docId} {
-          // Read: any group member (avoids race condition when event doc
-          // hasn't committed on server yet -- group membership is already stable)
-          // Write: event participants only
           function isGroupMemberForModule() {
             return request.auth != null &&
               request.auth.uid in
@@ -104,13 +104,17 @@ service cloud.firestore {
               request.auth.uid in
                 get(/databases/$(database)/documents/groups/$(groupId)/events/$(eventId)).data.participantIds;
           }
-          allow read: if isGroupMemberForModule();
-          allow write: if isEventParticipantForModule();
+          allow read: if isGroupMemberForModule()
+            && module in ['expenses', 'activity'];
+          allow write: if isEventParticipantForModule()
+            && module in ['expenses', 'activity'];
 
-          // Nested subcollections (e.g., sub_groups/{sgId}/members/{memberId})
+          // Nested subcollections under surviving modules only.
           match /{nestedCol}/{nestedDocId} {
-            allow read: if isGroupMemberForModule();
-            allow write: if isEventParticipantForModule();
+            allow read: if isGroupMemberForModule()
+              && module in ['expenses', 'activity'];
+            allow write: if isEventParticipantForModule()
+              && module in ['expenses', 'activity'];
           }
         }
       }

@@ -4,6 +4,4 @@ import './admin';
 setGlobalOptions({ region: 'us-central1' });
 
 export { getSignedUploadUrl } from './callables/getSignedUploadUrl';
-export { listDocumentsWithUrls } from './callables/listDocumentsWithUrls';
-export { listMemoriesWithUrls } from './callables/listMemoriesWithUrls';
 export { deleteStorageObject } from './callables/deleteStorageObject';
