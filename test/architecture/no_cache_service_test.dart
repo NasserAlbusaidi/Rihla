@@ -37,7 +37,7 @@ void main() {
       );
     });
 
-    test('lib/core/services/cache/ directory has exactly 9 repository files',
+    test('lib/core/services/cache/ directory has exactly 7 repository files',
         () {
       const cacheDir = 'lib/core/services/cache';
       final dir = Directory(cacheDir);
@@ -55,10 +55,11 @@ void main() {
 
       expect(
         dartFiles.length,
-        equals(9),
+        equals(7),
         reason:
-            'Expected exactly 9 domain repository files under '
-            'lib/core/services/cache/. Found: '
+            'Expected exactly 7 domain repository files under '
+            'lib/core/services/cache/ after Phase 39 strip dropped the gear '
+            'and sub_group repositories. Found: '
             '${dartFiles.map((f) => f.uri.pathSegments.last).toList()}',
       );
     });

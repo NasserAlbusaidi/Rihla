@@ -244,58 +244,6 @@ void main() {
       expect(find.text('Camping'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('shows module toggles for Custom type', (tester) async {
-      await tester.pumpWidget(
-        _wrapCreate(
-          const CreateEventScreen(
-            groupId: 'group-1',
-            eventType: EventType.custom,
-          ),
-          prefs,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // "Modules" section label should appear for Custom type
-      expect(find.byKey(EventKeys.modulesSection), findsOneWidget);
-
-      // All 5 module toggle rows should appear
-      expect(find.byKey(EventKeys.moduleLedgerToggle), findsOneWidget);
-      expect(find.byKey(EventKeys.moduleGearToggle), findsOneWidget);
-      expect(find.byKey(EventKeys.moduleLogisticsToggle), findsOneWidget);
-      expect(find.byKey(EventKeys.moduleVaultToggle), findsOneWidget);
-      expect(find.byKey(EventKeys.moduleMemoriesToggle), findsOneWidget);
-
-      // Switch widgets should be present
-      expect(find.byType(Switch), findsWidgets);
-    });
-
-    testWidgets(
-        'Ledger toggle is enabled (onChanged is not null) for Custom type',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrapCreate(
-          const CreateEventScreen(
-            groupId: 'group-1',
-            eventType: EventType.custom,
-          ),
-          prefs,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Find all Switch widgets — Ledger is the first one
-      final switches = tester.widgetList<Switch>(find.byType(Switch));
-      expect(switches.isNotEmpty, isTrue);
-
-      // All switches should have non-null onChanged (all toggleable per D-14)
-      for (final sw in switches) {
-        expect(sw.onChanged, isNotNull,
-            reason:
-                'Module toggles including Ledger must be enabled for Custom type');
-      }
-    });
-
     testWidgets('does NOT show module toggles for non-Custom types',
         (tester) async {
       await tester.pumpWidget(

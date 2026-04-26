@@ -8,7 +8,7 @@ class LocalDatabase {
   static Database? _database;
   static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
-  static const int _databaseVersion = 6; // Extended with groups tables
+  static const int _databaseVersion = 7; // Phase 39 strip — drop gear_items + cut tables + trips.currency
 
   /// Get database instance (safe for concurrent access).
   ///
@@ -44,7 +44,7 @@ class LocalDatabase {
 
   /// Create database tables
   static Future<void> _onCreate(Database db, int version) async {
-    // Trips table
+    // Trips table (Phase 39: trips.currency column dropped — OMR only)
     await db.execute('''
       CREATE TABLE trips (
         id TEXT PRIMARY KEY,
@@ -52,7 +52,6 @@ class LocalDatabase {
         invite_code TEXT NOT NULL,
         leader_id TEXT NOT NULL,
         icon TEXT DEFAULT 'airplane',
-        currency TEXT DEFAULT 'OMR',
         start_date TEXT,
         end_date TEXT,
         modules TEXT,
@@ -75,26 +74,6 @@ class LocalDatabase {
         scope TEXT DEFAULT 'GLOBAL',
         sub_group_id TEXT,
         created_at TEXT NOT NULL,
-        synced_at TEXT,
-        is_deleted INTEGER DEFAULT 0,
-        deleted_at TEXT,
-        FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
-      )
-    ''');
-
-    // Gear items table
-    await db.execute('''
-      CREATE TABLE gear_items (
-        id TEXT PRIMARY KEY,
-        trip_id TEXT NOT NULL,
-        item_name TEXT NOT NULL,
-        assigned_to TEXT,
-        is_packed INTEGER DEFAULT 0,
-        sequence_id INTEGER DEFAULT 0,
-        is_high_priority INTEGER DEFAULT 0,
-        assigned_to_name TEXT,
-        assigned_to_avatar TEXT,
-        created_at TEXT,
         synced_at TEXT,
         is_deleted INTEGER DEFAULT 0,
         deleted_at TEXT,
@@ -136,33 +115,6 @@ class LocalDatabase {
       )
     ''');
 
-    // Sub groups table
-    await db.execute('''
-      CREATE TABLE sub_groups (
-        id TEXT PRIMARY KEY,
-        trip_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL DEFAULT 'CAR',
-        capacity INTEGER NOT NULL DEFAULT 4,
-        created_at TEXT,
-        last_synced_at TEXT,
-        FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
-      )
-    ''');
-
-    // Sub group members table
-    await db.execute('''
-      CREATE TABLE sub_group_members (
-        id TEXT PRIMARY KEY,
-        sub_group_id TEXT NOT NULL,
-        participant_id TEXT NOT NULL,
-        display_name TEXT,
-        avatar_url TEXT,
-        joined_at TEXT,
-        last_synced_at TEXT,
-        FOREIGN KEY (sub_group_id) REFERENCES sub_groups (id) ON DELETE CASCADE
-      )
-    ''');
 
     // Activity logs table
     await db.execute('''
@@ -243,19 +195,12 @@ class LocalDatabase {
 
     // Create indexes for faster queries
     await db.execute('CREATE INDEX idx_expenses_trip ON expenses(trip_id)');
-    await db.execute('CREATE INDEX idx_gear_trip ON gear_items(trip_id)');
     await db.execute(
       'CREATE INDEX idx_settlements_trip ON settlements(trip_id)',
     );
 
     await db.execute(
       'CREATE INDEX idx_participants_trip ON participants(trip_id)',
-    );
-    await db.execute(
-      'CREATE INDEX idx_sub_groups_trip ON sub_groups(trip_id)',
-    );
-    await db.execute(
-      'CREATE INDEX idx_sgm_group ON sub_group_members(sub_group_id)',
     );
     await db.execute(
       'CREATE INDEX idx_activity_trip ON activity_logs(trip_id)',
@@ -495,6 +440,30 @@ class LocalDatabase {
         'CREATE INDEX IF NOT EXISTS idx_group_ledger_pair ON group_ledger(group_id, member_id, counterparty_id)',
       );
     }
+
+    if (oldVersion < 7) {
+      // Phase 39 strip — drop tables for cut features.
+      // gear_items definitely exists in v6 schema; the others are defensive
+      // (no-op if they don't exist — IF EXISTS makes the DROP idempotent).
+      await db.execute('DROP TABLE IF EXISTS gear_items');
+      await db.execute('DROP TABLE IF EXISTS sub_group_members');
+      await db.execute('DROP TABLE IF EXISTS sub_groups');
+      await db.execute('DROP TABLE IF EXISTS documents');
+      await db.execute('DROP TABLE IF EXISTS memories');
+      await db.execute('DROP TABLE IF EXISTS trip_memories');
+      await db.execute('DROP TABLE IF EXISTS logistics');
+
+      // ROADMAP SC2 — drop trips.currency column.
+      // SQLite ALTER TABLE DROP COLUMN is available since 3.35 (2021).
+      // Wrap in try/catch in case the underlying SQLite is older — falls
+      // back to leaving the column in place (it's no longer written by
+      // application code after Phase 39, so a stale column is harmless).
+      try {
+        await db.execute('ALTER TABLE trips DROP COLUMN currency');
+      } catch (_) {
+        // Older SQLite — column stays. Not load-bearing post-strip.
+      }
+    }
   }
 
   /// Close database and reset completer so next access re-initializes.
@@ -515,13 +484,10 @@ class LocalDatabase {
     await db.delete('group_members');
     await db.delete('groups');
     await db.delete('activity_logs');
-    await db.delete('sub_group_members');
-    await db.delete('sub_groups');
     await db.delete('participants');
     await db.delete('categories');
     await db.delete('expenses');
     await db.delete('settlements');
-    await db.delete('gear_items');
     await db.delete('trips');
   }
 }

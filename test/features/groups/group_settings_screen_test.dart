@@ -239,19 +239,6 @@ void main() {
       expect(find.text('Adventure Crew'), findsOneWidget);
     });
 
-    testWidgets('shows currency tile with current currency', (tester) async {
-      await tester.pumpWidget(
-        _wrapCreatorView(
-          const GroupSettingsScreen(groupId: 'group-1'),
-          prefs,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(GroupKeys.settingsCurrencyTile), findsOneWidget);
-      expect(find.text('OMR'), findsOneWidget);
-    });
-
     testWidgets('shows invite code tile with code text', (tester) async {
       await tester.pumpWidget(
         _wrapCreatorView(

@@ -51,19 +51,6 @@ void main() {
       expect(find.text('Enter group name'), findsOneWidget);
     });
 
-    testWidgets('renders Currency label', (tester) async {
-      await tester.pumpWidget(await _buildCreateScreen());
-      await tester.pump();
-      expect(find.text('Currency'), findsOneWidget);
-    });
-
-    testWidgets('renders OMR as the default currency', (tester) async {
-      await tester.pumpWidget(await _buildCreateScreen());
-      await tester.pump();
-      // OMR appears in the dropdown value
-      expect(find.text('OMR'), findsWidgets);
-    });
-
     testWidgets('renders Your name in this group label', (tester) async {
       await tester.pumpWidget(await _buildCreateScreen());
       await tester.pump();
@@ -354,13 +341,6 @@ void main() {
       await tester.pumpWidget(await _buildSettingsScreen());
       await tester.pumpAndSettle();
       expect(find.text('Adventure Crew'), findsOneWidget);
-    });
-
-    testWidgets('renders Currency label and value', (tester) async {
-      await tester.pumpWidget(await _buildSettingsScreen());
-      await tester.pumpAndSettle();
-      expect(find.text('Currency'), findsOneWidget);
-      expect(find.text('OMR'), findsWidgets);
     });
 
     testWidgets('renders Invite Code label', (tester) async {
