@@ -27,121 +27,29 @@ enum EventType {
 
 /// Module visibility configuration for an event.
 ///
-/// Mirrors [TripModules] but adds [memories] and removes [docs]/[itinerary].
-/// The constructor does NOT force [ledger] to true — preset types enforce
-/// ledger=true via [EventModules.forType]. Custom events can toggle ledger
-/// off via [copyWith] per D-14.
+/// After Phase 39 strip: only [ledger] survives. Custom events can still
+/// toggle ledger off via [copyWith] per D-14. fromMap silently ignores
+/// legacy keys (gear/logistics/vault/memories) on persisted Firestore docs.
 class EventModules {
   final bool ledger;
-  final bool gear;
-  final bool logistics;
-  final bool vault;
-  final bool memories;
 
-  const EventModules({
-    this.ledger = true,
-    this.gear = false,
-    this.logistics = false,
-    this.vault = false,
-    this.memories = false,
-  });
+  const EventModules({this.ledger = true});
 
-  /// Returns the correct module configuration for the given event type.
-  ///
-  /// Module config per D-12:
-  /// - Trip: all modules enabled
-  /// - Camping: ledger + gear + logistics + memories
-  /// - Travel: ledger + logistics + vault + memories
-  /// - Night/Day Out: ledger only
-  /// - Custom: ledger only (default starting state — user can toggle via UI)
-  factory EventModules.forType(EventType type) {
-    switch (type) {
-      case EventType.trip:
-        return const EventModules(
-          ledger: true,
-          gear: true,
-          logistics: true,
-          vault: true,
-          memories: true,
-        );
-      case EventType.camping:
-        return const EventModules(
-          ledger: true,
-          gear: true,
-          logistics: true,
-          vault: false,
-          memories: true,
-        );
-      case EventType.travel:
-        return const EventModules(
-          ledger: true,
-          gear: false,
-          logistics: true,
-          vault: true,
-          memories: true,
-        );
-      case EventType.nightDayOut:
-        return const EventModules(
-          ledger: true,
-          gear: false,
-          logistics: false,
-          vault: false,
-          memories: false,
-        );
-      case EventType.custom:
-        return const EventModules(
-          ledger: true,
-          gear: false,
-          logistics: false,
-          vault: false,
-          memories: false,
-        );
-    }
-  }
+  /// Every event type now exposes only ledger.
+  factory EventModules.forType(EventType type) =>
+      const EventModules(ledger: true);
 
-  /// Deserializes from a Firestore/SQLite map.
-  ///
-  /// Preserves whatever ledger value is stored — supports custom type
-  /// scenarios where ledger may have been toggled off.
+  /// Deserializes from a Firestore/SQLite map. Legacy keys are tolerated.
   factory EventModules.fromMap(Map<String, dynamic> map) {
-    return EventModules(
-      ledger: map['ledger'] as bool? ?? true,
-      gear: map['gear'] as bool? ?? false,
-      logistics: map['logistics'] as bool? ?? false,
-      vault: map['vault'] as bool? ?? false,
-      memories: map['memories'] as bool? ?? false,
-    );
+    return EventModules(ledger: map['ledger'] as bool? ?? true);
   }
 
-  /// Serializes all 5 booleans to a map for Firestore/SQLite storage.
-  Map<String, dynamic> toMap() {
-    return {
-      'ledger': ledger,
-      'gear': gear,
-      'logistics': logistics,
-      'vault': vault,
-      'memories': memories,
-    };
-  }
+  /// Serializes to a map for Firestore/SQLite storage.
+  Map<String, dynamic> toMap() => {'ledger': ledger};
 
   /// Creates a copy with updated fields.
-  ///
-  /// Includes [ledger] so Custom events can toggle it off per D-14.
-  EventModules copyWith({
-    bool? ledger,
-    bool? gear,
-    bool? logistics,
-    bool? vault,
-    bool? memories,
-  }) {
-    return EventModules(
-      ledger: ledger ?? this.ledger,
-      gear: gear ?? this.gear,
-      logistics: logistics ?? this.logistics,
-      vault: vault ?? this.vault,
-      memories: memories ?? this.memories,
-    );
-  }
+  EventModules copyWith({bool? ledger}) =>
+      EventModules(ledger: ledger ?? this.ledger);
 }
 
 /// Immutable model representing an event inside a group.
