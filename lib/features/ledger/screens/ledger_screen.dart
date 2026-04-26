@@ -10,8 +10,6 @@ import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
-import '../../logistics/models/sub_group_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
@@ -123,9 +121,6 @@ class LedgerScreen extends ConsumerWidget {
       );
     }).toList();
 
-    final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
-    final subGroups = subGroupsAsync.valueOrNull ?? [];
-
     // Use the first participant as current user (matches existing behaviour)
     final currentParticipantId =
         participants.isNotEmpty ? participants.first.id : null;
@@ -199,7 +194,6 @@ class LedgerScreen extends ConsumerWidget {
         settlements: settlements,
         participants: participants,
         currentParticipantId: currentParticipantId,
-        subGroups: subGroups,
       ),
     );
   }
@@ -214,7 +208,6 @@ class _LedgerBody extends StatelessWidget {
   final List<Settlement> settlements;
   final List<Participant> participants;
   final String? currentParticipantId;
-  final List<SubGroup> subGroups;
 
   const _LedgerBody({
     required this.groupId,
@@ -224,7 +217,6 @@ class _LedgerBody extends StatelessWidget {
     required this.settlements,
     required this.participants,
     required this.currentParticipantId,
-    required this.subGroups,
   });
 
   Decimal _computeNetBalance() {
@@ -234,7 +226,6 @@ class _LedgerBody extends StatelessWidget {
       expenses: expenses,
       settlements: settlements,
       participants: participants,
-      subGroups: subGroups,
     );
 
     final myBalance = balances.firstWhere(

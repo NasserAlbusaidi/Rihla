@@ -1,40 +1,24 @@
-/// EditExpenseScopeSection — scope tab selector + car sub-group picker for the
-/// edit-expense flow.
+/// EditExpenseScopeSection — scope tab selector for the edit-expense flow.
 ///
-/// **Why a new widget instead of reusing [SplitScopeSelector]?**
-/// The edit-expense scope section has three edit-mode-specific behaviours absent
-/// from the add-expense [SplitScopeSelector]:
-///   1. A ChoiceChip row for car sub-groups (reads [eventSubGroupsProvider]).
-///   2. A different tab selected-state visual: primary-colour fill + white text
-///      (vs. the card-surface + shadow style in SplitScopeSelector).
-///   3. The custom participant picker receives an empty list (participants not
-///      loaded in this section; this is a known limitation of the current edit
-///      flow — custom participant editing is a future enhancement).
-///
-/// Reusing SplitScopeSelector would have required adding edit-specific branches
-/// inside the shared widget, which would violate the single-responsibility rule.
+/// Phase 39 strip: the "My Car" tab and sub-group ChoiceChip row are removed
+/// along with the logistics feature. Surviving scopes are global, custom, personal.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../logistics/models/sub_group_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
-import '../../../core/types/event_ref.dart';
 import '../models/expense_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 
-/// Scope tab (Global / My Car / Custom / Personal) plus car sub-group picker
-/// for edit-expense. All mutable state lives on the parent screen; this widget
-/// is purely presentational and receives callbacks.
+/// Scope tab (Global / Custom / Personal) for edit-expense. All mutable state
+/// lives on the parent screen; this widget is purely presentational and
+/// receives callbacks.
 class EditExpenseScopeSection extends ConsumerWidget {
   final String groupId;
   final String eventId;
   final ExpenseScope scope;
   final ValueChanged<ExpenseScope> onScopeChanged;
-  final String? selectedSubGroupId;
-  final ValueChanged<String?> onSubGroupIdChanged;
   final Set<String> customSplitParticipants;
   final ValueChanged<Set<String>> onCustomSplitChanged;
 
@@ -44,17 +28,12 @@ class EditExpenseScopeSection extends ConsumerWidget {
     required this.eventId,
     required this.scope,
     required this.onScopeChanged,
-    required this.selectedSubGroupId,
-    required this.onSubGroupIdChanged,
     required this.customSplitParticipants,
     required this.onCustomSplitChanged,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final EventRef eventRef = (groupId: groupId, eventId: eventId);
-    final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -74,74 +53,32 @@ class EditExpenseScopeSection extends ConsumerWidget {
             color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  _ScopeTab(
-                    label: 'Global',
-                    scope: ExpenseScope.global,
-                    icon: Iconsax.global,
-                    isSelected: scope == ExpenseScope.global,
-                    onTap: () => _handleScopeChange(ExpenseScope.global),
-                  ),
-                  _ScopeTab(
-                    label: 'My Car',
-                    scope: ExpenseScope.subGroup,
-                    icon: Iconsax.car,
-                    isSelected: scope == ExpenseScope.subGroup,
-                    onTap: () => _handleScopeChange(ExpenseScope.subGroup),
-                  ),
-                ],
+              _ScopeTab(
+                label: 'Global',
+                scope: ExpenseScope.global,
+                icon: Iconsax.global,
+                isSelected: scope == ExpenseScope.global,
+                onTap: () => _handleScopeChange(ExpenseScope.global),
               ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  _ScopeTab(
-                    label: 'Custom',
-                    scope: ExpenseScope.custom,
-                    icon: Iconsax.people,
-                    isSelected: scope == ExpenseScope.custom,
-                    onTap: () => _handleScopeChange(ExpenseScope.custom),
-                  ),
-                  _ScopeTab(
-                    label: 'Personal',
-                    scope: ExpenseScope.personal,
-                    icon: Iconsax.user,
-                    isSelected: scope == ExpenseScope.personal,
-                    onTap: () => _handleScopeChange(ExpenseScope.personal),
-                  ),
-                ],
+              _ScopeTab(
+                label: 'Custom',
+                scope: ExpenseScope.custom,
+                icon: Iconsax.people,
+                isSelected: scope == ExpenseScope.custom,
+                onTap: () => _handleScopeChange(ExpenseScope.custom),
+              ),
+              _ScopeTab(
+                label: 'Personal',
+                scope: ExpenseScope.personal,
+                icon: Iconsax.user,
+                isSelected: scope == ExpenseScope.personal,
+                onTap: () => _handleScopeChange(ExpenseScope.personal),
               ),
             ],
           ),
         ),
-        // Sub-group car selector (edit-mode only — shows car ChoiceChips)
-        if (scope == ExpenseScope.subGroup)
-          subGroupsAsync.when(
-            loading: () => const SizedBox.shrink(),
-            error: (err, _) => const SizedBox.shrink(),
-            data: (subGroups) {
-              final cars = subGroups
-                  .where((s) => s.type == SubGroupType.car)
-                  .toList();
-              if (cars.isEmpty) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Wrap(
-                  spacing: 8,
-                  children: cars.map((car) {
-                    final isSelected = car.id == selectedSubGroupId;
-                    return ChoiceChip(
-                      label: Text(car.name),
-                      selected: isSelected,
-                      onSelected: (_) => onSubGroupIdChanged(car.id),
-                    );
-                  }).toList(),
-                ),
-              );
-            },
-          ),
       ],
     );
   }

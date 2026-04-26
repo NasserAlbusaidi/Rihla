@@ -11,8 +11,8 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Group info section widget for GroupSettingsScreen.
 ///
-/// Shows three tiles: group name (creator-only edit), currency (with picker),
-/// and invite code (with copy). Follows the ProfileAboutSection card pattern.
+/// Shows two tiles: group name (creator-only edit) and invite code (with copy).
+/// Follows the ProfileAboutSection card pattern.
 class GroupInfoSection extends ConsumerStatefulWidget {
   const GroupInfoSection({
     super.key,
@@ -31,18 +31,6 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
   final _nameController = TextEditingController();
   bool _isEditing = false;
   bool _isSaving = false;
-
-  static const _currencies = [
-    'OMR',
-    'USD',
-    'EUR',
-    'GBP',
-    'SAR',
-    'AED',
-    'KWD',
-    'BHD',
-    'QAR',
-  ];
 
   @override
   void dispose() {
@@ -90,61 +78,6 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
     }
   }
 
-  Future<void> _showCurrencyPicker(BuildContext ctx) async {
-    await showModalBottomSheet<void>(
-      context: ctx,
-      backgroundColor: context.colors.cardSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetCtx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Text(
-                'Select Currency',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.textPrimary,
-                ),
-              ),
-            ),
-            ..._currencies.map(
-              (c) => ListTile(
-                title: Text(c),
-                trailing: c == widget.group.currency
-                    ? Icon(Iconsax.tick_circle, color: context.colors.primary)
-                    : null,
-                onTap: () async {
-                  Navigator.pop(sheetCtx);
-                  try {
-                    await ref.read(groupServiceProvider).updateGroup(
-                          groupId: widget.group.id,
-                          currency: c,
-                        );
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to update currency: $e'),
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -163,8 +96,6 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildGroupNameTile(),
-              Divider(height: 1, color: context.colors.inputFill),
-              _buildCurrencyTile(),
               Divider(height: 1, color: context.colors.inputFill),
               _buildInviteCodeTile(),
             ],
@@ -325,70 +256,6 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                   semanticLabel: 'Edit group name',
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCurrencyTile() {
-    return GestureDetector(
-      key: GroupKeys.settingsCurrencyTile,
-      onTap: () {
-        HapticService.selection();
-        _showCurrencyPicker(context);
-      },
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: context.colors.inputFill,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Icon(
-                  Iconsax.money_4,
-                  size: 18,
-                  color: context.colors.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Currency',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: context.colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.group.currency,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: context.colors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Iconsax.arrow_right_3,
-              size: 16,
-              color: context.colors.textSecondary,
-              semanticLabel: 'Change currency',
-            ),
           ],
         ),
       ),

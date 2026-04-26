@@ -32,8 +32,6 @@ class EditExpenseForm extends ConsumerWidget {
   final ValueChanged<String?> onCategoryChanged;
   final ExpenseScope scope;
   final ValueChanged<ExpenseScope> onScopeChanged;
-  final String? selectedSubGroupId;
-  final ValueChanged<String?> onSubGroupIdChanged;
   final Set<String> customSplitParticipants;
   final ValueChanged<Set<String>> onCustomSplitChanged;
   final String? selectedPayerId;
@@ -55,8 +53,6 @@ class EditExpenseForm extends ConsumerWidget {
     required this.onCategoryChanged,
     required this.scope,
     required this.onScopeChanged,
-    required this.selectedSubGroupId,
-    required this.onSubGroupIdChanged,
     required this.customSplitParticipants,
     required this.onCustomSplitChanged,
     required this.selectedPayerId,
@@ -315,8 +311,6 @@ class EditExpenseForm extends ConsumerWidget {
                     eventId: eventId,
                     scope: scope,
                     onScopeChanged: onScopeChanged,
-                    selectedSubGroupId: selectedSubGroupId,
-                    onSubGroupIdChanged: onSubGroupIdChanged,
                     customSplitParticipants: customSplitParticipants,
                     onCustomSplitChanged: onCustomSplitChanged,
                   ),

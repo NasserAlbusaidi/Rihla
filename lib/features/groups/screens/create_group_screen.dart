@@ -29,20 +29,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _displayNameController = TextEditingController();
-  String _selectedCurrency = 'OMR';
   bool _didInitName = false;
-
-  static const _currencies = [
-    'OMR',
-    'USD',
-    'EUR',
-    'GBP',
-    'SAR',
-    'AED',
-    'KWD',
-    'BHD',
-    'QAR',
-  ];
 
   @override
   void dispose() {
@@ -66,7 +53,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           .read(groupServiceProvider)
           .createGroup(
             name: _nameController.text.trim(),
-            currency: _selectedCurrency,
+            currency: 'OMR',
           )
           .timeout(const Duration(seconds: 15));
       if (!mounted) return;
@@ -163,28 +150,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                           v == null || v.trim().isEmpty
                               ? "Group name can't be empty."
                               : null,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Currency label
-                    Text(
-                      'Currency',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Currency selector
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedCurrency,
-                      decoration: const InputDecoration(),
-                      items: _currencies
-                          .map(
-                            (c) => DropdownMenuItem(value: c, child: Text(c)),
-                          )
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) setState(() => _selectedCurrency = v);
-                      },
                     ),
                     const SizedBox(height: 24),
 

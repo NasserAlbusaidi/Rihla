@@ -47,7 +47,6 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
 
   // Scope editing
   late ExpenseScope _scope;
-  String? _selectedSubGroupId;
   late Set<String> _customSplitParticipants;
 
   // Payer selection (for leaders)
@@ -76,7 +75,6 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
     );
     _selectedCategoryId = expense.categoryId;
     _scope = expense.scope;
-    _selectedSubGroupId = expense.subGroupId;
     _customSplitParticipants =
         expense.customSplitParticipants?.toSet() ?? {};
     _selectedPayerId = expense.payerParticipantId;
@@ -117,8 +115,6 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
           ? _noteController.text.trim()
           : null,
       scope: _scope != expense.scope ? _scope : null,
-      subGroupId:
-          _scope == ExpenseScope.subGroup ? _selectedSubGroupId : null,
       customSplitParticipants: _scope == ExpenseScope.custom
           ? _customSplitParticipants.toList()
           : null,
@@ -300,9 +296,6 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
           onCategoryChanged: (id) => setState(() => _selectedCategoryId = id),
           scope: _scope,
           onScopeChanged: (s) => setState(() => _scope = s),
-          selectedSubGroupId: _selectedSubGroupId,
-          onSubGroupIdChanged: (id) =>
-              setState(() => _selectedSubGroupId = id),
           customSplitParticipants: _customSplitParticipants,
           onCustomSplitChanged: (set) =>
               setState(() => _customSplitParticipants = set),

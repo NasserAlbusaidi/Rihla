@@ -13,8 +13,6 @@ import '../../../core/services/haptic_service.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
-import '../../logistics/models/sub_group_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_category_model.dart';
@@ -84,38 +82,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     super.dispose();
   }
 
-  /// Find and auto-select the user's current car sub-group
-  void _autoSelectUserSubGroup() {
-    final currentParticipant = ref.read(
-      currentParticipantProvider(widget.eventId),
-    );
-    if (currentParticipant == null) return;
-
-    final EventRef eventRef = (groupId: widget.groupId, eventId: widget.eventId);
-    final subGroupsAsync = ref.read(eventSubGroupsProvider(eventRef));
-    final subGroups = subGroupsAsync.valueOrNull ?? [];
-
-    // Find the first car sub-group the user is a member of
-    for (final sg in subGroups) {
-      if (sg.type == SubGroupType.car) {
-        final isMember = sg.members.any(
-          (m) => m.participantId == currentParticipant.id,
-        );
-        if (isMember) {
-          setState(() => _selectedSubGroupId = sg.id);
-          return;
-        }
-      }
-    }
-
-    // If no car assignment found, just use the first available car
-    final firstCar = subGroups
-        .where((sg) => sg.type == SubGroupType.car)
-        .firstOrNull;
-    if (firstCar != null) {
-      setState(() => _selectedSubGroupId = firstCar.id);
-    }
-  }
+  /// No-op stub: sub-group auto-selection was a logistics feature removed in Phase 39.
+  /// Kept as a callback target for surviving widgets that still pass the prop.
+  void _autoSelectUserSubGroup() {}
 
   void _onKeyPress(String key) {
     HapticService.lightClick();

@@ -5,12 +5,24 @@ import '../../../core/theme/error_widgets.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/models/event_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+
+/// Derive participants directly from event data (logistics provider removed in Phase 39).
+List<Participant> _eventParticipants(Event event) {
+  return event.participantIds.map((id) {
+    return Participant(
+      id: id,
+      tripId: event.id,
+      role: ParticipantRole.member,
+      joinedAt: event.createdAt,
+      displayName: event.participantNames[id],
+    );
+  }).toList();
+}
 
 /// Scope selector (global/subgroup/custom/personal) with custom participant
 /// picker and payer selector for leaders.
@@ -194,9 +206,8 @@ class _CustomParticipantSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Use eventLogisticsParticipantsProvider which derives participants directly
-    // from the Firestore Event document — no SQLite lookup needed.
-    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
+    // Derive participants from the Event document directly (logistics provider removed in Phase 39).
+    final participants = _eventParticipants(event);
     final participantsAsync = AsyncValue.data(participants);
     // Use currentUid directly — participant IDs are Firebase UIDs
     final currentUid = ref.watch(currentUserProvider)?.uid;
@@ -367,9 +378,8 @@ class _PayerSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Use eventLogisticsParticipantsProvider which derives participants directly
-    // from the Firestore Event document — no SQLite lookup needed.
-    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
+    // Derive participants from the Event document directly (logistics provider removed in Phase 39).
+    final participants = _eventParticipants(event);
 
     // Check if current user is the event creator (leader)
     final currentUid = ref.watch(currentUserProvider)?.uid;

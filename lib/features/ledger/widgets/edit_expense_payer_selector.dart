@@ -4,9 +4,22 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
+import '../../trip/models/trip_model.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+
+/// Derive participants directly from event data (logistics provider removed in Phase 39).
+List<Participant> _eventParticipants(Event event) {
+  return event.participantIds.map((id) {
+    return Participant(
+      id: id,
+      tripId: event.id,
+      role: ParticipantRole.member,
+      joinedAt: event.createdAt,
+      displayName: event.participantNames[id],
+    );
+  }).toList();
+}
 
 /// Payer dropdown for the edit-expense screen. Visible only to the event
 /// creator (leader). Non-leaders see a zero-height widget.
@@ -36,7 +49,7 @@ class EditExpensePayerSelector extends ConsumerWidget {
 
     if (!isLeader) return const SizedBox.shrink();
 
-    final participants = ref.watch(eventLogisticsParticipantsProvider(event));
+    final participants = _eventParticipants(event);
     if (participants.isEmpty) return const SizedBox.shrink();
 
     final effectivePayerId = selectedPayerId ?? currentParticipant?.id;

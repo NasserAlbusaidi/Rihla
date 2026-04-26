@@ -4,50 +4,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
-import '../../gear/providers/gear_provider.dart';
 import '../models/event_model.dart';
 
 /// Service for Event CRUD operations against Firestore.
 ///
 /// Extends [FirestoreRepository] so all Firestore access flows through the
-/// base class `db` getter (MIG-05). Constructor takes a [Ref] for
-/// Riverpod integration and an optional [GearService] for testability.
+/// base class `db` getter (MIG-05).
 ///
 /// Events are stored as a subcollection:
 ///   `groups/{groupId}/events/{eventId}`
 ///
 /// Events are Firestore-only.
 class EventService extends FirestoreRepository {
-  final Ref? _ref;
-  final GearService? _gearServiceOverride;
-
   /// Default constructor for Riverpod-managed use.
-  EventService(Ref ref)
-      : _ref = ref,
-        _gearServiceOverride = null,
-        super();
+  EventService(Ref ref) : super();
 
-  /// Test-only constructor: inject FakeFirebaseFirestore and a mock GearService.
+  /// Test-only constructor: inject FakeFirebaseFirestore.
   @visibleForTesting
-  EventService.withFirestore(FirebaseFirestore firestoreDb, GearService gearService)
-      : _ref = null,
-        _gearServiceOverride = gearService,
-        super.withFirestore(firestoreDb);
-
-  GearService get _gearService {
-    final override = _gearServiceOverride;
-    if (override != null) return override;
-    final ref = _ref;
-    if (ref == null) throw StateError('No Ref or GearService override');
-    return ref.read(gearServiceProvider);
-  }
+  EventService.withFirestore(FirebaseFirestore firestoreDb)
+      : super.withFirestore(firestoreDb);
 
   /// Create a new event in Firestore.
   ///
   /// Steps:
   /// 1. Generate a UUID for the eventId.
   /// 2. Write event document to `groups/{groupId}/events/{eventId}`.
-  /// 3. If type is Camping, seed preset gear items via GearService.
   ///
   /// Per Pitfall 3: createdAt uses a client-generated ISO 8601 string,
   /// not FieldValue.serverTimestamp(), so it is immediately readable.
@@ -100,40 +81,7 @@ class EventService extends FirestoreRepository {
       rethrow;
     }
 
-    // Seed camping gear presets via Firestore-backed GearService.
-    if (type == EventType.camping) {
-      await _seedCampingGear(groupId, eventId);
-    }
-
     return event;
-  }
-
-  /// Seed the three camping preset gear items using the Firestore GearService API.
-  ///
-  /// Per D-13: Tent (high priority), Sleeping Bag (high priority), Cooler
-  /// (normal priority) are added to the event's gear list on creation.
-  ///
-  /// Uses [GearService.addGearItem] (groupId, eventId, itemName) per the
-  /// Firestore-backed GearService API from Plan 04-02.
-  Future<void> _seedCampingGear(String groupId, String eventId) async {
-    await _gearService.addGearItem(
-      groupId: groupId,
-      eventId: eventId,
-      itemName: 'Tent',
-      isHighPriority: true,
-    );
-    await _gearService.addGearItem(
-      groupId: groupId,
-      eventId: eventId,
-      itemName: 'Sleeping Bag',
-      isHighPriority: true,
-    );
-    await _gearService.addGearItem(
-      groupId: groupId,
-      eventId: eventId,
-      itemName: 'Cooler',
-      isHighPriority: false,
-    );
   }
 
   /// Soft-delete an event (sets isDeleted=true).

@@ -39,9 +39,7 @@ Each file owns SQLite I/O for one domain of the local cache (`safar_cache.db` v6
 - **expense_cache_repository.dart**: `ExpenseCacheRepository` — ghost-row-free write via delete-all-for-event + batch insert. Consumed by `eventExpensesProvider.asyncMap` side-write (D-15).
 - **settlement_cache_repository.dart**: `SettlementCacheRepository` — same delete-then-insert pattern as expenses.
 - **trip_cache_repository.dart**: `TripCacheRepository` — upsert + cascading delete across 9 related tables in one transaction.
-- **gear_cache_repository.dart**: `GearCacheRepository` — delete-all-for-trip + batch-insert for snapshots; single upsert for `addItem` (preset seeding safety).
-- **participant_cache_repository.dart**: `ParticipantCacheRepository` — delete-all + batch-insert. Consumed by `tripLogisticsParticipantsProvider`.
-- **sub_group_cache_repository.dart**: `SubGroupCacheRepository` — FK-ordered delete (members before groups) + batch-insert with nested members.
+- **participant_cache_repository.dart**: `ParticipantCacheRepository` — delete-all + batch-insert.
 - **activity_log_cache_repository.dart**: `ActivityLogCacheRepository` — delete-all + batch-insert, 50-row read cap.
 - **category_cache_repository.dart**: `CategoryCacheRepository` — delete-all + batch-insert.
 - **group_cache_repository.dart**: `GroupCacheRepository` — upsert + explicit cascade delete for groups and group_members.

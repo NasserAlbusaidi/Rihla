@@ -5,8 +5,6 @@ import '../../../core/services/cache/expense_cache_repository.dart';
 import '../../../core/services/cache/settlement_cache_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
-import '../../logistics/models/sub_group_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
@@ -120,15 +118,9 @@ final eventBalancesProvider = Provider.family<
   final expensesAsync = ref.watch(eventExpensesProvider(params.eventRef));
   final settlementsAsync =
       ref.watch(eventSettlementsProvider(params.eventRef));
-  final subGroupsAsync =
-      ref.watch(eventSubGroupsProvider(params.eventRef));
 
-  if (expensesAsync.isLoading ||
-      settlementsAsync.isLoading ||
-      subGroupsAsync.isLoading) {
-    if (!expensesAsync.hasValue ||
-        !settlementsAsync.hasValue ||
-        !subGroupsAsync.hasValue) {
+  if (expensesAsync.isLoading || settlementsAsync.isLoading) {
+    if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
       return const AsyncValue.loading();
     }
   }
@@ -139,7 +131,6 @@ final eventBalancesProvider = Provider.family<
 
   final expenses = expensesAsync.valueOrNull ?? [];
   final settlements = settlementsAsync.valueOrNull ?? [];
-  final subGroups = subGroupsAsync.valueOrNull ?? [];
 
   // Derive participants from event data (no SQLite needed)
   final participants = params.event.participantIds.map((id) {
@@ -156,7 +147,6 @@ final eventBalancesProvider = Provider.family<
     expenses: expenses,
     settlements: settlements,
     participants: participants,
-    subGroups: subGroups,
   );
 
   return AsyncValue.data(balances);
@@ -171,13 +161,15 @@ class BalanceCalculator {
   /// Calculate balances with proper scope handling
   ///
   /// - Global: Split among all participants
-  /// - Sub-Group: Split among members of the specified sub_group_id
   /// - Personal: Only the payer is responsible (no split)
+  /// - Custom: Split among the listed participants
+  ///
+  /// Legacy `subGroup` scope (logistics feature, removed in Phase 39) falls
+  /// back to global behaviour for back-compat with persisted Firestore docs.
   static List<UserBalance> calculateBalances({
     required List<Expense> expenses,
     required List<Participant> participants,
     List<Settlement> settlements = const [],
-    List<SubGroup>? subGroups,
   }) {
     if (participants.isEmpty) return [];
 
@@ -188,14 +180,6 @@ class BalanceCalculator {
     final Map<String, Decimal> owedMap = {
       for (var p in participants) p.id: Decimal.zero,
     };
-
-    // Build subgroup member lookup: subGroupId -> [participantIds]
-    final Map<String, Set<String>> subGroupMembers = {};
-    if (subGroups != null) {
-      for (final sg in subGroups) {
-        subGroupMembers[sg.id] = sg.members.map((m) => m.participantId).toSet();
-      }
-    }
 
     // Process each expense
     for (final expense in expenses) {
@@ -216,14 +200,9 @@ class BalanceCalculator {
           break;
 
         case ExpenseScope.subGroup:
-          // Sub-Group: only members of the specified sub-group
-          if (expense.subGroupId != null &&
-              subGroupMembers.containsKey(expense.subGroupId)) {
-            splitRecipients = Set.from(subGroupMembers[expense.subGroupId]!);
-          } else {
-            // Fallback to global if sub-group not found
-            splitRecipients = participants.map((p) => p.id).toSet();
-          }
+          // Legacy sub-group scope (logistics removed in Phase 39):
+          // back-compat fallback to global so existing expenses still split.
+          splitRecipients = participants.map((p) => p.id).toSet();
           break;
 
         case ExpenseScope.custom:

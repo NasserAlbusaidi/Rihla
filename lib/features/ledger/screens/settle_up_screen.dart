@@ -15,7 +15,6 @@ import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
 import '../../trip/models/trip_model.dart';
-import '../../logistics/providers/sub_group_provider.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
@@ -87,7 +86,6 @@ class SettleUpScreen extends ConsumerWidget {
 
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
-    final subGroupsAsync = ref.watch(eventSubGroupsProvider(eventRef));
 
     // Derive participants from event data (no SQLite needed)
     final participants = event.participantIds.map((id) {
@@ -115,13 +113,11 @@ class SettleUpScreen extends ConsumerWidget {
             child: expensesAsync.when(
               data: (expenses) {
                 final settlementsRec = settlementsAsync.valueOrNull ?? [];
-                final subGroups = subGroupsAsync.valueOrNull ?? [];
 
                 final balances = BalanceCalculator.calculateBalances(
                   expenses: expenses,
                   settlements: settlementsRec,
                   participants: participants,
-                  subGroups: subGroups,
                 );
 
                 final Map<String, String> userNames = {
