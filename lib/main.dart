@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -44,14 +46,16 @@ void main() async {
       // Emulator hookup MUST run AFTER Firebase.initializeApp and BEFORE any
       // service construction or auth call (Pitfall 2 in 38-RESEARCH.md).
       if (_useFirebaseEmulator) {
-        FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+        // Android emulator maps host's localhost to 10.0.2.2; other platforms use localhost.
+        final host = !kIsWeb && Platform.isAndroid ? '10.0.2.2' : 'localhost';
+        FirebaseAuth.instance.useAuthEmulator(host, 9099);
+        FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
         FirebaseFunctions.instanceFor(region: 'us-central1')
-            .useFunctionsEmulator('localhost', 5001);
-        await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+            .useFunctionsEmulator(host, 5001);
+        await FirebaseStorage.instance.useStorageEmulator(host, 9199);
         if (kDebugMode) {
           debugPrint(
-            'Firebase emulators ON (auth:9099 firestore:8080 functions:5001 storage:9199)',
+            'Firebase emulators ON host=$host (auth:9099 firestore:8080 functions:5001 storage:9199)',
           );
         }
       }

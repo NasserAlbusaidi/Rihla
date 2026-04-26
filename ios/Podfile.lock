@@ -1197,7 +1197,11 @@ PODS:
     - BoringSSL-GRPC/Interface (= 0.0.37)
   - BoringSSL-GRPC/Interface (0.0.37)
   - cloud_firestore (6.2.0):
-    - Firebase/Firestore (= 12.9.0)
+    - Firebase/Firestore (= 12.12.0)
+    - firebase_core
+    - Flutter
+  - cloud_functions (6.2.0):
+    - Firebase/Functions (= 12.12.0)
     - firebase_core
     - Flutter
   - DKImagePickerController/Core (4.3.9):
@@ -1234,60 +1238,63 @@ PODS:
   - file_picker (0.0.1):
     - DKImagePickerController/PhotoGallery
     - Flutter
-  - Firebase/Auth (12.9.0):
+  - Firebase/Auth (12.12.0):
     - Firebase/CoreOnly
-    - FirebaseAuth (~> 12.9.0)
-  - Firebase/CoreOnly (12.9.0):
-    - FirebaseCore (~> 12.9.0)
-  - Firebase/Firestore (12.9.0):
+    - FirebaseAuth (~> 12.12.0)
+  - Firebase/CoreOnly (12.12.0):
+    - FirebaseCore (~> 12.12.0)
+  - Firebase/Firestore (12.12.0):
     - Firebase/CoreOnly
-    - FirebaseFirestore (~> 12.9.0)
-  - Firebase/Messaging (12.9.0):
+    - FirebaseFirestore (~> 12.12.0)
+  - Firebase/Functions (12.12.0):
     - Firebase/CoreOnly
-    - FirebaseMessaging (~> 12.9.0)
-  - Firebase/Storage (12.9.0):
+    - FirebaseFunctions (~> 12.12.0)
+  - Firebase/Messaging (12.12.0):
     - Firebase/CoreOnly
-    - FirebaseStorage (~> 12.9.0)
+    - FirebaseMessaging (~> 12.12.0)
+  - Firebase/Storage (12.12.0):
+    - Firebase/CoreOnly
+    - FirebaseStorage (~> 12.12.0)
   - firebase_auth (6.3.0):
-    - Firebase/Auth (= 12.9.0)
+    - Firebase/Auth (= 12.12.0)
     - firebase_core
     - Flutter
-  - firebase_core (4.6.0):
-    - Firebase/CoreOnly (= 12.9.0)
+  - firebase_core (4.7.0):
+    - Firebase/CoreOnly (= 12.12.0)
     - Flutter
   - firebase_messaging (16.1.3):
-    - Firebase/Messaging (= 12.9.0)
+    - Firebase/Messaging (= 12.12.0)
     - firebase_core
     - Flutter
   - firebase_storage (13.2.0):
-    - Firebase/Storage (= 12.9.0)
+    - Firebase/Storage (= 12.12.0)
     - firebase_core
     - Flutter
-  - FirebaseAppCheckInterop (12.9.0)
-  - FirebaseAuth (12.9.0):
-    - FirebaseAppCheckInterop (~> 12.9.0)
-    - FirebaseAuthInterop (~> 12.9.0)
-    - FirebaseCore (~> 12.9.0)
-    - FirebaseCoreExtension (~> 12.9.0)
+  - FirebaseAppCheckInterop (12.12.0)
+  - FirebaseAuth (12.12.0):
+    - FirebaseAppCheckInterop (~> 12.12.0)
+    - FirebaseAuthInterop (~> 12.12.0)
+    - FirebaseCore (~> 12.12.0)
+    - FirebaseCoreExtension (~> 12.12.0)
     - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
     - GoogleUtilities/Environment (~> 8.1)
     - GTMSessionFetcher/Core (< 6.0, >= 3.4)
     - RecaptchaInterop (~> 101.0)
-  - FirebaseAuthInterop (12.9.0)
-  - FirebaseCore (12.9.0):
-    - FirebaseCoreInternal (~> 12.9.0)
+  - FirebaseAuthInterop (12.12.0)
+  - FirebaseCore (12.12.1):
+    - FirebaseCoreInternal (~> 12.12.0)
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/Logger (~> 8.1)
-  - FirebaseCoreExtension (12.9.0):
-    - FirebaseCore (~> 12.9.0)
-  - FirebaseCoreInternal (12.9.0):
+  - FirebaseCoreExtension (12.12.0):
+    - FirebaseCore (~> 12.12.0)
+  - FirebaseCoreInternal (12.12.0):
     - "GoogleUtilities/NSData+zlib (~> 8.1)"
-  - FirebaseFirestore (12.9.0):
-    - FirebaseCore (~> 12.9.0)
-    - FirebaseCoreExtension (~> 12.9.0)
-    - FirebaseFirestoreInternal (~> 12.9.0)
-    - FirebaseSharedSwift (~> 12.9.0)
-  - FirebaseFirestoreInternal (12.9.0):
+  - FirebaseFirestore (12.12.0):
+    - FirebaseCore (~> 12.12.0)
+    - FirebaseCoreExtension (~> 12.12.0)
+    - FirebaseFirestoreInternal (~> 12.12.0)
+    - FirebaseSharedSwift (~> 12.12.0)
+  - FirebaseFirestoreInternal (12.12.0):
     - abseil/algorithm (~> 1.20240722.0)
     - abseil/base (~> 1.20240722.0)
     - abseil/container/flat_hash_map (~> 1.20240722.0)
@@ -1296,32 +1303,41 @@ PODS:
     - abseil/strings/strings (~> 1.20240722.0)
     - abseil/time (~> 1.20240722.0)
     - abseil/types (~> 1.20240722.0)
-    - FirebaseAppCheckInterop (~> 12.9.0)
-    - FirebaseCore (~> 12.9.0)
+    - FirebaseAppCheckInterop (~> 12.12.0)
+    - FirebaseCore (~> 12.12.0)
     - "gRPC-C++ (~> 1.69.0)"
     - gRPC-Core (~> 1.69.0)
     - leveldb-library (~> 1.22)
     - nanopb (~> 3.30910.0)
-  - FirebaseInstallations (12.9.0):
-    - FirebaseCore (~> 12.9.0)
+  - FirebaseFunctions (12.12.0):
+    - FirebaseAppCheckInterop (~> 12.12.0)
+    - FirebaseAuthInterop (~> 12.12.0)
+    - FirebaseCore (~> 12.12.0)
+    - FirebaseCoreExtension (~> 12.12.0)
+    - FirebaseMessagingInterop (~> 12.12.0)
+    - FirebaseSharedSwift (~> 12.12.0)
+    - GTMSessionFetcher/Core (< 6.0, >= 3.4)
+  - FirebaseInstallations (12.12.0):
+    - FirebaseCore (~> 12.12.0)
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/UserDefaults (~> 8.1)
     - PromisesObjC (~> 2.4)
-  - FirebaseMessaging (12.9.0):
-    - FirebaseCore (~> 12.9.0)
-    - FirebaseInstallations (~> 12.9.0)
+  - FirebaseMessaging (12.12.0):
+    - FirebaseCore (~> 12.12.0)
+    - FirebaseInstallations (~> 12.12.0)
     - GoogleDataTransport (~> 10.1)
     - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/Reachability (~> 8.1)
     - GoogleUtilities/UserDefaults (~> 8.1)
     - nanopb (~> 3.30910.0)
-  - FirebaseSharedSwift (12.9.0)
-  - FirebaseStorage (12.9.0):
-    - FirebaseAppCheckInterop (~> 12.9.0)
-    - FirebaseAuthInterop (~> 12.9.0)
-    - FirebaseCore (~> 12.9.0)
-    - FirebaseCoreExtension (~> 12.9.0)
+  - FirebaseMessagingInterop (12.12.0)
+  - FirebaseSharedSwift (12.12.0)
+  - FirebaseStorage (12.12.1):
+    - FirebaseAppCheckInterop (~> 12.12.0)
+    - FirebaseAuthInterop (~> 12.12.0)
+    - FirebaseCore (~> 12.12.0)
+    - FirebaseCoreExtension (~> 12.12.0)
     - GoogleUtilities/Environment (~> 8.1)
     - GTMSessionFetcher/Core (< 6.0, >= 3.4)
   - Flutter (1.0.0)
@@ -1487,6 +1503,7 @@ PODS:
 DEPENDENCIES:
   - app_settings (from `.symlinks/plugins/app_settings/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
+  - cloud_functions (from `.symlinks/plugins/cloud_functions/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
@@ -1519,8 +1536,10 @@ SPEC REPOS:
     - FirebaseCoreInternal
     - FirebaseFirestore
     - FirebaseFirestoreInternal
+    - FirebaseFunctions
     - FirebaseInstallations
     - FirebaseMessaging
+    - FirebaseMessagingInterop
     - FirebaseSharedSwift
     - FirebaseStorage
     - GoogleDataTransport
@@ -1541,6 +1560,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/app_settings/ios"
   cloud_firestore:
     :path: ".symlinks/plugins/cloud_firestore/ios"
+  cloud_functions:
+    :path: ".symlinks/plugins/cloud_functions/ios"
   file_picker:
     :path: ".symlinks/plugins/file_picker/ios"
   firebase_auth:
@@ -1578,27 +1599,30 @@ SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
   app_settings: 0341ec6daa4f0c50f5a421bf0ad7c36084db6e90
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
-  cloud_firestore: 698d4d849c58da2ef2b3b8b9db27d2cd56614e7e
+  cloud_firestore: 9e488a9de7b14e42765ebd478d33f7d15a6fef57
+  cloud_functions: 953301e62f7dd357afe772ccafa9f99c85ab78e7
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
-  Firebase: 065f2bb395062046623036d8e6dc857bc2521d56
-  firebase_auth: 323c64eedef33fc3fdf438d16c29d2624b2ce4f4
-  firebase_core: 8e6f58412ca227827c366b92e7cee047a2148c60
-  firebase_messaging: c3aa897e0d40109cfb7927c40dc0dea799863f3b
-  firebase_storage: 8d16922c017c49812f7bbe64a86f756f99a44c74
-  FirebaseAppCheckInterop: 4bade10286cc977e516f75d2d8312cbdfa534789
-  FirebaseAuth: 3a39f6436c21ebfd7919b698228b4f89ff94c23b
-  FirebaseAuthInterop: f8f6ff72dc24621906497fbe5cf3c42ee815e59c
-  FirebaseCore: 428912f751178b06bef0a1793effeb4a5e09a9b8
-  FirebaseCoreExtension: e911052d59cd0da237a45d706fc0f81654f035c1
-  FirebaseCoreInternal: b321eafae5362113bc182956fafc9922cfc77b72
-  FirebaseFirestore: d8b76ca1feb4ca0b0f078c45f7d1bd8014a49ef1
-  FirebaseFirestoreInternal: 02341a9ba87f6309227b04685022a5e16307bbf7
-  FirebaseInstallations: 7b64ffd006032b2b019a59b803858df5112d9eaa
-  FirebaseMessaging: 7d6cdbff969127c4151c824fe432f0e301210f15
-  FirebaseSharedSwift: 9d2fa84a46676302b89dbd5e6e62bce2fe376909
-  FirebaseStorage: 3ba2348d876c295236cdd9f408a62d3f9ff8e6b5
+  Firebase: aa154fee4e9b8eac17aa42344988865b3e857d33
+  firebase_auth: 6cc909f2a33d7ee4c1f05614ca1ab1a40e828dc4
+  firebase_core: 9156a152117c843440b0b990c785aa0259bc5447
+  firebase_messaging: 4cf2e2573cd7a4e84b1797d115ba3a62f3e77133
+  firebase_storage: dbbc6ec25f560bc677ae8e32bcf065132fbe514f
+  FirebaseAppCheckInterop: c63ae0d003274f145174849c545ab861593beaf9
+  FirebaseAuth: bcfebbc0ca055a6335f2252a90e57363d7ea5e65
+  FirebaseAuthInterop: 917aa3a17ecf144d5f1823b51ef372da06909a4b
+  FirebaseCore: 86241206e656f5c80c995e370e6c975913b9b284
+  FirebaseCoreExtension: ff6fd42eb5287e71d3e160450de6509733d9ead7
+  FirebaseCoreInternal: 7c12fc3011d889085e765e317d7b9fd1cef97af9
+  FirebaseFirestore: 01e964d312cf17e56925c955b19798848775a7fd
+  FirebaseFirestoreInternal: 9d9fd7eadbe0f19310fd7df06470a04baeaf3f36
+  FirebaseFunctions: 63768746c276d799807347fdb8f0b057898a5792
+  FirebaseInstallations: 4e6e162aa4abaaeeeb01dd00179dfc5ad9c2194e
+  FirebaseMessaging: 341004946fa7ffc741344b20f1b667514fc93e31
+  FirebaseMessagingInterop: bcf56f6a07054150163621d62676e34edab5d5eb
+  FirebaseSharedSwift: bccaff90721d14bafc14be34f28b77fdd7c91dc9
+  FirebaseStorage: b3682c96ae7016420c1f6eb43d45057a0e909c9f
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
