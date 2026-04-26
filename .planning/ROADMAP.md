@@ -108,6 +108,7 @@ Full details: [milestones/v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
   - [x] 37-04 — Token promotions: group avatars + gradients + category colors (Wave 4) (DARK-02, DARK-04)
   - [x] 37-05 — Settings UX + verification (theme picker, goldens, contrast test, CI guard) (Wave 5) (DARK-02, DARK-03, DARK-05)
 - [ ] **Phase 38: Storage Cloud Functions** — Enforce group-membership on Storage access (#1b)
+- [ ] **Phase 39: Strip to Shippable v1** — Remove memories, vault, logistics, onboarding, gear, multi-currency/Thawani (SHIP-01)
 
 ### Phase 38: Storage Cloud Functions
 **Goal**: Enforce group-membership checks on Firebase Storage access via Cloud Functions (or callable signed-URL gate), closing the "any authenticated user can read buckets" security gap.
@@ -121,9 +122,9 @@ Full details: [milestones/v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
 **UI hint**: no
 **Plans**: 4 plans
 Plans:
-- [ ] 38-01-PLAN.md — Bootstrap functions/ codebase + firebase.json emulators + cloud_functions dep + Blaze checkpoint
-- [ ] 38-02-PLAN.md — Membership + signing + validation libs + getSignedUploadUrl callable
-- [ ] 38-03-PLAN.md — listDocumentsWithUrls + listMemoriesWithUrls + deleteStorageObject + storage-rules direct-access test
+- [x] 38-01-PLAN.md — Bootstrap functions/ codebase + firebase.json emulators + cloud_functions dep + Blaze checkpoint
+- [x] 38-02-PLAN.md — Membership + signing + validation libs + getSignedUploadUrl callable
+- [x] 38-03-PLAN.md — listDocumentsWithUrls + listMemoriesWithUrls + deleteStorageObject + storage-rules direct-access test
 - [ ] 38-04-PLAN.md — Flutter StorageGateway + service migration + tighten storage.rules + emulator wire + deploy checkpoint
 
 Full details: [milestones/v2.4-ROADMAP.md](milestones/v2.4-ROADMAP.md)
@@ -138,3 +139,24 @@ Full details: [milestones/v2.4-ROADMAP.md](milestones/v2.4-ROADMAP.md)
 | 25-27 | v2.2 | 5/5 | Complete | 2026-04-02 |
 | 28-35 | v2.3 | 22/22 | Complete | 2026-04-05 |
 | 36-38 | v2.4 | 0/— | Active | — |
+
+### Phase 39: Strip to Shippable v1
+**Goal**: Reduce the app surface area to the minimum shippable feature set by removing six feature areas (memories, vault, logistics, onboarding, gear, multi-currency/Thawani). Result is a tight v1 covering auth + groups + events + ledger (with settle-up) + home + activity + settings.
+**Depends on**: Phase 38 (Storage gateway must land before bucket teardown)
+**Requirements**: SHIP-01
+**Success Criteria** (what must be TRUE):
+  1. Five feature directories deleted: `lib/features/{memories,vault,logistics,gear,onboarding}` along with their tests, providers, services, and models
+  2. `thawani_payment` removed from `pubspec.yaml`; no multi-currency / FX conversion code paths remain; `base_currency` field on trips removed
+  3. GoRouter has no routes for the removed features; `CommandCenter` shows no module cards for them; `TripModules` field pruned of removed flags
+  4. Firestore collections (gear_items, documents, memories, logistics) dropped; Storage buckets `trip-documents` and `trip-memories` removed; SQLite tables (`gear_items`, `documents`, related migrations) dropped; security rules updated to deny removed paths
+  5. `flutter analyze` clean, `flutter test` green, and a smoke test of the surviving flows (auth, group create/join, event create, expense add, settle-up) passes
+**UI hint**: yes
+**Plans**: 7 plans across 5 waves
+Plans:
+- [ ] 39-01-PLAN.md — Wave 1: Strip routes + EventModules + module-card grid (make features unreachable)
+- [ ] 39-02-PLAN.md — Wave 2: Delete five feature directories + their tests + onboarding goldens
+- [ ] 39-03-PLAN.md — Wave 3a: Remove Thawani service + currency picker UI + orphaned imports
+- [ ] 39-04-PLAN.md — Wave 3b: Prune TripModules class + update trip_cache_repository
+- [ ] 39-05-PLAN.md — Wave 4a: Remove orphaned Cloud Functions + tighten Firestore rules + Console checkpoint
+- [ ] 39-06-PLAN.md — Wave 4b: Bump SQLite schema v6→v7 + remove thawani_payment package
+- [ ] 39-07-PLAN.md — Wave 5: Verify (flutter analyze + test + smoke test) → 39-VERIFICATION.md
