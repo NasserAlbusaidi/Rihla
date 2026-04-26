@@ -40,7 +40,6 @@ class EventService extends FirestoreRepository {
     required EventType type,
     required List<String> participantIds,
     required Map<String, String> participantNames,
-    required String currency,
     required String createdBy,
     DateTime? startDate,
     DateTime? endDate,
@@ -63,7 +62,6 @@ class EventService extends FirestoreRepository {
       modules: resolvedModules,
       startDate: startDate,
       endDate: endDate,
-      currency: currency,
       isDeleted: false,
       createdAt: now,
     );

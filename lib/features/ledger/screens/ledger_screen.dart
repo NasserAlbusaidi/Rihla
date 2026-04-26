@@ -302,7 +302,7 @@ class _LedgerBody extends StatelessWidget {
     final netBalance = _computeNetBalance();
     final eventTotal = _computeEventTotal();
     final timeline = _buildTimeline();
-    final currency = event.currency as String? ?? 'OMR';
+    const currency = 'OMR';
     final isEmpty = expenses.isEmpty && settlements.isEmpty;
 
     return CustomScrollView(

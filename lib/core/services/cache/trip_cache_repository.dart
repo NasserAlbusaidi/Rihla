@@ -33,7 +33,6 @@ class TripCacheRepository {
         'invite_code': trip.inviteCode,
         'leader_id': trip.leaderId,
         'icon': trip.icon,
-        'currency': trip.currency,
         'start_date': trip.startDate?.toIso8601String(),
         'end_date': trip.endDate?.toIso8601String(),
         'modules': jsonEncode(trip.modules.toJson()),
@@ -56,7 +55,6 @@ class TripCacheRepository {
         inviteCode: map['invite_code'] as String,
         leaderId: map['leader_id'] as String,
         icon: map['icon'] as String? ?? 'airplane',
-        currency: map['currency'] as String? ?? 'OMR',
         startDate: map['start_date'] != null
             ? DateTime.parse(map['start_date'] as String)
             : null,

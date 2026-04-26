@@ -221,7 +221,7 @@ class SettleUpScreen extends ConsumerWidget {
             netBalance: myBalance.netBalance,
             totalPending: totalPending,
             myBalance: myBalance,
-            currency: event.currency,
+            currency: 'OMR',
             myDebts: myDebts,
             onSettleUp: myDebts.isNotEmpty
                 ? () => _confirmPayment(context, ref, event, myDebts.first)
@@ -240,7 +240,7 @@ class SettleUpScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               SettlementGroupCard(
                 settlements: myDebts,
-                currency: event.currency,
+                currency: 'OMR',
                 isUrgent: true,
                 onTap: (s) => _confirmPayment(context, ref, event, s),
               ),
@@ -252,7 +252,7 @@ class SettleUpScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               SettlementGroupCard(
                 settlements: debtToMe,
-                currency: event.currency,
+                currency: 'OMR',
                 onTap: (s) => _confirmPayment(context, ref, event, s),
               ),
               const SizedBox(height: 24),
@@ -263,7 +263,7 @@ class SettleUpScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               SettlementGroupCard(
                 settlements: others,
-                currency: event.currency,
+                currency: 'OMR',
                 onTap: (s) => _confirmPayment(context, ref, event, s),
               ),
               const SizedBox(height: 24),
@@ -280,7 +280,7 @@ class SettleUpScreen extends ConsumerWidget {
             RecordedSettlementsSection(
               settlements: recordedSettlements,
               participantNames: participantNames,
-              currency: event.currency,
+              currency: 'OMR',
             ).animate().fadeIn(delay: 200.ms),
 
           const SizedBox(height: 16),
@@ -289,7 +289,7 @@ class SettleUpScreen extends ConsumerWidget {
           if (expenses.isNotEmpty)
             RecentExpensesSection(
               expenses: expenses,
-              currency: event.currency,
+              currency: 'OMR',
             ).animate().fadeIn(delay: 300.ms),
 
           const SizedBox(height: 40),
@@ -368,7 +368,7 @@ class SettleUpScreen extends ConsumerWidget {
             payerParticipantId: settlement['fromUserId'] as String,
             recipientParticipantId: settlement['toUserId'] as String,
             amount: settlement['amount'] as Decimal,
-            currency: event.currency,
+            currency: 'OMR',
           );
 
       if (context.mounted) {
@@ -416,7 +416,7 @@ class SettleUpScreen extends ConsumerWidget {
     final toName = settlement['toUserName'] as String;
     final amount = settlement['amount'] as Decimal;
     final amountFormatted =
-        AppFormatters.formatCurrency(amount, event.currency);
+        AppFormatters.formatCurrency(amount, 'OMR');
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,

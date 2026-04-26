@@ -52,18 +52,8 @@ class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
   // Payer selection (for leaders)
   String? _selectedPayerId;
 
-  /// Currency code for this event.
-  String get _tripCurrency {
-    return ref
-            .read(
-              eventDetailProvider(
-                (groupId: widget.groupId, eventId: widget.eventId),
-              ),
-            )
-            .valueOrNull
-            ?.currency ??
-        'OMR';
-  }
+  /// Currency code for this event (OMR-only after Phase 39 strip).
+  String get _tripCurrency => 'OMR';
 
   void _initializeControllers(Expense expense) {
     if (_initialized) return;

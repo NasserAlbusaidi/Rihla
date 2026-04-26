@@ -107,7 +107,7 @@ class EventExpenseHero extends ConsumerWidget {
                     return Text(
                       AppFormatters.formatCurrency(
                         Decimal.parse(value.toStringAsFixed(3)),
-                        event.currency,
+                        'OMR',
                       ),
                       style: TextStyle(
                         fontSize: 36,

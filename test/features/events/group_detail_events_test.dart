@@ -78,7 +78,6 @@ Event _makeEvent({
     modules: EventModules.forType(type),
     startDate: startDate,
     endDate: endDate,
-    currency: 'OMR',
     createdAt: DateTime(2026, 3, 1),
   );
 }

@@ -70,7 +70,6 @@ class Event {
   final EventModules modules;
   final DateTime? startDate;
   final DateTime? endDate;
-  final String currency;
   final bool isDeleted;
   final DateTime? deletedAt;
   final DateTime createdAt;
@@ -88,7 +87,6 @@ class Event {
     required this.modules,
     this.startDate,
     this.endDate,
-    this.currency = 'OMR',
     this.isDeleted = false,
     this.deletedAt,
     required this.createdAt,
@@ -151,7 +149,6 @@ class Event {
       ),
       startDate: startDate,
       endDate: endDate,
-      currency: data['currency'] as String? ?? 'OMR',
       isDeleted: data['isDeleted'] as bool? ?? false,
       deletedAt: deletedAt,
       createdAt: createdAt,
@@ -176,7 +173,6 @@ class Event {
       'modules': modules.toMap(),
       'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
       'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
-      'currency': currency,
       'isDeleted': isDeleted,
       'deletedAt': deletedAt != null ? Timestamp.fromDate(deletedAt!) : null,
       'createdAt': createdAt.toIso8601String(),
@@ -210,7 +206,6 @@ class Event {
       modules: modules ?? this.modules,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
-      currency: currency,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt,

@@ -413,7 +413,6 @@ void main() {
         groupId: _groupId,
         name: 'Beach Trip',
         type: EventType.trip,
-        currency: 'OMR',
         createdAt: DateTime(2026, 1, 10),
         participantIds: const [],
         participantNames: const {},

@@ -138,11 +138,11 @@ class EventCard extends ConsumerWidget {
     // Dart 3 switch for balance color coding and text (D-01)
     final (text, color) = switch (personalBalance!.compareTo(Decimal.zero)) {
       < 0 => (
-          'You owe ${personalBalance!.abs().toStringAsFixed(3)} ${ event.currency}',
+          'You owe ${personalBalance!.abs().toStringAsFixed(3)} OMR',
           context.colors.errorText,
         ),
       > 0 => (
-          'You are owed ${personalBalance!.toStringAsFixed(3)} ${event.currency}',
+          'You are owed ${personalBalance!.toStringAsFixed(3)} OMR',
           context.colors.successText,
         ),
       _ => ('Settled', context.colors.textSecondary),
@@ -165,7 +165,7 @@ class EventCard extends ConsumerWidget {
     // When personalBalance is provided, show total as secondary info
     if (personalBalance != null) {
       return Text(
-        '${totalSpent.toStringAsFixed(3)} ${event.currency}',
+        '${totalSpent.toStringAsFixed(3)} OMR',
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
@@ -175,7 +175,7 @@ class EventCard extends ConsumerWidget {
     }
     // When no personalBalance, show the total as the primary financial line
     return Text(
-      '${totalSpent.toStringAsFixed(3)} ${event.currency}',
+      '${totalSpent.toStringAsFixed(3)} OMR',
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w700,

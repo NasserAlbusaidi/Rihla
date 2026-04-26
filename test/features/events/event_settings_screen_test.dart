@@ -46,7 +46,6 @@ Event _makeEvent({
     participantIds: const ['uid-creator'],
     participantNames: const {'uid-creator': 'Alice'},
     modules: EventModules.forType(type),
-    currency: 'OMR',
     startDate: startDate,
     endDate: endDate,
     createdAt: DateTime(2026, 3, 1),

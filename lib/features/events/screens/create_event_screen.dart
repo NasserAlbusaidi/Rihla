@@ -98,11 +98,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         if (_selectedParticipantIds.contains(m.userId)) m.userId: m.displayName,
     });
 
-    // Inherit currency from group (D-03)
-    final currency =
-        ref.read(groupDetailProvider(widget.groupId)).valueOrNull?.currency ??
-            'OMR';
-
     // Current Firebase UID for createdBy
     final uid = FirebaseConfig.currentUser?.uid ?? '';
 
@@ -114,7 +109,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             participantIds:
                 List.unmodifiable(_selectedParticipantIds.toList()),
             participantNames: participantNames,
-            currency: currency,
             createdBy: uid,
             startDate: _startDate,
             endDate: _endDate,

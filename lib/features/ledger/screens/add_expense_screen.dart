@@ -66,15 +66,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String? _receiptPath;
   bool _isUploadingReceipt = false;
 
-  /// Get the event's currency code
-  String get _tripCurrency {
-    return ref
-        .read(eventDetailProvider(
-          (groupId: widget.groupId, eventId: widget.eventId),
-        ))
-        .valueOrNull
-        ?.currency ?? 'OMR';
-  }
+  /// Get the event's currency code (OMR-only after Phase 39 strip).
+  String get _tripCurrency => 'OMR';
 
   @override
   void dispose() {
