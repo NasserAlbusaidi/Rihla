@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Technical Debt & Dark Theme
 status: executing
-stopped_at: Phase 38 context gathered
-last_updated: "2026-04-18T11:33:33.968Z"
-last_activity: 2026-04-18
+stopped_at: Phase 39 complete — strip to shippable v1
+last_updated: "2026-04-26T11:15:00.000Z"
+last_activity: 2026-04-26
 progress:
   total_phases: 17
   completed_phases: 15
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Milestone: v2.4 Technical Debt & Dark Theme — ACTIVE
-Phase: 38
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-18
+Phase: 39 — Strip to Shippable v1 (COMPLETE)
+Plan: 7 / 7 (all plans landed)
+Status: Phase complete; release prep next
+Last activity: 2026-04-26
 
 ```
 v1.0 Phases 1-13  [██████████] 100%
@@ -103,6 +103,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-04-15 - Completed quick task 260415-g20: Fix memory photos never displaying
-Stopped at: Phase 38 context gathered
-Next action: Continue with remaining review items or update 05-broken-features.md
+Last activity: 2026-04-26 - Phase 39 complete (Strip to Shippable v1) — 7 plans, 5 waves landed across 17 commits; ~9k lines deleted; flutter analyze clean; flutter test 781/781 passing
+Stopped at: Phase 39 complete
+Next action: Release prep — manual smoke test on clean device install, firebase deploy rules+functions, JDK 21 install for rules-unit-test in CI
