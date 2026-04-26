@@ -168,13 +168,7 @@ class EventTypePickerScreen extends ConsumerWidget {
   /// Returns the names of all enabled modules for the given event type.
   static List<String> _enabledModuleNames(EventType type) {
     final modules = EventModules.forType(type);
-    return [
-      if (modules.ledger) 'Ledger',
-      if (modules.gear) 'Gear',
-      if (modules.logistics) 'Logistics',
-      if (modules.vault) 'Vault',
-      if (modules.memories) 'Memories',
-    ];
+    return [if (modules.ledger) 'Ledger'];
   }
 }
 

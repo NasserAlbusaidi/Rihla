@@ -16,7 +16,6 @@ import '../models/event_model.dart';
 import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
 import '../widgets/event_details_card.dart';
-import '../widgets/event_modules_card.dart';
 import '../widgets/event_participants_card.dart';
 import '../widgets/event_type_badge.dart';
 
@@ -26,12 +25,11 @@ import '../widgets/event_type_badge.dart';
 /// - [EventTypeBadge] — type pill
 /// - [EventDetailsCard] — name field + date pickers
 /// - [EventParticipantsCard] — participant picker
-/// - [EventModulesCard] — module toggles (Custom type only)
 ///
 /// On submit: calls [EventService.createEvent], then navigates to the new
 /// event hub so back returns to group detail, not the form (D-06/Pitfall 2).
 ///
-/// Per D-02, D-03, D-04, D-14 and UI-SPEC CreateEventScreen component.
+/// Per D-02, D-03, D-04 and UI-SPEC CreateEventScreen component.
 class CreateEventScreen extends ConsumerStatefulWidget {
   final String groupId;
   final EventType eventType;
@@ -258,14 +256,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   },
                 );
 
-                final modulesCard = widget.eventType == EventType.custom
-                    ? EventModulesCard(
-                        modules: _modules,
-                        onModulesChanged: (m) =>
-                            setState(() => _modules = m),
-                      )
-                    : null;
-
                 return SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 16),
@@ -300,16 +290,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                               .animate()
                               .fadeIn(delay: 200.ms)
                               .slideY(begin: 0.1),
-
-                        // Modules card (custom only)
-                        if (modulesCard != null)
-                          if (disableAnimations)
-                            modulesCard
-                          else
-                            modulesCard
-                                .animate()
-                                .fadeIn(delay: 300.ms)
-                                .slideY(begin: 0.1),
 
                         // --- Submit button ---
                         LoadingButton(
