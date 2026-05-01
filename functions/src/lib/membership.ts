@@ -25,4 +25,8 @@ export async function assertMemberOfEvent(
   if (!memberIds.includes(uid)) {
     throw new HttpsError('permission-denied', 'Not a member of this group.');
   }
+  const participantIds = (eventSnap.data()?.participantIds ?? []) as string[];
+  if (!participantIds.includes(uid)) {
+    throw new HttpsError('permission-denied', 'Not a participant in this event.');
+  }
 }

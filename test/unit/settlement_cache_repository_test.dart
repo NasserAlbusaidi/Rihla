@@ -1,5 +1,7 @@
 // Tests for SettlementCacheRepository — migrated from balance_cache_repository_test.dart
 // in Phase 36 Plan 06. Uses sqflite_common_ffi for in-memory SQLite on macOS/Linux/Windows.
+import 'dart:io';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -9,9 +11,15 @@ import 'package:safar/core/services/local_database.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 
 void main() {
-  setUpAll(() {
+  late Directory tempDir;
+
+  setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    tempDir = await Directory.systemTemp.createTemp('rihla-settlement-cache-');
+    await LocalDatabase.setDatabasePathForTesting(
+      '${tempDir.path}/safar_cache.db',
+    );
   });
 
   setUp(() async {
@@ -21,6 +29,8 @@ void main() {
 
   tearDownAll(() async {
     await LocalDatabase.close();
+    await LocalDatabase.setDatabasePathForTesting(null);
+    await tempDir.delete(recursive: true);
   });
 
   group('SettlementCacheRepository', () {
@@ -98,24 +108,26 @@ void main() {
         expect(result.first.id, equals('s-1'));
       });
 
-      test('ghost-row prevention: second cacheSettlements replaces full set',
-          () async {
-        // First write: 2 settlements
-        await repo.cacheSettlements('trip-1', [
-          buildSettlement(id: 's-1', tripId: 'trip-1'),
-          buildSettlement(id: 's-2', tripId: 'trip-1'),
-        ]);
+      test(
+        'ghost-row prevention: second cacheSettlements replaces full set',
+        () async {
+          // First write: 2 settlements
+          await repo.cacheSettlements('trip-1', [
+            buildSettlement(id: 's-1', tripId: 'trip-1'),
+            buildSettlement(id: 's-2', tripId: 'trip-1'),
+          ]);
 
-        // Second write: only 1 settlement (s-2 was server-deleted)
-        await repo.cacheSettlements('trip-1', [
-          buildSettlement(id: 's-1', tripId: 'trip-1'),
-        ]);
+          // Second write: only 1 settlement (s-2 was server-deleted)
+          await repo.cacheSettlements('trip-1', [
+            buildSettlement(id: 's-1', tripId: 'trip-1'),
+          ]);
 
-        // s-2 must be gone — delete-then-insert prevents ghost row
-        final result = await repo.getSettlements('trip-1');
-        expect(result.length, equals(1));
-        expect(result.first.id, equals('s-1'));
-      });
+          // s-2 must be gone — delete-then-insert prevents ghost row
+          final result = await repo.getSettlements('trip-1');
+          expect(result.length, equals(1));
+          expect(result.first.id, equals('s-1'));
+        },
+      );
     });
 
     group('getSettlements', () {

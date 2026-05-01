@@ -56,11 +56,7 @@ class LedgerScreen extends ConsumerWidget {
   final String groupId;
   final String eventId;
 
-  const LedgerScreen({
-    super.key,
-    required this.groupId,
-    required this.eventId,
-  });
+  const LedgerScreen({super.key, required this.groupId, required this.eventId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -122,8 +118,9 @@ class LedgerScreen extends ConsumerWidget {
     }).toList();
 
     // Use the first participant as current user (matches existing behaviour)
-    final currentParticipantId =
-        participants.isNotEmpty ? participants.first.id : null;
+    final currentParticipantId = participants.isNotEmpty
+        ? participants.first.id
+        : null;
 
     // --- Loading state for expenses/settlements ---
     if (expensesAsync.isLoading || settlementsAsync.isLoading) {
@@ -178,7 +175,7 @@ class LedgerScreen extends ConsumerWidget {
     final rawExpenses = expensesAsync.valueOrNull ?? [];
     // Enrich expenses with payer display names from event participant data
     final expenses = rawExpenses.map((e) {
-      final name = event.participantNames[e.payerParticipantId] as String?;
+      final name = event.participantNames[e.payerParticipantId];
       return name != null ? e.copyWith(payerName: name) : e;
     }).toList();
     final settlements = settlementsAsync.valueOrNull ?? [];
@@ -243,10 +240,7 @@ class _LedgerBody extends StatelessWidget {
   }
 
   Decimal _computeEventTotal() {
-    return expenses.fold(
-      Decimal.zero,
-      (sum, e) => sum + e.amount,
-    );
+    return expenses.fold(Decimal.zero, (sum, e) => sum + e.amount);
   }
 
   /// Compute the current user's balance for a single expense.
@@ -266,12 +260,12 @@ class _LedgerBody extends StatelessWidget {
         ? splitIds.contains(currentParticipantId)
         : true; // global = all participants
 
-    final splitCount =
-        splitIds != null ? splitIds.length : participantCount;
+    final splitCount = splitIds != null ? splitIds.length : participantCount;
     if (splitCount == 0) return Decimal.zero;
 
-    final share = (expense.amount / Decimal.fromInt(splitCount))
-        .toDecimal(scaleOnInfinitePrecision: 3);
+    final share = (expense.amount / Decimal.fromInt(splitCount)).toDecimal(
+      scaleOnInfinitePrecision: 3,
+    );
 
     if (isPayer && isInSplit) {
       // Paid for everyone incl self: net = amount - own share
@@ -327,12 +321,10 @@ class _LedgerBody extends StatelessWidget {
             expenseCount: expenses.length,
             settlementCount: settlements.length,
             currency: currency,
-            onAddExpense: () => context.push(
-              '/group/$groupId/event/$eventId/ledger/add',
-            ),
-            onSettleUp: () => context.push(
-              '/group/$groupId/event/$eventId/ledger/settle-up',
-            ),
+            onAddExpense: () =>
+                context.push('/group/$groupId/event/$eventId/ledger/add'),
+            onSettleUp: () =>
+                context.push('/group/$groupId/event/$eventId/ledger/settle-up'),
           ),
         ),
 
@@ -362,28 +354,27 @@ class _LedgerBody extends StatelessWidget {
                   message:
                       'Add your first expense to start tracking who paid what.',
                   actionLabel: 'Add Expense',
-                  onAction: () => context.push(
-                    '/group/$groupId/event/$eventId/ledger/add',
-                  ),
+                  onAction: () =>
+                      context.push('/group/$groupId/event/$eventId/ledger/add'),
                   accentGradient: context.gradient(AppGradients.terracotta),
                 )
               : FadeInList(
                   children: timeline.map((item) {
                     return switch (item) {
                       _ExpenseItem(:final expense) => ExpenseCard(
-                          key: LedgerKeys.expenseCard(expense.id),
-                          expense: expense,
-                          userBalance: _expenseUserBalance(expense),
-                          currency: currency,
-                          onTap: () => context.push(
-                            '/group/$groupId/event/$eventId/ledger/edit/${expense.id}',
-                          ),
+                        key: LedgerKeys.expenseCard(expense.id),
+                        expense: expense,
+                        userBalance: _expenseUserBalance(expense),
+                        currency: currency,
+                        onTap: () => context.push(
+                          '/group/$groupId/event/$eventId/ledger/edit/${expense.id}',
                         ),
+                      ),
                       _SettlementItem(:final settlement) => SettlementRow(
-                          key: Key('settlement_row_${settlement.id}'),
-                          settlement: settlement,
-                          currency: currency,
-                        ),
+                        key: Key('settlement_row_${settlement.id}'),
+                        settlement: settlement,
+                        currency: currency,
+                      ),
                     };
                   }).toList(),
                 ),

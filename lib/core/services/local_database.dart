@@ -8,7 +8,9 @@ class LocalDatabase {
   static Database? _database;
   static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
-  static const int _databaseVersion = 7; // Phase 39 strip — drop gear_items + cut tables + trips.currency
+  static const int _databaseVersion =
+      7; // Phase 39 strip — drop gear_items + cut tables + trips.currency
+  static String? _databasePathOverride;
 
   /// Get database instance (safe for concurrent access).
   ///
@@ -32,7 +34,7 @@ class LocalDatabase {
   /// Initialize the database
   static Future<Database> _initDatabase() async {
     final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, _databaseName);
+    final path = _databasePathOverride ?? join(databasesPath, _databaseName);
 
     return await openDatabase(
       path,
@@ -114,7 +116,6 @@ class LocalDatabase {
         FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
       )
     ''');
-
 
     // Activity logs table
     await db.execute('''
@@ -205,9 +206,7 @@ class LocalDatabase {
     await db.execute(
       'CREATE INDEX idx_activity_trip ON activity_logs(trip_id)',
     );
-    await db.execute(
-      'CREATE INDEX idx_categories_trip ON categories(trip_id)',
-    );
+    await db.execute('CREATE INDEX idx_categories_trip ON categories(trip_id)');
     await db.execute('CREATE INDEX idx_groups_invite ON groups(invite_code)');
     await db.execute(
       'CREATE INDEX idx_group_members_group ON group_members(group_id)',
@@ -476,6 +475,12 @@ class LocalDatabase {
     }
   }
 
+  /// Override the database path in tests so parallel suites do not share locks.
+  static Future<void> setDatabasePathForTesting(String? path) async {
+    await close();
+    _databasePathOverride = path;
+  }
+
   /// Clear all cached data
   static Future<void> clearAll() async {
     final db = await database;
@@ -491,4 +496,3 @@ class LocalDatabase {
     await db.delete('trips');
   }
 }
-

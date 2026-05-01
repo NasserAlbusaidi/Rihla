@@ -17,7 +17,7 @@ final connectivityProvider =
 /// Connectivity state notifier.
 ///
 /// Checks connectivity by attempting a Firestore server-only read against
-/// the `inviteCodes` collection.
+/// the signed-in user's owner-only FCM token document.
 ///
 /// Firestore handles offline writes automatically via its persistence layer,
 /// so the offline→online auto-sync trigger is removed — there is no manual
@@ -62,13 +62,16 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   /// Uses [Source.server] so the SDK attempts a real network request.
   /// A [FirebaseException] with code `unavailable` indicates no network.
   ///
-  /// Reads from `inviteCodes` (requires auth — anonymous session must be
-  /// established before this runs).
+  /// Reads the caller's own `fcm_tokens/{uid}` document. A missing document
+  /// still proves the server is reachable, while avoiding any broad collection
+  /// read permission.
   Future<bool> _isOnline() async {
     try {
+      final uid = FirebaseConfig.currentUser?.uid;
+      if (uid == null) return false;
       await FirebaseConfig.firestore
-          .collection('inviteCodes')
-          .limit(1)
+          .collection('fcm_tokens')
+          .doc(uid)
           .get(const GetOptions(source: Source.server));
       return true;
     } catch (e) {

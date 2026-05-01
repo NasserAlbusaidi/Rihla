@@ -38,9 +38,9 @@ final groupActivityServiceProvider = Provider<GroupActivityService>(
 /// settlements in `groups/{groupId}/events/{eventId}/settlements`.
 final groupSettlementsProvider =
     StreamProvider.family<List<Settlement>, String>((ref, groupId) {
-  final service = ref.read(groupSettlementServiceProvider);
-  return service.watchGroupSettlements(groupId);
-});
+      final service = ref.read(groupSettlementServiceProvider);
+      return service.watchGroupSettlements(groupId);
+    });
 
 // ---------------------------------------------------------------------------
 // groupActivityProvider
@@ -52,9 +52,9 @@ final groupSettlementsProvider =
 /// live at `groups/{groupId}/activity`.
 final groupActivityProvider =
     StreamProvider.family<List<GroupActivityLog>, String>((ref, groupId) {
-  final service = ref.read(groupActivityServiceProvider);
-  return service.watchRecentActivity(groupId);
-});
+      final service = ref.read(groupActivityServiceProvider);
+      return service.watchRecentActivity(groupId);
+    });
 
 // ---------------------------------------------------------------------------
 // GroupBalances typedef
@@ -104,8 +104,10 @@ typedef GroupBalances = ({
 /// is available.
 ///
 /// The provider automatically recomputes whenever any watched stream emits.
-final groupBalancesProvider =
-    Provider.family<AsyncValue<GroupBalances>, String>((ref, groupId) {
+final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>((
+  ref,
+  groupId,
+) {
   // Step 1: Watch the events list
   final eventsAsync = ref.watch(groupEventsProvider(groupId));
   if (eventsAsync.isLoading && !eventsAsync.hasValue) {
@@ -139,7 +141,6 @@ final groupBalancesProvider =
   // ref.watch inside a loop is valid in Provider.family bodies (RESEARCH Pitfall 2).
   final allExpenses = <Expense>[];
   final allEventSettlements = <Settlement>[];
-  var isLoadingAny = false;
 
   for (final event in events) {
     final eventRef = (groupId: groupId, eventId: event.id);
@@ -148,7 +149,6 @@ final groupBalancesProvider =
 
     if ((expensesAsync.isLoading && !expensesAsync.hasValue) ||
         (settlementsAsync.isLoading && !settlementsAsync.hasValue)) {
-      isLoadingAny = true;
       continue;
     }
     // Skip events that errored (e.g., permission-denied) — treat as 0
@@ -311,12 +311,16 @@ typedef CrossGroupBalance = ({Decimal net, int groupCount, bool isLoading});
 /// - [AsyncValue.error] if [userGroupsProvider] errors
 /// - [AsyncValue.data] with [CrossGroupBalance] containing net sum, group
 ///   count, and loading flag
-final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((ref) {
+final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
+  ref,
+) {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) {
-    return AsyncValue.data(
-      (net: Decimal.zero, groupCount: 0, isLoading: false),
-    );
+    return AsyncValue.data((
+      net: Decimal.zero,
+      groupCount: 0,
+      isLoading: false,
+    ));
   }
 
   final groupsAsync = ref.watch(userGroupsProvider);
@@ -328,9 +332,11 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((ref) 
   }
   final groups = groupsAsync.valueOrNull ?? [];
   if (groups.isEmpty) {
-    return AsyncValue.data(
-      (net: Decimal.zero, groupCount: 0, isLoading: false),
-    );
+    return AsyncValue.data((
+      net: Decimal.zero,
+      groupCount: 0,
+      isLoading: false,
+    ));
   }
 
   var net = Decimal.zero;

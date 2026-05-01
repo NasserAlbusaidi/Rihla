@@ -1,5 +1,7 @@
 // Tests for ExpenseCacheRepository — migrated from balance_cache_repository_test.dart
 // in Phase 36 Plan 06. Uses sqflite_common_ffi for in-memory SQLite on macOS/Linux/Windows.
+import 'dart:io';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -9,9 +11,15 @@ import 'package:safar/core/services/local_database.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 
 void main() {
-  setUpAll(() {
+  late Directory tempDir;
+
+  setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    tempDir = await Directory.systemTemp.createTemp('rihla-expense-cache-');
+    await LocalDatabase.setDatabasePathForTesting(
+      '${tempDir.path}/safar_cache.db',
+    );
   });
 
   setUp(() async {
@@ -21,6 +29,8 @@ void main() {
 
   tearDownAll(() async {
     await LocalDatabase.close();
+    await LocalDatabase.setDatabasePathForTesting(null);
+    await tempDir.delete(recursive: true);
   });
 
   group('ExpenseCacheRepository', () {
@@ -117,23 +127,26 @@ void main() {
         expect(result.first.id, equals('e-1'));
       });
 
-      test('ghost-row prevention: second cacheExpenses replaces full set', () async {
-        // First write: 2 expenses
-        await repo.cacheExpenses('trip-1', [
-          buildExpense(id: 'e-1', tripId: 'trip-1'),
-          buildExpense(id: 'e-2', tripId: 'trip-1'),
-        ]);
+      test(
+        'ghost-row prevention: second cacheExpenses replaces full set',
+        () async {
+          // First write: 2 expenses
+          await repo.cacheExpenses('trip-1', [
+            buildExpense(id: 'e-1', tripId: 'trip-1'),
+            buildExpense(id: 'e-2', tripId: 'trip-1'),
+          ]);
 
-        // Second write: only 1 expense (e-2 was server-deleted)
-        await repo.cacheExpenses('trip-1', [
-          buildExpense(id: 'e-1', tripId: 'trip-1'),
-        ]);
+          // Second write: only 1 expense (e-2 was server-deleted)
+          await repo.cacheExpenses('trip-1', [
+            buildExpense(id: 'e-1', tripId: 'trip-1'),
+          ]);
 
-        // e-2 must be gone — delete-then-insert prevents ghost row
-        final result = await repo.getExpenses('trip-1');
-        expect(result.length, equals(1));
-        expect(result.first.id, equals('e-1'));
-      });
+          // e-2 must be gone — delete-then-insert prevents ghost row
+          final result = await repo.getExpenses('trip-1');
+          expect(result.length, equals(1));
+          expect(result.first.id, equals('e-1'));
+        },
+      );
     });
 
     group('getExpenses', () {

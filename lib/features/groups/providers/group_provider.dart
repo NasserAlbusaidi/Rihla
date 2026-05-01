@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,14 +35,31 @@ final groupErrorProvider = StateProvider<String?>((ref) => null);
 /// per research Pattern 1 & 2).
 class GroupService extends FirestoreRepository {
   final Ref _ref;
+  final FirebaseFunctions? _functionsOverride;
+  final String? _currentUserIdOverride;
 
   /// Production constructor — uses [FirebaseConfig.firestore] via base class.
-  GroupService(this._ref) : super();
+  GroupService(this._ref)
+    : _functionsOverride = null,
+      _currentUserIdOverride = null,
+      super();
 
   /// Test constructor — injects a [FakeFirebaseFirestore] for unit testing.
   @visibleForTesting
-  GroupService.withFirestore(this._ref, FirebaseFirestore firestoreDb)
-      : super.withFirestore(firestoreDb);
+  GroupService.withFirestore(
+    this._ref,
+    FirebaseFirestore firestoreDb, {
+    FirebaseFunctions? functions,
+    String? currentUserId,
+  }) : _functionsOverride = functions,
+       _currentUserIdOverride = currentUserId,
+       super.withFirestore(firestoreDb);
+
+  FirebaseFunctions get _functions =>
+      _functionsOverride ?? FirebaseConfig.functions;
+
+  String? get _currentUid =>
+      _currentUserIdOverride ?? FirebaseConfig.currentUser?.uid;
 
   /// Generate a unique 6-character invite code.
   ///
@@ -76,7 +94,7 @@ class GroupService extends FirestoreRepository {
     required String name,
     required String currency,
   }) async {
-    final uid = FirebaseConfig.currentUser?.uid;
+    final uid = _currentUid;
     if (uid == null) {
       throw Exception('User not authenticated');
     }
@@ -122,13 +140,13 @@ class GroupService extends FirestoreRepository {
         .collection('members')
         .doc(memberId)
         .set({
-      'id': memberId,
-      'userId': uid,
-      'displayName': displayName,
-      'role': 'CREATOR',
-      'joinedAt': FieldValue.serverTimestamp(),
-      'isShadow': false,
-    });
+          'id': memberId,
+          'userId': uid,
+          'displayName': displayName,
+          'role': 'CREATOR',
+          'joinedAt': FieldValue.serverTimestamp(),
+          'isShadow': false,
+        });
 
     // Return a local Group object — serverTimestamp is not readable until
     // the next Firestore snapshot, so use now() as the local createdAt.
@@ -162,7 +180,7 @@ class GroupService extends FirestoreRepository {
   ///
   /// The invite code is uppercased before the Firestore lookup (D-13).
   Future<Group> joinGroup({required String inviteCode}) async {
-    final uid = FirebaseConfig.currentUser?.uid;
+    final uid = _currentUid;
     if (uid == null) {
       throw Exception('User not authenticated');
     }
@@ -171,57 +189,14 @@ class GroupService extends FirestoreRepository {
     final displayName = rawName.isEmpty ? 'Anonymous' : rawName;
     final normalizedCode = inviteCode.toUpperCase();
 
-    // Look up the group ID from the invite code.
-    // inviteCodes collection is publicly readable (no membership check).
-    final codeDoc =
-        await db.collection('inviteCodes').doc(normalizedCode).get();
-    if (!codeDoc.exists) {
-      throw Exception('Invalid invite code');
-    }
+    final result = await _functions.httpsCallable('joinGroupByInviteCode').call(
+      {'inviteCode': normalizedCode, 'displayName': displayName},
+    );
+    final data = Map<String, dynamic>.from(result.data as Map);
+    final groupId = data['groupId'] as String;
 
-    final groupId = codeDoc.data()!['groupId'] as String;
-
-    // Bug 8 guard: check if user is already a member before any write.
-    final groupDoc = await db.collection('groups').doc(groupId).get();
-    final memberIds = List<String>.from(groupDoc.data()?['memberIds'] ?? []);
-    if (memberIds.contains(uid)) {
-      throw Exception('Already a member');
-    }
-
-    // Step 1: Add user to group's memberIds first.
-    // The groups rule allows update if isMember(), but the joiner isn't
-    // a member yet. We need a rule that allows arrayUnion on memberIds
-    // for authenticated users. For now, update memberIds first — the
-    // security rule allows update if isMember(), and after this write
-    // the user IS a member for subsequent reads.
-    //
-    // NOTE: If security rules block this, we need to add a join-specific
-    // rule. For now, try the update and let the error surface.
-    await db.collection('groups').doc(groupId).update({
-      'memberIds': FieldValue.arrayUnion([uid]),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    // Step 2: Create member document (now user is in memberIds,
-    // so isGroupMember() check passes).
-    const uuid = Uuid();
-    final memberId = uuid.v4();
-
-    await db
-        .collection('groups')
-        .doc(groupId)
-        .collection('members')
-        .doc(memberId)
-        .set({
-      'id': memberId,
-      'userId': uid,
-      'displayName': displayName,
-      'role': 'MEMBER',
-      'joinedAt': FieldValue.serverTimestamp(),
-      'isShadow': false,
-    });
-
-    // Step 3: Now user is a member — can read the group document.
+    // The callable updates membership server-side; once it returns, rules allow
+    // the joined user to read the group document normally.
     final updatedDoc = await db.collection('groups').doc(groupId).get();
     return Group.fromDoc(updatedDoc);
   }
@@ -263,7 +238,7 @@ class GroupService extends FirestoreRepository {
   /// subcollection document. Callers must check balance == zero before
   /// invoking (D-07 gate is UI-side).
   Future<void> leaveGroup({required String groupId}) async {
-    final uid = FirebaseConfig.currentUser?.uid;
+    final uid = _currentUid;
     if (uid == null) throw Exception('Not authenticated');
 
     final membersSnap = await db
@@ -366,16 +341,16 @@ final userGroupsProvider = StreamProvider<List<Group>>((ref) {
       .where('memberIds', arrayContains: uid)
       .orderBy('createdAt', descending: true)
       .snapshots()
-      .map(
-        (snapshot) => snapshot.docs.map(Group.fromDoc).toList(),
-      );
+      .map((snapshot) => snapshot.docs.map(Group.fromDoc).toList());
 });
 
 /// Reactive stream of all members in a specific group.
 ///
 /// Ordered by join time (ascending) so the CREATOR appears first.
-final groupMembersProvider =
-    StreamProvider.family<List<GroupMember>, String>((ref, groupId) {
+final groupMembersProvider = StreamProvider.family<List<GroupMember>, String>((
+  ref,
+  groupId,
+) {
   return FirebaseConfig.firestore
       .collection('groups')
       .doc(groupId)
@@ -392,8 +367,10 @@ final groupMembersProvider =
 /// Reactive stream for a single group by ID.
 ///
 /// Returns null if the group does not exist.
-final groupDetailProvider =
-    StreamProvider.family<Group?, String>((ref, groupId) {
+final groupDetailProvider = StreamProvider.family<Group?, String>((
+  ref,
+  groupId,
+) {
   return FirebaseConfig.firestore
       .collection('groups')
       .doc(groupId)

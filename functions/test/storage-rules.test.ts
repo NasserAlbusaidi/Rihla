@@ -3,37 +3,21 @@ import {
   assertFails,
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-// Inline tightened rules — matches the final shape planned for Plan 04.
-// This test proves the RULE BEHAVIOR is correct before Plan 04 swaps the
-// live security/storage.rules file. When Plan 04 ships, update this suite
-// to read the real file path instead of this inline string.
-const TIGHTENED_RULES = `
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /trip-documents/{eventId}/{allPaths=**} {
-      allow read, write: if false;
-    }
-    match /trip-memories/{eventId}/{allPaths=**} {
-      allow read, write: if false;
-    }
-    match /receipts/{eventId}/{allPaths=**} {
-      allow read, write: if false;
-    }
-    match /{allPaths=**} {
-      allow read, write: if false;
-    }
-  }
-}
-`;
+const RULES_PATH = resolve(__dirname, '../../security/storage.rules');
 
 let testEnv: RulesTestEnvironment;
 
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: 'rihla-safar-rules-test',
-    storage: { rules: TIGHTENED_RULES, host: '127.0.0.1', port: 9199 },
+    storage: {
+      rules: readFileSync(RULES_PATH, 'utf8'),
+      host: '127.0.0.1',
+      port: 9199,
+    },
   });
 });
 

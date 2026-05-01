@@ -13,12 +13,22 @@ export async function seedGroupWithEvent(opts: SeedOptions): Promise<void> {
     id: opts.groupId,
     name: `TestGroup-${opts.groupId}`,
     memberIds: opts.memberIds,
+    createdBy: opts.memberIds[0],
+    currency: 'OMR',
+    inviteCode: 'ABC123',
     createdAt: new Date(),
+    updatedAt: new Date(),
   });
   await db.doc(`groups/${opts.groupId}/events/${opts.eventId}`).set({
     id: opts.eventId,
     groupId: opts.groupId,
     name: `TestEvent-${opts.eventId}`,
+    type: 'trip',
+    createdBy: opts.memberIds[0],
+    participantIds: opts.memberIds,
+    participantNames: Object.fromEntries(opts.memberIds.map((id) => [id, id])),
+    modules: { ledger: true },
+    isDeleted: false,
     createdAt: new Date(),
   });
 }
@@ -27,15 +37,11 @@ export async function clearFirestore(): Promise<void> {
   const db = getFirestore();
   const groups = await db.collection('groups').listDocuments();
   for (const g of groups) {
-    const events = await g.collection('events').listDocuments();
-    for (const e of events) {
-      const docsCol = await e.collection('documents').listDocuments();
-      for (const d of docsCol) { await d.delete(); }
-      const memsCol = await e.collection('memories').listDocuments();
-      for (const m of memsCol) { await m.delete(); }
-      await e.delete();
-    }
-    await g.delete();
+    await db.recursiveDelete(g);
+  }
+  const inviteCodes = await db.collection('inviteCodes').listDocuments();
+  for (const code of inviteCodes) {
+    await code.delete();
   }
 }
 

@@ -20,7 +20,15 @@ describe('assertMemberOfEvent', () => {
     await expect(assertMemberOfEvent('eve', 'g1', 'e1')).rejects.toMatchObject({ code: 'permission-denied' });
   });
 
-  test('resolves when uid is member', async () => {
+  test('throws permission-denied when uid is group member but not event participant', async () => {
+    const { getFirestore } = await import('firebase-admin/firestore');
+    await getFirestore().doc('groups/g1').set({ memberIds: ['alice', 'bob'] });
+    await getFirestore().doc('groups/g1/events/e1').set({ participantIds: ['alice'] });
+
+    await expect(assertMemberOfEvent('bob', 'g1', 'e1')).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
+  test('resolves when uid is member and event participant', async () => {
     await seedGroupWithEvent({ groupId: 'g1', eventId: 'e1', memberIds: ['alice'] });
     await expect(assertMemberOfEvent('alice', 'g1', 'e1')).resolves.toBeUndefined();
   });

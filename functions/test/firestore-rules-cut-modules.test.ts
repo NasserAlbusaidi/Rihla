@@ -64,7 +64,7 @@ describe('Phase 39 — cut module subcollections are denied', () => {
     'sub_groups',
   ];
 
-  const survivingCollections = ['expenses', 'activity'];
+  const survivingCollections = ['expenses', 'settlements', 'activity_logs'];
 
   for (const cut of cutCollections) {
     test(`member CANNOT read /groups/g1/events/e1/${cut}/x`, async () => {

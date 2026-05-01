@@ -5,10 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/groups/models/group_model.dart';
-import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/widgets/settle_up_tab_layout.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
-import 'package:safar/features/ledger/models/settlement_model.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -42,7 +40,8 @@ class _TabHost extends StatefulWidget {
   State<_TabHost> createState() => _TabHostState();
 }
 
-class _TabHostState extends State<_TabHost> with SingleTickerProviderStateMixin {
+class _TabHostState extends State<_TabHost>
+    with SingleTickerProviderStateMixin {
   late final TabController _controller;
 
   @override
@@ -62,11 +61,11 @@ class _TabHostState extends State<_TabHost> with SingleTickerProviderStateMixin 
 }
 
 Widget _wrap(Widget Function(TabController) builder) => ProviderScope(
-      child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
-          body: _TabHost(builder: builder),
-        ),
-      ),
-    );
+  child: MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(body: _TabHost(builder: builder)),
+  ),
+);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -85,14 +84,15 @@ void main() {
             settlementsAsync: const AsyncValue.data([]),
             currentUid: null,
             tileKeys: {},
-            onRecord: ({
-              required settlement,
-              required fromName,
-              required toName,
-              required fromUserId,
-              required toUserId,
-              required suggestedAmount,
-            }) {},
+            onRecord:
+                ({
+                  required settlement,
+                  required fromName,
+                  required toName,
+                  required fromUserId,
+                  required toUserId,
+                  required suggestedAmount,
+                }) {},
             buildBreakdown: (_, __) => {},
           ),
         ),
@@ -125,14 +125,15 @@ void main() {
             settlementsAsync: const AsyncValue.data([]),
             currentUid: 'uid-alice',
             tileKeys: {},
-            onRecord: ({
-              required settlement,
-              required fromName,
-              required toName,
-              required fromUserId,
-              required toUserId,
-              required suggestedAmount,
-            }) {},
+            onRecord:
+                ({
+                  required settlement,
+                  required fromName,
+                  required toName,
+                  required fromUserId,
+                  required toUserId,
+                  required suggestedAmount,
+                }) {},
             buildBreakdown: (_, __) => {},
           ),
         ),

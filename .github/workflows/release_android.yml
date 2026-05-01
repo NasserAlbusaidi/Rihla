@@ -105,6 +105,9 @@ jobs:
           fi
           echo "Coverage ${COVERAGE}% meets 80% threshold"
 
+      - name: Clean stale Android plugin registrant
+        run: rm -f android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
       - name: 🏗️ Build App Bundle (Obfuscated)
         run: |
           flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation

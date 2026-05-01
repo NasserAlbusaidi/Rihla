@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
-import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -21,52 +20,45 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 // ---------------------------------------------------------------------------
 
 Group _makeGroup(String id, String name) => Group(
-      id: id,
-      name: name,
-      inviteCode: 'ABC123',
-      createdBy: 'user1',
-      memberIds: const ['uid0', 'uid1'],
-      currency: 'OMR',
-      createdAt: DateTime(2026, 1, 1),
-    );
-
-CrossGroupActivityEntry _makeEntry(GroupActivityLog log, String groupName, String groupId) =>
-    (log: log, groupName: groupName, groupId: groupId);
+  id: id,
+  name: name,
+  inviteCode: 'ABC123',
+  createdBy: 'user1',
+  memberIds: const ['uid0', 'uid1'],
+  currency: 'OMR',
+  createdAt: DateTime(2026, 1, 1),
+);
 
 /// Minimal overrides needed to prevent unrelated providers from throwing.
 List<Override> _baseOverrides(List<Group> groups) => [
-      userGroupsProvider.overrideWith(
-        (ref) => Stream.value(groups),
-      ),
-      crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data((
-          net: Decimal.zero,
-          groupCount: groups.length,
-          isLoading: false,
-        )),
-      ),
-      crossGroupActivityProvider.overrideWith(
-        (ref) => const AsyncValue.data([]),
-      ),
-      weeklyGroupSpendingProvider.overrideWith(
-        (ref) => AsyncValue.data(
-          List.generate(7, (i) {
-            final date = DateTime(2026, 3, 24).add(Duration(days: i));
-            return (date: date, amount: Decimal.zero);
-          }),
-        ),
-      ),
-      groupBalancesProvider.overrideWith(
-        (ref, groupId) => AsyncValue.data((
-          balances: <UserBalance>[],
-          totalSpent: Decimal.zero,
-          eventCount: 0,
-          perEventBreakdown: <String, Map<String, Decimal>>{},
-          memberNames: <String, String>{},
-        )),
-      ),
-      currentUserIdProvider.overrideWithValue('test-user-id'),
-    ];
+  userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
+  crossGroupBalanceProvider.overrideWith(
+    (ref) => AsyncValue.data((
+      net: Decimal.zero,
+      groupCount: groups.length,
+      isLoading: false,
+    )),
+  ),
+  crossGroupActivityProvider.overrideWith((ref) => const AsyncValue.data([])),
+  weeklyGroupSpendingProvider.overrideWith(
+    (ref) => AsyncValue.data(
+      List.generate(7, (i) {
+        final date = DateTime(2026, 3, 24).add(Duration(days: i));
+        return (date: date, amount: Decimal.zero);
+      }),
+    ),
+  ),
+  groupBalancesProvider.overrideWith(
+    (ref, groupId) => AsyncValue.data((
+      balances: <UserBalance>[],
+      totalSpent: Decimal.zero,
+      eventCount: 0,
+      perEventBreakdown: <String, Map<String, Decimal>>{},
+      memberNames: <String, String>{},
+    )),
+  ),
+  currentUserIdProvider.overrideWithValue('test-user-id'),
+];
 
 Widget _buildTestApp(
   Widget widget, {
@@ -76,13 +68,11 @@ Widget _buildTestApp(
   final router = GoRouter(
     initialLocation: '/home',
     routes: [
-      GoRoute(
-        path: '/home',
-        builder: (ctx, state) => widget,
-      ),
+      GoRoute(path: '/home', builder: (ctx, state) => widget),
       GoRoute(
         path: '/create-group',
-        builder: (ctx, state) => const Scaffold(body: Text('CreateGroupScreen')),
+        builder: (ctx, state) =>
+            const Scaffold(body: Text('CreateGroupScreen')),
       ),
       GoRoute(
         path: '/join-group',
@@ -122,17 +112,17 @@ Widget _buildTestApp(
 void _setupShareChannelMock() {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
-    const MethodChannel('dev.fluttercommunity.plus/share'),
-    (MethodCall methodCall) async => null,
-  );
+        const MethodChannel('dev.fluttercommunity.plus/share'),
+        (MethodCall methodCall) async => null,
+      );
 }
 
 void _teardownShareChannelMock() {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
-    const MethodChannel('dev.fluttercommunity.plus/share'),
-    null,
-  );
+        const MethodChannel('dev.fluttercommunity.plus/share'),
+        null,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -178,7 +168,9 @@ void main() {
       expect(find.text('Create your first group'), findsOneWidget);
     });
 
-    testWidgets('Empty state shown for 0 groups (no QuickActionTray)', (tester) async {
+    testWidgets('Empty state shown for 0 groups (no QuickActionTray)', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
@@ -198,7 +190,9 @@ void main() {
     final group1 = _makeGroup('g1', 'Desert Crew');
     final group2 = _makeGroup('g2', 'Mountain Pals');
 
-    testWidgets('Add Expense with 1 group navigates to group detail', (tester) async {
+    testWidgets('Add Expense with 1 group navigates to group detail', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
@@ -214,7 +208,9 @@ void main() {
       expect(find.text('GroupDetail:g1'), findsOneWidget);
     });
 
-    testWidgets('Settle Up with 1 group navigates to group detail', (tester) async {
+    testWidgets('Settle Up with 1 group navigates to group detail', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
@@ -230,7 +226,9 @@ void main() {
       expect(find.text('GroupDetail:g1'), findsOneWidget);
     });
 
-    testWidgets('Activity with 1 group navigates to /activity screen', (tester) async {
+    testWidgets('Activity with 1 group navigates to /activity screen', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
@@ -246,30 +244,33 @@ void main() {
       expect(find.text('ActivityScreen'), findsOneWidget);
     });
 
-    testWidgets('Invite Friend with 1 group calls Share (no picker bottom sheet)',
-        (tester) async {
-      await tester.pumpWidget(
-        _buildTestApp(
-          const HomeScreen(),
-          prefs: prefs,
-          overrides: _baseOverrides([group1]),
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'Invite Friend with 1 group calls Share (no picker bottom sheet)',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildTestApp(
+            const HomeScreen(),
+            prefs: prefs,
+            overrides: _baseOverrides([group1]),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // With 1 group, tapping invite should directly call Share.share
-      // (no bottom sheet picker). Verify no "Choose a group" bottom sheet appears.
-      await tester.tap(find.text('Invite Friend'));
-      await tester.pumpAndSettle();
+        // With 1 group, tapping invite should directly call Share.share
+        // (no bottom sheet picker). Verify no "Choose a group" bottom sheet appears.
+        await tester.tap(find.text('Invite Friend'));
+        await tester.pumpAndSettle();
 
-      // No group picker bottom sheet should be shown
-      expect(find.text('Choose a group'), findsNothing);
-      // Still on home screen (share is a platform overlay, not a route change)
-      expect(find.text('Desert Crew'), findsOneWidget);
-    });
+        // No group picker bottom sheet should be shown
+        expect(find.text('Choose a group'), findsNothing);
+        // Still on home screen (share is a platform overlay, not a route change)
+        expect(find.text('Desert Crew'), findsOneWidget);
+      },
+    );
 
-    testWidgets('Invite Friend with 2+ groups shows picker bottom sheet',
-        (tester) async {
+    testWidgets('Invite Friend with 2+ groups shows picker bottom sheet', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
@@ -288,7 +289,9 @@ void main() {
       expect(find.text('Mountain Pals'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('Add Expense with 2+ groups shows group picker', (tester) async {
+    testWidgets('Add Expense with 2+ groups shows group picker', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
@@ -304,27 +307,29 @@ void main() {
       expect(find.text('Choose a group'), findsOneWidget);
     });
 
-    testWidgets('Activity with 0 groups navigates to activity screen (empty state)',
-        (tester) async {
-      // The Activity quick action always navigates — even with 0 groups.
-      // But with 0 groups the QuickActionTray is NOT rendered (empty state path).
-      // This test confirms the /activity route exists and is reachable.
-      // We test the route directly by navigating a single-group user.
-      await tester.pumpWidget(
-        _buildTestApp(
-          const HomeScreen(),
-          prefs: prefs,
-          overrides: _baseOverrides([group1]),
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'Activity with 0 groups navigates to activity screen (empty state)',
+      (tester) async {
+        // The Activity quick action always navigates — even with 0 groups.
+        // But with 0 groups the QuickActionTray is NOT rendered (empty state path).
+        // This test confirms the /activity route exists and is reachable.
+        // We test the route directly by navigating a single-group user.
+        await tester.pumpWidget(
+          _buildTestApp(
+            const HomeScreen(),
+            prefs: prefs,
+            overrides: _baseOverrides([group1]),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Tap Activity in QuickActionTray (first occurrence to avoid bottom nav)
-      await tester.tap(find.text('Activity').first);
-      await tester.pumpAndSettle();
+        // Tap Activity in QuickActionTray (first occurrence to avoid bottom nav)
+        await tester.tap(find.text('Activity').first);
+        await tester.pumpAndSettle();
 
-      // Should navigate to the /activity route
-      expect(find.text('ActivityScreen'), findsOneWidget);
-    });
+        // Should navigate to the /activity route
+        expect(find.text('ActivityScreen'), findsOneWidget);
+      },
+    );
   });
 }
