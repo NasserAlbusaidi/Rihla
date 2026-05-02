@@ -379,8 +379,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                     child: EventCard(
                       event: events[i],
                       personalBalance: userEventBreakdown[events[i].id],
-                      onTap: () =>
-                          context.push('/group/$groupId/event/${events[i].id}'),
+                      onTap: () => context.push(
+                        '/group/$groupId/event/${events[i].id}/ledger',
+                      ),
                     ),
                   ),
               ],

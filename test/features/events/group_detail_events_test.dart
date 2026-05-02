@@ -12,6 +12,7 @@ import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/events/widgets/event_card.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -71,10 +72,7 @@ Event _makeEvent({
     groupId: _groupId,
     createdBy: 'uid-creator',
     participantIds: participantIds ?? const ['uid-creator', 'uid-member'],
-    participantNames: const {
-      'uid-creator': 'Alice',
-      'uid-member': 'Bob',
-    },
+    participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
     modules: EventModules.forType(type),
     startDate: startDate,
     endDate: endDate,
@@ -83,13 +81,10 @@ Event _makeEvent({
 }
 
 /// Returns the EventRef for an event.
-EventRef _eventRef(Event event) =>
-    (groupId: event.groupId, eventId: event.id);
+EventRef _eventRef(Event event) => (groupId: event.groupId, eventId: event.id);
 
 /// Creates a GoRouter for GroupDetailScreen tests with stub event hub route.
-GoRouter _makeRouter({
-  required String groupId,
-}) {
+GoRouter _makeRouter({required String groupId}) {
   return GoRouter(
     initialLocation: '/group/$groupId',
     routes: [
@@ -129,9 +124,16 @@ GoRouter _makeRouter({
           ),
           GoRoute(
             path: 'event/:eid',
-            builder: (_, state) => Scaffold(
-              body: Text('EventHub:${state.pathParameters['eid']}'),
-            ),
+            builder: (_, state) =>
+                Scaffold(body: Text('EventHub:${state.pathParameters['eid']}')),
+            routes: [
+              GoRoute(
+                path: 'ledger',
+                builder: (_, state) => Scaffold(
+                  body: Text('Ledger:${state.pathParameters['eid']}'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -143,7 +145,7 @@ GoRouter _makeRouter({
 ///
 /// Overrides:
 /// - [sharedPreferencesProvider] for settings
-/// - [currentUserIdProvider] returns null to avoid Firebase initialization
+/// - [currentUserIdProvider] returns the creator UID to avoid Firebase initialization
 /// - [groupDetailProvider] returns [_testGroup]
 /// - [groupMembersProvider] returns [_testMembers]
 /// - [groupEventsProvider] returns the supplied [events]
@@ -154,21 +156,20 @@ Widget _wrap(
   Widget child,
   SharedPreferences prefs, {
   List<Event> events = const [],
+  String? currentUserId = 'uid-creator',
 }) {
   final router = _makeRouter(groupId: _groupId);
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
-      currentUserIdProvider.overrideWithValue(null),
-      groupDetailProvider(_groupId).overrideWith(
-        (ref) => Stream.value(_testGroup),
-      ),
-      groupMembersProvider(_groupId).overrideWith(
-        (ref) => Stream.value(_testMembers),
-      ),
-      groupEventsProvider(_groupId).overrideWith(
-        (ref) => Stream.value(events),
-      ),
+      currentUserIdProvider.overrideWithValue(currentUserId),
+      groupDetailProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+      groupMembersProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupEventsProvider(_groupId).overrideWith((ref) => Stream.value(events)),
       groupBalancesProvider(_groupId).overrideWith(
         (ref) => AsyncValue.data((
           balances: const <UserBalance>[],
@@ -178,15 +179,15 @@ Widget _wrap(
           memberNames: const <String, String>{},
         )),
       ),
-      groupActivityProvider(_groupId).overrideWith(
-        (ref) => Stream.value(const []),
-      ),
+      groupActivityProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(const [])),
       // Override eventExpensesProvider for every event so
       // EventCard does not try to open real Firestore.
       for (final event in events)
-        eventExpensesProvider(_eventRef(event)).overrideWith(
-          (ref) => Stream.value(const []),
-        ),
+        eventExpensesProvider(
+          _eventRef(event),
+        ).overrideWith((ref) => Stream.value(const [])),
     ],
     child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
   );
@@ -268,25 +269,31 @@ void main() {
       expect(find.byKey(GroupKeys.eventsCountChip), findsNothing);
     });
 
-    testWidgets('event cards wrapped in FadeInList for staggered entrance (D-08)',
-        (tester) async {
-      final events = [
-        _makeEvent(id: 'evt-1', name: 'Beach Trip'),
-        _makeEvent(id: 'evt-2', name: 'Mountain Hike', type: EventType.camping),
-      ];
+    testWidgets(
+      'event cards wrapped in FadeInList for staggered entrance (D-08)',
+      (tester) async {
+        final events = [
+          _makeEvent(id: 'evt-1', name: 'Beach Trip'),
+          _makeEvent(
+            id: 'evt-2',
+            name: 'Mountain Hike',
+            type: EventType.camping,
+          ),
+        ];
 
-      await tester.pumpWidget(
-        _wrap(
-          const GroupDetailScreen(groupId: _groupId),
-          prefs,
-          events: events,
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            events: events,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // FadeInList widget must be present in the tree
-      expect(find.byType(FadeInList), findsOneWidget);
-    });
+        // FadeInList widget must be present in the tree
+        expect(find.byType(FadeInList), findsOneWidget);
+      },
+    );
 
     testWidgets('dims past events with 0.6 opacity', (tester) async {
       // A past event has endDate before today
@@ -328,56 +335,18 @@ void main() {
       expect(find.byType(FloatingActionButton), findsOneWidget);
     });
 
-    testWidgets('tapping event card navigates to EventCommandCenter',
-        (tester) async {
+    testWidgets('tapping event card navigates to Ledger route', (tester) async {
       final event = _makeEvent(id: 'evt-tap', name: 'Tap Navigation Trip');
-      final eventRef = _eventRef(event);
 
-      // Phase 22 P03: EventCard is now wrapped in OpenContainer for
-      // ContainerTransform animation. Navigation goes directly to
-      // EventCommandCenter (not via GoRouter). URL desync accepted per D-06.
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            currentUserIdProvider.overrideWithValue(null),
-            groupDetailProvider(_groupId).overrideWith(
-              (ref) => Stream.value(_testGroup),
-            ),
-            groupMembersProvider(_groupId).overrideWith(
-              (ref) => Stream.value(_testMembers),
-            ),
-            groupEventsProvider(_groupId).overrideWith(
-              (ref) => Stream.value([event]),
-            ),
-            groupBalancesProvider(_groupId).overrideWith(
-              (ref) => AsyncValue.data((
-                balances: const <UserBalance>[],
-                totalSpent: Decimal.zero,
-                eventCount: 0,
-                perEventBreakdown: const <String, Map<String, Decimal>>{},
-                memberNames: const <String, String>{},
-              )),
-            ),
-            groupActivityProvider(_groupId).overrideWith(
-              (ref) => Stream.value(const []),
-            ),
-            // EventCard reads eventExpensesProvider for financial totals
-            eventExpensesProvider(eventRef).overrideWith(
-              (ref) => Stream.value(const []),
-            ),
-          ],
-          child: MaterialApp(theme: AppTheme.lightTheme, home: GroupDetailScreen(groupId: _groupId),
-          ),
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          events: [event],
         ),
       );
       await tester.pumpAndSettle();
 
-      // Verify the event card exists (may be off-screen in a scrollable list).
-      // findsWidgets because the card renders the name in multiple Text widgets.
-      expect(find.text('Tap Navigation Trip'), findsWidgets);
-
-      // Scroll down to bring the event card into view.
       await tester.scrollUntilVisible(
         find.text('Tap Navigation Trip').first,
         100,
@@ -385,14 +354,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // With OpenContainer, the EventCard is wrapped in a ContainerTransform.
-      // Verify the event name is present (card is rendered by closedBuilder).
-      expect(find.text('Tap Navigation Trip'), findsWidgets);
+      await tester.tap(find.byType(EventCard).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ledger:evt-tap'), findsOneWidget);
     });
   });
 
   group('EventCard financial total', () {
-    testWidgets('shows total spent from Firestore event expenses', (tester) async {
+    testWidgets('shows total spent from Firestore event expenses', (
+      tester,
+    ) async {
       final event = _makeEvent(id: 'evt-money', name: 'Expensive Trip');
       final eventRef = _eventRef(event);
 
@@ -412,15 +384,15 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
             currentUserIdProvider.overrideWithValue(null),
-            groupDetailProvider(_groupId).overrideWith(
-              (ref) => Stream.value(_testGroup),
-            ),
-            groupMembersProvider(_groupId).overrideWith(
-              (ref) => Stream.value(_testMembers),
-            ),
-            groupEventsProvider(_groupId).overrideWith(
-              (ref) => Stream.value([event]),
-            ),
+            groupDetailProvider(
+              _groupId,
+            ).overrideWith((ref) => Stream.value(_testGroup)),
+            groupMembersProvider(
+              _groupId,
+            ).overrideWith((ref) => Stream.value(_testMembers)),
+            groupEventsProvider(
+              _groupId,
+            ).overrideWith((ref) => Stream.value([event])),
             groupBalancesProvider(_groupId).overrideWith(
               (ref) => AsyncValue.data((
                 balances: const <UserBalance>[],
@@ -430,14 +402,17 @@ void main() {
                 memberNames: const <String, String>{},
               )),
             ),
-            groupActivityProvider(_groupId).overrideWith(
-              (ref) => Stream.value(const []),
-            ),
-            eventExpensesProvider(eventRef).overrideWith(
-              (ref) => Stream.value([testExpense]),
-            ),
+            groupActivityProvider(
+              _groupId,
+            ).overrideWith((ref) => Stream.value(const [])),
+            eventExpensesProvider(
+              eventRef,
+            ).overrideWith((ref) => Stream.value([testExpense])),
           ],
-          child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: router,
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -446,8 +421,7 @@ void main() {
       expect(find.text('25.500 OMR'), findsOneWidget);
     });
 
-    testWidgets('shows 0.000 OMR when event has no expenses',
-        (tester) async {
+    testWidgets('shows 0.000 OMR when event has no expenses', (tester) async {
       final event = _makeEvent(id: 'evt-zero', name: 'Free Trip');
 
       await tester.pumpWidget(

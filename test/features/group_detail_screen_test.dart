@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -433,6 +434,95 @@ void main() {
       expect(
         find.text('Waiting for the group creator to add the first event.'),
         findsOneWidget,
+      );
+    });
+
+    testWidgets('tapping event card navigates to ledger route', (tester) async {
+      final testEvent = Event(
+        id: 'event-1',
+        groupId: _groupId,
+        name: 'Beach Trip',
+        type: EventType.trip,
+        createdAt: DateTime(2026, 1, 10),
+        participantIds: const ['uid-creator', 'uid-member'],
+        participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+        modules: const EventModules(),
+        createdBy: 'uid-creator',
+      );
+      final eventRef = (groupId: _groupId, eventId: testEvent.id);
+      final navigatedRoutes = <String>[];
+
+      final router = GoRouter(
+        initialLocation: '/group/$_groupId',
+        routes: [
+          GoRoute(
+            path: '/group/:gid',
+            builder: (context, state) => ProviderScope(
+              overrides: [
+                sharedPreferencesProvider.overrideWithValue(prefs),
+                currentUserIdProvider.overrideWithValue('uid-creator'),
+                groupDetailProvider(
+                  _groupId,
+                ).overrideWith((ref) => Stream.value(_testGroup)),
+                groupMembersProvider(
+                  _groupId,
+                ).overrideWith((ref) => Stream.value(_testMembers)),
+                groupEventsProvider(
+                  _groupId,
+                ).overrideWith((ref) => Stream.value([testEvent])),
+                groupBalancesProvider(
+                  _groupId,
+                ).overrideWith((ref) => AsyncValue.data(_balancesWithExpenses)),
+                groupActivityProvider(
+                  _groupId,
+                ).overrideWith((ref) => Stream.value(const [])),
+                eventExpensesProvider(
+                  eventRef,
+                ).overrideWith((ref) => Stream.value(const [])),
+              ],
+              child: GroupDetailScreen(groupId: state.pathParameters['gid']!),
+            ),
+            routes: [
+              GoRoute(
+                path: 'event/:eid',
+                builder: (context, state) {
+                  navigatedRoutes.add(
+                    '/group/${state.pathParameters['gid']}'
+                    '/event/${state.pathParameters['eid']}',
+                  );
+                  return const Scaffold(body: Text('Event hub'));
+                },
+                routes: [
+                  GoRoute(
+                    path: 'ledger',
+                    builder: (context, state) {
+                      navigatedRoutes.add(
+                        '/group/${state.pathParameters['gid']}'
+                        '/event/${state.pathParameters['eid']}/ledger',
+                      );
+                      return const Scaffold(body: Text('Ledger'));
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byType(EventCard).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(EventCard).first);
+      await tester.pumpAndSettle();
+
+      expect(
+        navigatedRoutes,
+        contains('/group/$_groupId/event/${testEvent.id}/ledger'),
       );
     });
 
