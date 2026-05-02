@@ -79,10 +79,7 @@ final _membersWithBalances = (
     'uid-creator': {'evt-1': Decimal.parse('15.000')},
     'uid-member': {'evt-1': Decimal.parse('-15.000')},
   },
-  memberNames: <String, String>{
-    'uid-creator': 'Alice',
-    'uid-member': 'Bob',
-  },
+  memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
 );
 
 /// Balances stub with two zero-balance members (no expenses yet).
@@ -110,10 +107,7 @@ final _membersWithZeroBalance = (
   totalSpent: Decimal.zero,
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
-  memberNames: <String, String>{
-    'uid-creator': 'Alice',
-    'uid-member': 'Bob',
-  },
+  memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
 );
 
 /// Wraps a widget in ProviderScope + MaterialApp with shared test overrides.
@@ -126,22 +120,22 @@ Widget _wrap(Widget child, SharedPreferences prefs) {
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
-      currentUserIdProvider.overrideWithValue(null),
-      groupDetailProvider('group-1').overrideWith(
-        (ref) => Stream.value(_testGroup),
-      ),
-      groupMembersProvider('group-1').overrideWith(
-        (ref) => Stream.value(_testMembers),
-      ),
-      groupEventsProvider('group-1').overrideWith(
-        (ref) => Stream.value(const []),
-      ),
-      groupBalancesProvider('group-1').overrideWith(
-        (ref) => AsyncValue.data(_membersWithZeroBalance),
-      ),
-      groupActivityProvider('group-1').overrideWith(
-        (ref) => Stream.value(const []),
-      ),
+      currentUserIdProvider.overrideWithValue('uid-creator'),
+      groupDetailProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+      groupMembersProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupEventsProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(const [])),
+      groupBalancesProvider(
+        'group-1',
+      ).overrideWith((ref) => AsyncValue.data(_membersWithZeroBalance)),
+      groupActivityProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(const [])),
     ],
     child: MaterialApp(theme: AppTheme.lightTheme, home: child),
   );
@@ -154,21 +148,21 @@ Widget _wrapWithBalances(Widget child, SharedPreferences prefs) {
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       currentUserIdProvider.overrideWithValue('uid-creator'),
-      groupDetailProvider('group-1').overrideWith(
-        (ref) => Stream.value(_testGroup),
-      ),
-      groupMembersProvider('group-1').overrideWith(
-        (ref) => Stream.value(_testMembers),
-      ),
-      groupEventsProvider('group-1').overrideWith(
-        (ref) => Stream.value(const []),
-      ),
-      groupBalancesProvider('group-1').overrideWith(
-        (ref) => AsyncValue.data(_membersWithBalances),
-      ),
-      groupActivityProvider('group-1').overrideWith(
-        (ref) => Stream.value(const []),
-      ),
+      groupDetailProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+      groupMembersProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupEventsProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(const [])),
+      groupBalancesProvider(
+        'group-1',
+      ).overrideWith((ref) => AsyncValue.data(_membersWithBalances)),
+      groupActivityProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(const [])),
     ],
     child: MaterialApp(theme: AppTheme.lightTheme, home: child),
   );
@@ -212,33 +206,41 @@ void main() {
         expect(find.byKey(GroupKeys.statActiveMembers), findsOneWidget);
       });
 
-      testWidgets('invite code section is not rendered (D-05 — moved to Phase 29)',
-          (tester) async {
-        await tester.pumpWidget(
-          _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
-        );
-        await tester.pumpAndSettle();
+      testWidgets(
+        'invite code section is not rendered (D-05 — moved to Phase 29)',
+        (tester) async {
+          await tester.pumpWidget(
+            _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
+          );
+          await tester.pumpAndSettle();
 
-        // Invite code section removed from GroupDetailScreen per D-05
-        expect(find.byKey(GroupKeys.inviteCodeSection), findsNothing);
-      });
-
-      testWidgets('shows members section with member names from groupMembersProvider',
-          (tester) async {
-        await tester.pumpWidget(
-          _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
-        );
-        await tester.pumpAndSettle();
-
-        // Section header renamed to "Members & Balances" in Plan 05-05 (D-29).
-        expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
-        // Member names rendered via GroupMemberBalanceCard (replaced GroupMemberTile)
-        expect(find.text('Alice'), findsWidgets);
-        expect(find.text('Bob'), findsOneWidget);
-      });
+          // Invite code section removed from GroupDetailScreen per D-05
+          expect(find.byKey(GroupKeys.inviteCodeSection), findsNothing);
+        },
+      );
 
       testWidgets(
-          'shows "No events yet" empty state when no events exist', (tester) async {
+        'shows members section with member names from groupMembersProvider',
+        (tester) async {
+          await tester.pumpWidget(
+            _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
+          );
+          await tester.pumpAndSettle();
+
+          // Section header renamed to "Members & Balances" in Plan 05-05 (D-29).
+          expect(
+            find.byKey(GroupKeys.membersAndBalancesSection),
+            findsOneWidget,
+          );
+          // Member names rendered via GroupMemberBalanceCard (replaced GroupMemberTile)
+          expect(find.text('Alice'), findsWidgets);
+          expect(find.text('Bob'), findsOneWidget);
+        },
+      );
+
+      testWidgets('shows "No events yet" empty state when no events exist', (
+        tester,
+      ) async {
         await tester.pumpWidget(
           _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
         );
@@ -257,53 +259,61 @@ void main() {
       });
 
       testWidgets(
-          'balance toggle: tapping GroupMemberBalanceCard changes expanded state',
-          (tester) async {
-        // Use balances with non-zero data so GroupMemberBalanceCard renders
-        await tester.pumpWidget(
-          _wrapWithBalances(const GroupDetailScreen(groupId: 'group-1'), prefs),
-        );
-        await tester.pumpAndSettle();
+        'balance toggle: tapping GroupMemberBalanceCard changes expanded state',
+        (tester) async {
+          // Use balances with non-zero data so GroupMemberBalanceCard renders
+          await tester.pumpWidget(
+            _wrapWithBalances(
+              const GroupDetailScreen(groupId: 'group-1'),
+              prefs,
+            ),
+          );
+          await tester.pumpAndSettle();
 
-        // GroupMemberBalanceCard should be rendered
-        expect(find.byType(GroupMemberBalanceCard), findsWidgets);
+          // GroupMemberBalanceCard should be rendered
+          expect(find.byType(GroupMemberBalanceCard), findsWidgets);
 
-        // Tap the first card to expand it
-        await tester.tap(find.byType(GroupMemberBalanceCard).first);
-        await tester.pumpAndSettle();
+          // Tap the first card to expand it
+          await tester.tap(find.byType(GroupMemberBalanceCard).first);
+          await tester.pumpAndSettle();
 
-        // After tap, the card should still render (toggle changed expand state)
-        // Verify the widget tree updated by checking the card is still present
-        expect(find.byType(GroupMemberBalanceCard), findsWidgets);
-      });
-
-      testWidgets(
-          'balance toggle: accordion allows only one card expanded at a time',
-          (tester) async {
-        await tester.pumpWidget(
-          _wrapWithBalances(const GroupDetailScreen(groupId: 'group-1'), prefs),
-        );
-        await tester.pumpAndSettle();
-
-        // Two GroupMemberBalanceCards should be rendered (Alice + Bob)
-        final cards = find.byType(GroupMemberBalanceCard);
-        expect(cards, findsNWidgets(2));
-
-        // Tap first card
-        await tester.tap(cards.first);
-        await tester.pumpAndSettle();
-
-        // Tap second card — accordion should collapse first
-        await tester.tap(cards.at(1));
-        await tester.pumpAndSettle();
-
-        // Both cards still rendered — widget tree is intact after toggle
-        expect(find.byType(GroupMemberBalanceCard), findsNWidgets(2));
-      });
+          // After tap, the card should still render (toggle changed expand state)
+          // Verify the widget tree updated by checking the card is still present
+          expect(find.byType(GroupMemberBalanceCard), findsWidgets);
+        },
+      );
 
       testWidgets(
-          'GroupBalanceHero renders when totalSpent > 0 (D-19)',
-          (tester) async {
+        'balance toggle: accordion allows only one card expanded at a time',
+        (tester) async {
+          await tester.pumpWidget(
+            _wrapWithBalances(
+              const GroupDetailScreen(groupId: 'group-1'),
+              prefs,
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // Two GroupMemberBalanceCards should be rendered (Alice + Bob)
+          final cards = find.byType(GroupMemberBalanceCard);
+          expect(cards, findsNWidgets(2));
+
+          // Tap first card
+          await tester.tap(cards.first);
+          await tester.pumpAndSettle();
+
+          // Tap second card — accordion should collapse first
+          await tester.tap(cards.at(1));
+          await tester.pumpAndSettle();
+
+          // Both cards still rendered — widget tree is intact after toggle
+          expect(find.byType(GroupMemberBalanceCard), findsNWidgets(2));
+        },
+      );
+
+      testWidgets('GroupBalanceHero renders when totalSpent > 0 (D-19)', (
+        tester,
+      ) async {
         await tester.pumpWidget(
           _wrapWithBalances(const GroupDetailScreen(groupId: 'group-1'), prefs),
         );
@@ -339,7 +349,9 @@ void main() {
         expect(find.byKey(GroupKeys.settingsBackButton), findsOneWidget);
       });
 
-      testWidgets('shows group name tile with current name (D-15)', (tester) async {
+      testWidgets('shows group name tile with current name (D-15)', (
+        tester,
+      ) async {
         await tester.pumpWidget(
           _wrap(const GroupSettingsScreen(groupId: 'group-1'), prefs),
         );

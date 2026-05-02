@@ -552,7 +552,7 @@ void main() {
             ],
             child: MaterialApp(
               theme: AppTheme.lightTheme,
-              home: GroupDetailScreen(groupId: _groupId),
+              home: const GroupDetailScreen(groupId: _groupId),
             ),
           ),
         );
