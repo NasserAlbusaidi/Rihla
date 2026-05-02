@@ -55,6 +55,12 @@ ios/Runner/GoogleService-Info.plist
 # Agent run logs and generated skill files
 data/run-logs/
 SKILL.md
+.claude/worktrees/
+.clone/worktrees/
+
+# Local release/test artifacts
+*.aab
+[0-9][0-9]_*.png
 
 # Firebase Cloud Functions build artifacts
 functions/lib/
