@@ -42,6 +42,30 @@ final class _SettlementItem extends _TimelineItem {
   DateTime get date => settlement.settledAt;
 }
 
+List<Widget> _buildEventMenuActions(
+  BuildContext context,
+  String groupId,
+  String eventId,
+) {
+  return [
+    PopupMenuButton<String>(
+      tooltip: 'Event menu',
+      icon: Icon(Icons.more_vert, color: context.colors.textOnPrimary),
+      onSelected: (value) {
+        if (value == 'activity') {
+          context.push('/group/$groupId/event/$eventId/activity');
+        } else if (value == 'settings') {
+          context.push('/group/$groupId/event/$eventId/settings');
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: 'activity', child: Text('Event activity')),
+        PopupMenuItem(value: 'settings', child: Text('Event settings')),
+      ],
+    ),
+  ];
+}
+
 /// Ledger Screen — single-scroll layout with hero card and timeline.
 ///
 /// Implements the unified module template per D-04, D-08:
@@ -133,6 +157,7 @@ class LedgerScreen extends ConsumerWidget {
               ModuleHeader(
                 title: 'Ledger',
                 subtitle: event.name.toUpperCase(),
+                actions: _buildEventMenuActions(context, groupId, eventId),
                 useDarkTheme: true,
               ),
               Expanded(child: SkeletonLoader.expenseList()),
@@ -152,6 +177,7 @@ class LedgerScreen extends ConsumerWidget {
             ModuleHeader(
               title: 'Ledger',
               subtitle: event.name.toUpperCase(),
+              actions: _buildEventMenuActions(context, groupId, eventId),
               useDarkTheme: true,
             ),
             Expanded(
@@ -306,6 +332,7 @@ class _LedgerBody extends StatelessWidget {
           child: ModuleHeader(
             title: 'Ledger',
             subtitle: event.name.toUpperCase(),
+            actions: _buildEventMenuActions(context, groupId, eventId),
             useDarkTheme: true,
           ),
         ),
