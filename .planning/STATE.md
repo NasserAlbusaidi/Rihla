@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Technical Debt & Dark Theme
-status: executing
-stopped_at: Phase 39 complete — strip to shippable v1
-last_updated: "2026-04-26T11:15:00.000Z"
-last_activity: 2026-04-26
+status: shipped
+stopped_at: Launch UX fixes complete — v1 ready
+last_updated: "2026-05-02T18:00:00.000Z"
+last_activity: 2026-05-02
 progress:
   total_phases: 17
-  completed_phases: 15
+  completed_phases: 17
   total_plans: 47
   completed_plans: 48
   percent: 100
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Groups persist across events and accumulate financial history — friends settle up across trips, not just within one.
-**Current focus:** Phase 37 — dark-theme-migration
+**Current focus:** v1 launch — all milestones shipped, post-launch follow-up TBD
 
 ## Current Position
 
-Milestone: v2.4 Technical Debt & Dark Theme — ACTIVE
-Phase: 39 — Strip to Shippable v1 (COMPLETE)
+Milestone: v2.4 Technical Debt & Dark Theme — SHIPPED
+Phase: 39 — Strip to Shippable v1 (COMPLETE) + 4 launch UX fixes (codex/publish-readiness-fixes)
 Plan: 7 / 7 (all plans landed)
-Status: Phase complete; release prep next
-Last activity: 2026-04-26
+Status: Ready for launch
+Last activity: 2026-05-02
 
 ```
 v1.0 Phases 1-13  [██████████] 100%

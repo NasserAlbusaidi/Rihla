@@ -66,3 +66,11 @@ SKILL.md
 functions/lib/
 functions/node_modules/
 functions/coverage/
+
+# Local debug + analyzer dumps
+firestore-debug.log
+analyze_output*.txt
+
+# Agent harness logs
+.playwright-mcp/
+.paperclip/logs/

@@ -7,7 +7,7 @@
 - ✅ **v2.1 Home Screen Completion** — Phases 23-24 (shipped 2026-04-01)
 - ✅ **v2.2 Profile Page** — Phases 25-27 (shipped 2026-04-02)
 - ✅ **v2.3 Groups, Events & Modules** — Phases 28-35 (shipped 2026-04-05)
-- 🔄 **v2.4 Technical Debt & Dark Theme** — Phases 36-38 (active)
+- ✅ **v2.4 Technical Debt & Dark Theme** — Phases 36-39 (shipped 2026-05-02)
 
 ## Phases
 
@@ -107,8 +107,9 @@ Full details: [milestones/v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
   - [x] 37-03d — Feature migration: gear/logistics/vault/memories/activity (Wave 3) (DARK-01, DARK-02, DARK-03, DARK-04)
   - [x] 37-04 — Token promotions: group avatars + gradients + category colors (Wave 4) (DARK-02, DARK-04)
   - [x] 37-05 — Settings UX + verification (theme picker, goldens, contrast test, CI guard) (Wave 5) (DARK-02, DARK-03, DARK-05)
-- [ ] **Phase 38: Storage Cloud Functions** — Enforce group-membership on Storage access (#1b)
-- [ ] **Phase 39: Strip to Shippable v1** — Remove memories, vault, logistics, onboarding, gear, multi-currency/Thawani (SHIP-01)
+- [x] **Phase 38: Storage Cloud Functions** — Enforce group-membership on Storage access (#1b) (completed 2026-04-26)
+- [x] **Phase 39: Strip to Shippable v1** — Remove memories, vault, logistics, onboarding, gear, multi-currency/Thawani (SHIP-01) (completed 2026-04-26)
+- [x] **Launch UX fixes** (codex/publish-readiness-fixes) — Creator-gated FAB, 3-tab nav, direct-to-ledger, ledger overflow menu (completed 2026-05-02)
 
 ### Phase 38: Storage Cloud Functions
 **Goal**: Enforce group-membership checks on Firebase Storage access via Cloud Functions (or callable signed-URL gate), closing the "any authenticated user can read buckets" security gap.
@@ -138,7 +139,7 @@ Full details: [milestones/v2.4-ROADMAP.md](milestones/v2.4-ROADMAP.md)
 | 23-24 | v2.1 | 3/3 | Complete | 2026-04-01 |
 | 25-27 | v2.2 | 5/5 | Complete | 2026-04-02 |
 | 28-35 | v2.3 | 22/22 | Complete | 2026-04-05 |
-| 36-38 | v2.4 | 0/— | Active | — |
+| 36-39 | v2.4 | shipped | Complete | 2026-05-02 |
 
 ### Phase 39: Strip to Shippable v1
 **Goal**: Reduce the app surface area to the minimum shippable feature set by removing six feature areas (memories, vault, logistics, onboarding, gear, multi-currency/Thawani). Result is a tight v1 covering auth + groups + events + ledger (with settle-up) + home + activity + settings.
