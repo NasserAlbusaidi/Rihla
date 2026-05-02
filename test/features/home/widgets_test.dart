@@ -11,6 +11,7 @@ import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
+import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
 import 'package:safar/features/home/widgets/weekly_spending_card.dart';
@@ -59,7 +60,7 @@ void main() {
     return ProviderScope(
       overrides: overrides,
       child: MaterialApp(
-               theme: AppTheme.lightTheme,
+        theme: AppTheme.lightTheme,
         home: Scaffold(body: SingleChildScrollView(child: child)),
       ),
     );
@@ -69,61 +70,69 @@ void main() {
   // ActivityRow tests
   // ---------------------------------------------------------------------------
   group('ActivityRow', () {
-    testWidgets('Test 1: renders actorName, description, groupName, and relative timestamp', (tester) async {
-      final activity = makeActivity(
-        actorName: 'Alice',
-        description: 'added an expense',
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      );
+    testWidgets(
+      'Test 1: renders actorName, description, groupName, and relative timestamp',
+      (tester) async {
+        final activity = makeActivity(
+          actorName: 'Alice',
+          description: 'added an expense',
+          timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-                   theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: ActivityRow(
-              activity: activity,
-              groupName: 'Beach Trip',
-              groupId: 'group-1',
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
+              body: ActivityRow(
+                activity: activity,
+                groupName: 'Beach Trip',
+                groupId: 'group-1',
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      expect(find.text('Alice'), findsOneWidget);
-      expect(find.text('added an expense'), findsOneWidget);
-      expect(find.text('Beach Trip'), findsOneWidget);
-      // Relative timestamp should be there (timeago)
-      expect(find.textContaining('ago'), findsOneWidget);
-    });
+        expect(find.text('Alice'), findsOneWidget);
+        expect(find.text('added an expense'), findsOneWidget);
+        expect(find.text('Beach Trip'), findsOneWidget);
+        // Relative timestamp should be there (timeago)
+        expect(find.textContaining('ago'), findsOneWidget);
+      },
+    );
 
-    testWidgets('Test 2: shows colored avatar circle with first letter of actorName', (tester) async {
-      final activity = makeActivity(actorName: 'Bob');
+    testWidgets(
+      'Test 2: shows colored avatar circle with first letter of actorName',
+      (tester) async {
+        final activity = makeActivity(actorName: 'Bob');
 
-      await tester.pumpWidget(
-        MaterialApp(
-                   theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: ActivityRow(
-              activity: activity,
-              groupName: 'Weekend',
-              groupId: 'group-2',
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
+              body: ActivityRow(
+                activity: activity,
+                groupName: 'Weekend',
+                groupId: 'group-2',
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      expect(find.byType(CircleAvatar), findsOneWidget);
-      expect(find.text('B'), findsOneWidget);
-    });
+        expect(find.byType(CircleAvatar), findsOneWidget);
+        expect(find.text('B'), findsOneWidget);
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
   // WeeklySpendingCard tests
   // ---------------------------------------------------------------------------
   group('WeeklySpendingCard', () {
-    testWidgets('Test 3: renders 7 bars and Weekly Spending (OMR) title', (tester) async {
+    testWidgets('Test 3: renders 7 bars and Weekly Spending (OMR) title', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildProviderWidget(
           child: const WeeklySpendingCard(),
@@ -142,42 +151,50 @@ void main() {
       expect(find.text('Sun'), findsOneWidget);
     });
 
-    testWidgets('Test 4: shows No spending this week when all amounts are zero', (tester) async {
-      await tester.pumpWidget(
-        buildProviderWidget(
-          child: const WeeklySpendingCard(),
-          overrides: [
-            weeklyGroupSpendingProvider.overrideWith(
-              (ref) => AsyncValue.data(makeWeekData(allZero: true)),
-            ),
-          ],
-        ),
-      );
-      await tester.pump();
+    testWidgets(
+      'Test 4: shows No spending this week when all amounts are zero',
+      (tester) async {
+        await tester.pumpWidget(
+          buildProviderWidget(
+            child: const WeeklySpendingCard(),
+            overrides: [
+              weeklyGroupSpendingProvider.overrideWith(
+                (ref) => AsyncValue.data(makeWeekData(allZero: true)),
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
 
-      expect(find.text('No spending this week'), findsOneWidget);
-    });
+        expect(find.text('No spending this week'), findsOneWidget);
+      },
+    );
 
-    testWidgets('Test NEW-1: renders amount labels on non-zero bars (CHRT-01)', (tester) async {
-      await tester.pumpWidget(
-        buildProviderWidget(
-          child: const WeeklySpendingCard(),
-          overrides: [
-            weeklyGroupSpendingProvider.overrideWith(
-              (ref) => AsyncValue.data(makeWeekData()),
-            ),
-          ],
-        ),
-      );
-      await tester.pump();
+    testWidgets(
+      'Test NEW-1: renders amount labels on non-zero bars (CHRT-01)',
+      (tester) async {
+        await tester.pumpWidget(
+          buildProviderWidget(
+            child: const WeeklySpendingCard(),
+            overrides: [
+              weeklyGroupSpendingProvider.overrideWith(
+                (ref) => AsyncValue.data(makeWeekData()),
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
 
-      // makeWeekData produces amounts 1.0 through 7.0
-      // Bar labels use toStringAsFixed(1), so '7.0' should appear
-      expect(find.text('7.0'), findsOneWidget);
-      expect(find.text('1.0'), findsOneWidget);
-    });
+        // makeWeekData produces amounts 1.0 through 7.0
+        // Bar labels use toStringAsFixed(1), so '7.0' should appear
+        expect(find.text('7.0'), findsOneWidget);
+        expect(find.text('1.0'), findsOneWidget);
+      },
+    );
 
-    testWidgets('Test NEW-2: no amount labels on all-zero chart (CHRT-01)', (tester) async {
+    testWidgets('Test NEW-2: no amount labels on all-zero chart (CHRT-01)', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildProviderWidget(
           child: const WeeklySpendingCard(),
@@ -194,7 +211,9 @@ void main() {
       expect(find.text('0.0'), findsNothing);
     });
 
-    testWidgets('Test 5: shows skeleton when provider is loading', (tester) async {
+    testWidgets('Test 5: shows skeleton when provider is loading', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildProviderWidget(
           child: const WeeklySpendingCard(),
@@ -217,29 +236,27 @@ void main() {
   // BottomNavShell tests
   // ---------------------------------------------------------------------------
   group('BottomNavShell', () {
-    /// Minimal overrides for BottomNavShell tests — ProfileScreen (tab 3)
+    /// Minimal overrides for BottomNavShell tests — ProfileScreen (tab 2)
     /// watches settingsProvider, userGroupsProvider, groupEventsProvider,
     /// and groupBalancesProvider via profileStatsProvider.
     List<Override> _shellOverrides() => [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          userGroupsProvider.overrideWith((ref) => Stream.value([])),
-          crossGroupActivityProvider.overrideWith(
-            (ref) => const AsyncValue.data([]),
-          ),
-          groupEventsProvider.overrideWith(
-            (ref, groupId) => Stream.value([]),
-          ),
-          groupBalancesProvider.overrideWith(
-            (ref, groupId) => AsyncValue.data((
-              balances: <UserBalance>[],
-              totalSpent: Decimal.zero,
-              eventCount: 0,
-              perEventBreakdown: <String, Map<String, Decimal>>{},
-              memberNames: <String, String>{},
-            )),
-          ),
-          currentUserIdProvider.overrideWithValue('test-user-id'),
-        ];
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      userGroupsProvider.overrideWith((ref) => Stream.value([])),
+      crossGroupActivityProvider.overrideWith(
+        (ref) => const AsyncValue.data([]),
+      ),
+      groupEventsProvider.overrideWith((ref, groupId) => Stream.value([])),
+      groupBalancesProvider.overrideWith(
+        (ref, groupId) => AsyncValue.data((
+          balances: <UserBalance>[],
+          totalSpent: Decimal.zero,
+          eventCount: 0,
+          perEventBreakdown: <String, Map<String, Decimal>>{},
+          memberNames: <String, String>{},
+        )),
+      ),
+      currentUserIdProvider.overrideWithValue('test-user-id'),
+    ];
 
     /// Builds a test app with GoRouter for BottomNavShell — ProfileScreen
     /// requires GoRouter.of(context) for back-button detection.
@@ -249,9 +266,8 @@ void main() {
         routes: [
           GoRoute(
             path: '/home',
-            builder: (ctx, state) => BottomNavShell(
-              child: const Text('Dashboard Content'),
-            ),
+            builder: (ctx, state) =>
+                BottomNavShell(child: const Text('Dashboard Content')),
           ),
           GoRoute(
             path: '/profile',
@@ -261,36 +277,46 @@ void main() {
       );
       return ProviderScope(
         overrides: overrides,
-        child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+        ),
       );
     }
 
-    testWidgets('Test 6: renders 4 tabs: Groups, Activity, Chats, Profile', (tester) async {
+    testWidgets('Test 6: renders 3 tabs: Groups, Activity, Profile', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildShellApp(_shellOverrides()));
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
-      // 'Groups' appears in bottom nav label and in ProfileScreen stat card (built tab 3).
-      expect(find.text('Groups'), findsAtLeastNWidgets(1));
-      expect(find.text('Activity'), findsAtLeastNWidgets(1));
-      expect(find.text('Chats'), findsOneWidget);
-      expect(find.text('Profile'), findsOneWidget);
+      final navBar = tester.widget<BottomNavigationBar>(
+        find.byType(BottomNavigationBar),
+      );
+      expect(navBar.items, hasLength(3));
+      expect(
+        navBar.items.map((item) => item.label),
+        orderedEquals(['Groups', 'Activity', 'Profile']),
+      );
+      expect(find.text('Chats'), findsNothing);
     });
 
-    testWidgets('Test 7: shows Coming soon when tapping Activity tab', (tester) async {
-      await tester.pumpWidget(_buildShellApp(_shellOverrides()));
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'Test 7: shows CrossGroupActivityScreen when tapping Activity tab',
+      (tester) async {
+        await tester.pumpWidget(_buildShellApp(_shellOverrides()));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
 
-      // Tap Activity tab (index 1)
-      await tester.tap(find.text('Activity').last);
-      await tester.pump();
+        // Tap Activity tab (index 1)
+        await tester.tap(find.text('Activity').last);
+        await tester.pump();
 
-      // Stack+AnimatedOpacity builds all tabs simultaneously.
-      // Profile tab (index 3) now shows ProfileScreen (Phase 25), not _PlaceholderTab.
-      // Only Activity (1) and Chats (2) show "Coming soon".
-      expect(find.text('Coming soon'), findsNWidgets(2));
-    });
+        expect(find.byType(CrossGroupActivityScreen), findsOneWidget);
+        expect(find.text('Coming soon'), findsNothing);
+      },
+    );
 
     testWidgets('Test 8: Groups tab shows child content', (tester) async {
       await tester.pumpWidget(_buildShellApp(_shellOverrides()));
@@ -304,8 +330,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
-      // Activity (1) and Chats (2) still render as "Coming soon" in the Stack.
-      expect(find.text('Coming soon'), findsNWidgets(2));
+      expect(find.text('Coming soon'), findsNothing);
 
       // Tap back to Groups (use key since 'Groups' also appears in ProfileScreen stat card)
       await tester.tap(find.text('Groups').last);

@@ -28,6 +28,5 @@ abstract final class HomeKeys {
   // Bottom navigation
   static const bottomNavGroups = Key('home_bottom_nav_groups');
   static const bottomNavActivity = Key('home_bottom_nav_activity');
-  static const bottomNavChats = Key('home_bottom_nav_chats');
   static const bottomNavProfile = Key('home_bottom_nav_profile');
 }

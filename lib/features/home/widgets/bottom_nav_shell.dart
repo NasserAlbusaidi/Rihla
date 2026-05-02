@@ -4,15 +4,16 @@ import 'package:iconsax/iconsax.dart';
 import '../../../features/settings/screens/profile_screen.dart';
 import '../../../shared/widgets/grain_overlay.dart';
 import '../keys/home_keys.dart';
+import '../screens/cross_group_activity_screen.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Bottom navigation shell for the home dashboard.
 ///
-/// Wraps the dashboard content in a 4-tab bottom navigation bar:
-/// Groups, Activity, Chats, Profile.
+/// Wraps the dashboard content in a 3-tab bottom navigation bar:
+/// Groups, Activity, Profile.
 ///
 /// The Groups tab (index 0) shows the provided [child] widget.
-/// All other tabs show a [_PlaceholderTab] with "Coming soon".
+/// Activity shows the cross-group activity feed; Profile shows settings.
 ///
 /// Uses Stack + AnimatedOpacity for M3 FadeThrough tab switching while
 /// preserving all tab widget state (Phase 22 P03, D-07).
@@ -49,9 +50,8 @@ class _BottomNavShellState extends State<BottomNavShell> {
   Widget _buildBody() {
     final tabs = [
       widget.child,
-      const _PlaceholderTab(),
-      const _PlaceholderTab(),
-      const ProfileScreen(),  // Tab 3: Profile (Phase 25)
+      const CrossGroupActivityScreen(),
+      const ProfileScreen(),
     ];
     return GrainOverlay(
       opacity: 0.035,
@@ -78,7 +78,6 @@ class _BottomNavShellState extends State<BottomNavShell> {
       backgroundColor: context.colors.bottomNavBackground,
       selectedItemColor: context.colors.bottomNavActiveIcon,
       unselectedItemColor: context.colors.bottomNavInactiveIcon,
-      // REQUIRED for 4 tabs: fixed type shows all labels (RESEARCH Pitfall 3)
       type: BottomNavigationBarType.fixed,
       showUnselectedLabels: true,
       elevation: 8,
@@ -92,32 +91,10 @@ class _BottomNavShellState extends State<BottomNavShell> {
           label: 'Activity',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Iconsax.message, key: HomeKeys.bottomNavChats),
-          label: 'Chats',
-        ),
-        BottomNavigationBarItem(
           icon: Icon(Iconsax.profile_circle, key: HomeKeys.bottomNavProfile),
           label: 'Profile',
         ),
       ],
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Coming soon',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: context.colors.textSecondary,
-        ),
-      ),
     );
   }
 }
