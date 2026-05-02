@@ -54,29 +54,34 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
+    final currentUid = ref.watch(currentUserIdProvider);
+    final isCreator =
+        currentUid != null && groupAsync.valueOrNull?.createdBy == currentUid;
 
     return Scaffold(
       key: GroupKeys.detailScreen,
       backgroundColor: context.colors.scaffoldBackground,
-      floatingActionButton: Semantics(
-        label: 'Create event',
-        button: true,
-        child: FloatingActionButton(
-          onPressed: () {
-            HapticService.lightClick();
-            context.push('/group/$groupId/create-event');
-          },
-          backgroundColor: context.colors.primary,
-          shape: const CircleBorder(),
-          child: Icon(Iconsax.add, color: context.colors.textOnPrimary),
-        ),
-      ),
+      floatingActionButton: isCreator
+          ? Semantics(
+              label: 'Create event',
+              button: true,
+              child: FloatingActionButton(
+                onPressed: () {
+                  HapticService.lightClick();
+                  context.push('/group/$groupId/create-event');
+                },
+                backgroundColor: context.colors.primary,
+                shape: const CircleBorder(),
+                child: Icon(Iconsax.add, color: context.colors.textOnPrimary),
+              ),
+            )
+          : null,
       body: groupAsync.when(
         data: (group) {
           if (group == null) {
             return const Center(child: Text('Group not found'));
           }
-          return _buildContent(context, group);
+          return _buildContent(context, group, isCreator: isCreator);
         },
         loading: () => _buildLoading(context),
         error: (e, st) => Column(
@@ -120,12 +125,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                         ),
                         child: Text(
                           'Try again',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                                color: context.colors.textOnPrimary,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: context.colors.textOnPrimary),
                         ),
                       ),
                     ),
@@ -139,12 +140,17 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     );
   }
 
-  Widget _buildContent(BuildContext context, Group group) {
+  Widget _buildContent(
+    BuildContext context,
+    Group group, {
+    required bool isCreator,
+  }) {
     return Column(
       children: [
         ModuleHeader(
           title: group.name,
-          subtitle: 'Created ${DateFormat('MMM d, yyyy').format(group.createdAt)}',
+          subtitle:
+              'Created ${DateFormat('MMM d, yyyy').format(group.createdAt)}',
           actions: [
             IconButton(
               icon: Icon(
@@ -175,119 +181,118 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
 
                   // --- Stats grid + Settle-up CTA isolated in Consumer (D-02) ---
-                Consumer(
-                  builder: (context, ref, _) {
-                    final balancesAsync =
-                        ref.watch(groupBalancesProvider(groupId));
-                    final currentUid = ref.watch(currentUserIdProvider);
-                    final balancesData = balancesAsync.valueOrNull;
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final balancesAsync = ref.watch(
+                        groupBalancesProvider(groupId),
+                      );
+                      final currentUid = ref.watch(currentUserIdProvider);
+                      final balancesData = balancesAsync.valueOrNull;
 
-                    // Find current user's balance
-                    UserBalance? currentUserBalance;
-                    if (balancesData != null && currentUid != null) {
-                      try {
-                        currentUserBalance = balancesData.balances.firstWhere(
-                          (b) => b.participantId == currentUid,
-                        );
-                      } catch (_) {
-                        currentUserBalance = null;
+                      // Find current user's balance
+                      UserBalance? currentUserBalance;
+                      if (balancesData != null && currentUid != null) {
+                        try {
+                          currentUserBalance = balancesData.balances.firstWhere(
+                            (b) => b.participantId == currentUid,
+                          );
+                        } catch (_) {
+                          currentUserBalance = null;
+                        }
                       }
-                    }
 
-                    final showSettleUpCta = currentUserBalance != null &&
-                        currentUserBalance.netBalance != Decimal.zero;
+                      final showSettleUpCta =
+                          currentUserBalance != null &&
+                          currentUserBalance.netBalance != Decimal.zero;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // --- 2x2 Stats grid (D-08: always visible) ---
-                        GroupStatsGrid(
-                          userNetBalance:
-                              currentUserBalance?.netBalance ?? Decimal.zero,
-                          groupTotal:
-                              balancesData?.totalSpent ?? Decimal.zero,
-                          activeMembers: group.memberIds.length,
-                          eventCount: balancesData?.eventCount ?? 0,
-                          currency: group.currency,
-                        ),
-                        const SizedBox(height: 16),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // --- 2x2 Stats grid (D-08: always visible) ---
+                          GroupStatsGrid(
+                            userNetBalance:
+                                currentUserBalance?.netBalance ?? Decimal.zero,
+                            groupTotal:
+                                balancesData?.totalSpent ?? Decimal.zero,
+                            activeMembers: group.memberIds.length,
+                            eventCount: balancesData?.eventCount ?? 0,
+                            currency: group.currency,
+                          ),
+                          const SizedBox(height: 16),
 
-                        // --- Settle-up CTA with gradient (D-10) ---
-                        if (showSettleUpCta) ...[
-                          SizedBox(
-                            width: double.infinity,
-                            height: context.spacing.buttonHeight,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient:
-                                    context.colors.primaryGradient,
-                                borderRadius: BorderRadius.circular(
-                                  context.spacing.radiusMedium,
-                                ),
-                              ),
-                              child: ElevatedButton(
-                                key: GroupKeys.settleUpCta,
-                                onPressed: () {
-                                  HapticService.medium();
-                                  // D-15: CTA entry point — do not remove
-                                  context.push(
-                                      '/group/$groupId/settle-up');
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      context.spacing.radiusMedium,
-                                    ),
+                          // --- Settle-up CTA with gradient (D-10) ---
+                          if (showSettleUpCta) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              height: context.spacing.buttonHeight,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: context.colors.primaryGradient,
+                                  borderRadius: BorderRadius.circular(
+                                    context.spacing.radiusMedium,
                                   ),
                                 ),
-                                child: Text(
-                                  'Settle Up',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        color: AppColorTokens
-                                            .light.textOnPrimary,
+                                child: ElevatedButton(
+                                  key: GroupKeys.settleUpCta,
+                                  onPressed: () {
+                                    HapticService.medium();
+                                    // D-15: CTA entry point — do not remove
+                                    context.push('/group/$groupId/settle-up');
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        context.spacing.radiusMedium,
                                       ),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Settle Up',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: AppColorTokens
+                                              .light
+                                              .textOnPrimary,
+                                        ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                        ] else
-                          const SizedBox(height: 8),
-                      ],
-                    );
-                  },
-                ),
+                            const SizedBox(height: 24),
+                          ] else
+                            const SizedBox(height: 8),
+                        ],
+                      );
+                    },
+                  ),
 
-                // --- Events (D-04: before Members) ---
-                _buildEventsSection(context, group),
-                const SizedBox(height: 24),
+                  // --- Events (D-04: before Members) ---
+                  _buildEventsSection(context, group, isCreator: isCreator),
+                  const SizedBox(height: 24),
 
-                // --- Members & Balances ---
-                _buildMembersBalancesSection(context, group),
-                const SizedBox(height: 24),
+                  // --- Members & Balances ---
+                  _buildMembersBalancesSection(context, group),
+                  const SizedBox(height: 24),
 
-                // --- Recent Activity (D-34) ---
-                _buildActivitySection(context),
-                const SizedBox(height: 32),
-              ],
+                  // --- Recent Activity (D-34) ---
+                  _buildActivitySection(context),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
           ),
         ),
-      ),
       ],
     );
   }
@@ -298,11 +303,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   /// Passes personalBalance from perEventBreakdown to each EventCard.
   Widget _buildEventsSection(
     BuildContext context,
-    Group group,
-  ) {
+    Group group, {
+    required bool isCreator,
+  }) {
     final eventsAsync = ref.watch(groupEventsProvider(groupId));
-    final balancesData =
-        ref.watch(groupBalancesProvider(groupId)).valueOrNull;
+    final balancesData = ref.watch(groupBalancesProvider(groupId)).valueOrNull;
     final currentUid = ref.watch(currentUserIdProvider);
 
     return Column(
@@ -332,8 +337,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   child: Text(
                     '${events.length}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: context.colors.textSecondary,
-                        ),
+                      color: context.colors.textSecondary,
+                    ),
                   ),
                 ),
             ],
@@ -352,10 +357,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 key: GroupKeys.noEventsEmpty,
                 icon: Iconsax.calendar_add,
                 title: 'No events yet',
-                message: 'Create your first event to start planning together.',
-                actionLabel: 'Create Event',
-                onAction: () =>
-                    context.push('/group/$groupId/create-event'),
+                message: isCreator
+                    ? 'Create your first event to start planning together.'
+                    : 'Waiting for the group creator to add the first event.',
+                actionLabel: isCreator ? 'Create Event' : null,
+                onAction: isCreator
+                    ? () => context.push('/group/$groupId/create-event')
+                    : null,
               );
             }
             // Pre-compute per-user event breakdown map for event card wiring
@@ -371,9 +379,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                     child: EventCard(
                       event: events[i],
                       personalBalance: userEventBreakdown[events[i].id],
-                      onTap: () => context.push(
-                        '/group/$groupId/event/${events[i].id}',
-                      ),
+                      onTap: () =>
+                          context.push('/group/$groupId/event/${events[i].id}'),
                     ),
                   ),
               ],
@@ -383,8 +390,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load events",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.colors.textSecondary,
-                ),
+              color: context.colors.textSecondary,
+            ),
           ),
         ),
       ],
@@ -397,10 +404,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   /// Watches groupBalancesProvider internally.
   /// onSettleUpTap is wired with preSelectedMemberId for D-22 entry point 2.
   /// onEventTap navigates to the event's LedgerScreen for FIN-01 per-event drill-down.
-  Widget _buildMembersBalancesSection(
-    BuildContext context,
-    Group group,
-  ) {
+  Widget _buildMembersBalancesSection(BuildContext context, Group group) {
     final balancesAsync = ref.watch(groupBalancesProvider(groupId));
 
     // Build event names map from the watched events list
@@ -425,8 +429,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
               return Text(
                 'No members yet',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: context.colors.textSecondary,
-                    ),
+                  color: context.colors.textSecondary,
+                ),
               );
             }
             return Column(
@@ -435,12 +439,15 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   if (i > 0) const SizedBox(height: 8),
                   GroupMemberBalanceCard(
                     balance: balancesData.balances[i],
-                    perEventBreakdown: balancesData.perEventBreakdown[
-                            balancesData.balances[i].participantId] ??
+                    perEventBreakdown:
+                        balancesData.perEventBreakdown[balancesData
+                            .balances[i]
+                            .participantId] ??
                         const {},
                     eventNames: eventNames,
                     currency: group.currency,
-                    isExpanded: _expandedMemberId ==
+                    isExpanded:
+                        _expandedMemberId ==
                         balancesData.balances[i].participantId,
                     onExpandChanged: (expanded) {
                       setState(() {
@@ -453,13 +460,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                         _navigateToEventLedger(context, eventId, group),
                     onSettleUpTap:
                         balancesData.balances[i].netBalance != Decimal.zero
-                            ? () {
-                                // D-15: CTA entry point — do not remove
-                                context.push(
-                                  '/group/$groupId/settle-up?memberId=${balancesData.balances[i].participantId}',
-                                );
-                              }
-                            : null,
+                        ? () {
+                            // D-15: CTA entry point — do not remove
+                            context.push(
+                              '/group/$groupId/settle-up?memberId=${balancesData.balances[i].participantId}',
+                            );
+                          }
+                        : null,
                   ),
                 ],
               ],
@@ -469,8 +476,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load balances",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.colors.textSecondary,
-                ),
+              color: context.colors.textSecondary,
+            ),
           ),
         ),
       ],
@@ -496,8 +503,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
               return const EmptyStateView(
                 icon: Iconsax.activity,
                 title: 'No activity yet',
-                message:
-                    'Activity will appear here once events are created.',
+                message: 'Activity will appear here once events are created.',
               );
             }
             // Show up to 5 entries (D-16: compact tile variant)
@@ -512,8 +518,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           error: (e, _) => Text(
             "Couldn't load activity",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.colors.textSecondary,
-                ),
+              color: context.colors.textSecondary,
+            ),
           ),
         ),
         TextButton(
@@ -543,9 +549,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         ),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

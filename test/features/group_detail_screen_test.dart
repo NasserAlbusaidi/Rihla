@@ -79,10 +79,7 @@ final _balancesWithExpenses = (
     'uid-creator': {'event-1': Decimal.parse('15.000')},
     'uid-member': {'event-1': Decimal.parse('-15.000')},
   },
-  memberNames: <String, String>{
-    'uid-creator': 'Alice',
-    'uid-member': 'Bob',
-  },
+  memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
 );
 
 /// GroupBalances with totalSpent == 0 (no expenses yet).
@@ -106,10 +103,7 @@ final _balancesEmpty = (
   totalSpent: Decimal.zero,
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
-  memberNames: <String, String>{
-    'uid-creator': 'Alice',
-    'uid-member': 'Bob',
-  },
+  memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
 );
 
 final _testActivity = [
@@ -142,21 +136,19 @@ Widget _wrap(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       currentUserIdProvider.overrideWithValue(currentUid),
-      groupDetailProvider(_groupId).overrideWith(
-        (ref) => Stream.value(_testGroup),
-      ),
-      groupMembersProvider(_groupId).overrideWith(
-        (ref) => Stream.value(_testMembers),
-      ),
-      groupEventsProvider(_groupId).overrideWith(
-        (ref) => Stream.value(const []),
-      ),
-      groupBalancesProvider(_groupId).overrideWith(
-        (ref) => balancesAsync,
-      ),
-      groupActivityProvider(_groupId).overrideWith(
-        (ref) => Stream.value(activities),
-      ),
+      groupDetailProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+      groupMembersProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupEventsProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(const [])),
+      groupBalancesProvider(_groupId).overrideWith((ref) => balancesAsync),
+      groupActivityProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(activities)),
     ],
     child: MaterialApp(theme: AppTheme.lightTheme, home: child),
   );
@@ -190,43 +182,48 @@ void main() {
     });
 
     testWidgets(
-        'stats grid is always visible; settle-up CTA hidden when zero balance',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          const GroupDetailScreen(groupId: _groupId),
-          prefs,
-          balancesAsync: AsyncValue.data(_balancesEmpty),
-        ),
-      );
-      await tester.pumpAndSettle();
+      'stats grid is always visible; settle-up CTA hidden when zero balance',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(_balancesEmpty),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Stats grid is always shown (D-08) — replaces the conditional hero
-      expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
-      // Settle-up CTA must be hidden when all balances are zero (D-10)
-      expect(find.byKey(GroupKeys.settleUpCta), findsNothing);
-    });
+        // Stats grid is always shown (D-08) — replaces the conditional hero
+        expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
+        // Settle-up CTA must be hidden when all balances are zero (D-10)
+        expect(find.byKey(GroupKeys.settleUpCta), findsNothing);
+      },
+    );
 
-    testWidgets('shows Members & Balances section with GroupMemberBalanceCard tiles',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          const GroupDetailScreen(groupId: _groupId),
-          prefs,
-          balancesAsync: AsyncValue.data(_balancesWithExpenses),
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'shows Members & Balances section with GroupMemberBalanceCard tiles',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(_balancesWithExpenses),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Section header renamed from "Members" to "Members & Balances"
-      expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
+        // Section header renamed from "Members" to "Members & Balances"
+        expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
 
-      // Member names rendered via GroupMemberBalanceCard header rows
-      expect(find.text('Alice'), findsWidgets);
-      expect(find.text('Bob'), findsOneWidget);
-    });
+        // Member names rendered via GroupMemberBalanceCard header rows
+        expect(find.text('Alice'), findsWidgets);
+        expect(find.text('Bob'), findsOneWidget);
+      },
+    );
 
-    testWidgets('shows spending stats chips when expenses exist', (tester) async {
+    testWidgets('shows spending stats chips when expenses exist', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -268,20 +265,22 @@ void main() {
       expect(find.byKey(GroupKeys.seeAllActivityButton), findsOneWidget);
     });
 
-    testWidgets('invite code section is not rendered (D-05 — moved to Phase 29)',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          const GroupDetailScreen(groupId: _groupId),
-          prefs,
-          balancesAsync: AsyncValue.data(_balancesEmpty),
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'invite code section is not rendered (D-05 — moved to Phase 29)',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(_balancesEmpty),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Invite code section removed from GroupDetailScreen per D-05
-      expect(find.byKey(GroupKeys.inviteCodeSection), findsNothing);
-    });
+        // Invite code section removed from GroupDetailScreen per D-05
+        expect(find.byKey(GroupKeys.inviteCodeSection), findsNothing);
+      },
+    );
 
     testWidgets('stats grid shows 4 stat tiles', (tester) async {
       await tester.pumpWidget(
@@ -314,8 +313,9 @@ void main() {
       expect(find.byKey(GroupKeys.settleUpCta), findsOneWidget);
     });
 
-    testWidgets('hides settle-up CTA when all balances are zero',
-        (tester) async {
+    testWidgets('hides settle-up CTA when all balances are zero', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -328,8 +328,9 @@ void main() {
       expect(find.byKey(GroupKeys.settleUpCta), findsNothing);
     });
 
-    testWidgets('section order: Events before Members before Activity (D-09)',
-        (tester) async {
+    testWidgets('section order: Events before Members before Activity (D-09)', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -340,20 +341,24 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final eventsOffset =
-          tester.getTopLeft(find.byKey(GroupKeys.eventsSection).first);
-      final membersOffset =
-          tester.getTopLeft(find.byKey(GroupKeys.membersAndBalancesSection).first);
-      final activityOffset =
-          tester.getTopLeft(find.byKey(GroupKeys.recentActivitySection).first);
+      final eventsOffset = tester.getTopLeft(
+        find.byKey(GroupKeys.eventsSection).first,
+      );
+      final membersOffset = tester.getTopLeft(
+        find.byKey(GroupKeys.membersAndBalancesSection).first,
+      );
+      final activityOffset = tester.getTopLeft(
+        find.byKey(GroupKeys.recentActivitySection).first,
+      );
 
       // Events < Members < Activity (lower Y = higher on screen)
       expect(eventsOffset.dy, lessThan(membersOffset.dy));
       expect(membersOffset.dy, lessThan(activityOffset.dy));
     });
 
-    testWidgets('has RefreshIndicator wrapping scrollable content (D-11)',
-        (tester) async {
+    testWidgets('has RefreshIndicator wrapping scrollable content (D-11)', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -367,47 +372,114 @@ void main() {
       expect(find.byType(RefreshIndicator), findsOneWidget);
     });
 
-    testWidgets('shows inline error with retry button when group fails to load (D-12)',
-        (tester) async {
+    testWidgets('creator sees event creation FAB', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            currentUserIdProvider.overrideWithValue('uid-creator'),
-            groupDetailProvider(_groupId).overrideWith(
-              (ref) => Stream.error(Exception('Network error')),
-            ),
-            groupMembersProvider(_groupId).overrideWith(
-              (ref) => Stream.value(_testMembers),
-            ),
-            groupEventsProvider(_groupId).overrideWith(
-              (ref) => Stream.value(const []),
-            ),
-            groupBalancesProvider(_groupId).overrideWith(
-              (ref) => AsyncValue.data(_balancesEmpty),
-            ),
-            groupActivityProvider(_groupId).overrideWith(
-              (ref) => Stream.value(const []),
-            ),
-          ],
-          child: MaterialApp(
-           theme: AppTheme.lightTheme,
-            home: GroupDetailScreen(groupId: _groupId),
-          ),
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesEmpty),
+          currentUid: 'uid-creator',
         ),
       );
       await tester.pumpAndSettle();
 
-      // Error state shows inline message, not full-screen replacement
-      expect(find.text('Failed to load group'), findsOneWidget);
-      expect(find.text('Try again'), findsOneWidget);
-
-      // ModuleHeader is still visible in error state (inline, not full replacement)
-      expect(find.text('Group'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
     });
 
-    testWidgets('event card shows personal balance when provided',
-        (tester) async {
+    testWidgets('member does not see event creation FAB', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesEmpty),
+          currentUid: 'uid-member',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+    });
+
+    testWidgets('creator sees empty events create action', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesEmpty),
+          currentUid: 'uid-creator',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
+      expect(find.text('Create Event'), findsOneWidget);
+    });
+
+    testWidgets('member does not see empty events create action', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesEmpty),
+          currentUid: 'uid-member',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
+      expect(find.text('Create Event'), findsNothing);
+      expect(
+        find.text('Waiting for the group creator to add the first event.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'shows inline error with retry button when group fails to load (D-12)',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              currentUserIdProvider.overrideWithValue('uid-creator'),
+              groupDetailProvider(
+                _groupId,
+              ).overrideWith((ref) => Stream.error(Exception('Network error'))),
+              groupMembersProvider(
+                _groupId,
+              ).overrideWith((ref) => Stream.value(_testMembers)),
+              groupEventsProvider(
+                _groupId,
+              ).overrideWith((ref) => Stream.value(const [])),
+              groupBalancesProvider(
+                _groupId,
+              ).overrideWith((ref) => AsyncValue.data(_balancesEmpty)),
+              groupActivityProvider(
+                _groupId,
+              ).overrideWith((ref) => Stream.value(const [])),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              home: GroupDetailScreen(groupId: _groupId),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Error state shows inline message, not full-screen replacement
+        expect(find.text('Failed to load group'), findsOneWidget);
+        expect(find.text('Try again'), findsOneWidget);
+
+        // ModuleHeader is still visible in error state (inline, not full replacement)
+        expect(find.text('Group'), findsOneWidget);
+      },
+    );
+
+    testWidgets('event card shows personal balance when provided', (
+      tester,
+    ) async {
       final testEvent = Event(
         id: 'event-1',
         groupId: _groupId,
@@ -424,11 +496,14 @@ void main() {
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            eventExpensesProvider(
-              (groupId: _groupId, eventId: 'event-1'),
-            ).overrideWith((ref) => Stream.value(const [])),
+            eventExpensesProvider((
+              groupId: _groupId,
+              eventId: 'event-1',
+            )).overrideWith((ref) => Stream.value(const [])),
           ],
-          child: MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
               body: EventCard(
                 event: testEvent,
                 personalBalance: Decimal.parse('-5.000'),
