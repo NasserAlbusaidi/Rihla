@@ -86,6 +86,8 @@ class ExpenseService extends FirestoreRepository {
     required String eventId,
     required String payerParticipantId,
     required Decimal amount,
+    String? actorId,
+    String? actorName,
     String currency = 'OMR',
     String? description,
     ExpenseScope scope = ExpenseScope.global,
@@ -117,10 +119,91 @@ class ExpenseService extends FirestoreRepository {
     try {
       await eventSubcollection(groupId, eventId, 'expenses').doc(id).set(data);
     } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('ExpenseService.addExpense failed: ${e.code} ${e.message}');
+      if (kDebugMode) {
+        debugPrint('ExpenseService.addExpense failed: ${e.code} ${e.message}');
+      }
       rethrow;
     }
+
+    try {
+      await _addExpenseCreatedActivity(
+        groupId: groupId,
+        eventId: eventId,
+        expenseId: id,
+        payerParticipantId: payerParticipantId,
+        amount: amount,
+        currency: currency,
+        actorId: actorId ?? payerParticipantId,
+        actorName: actorName,
+        description: description,
+        scope: scope,
+        subGroupId: subGroupId,
+        customSplitParticipants: customSplitParticipants,
+        categoryId: categoryId,
+      );
+    } on FirebaseException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          'ExpenseService.addExpense activity log failed: ${e.code} ${e.message}',
+        );
+      }
+    }
+
     return Expense.fromFirestore(data);
+  }
+
+  Future<void> _addExpenseCreatedActivity({
+    required String groupId,
+    required String eventId,
+    required String expenseId,
+    required String payerParticipantId,
+    required Decimal amount,
+    required String currency,
+    required String actorId,
+    required ExpenseScope scope,
+    String? actorName,
+    String? description,
+    String? subGroupId,
+    List<String>? customSplitParticipants,
+    String? categoryId,
+  }) async {
+    final id = const Uuid().v4();
+    final now = DateTime.now().toUtc();
+    final trimmedActorName = actorName?.trim();
+    final normalizedActorName =
+        trimmedActorName == null || trimmedActorName.isEmpty
+        ? null
+        : trimmedActorName;
+    final trimmedDescription = description?.trim();
+    final expenseLabel =
+        trimmedDescription == null || trimmedDescription.isEmpty
+        ? 'an expense'
+        : trimmedDescription;
+    final amountText = '${amount.toString()} $currency';
+
+    await eventSubcollection(groupId, eventId, 'activity_logs').doc(id).set({
+      'id': id,
+      'eventId': eventId,
+      'category': 'MONEY',
+      'eventType': 'CREATE',
+      'logText':
+          '${normalizedActorName ?? 'Someone'} added $expenseLabel for $amountText',
+      'actorId': actorId,
+      'actorName': normalizedActorName,
+      'metadata': {
+        'expenseId': expenseId,
+        'amount': amount.toString(),
+        'amountFils': MoneySerializer.toSubunits(amount, currency),
+        'currency': currency,
+        'description': trimmedDescription,
+        'payerParticipantId': payerParticipantId,
+        'scope': scope.value,
+        'subGroupId': subGroupId,
+        'customSplitParticipants': customSplitParticipants ?? const <String>[],
+        'categoryId': categoryId,
+      },
+      'createdAt': now.toIso8601String(),
+    });
   }
 
   /// Updates specific fields of an existing expense document.
@@ -161,11 +244,17 @@ class ExpenseService extends FirestoreRepository {
     }
     if (updates.isNotEmpty) {
       try {
-        await eventSubcollection(groupId, eventId, 'expenses')
-            .doc(expenseId)
-            .update(updates);
+        await eventSubcollection(
+          groupId,
+          eventId,
+          'expenses',
+        ).doc(expenseId).update(updates);
       } on FirebaseException catch (e) {
-        if (kDebugMode) debugPrint('ExpenseService.updateExpense failed: ${e.code} ${e.message}');
+        if (kDebugMode) {
+          debugPrint(
+            'ExpenseService.updateExpense failed: ${e.code} ${e.message}',
+          );
+        }
         rethrow;
       }
     }
@@ -179,12 +268,20 @@ class ExpenseService extends FirestoreRepository {
     required String expenseId,
   }) async {
     try {
-      await eventSubcollection(groupId, eventId, 'expenses').doc(expenseId).update({
+      await eventSubcollection(
+        groupId,
+        eventId,
+        'expenses',
+      ).doc(expenseId).update({
         'isDeleted': true,
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
       });
     } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('ExpenseService.deleteExpense failed: ${e.code} ${e.message}');
+      if (kDebugMode) {
+        debugPrint(
+          'ExpenseService.deleteExpense failed: ${e.code} ${e.message}',
+        );
+      }
       rethrow;
     }
   }

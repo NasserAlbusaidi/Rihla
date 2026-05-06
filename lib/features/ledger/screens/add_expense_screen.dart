@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:animations/animations.dart';
 import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -139,7 +138,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       currentParticipantProvider(widget.eventId),
     );
     if (currentParticipant == null) {
-
       ref.read(expenseErrorProvider.notifier).state =
           'Could not identify your participant record.';
       return;
@@ -163,6 +161,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         groupId: widget.groupId,
         eventId: widget.eventId,
         payerParticipantId: _selectedPayerId ?? currentParticipant.id,
+        actorId: currentParticipant.id,
+        actorName: currentParticipant.displayName,
         amount: amount,
         description: note.isNotEmpty ? note : null,
         scope: _scope,

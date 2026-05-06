@@ -35,6 +35,7 @@ void main() {
           expect(logs.length, equals(1));
           expect(logs.first.category, equals('GEAR'));
           expect(logs.first.tripId, equals(eventId));
+          expect(logs.first.actorName, equals('Alice'));
         },
       );
 

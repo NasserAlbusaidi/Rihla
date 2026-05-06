@@ -74,13 +74,14 @@ class ActivityLog {
       logText: data['logText'] as String,
       metadata: (data['metadata'] as Map<String, dynamic>?) ?? const {},
       createdAt: DateTime.parse(data['createdAt'] as String),
+      actorName: data['actorName'] as String?,
+      actorAvatar: data['actorAvatar'] as String?,
     );
   }
 
   /// Serialize this [ActivityLog] to a Firestore document map.
   ///
-  /// Field names are camelCase. Actor display name and avatar are excluded
-  /// (they are read-time join artifacts).
+  /// Field names are camelCase.
   Map<String, dynamic> toFirestore() {
     return {
       'id': id,
@@ -92,6 +93,7 @@ class ActivityLog {
       'logText': logText,
       'metadata': metadata,
       'createdAt': createdAt.toIso8601String(),
+      'actorName': actorName,
     };
   }
 }

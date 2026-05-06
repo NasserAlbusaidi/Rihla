@@ -75,6 +75,47 @@ void main() {
           expect(expense.amount, equals(Decimal.parse('10.500')));
         },
       );
+
+      test('writes a MONEY activity log when an expense is created', () async {
+        const groupId = 'g1';
+        const eventId = 'e1';
+
+        final expense = await service.addExpense(
+          groupId: groupId,
+          eventId: eventId,
+          payerParticipantId: 'p1',
+          actorId: 'user1',
+          actorName: 'Alice',
+          amount: Decimal.parse('12.345'),
+          description: 'Dinner',
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('activity_logs')
+            .get();
+
+        expect(snap.docs, hasLength(1));
+
+        final data = snap.docs.first.data();
+        final metadata = data['metadata'] as Map<String, dynamic>;
+
+        expect(data['category'], equals('MONEY'));
+        expect(data['eventType'], equals('CREATE'));
+        expect(data['actorId'], equals('user1'));
+        expect(data['actorName'], equals('Alice'));
+        expect(data['eventId'], equals(eventId));
+        expect(data['logText'], contains('Alice'));
+        expect(data['logText'], contains('Dinner'));
+        expect(data['logText'], contains('12.345 OMR'));
+        expect(metadata, containsPair('expenseId', expense.id));
+        expect(metadata, containsPair('amount', '12.345'));
+        expect(metadata, containsPair('currency', 'OMR'));
+        expect(metadata, containsPair('payerParticipantId', 'p1'));
+      });
     });
 
     group('watchExpenses', () {
