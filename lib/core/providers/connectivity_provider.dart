@@ -8,6 +8,8 @@ import '../config/firebase_config.dart';
 /// Connectivity state
 enum ConnectivityStatus { online, offline, syncing }
 
+typedef ConnectivityProbe = Future<bool?> Function();
+
 /// Connectivity state provider
 final connectivityProvider =
     StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>((ref) {
@@ -28,14 +30,36 @@ final connectivityProvider =
 class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
     with WidgetsBindingObserver {
   Timer? _checkTimer;
+  final ConnectivityProbe _connectivityProbe;
 
-  ConnectivityNotifier() : super(ConnectivityStatus.online) {
+  ConnectivityNotifier({ConnectivityProbe? connectivityProbe})
+    : _connectivityProbe = connectivityProbe ?? _defaultConnectivityProbe,
+      super(ConnectivityStatus.online) {
     try {
       WidgetsBinding.instance.addObserver(this);
     } catch (_) {
       // No binding in unit tests — lifecycle observation skipped.
     }
     _startPeriodicCheck();
+  }
+
+  static Future<bool?> _defaultConnectivityProbe() async {
+    try {
+      final uid = FirebaseConfig.currentUser?.uid;
+      if (uid == null) return null;
+      await FirebaseConfig.firestore
+          .collection('fcm_tokens')
+          .doc(uid)
+          .get(const GetOptions(source: Source.server));
+      return true;
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return null;
+    }
   }
 
   void _startPeriodicCheck() {
@@ -60,24 +84,14 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   /// Ping Firestore to check connectivity.
   ///
   /// Uses [Source.server] so the SDK attempts a real network request.
-  /// A [FirebaseException] with code `unavailable` indicates no network.
+  /// A [FirebaseException] with code `unavailable` or `deadline-exceeded`
+  /// indicates no network. Permission/auth/probe errors are not treated as
+  /// offline, because they still mean the server answered.
   ///
   /// Reads the caller's own `fcm_tokens/{uid}` document. A missing document
   /// still proves the server is reachable, while avoiding any broad collection
   /// read permission.
-  Future<bool> _isOnline() async {
-    try {
-      final uid = FirebaseConfig.currentUser?.uid;
-      if (uid == null) return false;
-      await FirebaseConfig.firestore
-          .collection('fcm_tokens')
-          .doc(uid)
-          .get(const GetOptions(source: Source.server));
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
+  Future<bool?> _isOnline() => _connectivityProbe();
 
   /// Check current connectivity and update state.
   ///
@@ -87,9 +101,9 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
     final isOnline = await _isOnline();
     if (!mounted) return;
 
-    if (isOnline) {
+    if (isOnline == true) {
       state = ConnectivityStatus.online;
-    } else {
+    } else if (isOnline == false) {
       state = ConnectivityStatus.offline;
     }
   }

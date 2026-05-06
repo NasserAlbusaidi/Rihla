@@ -32,7 +32,10 @@ void main() {
     group('state transitions', () {
       test('setOffline transitions to offline', () {
         notifier.setOffline();
-        expect(container.read(connectivityProvider), ConnectivityStatus.offline);
+        expect(
+          container.read(connectivityProvider),
+          ConnectivityStatus.offline,
+        );
       });
 
       test('setOnline transitions to online', () {
@@ -43,7 +46,10 @@ void main() {
 
       test('setSyncing transitions to syncing', () {
         notifier.setSyncing();
-        expect(container.read(connectivityProvider), ConnectivityStatus.syncing);
+        expect(
+          container.read(connectivityProvider),
+          ConnectivityStatus.syncing,
+        );
       });
 
       test('setOnline after syncing returns to online', () {
@@ -51,6 +57,55 @@ void main() {
         notifier.setOnline();
         expect(container.read(connectivityProvider), ConnectivityStatus.online);
       });
+
+      test(
+        'checkConnectivity transitions offline when probe is offline',
+        () async {
+          final probeContainer = ProviderContainer(
+            overrides: [
+              connectivityProvider.overrideWith(
+                (ref) =>
+                    ConnectivityNotifier(connectivityProbe: () async => false),
+              ),
+            ],
+          );
+          addTearDown(probeContainer.dispose);
+
+          await probeContainer
+              .read(connectivityProvider.notifier)
+              .checkConnectivity();
+
+          expect(
+            probeContainer.read(connectivityProvider),
+            ConnectivityStatus.offline,
+          );
+        },
+      );
+
+      test(
+        'checkConnectivity keeps state when probe is inconclusive',
+        () async {
+          final probeContainer = ProviderContainer(
+            overrides: [
+              connectivityProvider.overrideWith(
+                (ref) =>
+                    ConnectivityNotifier(connectivityProbe: () async => null)
+                      ..setOnline(),
+              ),
+            ],
+          );
+          addTearDown(probeContainer.dispose);
+
+          await probeContainer
+              .read(connectivityProvider.notifier)
+              .checkConnectivity();
+
+          expect(
+            probeContainer.read(connectivityProvider),
+            ConnectivityStatus.online,
+          );
+        },
+      );
     });
 
     group('dispose', () {
@@ -62,11 +117,14 @@ void main() {
 
     group('ConnectivityStatus enum', () {
       test('has online, offline, and syncing values', () {
-        expect(ConnectivityStatus.values, containsAll([
-          ConnectivityStatus.online,
-          ConnectivityStatus.offline,
-          ConnectivityStatus.syncing,
-        ]));
+        expect(
+          ConnectivityStatus.values,
+          containsAll([
+            ConnectivityStatus.online,
+            ConnectivityStatus.offline,
+            ConnectivityStatus.syncing,
+          ]),
+        );
       });
     });
   });
