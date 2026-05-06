@@ -91,6 +91,28 @@ void main() {
       },
     );
 
+    test(
+      'does not call removeToken() when notifications are already off on activation',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            notificationServiceProvider.overrideWithValue(
+              mockNotificationService,
+            ),
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container.read(appBootstrapProvider);
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(() => mockNotificationService.removeToken());
+      },
+    );
+
     test('ref.watch(appBootstrapProvider) exists in lib/main.dart', () {
       // This test verifies the production wiring via static analysis.
       // The grep verification in CI/acceptance criteria handles this —

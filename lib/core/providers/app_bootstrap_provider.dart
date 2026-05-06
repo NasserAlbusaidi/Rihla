@@ -27,6 +27,7 @@ final appBootstrapProvider = Provider<void>((ref) {
   ref.listen<bool>(
     settingsProvider.select((value) => value.pushNotificationsEnabled),
     (previous, next) {
+      if (previous == null && !next) return;
       unawaited(syncNotifications());
     },
     fireImmediately: true,
