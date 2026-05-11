@@ -34,6 +34,21 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
+npm20() {
+  local npm_cli
+  npm_cli="$(command -v npm || true)"
+  if [ -z "$npm_cli" ]; then
+    echo "npm not found"
+    return 1
+  fi
+
+  npx --yes node@20 "$npm_cli" "$@"
+}
+
+node20_available() {
+  npx --yes node@20 -e 'const major = Number(process.versions.node.split(".")[0]); console.log(process.version); process.exit(major === 20 ? 0 : 1);'
+}
+
 setup_java21() {
   if [ -z "$JAVA21_HOME" ]; then
     if require_cmd brew; then
@@ -73,9 +88,10 @@ check_raw_coverage() {
 cd "$ROOT_DIR"
 
 run_step "Java 21 available" setup_java21
-run_step "Functions dependencies install from lockfile" npm --prefix functions ci
-run_step "Functions dependency audit at low severity" npm --prefix functions audit --omit=dev --audit-level=low
-run_step "Functions TypeScript build" npm --prefix functions run build
+run_step "Node 20 available for Functions commands" node20_available
+run_step "Functions dependencies install from lockfile" npm20 --prefix functions ci
+run_step "Functions dependency audit at low severity" npm20 --prefix functions audit --omit=dev --audit-level=low
+run_step "Functions TypeScript build" npm20 --prefix functions run build
 run_step "Firebase emulator rules/functions tests" \
   npx --yes firebase-tools@15.8.0 emulators:exec \
     --project rihla-safar-test \
