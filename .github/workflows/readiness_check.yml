@@ -79,8 +79,10 @@ jobs:
 
       - name: Check raw coverage threshold
         run: |
-          COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 \
-            | awk '/lines\.\.\.\.\.\.\.:/ { gsub("%", "", $2); print $2; exit }')
+          SUMMARY=$(lcov --summary coverage/lcov.info 2>&1)
+          echo "$SUMMARY"
+          COVERAGE=$(printf '%s\n' "$SUMMARY" \
+            | awk '/lines/ && /%/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9.]+%$/) { gsub("%", "", $i); print $i; exit } }')
           if [ -z "$COVERAGE" ]; then
             echo "::error::Unable to read line coverage from coverage/lcov.info"
             exit 1

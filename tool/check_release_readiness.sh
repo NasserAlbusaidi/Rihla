@@ -55,8 +55,11 @@ setup_java21() {
 
 check_raw_coverage() {
   local coverage
-  coverage="$(lcov --summary coverage/lcov.info 2>&1 \
-    | awk '/lines\.\.\.\.\.\.\.:/ { gsub("%", "", $2); print $2; exit }')"
+  local summary
+  summary="$(lcov --summary coverage/lcov.info 2>&1)"
+  echo "$summary"
+  coverage="$(printf '%s\n' "$summary" \
+    | awk '/lines/ && /%/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9.]+%$/) { gsub("%", "", $i); print $i; exit } }')"
 
   if [ -z "$coverage" ]; then
     echo "Unable to read line coverage from coverage/lcov.info"
