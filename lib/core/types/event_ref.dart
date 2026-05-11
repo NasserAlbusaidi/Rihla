@@ -6,6 +6,6 @@
 /// Example:
 /// ```dart
 /// final ref = (groupId: 'g1', eventId: 'e1');
-/// ref.watch(eventGearItemsProvider(ref));
+/// ref.watch(eventExpensesProvider(ref));
 /// ```
 typedef EventRef = ({String groupId, String eventId});

@@ -85,6 +85,7 @@ class _Numpad extends StatelessWidget {
       children: keys.map((key) {
         if (key == 'back') {
           return _NumpadKey(
+            semanticLabel: 'Backspace',
             child: Icon(
               Icons.backspace_outlined,
               color: context.colors.textPrimary,
@@ -93,11 +94,12 @@ class _Numpad extends StatelessWidget {
           );
         }
         return _NumpadKey(
+          semanticLabel: key == '.' ? 'Decimal point' : key,
           child: Text(
             key,
             style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
+              fontSize: key == '.' ? 36 : 28,
+              fontWeight: key == '.' ? FontWeight.w700 : FontWeight.w600,
               color: context.colors.textPrimary,
             ),
           ),
@@ -109,21 +111,33 @@ class _Numpad extends StatelessWidget {
 }
 
 class _NumpadKey extends StatelessWidget {
+  final String semanticLabel;
   final Widget child;
   final VoidCallback onTap;
 
-  const _NumpadKey({required this.child, required this.onTap});
+  const _NumpadKey({
+    required this.semanticLabel,
+    required this.child,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 80,
-        height: 60,
-        alignment: Alignment.center,
-        child: child,
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Tooltip(
+        message: semanticLabel,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: 80,
+            height: 60,
+            alignment: Alignment.center,
+            child: child,
+          ),
+        ),
       ),
     );
   }

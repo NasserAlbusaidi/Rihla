@@ -90,13 +90,11 @@ The app requires a `config.json` file at the project root. This file is gitignor
 ```json
 {
   "SENTRY_DSN": "",
-  "THAWANI_API_KEY": "",
-  "THAWANI_PUBLISHABLE_KEY": "",
-  "THAWANI_MODE": "test"
+  "USE_FIREBASE_EMULATOR": false
 }
 ```
 
-Empty strings are valid for local development. Sentry will not report errors and Thawani payment flows will fail, but all other features work normally.
+An empty Sentry DSN is valid for local development; Sentry will not report errors.
 
 See [docs/CONFIGURATION.md](./CONFIGURATION.md) for the full list of keys, what each one does, and production configuration.
 
@@ -104,7 +102,7 @@ See [docs/CONFIGURATION.md](./CONFIGURATION.md) for the full list of keys, what 
 
 ## 5. Running the App
 
-The `--dart-define-from-file` flag is required on every run. The app will start without it, but `SENTRY_DSN` and Thawani keys will fall through to their empty defaults, and the config is considered incomplete.
+The `--dart-define-from-file` flag is required on every run. The app will start without it, but `SENTRY_DSN` and `USE_FIREBASE_EMULATOR` will fall through to their defaults, and the config is considered incomplete.
 
 ```bash
 flutter run --dart-define-from-file=config.json

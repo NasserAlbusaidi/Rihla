@@ -15,6 +15,7 @@ import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
+import '../../groups/providers/group_balance_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
@@ -105,12 +106,14 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             return name != null ? e.copyWith(payerName: name) : e;
           }).toList();
           final settlements = settlementsAsync.valueOrNull ?? [];
+          final currentUserId = ref.watch(currentUserIdProvider);
           return _Body(
             groupId: groupId,
             eventId: eventId,
             event: event,
             expenses: expenses,
             settlements: settlements,
+            currentUserId: currentUserId,
             categoryFilter: _categoryFilter,
             onCategoryFilter: (cat) => setState(() => _categoryFilter = cat),
           );
@@ -129,6 +132,7 @@ class _Body extends StatelessWidget {
     required this.event,
     required this.expenses,
     required this.settlements,
+    required this.currentUserId,
     required this.categoryFilter,
     required this.onCategoryFilter,
   });
@@ -138,6 +142,7 @@ class _Body extends StatelessWidget {
   final Event event;
   final List<Expense> expenses;
   final List<Settlement> settlements;
+  final String? currentUserId;
   final int? categoryFilter;
   final ValueChanged<int?> onCategoryFilter;
 
@@ -154,7 +159,9 @@ class _Body extends StatelessWidget {
           ),
         )
         .toList();
-    final currentPid = participants.isNotEmpty ? participants.first.id : null;
+    final currentPid = event.participantIds.contains(currentUserId)
+        ? currentUserId
+        : null;
 
     final balances = BalanceCalculator.calculateBalances(
       expenses: expenses,
@@ -323,7 +330,7 @@ class _CoverHeader extends StatelessWidget {
     final statusBar = MediaQuery.of(context).padding.top;
     final dateRange = _formatDateRange(event.startDate, event.endDate);
     final captionParts = <String>[
-      if (dateRange != null) dateRange,
+      ?dateRange,
       '${participants.length} '
           'PEOPLE',
     ];
@@ -1189,7 +1196,7 @@ List<_DayGroup> _groupByDay(List<_TimelineItem> items, DateTime now) {
 int _categoryBucket(String? name) {
   if (name == null) return 6;
   final lower = name.toLowerCase();
-  bool any(List<String> needles) => needles.any((n) => lower.contains(n));
+  bool any(List<String> needles) => needles.any(lower.contains);
   if (any(const ['food', 'rest', 'din', 'meal'])) return 1;
   if (any(const ['lodg', 'hotel', 'accom', 'stay'])) return 2;
   if (any(const ['trans', 'taxi', 'flight', 'uber', 'train'])) return 3;

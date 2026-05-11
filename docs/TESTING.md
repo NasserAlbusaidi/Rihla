@@ -37,9 +37,10 @@ test/
 │   ├── money_serializer_test.dart      # MoneySerializer subunit conversion
 │   ├── expense_service_test.dart       # ExpenseService with FakeFirebaseFirestore
 │   ├── settlement_service_test.dart    # SettlementService with FakeFirebaseFirestore
-│   ├── gear_service_test.dart          # GearService with FakeFirebaseFirestore
 │   ├── group_service_test.dart         # GroupService with FakeFirebaseFirestore
 │   ├── group_join_test.dart            # Invite code lookup logic
+│   ├── activity_service_test.dart      # ActivityService with FakeFirebaseFirestore
+│   ├── android_manifest_test.dart      # Release manifest permissions
 │   ├── local_database_migration_test.dart # SQLite schema migrations (sqflite_common_ffi)
 │   ├── balance_cache_repository_test.dart # SQLite cache layer
 │   ├── connectivity_provider_test.dart # ConnectivityNotifier state machine
@@ -260,7 +261,6 @@ authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
 currentUserProvider.overrideWithValue(mockUser),
 currentUserIdProvider.overrideWithValue('user-1'),
 userGroupsProvider.overrideWith((ref) => Stream.value([mockGroup])),
-onboardingCompleteProvider.overrideWith((ref) => true),
 crossGroupBalanceProvider.overrideWith(
   (ref) => AsyncValue.data((net: Decimal.zero, groupCount: 1, isLoading: false)),
 ),
@@ -305,14 +305,8 @@ eventExpensesProvider(eventRef).overrideWith((ref) => Stream.value(expenses)),
 eventSettlementsProvider(eventRef).overrideWith(
   (ref) => Stream.value(const <Settlement>[]),
 ),
-eventGearItemsProvider(eventRef).overrideWith(
-  (ref) => Stream.value(const <GearItem>[]),
-),
 eventSubGroupsProvider(eventRef).overrideWith(
   (ref) => Stream.value(const <SubGroup>[]),
-),
-eventDocumentsProvider(eventRef).overrideWith(
-  (ref) => Stream.value(const <Document>[]),
 ),
 ```
 
@@ -327,27 +321,6 @@ eventUnifiedLedgerProvider(_eventRef).overrideWith(
 ),
 ```
 
-**GearScreen**:
-```dart
-gearServiceProvider.overrideWithValue(mockGearService),
-eventDetailProvider(_testEventRef).overrideWith((ref) => Stream.value(_testEvent)),
-eventGearItemsProvider(_testEventRef).overrideWith((ref) => Stream.value(items)),
-currentUserProvider.overrideWith((ref) => mockUser),
-gearLoadingProvider.overrideWith((ref) => false),
-```
-
-**MemoriesScreen**:
-```dart
-eventDetailProvider(_testEventRef).overrideWith((ref) => Stream.value(_testEvent)),
-eventMemoriesProvider(_testEventRef).overrideWith((ref) => Stream.value([])),
-```
-
-**VaultScreen**:
-```dart
-eventDetailProvider(_testEventRef).overrideWith((ref) => Stream.value(_testEvent)),
-eventDocumentsProvider(_testEventRef).overrideWith((ref) => Stream.value([])),
-documentLoadingProvider.overrideWith((ref) => false),
-```
 
 ### Using testRouter for navigation tests
 
@@ -448,7 +421,7 @@ All mocks use `mocktail` (not `mockito`). No code generation required.
 ```dart
 import 'package:mocktail/mocktail.dart';
 
-class MockGearService extends Mock implements GearService {}
+class MockGroupService extends Mock implements GroupService {}
 class MockNotificationService extends Mock implements NotificationService {}
 class MockFirebaseUser extends Mock implements firebase_auth.User {}
 ```
@@ -456,16 +429,12 @@ class MockFirebaseUser extends Mock implements firebase_auth.User {}
 Set up stubs in `setUp`:
 ```dart
 setUp(() {
-  mockGearService = MockGearService();
+  mockGroupService = MockGroupService();
   when(
-    () => mockGearService.addGearItem(
-      groupId: any(named: 'groupId'),
-      eventId: any(named: 'eventId'),
-      itemName: any(named: 'itemName'),
-      isHighPriority: any(named: 'isHighPriority'),
-      sequenceId: any(named: 'sequenceId'),
+    () => mockGroupService.joinGroup(
+      inviteCode: any(named: 'inviteCode'),
     ),
-  ).thenAnswer((_) async => _testItem);
+  ).thenAnswer((_) async => _testGroup);
 });
 ```
 
@@ -550,16 +519,6 @@ In tests that don't need a real device name, an empty values map works:
 ```dart
 SharedPreferences.setMockInitialValues({});
 ```
-
-### onboardingCompleteProvider in integration tests
-
-`onboardingCompleteProvider` is a `FutureProvider` that reads `SharedPreferences`. The router redirect reads `valueOrNull` synchronously. In tests, override with a synchronous value:
-
-```dart
-onboardingCompleteProvider.overrideWith((ref) => true),
-```
-
-Do not attempt to override it with an async value — the redirect runs synchronously.
 
 ### Infinite animation loops with pumpAndSettle
 
@@ -699,7 +658,7 @@ The excluded paths are temporary coverage exemptions for feature modules still u
 |--------|---------|
 | `KEYSTORE_BASE64` | Android signing keystore (base64) |
 | `KEY_PROPERTIES` | `key.properties` file content |
-| `CONFIG_JSON` | `config.json` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SENTRY_DSN` |
+| `CONFIG_JSON` | Production `config.json` values such as `SENTRY_DSN` and `USE_FIREBASE_EMULATOR=false` |
 | `GOOGLE_PLAY_JSON_KEY` | Google Play service account for upload |
 
 No iOS CI — iOS builds are done manually.

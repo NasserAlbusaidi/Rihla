@@ -1,37 +1,36 @@
 # Push Notifications Setup
 
-Rihla stores device tokens in Supabase, but delivery still requires manual project setup outside the repo.
+Rihla uses Firebase Cloud Messaging for device tokens. The current app registers and removes each user's token in Firestore at `fcm_tokens/{uid}` after notification opt-in.
 
-## Required Secrets
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `FCM_SERVER_KEY`
+## App Requirements
 
-Set these on the Supabase Edge Function used by `supabase/functions/send-notification`.
+- `android/app/google-services.json`
+- `ios/Runner/GoogleService-Info.plist`
+- Firebase Messaging enabled for project `rihla-safar`
+- iOS APNs key or certificate configured in Firebase Console before testing on iOS devices
 
-## Required Database Objects
-- Apply migrations through `026_fcm_tokens.sql`.
-- Deploy the `send-notification` edge function.
+## Runtime Behavior
 
-## Required Webhooks
-Create database webhooks in Supabase for:
-- `public.expenses` on `INSERT`
-- `public.settlements` on `INSERT`
+- `NotificationService.initialize()` requests permission only after the user opts in.
+- Accepted permissions save the FCM token to `fcm_tokens/{uid}` with `user_id`, `token`, `platform`, and `updated_at`.
+- Token refreshes update the same Firestore document.
+- Turning notifications off deletes `fcm_tokens/{uid}`.
 
-Both webhooks should POST to the deployed `send-notification` function.
+## Firestore Rules
 
-## Payload Expectations
-The edge function expects:
-- `table`
-- `type`
-- `record`
+The app expects owner-only access for notification tokens:
 
-The `record` must include:
-- `trip_id`
-- `payer_participant_id`
-- `amount`
-- `currency`
+```text
+match /fcm_tokens/{userId} {
+  allow read, write: if signedIn() && request.auth.uid == userId;
+}
+```
+
+## Server Delivery
+
+There is no Edge Function or webhook delivery path in the current codebase. Future notification delivery should use Firebase Admin SDK from Cloud Functions or another trusted server and read from `fcm_tokens`.
 
 ## Notes
-- Notification opt-in is controlled in app settings and stored in `SharedPreferences`.
-- If the device permission is denied, the app will keep notifications off and surface that state in settings.
+
+- Notification opt-in is controlled in app settings and stored locally.
+- If device permission is denied, the app keeps notifications off and surfaces that state in settings.

@@ -1,5 +1,8 @@
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:safar/core/config/firebase_config.dart';
 
 /// Behavioral tests for Firebase anonymous auth (DATA-05).
 ///
@@ -30,10 +33,7 @@ void main() {
 
     test('no duplicate sign-in when session already active', () async {
       final existingUser = MockUser(uid: 'existing-uid-123', isAnonymous: true);
-      final mockAuth = MockFirebaseAuth(
-        signedIn: true,
-        mockUser: existingUser,
-      );
+      final mockAuth = MockFirebaseAuth(signedIn: true, mockUser: existingUser);
 
       // Session is already active
       expect(mockAuth.currentUser, isNotNull);
@@ -69,9 +69,9 @@ void main() {
       final mockAuth = MockFirebaseAuth(signedIn: false);
 
       // Collect auth state events; skip the initial null
-      final userFuture = mockAuth
-          .authStateChanges()
-          .firstWhere((user) => user != null);
+      final userFuture = mockAuth.authStateChanges().firstWhere(
+        (user) => user != null,
+      );
 
       // Trigger anonymous sign-in
       await mockAuth.signInAnonymously();
@@ -82,5 +82,32 @@ void main() {
       expect(emittedUser!.isAnonymous, isTrue);
       expect(emittedUser.uid, isNotEmpty);
     });
+
+    test(
+      'internal-error during restored token check starts a fresh session',
+      () async {
+        var didSignOut = false;
+        var didSignIn = false;
+
+        final recovered = await FirebaseConfig.recoverRestoredSessionIfNeeded(
+          verifyToken: () async {
+            throw FirebaseAuthException(
+              code: 'internal-error',
+              message: 'bad persisted token',
+            );
+          },
+          signOut: () async {
+            didSignOut = true;
+          },
+          signInAnonymously: () async {
+            didSignIn = true;
+          },
+        );
+
+        expect(recovered, isTrue);
+        expect(didSignOut, isTrue);
+        expect(didSignIn, isTrue);
+      },
+    );
   });
 }

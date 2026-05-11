@@ -10,7 +10,7 @@ How to configure Rihla for local development and production builds.
 
 Rihla uses two distinct configuration mechanisms:
 
-- **Compile-time dart-define**: Runtime secrets (Sentry DSN, Thawani keys) are injected at build time via `--dart-define-from-file=config.json`. They are baked into the compiled binary and read with `const String.fromEnvironment(...)`. They cannot be changed without a rebuild.
+- **Compile-time dart-define**: Runtime config such as the Sentry DSN and Firebase emulator toggle is injected at build time via `--dart-define-from-file=config.json`. Values are baked into the compiled binary and read with `const String.fromEnvironment(...)` / `bool.fromEnvironment(...)`. They cannot be changed without a rebuild.
 - **Firebase platform files**: Firebase is configured via platform-specific JSON/plist files placed at known paths before building. These are gitignored and must be obtained from the Firebase Console.
 
 Neither mechanism uses `.env` files or runtime environment variables. There is no server-side secret loading.
@@ -21,29 +21,25 @@ Neither mechanism uses `.env` files or runtime environment variables. There is n
 
 `config.json` lives at the project root and is gitignored (see `.gitignore` line `/config.json`). It must exist before running or building the app.
 
-### Required keys
+### Supported keys
 
 | Key | Read by | Purpose |
 |-----|---------|---------|
 | `SENTRY_DSN` | `lib/main.dart` | Sentry error reporting DSN. If empty, Sentry initializes without a destination and errors are silently dropped. |
-| `THAWANI_API_KEY` | `lib/features/ledger/services/thawani_service.dart` | Thawani payment gateway API key. Defaults to `''` if absent — payment flows will fail at runtime. |
-| `THAWANI_PUBLISHABLE_KEY` | `lib/features/ledger/services/thawani_service.dart` | Thawani publishable key for client-side payment initiation. Defaults to `''`. |
-| `THAWANI_MODE` | `lib/features/ledger/services/thawani_service.dart` | `"test"` or `"live"`. Defaults to `"test"` if absent. |
+| `USE_FIREBASE_EMULATOR` | `lib/main.dart` | Optional local-development toggle. Set to `true` only when running the local Firebase emulator suite. Production builds should omit it or set it to `false`. |
 
-> **Note on SUPABASE_URL / SUPABASE_ANON_KEY**: These keys appear in `CLAUDE.md` documentation but are not present in any `String.fromEnvironment(...)` call in the current codebase. Supabase was removed during migration to Firebase-only (v1.0 Phase 7). Do not include them in `config.json`.
+Do not include removed backend or payment-gateway keys in `config.json`; the app is Firebase-only and does not have payment flows in the shippable v1 surface.
 
 ### Minimum working config.json
 
 ```json
 {
   "SENTRY_DSN": "",
-  "THAWANI_API_KEY": "",
-  "THAWANI_PUBLISHABLE_KEY": "",
-  "THAWANI_MODE": "test"
+  "USE_FIREBASE_EMULATOR": false
 }
 ```
 
-Empty strings are valid for local development. Sentry will not report errors and Thawani payment flows will fail, but everything else runs normally.
+An empty Sentry DSN is valid for local development; Sentry will not report errors.
 
 ### How keys are read
 
@@ -53,12 +49,13 @@ Keys are declared as compile-time constants:
 // lib/main.dart
 options.dsn = const String.fromEnvironment('SENTRY_DSN');
 
-// lib/features/ledger/services/thawani_service.dart
-static const String _apiKey = String.fromEnvironment('THAWANI_API_KEY', defaultValue: '');
-static const bool _testMode = String.fromEnvironment('THAWANI_MODE', defaultValue: 'test') == 'test';
+const bool _useFirebaseEmulator = bool.fromEnvironment(
+  'USE_FIREBASE_EMULATOR',
+  defaultValue: false,
+);
 ```
 
-`const String.fromEnvironment` is resolved at compile time. Values not provided at build time fall through to their `defaultValue`.
+`String.fromEnvironment` and `bool.fromEnvironment` are resolved at compile time. Values not provided at build time fall through to their `defaultValue`.
 
 ---
 
@@ -122,7 +119,7 @@ Before running `flutter run` or building:
 
 1. **Flutter SDK** — install Flutter stable channel. The project requires Dart SDK `^3.10.1` (see `pubspec.yaml`).
 
-2. **config.json** — create at project root with at minimum the keys from section 2.
+2. **config.json** — create at project root with the supported keys from section 2.
 
 3. **google-services.json** — place at `android/app/google-services.json`.
 
@@ -148,7 +145,7 @@ flutter run --dart-define-from-file=config.json
 
 ### How --dart-define-from-file works
 
-`--dart-define-from-file=config.json` reads all top-level string keys from the JSON file and injects them as compile-time defines. Each key becomes accessible via `String.fromEnvironment('KEY_NAME')`. This is equivalent to passing `--dart-define=KEY=VALUE` for each key individually.
+`--dart-define-from-file=config.json` reads all top-level values from the JSON file and injects them as compile-time defines. Each key becomes accessible via `String.fromEnvironment('KEY_NAME')`, `bool.fromEnvironment('KEY_NAME')`, or the matching environment accessor. This is equivalent to passing `--dart-define=KEY=VALUE` for each key individually.
 
 The flag must be passed on every `flutter run` and `flutter build` invocation. Omitting it causes all `fromEnvironment` calls to return their `defaultValue` (or `''` / `false` for those without one).
 

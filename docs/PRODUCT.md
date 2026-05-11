@@ -120,7 +120,7 @@ The app uses GoRouter. Every route is declarative; deep links work without prelo
       /settings                     (EventSettingsScreen)
 ```
 
-Page transitions: most routes use a slide-right transition; `/onboarding` and `/home` fade; `/create-group` and `/join-group` slide up.
+Page transitions: most module routes use a slide-right transition; `/home`, `/profile`, and `/activity` fade; `/create-group` and `/join-group` slide up.
 
 > Note: `/event/:eid` (EventCommandCenter) is reachable in the router but the UI never navigates to it — event cards now jump straight to `/event/:eid/ledger`. This was intentional after Phase 39 reduced events to a single module. EventCommandCenter remains as dead-but-not-orphaned code.
 
@@ -327,7 +327,7 @@ The following were intentionally removed in Phase 39 ("Strip to Shippable") and 
 - Gear module (packing lists)
 - Onboarding tour (3-page PageView)
 - Multi-currency conversion (per-event currency, FX rates)
-- Thawani payment processing
+- Payment processing
 - Chat / messaging tab
 
 The Firestore schema and SQLite cache still tolerate legacy keys for these features (silent fromMap ignore) so existing user data does not break, but no UI exposes them.

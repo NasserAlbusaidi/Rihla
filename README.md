@@ -10,17 +10,12 @@ Package: `safar` · Android ID: `com.safar.safar` · Version: 1.1.0
 ## Key Features
 
 - **Groups** — Create or join persistent groups with an invite-code flow. Group financial history accumulates across all events.
-- **Events** — Spin up typed events (trip, camping, dinner, custom) inside a group. Each type pre-loads relevant modules.
+- **Events** — Spin up typed events (trip, camping, dinner, custom) inside a group with Ledger and Activity available in the command center.
 - **Ledger** — Split expenses across all members or sub-groups. All money math uses the `Decimal` package (OMR, 3 decimal places). Settlement optimization finds the minimum number of transactions.
-- **Gear** — Track shared equipment per event.
-- **Logistics** — Itinerary and logistics planning per event.
-- **Vault** — Document storage backed by Firebase Storage (signed URLs, max 25 MB per file).
-- **Memories** — Photo/media uploads per event via Firebase Storage.
 - **Activity feeds** — Group-level and event-level activity logs.
-- **Offline-first** — All data is cached in SQLite (`safar_cache.db`). Writes are queued and synced to Firestore when connectivity returns.
+- **Offline-first** — Firestore offline persistence keeps reads and writes available while SQLite (`safar_cache.db`) caches data for fast local balance calculations.
 - **Push notifications** — Firebase Cloud Messaging (FCM) for real-time group/event updates.
 - **Frictionless auth** — Firebase anonymous sign-in on first launch; no login screen.
-- **Payments** — Thawani payment integration for Omani payment processing.
 
 ---
 
@@ -31,11 +26,11 @@ Package: `safar` · Android ID: `com.safar.safar` · Version: 1.1.0
 | Framework | Flutter (Dart SDK ^3.10.1) |
 | State management | Riverpod 2.x (`flutter_riverpod ^2.4.9`) |
 | Navigation | GoRouter (`^13.2.0`) |
-| Backend | Firebase — Firestore, Auth, Storage, FCM |
+| Backend | Firebase — Firestore, Auth, Cloud Functions, Storage, FCM |
 | Local cache | SQLite via `sqflite ^2.4.2` (v6 schema, `safar_cache.db`) |
 | Financial math | `decimal ^3.2.4` |
 | Error tracking | Sentry (`sentry_flutter ^9.0.0`) |
-| Typography | Plus Jakarta Sans via `google_fonts ^6.1.0` |
+| Typography | Plus Jakarta Sans via `google_fonts ^8.0.2` |
 | Animations | `flutter_animate ^4.5.0`, `animations ^2.0.0` |
 | Icons | `iconsax ^0.0.8` |
 | Testing | `mocktail`, `fake_cloud_firestore`, `firebase_auth_mocks` |
@@ -86,17 +81,13 @@ lib/
 │   └── utils/                    # Formatters, helpers
 ├── features/                     # Feature-first modules
 │   ├── auth/
+│   ├── activity/                 # Activity feeds
+│   ├── home/                     # Dashboard
 │   ├── groups/                   # Persistent groups + invite flow
 │   ├── events/                   # Event creation + command center
 │   ├── ledger/                   # Expense splitting + settlement
-│   ├── gear/
-│   ├── logistics/
-│   ├── vault/                    # Document storage
-│   ├── memories/                 # Photo uploads
-│   ├── activity/                 # Activity feeds
-│   ├── home/
 │   ├── settings/
-│   └── onboarding/
+│   └── trip/                     # Legacy compatibility models/providers
 └── shared/
     └── widgets/                  # ModuleHeader, AppTabBar, SkeletonLoader,
                                   # OfflineBanner, EmptyStateView, LoadingButton, …
@@ -134,7 +125,7 @@ flutter analyze
 | Type | Location | What's covered |
 |---|---|---|
 | Unit | `test/unit/` | BalanceCalculator, formatters, services, providers, models, design tokens |
-| Widget/Feature | `test/features/` | Screen widgets — groups, ledger, gear, logistics, vault, memories |
+| Widget/Feature | `test/features/` | Screen widgets — groups, events, ledger, home, settings |
 | Integration | `test/integration/` | Happy path, offline scenario, Firebase auth, money round-trips |
 
 Tests use `mocktail` for mocking and `fake_cloud_firestore` / `firebase_auth_mocks` to avoid real Firebase calls. Provider overrides swap `sharedPreferencesProvider` and other async deps in test scope.

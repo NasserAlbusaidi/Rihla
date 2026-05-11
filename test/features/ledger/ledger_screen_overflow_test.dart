@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -27,7 +29,12 @@ void main() {
     createdAt: DateTime(2026, 1, 10),
   );
 
-  Widget buildLedger() {
+  Widget buildLedger({
+    Event? eventOverride,
+    List<Expense> expenses = const <Expense>[],
+    String? currentUserId = 'uid-creator',
+  }) {
+    final effectiveEvent = eventOverride ?? event;
     final router = GoRouter(
       initialLocation: '/group/$groupId/event/$eventId/ledger',
       routes: [
@@ -77,12 +84,13 @@ void main() {
 
     return ProviderScope(
       overrides: [
+        currentUserIdProvider.overrideWithValue(currentUserId),
         eventDetailProvider(
           eventRef,
-        ).overrideWith((ref) => Stream.value(event)),
+        ).overrideWith((ref) => Stream.value(effectiveEvent)),
         eventExpensesProvider(
           eventRef,
-        ).overrideWith((ref) => Stream.value(const <Expense>[])),
+        ).overrideWith((ref) => Stream.value(expenses)),
         eventSettlementsProvider(
           eventRef,
         ).overrideWith((ref) => Stream.value(const <Settlement>[])),
@@ -148,6 +156,38 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Settle up route'), findsOneWidget);
+    });
+
+    testWidgets('uses the signed-in member for the event balance', (
+      tester,
+    ) async {
+      final twoMemberEvent = event.copyWith(
+        participantIds: const ['uid-payer', 'uid-debtor'],
+        participantNames: const {'uid-payer': 'Mona', 'uid-debtor': 'Nasser'},
+      );
+      final expenses = [
+        Expense(
+          id: 'expense-1',
+          tripId: eventId,
+          payerParticipantId: 'uid-payer',
+          amount: Decimal.parse('3.000'),
+          description: 'Coffee',
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026, 1, 10),
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildLedger(
+          eventOverride: twoMemberEvent,
+          expenses: expenses,
+          currentUserId: 'uid-debtor',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Net — you owe · trip total'), findsOneWidget);
+      expect(find.text('Mona paid · split 2 ways'), findsOneWidget);
     });
   });
 }

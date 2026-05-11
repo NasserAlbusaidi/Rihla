@@ -11,7 +11,7 @@ Day-to-day reference for working in this codebase. See [ARCHITECTURE.md](./ARCHI
 ### Running the app
 
 ```bash
-# Requires config.json in the repo root with SUPABASE_URL, SUPABASE_ANON_KEY, SENTRY_DSN
+# Requires config.json in the repo root with SENTRY_DSN and optional USE_FIREBASE_EMULATOR
 flutter run --dart-define-from-file=config.json
 ```
 
@@ -73,7 +73,7 @@ Not every folder is required. `trip/` has only `models/` and `providers/` — ad
 
 ### Naming conventions
 
-- Service class: `<Feature>Service` (e.g., `GearService`)
+- Service class: `<Feature>Service` (e.g., `ExpenseService`)
 - Provider for stream: `event<Feature>Provider` for `EventRef`-scoped streams
 - Provider for service: `<feature>ServiceProvider`
 - Loading/error state: `<feature>LoadingProvider`, `<feature>ErrorProvider`
@@ -93,11 +93,11 @@ The primary pattern for all module data. The family parameter is `EventRef` — 
 typedef EventRef = ({String groupId, String eventId});
 
 // In a provider file
-final eventGearItemsProvider =
-    StreamProvider.family<List<GearItem>, EventRef>((ref, eventRef) {
+final eventExpensesProvider =
+    StreamProvider.family<List<Expense>, EventRef>((ref, eventRef) {
   return ref
-      .read(gearServiceProvider)
-      .watchGearItems(eventRef.groupId, eventRef.eventId);
+      .read(expenseServiceProvider)
+      .watchExpenses(eventRef.groupId, eventRef.eventId);
 });
 ```
 
@@ -105,7 +105,7 @@ Usage in a screen:
 
 ```dart
 final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
-final gearAsync = ref.watch(eventGearItemsProvider(eventRef));
+final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
 ```
 
 ### asyncMap side-write pattern (cache-on-success)
@@ -230,7 +230,7 @@ Nest it inside the appropriate parent `GoRoute` — event module routes go under
 | Route type | Transition |
 |---|---|
 | Module screens (most routes) | `_slideRightTransition` — slide from right (Offset(1,0) → zero, `Curves.easeOutCubic`) |
-| `/home`, `/onboarding` | `FadeTransition` |
+| `/home`, `/profile`, `/activity` | `FadeTransition` |
 | `/create-group`, `/join-group` | Slide-up (Offset(0,1) → zero) |
 
 ### No `state.extra`
@@ -270,7 +270,7 @@ const OfflineBanner(),  // from lib/shared/widgets/offline_banner.dart
 
 1. **Reads:** No extra work if your provider uses `StreamProvider` with Firestore — Firestore's offline cache returns the last snapshot automatically.
 
-2. **Writes:** No extra work — Firestore queues writes locally when offline and replays on reconnect. Service methods (`addGearItem`, `createGroup`, etc.) can be called offline.
+2. **Writes:** No extra work — Firestore queues writes locally when offline and replays on reconnect. Service methods (`addExpense`, `createGroup`, etc.) can be called offline.
 
 3. **Balance calculations:** If your feature feeds `BalanceCalculator`, add a `cacheExpenses` / `cacheSettlements` call via `asyncMap` in the stream provider (see expense provider pattern above).
 
@@ -319,7 +319,7 @@ Key tokens for new screens:
 | `success` / `successText` | `#10B981` / `#047857` | Success states (use `successText` for text) |
 | `warning` | `#F59E0B` | Warning badges, offline indicator |
 
-Module accent colors: Ledger = `moduleLedger` (#0D7B74 teal). All other modules = `moduleGear` (#6B7280 gray).
+Module accent colors: Ledger = `moduleLedger` (#0D7B74 teal). Other module accents should use neutral tokens unless a new semantic token is intentionally added.
 
 `textMuted` fails WCAG AA at 2.86:1 on white — never use it for readable labels, amounts, or status text.
 
@@ -347,12 +347,12 @@ AppSpacingTokens.standard.buttonHeight  // 52dp
 
 All live in `lib/shared/widgets/`. Use these before building custom equivalents.
 
-**`ModuleHeader`** — standard header for module screens with back button, title, and optional subtitle/actions. Pass `useDarkTheme: true` for the dark gradient header variant (used by Gear, Vault, Memories).
+**`ModuleHeader`** — standard header for module screens with back button, title, and optional subtitle/actions. Pass `useDarkTheme: true` for the dark gradient header variant.
 
 ```dart
 ModuleHeader(
-  title: 'Gear',
-  subtitle: 'PACK LIST',
+  title: 'Ledger',
+  subtitle: 'SPENDING',
   useDarkTheme: true,
   actions: [/* icon buttons */],
   bottom: AppTabBar(...),  // optional tab bar below title
@@ -523,10 +523,10 @@ All colors via `AppColorTokens.light.*`. The CI pipeline flags hardcoded `Color(
 
 ### Naming
 
-- Providers: `<scope><Entity>Provider` — e.g., `eventGearItemsProvider`, `groupEventsProvider`
-- Services: `<Entity>Service` — e.g., `GearService`, `ExpenseService`
+- Providers: `<scope><Entity>Provider` — e.g., `eventExpensesProvider`, `groupEventsProvider`
+- Services: `<Entity>Service` — e.g., `ExpenseService`, `GroupService`
 - Screens: `<Feature>Screen` — `ConsumerStatefulWidget` for screens with local state, `ConsumerWidget` for stateless
-- Models: plain `<Entity>` — e.g., `GearItem`, `Expense`, `Group`
+- Models: plain `<Entity>` — e.g., `Expense`, `Group`, `Event`
 
 ### Testing
 
@@ -544,16 +544,10 @@ Provider overrides in widget tests follow the `sharedPreferencesProvider` patter
 ProviderScope(
   overrides: [
     sharedPreferencesProvider.overrideWithValue(mockPrefs),
-    eventGearItemsProvider.overrideWith((ref, arg) => Stream.value(mockItems)),
+    eventExpensesProvider.overrideWith((ref, arg) => Stream.value(mockExpenses)),
   ],
   child: const MyScreen(...),
 )
-```
-
-The `onboardingCompleteProvider` must be overridden in integration tests that hit the home screen:
-
-```dart
-onboardingCompleteProvider.overrideWith((ref) => true),
 ```
 
 Minimum coverage: 80%.

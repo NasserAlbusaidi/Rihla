@@ -55,17 +55,63 @@ class FirebaseConfig {
     final restoredUser = await auth.authStateChanges().first;
     if (restoredUser != null) {
       log('Firebase session restored (uid: ${restoredUser.uid})');
+      await recoverRestoredSessionIfNeeded(
+        verifyToken: () async {
+          await restoredUser.getIdToken();
+        },
+        signOut: auth.signOut,
+        signInAnonymously: _signInAnonymously,
+      );
       return;
     }
+
     log('No persisted Firebase session — signing in anonymously');
+    await _signInAnonymously();
+  }
+
+  static Future<void> _signInAnonymously() async {
     try {
       await auth.signInAnonymously();
       log(
-          'Firebase anonymous session established (uid: ${auth.currentUser?.uid})');
+        'Firebase anonymous session established (uid: ${auth.currentUser?.uid})',
+      );
     } on FirebaseAuthException catch (e) {
-      log('Firebase anonymous sign-in failed: ${e.code} — ${e.message}',
-          error: e);
+      log(
+        'Firebase anonymous sign-in failed: ${e.code} — ${e.message}',
+        error: e,
+      );
       rethrow;
+    }
+  }
+
+  @visibleForTesting
+  static Future<bool> recoverRestoredSessionIfNeeded({
+    required Future<void> Function() verifyToken,
+    required Future<void> Function() signOut,
+    required Future<void> Function() signInAnonymously,
+  }) async {
+    try {
+      await verifyToken();
+      log('Firebase restored session token verified');
+      return false;
+    } on FirebaseAuthException catch (e, stackTrace) {
+      if (e.code != 'internal-error') {
+        log(
+          'Firebase restored session token check failed: ${e.code} — ${e.message}',
+          error: e,
+          stackTrace: stackTrace,
+        );
+        return false;
+      }
+
+      log(
+        'Firebase restored session token is invalid; creating a fresh anonymous session',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      await signOut();
+      await signInAnonymously();
+      return true;
     }
   }
 

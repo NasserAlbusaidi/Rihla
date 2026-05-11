@@ -59,16 +59,11 @@ lib/
 │   ├── activity/                 # Event-level activity feed
 │   ├── auth/                     # Firebase auth stream providers
 │   ├── events/                   # Event lifecycle (create, list, detail)
-│   ├── gear/                     # Gear checklist per event
 │   ├── groups/                   # Persistent groups (create, join, detail)
 │   ├── home/                     # Home screen + dashboard providers
 │   ├── ledger/                   # Expenses, settlements, balance calculator
-│   ├── logistics/                # Sub-groups and logistics planning
-│   ├── memories/                 # Photo/media uploads per event
-│   ├── onboarding/               # 3-page onboarding PageView
 │   ├── settings/                 # User profile, theme, notifications
-│   ├── trip/                     # Legacy trip model (retained for SQLite schema)
-│   └── vault/                    # Document storage per event
+│   └── trip/                     # Legacy trip model (retained for SQLite schema)
 └── shared/
     ├── animations/               # Shared animation helpers
     └── widgets/                  # Reusable UI components
@@ -172,7 +167,7 @@ UI renders loaded / loading / error state
 User action in UI
   │
   ▼ (ref.read(service).addExpense(...))
-FirestoreRepository subclass (ExpenseService / GearService / etc.)
+FirestoreRepository subclass (ExpenseService / GroupService / etc.)
   │ (WriteBatch or single doc.set)
   ▼
 Firestore (persists locally immediately, uploads when online)
@@ -199,10 +194,9 @@ Routing is handled entirely by **GoRouter 13.x** with declarative routes. No `Na
 
 ```
 / (splash — auto-redirect)
-├── /onboarding            (FadeTransition)
 ├── /home                  (FadeTransition)
-├── /profile               (slide-right)
-├── /activity              (slide-right — CrossGroupActivityScreen)
+├── /profile               (FadeTransition)
+├── /activity              (FadeTransition — CrossGroupActivityScreen)
 ├── /create-group          (slide-up)
 ├── /join-group            (slide-up)
 └── /group/:gid            (slide-right — GroupDetailScreen)
@@ -216,12 +210,7 @@ Routing is handled entirely by **GoRouter 13.x** with declarative routes. No `Na
         │   ├── /add       (slide-right — AddExpenseScreen)
         │   ├── /edit/:expId (slide-right — EditExpenseScreen)
         │   └── /settle-up (slide-right — SettleUpScreen)
-        ├── /gear          (slide-right — GearScreen)
-        ├── /logistics     (slide-right — LogisticsScreen)
-        ├── /vault         (slide-right — VaultScreen)
-        ├── /memories      (slide-right — MemoriesScreen)
-        │   └── /:memId    (slide-right — placeholder)
-        ├── /activity      (slide-right — ActivityFeedScreen)
+        ├── /activity      (slide-right — EventActivityScreen placeholder)
         └── /settings      (slide-right — EventSettingsScreen)
 ```
 
@@ -229,15 +218,15 @@ Routing is handled entirely by **GoRouter 13.x** with declarative routes. No `Na
 
 | Route | Transition |
 |-------|-----------|
-| `/onboarding`, `/home` | `FadeTransition` |
+| `/home`, `/profile`, `/activity` | `FadeTransition` |
 | `/create-group`, `/join-group` | Slide-up (`Offset(0,1)` → zero) |
 | All other routes | Slide-right (`Offset(1,0)` → zero, `Curves.easeOutCubic`) |
 
 The shared `_slideRightTransition` function in `app_router.dart` is used by all module-level routes to ensure consistent navigation feel.
 
-### Onboarding Redirect
+### Splash Redirect
 
-`routerProvider` reads `onboardingCompleteProvider` (a `FutureProvider<bool>`) synchronously via `valueOrNull`. The splash route immediately redirects to `/home` or `/onboarding` based on this value. Tests override with `overrideWith((ref) => true)`.
+The splash route redirects directly to `/home`. Anonymous Firebase auth is handled before `SafarApp` renders by `_AuthGate` in `main.dart`.
 
 ### Type-Safe Route Names
 
@@ -267,7 +256,7 @@ Tables:
 | `trips` | Legacy trip cache (event data pre-Firestore migration) |
 | `expenses` | Expense cache — keyed by `trip_id` (= Firestore event ID) |
 | `settlements` | Settlement cache |
-| `gear_items` | Gear item cache |
+| `gear_items` | Legacy gear item cache retained for SQLite compatibility |
 | `participants` | Participant cache |
 | `sub_groups` / `sub_group_members` | Sub-group membership cache |
 | `activity_logs` | Activity log cache |
@@ -276,7 +265,7 @@ Tables:
 | `group_members` | Group member cache (added in v6) |
 | `group_ledger` | Group-level balance cache (added in v6) |
 
-All `expenses`, `gear_items`, and `settlements` rows include `is_deleted` and `deleted_at` for soft-delete support. `LocalDatabase` handles versioned migrations via `_onUpgrade`.
+All `expenses`, legacy `gear_items`, and `settlements` rows include `is_deleted` and `deleted_at` for soft-delete support. `LocalDatabase` handles versioned migrations via `_onUpgrade`.
 
 ### `BalanceCacheRepository`
 
@@ -293,7 +282,7 @@ A narrow SQLite wrapper that bridges Firestore streams to `BalanceCalculator`. I
 
 File: `lib/core/services/cache_service.dart`
 
-Static methods for batch reading and writing domain objects to SQLite. Handles `Trip`, `Expense`, `Settlement`, `GearItem`, `Participant`, `SubGroup`, `Group`, `GroupMember`, and more. Used by legacy trip-scoped providers.
+Static methods for batch reading and writing domain objects to SQLite. Handles `Trip`, `Expense`, `Settlement`, `Participant`, `SubGroup`, `Group`, `GroupMember`, and more. Used by legacy trip-scoped providers.
 
 ### `ConnectivityNotifier`
 
@@ -346,7 +335,7 @@ final colors = Theme.of(context).extension<AppColorTokens>()!;
 | `textSecondary` | `#6B7280` | Secondary labels (5.74:1 — AA) |
 | `textMuted` | `#9CA3AF` | Decorative only — below AA, never functional text |
 | `moduleLedger` | `#0D7B74` | Ledger module accent |
-| All other modules | `#6B7280` | Gear, Logistics, Vault, Activity, Memories |
+| Neutral module accent | `#6B7280` | Non-ledger module accents |
 
 ### Typography
 
@@ -429,7 +418,7 @@ The `group_ledger` SQLite table accumulates `net_amount_subunits` per `(group_id
 
 ### Payments
 
-Omani payment processing is integrated via the `thawani_payment` package (`ThawaniService` in `lib/features/ledger/services/thawani_service.dart`).
+Payment processing is out of scope for the shippable v1 surface. Ledger settlement records track who owes whom; the app does not initiate real payment collection.
 
 ---
 
@@ -441,12 +430,12 @@ Omani payment processing is integrated via the `thawani_payment` package (`Thawa
 | `go_router` | `^13.2.0` | Declarative routing, deep links |
 | `cloud_firestore` | `^6.2.0` | Primary data store with offline persistence |
 | `firebase_auth` | `^6.3.0` | Anonymous authentication |
-| `firebase_storage` | `^13.2.0` | Memories and document file storage |
+| `firebase_storage` | `^13.2.0` | Protected storage gateway support |
 | `firebase_messaging` | `^16.1.3` | Push notifications (FCM) |
 | `firebase_core` | `^4.6.0` | Firebase SDK initialisation |
 | `sqflite` | `^2.4.2` | Local SQLite cache (`safar_cache.db`) |
 | `decimal` | `^3.2.4` | Precise money arithmetic — no floating point |
-| `google_fonts` | `^6.1.0` | Plus Jakarta Sans typeface |
+| `google_fonts` | `^8.0.2` | Plus Jakarta Sans typeface |
 | `flutter_animate` | `^4.5.0` | Micro-interaction animations |
 | `animations` | `^2.0.0` | Material 3 page transitions |
 | `shimmer` | `^3.0.0` | Skeleton loading shimmer effect |

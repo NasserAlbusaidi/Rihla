@@ -43,7 +43,7 @@ class CategorySelectionStep extends StatelessWidget {
                 crossAxisCount: 4,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 12,
-                childAspectRatio: 0.85,
+                childAspectRatio: 0.75,
               ),
               itemCount: categories.length,
               itemBuilder: (context, index) {
@@ -59,8 +59,8 @@ class CategorySelectionStep extends StatelessWidget {
           ),
         ],
       ),
-      loading: () => SkeletonLoader.card(),
-      error: (e, _) => NetworkErrorWidget(),
+      loading: SkeletonLoader.card,
+      error: (e, _) => const NetworkErrorWidget(),
     );
   }
 }
@@ -87,11 +87,13 @@ class _CategoryTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: isSelected ? context.colors.primary : context.colors.inputFill,
-              borderRadius: BorderRadius.circular(20),
+              color: isSelected
+                  ? context.colors.primary
+                  : context.colors.inputFill,
+              borderRadius: BorderRadius.circular(16),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
@@ -105,19 +107,21 @@ class _CategoryTile extends StatelessWidget {
             child: Icon(
               category.iconData,
               color: isSelected ? Colors.white : context.colors.textSecondary,
-              size: 26,
+              size: 24,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             category.name,
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? context.colors.textPrimary : context.colors.textSecondary,
+              color: isSelected
+                  ? context.colors.textPrimary
+                  : context.colors.textSecondary,
             ),
           ),
         ],
