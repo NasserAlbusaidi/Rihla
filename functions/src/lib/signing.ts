@@ -9,6 +9,28 @@ function isEmulator(): boolean {
   return !!process.env.FUNCTIONS_EMULATOR;
 }
 
+function storageEmulatorBaseUrl(): string {
+  const host =
+    process.env.FIREBASE_STORAGE_EMULATOR_HOST
+    ?? process.env.STORAGE_EMULATOR_HOST
+    ?? '127.0.0.1:9199';
+  return host.startsWith('http://') || host.startsWith('https://')
+    ? host
+    : `http://${host}`;
+}
+
+function emulatorUploadUrl(bucketName: string, storagePath: string): string {
+  return `${storageEmulatorBaseUrl()}/upload/storage/v1/b/${encodeURIComponent(
+    bucketName,
+  )}/o?uploadType=media&name=${encodeURIComponent(storagePath)}`;
+}
+
+function emulatorDownloadUrl(bucketName: string, storagePath: string): string {
+  return `${storageEmulatorBaseUrl()}/download/storage/v1/b/${encodeURIComponent(
+    bucketName,
+  )}/o/${encodeURIComponent(storagePath)}?alt=media`;
+}
+
 // Exported for unit-testable seam (plan fallback: avoid flaky jest.resetModules mocking).
 export interface SignUploadOptions {
   version: 'v4';
@@ -61,13 +83,18 @@ export async function issueUploadUrl(
   storagePath: string,
   contentType: string,
 ): Promise<UploadUrl> {
-  const file = getStorage().bucket().file(storagePath);
+  const bucket = getStorage().bucket();
+  const file = bucket.file(storagePath);
   const expiresMs = Date.now() + UPLOAD_TTL_MS;
 
   if (isEmulator()) {
     // firebase-tools#3400: Storage emulator does not support getSignedUrl.
-    // Fall back to publicUrl() — tests validate the membership gate, not signature correctness.
-    return { uploadUrl: file.publicUrl(), expiresAt: new Date(expiresMs).toISOString() };
+    // Use the emulator's simple media upload endpoint so E2E tests can still
+    // verify the membership gate plus actual object creation.
+    return {
+      uploadUrl: emulatorUploadUrl(bucket.name, storagePath),
+      expiresAt: new Date(expiresMs).toISOString(),
+    };
   }
 
   const [uploadUrl] = await file.getSignedUrl(buildUploadSignOptions(contentType, expiresMs));
@@ -75,11 +102,15 @@ export async function issueUploadUrl(
 }
 
 export async function issueDownloadUrl(storagePath: string): Promise<DownloadUrl> {
-  const file = getStorage().bucket().file(storagePath);
+  const bucket = getStorage().bucket();
+  const file = bucket.file(storagePath);
   const expiresMs = Date.now() + DOWNLOAD_TTL_MS;
 
   if (isEmulator()) {
-    return { signedUrl: file.publicUrl(), expiresAt: new Date(expiresMs).toISOString() };
+    return {
+      signedUrl: emulatorDownloadUrl(bucket.name, storagePath),
+      expiresAt: new Date(expiresMs).toISOString(),
+    };
   }
 
   const [signedUrl] = await file.getSignedUrl(buildDownloadSignOptions(expiresMs));

@@ -50,53 +50,59 @@ void main() {
     });
 
     test(
-        'routes through gateway with bucket="receipts", eventId and expenseId',
-        () async {
-      final service = ReceiptService(gateway: gateway, httpClient: httpClient);
-      final file = _FakeFile(const [1, 2, 3], '/tmp/receipt.jpg');
-      when(
-        () => gateway.getSignedUploadUrl(
-          bucket: any(named: 'bucket'),
-          groupId: any(named: 'groupId'),
-          eventId: any(named: 'eventId'),
-          fileName: any(named: 'fileName'),
-          contentType: any(named: 'contentType'),
-          sizeBytes: any(named: 'sizeBytes'),
-          expenseId: any(named: 'expenseId'),
-        ),
-      ).thenAnswer((_) async => SignedUpload(
+      'routes through gateway with bucket="receipts", eventId and expenseId',
+      () async {
+        final service = ReceiptService(
+          gateway: gateway,
+          httpClient: httpClient,
+        );
+        final file = _FakeFile(const [1, 2, 3], '/tmp/receipt.jpg');
+        when(
+          () => gateway.getSignedUploadUrl(
+            bucket: any(named: 'bucket'),
+            groupId: any(named: 'groupId'),
+            eventId: any(named: 'eventId'),
+            fileName: any(named: 'fileName'),
+            contentType: any(named: 'contentType'),
+            sizeBytes: any(named: 'sizeBytes'),
+            expenseId: any(named: 'expenseId'),
+          ),
+        ).thenAnswer(
+          (_) async => SignedUpload(
             uploadUrl: 'https://signed/put',
             storagePath: 'receipts/e1/exp1/1.jpg',
             expiresAt: DateTime.now().add(const Duration(minutes: 15)),
-          ));
-      when(
-        () => httpClient.put(
-          any(),
-          headers: any(named: 'headers'),
-          body: any(named: 'body'),
-        ),
-      ).thenAnswer((_) async => _StubResponse(statusCode: 200));
+          ),
+        );
+        when(
+          () => httpClient.put(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => _StubResponse(statusCode: 200));
 
-      final storagePath = await service.uploadReceipt(
-        groupId: 'g1',
-        eventId: 'e1',
-        expenseId: 'exp1',
-        imageFile: file,
-      );
-
-      expect(storagePath, 'receipts/e1/exp1/1.jpg');
-      verify(
-        () => gateway.getSignedUploadUrl(
-          bucket: 'receipts',
+        final storagePath = await service.uploadReceipt(
           groupId: 'g1',
           eventId: 'e1',
-          fileName: 'receipt.jpg',
-          contentType: 'image/jpeg',
-          sizeBytes: 3,
           expenseId: 'exp1',
-        ),
-      ).called(1);
-    });
+          imageFile: file,
+        );
+
+        expect(storagePath, 'receipts/e1/exp1/1.jpg');
+        verify(
+          () => gateway.getSignedUploadUrl(
+            bucket: 'receipts',
+            groupId: 'g1',
+            eventId: 'e1',
+            fileName: 'receipt.jpg',
+            contentType: 'image/jpeg',
+            sizeBytes: 3,
+            expenseId: 'exp1',
+          ),
+        ).called(1);
+      },
+    );
 
     test('returns null on non-2xx PUT response', () async {
       final service = ReceiptService(gateway: gateway, httpClient: httpClient);
@@ -111,18 +117,22 @@ void main() {
           sizeBytes: any(named: 'sizeBytes'),
           expenseId: any(named: 'expenseId'),
         ),
-      ).thenAnswer((_) async => SignedUpload(
-            uploadUrl: 'https://signed/put',
-            storagePath: 'receipts/e1/exp1/2.jpg',
-            expiresAt: DateTime.now().add(const Duration(minutes: 15)),
-          ));
+      ).thenAnswer(
+        (_) async => SignedUpload(
+          uploadUrl: 'https://signed/put',
+          storagePath: 'receipts/e1/exp1/2.jpg',
+          expiresAt: DateTime.now().add(const Duration(minutes: 15)),
+        ),
+      );
       when(
         () => httpClient.put(
           any(),
           headers: any(named: 'headers'),
           body: any(named: 'body'),
         ),
-      ).thenAnswer((_) async => _StubResponse(statusCode: 413, body: 'too big'));
+      ).thenAnswer(
+        (_) async => _StubResponse(statusCode: 413, body: 'too big'),
+      );
 
       final result = await service.uploadReceipt(
         groupId: 'g1',
@@ -131,6 +141,62 @@ void main() {
         imageFile: file,
       );
       expect(result, isNull);
+    });
+
+    test('uses POST for Firebase Storage emulator upload endpoint', () async {
+      final service = ReceiptService(gateway: gateway, httpClient: httpClient);
+      final file = _FakeFile(const [7, 8, 9], '/tmp/receipt.png');
+      when(
+        () => gateway.getSignedUploadUrl(
+          bucket: any(named: 'bucket'),
+          groupId: any(named: 'groupId'),
+          eventId: any(named: 'eventId'),
+          fileName: any(named: 'fileName'),
+          contentType: any(named: 'contentType'),
+          sizeBytes: any(named: 'sizeBytes'),
+          expenseId: any(named: 'expenseId'),
+        ),
+      ).thenAnswer(
+        (_) async => SignedUpload(
+          uploadUrl:
+              'http://127.0.0.1:9199/upload/storage/v1/b/bucket/o?uploadType=media&name=receipts%2Fe1%2Fexp1%2Freceipt.png',
+          storagePath: 'receipts/e1/exp1/receipt.png',
+          expiresAt: DateTime.now().add(const Duration(minutes: 15)),
+        ),
+      );
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer((_) async => _StubResponse(statusCode: 200));
+
+      final storagePath = await service.uploadReceipt(
+        groupId: 'g1',
+        eventId: 'e1',
+        expenseId: 'exp1',
+        imageFile: file,
+      );
+
+      expect(storagePath, 'receipts/e1/exp1/receipt.png');
+      verify(
+        () => httpClient.post(
+          any(),
+          headers: {
+            'Content-Type': 'image/png',
+            'x-goog-content-length-range': '0,26214400',
+          },
+          body: any(named: 'body'),
+        ),
+      ).called(1);
+      verifyNever(
+        () => httpClient.put(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      );
     });
 
     test('legacy tripId param still works when eventId omitted', () async {
@@ -146,11 +212,13 @@ void main() {
           sizeBytes: any(named: 'sizeBytes'),
           expenseId: any(named: 'expenseId'),
         ),
-      ).thenAnswer((_) async => SignedUpload(
-            uploadUrl: 'https://signed/put',
-            storagePath: 'receipts/legacy-trip/exp1/r.jpg',
-            expiresAt: DateTime.now().add(const Duration(minutes: 15)),
-          ));
+      ).thenAnswer(
+        (_) async => SignedUpload(
+          uploadUrl: 'https://signed/put',
+          storagePath: 'receipts/legacy-trip/exp1/r.jpg',
+          expiresAt: DateTime.now().add(const Duration(minutes: 15)),
+        ),
+      );
       when(
         () => httpClient.put(
           any(),
@@ -208,7 +276,10 @@ void main() {
   group('ReceiptService.deleteReceipt', () {
     test('routes through gateway.deleteStorageObject', () async {
       final gateway = _MockGateway();
-      final service = ReceiptService(gateway: gateway, httpClient: _MockHttpClient());
+      final service = ReceiptService(
+        gateway: gateway,
+        httpClient: _MockHttpClient(),
+      );
       when(
         () => gateway.deleteStorageObject(
           storagePath: any(named: 'storagePath'),
@@ -230,7 +301,10 @@ void main() {
 
     test('returns false on StorageException', () async {
       final gateway = _MockGateway();
-      final service = ReceiptService(gateway: gateway, httpClient: _MockHttpClient());
+      final service = ReceiptService(
+        gateway: gateway,
+        httpClient: _MockHttpClient(),
+      );
       when(
         () => gateway.deleteStorageObject(
           storagePath: any(named: 'storagePath'),

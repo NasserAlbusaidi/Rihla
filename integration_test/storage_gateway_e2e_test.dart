@@ -24,11 +24,11 @@ import 'package:safar/firebase_options.dart';
 /// ```
 ///
 /// Proves:
-///   1. A group member can obtain a signed upload URL, PUT bytes to GCS via
-///      that URL, record Firestore metadata, then list the new document back
-///      with a pre-issued signed download URL (happy path).
-///   2. A non-member (different anonymous uid with no membership row) is
-///      rejected by the callable with StorageException.notMember.
+///   1. A group member can obtain a signed upload URL, upload bytes through
+///      that URL, then list the uploaded object back with a pre-issued signed
+///      download URL (happy path).
+///   2. A non-member (different anonymous uid with no group/event membership)
+///      is rejected by the callable with StorageException.notMember.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -36,12 +36,16 @@ void main() {
 
   setUpAll(() async {
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+      options: DefaultFirebaseOptions.currentPlatform.copyWith(
+        projectId: 'rihla-safar-test',
+        storageBucket: 'rihla-safar-test.firebasestorage.app',
+      ),
     );
     FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
     FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
-    FirebaseFunctions.instanceFor(region: 'us-central1')
-        .useFunctionsEmulator('localhost', 5001);
+    FirebaseFunctions.instanceFor(
+      region: 'us-central1',
+    ).useFunctionsEmulator('localhost', 5001);
     await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
     gateway = StorageGateway();
   });
@@ -52,17 +56,57 @@ void main() {
     return cred.user!.uid;
   }
 
+  Future<void> createGroupWithEvent({
+    required String groupId,
+    required String eventId,
+    required String ownerUid,
+  }) async {
+    final db = FirebaseFirestore.instance;
+    final now = Timestamp.now();
+    await db.doc('groups/$groupId').set({
+      'id': groupId,
+      'name': 'E2E',
+      'inviteCode': groupId.toUpperCase(),
+      'createdBy': ownerUid,
+      'memberIds': [ownerUid],
+      'currency': 'OMR',
+      'createdAt': now,
+      'updatedAt': now,
+    });
+    await db.doc('groups/$groupId/members/$ownerUid').set({
+      'id': ownerUid,
+      'userId': ownerUid,
+      'displayName': 'Owner',
+      'role': 'CREATOR',
+      'joinedAt': now,
+      'isShadow': false,
+    });
+    await db.doc('groups/$groupId/events/$eventId').set({
+      'name': 'Trip',
+      'type': 'trip',
+      'groupId': groupId,
+      'createdBy': ownerUid,
+      'participantIds': [ownerUid],
+      'participantNames': {ownerUid: 'Owner'},
+      'modules': {'ledger': true},
+      'startDate': null,
+      'endDate': null,
+      'isDeleted': false,
+      'deletedAt': null,
+      'createdAt': now,
+      'serverCreatedAt': null,
+      'updatedAt': now,
+      'description': null,
+    });
+  }
+
   test('member uploads a document end-to-end', () async {
     final uid = await signInAsNewAnonymous();
-    final db = FirebaseFirestore.instance;
-    await db.doc('groups/e2e-g1').set({
-      'memberIds': [uid],
-      'name': 'E2E',
-    });
-    await db.doc('groups/e2e-g1/events/e2e-e1').set({
-      'groupId': 'e2e-g1',
-      'name': 'Trip',
-    });
+    await createGroupWithEvent(
+      groupId: 'e2e-g1',
+      eventId: 'e2e-e1',
+      ownerUid: uid,
+    );
 
     final signed = await gateway.getSignedUploadUrl(
       bucket: 'documents',
@@ -75,24 +119,23 @@ void main() {
     expect(signed.uploadUrl, startsWith('http'));
     expect(signed.storagePath, startsWith('trip-documents/e2e-e1/'));
 
-    final putResp = await http.put(
-      Uri.parse(signed.uploadUrl),
-      headers: {'Content-Type': 'text/plain'},
-      body: Uint8List.fromList('hello world'.codeUnits),
+    final uploadUri = Uri.parse(signed.uploadUrl);
+    final uploadResp = uploadUri.path.startsWith('/upload/storage/v1/')
+        ? await http.post(
+            uploadUri,
+            headers: {'Content-Type': 'text/plain'},
+            body: Uint8List.fromList('hello world'.codeUnits),
+          )
+        : await http.put(
+            uploadUri,
+            headers: {'Content-Type': 'text/plain'},
+            body: Uint8List.fromList('hello world'.codeUnits),
+          );
+    expect(
+      uploadResp.statusCode,
+      inInclusiveRange(200, 299),
+      reason: uploadResp.body,
     );
-    expect(putResp.statusCode, inInclusiveRange(200, 299));
-
-    final docId = DateTime.now().millisecondsSinceEpoch.toString();
-    await db.doc('groups/e2e-g1/events/e2e-e1/documents/$docId').set({
-      'id': docId,
-      'fileName': 'hello.txt',
-      'mimeType': 'text/plain',
-      'storagePath': signed.storagePath,
-      'sizeBytes': 11,
-      'uploadedBy': uid,
-      'uploadedAt': FieldValue.serverTimestamp(),
-      'isDeleted': false,
-    });
 
     final docs = await gateway.listDocumentsWithUrls(
       groupId: 'e2e-g1',
@@ -100,25 +143,23 @@ void main() {
     );
     expect(docs, isNotEmpty);
     final justUploaded = docs.firstWhere(
-      (d) => d.fields['id'] == docId,
+      (d) => d.fields['storagePath'] == signed.storagePath,
       orElse: () => throw StateError('Uploaded doc not in list'),
     );
     expect(justUploaded.signedUrl, startsWith('http'));
-    expect(justUploaded.fields['fileName'], 'hello.txt');
+    expect(justUploaded.fields['id'], signed.storagePath);
+    expect(justUploaded.fields['fileName'], endsWith('hello.txt'));
   });
 
   test('non-member cannot upload', () async {
+    final ownerUid = await signInAsNewAnonymous();
+    await createGroupWithEvent(
+      groupId: 'e2e-g2',
+      eventId: 'e2e-e2',
+      ownerUid: ownerUid,
+    );
+
     final nonMemberUid = await signInAsNewAnonymous();
-    final db = FirebaseFirestore.instance;
-    // Fresh group where nonMemberUid is NOT listed.
-    await db.doc('groups/e2e-g2').set({
-      'memberIds': ['some-other-uid'],
-      'name': 'E2E-2',
-    });
-    await db.doc('groups/e2e-g2/events/e2e-e2').set({
-      'groupId': 'e2e-g2',
-      'name': 'Trip2',
-    });
 
     await expectLater(
       gateway.getSignedUploadUrl(

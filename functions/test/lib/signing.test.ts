@@ -9,21 +9,27 @@ import { MAX_FILE_BYTES } from '../../src/lib/validation';
 // test/setup.ts sets FUNCTIONS_EMULATOR='true', so these integration tests run the emulator branch.
 
 describe('signing helpers (emulator branch)', () => {
-  test('issueUploadUrl returns publicUrl and ~15min expiry', async () => {
+  test('issueUploadUrl returns writable emulator upload URL and ~15min expiry', async () => {
     const before = Date.now();
     const result = await issueUploadUrl('trip-documents/e1/x.pdf', 'application/pdf');
     const after = Date.now();
-    expect(result.uploadUrl).toMatch(/^https?:\/\//);
+    expect(result.uploadUrl).toBe(
+      'http://127.0.0.1:9199/upload/storage/v1/b/rihla-safar-test.firebasestorage.app/o'
+      + '?uploadType=media&name=trip-documents%2Fe1%2Fx.pdf',
+    );
     const expiresMs = new Date(result.expiresAt).getTime();
     expect(expiresMs).toBeGreaterThanOrEqual(before + 14 * 60 * 1000);
     expect(expiresMs).toBeLessThanOrEqual(after + 16 * 60 * 1000);
   });
 
-  test('issueDownloadUrl returns publicUrl and ~60min expiry', async () => {
+  test('issueDownloadUrl returns emulator download URL and ~60min expiry', async () => {
     const before = Date.now();
     const result = await issueDownloadUrl('trip-documents/e1/x.pdf');
     const after = Date.now();
-    expect(result.signedUrl).toMatch(/^https?:\/\//);
+    expect(result.signedUrl).toBe(
+      'http://127.0.0.1:9199/download/storage/v1/b/rihla-safar-test.firebasestorage.app/o'
+      + '/trip-documents%2Fe1%2Fx.pdf?alt=media',
+    );
     const expiresMs = new Date(result.expiresAt).getTime();
     expect(expiresMs).toBeGreaterThanOrEqual(before + 59 * 60 * 1000);
     expect(expiresMs).toBeLessThanOrEqual(after + 61 * 60 * 1000);

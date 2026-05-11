@@ -31,10 +31,10 @@ class ReceiptService {
     StorageGateway? gateway,
     ImagePicker? picker,
     http.Client? httpClient,
-  })  : _gateway = gateway ?? StorageGateway(),
-        _picker = picker ?? ImagePicker(),
-        _httpClient = httpClient ?? http.Client(),
-        _ownsHttpClient = httpClient == null;
+  }) : _gateway = gateway ?? StorageGateway(),
+       _picker = picker ?? ImagePicker(),
+       _httpClient = httpClient ?? http.Client(),
+       _ownsHttpClient = httpClient == null;
 
   void dispose() {
     if (_ownsHttpClient) _httpClient.close();
@@ -95,18 +95,26 @@ class ReceiptService {
         expenseId: expenseId,
       );
 
-      final response = await _httpClient.put(
-        Uri.parse(signed.uploadUrl),
-        headers: {
-          'Content-Type': contentType,
-          'x-goog-content-length-range': '0,$_maxFileSizeBytes',
-        },
-        body: bytes,
-      );
+      final uploadUri = Uri.parse(signed.uploadUrl);
+      final uploadHeaders = {
+        'Content-Type': contentType,
+        'x-goog-content-length-range': '0,$_maxFileSizeBytes',
+      };
+      final response = _isStorageEmulatorUploadUrl(uploadUri)
+          ? await _httpClient.post(
+              uploadUri,
+              headers: uploadHeaders,
+              body: bytes,
+            )
+          : await _httpClient.put(
+              uploadUri,
+              headers: uploadHeaders,
+              body: bytes,
+            );
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (kDebugMode) {
           debugPrint(
-            'ReceiptService.uploadReceipt PUT failed: ${response.statusCode}',
+            'ReceiptService.uploadReceipt upload failed: ${response.statusCode}',
           );
         }
         return null;
@@ -120,6 +128,10 @@ class ReceiptService {
       if (kDebugMode) debugPrint('Receipt upload failed: $e');
       return null;
     }
+  }
+
+  bool _isStorageEmulatorUploadUrl(Uri uri) {
+    return uri.path.startsWith('/upload/storage/v1/');
   }
 
   /// Fetch a signed download URL for a receipt via the callable.

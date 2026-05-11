@@ -18,12 +18,19 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17' # Matches your build.gradle (Java 17)
+          java-version: '21' # Required by current Firebase emulators; Android still targets Java 17
 
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'  # Uses latest stable Flutter (includes Dart 3.10+)
+
+      - name: 🟢 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
 
       - name: 🔐 Decode Keystore
         run: |
@@ -42,11 +49,27 @@ jobs:
       - name: 📦 Install Dependencies
         run: flutter pub get
 
+      - name: 📦 Install Functions Dependencies
+        run: npm ci --prefix functions
+
+      - name: 🧱 Build Functions
+        run: npm --prefix functions run build
+
+      - name: Functions production dependency audit
+        run: npm --prefix functions audit --omit=dev --audit-level=moderate
+
       - name: 🔍 Static Analysis
         run: flutter analyze --no-fatal-infos
 
       - name: Theme purity check
         run: bash tool/check_theme_purity.sh
+
+      - name: Firebase backend emulator tests
+        run: |
+          npx --yes firebase-tools@15.8.0 emulators:exec \
+            --project rihla-safar-test \
+            --only auth,firestore,storage \
+            "npm --prefix functions test"
 
       - name: Run Tests with Coverage
         run: |
@@ -67,7 +90,7 @@ jobs:
 
       - name: Check Coverage Threshold (80%)
         run: |
-          lcov --remove coverage/lcov.info \
+          lcov --ignore-errors unused --remove coverage/lcov.info \
             'lib/firebase_options.dart' \
             'lib/main.dart' \
             'lib/app.dart' \
