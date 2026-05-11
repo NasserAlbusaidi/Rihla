@@ -51,6 +51,14 @@ commands listed here, not as permanent guarantees.
 
 ## Deployment Commands
 
+Before deploying, run the read-only production-state check:
+
+```bash
+bash tool/check_firebase_prod_state.sh rihla-safar
+```
+
+The command should fail until Storage rules and all expected Functions are live.
+
 Run these after the Firebase project setup blockers are cleared:
 
 ```bash
