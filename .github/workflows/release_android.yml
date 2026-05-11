@@ -56,7 +56,7 @@ jobs:
         run: npm --prefix functions run build
 
       - name: Functions production dependency audit
-        run: npm --prefix functions audit --omit=dev --audit-level=moderate
+        run: npm --prefix functions audit --omit=dev --audit-level=low
 
       - name: 🔍 Static Analysis
         run: flutter analyze --no-fatal-infos

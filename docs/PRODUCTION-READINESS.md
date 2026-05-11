@@ -23,8 +23,8 @@ commands listed here, not as permanent guarantees.
   - Database: `(default)`, Native mode, location `nam5`
 - [x] Firestore production rules match `security/firestore.rules`, ignoring trailing blank lines.
 - [x] Firestore production indexes match `firestore.indexes.json`, ignoring Firebase-added implicit `__name__` and density fields.
-- [x] Production Functions dependency audit has no moderate-or-higher vulnerabilities.
-  - Command: `npm --prefix functions audit --omit=dev --audit-level=moderate`
+- [x] Production Functions dependency audit has no known vulnerabilities at low-or-higher severity.
+  - Command: `npm --prefix functions audit --omit=dev --audit-level=low`
 
 ## Blockers
 
@@ -46,9 +46,6 @@ commands listed here, not as permanent guarantees.
     - iOS and Android expense entry keyboards expose decimal input for OMR amounts.
     - Offline and reconnect: create/read flows recover without false permanent offline state.
     - Notification opt-in and opt-out: token is written on enable and removed on disable.
-- [ ] Low-severity Functions audit findings remain.
-  - Evidence: `npm --prefix functions audit --omit=dev --audit-level=moderate` exits 0 but reports 9 low-severity transitive findings through Firebase Admin/Functions dependencies.
-  - Current non-action: `npm audit fix --force` would install a breaking older `firebase-admin@10.3.0`, so do not apply it.
 
 ## Deployment Commands
 
