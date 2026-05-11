@@ -11,7 +11,7 @@ production Firebase project unless a test explicitly says otherwise.
 Start here:
 
 ```bash
-flutter devices
+bash tool/check_real_device_qa_gate.sh
 ```
 
 Pass criteria:
@@ -26,6 +26,12 @@ Pass criteria:
 Current local status from 2026-05-11: blocked. Flutter sees iOS simulators,
 macOS, and Chrome, but no physical iOS or Android device. The known iPhones are
 not reachable for wireless debugging.
+
+For raw device details, run:
+
+```bash
+flutter devices
+```
 
 ## Run Commands
 

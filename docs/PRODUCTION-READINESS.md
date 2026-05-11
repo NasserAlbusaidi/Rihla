@@ -39,6 +39,7 @@ commands listed here, not as permanent guarantees.
   - Blocked by Firebase Storage initialization.
 - [ ] Real-device QA is not complete.
   - Runbook: `docs/REAL-DEVICE-QA.md`
+  - Gate command: `bash tool/check_real_device_qa_gate.sh`
   - Required matrix:
     - iOS: create group, join group, delete group.
     - Android: create group, join group, delete group.
