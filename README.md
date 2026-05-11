@@ -1,4 +1,3 @@
-<!-- generated-by: gsd-doc-writer -->
 # Rihla
 
 **Rihla** ("Journey" in Arabic) is a Flutter mobile app for group coordination and event planning. Users create or join persistent groups — friend circles, travel crews — then spin up events inside those groups (trips, camping weekends, dinners, or custom types). The app tracks finances at both the group and event level, so friends can settle up across multiple outings rather than one at a time.

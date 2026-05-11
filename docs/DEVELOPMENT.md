@@ -1,4 +1,3 @@
-<!-- generated-by: gsd-doc-writer -->
 
 # Rihla Development Guide
 
