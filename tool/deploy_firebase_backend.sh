@@ -9,6 +9,17 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$ROOT_DIR"
 
+npm20() {
+  local npm_cli
+  npm_cli="$(command -v npm || true)"
+  if [ -z "$npm_cli" ]; then
+    echo "npm not found"
+    return 1
+  fi
+
+  npx --yes node@20 "$npm_cli" "$@"
+}
+
 echo "Preparing Firebase backend deploy for project: ${PROJECT_ID}"
 echo
 echo "Prerequisites:"
@@ -24,9 +35,9 @@ if [ "${RIHLA_CONFIRM_FIREBASE_DEPLOY:-}" != "yes" ]; then
   exit 2
 fi
 
-npm --prefix functions ci
-npm --prefix functions audit --omit=dev --audit-level=low
-npm --prefix functions run build
+npm20 --prefix functions ci
+npm20 --prefix functions audit --omit=dev --audit-level=low
+npm20 --prefix functions run build
 
 npx --yes "firebase-tools@${FIREBASE_TOOLS_VERSION}" deploy \
   --project "$PROJECT_ID" \
