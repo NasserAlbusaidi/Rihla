@@ -19,9 +19,9 @@ GitHub also runs `.github/workflows/readiness_check.yml` on `main` pushes and
 pull requests. That workflow covers the local non-deploy gates only; it does not
 replace the Firebase production-state check or physical-device QA.
 
-Latest `main` readiness workflow:
-`https://github.com/NasserAlbusaidi/Rihla/actions/runs/25681500765`
-completed successfully for commit `acf9faf`.
+Check the current `main` readiness workflow in GitHub Actions before release;
+this document intentionally does not pin a run ID because every doc-only push
+starts a new run.
 
 ## Verified
 
