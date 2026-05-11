@@ -15,6 +15,10 @@ bash tool/check_release_readiness.sh
 It should fail until Firebase Storage, Firebase Functions deployment, and
 physical-device QA are complete.
 
+GitHub also runs `.github/workflows/readiness_check.yml` on `main` pushes and
+pull requests. That workflow covers the local non-deploy gates only; it does not
+replace the Firebase production-state check or physical-device QA.
+
 ## Verified
 
 - [x] Android release bundle builds locally.
