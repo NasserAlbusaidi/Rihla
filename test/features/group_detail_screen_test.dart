@@ -155,6 +155,23 @@ Widget _wrap(
   );
 }
 
+Finder _textContaining(String value) {
+  return find.byWidgetPredicate((widget) {
+    if (widget is! Text) return false;
+    return (widget.data?.contains(value) ?? false) ||
+        (widget.textSpan?.toPlainText().contains(value) ?? false);
+  });
+}
+
+Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    260,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -167,62 +184,8 @@ void main() {
     prefs = await SharedPreferences.getInstance();
   });
 
-  group('GroupDetailScreen financial sections', () {
-    testWidgets('shows stats grid when expenses exist', (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          const GroupDetailScreen(groupId: _groupId),
-          prefs,
-          balancesAsync: AsyncValue.data(_balancesWithExpenses),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Stats grid replaces GroupBalanceHero (D-08)
-      expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
-    });
-
-    testWidgets(
-      'stats grid is always visible; settle-up CTA hidden when zero balance',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(
-            const GroupDetailScreen(groupId: _groupId),
-            prefs,
-            balancesAsync: AsyncValue.data(_balancesEmpty),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        // Stats grid is always shown (D-08) — replaces the conditional hero
-        expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
-        // Settle-up CTA must be hidden when all balances are zero (D-10)
-        expect(find.byKey(GroupKeys.settleUpCta), findsNothing);
-      },
-    );
-
-    testWidgets(
-      'shows Members & Balances section with GroupMemberBalanceCard tiles',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(
-            const GroupDetailScreen(groupId: _groupId),
-            prefs,
-            balancesAsync: AsyncValue.data(_balancesWithExpenses),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        // Section header renamed from "Members" to "Members & Balances"
-        expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
-
-        // Member names rendered via GroupMemberBalanceCard header rows
-        expect(find.text('Alice'), findsWidgets);
-        expect(find.text('Bob'), findsOneWidget);
-      },
-    );
-
-    testWidgets('shows spending stats chips when expenses exist', (
+  group('GroupDetailScreen current layout', () {
+    testWidgets('shows cover header and balance card when balances load', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -234,12 +197,73 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // GroupSpendingStats renders a chip containing the formatted total
-      // e.g. "OMR 30.000 across 1 events"
-      expect(find.textContaining('30.000'), findsWidgets);
+      expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);
+      expect(find.text('Adventure Crew'), findsOneWidget);
+      expect(find.text('GROUP · 2 MEMBERS'), findsOneWidget);
+      expect(find.text('Your balance here'), findsOneWidget);
+      expect(_textContaining('15.000'), findsWidgets);
+      expect(find.text('they owe you'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpCta), findsOneWidget);
     });
 
-    testWidgets('shows Recent Activity section', (tester) async {
+    testWidgets('zero balance shows all-settled state and settle-up path', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesEmpty),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_textContaining('0.000'), findsWidgets);
+      expect(find.text('all settled'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpCta), findsOneWidget);
+    });
+
+    testWidgets('shows Members section with balance rows', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesWithExpenses),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _scrollUntilVisible(
+        tester,
+        find.byKey(GroupKeys.membersAndBalancesSection),
+      );
+
+      expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
+      expect(find.text('MEMBERS'), findsOneWidget);
+
+      expect(find.text('Alice'), findsWidgets);
+      expect(find.text('Bob'), findsOneWidget);
+    });
+
+    testWidgets('shows current user balance amount when expenses exist', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesWithExpenses),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_textContaining('15.000'), findsWidgets);
+      expect(find.text('they owe you'), findsOneWidget);
+    });
+
+    testWidgets('keeps activity out of the inline group detail feed', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -250,10 +274,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(GroupKeys.recentActivitySection), findsOneWidget);
+      expect(find.byKey(GroupKeys.recentActivitySection), findsNothing);
+      expect(find.text('created an event'), findsNothing);
     });
 
-    testWidgets('shows See all activity button', (tester) async {
+    testWidgets('overflow menu exposes settings and activity destinations', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -263,7 +290,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(GroupKeys.seeAllActivityButton), findsOneWidget);
+      await tester.tap(find.byTooltip('More'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Group settings'), findsOneWidget);
+      expect(find.text('Activity'), findsOneWidget);
     });
 
     testWidgets(
@@ -283,7 +314,9 @@ void main() {
       },
     );
 
-    testWidgets('stats grid shows 4 stat tiles', (tester) async {
+    testWidgets('stats grid from the old layout is no longer rendered', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -293,11 +326,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
-      expect(find.byKey(GroupKeys.statYourBalance), findsOneWidget);
-      expect(find.byKey(GroupKeys.statGroupTotal), findsOneWidget);
-      expect(find.byKey(GroupKeys.statActiveMembers), findsOneWidget);
-      expect(find.byKey(GroupKeys.statEvents), findsOneWidget);
+      expect(find.byKey(GroupKeys.statsGrid), findsNothing);
+      expect(find.byKey(GroupKeys.statYourBalance), findsNothing);
+      expect(find.byKey(GroupKeys.statGroupTotal), findsNothing);
+      expect(find.byKey(GroupKeys.statActiveMembers), findsNothing);
+      expect(find.byKey(GroupKeys.statEvents), findsNothing);
     });
 
     testWidgets('shows settle-up CTA when balance is non-zero', (tester) async {
@@ -314,7 +347,7 @@ void main() {
       expect(find.byKey(GroupKeys.settleUpCta), findsOneWidget);
     });
 
-    testWidgets('hides settle-up CTA when all balances are zero', (
+    testWidgets('keeps settle-up CTA visible when all balances are zero', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -326,10 +359,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(GroupKeys.settleUpCta), findsNothing);
+      expect(find.byKey(GroupKeys.settleUpCta), findsOneWidget);
     });
 
-    testWidgets('section order: Events before Members before Activity (D-09)', (
+    testWidgets('section order: Events before Members; Activity is overflow', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -342,19 +375,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final eventsOffset = tester.getTopLeft(
-        find.byKey(GroupKeys.eventsSection).first,
+      expect(find.byKey(GroupKeys.eventsSection), findsOneWidget);
+      await _scrollUntilVisible(
+        tester,
+        find.byKey(GroupKeys.membersAndBalancesSection),
       );
-      final membersOffset = tester.getTopLeft(
-        find.byKey(GroupKeys.membersAndBalancesSection).first,
-      );
-      final activityOffset = tester.getTopLeft(
-        find.byKey(GroupKeys.recentActivitySection).first,
-      );
-
-      // Events < Members < Activity (lower Y = higher on screen)
-      expect(eventsOffset.dy, lessThan(membersOffset.dy));
-      expect(membersOffset.dy, lessThan(activityOffset.dy));
+      expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
+      expect(find.byKey(GroupKeys.recentActivitySection), findsNothing);
     });
 
     testWidgets('has RefreshIndicator wrapping scrollable content (D-11)', (
@@ -373,7 +400,9 @@ void main() {
       expect(find.byType(RefreshIndicator), findsOneWidget);
     });
 
-    testWidgets('creator sees event creation FAB', (tester) async {
+    testWidgets('member sees event creation actions without a FAB', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -384,10 +413,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.text('New event'), findsWidgets);
+      expect(find.text('Create Event'), findsOneWidget);
     });
 
-    testWidgets('member does not see event creation FAB', (tester) async {
+    testWidgets('member can create events through the same group actions', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -399,6 +432,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.text('New event'), findsWidgets);
+      expect(find.text('Create Event'), findsOneWidget);
     });
 
     testWidgets('creator sees empty events create action', (tester) async {
@@ -416,9 +451,7 @@ void main() {
       expect(find.text('Create Event'), findsOneWidget);
     });
 
-    testWidgets('member does not see empty events create action', (
-      tester,
-    ) async {
+    testWidgets('member sees empty events create action', (tester) async {
       await tester.pumpWidget(
         _wrap(
           const GroupDetailScreen(groupId: _groupId),
@@ -430,9 +463,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
-      expect(find.text('Create Event'), findsNothing);
+      expect(find.text('Create Event'), findsOneWidget);
       expect(
-        find.text('Waiting for the group creator to add the first event.'),
+        find.text('Create your first event to start planning together.'),
         findsOneWidget,
       );
     });
@@ -515,9 +548,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.byType(EventCard).first);
+      await tester.ensureVisible(find.text('Beach Trip'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(EventCard).first);
+      await tester.tap(find.text('Beach Trip'));
       await tester.pumpAndSettle();
 
       expect(
@@ -558,12 +591,12 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Error state shows inline message, not full-screen replacement
-        expect(find.text('Failed to load group'), findsOneWidget);
-        expect(find.text('Try again'), findsOneWidget);
-
-        // ModuleHeader is still visible in error state (inline, not full replacement)
-        expect(find.text('Group'), findsOneWidget);
+        expect(find.text('Could not load group'), findsOneWidget);
+        expect(
+          find.text('Check your connection and try again.'),
+          findsOneWidget,
+        );
+        expect(find.text('Retry'), findsOneWidget);
       },
     );
 

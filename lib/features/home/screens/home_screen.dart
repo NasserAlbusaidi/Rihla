@@ -1,37 +1,48 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../shared/animations/fade_in_list.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../../shared/widgets/initials_circle.dart';
 import '../../../shared/widgets/offline_banner.dart';
-import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/r_avatar.dart';
+import '../../../shared/widgets/section_header.dart';
+import '../../../shared/widgets/wordmark_logo.dart';
 import '../../groups/models/group_model.dart';
+import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
-import '../../groups/widgets/group_card.dart';
 import '../keys/home_keys.dart';
+import '../providers/active_journeys_provider.dart';
 import '../providers/dashboard_providers.dart';
 import '../widgets/activity_row.dart';
 import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
-import '../widgets/quick_action_tray.dart';
-import '../widgets/weekly_spending_card.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
+import '../widgets/group_glyph.dart';
+import '../widgets/journey_ticket_card.dart';
 
-/// Groups-first home dashboard (Phase 18).
+/// Home dashboard — saffron travel-journal direction (v2.0).
 ///
-/// Full dashboard layout with balance hero card, quick-action tray,
-/// group cards with personal balance, activity strip, weekly spending chart,
-/// and a 4-tab bottom navigation shell.
+/// Layout, top to bottom:
+///  1. Top bar: avatar · italic "Rihla" wordmark with saffron flourish · bell
+///  2. Greeting strip: mono uppercase "GOOD MORNING, NAME"
+///  3. Hero balance card (saffron-direction rewrite)
+///  4. ACTIVE JOURNEYS — horizontal scroll of [JourneyTicketCard]
+///  5. GROUPS — list of glyph + name + balance rows
+///  6. RECENTLY — top 3 entries from [crossGroupActivityProvider]
 ///
-/// Returns [BottomNavShell] wrapping [_DashboardContent]. This separation
-/// keeps the nav shell stateful while the content adapts to provider state.
+/// State coverage:
+///  - empty → [EmptyStateView] CTA to create or join
+///  - loading → [Skeletonizer] over the loaded layout
+///  - error → [OfflineBanner] + retry CTA
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -44,108 +55,36 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// _DashboardContent — private ConsumerStatefulWidget
-// ---------------------------------------------------------------------------
-
-/// Dashboard content for the Groups tab inside [BottomNavShell].
-///
-/// Delegates rendering to state-specific build methods based on [userGroupsProvider].
 class _DashboardContent extends ConsumerStatefulWidget {
   @override
   ConsumerState<_DashboardContent> createState() => _DashboardContentState();
 }
 
 class _DashboardContentState extends ConsumerState<_DashboardContent> {
-
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(userGroupsProvider);
-
-    return SizedBox.expand(
-      child: Column(
-        children: [
-          // Fixed header (always visible across all states)
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.spacing.space24,
-                context.spacing.space16,
-                context.spacing.space16,
-                0,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Your Groups',
-                    key: HomeKeys.yourGroupsHeader,
-                    style:
-                        Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                            ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      FloatingActionButton.small(
-                        key: HomeKeys.createGroupFab,
-                        onPressed: () => _showFabBottomSheet(context),
-                        backgroundColor: context.colors.primary,
-                        heroTag: 'home_fab',
-                        child: Icon(Iconsax.add, color: context.colors.textOnPrimary),
-                      ),
-                      SizedBox(width: context.spacing.space8),
-                      Semantics(
-                        label: 'Open profile',
-                        button: true,
-                        child: GestureDetector(
-                          key: HomeKeys.profileAvatar,
-                          onTap: () {
-                            HapticService.lightClick();
-                            context.push('/profile');
-                          },
-                          child: SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: Center(
-                              child: InitialsCircle(
-                                size: 32,
-                                name: ref.watch(settingsProvider).deviceName,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+    return Column(
+      children: [
+        const _TopBar(),
+        Expanded(
+          child: groupsAsync.when(
+            data: (groups) => groups.isEmpty
+                ? _buildEmpty(context)
+                : _buildLoaded(context, groups),
+            loading: () => _buildSkeleton(context),
+            error: (_, _) => _buildError(context),
           ),
-          // Content area (state-dependent)
-          Expanded(
-            child: groupsAsync.when(
-              data: (groups) => groups.isEmpty
-                  ? _buildEmptyState(context)
-                  : _buildLoadedDashboard(context, groups),
-              loading: _buildSkeletonState,
-              error: (e, st) => _buildErrorState(context),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Loaded state
-  // ---------------------------------------------------------------------------
+  // ──────────────── Loaded ────────────────
 
-  Widget _buildLoadedDashboard(BuildContext context, List groups) {
+  Widget _buildLoaded(BuildContext context, List<Group> groups) {
     final activityAsync = ref.watch(crossGroupActivityProvider);
+    final journeysAsync = ref.watch(activeJourneysProvider);
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -154,187 +93,140 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       },
       color: context.colors.primary,
       child: CustomScrollView(
-        // Large cache extent ensures all slivers are built even when
-        // off-screen, which is required for widget tests to find them.
         cacheExtent: 2000,
         slivers: [
-          // 1. Balance Hero Card
+          SliverToBoxAdapter(child: _GreetingStrip(name: _firstName())),
+          const SliverToBoxAdapter(child: SizedBox(height: 10)),
           SliverToBoxAdapter(
-            child: SizedBox(height: context.spacing.space12),
+            child: const BalanceHeroCard()
+                .animate()
+                .fadeIn(delay: 250.ms, duration: 500.ms)
+                .slideY(begin: 0.15, curve: Curves.easeOutQuart),
           ),
-          const SliverToBoxAdapter(child: BalanceHeroCard()),
-
-          // 2. Quick Action Tray
+          const SliverToBoxAdapter(child: SizedBox(height: 22)),
           SliverToBoxAdapter(
-            child: QuickActionTray(
-              onAddExpense: () => _handleGroupAction(context, 'expense'),
-              onSettleUp: () => _handleGroupAction(context, 'settle'),
-              onInviteFriend: () => _handleGroupAction(context, 'invite'),
-              onActivity: () => context.push('/activity'),
-            ),
+            child: SectionHeader(
+              title: 'Active journeys',
+              actionLabel:
+                  journeysAsync.hasValue &&
+                      (journeysAsync.value?.isNotEmpty ?? false)
+                  ? 'See all'
+                  : null,
+              onActionTap: () => context.push('/activity'),
+            ).animate().fadeIn(delay: 350.ms),
           ),
-
-          // 2a. "Your Groups (N)" section header (D-13, LAYT-02)
+          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+          SliverToBoxAdapter(
+            child: _JourneysStrip(journeysAsync: journeysAsync),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 22)),
+          SliverToBoxAdapter(
+            child: SectionHeader(
+              title: 'Groups',
+              actionLabel: 'New group',
+              actionKey: HomeKeys.createGroupFab,
+              onActionTap: () => _showCreateOrJoinSheet(context),
+            ).animate().fadeIn(delay: 500.ms),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 6)),
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              context.spacing.space16,
-              context.spacing.space12,
-              context.spacing.space16,
-              context.spacing.space8,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                'Your Groups (${groups.length})',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final isLast = index == groups.length - 1;
+                return _GroupRow(
+                      group: groups[index],
+                      isLast: isLast,
+                      onTap: () {
+                        HapticService.lightClick();
+                        context.push('/group/${groups[index].id}');
+                      },
+                    )
+                    .animate()
+                    .fadeIn(delay: (550 + (index * 50)).ms, duration: 400.ms)
+                    .slideY(begin: 0.1);
+              }, childCount: groups.length),
             ),
           ),
-
-          // 3. Group Cards
-          // D-22 (FadeInList staggered animation) takes precedence over D-21
-          // (SliverList.builder) for this section. FadeInList wraps a Column,
-          // not a Sliver, so SliverToBoxAdapter bridges the gap.
-          // This is safe for typical group counts (<20 groups per user).
+          const SliverToBoxAdapter(child: SizedBox(height: 22)),
+          SliverToBoxAdapter(
+            child: const SectionHeader(
+              title: 'Recently',
+            ).animate().fadeIn(delay: 700.ms),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 4)),
           SliverPadding(
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacing.space16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverToBoxAdapter(
-              child: FadeInList(
-                children: groups.map((group) {
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: context.spacing.space8),
-                    child: GroupCard(
-                      group: group,
-                      onTap: () => context.push('/group/${group.id}'),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          // 4. Activity Section
-          SliverToBoxAdapter(
-            child: _buildActivitySection(context, activityAsync),
-          ),
-
-          // 5. Weekly Spending Card
-          const SliverToBoxAdapter(child: WeeklySpendingCard()),
-
-          // Bottom padding for scroll clearance above bottom nav
-          SliverToBoxAdapter(
-            child: SizedBox(height: context.spacing.space32),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivitySection(
-    BuildContext context,
-    AsyncValue<List<CrossGroupActivityEntry>> activityAsync,
-  ) {
-    return Padding(
-      key: HomeKeys.activitySection,
-      padding: EdgeInsets.fromLTRB(
-        context.spacing.space16,
-        context.spacing.space12,
-        context.spacing.space16,
-        context.spacing.space8,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'RECENT ACTIVITY',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              // textMuted-decorative-justified: 'RECENT ACTIVITY' section
-              // overline is decorative; functional text on this screen
-              // (descriptions, names, timestamps) routes via textSecondary.
-              color: context.colors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          SizedBox(height: context.spacing.space8),
-          activityAsync.when(
-            data: (entries) => entries.isEmpty
-                ? Text(
-                    'No activity yet',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: context.colors.textSecondary,
-                    ),
-                  )
-                : Column(
-                    children: entries
-                        .map(
-                          (entry) => ActivityRow(
+              key: HomeKeys.activitySection,
+              child: activityAsync.when(
+                data: (entries) => entries.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          'No activity yet',
+                          style: AppTypography.sans(
+                            fontSize: 13,
+                            color: context.colors.textSecondary,
+                          ),
+                        ),
+                      )
+                    : Column(
+                        children: entries.take(3).map((entry) {
+                          return ActivityRow(
                             activity: entry.log,
                             groupName: entry.groupName,
                             groupId: entry.groupId,
-                            onTap: () => context.push('/group/${entry.groupId}'),
-                          ),
-                        )
-                        .toList(),
-                  ),
-            loading: () => const SizedBox.shrink(),
-            error: (e, _) => const SizedBox.shrink(),
+                            onTap: () =>
+                                context.push('/group/${entry.groupId}'),
+                          );
+                        }).toList(),
+                      ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+            ),
           ),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Empty state
-  // ---------------------------------------------------------------------------
+  String _firstName() {
+    final raw = ref.watch(settingsProvider).deviceName;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return 'traveller';
+    return trimmed.split(RegExp(r'\s+')).first;
+  }
 
-  Widget _buildEmptyState(BuildContext context) {
+  // ──────────────── States ────────────────
+
+  Widget _buildEmpty(BuildContext context) {
     return EmptyStateView(
       icon: Iconsax.people,
-      title: 'Create your first group',
-      message:
-          'Plan trips, track expenses, and settle up with friends',
+      title: 'Start your first group',
+      message: 'Plan trips, track expenses, and settle up with friends.',
       actionLabel: 'Create Group',
       onAction: () => context.push('/create-group'),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Error state
-  // ---------------------------------------------------------------------------
-
-  Widget _buildErrorState(BuildContext context) {
+  Widget _buildError(BuildContext context) {
     return Column(
       children: [
         const OfflineBanner(),
         Expanded(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(context.spacing.space24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  EmptyStateView(
-                    icon: Iconsax.warning_2,
-                    title: 'Something went wrong',
-                    message:
-                        'Check your connection and try again. Your travel groups are safely synced, but we need the internet to fetch latest updates.',
-                    actionLabel: 'Retry',
-                    onAction: () => ref.refresh(userGroupsProvider),
-                  ),
-                  TextButton(
-                    // Phase 19 will wire offline data view
-                    onPressed: () {},
-                    child: Text(
-                      'View Offline Data',
-                      style: TextStyle(color: context.colors.primary),
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.all(24),
+              child: EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: 'Something went wrong',
+                message:
+                    'Check your connection and try again. Your groups are safely synced — we just need internet to fetch the latest.',
+                actionLabel: 'Retry',
+                onAction: () => ref.refresh(userGroupsProvider),
               ),
             ),
           ),
@@ -343,30 +235,35 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Skeleton / loading state
-  // ---------------------------------------------------------------------------
-
-  Widget _buildSkeletonState() {
-    // SingleChildScrollView with NeverScrollableScrollPhysics prevents overflow
-    // while keeping the skeleton visible within bounded parent height.
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      child: Column(
-        children: [
-          SkeletonLoader.dashboardHero(),
-          const SizedBox(height: 16),
-          SkeletonLoader.groupList(count: 3),
-        ],
+  Widget _buildSkeleton(BuildContext context) {
+    final stubGroups = [
+      Group(
+        id: 'sk1',
+        name: 'Loading group one',
+        inviteCode: '',
+        createdBy: '',
+        memberIds: const ['1', '2', '3'],
+        createdAt: DateTime.now(),
       ),
+      Group(
+        id: 'sk2',
+        name: 'Loading group two',
+        inviteCode: '',
+        createdBy: '',
+        memberIds: const ['1', '2'],
+        createdAt: DateTime.now(),
+      ),
+    ];
+    return Skeletonizer(
+      enabled: true,
+      containersColor: context.colors.cardSoft,
+      child: IgnorePointer(child: _buildLoaded(context, stubGroups)),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // FAB bottom sheet
-  // ---------------------------------------------------------------------------
+  // ──────────────── Sheets ────────────────
 
-  void _showFabBottomSheet(BuildContext context) {
+  void _showCreateOrJoinSheet(BuildContext context) {
     HapticFeedback.lightImpact();
     showModalBottomSheet<void>(
       context: context,
@@ -378,12 +275,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Create a Group
             ListTile(
               key: HomeKeys.createGroupOption,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: context.spacing.space16,
-              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
               minTileHeight: 64,
               leading: Icon(Iconsax.people, color: context.colors.primary),
               title: Text(
@@ -395,12 +289,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 context.push('/create-group');
               },
             ),
-            // Join a Group
             ListTile(
               key: HomeKeys.joinGroupOption,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: context.spacing.space16,
-              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
               minTileHeight: 64,
               leading: Icon(
                 Iconsax.login_1,
@@ -420,99 +311,289 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       ),
     );
   }
+}
 
-  // ---------------------------------------------------------------------------
-  // Quick-action handler (replaces _showGroupPicker)
-  // ---------------------------------------------------------------------------
+// ──────────────── Top bar ────────────────
 
-  void _handleGroupAction(BuildContext context, String action) {
-    final groups = ref.read(userGroupsProvider).valueOrNull ?? [];
+class _TopBar extends ConsumerWidget {
+  const _TopBar();
 
-    if (groups.isEmpty) {
-      final message = switch (action) {
-        'expense' => 'Create a group first to add expenses',
-        'settle' => 'Create a group first to settle up',
-        'invite' => 'Create a group first to invite friends',
-        _ => 'Create a group first',
-      };
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-      return;
-    }
-
-    if (groups.length == 1) {
-      if (action == 'invite') {
-        _shareInviteCode(groups.first);
-      } else {
-        context.push('/group/${groups.first.id}');
-      }
-      return;
-    }
-
-    // 2+ groups — show picker
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: context.colors.cardSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final deviceName = ref.watch(settingsProvider).deviceName;
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 16, 0),
+        child: Row(
           children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.spacing.space16,
-                context.spacing.space16,
-                context.spacing.space16,
-                context.spacing.space8,
-              ),
-              child: Text(
-                'Choose a group',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.textPrimary,
-                ),
-              ),
+            GestureDetector(
+              key: HomeKeys.profileAvatar,
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                HapticService.lightClick();
+                context.push('/profile');
+              },
+              child: RAvatar(name: deviceName, size: 36),
             ),
-            ...groups.map(
-              (group) => ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: context.spacing.space16,
-                ),
-                title: Text(group.name),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  if (action == 'invite') {
-                    _shareInviteCode(group);
-                  } else {
-                    context.push('/group/${group.id}');
-                  }
-                },
-              ),
+            const Spacer(),
+            const WordmarkLogo(size: 22),
+            const Spacer(),
+            _IconCircle(
+              icon: Iconsax.notification,
+              onTap: () {
+                HapticService.lightClick();
+                context.push('/activity');
+              },
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  // ---------------------------------------------------------------------------
-  // Share invite code via native share sheet
-  // ---------------------------------------------------------------------------
+/// Ghost-variant icon button used in the home top bar. No background fill —
+/// just an icon in a 40×40 tap target. The wireframe shows this as the
+/// notifications affordance on the right of the top bar.
+class _IconCircle extends StatelessWidget {
+  const _IconCircle({required this.icon, required this.onTap});
 
-  void _shareInviteCode(Group group) {
-    final box = context.findRenderObject() as RenderBox?;
-    final origin = box != null
-        ? box.localToGlobal(Offset.zero) & box.size
-        : Rect.zero;
-    Share.share(
-      'Join my group ${group.name} on Rihla! Code: ${group.inviteCode} — Download: https://play.google.com/store/apps/details?id=com.safar.safar',
-      subject: 'Join ${group.name} on Rihla',
-      sharePositionOrigin: origin,
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Semantics(
+      button: true,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 24,
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(icon, size: 20, color: colors.textPrimary),
+        ),
+      ),
     );
   }
+}
+
+// ──────────────── Greeting strip ────────────────
+
+class _GreetingStrip extends StatelessWidget {
+  const _GreetingStrip({required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 17
+        ? 'Good afternoon'
+        : 'Good evening';
+    return Padding(
+      key: HomeKeys.yourGroupsHeader,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      child: Text(
+        '$greeting, $name'.toUpperCase(),
+        style: AppTypography.mono(
+          fontSize: 10,
+          color: colors.textSecondary,
+          letterSpacing: 2,
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────── Journeys strip ────────────────
+
+class _JourneysStrip extends StatelessWidget {
+  const _JourneysStrip({required this.journeysAsync});
+  final AsyncValue<List<ActiveJourneyEntry>> journeysAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return journeysAsync.when(
+      data: (entries) {
+        if (entries.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 18),
+              decoration: BoxDecoration(
+                color: colors.cardSoft,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colors.rule, width: 0.5),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Iconsax.calendar_1,
+                    size: 18,
+                    color: colors.textSecondary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No upcoming or active journeys',
+                      style: AppTypography.sans(
+                        fontSize: 13,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              for (var i = 0; i < entries.length; i++) ...[
+                JourneyTicketCard(
+                  entry: entries[i],
+                  onTap: () => context.push(
+                    '/group/${entries[i].groupId}/event/${entries[i].eventId}',
+                  ),
+                ),
+                if (i < entries.length - 1) const SizedBox(width: 12),
+              ],
+            ],
+          ),
+        );
+      },
+      loading: () => SizedBox(
+        height: 200,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.cardSoft,
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+        ),
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
+// ──────────────── Group row ────────────────
+
+class _GroupRow extends ConsumerWidget {
+  const _GroupRow({
+    required this.group,
+    required this.onTap,
+    required this.isLast,
+  });
+
+  final Group group;
+  final VoidCallback onTap;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final uid = ref.watch(currentUserIdProvider);
+    final balancesAsync = ref.watch(groupBalancesProvider(group.id));
+    final balances = balancesAsync.valueOrNull;
+    final userNet = (balances == null || uid == null)
+        ? Decimal.zero
+        : (balances.balances
+                  .where((b) => b.participantId == uid)
+                  .firstOrNull
+                  ?.netBalance ??
+              Decimal.zero);
+    final eventCount = balances?.eventCount ?? 0;
+    final memberCount = group.memberIds.length;
+    final subtitle =
+        '$memberCount member${memberCount == 1 ? '' : 's'}'
+        ' · '
+        '$eventCount event${eventCount == 1 ? '' : 's'}';
+    final balanceCaption = userNet > Decimal.zero
+        ? 'they owe you'
+        : userNet < Decimal.zero
+        ? 'you owe'
+        : 'settled';
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                GroupGlyph(name: group.name),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        group.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.sans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textPrimary,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: AppTypography.sans(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RAmount(value: userNet, size: 16, sign: !userNet.isZero),
+                    const SizedBox(height: 2),
+                    Text(
+                      balanceCaption,
+                      style: AppTypography.sans(
+                        fontSize: 11,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            if (!isLast) ...[
+              const SizedBox(height: 14),
+              Container(height: 0.5, color: colors.rule),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+extension on Decimal {
+  bool get isZero => this == Decimal.zero;
 }

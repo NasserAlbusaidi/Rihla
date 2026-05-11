@@ -10,41 +10,36 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
-import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 
 // ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
 
-GroupActivityLog _makeActivity(String id, String actorName, String description) =>
-    GroupActivityLog(
-      id: id,
-      type: 'event_created',
-      actorId: 'uid0',
-      actorName: actorName,
-      description: description,
-      timestamp: DateTime(2026, 3, 28),
-    );
+GroupActivityLog _makeActivity(
+  String id,
+  String actorName,
+  String description,
+) => GroupActivityLog(
+  id: id,
+  type: 'event_created',
+  actorId: 'uid0',
+  actorName: actorName,
+  description: description,
+  timestamp: DateTime(2026, 3, 28),
+);
 
 CrossGroupActivityEntry _makeEntry(
   GroupActivityLog log,
   String groupName,
   String groupId,
-) =>
-    (log: log, groupName: groupName, groupId: groupId);
+) => (log: log, groupName: groupName, groupId: groupId);
 
-Widget _buildTestApp(
-  Widget widget, {
-  List<Override> overrides = const [],
-}) {
+Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
   final router = GoRouter(
     initialLocation: '/activity',
     routes: [
-      GoRoute(
-        path: '/activity',
-        builder: (ctx, state) => widget,
-      ),
+      GoRoute(path: '/activity', builder: (ctx, state) => widget),
       GoRoute(
         path: '/group/:id',
         builder: (ctx, state) =>
@@ -62,30 +57,24 @@ Widget _buildTestApp(
 /// Minimal overrides to prevent unrelated providers from throwing.
 List<Override> _baseOverrides({
   required AsyncValue<List<CrossGroupActivityEntry>> activityOverride,
-}) =>
-    [
-      crossGroupActivityProvider.overrideWith(
-        (ref) => activityOverride,
-      ),
-      userGroupsProvider.overrideWith((ref) => Stream.value([])),
-      crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data((
-          net: Decimal.zero,
-          groupCount: 0,
-          isLoading: false,
-        )),
-      ),
-      groupBalancesProvider.overrideWith(
-        (ref, groupId) => AsyncValue.data((
-          balances: <UserBalance>[],
-          totalSpent: Decimal.zero,
-          eventCount: 0,
-          perEventBreakdown: <String, Map<String, Decimal>>{},
-          memberNames: <String, String>{},
-        )),
-      ),
-      currentUserIdProvider.overrideWithValue('test-user-id'),
-    ];
+}) => [
+  crossGroupActivityProvider.overrideWith((ref) => activityOverride),
+  userGroupsProvider.overrideWith((ref) => Stream.value([])),
+  crossGroupBalanceProvider.overrideWith(
+    (ref) =>
+        AsyncValue.data((net: Decimal.zero, groupCount: 0, isLoading: false)),
+  ),
+  groupBalancesProvider.overrideWith(
+    (ref, groupId) => AsyncValue.data((
+      balances: <UserBalance>[],
+      totalSpent: Decimal.zero,
+      eventCount: 0,
+      perEventBreakdown: <String, Map<String, Decimal>>{},
+      memberNames: <String, String>{},
+    )),
+  ),
+  currentUserIdProvider.overrideWithValue('test-user-id'),
+];
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -93,7 +82,7 @@ List<Override> _baseOverrides({
 
 void main() {
   group('CrossGroupActivityScreen', () {
-    testWidgets('shows "All Activity" title', (tester) async {
+    testWidgets('shows "Activity" title', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
           const CrossGroupActivityScreen(),
@@ -104,7 +93,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('All Activity'), findsOneWidget);
+      expect(find.text('Activity'), findsOneWidget);
     });
 
     testWidgets('shows empty state when no activity', (tester) async {
@@ -133,18 +122,15 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const CrossGroupActivityScreen(),
-          overrides: _baseOverrides(
-            activityOverride: AsyncValue.data(entries),
-          ),
+          overrides: _baseOverrides(activityOverride: AsyncValue.data(entries)),
         ),
       );
       await tester.pumpAndSettle();
 
-      // ActivityRow widgets should be rendered
-      expect(find.byType(ActivityRow), findsNWidgets(2));
-      // Group name chips should be visible
       expect(find.text('Trip A'), findsOneWidget);
       expect(find.text('Trip B'), findsOneWidget);
+      expect(find.textContaining('added an expense'), findsOneWidget);
+      expect(find.textContaining('joined the group'), findsOneWidget);
     });
 
     testWidgets('shows error state on error', (tester) async {
@@ -201,7 +187,10 @@ void main() {
           overrides: _baseOverrides(
             activityOverride: const AsyncValue.data([]),
           ),
-          child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: router,
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -211,7 +200,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify we are on the activity screen
-      expect(find.text('All Activity'), findsOneWidget);
+      expect(find.text('Activity'), findsOneWidget);
 
       // Tap back button
       await tester.tap(find.byTooltip('Back'));
@@ -219,7 +208,7 @@ void main() {
 
       // Should be back on home screen
       expect(find.text('Go to Activity'), findsOneWidget);
-      expect(find.text('All Activity'), findsNothing);
+      expect(find.text('Activity'), findsNothing);
     });
   });
 }

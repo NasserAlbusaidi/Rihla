@@ -73,14 +73,14 @@ Future<void> _seedActivities(
         .collection('activity')
         .doc(a.id)
         .set({
-      'id': a.id,
-      'type': a.type,
-      'actorId': a.actorId,
-      'actorName': a.actorName,
-      'description': a.description,
-      'metadata': a.metadata,
-      'timestamp': a.timestamp.toUtc().toIso8601String(),
-    });
+          'id': a.id,
+          'type': a.type,
+          'actorId': a.actorId,
+          'actorName': a.actorName,
+          'description': a.description,
+          'metadata': a.metadata,
+          'timestamp': a.timestamp.toUtc().toIso8601String(),
+        });
   }
 }
 
@@ -97,13 +97,23 @@ Widget _buildActivityScreen({
     overrides: [
       if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
       groupActivityServiceProvider.overrideWith((ref) => activityService),
-      groupDetailProvider(groupId).overrideWith(
-        (ref) => Stream.value(_testGroup),
-      ),
+      groupDetailProvider(
+        groupId,
+      ).overrideWith((ref) => Stream.value(_testGroup)),
     ],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: GroupActivityScreen(groupId: groupId),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: GroupActivityScreen(groupId: groupId),
     ),
   );
+}
+
+Finder _richTextContaining(String text) {
+  return find.byWidgetPredicate((widget) {
+    if (widget is! Text) return false;
+    return (widget.data?.contains(text) ?? false) ||
+        (widget.textSpan?.toPlainText().contains(text) ?? false);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +126,9 @@ void main() {
   });
 
   group('GroupActivityScreen', () {
-    testWidgets('renders Activity header via ModuleHeader', (tester) async {
+    testWidgets('renders group activity title in the current top bar', (
+      tester,
+    ) async {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
@@ -125,17 +137,20 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // ModuleHeader renders title as Text widget
-      expect(find.text('Activity'), findsOneWidget);
+      expect(find.text('Test Crew'), findsOneWidget);
     });
 
-    testWidgets('renders empty state when no activity entries exist',
-        (tester) async {
+    testWidgets('renders empty state when no activity entries exist', (
+      tester,
+    ) async {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         _buildActivityScreen(
-            groupId: 'grp-empty', fakeDb: fakeDb, prefs: prefs),
+          groupId: 'grp-empty',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -149,7 +164,10 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         _buildActivityScreen(
-            groupId: 'grp-empty2', fakeDb: fakeDb, prefs: prefs),
+          groupId: 'grp-empty2',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -162,7 +180,7 @@ void main() {
       );
     });
 
-    testWidgets('renders back button via ModuleHeader', (tester) async {
+    testWidgets('renders back button in the current top bar', (tester) async {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
@@ -171,8 +189,8 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // ModuleHeader renders a back button via SharedKeys.moduleHeaderBackButton
-      expect(find.byKey(SharedKeys.moduleHeaderBackButton), findsOneWidget);
+      expect(find.byKey(GroupKeys.activityBackButton), findsOneWidget);
+      expect(find.byTooltip('Back'), findsOneWidget);
     });
 
     testWidgets('renders SafeArea inside Scaffold body', (tester) async {
@@ -180,7 +198,10 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         _buildActivityScreen(
-            groupId: 'grp-safearea', fakeDb: fakeDb, prefs: prefs),
+          groupId: 'grp-safearea',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -191,8 +212,9 @@ void main() {
 
     // --- Phase 30 Plan 03 — unskipped stubs ---
 
-    testWidgets('renders date section headers (TODAY, YESTERDAY)',
-        (tester) async {
+    testWidgets('renders date section headers (TODAY, YESTERDAY)', (
+      tester,
+    ) async {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
 
@@ -203,7 +225,10 @@ void main() {
 
       await tester.pumpWidget(
         _buildActivityScreen(
-            groupId: 'grp-dates', fakeDb: fakeDb, prefs: prefs),
+          groupId: 'grp-dates',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -227,8 +252,9 @@ void main() {
       expect(find.byKey(GroupKeys.activityFilterMembers), findsOneWidget);
     });
 
-    testWidgets('Settlements filter shows only settlement activities',
-        (tester) async {
+    testWidgets('Settlements filter shows only settlement activities', (
+      tester,
+    ) async {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
 
@@ -246,7 +272,10 @@ void main() {
 
       await tester.pumpWidget(
         _buildActivityScreen(
-            groupId: 'grp-filter', fakeDb: fakeDb, prefs: prefs),
+          groupId: 'grp-filter',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -256,12 +285,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Only settlement activity visible
-      expect(find.text('paid Bob'), findsOneWidget);
-      expect(find.text('Bob created a camping event'), findsNothing);
+      expect(_richTextContaining('paid Bob'), findsOneWidget);
+      expect(_richTextContaining('Bob created a camping event'), findsNothing);
     });
 
-    testWidgets('renders activity tile with actor name and description',
-        (tester) async {
+    testWidgets('renders activity tile with actor name and description', (
+      tester,
+    ) async {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
 
@@ -277,18 +307,18 @@ void main() {
       ]);
 
       await tester.pumpWidget(
-        _buildActivityScreen(
-            groupId: 'grp-tile', fakeDb: fakeDb, prefs: prefs),
+        _buildActivityScreen(groupId: 'grp-tile', fakeDb: fakeDb, prefs: prefs),
       );
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('Alice'), findsWidgets);
-      expect(find.textContaining('Weekend Trip'), findsOneWidget);
+      expect(_richTextContaining('Alice'), findsOneWidget);
+      expect(_richTextContaining('Weekend Trip'), findsOneWidget);
     });
 
-    testWidgets('no Load more button present (infinite scroll replaces it)',
-        (tester) async {
+    testWidgets('no Load more button present (infinite scroll replaces it)', (
+      tester,
+    ) async {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
 
@@ -300,22 +330,25 @@ void main() {
             .collection('activity')
             .doc('act-$i')
             .set({
-          'id': 'act-$i',
-          'type': 'event_created',
-          'actorId': 'uid1',
-          'actorName': 'Alice',
-          'description': 'Event $i',
-          'metadata': <String, dynamic>{},
-          'timestamp': DateTime.now()
-              .subtract(Duration(minutes: i))
-              .toUtc()
-              .toIso8601String(),
-        });
+              'id': 'act-$i',
+              'type': 'event_created',
+              'actorId': 'uid1',
+              'actorName': 'Alice',
+              'description': 'Event $i',
+              'metadata': <String, dynamic>{},
+              'timestamp': DateTime.now()
+                  .subtract(Duration(minutes: i))
+                  .toUtc()
+                  .toIso8601String(),
+            });
       }
 
       await tester.pumpWidget(
         _buildActivityScreen(
-            groupId: 'grp-scroll', fakeDb: fakeDb, prefs: prefs),
+          groupId: 'grp-scroll',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -350,9 +383,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // All activities visible with default 'All' filter
-      expect(find.text('paid Bob'), findsOneWidget);
-      expect(find.text('created Weekend Hike'), findsOneWidget);
-      expect(find.text('joined the group'), findsOneWidget);
+      expect(_richTextContaining('paid Bob'), findsOneWidget);
+      expect(_richTextContaining('created Weekend Hike'), findsOneWidget);
+      expect(_richTextContaining('joined the group'), findsOneWidget);
     });
 
     testWidgets('empty filter state shows no-results message', (tester) async {
@@ -366,7 +399,10 @@ void main() {
 
       await tester.pumpWidget(
         _buildActivityScreen(
-            groupId: 'grp-no-member', fakeDb: fakeDb, prefs: prefs),
+          groupId: 'grp-no-member',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
       );
       await tester.pump();
       // Use pump with a generous duration to flush flutter_animate timers
@@ -378,7 +414,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       // Filter-empty state shown
-      expect(find.text('No members activity'), findsOneWidget);
+      expect(find.text('Nothing matches this filter'), findsOneWidget);
+      expect(
+        find.text('Try a different filter, or switch back to All.'),
+        findsOneWidget,
+      );
     });
   });
 }

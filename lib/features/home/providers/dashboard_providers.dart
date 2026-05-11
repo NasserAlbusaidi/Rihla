@@ -39,39 +39,40 @@ typedef CrossGroupActivityEntry = ({
 /// - [AsyncValue.data] with a list of up to 5 [CrossGroupActivityEntry] records
 final crossGroupActivityProvider =
     Provider<AsyncValue<List<CrossGroupActivityEntry>>>((ref) {
-  final groupsAsync = ref.watch(userGroupsProvider);
-  if (groupsAsync.isLoading && !groupsAsync.hasValue) {
-    return const AsyncValue.loading();
-  }
-  if (groupsAsync.hasError) {
-    return AsyncValue.error(groupsAsync.error!, groupsAsync.stackTrace!);
-  }
-  final groups = groupsAsync.valueOrNull ?? [];
-  if (groups.isEmpty) return const AsyncValue.data([]);
+      final groupsAsync = ref.watch(userGroupsProvider);
+      if (groupsAsync.isLoading && !groupsAsync.hasValue) {
+        return const AsyncValue.loading();
+      }
+      if (groupsAsync.hasError) {
+        return AsyncValue.error(groupsAsync.error!, groupsAsync.stackTrace!);
+      }
+      final groups = groupsAsync.valueOrNull ?? [];
+      if (groups.isEmpty) return const AsyncValue.data([]);
 
-  final allEntries = <CrossGroupActivityEntry>[];
-  var anyLoading = false;
+      final allEntries = <CrossGroupActivityEntry>[];
+      var anyLoading = false;
 
-  for (final group in groups) {
-    final activityAsync = ref.watch(groupActivityProvider(group.id));
-    if (activityAsync.isLoading && !activityAsync.hasValue) {
-      anyLoading = true;
-      continue;
-    }
-    final logs = activityAsync.valueOrNull ?? [];
-    for (final log in logs) {
-      allEntries.add((log: log, groupName: group.name, groupId: group.id));
-    }
-  }
+      for (final group in groups) {
+        final activityAsync = ref.watch(groupActivityProvider(group.id));
+        if (activityAsync.isLoading && !activityAsync.hasValue) {
+          anyLoading = true;
+          continue;
+        }
+        final logs = activityAsync.valueOrNull ?? [];
+        for (final log in logs) {
+          allEntries.add((log: log, groupName: group.name, groupId: group.id));
+        }
+      }
 
-  if (anyLoading && allEntries.isEmpty) return const AsyncValue.loading();
+      if (anyLoading && allEntries.isEmpty) return const AsyncValue.loading();
 
-  // Sort descending by timestamp (newest first), take top 5
-  allEntries.sort((a, b) => b.log.timestamp.compareTo(a.log.timestamp));
-  final top5 =
-      allEntries.length > 5 ? allEntries.sublist(0, 5) : allEntries;
-  return AsyncValue.data(top5);
-});
+      // Sort descending by timestamp (newest first), take top 5
+      allEntries.sort((a, b) => b.log.timestamp.compareTo(a.log.timestamp));
+      final top5 = allEntries.length > 5
+          ? allEntries.sublist(0, 5)
+          : allEntries;
+      return AsyncValue.data(top5);
+    });
 
 // ---------------------------------------------------------------------------
 // WeeklyGroupSpending
@@ -99,30 +100,32 @@ typedef DailySpending = ({DateTime date, Decimal amount});
 /// of this refactor.
 final weeklyGroupExpensesProvider =
     StreamProvider.family<List<Expense>, String>((ref, groupId) {
-  final eventsAsync = ref.watch(groupEventsProvider(groupId));
-  final events = eventsAsync.valueOrNull ?? const [];
-  if (events.isEmpty) return Stream.value(const []);
+      final eventsAsync = ref.watch(groupEventsProvider(groupId));
+      final events = eventsAsync.valueOrNull ?? const [];
+      if (events.isEmpty) return Stream.value(const []);
 
-  // Compute the week window in UTC (to match ISO-8601 storage).
-  final now = DateTime.now().toUtc();
-  final today = DateTime.utc(now.year, now.month, now.day);
-  final weekday = today.weekday; // 1 = Monday, 7 = Sunday
-  final startOfWeek = today.subtract(Duration(days: weekday - 1));
-  final startOfNextWeek = startOfWeek.add(const Duration(days: 7));
+      // Compute the week window in UTC (to match ISO-8601 storage).
+      final now = DateTime.now().toUtc();
+      final today = DateTime.utc(now.year, now.month, now.day);
+      final weekday = today.weekday; // 1 = Monday, 7 = Sunday
+      final startOfWeek = today.subtract(Duration(days: weekday - 1));
+      final startOfNextWeek = startOfWeek.add(const Duration(days: 7));
 
-  final service = ref.read(expenseServiceProvider);
+      final service = ref.read(expenseServiceProvider);
 
-  final streams = events
-      .map((event) => service.watchExpensesInRange(
-            groupId: groupId,
-            eventId: event.id,
-            startUtc: startOfWeek,
-            endExclusiveUtc: startOfNextWeek,
-          ))
-      .toList();
+      final streams = events
+          .map(
+            (event) => service.watchExpensesInRange(
+              groupId: groupId,
+              eventId: event.id,
+              startUtc: startOfWeek,
+              endExclusiveUtc: startOfNextWeek,
+            ),
+          )
+          .toList();
 
-  return _combineExpenseStreams(streams);
-});
+      return _combineExpenseStreams(streams);
+    });
 
 /// Combines N `Stream<List<Expense>>` into one `Stream<List<Expense>>`.
 ///
@@ -147,15 +150,17 @@ Stream<List<Expense>> _combineExpenseStreams(
 
   for (var i = 0; i < streams.length; i++) {
     final index = i;
-    subs.add(streams[index].listen(
-      (list) {
-        if (latest[index] == null) pendingCount--;
-        latest[index] = list;
-        tryEmit();
-      },
-      onError: controller.addError,
-      cancelOnError: false,
-    ));
+    subs.add(
+      streams[index].listen(
+        (list) {
+          if (latest[index] == null) pendingCount--;
+          latest[index] = list;
+          tryEmit();
+        },
+        onError: controller.addError,
+        cancelOnError: false,
+      ),
+    );
   }
 
   controller.onCancel = () async {
@@ -174,8 +179,9 @@ Stream<List<Expense>> _combineExpenseStreams(
 /// Returns a list of exactly 7 [DailySpending] entries (one per day,
 /// Monday through Sunday). Days with no expenses have [DailySpending.amount]
 /// set to [Decimal.zero].
-final weeklyGroupSpendingProvider =
-    Provider<AsyncValue<List<DailySpending>>>((ref) {
+final weeklyGroupSpendingProvider = Provider<AsyncValue<List<DailySpending>>>((
+  ref,
+) {
   final groupsAsync = ref.watch(userGroupsProvider);
   if (groupsAsync.isLoading && !groupsAsync.hasValue) {
     return const AsyncValue.loading();
@@ -191,6 +197,7 @@ final weeklyGroupSpendingProvider =
   final today = DateTime(now.year, now.month, now.day);
   final weekday = today.weekday; // 1 = Monday, 7 = Sunday
   final startOfWeek = today.subtract(Duration(days: weekday - 1));
+  final startOfNextWeek = startOfWeek.add(const Duration(days: 7));
 
   if (groups.isEmpty) {
     return AsyncValue.data(_emptyWeek(startOfWeek));
@@ -215,7 +222,7 @@ final weeklyGroupSpendingProvider =
       );
       // Defensive trim: Firestore range may include UTC boundary overlap
       if (expenseDate.isBefore(startOfWeek)) continue;
-      if (expenseDate.isAfter(today)) continue;
+      if (!expenseDate.isBefore(startOfNextWeek)) continue;
       allExpenseAmounts[expenseDate] =
           (allExpenseAmounts[expenseDate] ?? Decimal.zero) + expense.amount;
     }
@@ -225,10 +232,12 @@ final weeklyGroupSpendingProvider =
     return const AsyncValue.loading();
   }
 
-  return AsyncValue.data(List.generate(7, (i) {
-    final date = startOfWeek.add(Duration(days: i));
-    return (date: date, amount: allExpenseAmounts[date] ?? Decimal.zero);
-  }));
+  return AsyncValue.data(
+    List.generate(7, (i) {
+      final date = startOfWeek.add(Duration(days: i));
+      return (date: date, amount: allExpenseAmounts[date] ?? Decimal.zero);
+    }),
+  );
 });
 
 /// Returns a list of 7 [DailySpending] entries all with [Decimal.zero] amounts.

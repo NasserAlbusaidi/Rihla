@@ -45,6 +45,18 @@ void main() {
                     groupId: state.pathParameters['gid']!,
                     eventId: state.pathParameters['eid']!,
                   ),
+                  routes: [
+                    GoRoute(
+                      path: 'add',
+                      builder: (context, state) =>
+                          const Scaffold(body: Text('Add expense route')),
+                    ),
+                    GoRoute(
+                      path: 'settle-up',
+                      builder: (context, state) =>
+                          const Scaffold(body: Text('Settle up route')),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'activity',
@@ -82,53 +94,60 @@ void main() {
     );
   }
 
-  group('LedgerScreen overflow menu', () {
-    testWidgets('overflow menu button is visible', (tester) async {
+  group('LedgerScreen header actions', () {
+    testWidgets('settings and search buttons are visible', (tester) async {
       await tester.pumpWidget(buildLedger());
       await tester.pumpAndSettle();
 
-      expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+      expect(find.byTooltip('Search expenses'), findsOneWidget);
+      expect(find.byTooltip('Event settings'), findsOneWidget);
+      expect(find.byType(PopupMenuButton<String>), findsNothing);
     });
 
-    testWidgets('overflow menu has Event activity and Event settings items', (
+    testWidgets('search button shows search placeholder feedback', (
       tester,
     ) async {
       await tester.pumpWidget(buildLedger());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.tap(find.byTooltip('Search expenses'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Event activity'), findsOneWidget);
-      expect(find.text('Event settings'), findsOneWidget);
+      expect(find.text('Search coming soon'), findsOneWidget);
     });
 
-    testWidgets('Event activity item navigates to event activity route', (
+    testWidgets('settings button navigates to event settings route', (
       tester,
     ) async {
       await tester.pumpWidget(buildLedger());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(PopupMenuButton<String>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Event activity'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Activity route'), findsOneWidget);
-    });
-
-    testWidgets('Event settings item navigates to event settings route', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildLedger());
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byType(PopupMenuButton<String>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Event settings'));
+      await tester.tap(find.byTooltip('Event settings'));
       await tester.pumpAndSettle();
 
       expect(find.text('Settings route'), findsOneWidget);
+    });
+
+    testWidgets('add expense CTA navigates to add expense route', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildLedger());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Add expense'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add expense route'), findsOneWidget);
+    });
+
+    testWidgets('settle up CTA navigates to settle-up route', (tester) async {
+      await tester.pumpWidget(buildLedger());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Settle up'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Settle up route'), findsOneWidget);
     });
   });
 }

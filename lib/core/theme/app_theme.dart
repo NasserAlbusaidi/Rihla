@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'tokens/color_tokens.dart';
 import 'tokens/shadow_tokens.dart';
 import 'tokens/spacing_tokens.dart';
+import 'tokens/typography_tokens.dart';
 
-/// App theme configuration
+/// App theme configuration.
+///
+/// Three font families:
+/// - Display (Instrument Serif italic) — display* and headlineLarge sizes
+/// - Sans (Geist) — body, title, label, button text
+/// - Mono (Geist Mono, tabular figures) — accessed via [AppTypography.mono]
+///   when needed inline (money widgets, timestamps); not part of [TextTheme].
+///
+/// `fontFamily` constant retained for backward compatibility — its value
+/// now resolves to Geist instead of Plus Jakarta Sans.
 class AppTheme {
-  static const String fontFamily = 'Plus Jakarta Sans';
+  /// Default sans family — points at [AppTypography.sansFamily].
+  static const String fontFamily = AppTypography.sansFamily;
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -31,17 +41,16 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         scrolledUnderElevation: 0,
-        titleTextStyle: GoogleFonts.getFont(
-          fontFamily,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
+        titleTextStyle: AppTypography.display(
+          fontSize: 22,
           color: AppColorTokens.light.textPrimary,
+          letterSpacing: -0.3,
         ),
       ),
       cardTheme: CardThemeData(
         color: AppColorTokens.light.cardSurface,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -50,13 +59,12 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(9999),
           ),
-          textStyle: GoogleFonts.getFont(
-            fontFamily,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.2,
+          textStyle: AppTypography.sans(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
           ),
         ),
       ),
@@ -64,83 +72,76 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColorTokens.light.textPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          side: BorderSide(color: AppColorTokens.light.border, width: 1.5),
+          side: BorderSide(color: AppColorTokens.light.textPrimary, width: 1),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(9999),
           ),
-          textStyle: GoogleFonts.getFont(
-            fontFamily,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.2,
+          textStyle: AppTypography.sans(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColorTokens.light.primary,
-          textStyle: GoogleFonts.getFont(
-            fontFamily,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
+          foregroundColor: AppColorTokens.light.primaryDark,
+          textStyle: AppTypography.sans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColorTokens.light.inputFillWarm,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        fillColor: AppColorTokens.light.inputFill,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColorTokens.light.borderWarm, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColorTokens.light.border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColorTokens.light.focusBorderWarm, width: 2),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColorTokens.light.focusRing, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColorTokens.light.error, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColorTokens.light.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColorTokens.light.error, width: 2),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColorTokens.light.error, width: 1.5),
         ),
-        labelStyle: GoogleFonts.getFont(
-          AppTheme.fontFamily,
-          // design-token-justified: warm input label color paired with inputFillWarm; candidate for textOnWarm token in W4
-          color: const Color(0xFF2C1A0E),
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-        hintStyle: GoogleFonts.getFont(
-          AppTheme.fontFamily,
-          // design-token-justified: warm input hint color paired with inputFillWarm; candidate for hintOnWarm token in W4
-          color: const Color(0xFFA89888),
-          fontSize: 15,
+        labelStyle: AppTypography.sans(
+          color: AppColorTokens.light.textSecondary,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
-        floatingLabelStyle: GoogleFonts.getFont(
-          AppTheme.fontFamily,
-          color: AppColorTokens.light.focusBorderWarm,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+        hintStyle: AppTypography.sans(
+          color: AppColorTokens.light.textMuted,
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+        ),
+        floatingLabelStyle: AppTypography.sans(
+          color: AppColorTokens.light.focusRing,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColorTokens.light.primary,
         foregroundColor: AppColorTokens.light.textOnPrimary,
-        elevation: 8,
+        elevation: 4,
         shape: const CircleBorder(),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColorTokens.light.textPrimary,
-        contentTextStyle: GoogleFonts.getFont(
-          fontFamily,
+        contentTextStyle: AppTypography.sans(
           color: Colors.white,
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -149,26 +150,34 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: AppColorTokens.light.inputFill,
-        selectedColor: AppColorTokens.light.selectionFill,
-        labelStyle: GoogleFonts.getFont(
-          fontFamily,
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
+        backgroundColor: Colors.transparent,
+        selectedColor: AppColorTokens.light.textPrimary,
+        labelStyle: AppTypography.sans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
           color: AppColorTokens.light.textSecondary,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        secondaryLabelStyle: AppTypography.sans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColorTokens.light.textOnPrimary,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(9999),
+          side: BorderSide(color: AppColorTokens.light.rule2, width: 1),
+        ),
         side: BorderSide.none,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
       dividerTheme: DividerThemeData(
-        color: AppColorTokens.light.border,
-        thickness: 1,
+        color: AppColorTokens.light.rule,
+        thickness: 0.5,
+        space: 1,
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: AppColorTokens.light.cardSurface,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       dialogTheme: DialogThemeData(
@@ -183,9 +192,9 @@ class AppTheme {
     );
   }
 
-  /// Dark theme — foundation in place via AppColorTokens.dark (DARK-01).
-  /// Widget-level migration from direct AppColorTokens.light to context.colors
-  /// is a separate effort (DARK-02, review #17).
+  /// Dark theme — saffron-direction stub. Visual quality target deferred per
+  /// plan; values come from [AppColorTokens.dark] which compile and don't
+  /// produce illegible text but have not been tuned.
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -208,17 +217,16 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         scrolledUnderElevation: 0,
-        titleTextStyle: GoogleFonts.getFont(
-          fontFamily,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
+        titleTextStyle: AppTypography.display(
+          fontSize: 22,
           color: AppColorTokens.dark.textPrimary,
+          letterSpacing: -0.3,
         ),
       ),
       cardTheme: CardThemeData(
         color: AppColorTokens.dark.cardSurface,
         elevation: 0,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -227,58 +235,50 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(9999),
           ),
-          textStyle: GoogleFonts.getFont(
-            fontFamily,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+          textStyle: AppTypography.sans(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
           ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColorTokens.dark.cardSurface.withValues(alpha: 0.8),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 20,
-        ),
+        fillColor: AppColorTokens.dark.inputFill,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: AppColorTokens.dark.border,
-            width: 1.5,
-          ),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColorTokens.dark.border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColorTokens.dark.primary, width: 2),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColorTokens.dark.focusRing, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColorTokens.dark.error, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColorTokens.dark.error, width: 1),
         ),
-        hintStyle: GoogleFonts.getFont(
-          fontFamily,
+        hintStyle: AppTypography.sans(
           color: AppColorTokens.dark.textMuted,
           fontSize: 15,
+          fontWeight: FontWeight.w400,
+        ),
+        labelStyle: AppTypography.sans(
+          color: AppColorTokens.dark.textSecondary,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
-        labelStyle: GoogleFonts.getFont(
-          fontFamily,
-          color: AppColorTokens.dark.textSecondary,
-          fontSize: 14,
+        floatingLabelStyle: AppTypography.sans(
+          color: AppColorTokens.dark.focusRing,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
-        ),
-        floatingLabelStyle: GoogleFonts.getFont(
-          fontFamily,
-          color: AppColorTokens.dark.primary,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
         ),
       ),
       extensions: <ThemeExtension>[
@@ -289,111 +289,118 @@ class AppTheme {
     );
   }
 
+  /// Builds the [TextTheme] for the given brightness.
+  ///
+  /// Display sizes use Instrument Serif italic. Everything else uses Geist.
+  /// All body/title/label sizes carry tabular figures so inline numbers
+  /// render with consistent column widths.
   static TextTheme _buildTextTheme(Brightness brightness) {
     final tokens = brightness == Brightness.dark
         ? AppColorTokens.dark
         : AppColorTokens.light;
     final color = tokens.textPrimary;
-    final secondaryColor = tokens.textSecondary;
-    // B4 correction: bodySmall and labelSmall MUST use textSecondary (WCAG AA).
-    // textMuted (#9CA3AF light / #94A3B8 dark, both <4.5:1 contrast) is
-    // intentionally sub-AA per D-11 — decorative-only; never on functional roles.
+    final secondary = tokens.textSecondary;
 
     return TextTheme(
-      displayLarge: GoogleFonts.getFont(
-        fontFamily,
+      // Display — Instrument Serif italic. Hero numerals, big titles.
+      displayLarge: AppTypography.display(
         fontSize: 44,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         color: color,
         letterSpacing: -1.0,
+        height: 1.02,
       ),
-      displayMedium: GoogleFonts.getFont(
-        fontFamily,
+      displayMedium: AppTypography.display(
         fontSize: 36,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w400,
         color: color,
-        letterSpacing: -0.5,
+        letterSpacing: -0.6,
+        height: 1.05,
       ),
-      displaySmall: GoogleFonts.getFont(
-        fontFamily,
+      displaySmall: AppTypography.display(
         fontSize: 28,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w400,
         color: color,
-        letterSpacing: -0.3,
+        letterSpacing: -0.4,
+        height: 1.1,
       ),
-      headlineLarge: GoogleFonts.getFont(
-        fontFamily,
+      // Headline — Instrument Serif italic for the largest, then Geist.
+      headlineLarge: AppTypography.display(
         fontSize: 24,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w400,
         color: color,
         letterSpacing: -0.3,
+        height: 1.15,
       ),
-      headlineMedium: GoogleFonts.getFont(
-        fontFamily,
+      headlineMedium: AppTypography.sans(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: color,
+        tabularNums: true,
       ),
-      headlineSmall: GoogleFonts.getFont(
-        fontFamily,
+      headlineSmall: AppTypography.sans(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: color,
+        tabularNums: true,
       ),
-      titleLarge: GoogleFonts.getFont(
-        fontFamily,
+      // Title — Geist.
+      titleLarge: AppTypography.sans(
         fontSize: 17,
         fontWeight: FontWeight.w600,
         color: color,
+        tabularNums: true,
       ),
-      titleMedium: GoogleFonts.getFont(
-        fontFamily,
+      titleMedium: AppTypography.sans(
         fontSize: 15,
         fontWeight: FontWeight.w600,
         color: color,
+        tabularNums: true,
       ),
-      titleSmall: GoogleFonts.getFont(
-        fontFamily,
+      titleSmall: AppTypography.sans(
         fontSize: 13,
         fontWeight: FontWeight.w600,
         color: color,
+        tabularNums: true,
       ),
-      bodyLarge: GoogleFonts.getFont(
-        fontFamily,
+      // Body — Geist with tabular figures.
+      bodyLarge: AppTypography.sans(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        color: secondaryColor,
+        color: secondary,
+        tabularNums: true,
       ),
-      bodyMedium: GoogleFonts.getFont(
-        fontFamily,
+      bodyMedium: AppTypography.sans(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        color: secondaryColor,
+        color: secondary,
+        tabularNums: true,
       ),
-      bodySmall: GoogleFonts.getFont(
-        fontFamily,
+      bodySmall: AppTypography.sans(
         fontSize: 12,
         fontWeight: FontWeight.w400,
-        color: tokens.textSecondary,
+        color: secondary,
+        tabularNums: true,
       ),
-      labelLarge: GoogleFonts.getFont(
-        fontFamily,
+      // Labels — Geist.
+      labelLarge: AppTypography.sans(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: color,
+        tabularNums: true,
       ),
-      labelMedium: GoogleFonts.getFont(
-        fontFamily,
+      labelMedium: AppTypography.sans(
         fontSize: 12,
         fontWeight: FontWeight.w500,
-        color: secondaryColor,
+        color: secondary,
+        tabularNums: true,
       ),
-      labelSmall: GoogleFonts.getFont(
-        fontFamily,
+      labelSmall: AppTypography.sans(
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        color: tokens.textSecondary,
+        color: secondary,
         letterSpacing: 0.3,
+        tabularNums: true,
       ),
     );
   }

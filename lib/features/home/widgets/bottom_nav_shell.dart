@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import 'package:haptic_feedback/haptic_feedback.dart';
+
 import '../../../features/settings/screens/profile_screen.dart';
 import '../../../shared/widgets/grain_overlay.dart';
 import '../keys/home_keys.dart';
@@ -72,29 +74,55 @@ class _BottomNavShellState extends State<BottomNavShell> {
   }
 
   Widget _buildNavBar(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: _currentIndex,
-      onTap: (i) => setState(() => _currentIndex = i),
-      backgroundColor: context.colors.bottomNavBackground,
-      selectedItemColor: context.colors.bottomNavActiveIcon,
-      unselectedItemColor: context.colors.bottomNavInactiveIcon,
-      type: BottomNavigationBarType.fixed,
-      showUnselectedLabels: true,
-      elevation: 8,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Iconsax.people, key: HomeKeys.bottomNavGroups),
-          label: 'Groups',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Iconsax.activity, key: HomeKeys.bottomNavActivity),
-          label: 'Activity',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Iconsax.profile_circle, key: HomeKeys.bottomNavProfile),
-          label: 'Profile',
-        ),
-      ],
+    return NavigationBarTheme(
+      data: NavigationBarThemeData(
+        backgroundColor: context.colors.bottomNavBackground,
+        indicatorColor: context.colors.selectionFill,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(
+              color: context.colors.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Plus Jakarta Sans',
+            );
+          }
+          return TextStyle(
+            color: context.colors.bottomNavInactiveIcon,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'Plus Jakarta Sans',
+          );
+        }),
+      ),
+      child: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (i) {
+          try {
+            Haptics.vibrate(HapticsType.selection);
+          } catch (_) {}
+          setState(() => _currentIndex = i);
+        },
+        height: 72,
+        elevation: 8,
+        destinations: [
+          NavigationDestination(
+            icon: Icon(Iconsax.people, color: context.colors.bottomNavInactiveIcon, key: HomeKeys.bottomNavGroups),
+            selectedIcon: Icon(Iconsax.people5, color: context.colors.primary),
+            label: 'Groups',
+          ),
+          NavigationDestination(
+            icon: Icon(Iconsax.activity, color: context.colors.bottomNavInactiveIcon, key: HomeKeys.bottomNavActivity),
+            selectedIcon: Icon(Iconsax.activity5, color: context.colors.primary),
+            label: 'Activity',
+          ),
+          NavigationDestination(
+            icon: Icon(Iconsax.profile_circle, color: context.colors.bottomNavInactiveIcon, key: HomeKeys.bottomNavProfile),
+            selectedIcon: Icon(Iconsax.profile_circle5, color: context.colors.primary),
+            label: 'Profile',
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
@@ -27,65 +28,75 @@ class ModuleHeader extends StatelessWidget {
   }
 
   Widget _buildLight(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.scaffoldBackground,
-        border: Border(
-          bottom: BorderSide(color: context.colors.border, width: 0.5),
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            context.spacing.space24,
-            context.spacing.space12,
-            context.spacing.space24,
-            context.spacing.space24,
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: context.colors.scaffoldBackground.withValues(alpha: 0.85),
+            border: Border(
+              bottom: BorderSide(
+                color: context.colors.border.withValues(alpha: 0.4),
+                width: 0.5,
+              ),
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.space24,
+                context.spacing.space12,
+                context.spacing.space24,
+                context.spacing.space24,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _LightBackButton(onTap: () {
-                if (GoRouter.of(context).canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/home');
-                }
-              }),
-                  if (actions != null) Row(children: actions!),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _LightBackButton(
+                        onTap: () {
+                          if (GoRouter.of(context).canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/home');
+                          }
+                        },
+                      ),
+                      if (actions != null) Row(children: actions!),
+                    ],
+                  ),
+                  SizedBox(height: context.spacing.space16),
+                  if (subtitle != null) ...[
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.colors.textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: context.spacing.space4),
+                  ],
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: context.colors.textPrimary,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  if (bottom != null) ...[
+                    SizedBox(height: context.spacing.space16),
+                    bottom!,
+                  ],
                 ],
               ),
-              SizedBox(height: context.spacing.space16),
-              if (subtitle != null) ...[
-                Text(
-                  subtitle!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: context.colors.textSecondary,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                SizedBox(height: context.spacing.space4),
-              ],
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: context.colors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              if (bottom != null) ...[
-                SizedBox(height: context.spacing.space16),
-                bottom!,
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -93,69 +104,82 @@ class ModuleHeader extends StatelessWidget {
   }
 
   Widget _buildDark(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: context.colors.headerGradient,
-        image: DecorationImage(
-          image: AssetImage('assets/textures/grain.png'),
-          repeat: ImageRepeat.repeat,
-          opacity: 0.02,
-          fit: BoxFit.none,
-          alignment: Alignment.topLeft,
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            context.spacing.space24,
-            context.spacing.space12,
-            context.spacing.space24,
-            context.spacing.space32,
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24.0, sigmaY: 24.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: context.colors.headerGradientStart.withValues(alpha: 0.8),
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 0.5,
+              ),
+            ),
+            image: const DecorationImage(
+              image: AssetImage('assets/textures/grain.png'),
+              repeat: ImageRepeat.repeat,
+              opacity: 0.02,
+              fit: BoxFit.none,
+              alignment: Alignment.topLeft,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.space24,
+                context.spacing.space12,
+                context.spacing.space24,
+                context.spacing.space32,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _DarkBackButton(onTap: () {
-                  if (GoRouter.of(context).canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/home');
-                  }
-                }),
-                  if (actions != null) Row(children: actions!),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _DarkBackButton(
+                        onTap: () {
+                          if (GoRouter.of(context).canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/home');
+                          }
+                        },
+                      ),
+                      if (actions != null) Row(children: actions!),
+                    ],
+                  ),
+                  SizedBox(height: context.spacing.space20),
+                  if (subtitle != null) ...[
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.5),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: context.spacing.space4),
+                  ],
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  if (bottom != null) ...[
+                    SizedBox(height: context.spacing.space16),
+                    bottom!,
+                  ],
                 ],
               ),
-              SizedBox(height: context.spacing.space20),
-              if (subtitle != null) ...[
-                Text(
-                  subtitle!,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.5),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                SizedBox(height: context.spacing.space4),
-              ],
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              if (bottom != null) ...[
-                SizedBox(height: context.spacing.space16),
-                bottom!,
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -179,7 +203,11 @@ class _LightBackButton extends StatelessWidget {
           width: 48,
           height: 48,
           alignment: Alignment.center,
-          child: Icon(Iconsax.arrow_left, color: context.colors.textPrimary, size: 20),
+          child: Icon(
+            Iconsax.arrow_left,
+            color: context.colors.textPrimary,
+            size: 20,
+          ),
         ),
       ),
     );

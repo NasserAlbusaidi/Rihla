@@ -237,7 +237,9 @@ void main() {
       expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
     });
 
-    testWidgets('shows event count chip when events exist', (tester) async {
+    testWidgets('shows events section action when events exist', (
+      tester,
+    ) async {
       final events = [
         _makeEvent(id: 'evt-1', name: 'Trip A'),
         _makeEvent(id: 'evt-2', name: 'Trip B'),
@@ -252,8 +254,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Count chip shows the integer count of events
-      expect(find.byKey(GroupKeys.eventsCountChip), findsOneWidget);
+      expect(find.byKey(GroupKeys.eventsSection), findsOneWidget);
+      expect(find.text('New event'), findsWidgets);
+      expect(find.byKey(GroupKeys.eventsCountChip), findsNothing);
     });
 
     testWidgets('does not show count chip when no events', (tester) async {
@@ -269,33 +272,31 @@ void main() {
       expect(find.byKey(GroupKeys.eventsCountChip), findsNothing);
     });
 
-    testWidgets(
-      'event cards wrapped in FadeInList for staggered entrance (D-08)',
-      (tester) async {
-        final events = [
-          _makeEvent(id: 'evt-1', name: 'Beach Trip'),
-          _makeEvent(
-            id: 'evt-2',
-            name: 'Mountain Hike',
-            type: EventType.camping,
-          ),
-        ];
+    testWidgets('event rows render without the legacy FadeInList wrapper', (
+      tester,
+    ) async {
+      final events = [
+        _makeEvent(id: 'evt-1', name: 'Beach Trip'),
+        _makeEvent(id: 'evt-2', name: 'Mountain Hike', type: EventType.camping),
+      ];
 
-        await tester.pumpWidget(
-          _wrap(
-            const GroupDetailScreen(groupId: _groupId),
-            prefs,
-            events: events,
-          ),
-        );
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          events: events,
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // FadeInList widget must be present in the tree
-        expect(find.byType(FadeInList), findsOneWidget);
-      },
-    );
+      expect(find.byType(FadeInList), findsNothing);
+      expect(find.text('Beach Trip'), findsWidgets);
+      expect(find.text('Mountain Hike'), findsWidgets);
+    });
 
-    testWidgets('dims past events with 0.6 opacity', (tester) async {
+    testWidgets('past events remain visible with their date label', (
+      tester,
+    ) async {
       // A past event has endDate before today
       final pastEvent = _makeEvent(
         id: 'evt-past',
@@ -315,24 +316,18 @@ void main() {
       // The card still renders (it's tappable behind the opacity).
       // findsWidgets because the card renders the name in multiple Text widgets.
       expect(find.text('Old Trip'), findsWidgets);
-
-      // Verify Opacity widget with 0.6 is present in the tree
-      final opacityWidgets = tester.widgetList<Opacity>(find.byType(Opacity));
-      expect(
-        opacityWidgets.any((o) => o.opacity == 0.6),
-        isTrue,
-        reason: 'Past event should be wrapped in Opacity(0.6)',
-      );
+      expect(find.text('ends Jan 1'), findsOneWidget);
     });
 
-    testWidgets('shows FAB for creating events', (tester) async {
+    testWidgets('shows event creation actions without a FAB', (tester) async {
       await tester.pumpWidget(
         _wrap(const GroupDetailScreen(groupId: _groupId), prefs),
       );
       await tester.pumpAndSettle();
 
-      // FAB should be visible
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.text('New event'), findsWidgets);
+      expect(find.text('Create Event'), findsOneWidget);
     });
 
     testWidgets('tapping event card navigates to Ledger route', (tester) async {
@@ -354,7 +349,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(EventCard).first);
+      await tester.tap(find.text('Tap Navigation Trip'));
       await tester.pumpAndSettle();
 
       expect(find.text('Ledger:evt-tap'), findsOneWidget);
@@ -378,7 +373,6 @@ void main() {
         createdAt: DateTime(2026, 3, 1),
       );
 
-      final router = _makeRouter(groupId: _groupId);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -409,9 +403,11 @@ void main() {
               eventRef,
             ).overrideWith((ref) => Stream.value([testExpense])),
           ],
-          child: MaterialApp.router(
+          child: MaterialApp(
             theme: AppTheme.lightTheme,
-            routerConfig: router,
+            home: Scaffold(
+              body: EventCard(event: event, onTap: () {}),
+            ),
           ),
         ),
       );
@@ -423,12 +419,21 @@ void main() {
 
     testWidgets('shows 0.000 OMR when event has no expenses', (tester) async {
       final event = _makeEvent(id: 'evt-zero', name: 'Free Trip');
+      final eventRef = _eventRef(event);
 
       await tester.pumpWidget(
-        _wrap(
-          const GroupDetailScreen(groupId: _groupId),
-          prefs,
-          events: [event],
+        ProviderScope(
+          overrides: [
+            eventExpensesProvider(
+              eventRef,
+            ).overrideWith((ref) => Stream.value(const [])),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
+              body: EventCard(event: event, onTap: () {}),
+            ),
+          ),
         ),
       );
       await tester.pumpAndSettle();

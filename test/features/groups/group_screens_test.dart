@@ -14,7 +14,6 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
-import 'package:safar/features/groups/widgets/group_member_balance_card.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 
 // ---------------------------------------------------------------------------
@@ -168,6 +167,23 @@ Widget _wrapWithBalances(Widget child, SharedPreferences prefs) {
   );
 }
 
+Finder _textContaining(String value) {
+  return find.byWidgetPredicate((widget) {
+    if (widget is! Text) return false;
+    return (widget.data?.contains(value) ?? false) ||
+        (widget.textSpan?.toPlainText().contains(value) ?? false);
+  });
+}
+
+Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    260,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -195,15 +211,13 @@ void main() {
         expect(find.text('Adventure Crew'), findsWidgets);
       });
 
-      testWidgets('shows active members count in stats grid', (tester) async {
+      testWidgets('shows active members count in cover header', (tester) async {
         await tester.pumpWidget(
           _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
         );
         await tester.pumpAndSettle();
 
-        // Stats grid replaces the old member count chip (Phase 20 redesign)
-        expect(find.byKey(GroupKeys.statsGrid), findsOneWidget);
-        expect(find.byKey(GroupKeys.statActiveMembers), findsOneWidget);
+        expect(find.text('GROUP · 2 MEMBERS'), findsOneWidget);
       });
 
       testWidgets(
@@ -227,12 +241,16 @@ void main() {
           );
           await tester.pumpAndSettle();
 
-          // Section header renamed to "Members & Balances" in Plan 05-05 (D-29).
+          await _scrollUntilVisible(
+            tester,
+            find.byKey(GroupKeys.membersAndBalancesSection),
+          );
+
           expect(
             find.byKey(GroupKeys.membersAndBalancesSection),
             findsOneWidget,
           );
-          // Member names rendered via GroupMemberBalanceCard (replaced GroupMemberTile)
+          expect(find.text('MEMBERS'), findsOneWidget);
           expect(find.text('Alice'), findsWidgets);
           expect(find.text('Bob'), findsOneWidget);
         },
@@ -259,32 +277,7 @@ void main() {
       });
 
       testWidgets(
-        'balance toggle: tapping GroupMemberBalanceCard changes expanded state',
-        (tester) async {
-          // Use balances with non-zero data so GroupMemberBalanceCard renders
-          await tester.pumpWidget(
-            _wrapWithBalances(
-              const GroupDetailScreen(groupId: 'group-1'),
-              prefs,
-            ),
-          );
-          await tester.pumpAndSettle();
-
-          // GroupMemberBalanceCard should be rendered
-          expect(find.byType(GroupMemberBalanceCard), findsWidgets);
-
-          // Tap the first card to expand it
-          await tester.tap(find.byType(GroupMemberBalanceCard).first);
-          await tester.pumpAndSettle();
-
-          // After tap, the card should still render (toggle changed expand state)
-          // Verify the widget tree updated by checking the card is still present
-          expect(find.byType(GroupMemberBalanceCard), findsWidgets);
-        },
-      );
-
-      testWidgets(
-        'balance toggle: accordion allows only one card expanded at a time',
+        'members section shows signed balances when balances are non-zero',
         (tester) async {
           await tester.pumpWidget(
             _wrapWithBalances(
@@ -294,45 +287,57 @@ void main() {
           );
           await tester.pumpAndSettle();
 
-          // Two GroupMemberBalanceCards should be rendered (Alice + Bob)
-          final cards = find.byType(GroupMemberBalanceCard);
-          expect(cards, findsNWidgets(2));
+          await _scrollUntilVisible(
+            tester,
+            find.byKey(GroupKeys.membersAndBalancesSection),
+          );
 
-          // Tap first card
-          await tester.tap(cards.first);
-          await tester.pumpAndSettle();
-
-          // Tap second card — accordion should collapse first
-          await tester.tap(cards.at(1));
-          await tester.pumpAndSettle();
-
-          // Both cards still rendered — widget tree is intact after toggle
-          expect(find.byType(GroupMemberBalanceCard), findsNWidgets(2));
+          expect(find.text('Alice'), findsWidgets);
+          expect(find.text('Bob'), findsOneWidget);
+          expect(_textContaining('15.000'), findsWidgets);
         },
       );
 
-      testWidgets('GroupBalanceHero renders when totalSpent > 0 (D-19)', (
+      testWidgets('members section shows rows for both zero-balance members', (
         tester,
       ) async {
-        await tester.pumpWidget(
-          _wrapWithBalances(const GroupDetailScreen(groupId: 'group-1'), prefs),
-        );
-        await tester.pumpAndSettle();
-
-        // With totalSpent = 30.000, GroupBalanceHero is shown
-        // Verify balance data is displayed
-        expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
-        expect(find.text('Alice'), findsWidgets);
-        expect(find.text('Bob'), findsOneWidget);
-      });
-
-      testWidgets('FAB is present for creating new events', (tester) async {
         await tester.pumpWidget(
           _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
         );
         await tester.pumpAndSettle();
 
-        expect(find.byType(FloatingActionButton), findsOneWidget);
+        await _scrollUntilVisible(
+          tester,
+          find.byKey(GroupKeys.membersAndBalancesSection),
+        );
+
+        expect(find.text('Alice'), findsWidgets);
+        expect(find.text('Bob'), findsOneWidget);
+        expect(find.text('—'), findsWidgets);
+      });
+
+      testWidgets('balance card shows non-zero user balance', (tester) async {
+        await tester.pumpWidget(
+          _wrapWithBalances(const GroupDetailScreen(groupId: 'group-1'), prefs),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Your balance here'), findsOneWidget);
+        expect(_textContaining('15.000'), findsWidgets);
+        expect(find.text('they owe you'), findsOneWidget);
+      });
+
+      testWidgets('event creation actions are present without a FAB', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          _wrap(const GroupDetailScreen(groupId: 'group-1'), prefs),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(FloatingActionButton), findsNothing);
+        expect(find.text('New event'), findsWidgets);
+        expect(find.text('Create Event'), findsOneWidget);
       });
     });
 

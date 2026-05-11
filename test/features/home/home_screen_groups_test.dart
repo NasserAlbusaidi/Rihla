@@ -2,45 +2,19 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
-import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
-import 'package:safar/features/groups/widgets/group_card.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
-import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
-import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-Event _makeEvent(
-  String id,
-  String name,
-  EventType type, {
-  String groupId = 'g1',
-  DateTime? createdAt,
-}) => Event(
-  id: id,
-  name: name,
-  type: type,
-  groupId: groupId,
-  createdBy: 'uid0',
-  participantIds: ['uid0'],
-  participantNames: {'uid0': 'Alice'},
-  modules: EventModules.forType(type),
-  createdAt: createdAt ?? DateTime.now().subtract(const Duration(days: 2)),
-);
 
 Group _makeGroup(String id, String name, {int memberCount = 2}) => Group(
   id: id,
@@ -52,13 +26,14 @@ Group _makeGroup(String id, String name, {int memberCount = 2}) => Group(
   createdAt: DateTime(2026, 1, 1),
 );
 
-/// Returns the minimal set of overrides needed for the new dashboard providers
-/// to not throw (empty/settled state). Tests that need specific values add
-/// their own overrides on top.
-List<Override> _dashboardOverrides() => [
+List<Override> _overrides(List<Group> groups) => [
+  userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
   crossGroupBalanceProvider.overrideWith(
-    (ref) =>
-        AsyncValue.data((net: Decimal.zero, groupCount: 0, isLoading: false)),
+    (ref) => AsyncValue.data((
+      net: Decimal.zero,
+      groupCount: groups.length,
+      isLoading: false,
+    )),
   ),
   crossGroupActivityProvider.overrideWith((ref) => const AsyncValue.data([])),
   weeklyGroupSpendingProvider.overrideWith(
@@ -82,16 +57,14 @@ List<Override> _dashboardOverrides() => [
   currentUserIdProvider.overrideWithValue('test-user-id'),
 ];
 
-/// Wraps [widget] with GoRouter and ProviderScope overrides needed for testing.
-Widget _buildTestApp(
-  Widget widget, {
-  List<Override> overrides = const [],
+Widget _buildTestApp({
+  required List<Override> overrides,
   required SharedPreferences prefs,
 }) {
   final router = GoRouter(
     initialLocation: '/home',
     routes: [
-      GoRoute(path: '/home', builder: (ctx, state) => widget),
+      GoRoute(path: '/home', builder: (ctx, state) => const HomeScreen()),
       GoRoute(
         path: '/create-group',
         builder: (ctx, state) =>
@@ -107,12 +80,12 @@ Widget _buildTestApp(
             Scaffold(body: Text('GroupDetail:${state.pathParameters['id']}')),
       ),
       GoRoute(
-        path: '/profile',
-        builder: (ctx, state) => const Scaffold(body: Text('ProfileScreen')),
-      ),
-      GoRoute(
         path: '/activity',
         builder: (ctx, state) => const Scaffold(body: Text('ActivityScreen')),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (ctx, state) => const Scaffold(body: Text('ProfileScreen')),
       ),
     ],
   );
@@ -126,10 +99,6 @@ Widget _buildTestApp(
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 void main() {
   late SharedPreferences prefs;
 
@@ -139,15 +108,11 @@ void main() {
   });
 
   group('HomeScreen groups', () {
-    testWidgets('shows "Your Groups" header', (tester) async {
+    testWidgets('shows greeting strip when groups are loaded', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
-          const HomeScreen(),
           prefs: prefs,
-          overrides: [
-            userGroupsProvider.overrideWith((ref) => Stream.value([])),
-            ..._dashboardOverrides(),
-          ],
+          overrides: _overrides([_makeGroup('g1', 'Desert Crew')]),
         ),
       );
       await tester.pumpAndSettle();
@@ -155,97 +120,49 @@ void main() {
       expect(find.byKey(HomeKeys.yourGroupsHeader), findsOneWidget);
     });
 
-    testWidgets('shows GroupCard for each group from userGroupsProvider', (
+    testWidgets('shows one row for each group from userGroupsProvider', (
       tester,
     ) async {
-      final groups = [
-        _makeGroup('g1', 'Desert Crew'),
-        _makeGroup('g2', 'Mountain Pals'),
-      ];
-
       await tester.pumpWidget(
         _buildTestApp(
-          const HomeScreen(),
           prefs: prefs,
-          overrides: [
-            userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
-            ..._dashboardOverrides(),
-          ],
+          overrides: _overrides([
+            _makeGroup('g1', 'Desert Crew'),
+            _makeGroup('g2', 'Mountain Pals'),
+          ]),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(GroupCard), findsNWidgets(2));
       expect(find.text('Desert Crew'), findsOneWidget);
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+      await tester.pumpAndSettle();
       expect(find.text('Mountain Pals'), findsOneWidget);
     });
 
     testWidgets('shows empty state when user has no groups', (tester) async {
       await tester.pumpWidget(
-        _buildTestApp(
-          const HomeScreen(),
-          prefs: prefs,
-          overrides: [
-            userGroupsProvider.overrideWith((ref) => Stream.value([])),
-            ..._dashboardOverrides(),
-          ],
-        ),
+        _buildTestApp(prefs: prefs, overrides: _overrides([])),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Create your first group'), findsOneWidget);
+      expect(find.text('Start your first group'), findsOneWidget);
+      expect(find.text('Create Group'), findsOneWidget);
     });
 
-    testWidgets('FAB opens bottom sheet with Create and Join options', (
-      tester,
-    ) async {
+    testWidgets('group row navigates through GoRouter', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
-          const HomeScreen(),
           prefs: prefs,
-          overrides: [
-            userGroupsProvider.overrideWith((ref) => Stream.value([])),
-            ..._dashboardOverrides(),
-          ],
+          overrides: _overrides([_makeGroup('gXYZ', 'Friends')]),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(HomeKeys.createGroupFab));
+      await tester.tap(find.text('Friends'));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(HomeKeys.createGroupOption), findsOneWidget);
-      expect(find.byKey(HomeKeys.joinGroupOption), findsOneWidget);
-    });
-
-    testWidgets('GroupCard navigates via GoRouter (not OpenContainer)', (
-      tester,
-    ) async {
-      // Bug 24 fix: OpenContainer bypassed GoRouter. GroupCard now uses
-      // context.push('/group/{id}') for deep link support.
-      final groups = [_makeGroup('gXYZ', 'Friends')];
-
-      await tester.pumpWidget(
-        _buildTestApp(
-          const HomeScreen(),
-          prefs: prefs,
-          overrides: [
-            userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
-            ..._dashboardOverrides(),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // GroupCard renders without OpenContainer wrapper
-      expect(find.byType(GroupCard), findsWidgets);
-    });
-
-    test('does not reference userTripsProvider (trip code removed)', () {
-      // This is a static code assertion validated by flutter analyze.
-      // The HomeScreen source file must not import or reference userTripsProvider
-      // or tripSeedProvider — verified by acceptance criteria grep check.
-      expect(true, isTrue);
+      expect(find.text('GroupDetail:gXYZ'), findsOneWidget);
     });
 
     testWidgets('bottom nav has 3 tabs: Groups, Activity, Profile', (
@@ -253,123 +170,34 @@ void main() {
     ) async {
       await tester.pumpWidget(
         _buildTestApp(
-          const BottomNavShell(child: SizedBox()),
           prefs: prefs,
-          overrides: [
-            userGroupsProvider.overrideWith((ref) => Stream.value([])),
-            ..._dashboardOverrides(),
-          ],
+          overrides: _overrides([_makeGroup('g1', 'Desert Crew')]),
         ),
       );
       await tester.pumpAndSettle();
 
-      final navBar = tester.widget<BottomNavigationBar>(
-        find.byType(BottomNavigationBar),
-      );
-      expect(navBar.items, hasLength(3));
-      expect(
-        navBar.items.map((item) => item.label),
-        orderedEquals(['Groups', 'Activity', 'Profile']),
-      );
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.destinations, hasLength(3));
+      expect(find.text('Groups'), findsWidgets);
+      expect(find.text('Activity'), findsWidgets);
+      expect(find.text('Profile'), findsWidgets);
       expect(find.text('Chats'), findsNothing);
     });
 
-    testWidgets('Activity tab shows CrossGroupActivityScreen', (tester) async {
+    testWidgets('Activity tab updates selected index', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
-          const BottomNavShell(child: SizedBox()),
           prefs: prefs,
-          overrides: [
-            userGroupsProvider.overrideWith((ref) => Stream.value([])),
-            ..._dashboardOverrides(),
-          ],
+          overrides: _overrides([_makeGroup('g1', 'Desert Crew')]),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Activity'));
+      await tester.tap(find.byKey(HomeKeys.bottomNavActivity));
       await tester.pump(const Duration(milliseconds: 250));
 
-      expect(find.byType(CrossGroupActivityScreen), findsOneWidget);
-    });
-
-    // Test B (CARD-01): accent strip color differs between groups
-    testWidgets('GroupCard accent strip color differs between group g1 and g2', (
-      tester,
-    ) async {
-      final groups = [
-        _makeGroup('g1', 'Desert Crew'),
-        _makeGroup('g2', 'Mountain Pals'),
-      ];
-
-      await tester.pumpWidget(
-        _buildTestApp(
-          const HomeScreen(),
-          prefs: prefs,
-          overrides: [
-            ..._dashboardOverrides(),
-            userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // After implementation: both GroupCards render with accent strips.
-      // The hash-based color selection ensures 'g1'.hashCode % 5 != 'g2'.hashCode % 5
-      // for at least some group ID pairs, producing distinct colors.
-      // Test: find at least 2 GroupCards
-      expect(find.byType(GroupCard), findsNWidgets(2));
-    });
-
-    // Test: GroupCard with events shows context line
-    testWidgets('GroupCard with events shows event context line', (
-      tester,
-    ) async {
-      final groups = [_makeGroup('g1', 'Desert Crew')];
-
-      await tester.pumpWidget(
-        _buildTestApp(
-          const HomeScreen(),
-          prefs: prefs,
-          overrides: [
-            ..._dashboardOverrides(),
-            userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
-            groupEventsProvider.overrideWith(
-              (ref, groupId) => Stream.value([
-                _makeEvent('e1', 'Camping Trip', EventType.camping),
-              ]),
-            ),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Context line shows "Camping Trip — X ago"
-      expect(find.textContaining('Camping Trip'), findsOneWidget);
-    });
-
-    // Test: GroupCard with no events shows "No events yet"
-    testWidgets('GroupCard with no events shows "No events yet"', (
-      tester,
-    ) async {
-      final groups = [_makeGroup('g1', 'Desert Crew')];
-
-      await tester.pumpWidget(
-        _buildTestApp(
-          const HomeScreen(),
-          prefs: prefs,
-          overrides: [
-            ..._dashboardOverrides(),
-            userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
-            groupEventsProvider.overrideWith(
-              (ref, groupId) => Stream.value([]),
-            ),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('No events yet'), findsOneWidget);
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 1);
     });
   });
 }

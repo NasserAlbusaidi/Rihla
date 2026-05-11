@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 
 import 'group_avatar_colors.dart';
 
-/// Typed color token set for the neutral + teal palette.
+/// Typed color token set for the saffron travel-journal direction (v2.0).
 ///
 /// All fields are final Color values. Gradient tokens are computed getters
 /// (LinearGradient is not const-constructable, so they cannot be fields).
 ///
 /// Use [AppColorTokens.light] for the default light palette instance.
+///
+/// **Migration note:** field names are inherited from the prior earthy/teal
+/// iterations and remain stable to protect existing call sites. Values are
+/// remapped to the saffron palette; semantic groupings (success → sage,
+/// error → rust, primary → saffron, scaffoldBackground → paper, etc.) are
+/// documented per-field below.
 final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   const AppColorTokens({
     required this.brightness,
@@ -51,131 +57,185 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     required this.borderWarm,
     required this.warning,
     required this.primaryDark,
+    // Saffron-direction additions:
+    required this.paperDeep,
+    required this.cardSoft,
+    required this.ink2,
+    required this.saffronSoft,
+    required this.saffronTint,
+    required this.rule,
+    required this.rule2,
+    required this.cat1,
+    required this.cat2,
+    required this.cat3,
+    required this.cat4,
+    required this.cat5,
+    required this.cat6,
   });
 
   /// Which brightness variant this instance represents.
-  /// Used by [groupAvatarSlot] to dispatch between light/dark slot palettes.
   final Brightness brightness;
 
-  /// Teal — primary action color (buttons, FABs, focused inputs, links)
+  /// Saffron — primary action color (buttons, FABs, focused inputs, links). `#D17B2C`
   final Color primary;
 
-  /// White — scaffold/page background (#FFFFFF)
+  /// Paper — scaffold/page background. `#F6F1E6`
   final Color scaffoldBackground;
 
-  /// Gray-50 — card surface (#F8F9FA)
+  /// White — card surface. `#FFFFFF`
   final Color cardSurface;
 
-  /// Gray-100 — input fill (#F3F4F6)
+  /// Card-soft warm white — input fill. `#FBF7EE`
   final Color inputFill;
 
-  /// Gray-200 — dividers and borders (#E5E7EB)
+  /// 8% ink hairline border. `rgba(27,26,23,0.08)` solid approximation.
   final Color border;
 
-  /// Gray-900 — primary body text, 17.15:1 on white (#111827)
+  /// Ink — primary body text. `#1B1A17`
   final Color textPrimary;
 
-  /// Gray-500 — secondary text, 5.74:1 on white (#6B7280)
+  /// Ink-3 — secondary text. `#6B675D`
   final Color textSecondary;
 
-  /// Gray-400 — decorative use only, below AA. Use textSecondary for functional labels.
+  /// Ink-4 — decorative-only tertiary text. `#948F82`. Below AA contrast — never use for functional labels.
   final Color textMuted;
 
-  /// White on teal — AA large (#FFFFFF)
+  /// White on saffron — primary button label. `#FFFFFF`
   final Color textOnPrimary;
 
-  /// Display only (badges, icons). For text use [successText].
+  /// Sage — semantic positive surface (badge fill, "owed to you" tone). `#5C7A57`
   final Color success;
 
-  /// Dark emerald — WCAG-safe success text, 4.56:1 on white (#047857)
+  /// Sage-dark — WCAG-safe positive text. `#3F5A3B`
   final Color successText;
 
-  /// Display only (badges, icons). For text use [errorText].
+  /// Rust — semantic negative surface ("you owe" tone). `#A84B33`
   final Color error;
 
-  /// Dark red — WCAG-safe error text, 5.92:1 on white (#B91C1C)
+  /// Rust-dark — WCAG-safe negative text. `#7A2F1F`
   final Color errorText;
 
-  /// Gray-200 — disabled control background (#E5E7EB)
+  /// Card-soft — disabled control background. `#FBF7EE`
   final Color disabled;
 
-  /// Gray-400 — disabled text (#9CA3AF)
+  /// Ink-4 — disabled text. `#948F82`
   final Color disabledText;
 
-  /// Teal focus ring — matches primary (#0D7B74)
+  /// Saffron focus ring — matches primary. `#D17B2C`
   final Color focusRing;
 
-  /// Teal 10% tint — selected chip/item background (#E6F5F3)
+  /// Saffron-tint — selected chip/item background. `#FBEED5`
   final Color selectionFill;
 
-  /// Ledger module accent — teal (#0D7B74)
+  /// Ledger module accent — saffron (the only colored module per locked direction). `#D17B2C`
   final Color moduleLedger;
 
-  /// Ledger module light tint (#E6F5F3)
+  /// Ledger module light tint. `#FBEED5`
   final Color moduleLedgerLight;
 
-  /// Gear module accent — gray-500 (#6B7280)
+  /// Gear module accent — ink-3 (modules differentiate by icon, not color). `#6B675D`
   final Color moduleGear;
 
-  /// Gear module light tint (#F3F4F6)
+  /// Gear module light tint — card-soft. `#FBF7EE`
   final Color moduleGearLight;
 
-  /// Logistics module accent — gray-500 (#6B7280)
+  /// Logistics module accent — ink-3.
   final Color moduleLogistics;
 
-  /// Logistics module light tint (#F3F4F6)
+  /// Logistics module light tint — card-soft.
   final Color moduleLogisticsLight;
 
-  /// Vault module accent — gray-500 (#6B7280)
+  /// Vault module accent — ink-3.
   final Color moduleVault;
 
-  /// Vault module light tint (#F3F4F6)
+  /// Vault module light tint — card-soft.
   final Color moduleVaultLight;
 
-  /// Activity module accent — gray-500 (#6B7280)
+  /// Activity module accent — ink-3.
   final Color moduleActivity;
 
-  /// Activity module light tint (#F3F4F6)
+  /// Activity module light tint — card-soft.
   final Color moduleActivityLight;
 
-  /// Memories module accent — gray-500 (#6B7280)
+  /// Memories module accent — ink-3.
   final Color moduleMemories;
 
-  /// Memories module light tint (#F3F4F6)
+  /// Memories module light tint — card-soft.
   final Color moduleMemoriesLight;
 
-  /// Header gradient start — gray-900 (#111827)
+  /// Ink — header gradient start. `#1B1A17`
   final Color headerGradientStart;
 
-  /// Header gradient end — gray-800 (#1F2937)
+  /// Ink-2 — header gradient end. `#3D3A33`
   final Color headerGradientEnd;
 
-  /// Amber offline indicator (#F59E0B)
+  /// Amber offline indicator (semantic, palette-independent). `#F59E0B`
   final Color offlineBannerBackground;
 
-  /// Bottom nav bar surface (#FFFFFF)
+  /// Paper — bottom nav surface. `#F6F1E6`
   final Color bottomNavBackground;
 
-  /// Active tab icon — matches primary (#0D7B74)
+  /// Saffron — active tab icon.
   final Color bottomNavActiveIcon;
 
-  /// Inactive tab icon — decorative only (#9CA3AF)
+  /// Ink-4 — inactive tab icon.
   final Color bottomNavInactiveIcon;
 
-  /// Warm sand form field fill (#F5EDE1) — earthy alternative to inputFill for forms.
+  /// Card-soft — warm form field fill alias of [inputFill].
   final Color inputFillWarm;
 
-  /// Terracotta focus border (#CC6B49) — warm form focus indicator.
+  /// Saffron — warm form focus indicator.
   final Color focusBorderWarm;
 
-  /// Warm gray enabled border (#E5D5C0) — earthy alternative to border for form inputs.
+  /// Border — warm enabled border alias.
   final Color borderWarm;
 
-  /// Amber warning color (#F59E0B) — used for warning badges and alerts.
+  /// Amber warning — used for warning badges and alerts. `#F59E0B`
   final Color warning;
 
-  /// Darker teal for gradient end (#0A6B65) — pairs with primary for CTA gradient.
+  /// Saffron-dark — paired with [primary] for CTA gradient. `#B5641A`
   final Color primaryDark;
+
+  // ────────── saffron-direction additions ──────────
+
+  /// Paper-deep — secondary paper tone for layered surfaces. `#EFE8D7`
+  final Color paperDeep;
+
+  /// Card-soft — warm white between [cardSurface] and [scaffoldBackground]. `#FBF7EE`
+  final Color cardSoft;
+
+  /// Ink-2 — between [textPrimary] (ink) and [textSecondary] (ink-3). `#3D3A33`
+  final Color ink2;
+
+  /// Saffron-soft — `#F4DDB8`. Used for saffron chip backgrounds and journey-glyph fills.
+  final Color saffronSoft;
+
+  /// Saffron-tint — `#FBEED5`. Lightest saffron, used for selected chip backgrounds.
+  final Color saffronTint;
+
+  /// Rule — 8% ink hairline divider. Distinct from [border] which is more solid.
+  final Color rule;
+
+  /// Rule-2 — 14% ink hairline, slightly stronger.
+  final Color rule2;
+
+  /// Category palette — food. `#C2693B`
+  final Color cat1;
+
+  /// Category palette — lodging. `#4F7B96`
+  final Color cat2;
+
+  /// Category palette — transit. `#8C6A2F`
+  final Color cat3;
+
+  /// Category palette — groceries. `#6F7A3A`
+  final Color cat4;
+
+  /// Category palette — activities. `#94517A`
+  final Color cat5;
+
+  /// Category palette — other. `#4D5A6A`
+  final Color cat6;
 
   /// Computed dark header gradient (not const — LinearGradient is not const-constructable).
   LinearGradient get headerGradient => LinearGradient(
@@ -184,7 +244,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
         colors: [headerGradientStart, headerGradientEnd],
       );
 
-  /// Teal-to-dark-teal gradient for CTA buttons and accents.
+  /// Saffron-to-saffron-dark gradient for CTA buttons and accents.
   LinearGradient get primaryGradient => LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -204,103 +264,125 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     return slots[_stableGroupHash(groupId) % slots.length];
   }
 
-  /// Default neutral + teal light palette instance.
+  /// Default saffron light palette instance.
   static const AppColorTokens light = AppColorTokens(
     brightness: Brightness.light,
-    primary: Color(0xFF0D7B74),
-    scaffoldBackground: Color(0xFFFFFFFF),
-    cardSurface: Color(0xFFF8F9FA),
-    inputFill: Color(0xFFF3F4F6),
-    border: Color(0xFFE5E7EB),
-    textPrimary: Color(0xFF111827),
-    textSecondary: Color(0xFF6B7280),
-    textMuted: Color(0xFF9CA3AF),
+    primary: Color(0xFFD17B2C), // Saffron
+    scaffoldBackground: Color(0xFFF6F1E6), // Paper
+    cardSurface: Color(0xFFFFFFFF), // White
+    inputFill: Color(0xFFFBF7EE), // Card-soft
+    border: Color(0xFFEAE5D9), // 8% ink approximation
+    textPrimary: Color(0xFF1B1A17), // Ink
+    textSecondary: Color(0xFF6B675D), // Ink-3
+    textMuted: Color(0xFF948F82), // Ink-4 (decorative only)
     textOnPrimary: Color(0xFFFFFFFF),
-    success: Color(0xFF10B981),
-    successText: Color(0xFF047857),
-    error: Color(0xFFEF4444),
-    errorText: Color(0xFFB91C1C),
-    disabled: Color(0xFFE5E7EB),
-    disabledText: Color(0xFF9CA3AF),
-    focusRing: Color(0xFF0D7B74),
-    selectionFill: Color(0xFFE6F5F3),
-    moduleLedger: Color(0xFF0D7B74),
-    moduleLedgerLight: Color(0xFFE6F5F3),
-    moduleGear: Color(0xFF6B7280),
-    moduleGearLight: Color(0xFFF3F4F6),
-    moduleLogistics: Color(0xFF6B7280),
-    moduleLogisticsLight: Color(0xFFF3F4F6),
-    moduleVault: Color(0xFF6B7280),
-    moduleVaultLight: Color(0xFFF3F4F6),
-    moduleActivity: Color(0xFF6B7280),
-    moduleActivityLight: Color(0xFFF3F4F6),
-    moduleMemories: Color(0xFF6B7280),
-    moduleMemoriesLight: Color(0xFFF3F4F6),
-    headerGradientStart: Color(0xFF111827),
-    headerGradientEnd: Color(0xFF1F2937),
-    offlineBannerBackground: Color(0xFFF59E0B),
-    bottomNavBackground: Color(0xFFFFFFFF),
-    bottomNavActiveIcon: Color(0xFF0D7B74),
-    bottomNavInactiveIcon: Color(0xFF9CA3AF),
-    inputFillWarm: Color(0xFFF5EDE1),
-    focusBorderWarm: Color(0xFFCC6B49),
-    borderWarm: Color(0xFFE5D5C0),
-    warning: Color(0xFFF59E0B),
-    primaryDark: Color(0xFF0A6B65),
+    success: Color(0xFF5C7A57), // Sage
+    successText: Color(0xFF3F5A3B), // Sage-dark
+    error: Color(0xFFA84B33), // Rust
+    errorText: Color(0xFF7A2F1F), // Rust-dark
+    disabled: Color(0xFFFBF7EE), // Card-soft
+    disabledText: Color(0xFF948F82), // Ink-4
+    focusRing: Color(0xFFD17B2C), // Saffron
+    selectionFill: Color(0xFFFBEED5), // Saffron-tint
+    moduleLedger: Color(0xFFD17B2C), // Saffron — sole colored module
+    moduleLedgerLight: Color(0xFFFBEED5),
+    moduleGear: Color(0xFF6B675D), // Ink-3 — neutral
+    moduleGearLight: Color(0xFFFBF7EE),
+    moduleLogistics: Color(0xFF6B675D),
+    moduleLogisticsLight: Color(0xFFFBF7EE),
+    moduleVault: Color(0xFF6B675D),
+    moduleVaultLight: Color(0xFFFBF7EE),
+    moduleActivity: Color(0xFF6B675D),
+    moduleActivityLight: Color(0xFFFBF7EE),
+    moduleMemories: Color(0xFF6B675D),
+    moduleMemoriesLight: Color(0xFFFBF7EE),
+    headerGradientStart: Color(0xFF1B1A17), // Ink
+    headerGradientEnd: Color(0xFF3D3A33), // Ink-2
+    offlineBannerBackground: Color(0xFFF59E0B), // Amber (semantic, kept)
+    bottomNavBackground: Color(0xFFF6F1E6), // Paper
+    bottomNavActiveIcon: Color(0xFFD17B2C), // Saffron
+    bottomNavInactiveIcon: Color(0xFF948F82), // Ink-4
+    inputFillWarm: Color(0xFFFBF7EE), // Card-soft alias
+    focusBorderWarm: Color(0xFFD17B2C), // Saffron
+    borderWarm: Color(0xFFEAE5D9), // 8% ink alias
+    warning: Color(0xFFF59E0B), // Amber
+    primaryDark: Color(0xFFB5641A), // Saffron-dark
+    // Appended saffron tokens:
+    paperDeep: Color(0xFFEFE8D7),
+    cardSoft: Color(0xFFFBF7EE),
+    ink2: Color(0xFF3D3A33),
+    saffronSoft: Color(0xFFF4DDB8),
+    saffronTint: Color(0xFFFBEED5),
+    rule: Color(0xFFEAE5D9), // 8% ink solid approximation
+    rule2: Color(0xFFD9D3C5), // 14% ink solid approximation
+    cat1: Color(0xFFC2693B), // food
+    cat2: Color(0xFF4F7B96), // lodging
+    cat3: Color(0xFF8C6A2F), // transit
+    cat4: Color(0xFF6F7A3A), // groceries
+    cat5: Color(0xFF94517A), // activities
+    cat6: Color(0xFF4D5A6A), // other
   );
 
-  /// Dark palette instance — Slate-based with teal primary retained.
+  /// Dark palette instance — saffron direction, dark variant.
   ///
-  /// Scaffold/surface uses Slate 900/800 per existing darkTheme in app_theme.dart.
-  /// Semantic colors (success/error) lightened for contrast on dark backgrounds.
-  /// Module colors shifted toward lighter variants for visibility.
-  ///
-  /// Note: Full dark-mode support also requires widgets to migrate from direct
-  /// `AppColorTokens.light` access to `context.colors` (Theme.of extension).
-  /// This instance enables the theme-level foundation; widget migration is a
-  /// separate effort tracked in review #17.
+  /// Visual quality target for dark mode is deferred to a later phase; values
+  /// here are plausible and prevent crashes/illegible text but have not been
+  /// tuned for production. Per locked plan: light first.
   static const AppColorTokens dark = AppColorTokens(
     brightness: Brightness.dark,
-    primary: Color(0xFF14B8A6), // Teal 500 — lighter for dark background contrast
-    scaffoldBackground: Color(0xFF0F172A), // Slate 900
-    cardSurface: Color(0xFF1E293B), // Slate 800
-    inputFill: Color(0xFF273349), // Slate 800 shifted warmer
-    border: Color(0xFF334155), // Slate 700
-    textPrimary: Color(0xFFF1F5F9), // Slate 50 — 17.8:1 on Slate 900
-    textSecondary: Color(0xFFCBD5E1), // Slate 300 — 11.5:1 on Slate 900
-    textMuted: Color(0xFF94A3B8), // Slate 400 — decorative only
-    textOnPrimary: Color(0xFF0F172A), // Slate 900 text on light teal
-    success: Color(0xFF10B981), // Emerald 500
-    successText: Color(0xFF6EE7B7), // Emerald 300 — readable on dark
-    error: Color(0xFFEF4444), // Red 500
-    errorText: Color(0xFFFCA5A5), // Red 300 — readable on dark
-    disabled: Color(0xFF334155), // Slate 700
-    disabledText: Color(0xFF64748B), // Slate 500
-    focusRing: Color(0xFF14B8A6), // Teal 500
-    selectionFill: Color(0xFF164E4A), // Dark teal tint
-    moduleLedger: Color(0xFF14B8A6), // Teal 500
-    moduleLedgerLight: Color(0xFF164E4A),
-    moduleGear: Color(0xFF94A3B8), // Slate 400
-    moduleGearLight: Color(0xFF1E293B),
-    moduleLogistics: Color(0xFF94A3B8),
-    moduleLogisticsLight: Color(0xFF1E293B),
-    moduleVault: Color(0xFF94A3B8),
-    moduleVaultLight: Color(0xFF1E293B),
-    moduleActivity: Color(0xFF94A3B8),
-    moduleActivityLight: Color(0xFF1E293B),
-    moduleMemories: Color(0xFF94A3B8),
-    moduleMemoriesLight: Color(0xFF1E293B),
-    headerGradientStart: Color(0xFF0F172A),
-    headerGradientEnd: Color(0xFF1E293B),
-    offlineBannerBackground: Color(0xFFFBBF24), // Amber 400
-    bottomNavBackground: Color(0xFF1E293B),
-    bottomNavActiveIcon: Color(0xFF14B8A6),
-    bottomNavInactiveIcon: Color(0xFF64748B),
-    inputFillWarm: Color(0xFF2A241B), // Dark warm brown
-    focusBorderWarm: Color(0xFFEBA480), // Lighter terracotta
-    borderWarm: Color(0xFF4A3D32), // Dark warm gray
-    warning: Color(0xFFFBBF24), // Amber 400
-    primaryDark: Color(0xFF0D7B74), // Original teal — acts as "darker" in dark mode
+    primary: Color(0xFFE89A4F), // Saffron-light for dark mode
+    scaffoldBackground: Color(0xFF1A1714), // Paper-dark
+    cardSurface: Color(0xFF25211C), // Card-dark
+    inputFill: Color(0xFF1F1B17), // Card-soft-dark
+    border: Color(0xFF3D3A33), // Rule on dark
+    textPrimary: Color(0xFFF4EEE0), // Ink-light
+    textSecondary: Color(0xFF9C9486), // Ink-3-light
+    textMuted: Color(0xFF6E6759), // Ink-4-light
+    textOnPrimary: Color(0xFF1A1714),
+    success: Color(0xFF8AA982), // Sage-light
+    successText: Color(0xFFB7CFB0),
+    error: Color(0xFFD77962), // Rust-light
+    errorText: Color(0xFFEEB7A8),
+    disabled: Color(0xFF1F1B17),
+    disabledText: Color(0xFF6E6759),
+    focusRing: Color(0xFFE89A4F),
+    selectionFill: Color(0xFF2E2113),
+    moduleLedger: Color(0xFFE89A4F),
+    moduleLedgerLight: Color(0xFF2E2113),
+    moduleGear: Color(0xFF9C9486),
+    moduleGearLight: Color(0xFF1F1B17),
+    moduleLogistics: Color(0xFF9C9486),
+    moduleLogisticsLight: Color(0xFF1F1B17),
+    moduleVault: Color(0xFF9C9486),
+    moduleVaultLight: Color(0xFF1F1B17),
+    moduleActivity: Color(0xFF9C9486),
+    moduleActivityLight: Color(0xFF1F1B17),
+    moduleMemories: Color(0xFF9C9486),
+    moduleMemoriesLight: Color(0xFF1F1B17),
+    headerGradientStart: Color(0xFF1A1714),
+    headerGradientEnd: Color(0xFF25211C),
+    offlineBannerBackground: Color(0xFFF59E0B),
+    bottomNavBackground: Color(0xFF1A1714),
+    bottomNavActiveIcon: Color(0xFFE89A4F),
+    bottomNavInactiveIcon: Color(0xFF6E6759),
+    inputFillWarm: Color(0xFF1F1B17),
+    focusBorderWarm: Color(0xFFE89A4F),
+    borderWarm: Color(0xFF3D3A33),
+    warning: Color(0xFFF59E0B),
+    primaryDark: Color(0xFFF5B069),
+    paperDeep: Color(0xFF221E1A),
+    cardSoft: Color(0xFF1F1B17),
+    ink2: Color(0xFFD8D1C0),
+    saffronSoft: Color(0xFF4A3618),
+    saffronTint: Color(0xFF2E2113),
+    rule: Color(0xFF3D3A33),
+    rule2: Color(0xFF4A4640),
+    cat1: Color(0xFFD4845B),
+    cat2: Color(0xFF7AA0B6),
+    cat3: Color(0xFFB69254),
+    cat4: Color(0xFF9AA660),
+    cat5: Color(0xFFB57A98),
+    cat6: Color(0xFF7B8898),
   );
 
   @override
@@ -346,6 +428,19 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     Color? borderWarm,
     Color? warning,
     Color? primaryDark,
+    Color? paperDeep,
+    Color? cardSoft,
+    Color? ink2,
+    Color? saffronSoft,
+    Color? saffronTint,
+    Color? rule,
+    Color? rule2,
+    Color? cat1,
+    Color? cat2,
+    Color? cat3,
+    Color? cat4,
+    Color? cat5,
+    Color? cat6,
   }) {
     return AppColorTokens(
       brightness: brightness ?? this.brightness,
@@ -389,6 +484,19 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       borderWarm: borderWarm ?? this.borderWarm,
       warning: warning ?? this.warning,
       primaryDark: primaryDark ?? this.primaryDark,
+      paperDeep: paperDeep ?? this.paperDeep,
+      cardSoft: cardSoft ?? this.cardSoft,
+      ink2: ink2 ?? this.ink2,
+      saffronSoft: saffronSoft ?? this.saffronSoft,
+      saffronTint: saffronTint ?? this.saffronTint,
+      rule: rule ?? this.rule,
+      rule2: rule2 ?? this.rule2,
+      cat1: cat1 ?? this.cat1,
+      cat2: cat2 ?? this.cat2,
+      cat3: cat3 ?? this.cat3,
+      cat4: cat4 ?? this.cat4,
+      cat5: cat5 ?? this.cat5,
+      cat6: cat6 ?? this.cat6,
     );
   }
 
@@ -438,15 +546,25 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       borderWarm: Color.lerp(borderWarm, other.borderWarm, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
       primaryDark: Color.lerp(primaryDark, other.primaryDark, t)!,
+      paperDeep: Color.lerp(paperDeep, other.paperDeep, t)!,
+      cardSoft: Color.lerp(cardSoft, other.cardSoft, t)!,
+      ink2: Color.lerp(ink2, other.ink2, t)!,
+      saffronSoft: Color.lerp(saffronSoft, other.saffronSoft, t)!,
+      saffronTint: Color.lerp(saffronTint, other.saffronTint, t)!,
+      rule: Color.lerp(rule, other.rule, t)!,
+      rule2: Color.lerp(rule2, other.rule2, t)!,
+      cat1: Color.lerp(cat1, other.cat1, t)!,
+      cat2: Color.lerp(cat2, other.cat2, t)!,
+      cat3: Color.lerp(cat3, other.cat3, t)!,
+      cat4: Color.lerp(cat4, other.cat4, t)!,
+      cat5: Color.lerp(cat5, other.cat5, t)!,
+      cat6: Color.lerp(cat6, other.cat6, t)!,
     );
   }
 }
 
 /// Deterministic string hash — folds `codeUnits` with a 31-constant FNV-like
 /// loop. Stable across Dart versions (unlike `String.hashCode`).
-///
-/// Used by [AppColorTokens.groupAvatarSlot] so that a given group ID maps to
-/// the same avatar slot across app upgrades and platform differences.
 int _stableGroupHash(String id) {
   var h = 0;
   for (final c in id.codeUnits) {
@@ -454,4 +572,3 @@ int _stableGroupHash(String id) {
   }
   return h;
 }
-

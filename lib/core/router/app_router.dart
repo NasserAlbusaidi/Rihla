@@ -2,8 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-
+import 'package:animations/animations.dart';
 import '../../features/events/models/event_model.dart';
 import '../../features/events/screens/create_event_screen.dart';
 import '../../features/events/screens/event_command_center.dart';
@@ -54,20 +53,20 @@ class AppRoutes {
   static const String activity = '/activity';
 }
 
-/// Shared slide-right page transition used by all route-level screens.
+/// Shared axis page transition used by all route-level screens.
 ///
-/// Slides from Offset(1,0) → zero with Curves.easeOutCubic.
-Widget _slideRightTransition(
+/// Uses the Material 3 SharedAxisTransition pattern for fluid spatial navigation.
+Widget _sharedAxisTransition(
   BuildContext context,
   Animation<double> animation,
   Animation<double> secondaryAnimation,
   Widget child,
 ) {
-  return SlideTransition(
-    position: Tween<Offset>(
-      begin: const Offset(1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+  return SharedAxisTransition(
+    animation: animation,
+    secondaryAnimation: secondaryAnimation,
+    transitionType: SharedAxisTransitionType.horizontal,
+    fillColor: Colors.transparent,
     child: child,
   );
 }
@@ -148,7 +147,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: GroupDetailScreen(groupId: state.pathParameters['gid']!),
-          transitionsBuilder: _slideRightTransition,
+          transitionsBuilder: _sharedAxisTransition,
         ),
         routes: [
           GoRoute(
@@ -157,7 +156,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child:
                   GroupSettingsScreen(groupId: state.pathParameters['gid']!),
-              transitionsBuilder: _slideRightTransition,
+              transitionsBuilder: _sharedAxisTransition,
             ),
           ),
 
@@ -171,7 +170,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 preSelectedMemberId:
                     state.uri.queryParameters['memberId'],
               ),
-              transitionsBuilder: _slideRightTransition,
+              transitionsBuilder: _sharedAxisTransition,
             ),
           ),
 
@@ -183,7 +182,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               child: GroupActivityScreen(
                 groupId: state.pathParameters['gid']!,
               ),
-              transitionsBuilder: _slideRightTransition,
+              transitionsBuilder: _sharedAxisTransition,
             ),
           ),
 
@@ -195,7 +194,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               child: EventTypePickerScreen(
                 groupId: state.pathParameters['gid']!,
               ),
-              transitionsBuilder: _slideRightTransition,
+              transitionsBuilder: _sharedAxisTransition,
             ),
           ),
 
@@ -210,7 +209,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   state.pathParameters['type'] ?? 'custom',
                 ),
               ),
-              transitionsBuilder: _slideRightTransition,
+              transitionsBuilder: _sharedAxisTransition,
             ),
           ),
 
@@ -223,7 +222,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 groupId: state.pathParameters['gid']!,
                 eventId: state.pathParameters['eid']!,
               ),
-              transitionsBuilder: _slideRightTransition,
+              transitionsBuilder: _sharedAxisTransition,
             ),
             routes: [
               // Ledger module
@@ -235,7 +234,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     groupId: state.pathParameters['gid']!,
                     eventId: state.pathParameters['eid']!,
                   ),
-                  transitionsBuilder: _slideRightTransition,
+                  transitionsBuilder: _sharedAxisTransition,
                 ),
                 routes: [
                   GoRoute(
@@ -246,7 +245,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                         groupId: state.pathParameters['gid']!,
                         eventId: state.pathParameters['eid']!,
                       ),
-                      transitionsBuilder: _slideRightTransition,
+                      transitionsBuilder: _sharedAxisTransition,
                     ),
                   ),
                   GoRoute(
@@ -258,7 +257,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                         eventId: state.pathParameters['eid']!,
                         expenseId: state.pathParameters['expId']!,
                       ),
-                      transitionsBuilder: _slideRightTransition,
+                      transitionsBuilder: _sharedAxisTransition,
                     ),
                   ),
                   // Event-level settle-up (GoRouter route per D-07)
@@ -270,7 +269,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                         groupId: state.pathParameters['gid']!,
                         eventId: state.pathParameters['eid']!,
                       ),
-                      transitionsBuilder: _slideRightTransition,
+                      transitionsBuilder: _sharedAxisTransition,
                     ),
                   ),
                 ],
@@ -285,7 +284,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     groupId: state.pathParameters['gid']!,
                     eventId: state.pathParameters['eid']!,
                   ),
-                  transitionsBuilder: _slideRightTransition,
+                  transitionsBuilder: _sharedAxisTransition,
                 ),
               ),
 
@@ -298,7 +297,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     groupId: state.pathParameters['gid']!,
                     eventId: state.pathParameters['eid']!,
                   ),
-                  transitionsBuilder: _slideRightTransition,
+                  transitionsBuilder: _sharedAxisTransition,
                 ),
               ),
             ],
@@ -312,7 +311,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const ProfileScreen(),
-          transitionsBuilder: _slideRightTransition,
+          transitionsBuilder: _sharedAxisTransition,
         ),
       ),
 
@@ -322,7 +321,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const CrossGroupActivityScreen(),
-          transitionsBuilder: _slideRightTransition,
+          transitionsBuilder: _sharedAxisTransition,
         ),
       ),
     ],

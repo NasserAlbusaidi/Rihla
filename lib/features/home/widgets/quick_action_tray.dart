@@ -32,10 +32,10 @@ class QuickActionTray extends StatelessWidget {
       key: HomeKeys.quickActionTray,
       padding: EdgeInsets.symmetric(
         horizontal: context.spacing.space16,
-        vertical: context.spacing.space8,
+        vertical: context.spacing.space16,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _QuickActionButton(
             key: HomeKeys.addExpenseAction,
@@ -83,23 +83,37 @@ class _QuickActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return TapBounce(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: Icon(icon, size: 24, color: context.colors.primary),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: context.colors.textSecondary,
+      child: SizedBox(
+        width: 80,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: context.colors.inputFillWarm,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: context.colors.border.withValues(alpha: 0.5),
+                  width: 0.5,
+                ),
+              ),
+              child: Icon(icon, size: 24, color: context.colors.primary),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: context.colors.textSecondary,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -13,14 +13,13 @@ import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
-import 'package:safar/features/groups/widgets/group_card.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/home/widgets/balance_hero_card.dart';
-import 'package:safar/features/home/widgets/quick_action_tray.dart';
-import 'package:safar/features/home/widgets/weekly_spending_card.dart';
 import 'package:safar/features/home/widgets/activity_row.dart';
+import 'package:safar/features/home/widgets/journey_ticket_card.dart';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -88,6 +87,14 @@ Widget _buildTestApp(
         path: '/group/:id',
         builder: (ctx, state) =>
             Scaffold(body: Text('GroupDetail:${state.pathParameters['id']}')),
+        routes: [
+          GoRoute(
+            path: 'event/:eventId',
+            builder: (ctx, state) => Scaffold(
+              body: Text('EventHub:${state.pathParameters['eventId']}'),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/profile',
@@ -204,7 +211,9 @@ void main() {
       expect(find.byType(BalanceHeroCard), findsOneWidget);
     });
 
-    testWidgets('Test 2: renders QuickActionTray widget', (tester) async {
+    testWidgets('Test 2: renders active JourneyTicketCard widgets', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
@@ -214,10 +223,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(QuickActionTray), findsOneWidget);
+      expect(find.byType(JourneyTicketCard), findsNWidgets(2));
+      expect(find.text('Camping Trip'), findsWidgets);
     });
 
-    testWidgets('Test 3: renders WeeklySpendingCard widget', (tester) async {
+    testWidgets('Test 3: renders inline group rows from userGroupsProvider', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
@@ -227,12 +239,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // WeeklySpendingCard is the last section in the CustomScrollView.
-      // Scroll down to ensure it's built and visible in the viewport.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(WeeklySpendingCard), findsOneWidget);
+      expect(find.text('Groups'), findsOneWidget);
+      expect(find.text('Desert Crew'), findsOneWidget);
+      expect(find.text('Mountain Pals'), findsOneWidget);
     });
 
     testWidgets('Test 4: renders ActivityRow widgets for activity entries', (
@@ -245,6 +254,9 @@ void main() {
           prefs: prefs,
         ),
       );
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
       await tester.pumpAndSettle();
 
       expect(find.byType(ActivityRow), findsWidgets);
@@ -280,7 +292,7 @@ void main() {
     ];
 
     testWidgets(
-      'Test 5: shows EmptyStateView with "Create your first group" text',
+      'Test 5: shows EmptyStateView with "Start your first group" text',
       (tester) async {
         await tester.pumpWidget(
           _buildTestApp(
@@ -291,7 +303,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Create your first group'), findsOneWidget);
+        expect(find.text('Start your first group'), findsOneWidget);
       },
     );
 
@@ -417,14 +429,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final navBar = tester.widget<BottomNavigationBar>(
-        find.byType(BottomNavigationBar),
-      );
-      expect(navBar.items, hasLength(3));
-      expect(
-        navBar.items.map((item) => item.label),
-        orderedEquals(['Groups', 'Activity', 'Profile']),
-      );
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.destinations, hasLength(3));
+      expect(find.text('Groups'), findsWidgets);
+      expect(find.text('Activity'), findsWidgets);
+      expect(find.text('Profile'), findsWidgets);
       expect(find.text('Chats'), findsNothing);
     });
 
@@ -440,22 +449,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap the 'Profile' bottom nav label
-      await tester.tap(find.text('Profile'));
+      await tester.tap(find.byKey(HomeKeys.bottomNavProfile));
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
-      final navBar = tester.widget<BottomNavigationBar>(
-        find.byType(BottomNavigationBar),
-      );
-      expect(navBar.currentIndex, 2);
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 2);
       expect(find.text('Coming soon'), findsNothing);
     });
   });
 
-  group('HomeScreen dashboard - GroupCard balance display (NAV-04)', () {
+  group('HomeScreen dashboard - group row balance display (NAV-04)', () {
     testWidgets(
-      'Test 11: GroupCard shows personal balance text ("You owe"), not totalSpent',
+      'Test 11: group row shows personal balance text, not totalSpent',
       (tester) async {
         final groups = [_makeGroup('g1', 'Desert Crew')];
 
@@ -497,19 +503,13 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Should show "You owe" (personal balance) not the totalSpent amount.
-        // Note: BalanceHeroCard also shows "You owe across N groups" when the
-        // cross-group balance is negative. The GroupCard shows "You owe OMR X.XXX".
-        // Both phrases contain "You owe" — we assert at least one exists.
-        expect(find.textContaining('You owe'), findsAtLeastNWidgets(1));
+        expect(find.text('you owe'), findsAtLeastNWidgets(1));
       },
     );
 
-    testWidgets('Test 12: GroupCard navigates via GoRouter (NAV-04)', (
+    testWidgets('Test 12: group row navigates via GoRouter (NAV-04)', (
       tester,
     ) async {
-      // Bug 24 fix: OpenContainer bypassed GoRouter. GroupCard now uses
-      // context.push('/group/{id}') for deep link support.
       final groups = [_makeGroup('gABC', 'Friends')];
 
       await tester.pumpWidget(
@@ -554,14 +554,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // GroupCard renders without OpenContainer wrapper (NAV-04)
-      expect(find.byType(GroupCard), findsWidgets);
+      await tester.tap(find.text('Friends'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupDetail:gABC'), findsOneWidget);
     });
   });
 
   group('HomeScreen dashboard - section header (Phase 24)', () {
     testWidgets(
-      'Test NEW-3: "Your Groups (N)" header renders above group cards (LAYT-02)',
+      'Test NEW-3: "Groups" section header renders above group rows',
       (tester) async {
         // _loadedOverrides() provides 2 groups
         await tester.pumpWidget(
@@ -573,12 +575,12 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Your Groups (2)'), findsOneWidget);
+        expect(find.text('Groups'), findsOneWidget);
       },
     );
   });
 
-  group('HomeScreen dashboard - GroupCard enrichment (Phase 24)', () {
+  group('HomeScreen dashboard - journey and group enrichment', () {
     List<Override> _enrichmentOverrides({List<Event>? events}) => [
       userGroupsProvider.overrideWith(
         (ref) => Stream.value([_makeGroup('g1', 'Desert Crew')]),
@@ -610,8 +612,7 @@ void main() {
       currentUserIdProvider.overrideWithValue('test-user-id'),
     ];
 
-    // Test A (CARD-01): GroupCard renders a Container with width 4 (the accent strip)
-    testWidgets('Test A: GroupCard renders accent strip Container with width 4', (
+    testWidgets('Test A: active journey ticket renders latest event name', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -625,25 +626,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Find a Container whose rendered width in the layout is exactly 4dp.
-      // The accent strip Container(width: 4) inside GroupCard renders at exactly 4dp.
-      bool foundAccentStrip = false;
-      for (final element in find.byType(Container).evaluate()) {
-        final renderBox = element.renderObject;
-        if (renderBox is RenderBox && renderBox.size.width == 4.0) {
-          foundAccentStrip = true;
-          break;
-        }
-      }
-      expect(
-        foundAccentStrip,
-        isTrue,
-        reason: 'GroupCard should render a 4dp accent strip Container',
-      );
+      expect(find.byType(JourneyTicketCard), findsOneWidget);
+      expect(find.text('Camping Trip'), findsOneWidget);
     });
 
-    // Test C (CARD-02): GroupCard with events loaded shows the latest event name
-    testWidgets('Test C: GroupCard with events shows latest event name', (
+    testWidgets('Test C: group row shows event count from group balances', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -657,12 +644,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Event name appears in context line as "Camping Trip — X ago"
-      expect(find.textContaining('Camping Trip'), findsOneWidget);
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('1 event'), findsOneWidget);
     });
 
-    // Test D (CARD-02): GroupCard with events shows relative timestamp containing "ago"
-    testWidgets('Test D: GroupCard with events shows relative timestamp', (
+    testWidgets('Test D: active journey ticket routes to the event hub', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -683,12 +671,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Context line shows "Beach Day — 3 hours ago"
-      expect(find.textContaining('ago'), findsOneWidget);
+      await tester.tap(find.byType(JourneyTicketCard));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EventHub:e1'), findsOneWidget);
     });
 
-    // Test E (CARD-02): GroupCard with no events shows "No events yet"
-    testWidgets('Test E: GroupCard with no events shows "No events yet"', (
+    testWidgets('Test E: no active events shows empty journey strip copy', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -700,25 +689,23 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('No events yet'), findsOneWidget);
+      expect(find.text('No upcoming or active journeys'), findsOneWidget);
     });
 
-    // Test F (CARD-02): GroupCard with empty events also shows "No events yet" placeholder
-    testWidgets(
-      'Test F: GroupCard with empty events shows "No events yet" placeholder',
-      (tester) async {
-        await tester.pumpWidget(
-          _buildTestApp(
-            const HomeScreen(),
-            prefs: prefs,
-            overrides: _enrichmentOverrides(),
-          ),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('Test F: empty events still keep the group row visible', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildTestApp(
+          const HomeScreen(),
+          prefs: prefs,
+          overrides: _enrichmentOverrides(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // No events shows "No events yet"
-        expect(find.text('No events yet'), findsOneWidget);
-      },
-    );
+      expect(find.text('Desert Crew'), findsOneWidget);
+      expect(find.textContaining('1 event'), findsOneWidget);
+    });
   });
 }

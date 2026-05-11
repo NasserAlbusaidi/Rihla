@@ -1,0 +1,172 @@
+import 'package:decimal/decimal.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/r_amount.dart';
+
+Widget _wrap(Widget child) {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(body: Center(child: child)),
+  );
+}
+
+/// Walk a [TextSpan] tree and return every leaf span (one with non-null text).
+///
+/// `Text.rich` wraps the caller's span in a default-style parent, so the
+/// caller's children show up nested rather than as direct `.children!` of
+/// the root. Visiting recursively gives us a flat list in render order.
+List<TextSpan> _leafSpans(WidgetTester tester) {
+  final richText = tester.widget<RichText>(find.byType(RichText).first);
+  final leaves = <TextSpan>[];
+  richText.text.visitChildren((node) {
+    if (node is TextSpan && node.text != null) leaves.add(node);
+    return true;
+  });
+  return leaves;
+}
+
+/// Concatenate the text of every leaf span — what the user actually sees.
+String _renderedText(WidgetTester tester) {
+  return _leafSpans(tester).map((s) => s.text).join();
+}
+
+void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
+  group('RAmount — formatting', () {
+    testWidgets('OMR renders 3 decimal places', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('184.2'), currency: 'OMR')),
+      );
+      expect(_renderedText(tester), 'OMR 184.200');
+    });
+
+    testWidgets('USD renders 2 decimal places', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('100'), currency: 'USD')),
+      );
+      expect(_renderedText(tester), 'USD 100.00');
+    });
+
+    testWidgets('integer value still gets decimals', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.fromInt(50), currency: 'OMR')),
+      );
+      expect(_renderedText(tester), 'OMR 50.000');
+    });
+
+    testWidgets('absolute value used regardless of sign mode', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(
+          value: Decimal.parse('-42.500'),
+          currency: 'OMR',
+          sign: false,
+        )),
+      );
+      // No prefix in non-sign mode; abs value rendered.
+      expect(_renderedText(tester), 'OMR 42.500');
+    });
+  });
+
+  group('RAmount — sign mode', () {
+    testWidgets('positive shows + prefix', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(
+          value: Decimal.parse('184.200'),
+          currency: 'OMR',
+          sign: true,
+        )),
+      );
+      expect(_renderedText(tester), '+OMR 184.200');
+    });
+
+    testWidgets('negative shows typographic minus (U+2212), not hyphen',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(
+          value: Decimal.parse('-42.500'),
+          currency: 'OMR',
+          sign: true,
+        )),
+      );
+      final rendered = _renderedText(tester);
+      expect(rendered, '−OMR 42.500');
+      expect(rendered.contains('-'), isFalse,
+          reason: 'must use U+2212 minus, not hyphen-minus');
+    });
+
+    testWidgets('zero with sign mode shows no prefix', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(
+          value: Decimal.zero,
+          currency: 'OMR',
+          sign: true,
+        )),
+      );
+      expect(_renderedText(tester), 'OMR 0.000');
+    });
+  });
+
+  group('RAmount — color tones', () {
+    Color wholeColor(WidgetTester tester) {
+      // Leaves are: [currency code, whole, decimal?]. Whole is index 1.
+      return _leafSpans(tester)[1].style!.color!;
+    }
+
+    testWidgets('positive sign mode → success/sage tone', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('10'), sign: true)),
+      );
+      // Sage = #5C7A57
+      expect(wholeColor(tester), const Color(0xFF5C7A57));
+    });
+
+    testWidgets('negative sign mode → error/rust tone', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('-10'), sign: true)),
+      );
+      // Rust = #A84B33
+      expect(wholeColor(tester), const Color(0xFFA84B33));
+    });
+
+    testWidgets('explicit tone:rust overrides positive value', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(
+          value: Decimal.parse('10'),
+          sign: true,
+          tone: AmountTone.rust,
+        )),
+      );
+      expect(wholeColor(tester), const Color(0xFFA84B33));
+    });
+
+    testWidgets('zero in sign mode → ink/textPrimary tone', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.zero, sign: true)),
+      );
+      expect(wholeColor(tester), const Color(0xFF1B1A17));
+    });
+  });
+
+  group('RAmount — size scaling', () {
+    testWidgets('decimal portion uses 0.55× whole size', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('184.2'), size: 100)),
+      );
+      final leaves = _leafSpans(tester);
+      expect(leaves[1].style!.fontSize, 100.0);
+      expect(leaves[2].style!.fontSize, closeTo(55.0, 0.01));
+    });
+
+    testWidgets('currency code uses 0.42× whole size', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('184.2'), size: 100)),
+      );
+      expect(_leafSpans(tester)[0].style!.fontSize, closeTo(42.0, 0.01));
+    });
+  });
+}

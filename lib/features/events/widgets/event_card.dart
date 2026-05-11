@@ -61,8 +61,18 @@ class EventCard extends ConsumerWidget {
         child: Container(
           decoration: BoxDecoration(
             color: context.colors.cardSurface,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: context.shadows.raised,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: context.colors.border.withValues(alpha: 0.5),
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: IntrinsicHeight(
             child: Row(
@@ -73,10 +83,10 @@ class EventCard extends ConsumerWidget {
                   width: 3.0,
                   decoration: BoxDecoration(
                     color: event.isPast
-                        ? context.colors.textSecondary
+                        ? context.colors.textSecondary.withValues(alpha: 0.3)
                         : context.colors.primary,
                     borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(16),
+                      left: Radius.circular(20),
                     ),
                   ),
                 ),

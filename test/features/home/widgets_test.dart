@@ -11,11 +11,13 @@ import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
+import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
 import 'package:safar/features/home/widgets/weekly_spending_card.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/shared/widgets/r_avatar.dart';
 
 void main() {
   late SharedPreferences prefs;
@@ -93,8 +95,23 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.text('Alice'), findsOneWidget);
-        expect(find.text('added an expense'), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Text &&
+                (widget.textSpan?.toPlainText().contains('Alice') ?? false),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Text &&
+                (widget.textSpan?.toPlainText().contains('added an expense') ??
+                    false),
+          ),
+          findsOneWidget,
+        );
         expect(find.text('Beach Trip'), findsOneWidget);
         // Relative timestamp should be there (timeago)
         expect(find.textContaining('ago'), findsOneWidget);
@@ -120,7 +137,7 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.byType(CircleAvatar), findsOneWidget);
+        expect(find.byType(RAvatar), findsOneWidget);
         expect(find.text('B'), findsOneWidget);
       },
     );
@@ -291,12 +308,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
-      final navBar = tester.widget<BottomNavigationBar>(
-        find.byType(BottomNavigationBar),
-      );
-      expect(navBar.items, hasLength(3));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.destinations, hasLength(3));
       expect(
-        navBar.items.map((item) => item.label),
+        navBar.destinations.map(
+          (destination) => (destination as NavigationDestination).label,
+        ),
         orderedEquals(['Groups', 'Activity', 'Profile']),
       );
       expect(find.text('Chats'), findsNothing);
@@ -326,14 +343,14 @@ void main() {
       expect(find.text('Dashboard Content'), findsOneWidget);
 
       // Tap Profile tab — ProfileScreen is shown (Phase 25, not "Coming soon")
-      await tester.tap(find.text('Profile'));
+      await tester.tap(find.byKey(HomeKeys.bottomNavProfile));
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
       expect(find.text('Coming soon'), findsNothing);
 
       // Tap back to Groups (use key since 'Groups' also appears in ProfileScreen stat card)
-      await tester.tap(find.text('Groups').last);
+      await tester.tap(find.byKey(HomeKeys.bottomNavGroups));
       await tester.pump();
       expect(find.text('Dashboard Content'), findsOneWidget);
     });

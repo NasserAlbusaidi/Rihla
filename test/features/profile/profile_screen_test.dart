@@ -15,7 +15,6 @@ import 'package:safar/core/config/app_metadata.dart';
 import 'package:safar/core/providers/app_bootstrap_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_service.dart';
-import 'package:safar/core/utils/formatters.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 import 'package:safar/features/settings/screens/profile_screen.dart';
@@ -30,18 +29,10 @@ class MockNotificationService extends Mock implements NotificationService {}
 // Test helpers
 // ---------------------------------------------------------------------------
 
-Widget _buildTestApp(
-  Widget widget, {
-  List<Override> overrides = const [],
-}) {
+Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
   final router = GoRouter(
     initialLocation: '/profile',
-    routes: [
-      GoRoute(
-        path: '/profile',
-        builder: (ctx, state) => widget,
-      ),
-    ],
+    routes: [GoRoute(path: '/profile', builder: (ctx, state) => widget)],
   );
 
   return ProviderScope(
@@ -55,12 +46,11 @@ AsyncValue<ProfileStats> _statsData({
   int groupCount = 0,
   int eventCount = 0,
   Decimal? totalSpent,
-}) =>
-    AsyncValue.data((
-      groupCount: groupCount,
-      eventCount: eventCount,
-      totalSpent: totalSpent ?? Decimal.zero,
-    ));
+}) => AsyncValue.data((
+  groupCount: groupCount,
+  eventCount: eventCount,
+  totalSpent: totalSpent ?? Decimal.zero,
+));
 
 /// Pump the widget tree and advance time enough for all flutter_animate
 /// animations to complete (identity section delays up to 200ms; support
@@ -69,6 +59,14 @@ Future<void> _pumpWithAnimations(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 700));
   await tester.pump();
+}
+
+Finder _textContaining(String value) {
+  return find.byWidgetPredicate((widget) {
+    if (widget is! Text) return false;
+    return (widget.data?.contains(value) ?? false) ||
+        (widget.textSpan?.toPlainText().contains(value) ?? false);
+  });
 }
 
 /// Build overrides for Phase 26 tests. Includes SharedPreferences with
@@ -99,12 +97,14 @@ List<Override> _phase26Overrides({
     notificationServiceProvider.overrideWithValue(mockNotifService),
     appBootstrapProvider.overrideWith((ref) {}),
     appMetadataProvider.overrideWith(
-      (ref) => Future.value(AppMetadata(
-        appName: 'Rihla',
-        packageName: 'com.safar.safar',
-        version: version,
-        buildNumber: '1',
-      )),
+      (ref) => Future.value(
+        AppMetadata(
+          appName: 'Rihla',
+          packageName: 'com.safar.safar',
+          version: version,
+          buildNumber: '1',
+        ),
+      ),
     ),
   ];
 }
@@ -128,9 +128,7 @@ void main() {
           const ProfileScreen(),
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            profileStatsProvider.overrideWith(
-              (ref) => _statsData(),
-            ),
+            profileStatsProvider.overrideWith((ref) => _statsData()),
           ],
         ),
       );
@@ -140,8 +138,9 @@ void main() {
       expect(find.text('Alice'), findsWidgets);
     });
 
-    testWidgets('shows "Set your name" prompt when deviceName is empty',
-        (tester) async {
+    testWidgets('shows "Set your name" prompt when deviceName is empty', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
@@ -150,9 +149,7 @@ void main() {
           const ProfileScreen(),
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            profileStatsProvider.overrideWith(
-              (ref) => _statsData(),
-            ),
+            profileStatsProvider.overrideWith((ref) => _statsData()),
           ],
         ),
       );
@@ -164,7 +161,9 @@ void main() {
   });
 
   group('ProfileScreen — InitialsCircle', () {
-    testWidgets('shows correct initials for a single word name', (tester) async {
+    testWidgets('shows correct initials for a single word name', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({'settings_device_name': 'Alice'});
       final prefs = await SharedPreferences.getInstance();
 
@@ -173,9 +172,7 @@ void main() {
           const ProfileScreen(),
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            profileStatsProvider.overrideWith(
-              (ref) => _statsData(),
-            ),
+            profileStatsProvider.overrideWith((ref) => _statsData()),
           ],
         ),
       );
@@ -196,9 +193,7 @@ void main() {
           const ProfileScreen(),
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            profileStatsProvider.overrideWith(
-              (ref) => _statsData(),
-            ),
+            profileStatsProvider.overrideWith((ref) => _statsData()),
           ],
         ),
       );
@@ -212,8 +207,9 @@ void main() {
       expect(find.byKey(ProfileKeys.nameTextField), findsOneWidget);
     });
 
-    testWidgets('tapping "Set your name" opens edit bottom sheet',
-        (tester) async {
+    testWidgets('tapping "Set your name" opens edit bottom sheet', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
@@ -222,9 +218,7 @@ void main() {
           const ProfileScreen(),
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            profileStatsProvider.overrideWith(
-              (ref) => _statsData(),
-            ),
+            profileStatsProvider.overrideWith((ref) => _statsData()),
           ],
         ),
       );
@@ -262,8 +256,10 @@ void main() {
       // STATS-01: group count
       final groupsStat = find.byKey(ProfileKeys.statGroups);
       expect(groupsStat, findsOneWidget);
-      expect(find.descendant(of: groupsStat, matching: find.text('3')),
-          findsOneWidget);
+      expect(
+        find.descendant(of: groupsStat, matching: find.text('3')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows event count in stat card', (tester) async {
@@ -290,18 +286,15 @@ void main() {
       // STATS-02: event count
       final eventsStat = find.byKey(ProfileKeys.statEvents);
       expect(eventsStat, findsOneWidget);
-      expect(find.descendant(of: eventsStat, matching: find.text('5')),
-          findsOneWidget);
+      expect(
+        find.descendant(of: eventsStat, matching: find.text('5')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows formatted total spending in stat card', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-
-      final expectedSpending = AppFormatters.formatCurrency(
-        Decimal.parse('42.500'),
-        'OMR',
-      );
 
       await tester.pumpWidget(
         _buildTestApp(
@@ -324,10 +317,7 @@ void main() {
       final spentStat = find.byKey(ProfileKeys.statSpent);
       expect(spentStat, findsOneWidget);
       expect(
-        find.descendant(
-          of: spentStat,
-          matching: find.text(expectedSpending),
-        ),
+        find.descendant(of: spentStat, matching: _textContaining('42.500')),
         findsOneWidget,
       );
     });
@@ -342,59 +332,68 @@ void main() {
 
   group('ProfileScreen -- NOTIF-01', () {
     testWidgets(
-        'shows notification toggle tile in OFF state when pushNotificationsEnabled is false',
-        (tester) async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
-      final prefs = await SharedPreferences.getInstance();
+      'shows notification toggle tile in OFF state when pushNotificationsEnabled is false',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'TestUser',
+        });
+        final prefs = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(
-        _buildTestApp(
-          const ProfileScreen(),
-          overrides: _phase26Overrides(
-            prefs: prefs,
-            pushEnabled: false,
-            notifStatus: NotificationStatus.off,
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: _phase26Overrides(
+              prefs: prefs,
+              pushEnabled: false,
+              notifStatus: NotificationStatus.off,
+            ),
           ),
-        ),
-      );
-      await _pumpWithAnimations(tester);
+        );
+        await _pumpWithAnimations(tester);
 
-      expect(find.byKey(ProfileKeys.notificationToggleTile), findsOneWidget);
-      final switchWidget = tester.widget<Switch>(
-        find.byKey(ProfileKeys.notificationSwitch),
-      );
-      expect(switchWidget.value, isFalse);
-    });
+        expect(find.byKey(ProfileKeys.notificationToggleTile), findsOneWidget);
+        final switchWidget = tester.widget<Switch>(
+          find.byKey(ProfileKeys.notificationSwitch),
+        );
+        expect(switchWidget.value, isFalse);
+      },
+    );
 
     testWidgets(
-        'shows notification toggle in disabled state with subtitle when permission denied',
-        (tester) async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
-      final prefs = await SharedPreferences.getInstance();
+      'shows notification toggle in disabled state with subtitle when permission denied',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'TestUser',
+        });
+        final prefs = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(
-        _buildTestApp(
-          const ProfileScreen(),
-          overrides: _phase26Overrides(
-            prefs: prefs,
-            notifStatus: NotificationStatus.permissionDenied,
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: _phase26Overrides(
+              prefs: prefs,
+              notifStatus: NotificationStatus.permissionDenied,
+            ),
           ),
-        ),
-      );
-      await _pumpWithAnimations(tester);
+        );
+        await _pumpWithAnimations(tester);
 
-      expect(find.text('Enable in device Settings'), findsOneWidget);
-      final switchWidget = tester.widget<Switch>(
-        find.byKey(ProfileKeys.notificationSwitch),
-      );
-      expect(switchWidget.onChanged, isNull);
-    });
+        expect(find.text('Enable in device Settings'), findsOneWidget);
+        final switchWidget = tester.widget<Switch>(
+          find.byKey(ProfileKeys.notificationSwitch),
+        );
+        expect(switchWidget.onChanged, isNull);
+      },
+    );
   });
 
   group('ProfileScreen -- NOTIF-02', () {
-    testWidgets('toggling switch ON calls setPushNotificationsEnabled(true)',
-        (tester) async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+    testWidgets('toggling switch ON calls setPushNotificationsEnabled(true)', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+      });
       final prefs = await SharedPreferences.getInstance();
 
       await tester.pumpWidget(
@@ -418,60 +417,63 @@ void main() {
       expect(switchWidget.value, isTrue);
     });
 
-    testWidgets('toggling switch OFF calls setPushNotificationsEnabled(false)',
-        (tester) async {
+    testWidgets(
+      'toggling switch OFF calls setPushNotificationsEnabled(false)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'TestUser',
+          'settings_push_notifications': true,
+        });
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: _phase26Overrides(
+              prefs: prefs,
+              pushEnabled: true,
+              notifStatus: NotificationStatus.enabled,
+            ),
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
+        await tester.pumpAndSettle();
+
+        final switchWidget = tester.widget<Switch>(
+          find.byKey(ProfileKeys.notificationSwitch),
+        );
+        expect(switchWidget.value, isFalse);
+      },
+    );
+  });
+
+  group('ProfileScreen -- INFO-01', () {
+    testWidgets('shows app version in version tile', (tester) async {
       SharedPreferences.setMockInitialValues({
         'settings_device_name': 'TestUser',
-        'settings_push_notifications': true,
       });
       final prefs = await SharedPreferences.getInstance();
 
       await tester.pumpWidget(
         _buildTestApp(
           const ProfileScreen(),
-          overrides: _phase26Overrides(
-            prefs: prefs,
-            pushEnabled: true,
-            notifStatus: NotificationStatus.enabled,
-          ),
-        ),
-      );
-      await _pumpWithAnimations(tester);
-
-      await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
-      await tester.pumpAndSettle();
-
-      final switchWidget = tester.widget<Switch>(
-        find.byKey(ProfileKeys.notificationSwitch),
-      );
-      expect(switchWidget.value, isFalse);
-    });
-  });
-
-  group('ProfileScreen -- INFO-01', () {
-    testWidgets('shows app version in version tile', (tester) async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
-      final prefs = await SharedPreferences.getInstance();
-
-      await tester.pumpWidget(
-        _buildTestApp(
-          const ProfileScreen(),
-          overrides: _phase26Overrides(
-            prefs: prefs,
-            version: '2.2.0',
-          ),
+          overrides: _phase26Overrides(prefs: prefs, version: '2.2.0'),
         ),
       );
       await _pumpWithAnimations(tester);
 
       expect(find.byKey(ProfileKeys.versionTile), findsOneWidget);
-      expect(find.text('v2.2.0'), findsOneWidget);
+      expect(find.textContaining('v2.2.0'), findsOneWidget);
     });
   });
 
   group('ProfileScreen -- INFO-02', () {
     testWidgets('shows feedback tile', (tester) async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+      });
       final prefs = await SharedPreferences.getInstance();
 
       await tester.pumpWidget(
@@ -483,13 +485,15 @@ void main() {
       await _pumpWithAnimations(tester);
 
       expect(find.byKey(ProfileKeys.feedbackTile), findsOneWidget);
-      expect(find.text('Send Feedback'), findsOneWidget);
+      expect(find.text('Send feedback'), findsOneWidget);
     });
   });
 
   group('ProfileScreen -- INFO-03', () {
     testWidgets('shows licenses tile', (tester) async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+      });
       final prefs = await SharedPreferences.getInstance();
 
       await tester.pumpWidget(
@@ -501,34 +505,38 @@ void main() {
       await _pumpWithAnimations(tester);
 
       expect(find.byKey(ProfileKeys.licensesTile), findsOneWidget);
-      expect(find.text('Open-source Licenses'), findsOneWidget);
+      expect(find.text('Terms & privacy'), findsOneWidget);
     });
   });
 
   group('ProfileScreen -- SUPP-01', () {
-    testWidgets('shows coffee tile and displays Coming soon SnackBar on tap',
-        (tester) async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'TestUser'});
-      final prefs = await SharedPreferences.getInstance();
+    testWidgets(
+      'shows sign out row and displays session persistence SnackBar',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'TestUser',
+        });
+        final prefs = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(
-        _buildTestApp(
-          const ProfileScreen(),
-          overrides: _phase26Overrides(prefs: prefs),
-        ),
-      );
-      await _pumpWithAnimations(tester);
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: _phase26Overrides(prefs: prefs),
+          ),
+        );
+        await _pumpWithAnimations(tester);
 
-      expect(find.byKey(ProfileKeys.coffeeTile), findsOneWidget);
-      // Phase 37 Wave 5: new Display section pushes Support below the
-      // initial viewport on the 600x800 test surface. Scroll the tile
-      // into view before tapping.
-      await tester.ensureVisible(find.byKey(ProfileKeys.coffeeTile));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(ProfileKeys.coffeeTile));
-      await tester.pump();
+        expect(find.text('Sign out'), findsOneWidget);
+        await tester.ensureVisible(find.text('Sign out'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Sign out'));
+        await tester.pump();
 
-      expect(find.text('Coming soon'), findsOneWidget);
-    });
+        expect(
+          find.text('Anonymous sessions persist across launches'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

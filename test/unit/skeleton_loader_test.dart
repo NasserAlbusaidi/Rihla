@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/core/theme/tokens/color_tokens.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:safar/shared/widgets/skeleton_loader.dart';
@@ -408,10 +409,8 @@ void main() {
 
       final shimmer = tester.widget<Shimmer>(find.byType(Shimmer));
       final gradient = shimmer.gradient as LinearGradient;
-      // AppColorTokens.light.inputFill = Color(0xFFF3F4F6) — base color
-      // AppColorTokens.light.cardSurface = Color(0xFFF8F9FA) — highlight color
-      expect(gradient.colors, contains(const Color(0xFFF3F4F6)));
-      expect(gradient.colors, contains(const Color(0xFFF8F9FA)));
+      expect(gradient.colors, contains(AppColorTokens.light.inputFill));
+      expect(gradient.colors, contains(AppColorTokens.light.cardSurface));
     });
   });
 

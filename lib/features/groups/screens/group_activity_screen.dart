@@ -1,51 +1,61 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/r_amount.dart';
 import '../keys/group_keys.dart';
 import '../models/group_activity_log_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
-import '../widgets/group_activity_tile.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
-/// Full-screen paginated group activity timeline (D-07, D-08, D-09, D-10, D-11).
+/// Full-screen paginated group activity timeline (saffron direction).
 ///
-/// Features:
-/// - ModuleHeader with dark gradient (D-07)
-/// - Date-grouped section headers: TODAY, YESTERDAY, MMM d (D-08)
-/// - Rich card tiles via GroupActivityTile (D-09)
-/// - Client-side filter chips: All / Settlements / Events / Members (D-10)
-/// - Infinite scroll — no "Load more" button (D-11)
+/// Wireframe ref: `Wireframes/Rihla/hifi/screens-group.jsx` → `Hi_GroupActivity()`.
+/// Layout:
+///   1. Top bar — back button + italic display title (group name)
+///   2. Filter chips — All / Settlements / Events / Members
+///   3. Day-grouped card-wrapped sections with category-icon-led rows
+///
+/// Keeps the existing cursor-based pagination (page size 50, prefetch
+/// within 200px of bottom). Filter is applied client-side to the
+/// already-fetched pages.
+///
+/// **Deviation from wireframe:** wireframe shows 3 view-mode chips
+/// (Activity / By person / By category) instead of type filters. Type
+/// filters preserved here for functional behavior parity with the prior
+/// implementation. View modes tracked in `docs/plans/saffron-overhaul.md`.
 class GroupActivityScreen extends ConsumerStatefulWidget {
-  final String groupId;
-
   const GroupActivityScreen({super.key, required this.groupId});
+
+  final String groupId;
 
   @override
   ConsumerState<GroupActivityScreen> createState() =>
       _GroupActivityScreenState();
 }
 
+enum _Filter { all, settlements, events, members }
+
 class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   final List<GroupActivityLog> _activities = [];
   DocumentSnapshot? _lastDocument;
   bool _hasMore = true;
   bool _isLoadingMore = false;
-  String _activeFilter = 'All';
+  _Filter _filter = _Filter.all;
   late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_onScroll);
+    _scrollController = ScrollController()..addListener(_onScroll);
     _loadPage();
   }
 
@@ -55,7 +65,6 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     super.dispose();
   }
 
-  /// Triggers next page load when within 200px of bottom.
   void _onScroll() {
     final pos = _scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - 200 &&
@@ -65,14 +74,9 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     }
   }
 
-  /// Fetches the next page of activity entries using cursor-based pagination.
-  ///
-  /// Guards against concurrent calls via [_isLoadingMore]. Sets [_hasMore]
-  /// to false when fewer than 50 entries are returned (end of stream).
   Future<void> _loadPage() async {
     if (_isLoadingMore || !_hasMore) return;
     setState(() => _isLoadingMore = true);
-
     try {
       final service = ref.read(groupActivityServiceProvider);
       final snap = await service.fetchActivityPageRaw(
@@ -80,200 +84,86 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
         startAfter: _lastDocument,
         limit: 50,
       );
-
       final newActivities = snap.docs
           .map(
             (doc) =>
                 GroupActivityLog.fromFirestore({...doc.data(), 'id': doc.id}),
           )
           .toList();
-
+      if (!mounted) return;
       setState(() {
         _activities.addAll(newActivities);
-        _lastDocument =
-            snap.docs.isNotEmpty ? snap.docs.last : _lastDocument;
+        _lastDocument = snap.docs.isNotEmpty ? snap.docs.last : _lastDocument;
         _hasMore = snap.docs.length == 50;
         _isLoadingMore = false;
       });
-    } catch (e) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() => _isLoadingMore = false);
     }
   }
 
-  /// Client-side filtered view of [_activities] based on [_activeFilter].
-  ///
-  /// IMPORTANT: Never modify [_activities] directly. [_hasMore] uses raw
-  /// count, not filtered count (see RESEARCH Pitfall 3).
-  List<GroupActivityLog> get _filteredActivities {
-    if (_activeFilter == 'All') return _activities;
-    return _activities.where((a) {
-      return switch (_activeFilter) {
-        'Settlements' => a.type == 'group_settlement',
-        'Events' => a.type == 'event_created' || a.type == 'event_deleted',
-        'Members' => a.type == 'member_joined' || a.type == 'member_left',
-        _ => true,
-      };
-    }).toList();
-  }
-
-  /// Groups activity logs by date label (TODAY, YESTERDAY, or formatted date).
-  Map<String, List<GroupActivityLog>> _groupByDate(
-      List<GroupActivityLog> logs) {
-    final grouped = <String, List<GroupActivityLog>>{};
-    final now = DateTime.now();
-    for (final log in logs) {
-      final label = _dateLabel(log.timestamp, now);
-      grouped.putIfAbsent(label, () => []).add(log);
-    }
-    return grouped;
-  }
-
-  String _dateLabel(DateTime date, DateTime now) {
-    final today = DateTime(now.year, now.month, now.day);
-    final logDate = DateTime(date.year, date.month, date.day);
-    if (logDate == today) return 'TODAY';
-    if (logDate == today.subtract(const Duration(days: 1))) return 'YESTERDAY';
-    return DateFormat('MMM d').format(date);
-  }
+  List<GroupActivityLog> get _filtered =>
+      _activities.where((a) => _matches(a.type, _filter)).toList();
 
   @override
   Widget build(BuildContext context) {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
-    final groupName = groupAsync.valueOrNull?.name;
+    final groupName = groupAsync.valueOrNull?.name ?? 'Activity';
 
     return Scaffold(
       key: GroupKeys.activityScreen,
       backgroundColor: context.colors.scaffoldBackground,
-      body: Column(
-        children: [
-          ModuleHeader(
-            title: 'Activity',
-            subtitle: groupName,
-            useDarkTheme: true,
-          ),
-          _buildFilterChips(),
-          Expanded(child: _buildBody(context)),
-        ],
-      ),
-    );
-  }
-
-  /// Horizontal filter chip row (D-10).
-  Widget _buildFilterChips() {
-    return SizedBox(
-      height: 52,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildFilterChip('All', GroupKeys.activityFilterAll),
-              const SizedBox(width: 8),
-              _buildFilterChip(
-                  'Settlements', GroupKeys.activityFilterSettlements),
-              const SizedBox(width: 8),
-              _buildFilterChip('Events', GroupKeys.activityFilterEvents),
-              const SizedBox(width: 8),
-              _buildFilterChip('Members', GroupKeys.activityFilterMembers),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, Key key) {
-    final isSelected = _activeFilter == label;
-    return GestureDetector(
-      key: key,
-      onTap: () {
-        HapticService.selection();
-        setState(() => _activeFilter = label);
-      },
-      child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? context.colors.selectionFill
-              : context.colors.inputFill,
-          borderRadius: BorderRadius.circular(8),
-          border: isSelected
-              ? Border.all(
-                  color: context.colors.primary,
-                  width: 1.5,
-                )
-              : null,
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: isSelected
-                  ? context.colors.textPrimary
-                  : context.colors.textSecondary,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _TopBar(title: groupName),
+            const SizedBox(height: 4),
+            _FilterStrip(
+              current: _filter,
+              onChange: (f) => setState(() => _filter = f),
             ),
-          ),
+            const SizedBox(height: 8),
+            Expanded(child: _buildBody(context)),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildBody(BuildContext context) {
-    // Loading first page
     if (_isLoadingMore && _activities.isEmpty) {
-      return _buildSkeleton();
+      return Center(
+        child: CircularProgressIndicator(color: context.colors.primary),
+      );
     }
-
-    final filtered = _filteredActivities;
-
-    // Empty state — no activities at all
     if (_activities.isEmpty) {
       return const EmptyStateView(
         icon: Iconsax.activity,
         title: 'No activity yet',
-        message:
-            'Group events, payments, and member changes will appear here.',
+        message: 'Group events, payments, and member changes will appear here.',
       );
     }
-
-    // Empty state — filter has no results
+    final filtered = _filtered;
     if (filtered.isEmpty) {
-      return EmptyStateView(
+      return const EmptyStateView(
         icon: Iconsax.search_normal,
-        title: 'No ${_activeFilter.toLowerCase()} activity',
-        message: 'Try selecting a different filter.',
+        title: 'Nothing matches this filter',
+        message: 'Try a different filter, or switch back to All.',
       );
     }
 
-    final grouped = _groupByDate(filtered);
-
-    // Build flat items list: interleave date labels with activity logs
-    final flatItems = <dynamic>[];
-    for (final entry in grouped.entries) {
-      flatItems.add(entry.key); // date label String
-      flatItems.addAll(entry.value); // GroupActivityLog entries
-    }
-    if (_hasMore) flatItems.add('__loading__');
-
-    // Track overall index for stagger animation (reset per section)
-    int tileIndex = 0;
+    final days = _groupByDay(filtered, DateTime.now());
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: flatItems.length,
-      itemBuilder: (context, index) {
-        final item = flatItems[index];
-
-        // Loading sentinel at bottom
-        if (item == '__loading__') {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      itemCount: days.length + (_hasMore ? 1 : 0),
+      itemBuilder: (ctx, i) {
+        if (i == days.length) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Center(
               child: SizedBox(
                 width: 16,
                 height: 16,
@@ -285,105 +175,65 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
             ),
           );
         }
-
-        // Date section header — no animation stagger
-        if (item is String) {
-          tileIndex = 0; // reset stagger counter at each date boundary
-          return _DateSectionHeader(label: item);
-        }
-
-        // Activity tile with entrance animation
-        final activity = item as GroupActivityLog;
-        final delay = Duration(milliseconds: (tileIndex % 10) * 50);
-        tileIndex++;
-
-        return GroupActivityTile(activity: activity)
-            .animate()
-            .fadeIn(delay: delay)
-            .slideY(begin: 0.1, curve: Curves.easeOutCubic);
+        return Padding(
+          padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
+          child: _DaySection(label: days[i].label, entries: days[i].entries),
+        );
       },
     );
   }
-
-  /// Skeleton placeholder rows shown while the first page loads.
-  Widget _buildSkeleton() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: 5,
-      itemBuilder: (context, index) => const _SkeletonRow(),
-    );
-  }
 }
 
-/// Section header for date groups in the activity timeline (D-08).
-class _DateSectionHeader extends StatelessWidget {
-  final String label;
+// ──────────────────────────── Top bar
 
-  const _DateSectionHeader({required this.label});
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.title});
+  final String title;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w400,
-          color: context.colors.textSecondary,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-/// A skeleton placeholder tile shown during first-page loading.
-class _SkeletonRow extends StatelessWidget {
-  const _SkeletonRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: context.colors.border,
-              shape: BoxShape.circle,
+          Tooltip(
+            message: 'Back',
+            child: InkResponse(
+              key: GroupKeys.activityBackButton,
+              onTap: () {
+                HapticService.lightClick();
+                if (GoRouter.of(context).canPop()) {
+                  GoRouter.of(context).pop();
+                }
+              },
+              radius: 24,
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  Iconsax.arrow_left,
+                  size: 20,
+                  color: colors.textPrimary,
+                ),
+              ),
             ),
           ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 12,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: context.colors.border,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.display(
+                  fontSize: 22,
+                  color: colors.textPrimary,
+                  letterSpacing: -0.3,
+                  height: 1.05,
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  height: 10,
-                  width: 80,
-                  decoration: BoxDecoration(
-                    color: context.colors.inputFill,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
@@ -391,3 +241,315 @@ class _SkeletonRow extends StatelessWidget {
     );
   }
 }
+
+// ──────────────────────────── Filter chips
+
+class _FilterStrip extends StatelessWidget {
+  const _FilterStrip({required this.current, required this.onChange});
+  final _Filter current;
+  final ValueChanged<_Filter> onChange;
+
+  static const _options = [
+    (_Filter.all, 'All', GroupKeys.activityFilterAll),
+    (_Filter.settlements, 'Settlements', GroupKeys.activityFilterSettlements),
+    (_Filter.events, 'Events', GroupKeys.activityFilterEvents),
+    (_Filter.members, 'Members', GroupKeys.activityFilterMembers),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 32,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        children: [
+          for (final opt in _options) ...[
+            _Chip(
+              chipKey: opt.$3,
+              label: opt.$2,
+              active: current == opt.$1,
+              onTap: () {
+                HapticService.selection();
+                onChange(opt.$1);
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.chipKey,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+  final Key chipKey;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      key: chipKey,
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? colors.textPrimary : colors.cardSoft,
+          borderRadius: BorderRadius.circular(9999),
+          border: Border.all(
+            color: active ? colors.textPrimary : colors.rule,
+            width: 0.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.sans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: active ? colors.scaffoldBackground : colors.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────── Day section + row
+
+class _DaySection extends StatelessWidget {
+  const _DaySection({required this.label, required this.entries});
+  final String label;
+  final List<GroupActivityLog> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: AppTypography.mono(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Container(height: 0.5, color: colors.rule2)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: colors.cardSurface,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: context.shadows.raised,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              for (var i = 0; i < entries.length; i++)
+                _ActivityRow(log: entries[i], divider: i < entries.length - 1),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActivityRow extends StatelessWidget {
+  const _ActivityRow({required this.log, required this.divider});
+  final GroupActivityLog log;
+  final bool divider;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final amountRaw = log.metadata['amount'];
+    final amount = amountRaw is num ? amountRaw.toDouble() : null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _CategoryIcon(type: log.type),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: log.actorName,
+                        style: AppTypography.sans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const TextSpan(text: ' '),
+                      TextSpan(
+                        text: log.description,
+                        style: AppTypography.sans(
+                          fontSize: 14,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (amount != null)
+                    RAmount(
+                      value: Decimal.parse(amount.toStringAsFixed(3)),
+                      size: 14,
+                      showCurrency: false,
+                    ),
+                  if (amount != null) const SizedBox(height: 2),
+                  Text(
+                    timeago.format(log.timestamp, locale: 'en_short'),
+                    style: AppTypography.mono(
+                      fontSize: 10,
+                      color: colors.textSecondary,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (divider) ...[
+            const SizedBox(height: 12),
+            Container(height: 0.5, color: colors.rule),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryIcon extends StatelessWidget {
+  const _CategoryIcon({required this.type});
+  final String type;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final (bg, fg, icon) = switch (type) {
+      'group_settlement' => (
+        colors.cardSoft,
+        colors.success,
+        Iconsax.arrow_right_3,
+      ),
+      'event_created' => (
+        colors.saffronSoft,
+        colors.primaryDark,
+        Iconsax.calendar_1,
+      ),
+      'event_deleted' => (
+        colors.cardSoft,
+        colors.textSecondary,
+        Iconsax.calendar_remove,
+      ),
+      'member_joined' => (colors.cardSoft, colors.cat2, Iconsax.user_add),
+      'member_left' => (
+        colors.cardSoft,
+        colors.textSecondary,
+        Iconsax.user_minus,
+      ),
+      _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity),
+    };
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.rule, width: 0.5),
+      ),
+      alignment: Alignment.center,
+      child: Icon(icon, size: 18, color: fg),
+    );
+  }
+}
+
+// ──────────────────────────── Helpers
+
+bool _matches(String type, _Filter f) {
+  return switch (f) {
+    _Filter.all => true,
+    _Filter.settlements => type == 'group_settlement',
+    _Filter.events => type == 'event_created' || type == 'event_deleted',
+    _Filter.members => type == 'member_joined' || type == 'member_left',
+  };
+}
+
+class _DayGroup {
+  const _DayGroup({required this.label, required this.entries});
+  final String label;
+  final List<GroupActivityLog> entries;
+}
+
+List<_DayGroup> _groupByDay(List<GroupActivityLog> logs, DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  final groups = <String, List<GroupActivityLog>>{};
+  final order = <String>[];
+  for (final log in logs) {
+    final ts = log.timestamp;
+    final day = DateTime(ts.year, ts.month, ts.day);
+    final diff = today.difference(day).inDays;
+    final label = diff == 0
+        ? 'Today'
+        : diff == 1
+        ? 'Yesterday'
+        : '${_monthShort(ts.month)} ${ts.day}';
+    if (!groups.containsKey(label)) {
+      groups[label] = [];
+      order.add(label);
+    }
+    groups[label]!.add(log);
+  }
+  return [
+    for (final label in order) _DayGroup(label: label, entries: groups[label]!),
+  ];
+}
+
+const _months = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+String _monthShort(int m) => _months[m - 1];

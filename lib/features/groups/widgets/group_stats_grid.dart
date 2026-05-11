@@ -54,41 +54,86 @@ class GroupStatsGrid extends StatelessWidget {
       _ => 'Settled',
     };
 
-    return GridView.count(
+    return Container(
       key: GroupKeys.statsGrid,
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 8,
-      mainAxisSpacing: 8,
-      childAspectRatio: 1.6,
-      children: [
-        _StatCard(
-          key: GroupKeys.statYourBalance,
-          label: 'YOUR BALANCE',
-          value: AppFormatters.formatCurrency(userNetBalance.abs(), currency),
-          valueColor: balanceColor,
-          subtitle: balanceSubtitle,
+      decoration: BoxDecoration(
+        color: context.colors.inputFillWarm,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: context.colors.border.withValues(alpha: 0.5),
+          width: 0.5,
         ),
-        _StatCard(
-          key: GroupKeys.statGroupTotal,
-          label: 'GROUP TOTAL',
-          value: AppFormatters.formatCurrency(groupTotal, currency),
-          valueColor: context.colors.textPrimary,
-        ),
-        _StatCard(
-          key: GroupKeys.statActiveMembers,
-          label: 'ACTIVE MEMBERS',
-          value: '$activeMembers',
-          valueColor: context.colors.textPrimary,
-        ),
-        _StatCard(
-          key: GroupKeys.statEvents,
-          label: 'EVENTS',
-          value: '$eventCount',
-          valueColor: context.colors.textPrimary,
-        ),
-      ],
+      ),
+      child: Column(
+        children: [
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    key: GroupKeys.statYourBalance,
+                    label: 'YOUR BALANCE',
+                    value: AppFormatters.formatCurrency(userNetBalance.abs(), currency),
+                    valueColor: balanceColor,
+                    subtitle: balanceSubtitle,
+                  ),
+                ),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 0.5,
+                  color: context.colors.border.withValues(alpha: 0.4),
+                  indent: 12,
+                  endIndent: 12,
+                ),
+                Expanded(
+                  child: _StatCard(
+                    key: GroupKeys.statGroupTotal,
+                    label: 'GROUP TOTAL',
+                    value: AppFormatters.formatCurrency(groupTotal, currency),
+                    valueColor: context.colors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(
+            height: 1,
+            thickness: 0.5,
+            color: context.colors.border.withValues(alpha: 0.4),
+            indent: 12,
+            endIndent: 12,
+          ),
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    key: GroupKeys.statActiveMembers,
+                    label: 'MEMBERS',
+                    value: '$activeMembers',
+                    valueColor: context.colors.textPrimary,
+                  ),
+                ),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 0.5,
+                  color: context.colors.border.withValues(alpha: 0.4),
+                  indent: 12,
+                  endIndent: 12,
+                ),
+                Expanded(
+                  child: _StatCard(
+                    key: GroupKeys.statEvents,
+                    label: 'EVENTS',
+                    value: '$eventCount',
+                    valueColor: context.colors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -113,13 +158,8 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        border: Border.all(color: context.colors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -129,33 +169,33 @@ class _StatCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: context.colors.textSecondary,
-              letterSpacing: 0.5,
+              color: context.colors.textSecondary.withValues(alpha: 0.7),
+              letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 4),
-          Flexible(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: valueColor,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: valueColor,
+              letterSpacing: -0.5,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          if (subtitle != null)
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
             Text(
               subtitle!,
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: valueColor,
-                letterSpacing: 0.3,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: valueColor.withValues(alpha: 0.8),
               ),
             ),
+          ],
         ],
       ),
     );

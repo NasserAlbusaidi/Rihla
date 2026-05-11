@@ -9,6 +9,7 @@ import '../providers/group_balance_provider.dart';
 import '../../events/models/event_type_config.dart';
 import '../../events/providers/event_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../shared/widgets/initials_circle.dart';
 
 /// A card widget for displaying a group summary in the home screen list.
 ///
@@ -43,54 +44,64 @@ class GroupCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final balancesAsync = ref.watch(groupBalancesProvider(group.id));
     final uid = ref.watch(currentUserIdProvider);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        clipBehavior: Clip.hardEdge,
-        decoration: BoxDecoration(
-          color: context.colors.cardSurface,
-          borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-          boxShadow: context.shadows.raised,
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 4dp accent strip on the left edge (CARD-01)
-              Container(
-                width: 4,
-                color: context.colors.groupAvatarSlot(group.id),
-              ),
-              // Card content
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(context.spacing.space16),
+
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: context.colors.primary.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          )
+        ],
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Material(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.all(context.spacing.space20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                InitialsCircle(
+                  size: 52,
+                  name: group.name,
+                  backgroundColor: context.colors.groupAvatarSlot(group.id).withValues(alpha: 0.15),
+                  textColor: context.colors.groupAvatarSlot(group.id),
+                ),
+                SizedBox(width: context.spacing.space16),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          // Group name
                           Expanded(
                             child: Text(
                               group.name,
-                              style: Theme.of(context).textTheme.titleMedium,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: context.colors.textPrimary,
+                                letterSpacing: -0.3,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           SizedBox(width: context.spacing.space8),
-                          // Member count badge
                           Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: context.spacing.space8,
+                              horizontal: context.spacing.space12,
                               vertical: context.spacing.space4,
                             ),
-                            decoration: BoxDecoration(
-                              color: context.colors.inputFill,
-                              borderRadius: BorderRadius.circular(
-                                context.spacing.radiusSmall,
-                              ),
+                            decoration: ShapeDecoration(
+                              color: context.colors.inputFillWarm,
+                              shape: const StadiumBorder(),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -108,6 +119,7 @@ class GroupCard extends ConsumerWidget {
                                       .bodySmall
                                       ?.copyWith(
                                         color: context.colors.textSecondary,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                 ),
                               ],
@@ -166,14 +178,14 @@ class GroupCard extends ConsumerWidget {
                               ),
                         ),
                       ),
-                      SizedBox(height: context.spacing.space4),
-                      // Event context line — last event + type icon + relative date (CARD-02)
+                      SizedBox(height: context.spacing.space8),
+                      // Event context line
                       _buildEventContextLine(context, ref),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

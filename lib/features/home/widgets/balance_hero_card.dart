@@ -1,23 +1,22 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax/iconsax.dart';
 
-import '../../../shared/widgets/animated_currency_text.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../groups/providers/group_provider.dart';
 import '../keys/home_keys.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
-/// Balance hero card for the home dashboard.
+/// Cross-group balance hero, saffron-direction styling.
 ///
-/// Displays the current user's net balance across all groups.
-/// Shows three distinct visual states:
-/// - Red "You owe" when net is negative
-/// - Green "You are owed" when net is positive
-/// - Gray "All settled up" when net is zero
-///
-/// Shows [SkeletonLoader.dashboardHero] while data loads.
+/// White card on paper, italic header, big sage/rust amount, mini split bar
+/// showing the relative weight of "owed to you" vs "you owe", and a legend
+/// row beneath. The figures come from [crossGroupBalanceProvider]; the
+/// split-bar derivation walks each group's per-user balance to split the
+/// net into positive and negative components.
 class BalanceHeroCard extends ConsumerWidget {
   const BalanceHeroCard({super.key});
 
@@ -27,120 +26,310 @@ class BalanceHeroCard extends ConsumerWidget {
 
     return balanceAsync.when(
       loading: SkeletonLoader.dashboardHero,
-      error: (error, stack) => _buildErrorCard(context),
-      data: (balance) => _buildCard(context, balance),
+      error: (e, _) => _ErrorCard(),
+      data: (balance) => _LoadedCard(balance: balance),
     );
   }
+}
 
-  Widget _buildCard(BuildContext context, CrossGroupBalance balance) {
+class _LoadedCard extends ConsumerWidget {
+  const _LoadedCard({required this.balance});
+  final CrossGroupBalance balance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final uid = ref.watch(currentUserIdProvider);
+    final groupsAsync = ref.watch(userGroupsProvider);
+    final groups = groupsAsync.valueOrNull ?? const [];
+
+    // Walk groups to derive (owedToUser, userOwes) totals for the split bar.
+    var owedToUser = Decimal.zero;
+    var userOwes = Decimal.zero;
+    for (final group in groups) {
+      final gb = ref.watch(groupBalancesProvider(group.id)).valueOrNull;
+      if (gb == null || uid == null) continue;
+      final entry = gb.balances
+          .where((b) => b.participantId == uid)
+          .firstOrNull;
+      final net = entry?.netBalance ?? Decimal.zero;
+      if (net > Decimal.zero) {
+        owedToUser += net;
+      } else if (net < Decimal.zero) {
+        userOwes += net.abs();
+      }
+    }
+
     final net = balance.net;
-    final groupCount = balance.groupCount;
-
-    final (Color color, IconData icon, String descriptionText) =
-        switch (net.compareTo(Decimal.zero)) {
-      < 0 => (
-          context.colors.errorText,
-          Iconsax.warning_2,
-          'You owe across $groupCount group${groupCount == 1 ? '' : 's'}',
-        ),
-      > 0 => (
-          context.colors.successText,
-          Iconsax.tick_circle,
-          'You are owed across $groupCount group${groupCount == 1 ? '' : 's'}',
-        ),
-      _ => (
-          context.colors.textSecondary,
-          Iconsax.tick_circle,
-          'All settled up',
-        ),
-    };
+    final isPositive = net > Decimal.zero;
+    final isNegative = net < Decimal.zero;
+    final caption = isPositive
+        ? 'Net — you’re owed'
+        : isNegative
+        ? 'Net — you owe'
+        : 'All settled across journeys';
+    final captionAccent = isPositive
+        ? 'owed'
+        : isNegative
+        ? 'owe'
+        : null;
+    final tone = isPositive
+        ? AmountTone.sage
+        : isNegative
+        ? AmountTone.rust
+        : AmountTone.ink;
 
     return Container(
       key: HomeKeys.balanceHeroCard,
-      margin: EdgeInsets.symmetric(horizontal: context.spacing.space16),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
       decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
+        color: colors.cardSurface,
+        borderRadius: BorderRadius.circular(28),
         boxShadow: context.shadows.raised,
-        image: const DecorationImage(
-          image: AssetImage('assets/textures/grain.png'),
-          repeat: ImageRepeat.repeat,
-          opacity: 0.035,
-          fit: BoxFit.none,
-          alignment: Alignment.topLeft,
-        ),
       ),
-      padding: EdgeInsets.all(context.spacing.space16),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 24, color: color),
-          ),
-          SizedBox(width: context.spacing.space12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AnimatedCurrencyText(
-                  value: net,
-                  currency: 'OMR',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(
+                  'Across all journeys',
+                  style: AppTypography.display(
+                    fontSize: 16,
+                    color: colors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  descriptionText,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: context.colors.textSecondary,
-                  ),
+              ),
+              Text(
+                'OMR',
+                style: AppTypography.mono(
+                  fontSize: 9,
+                  color: colors.textSecondary,
+                  letterSpacing: 1.5,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+          const SizedBox(height: 14),
+          RAmount(
+            value: net,
+            currency: 'OMR',
+            showCurrency: false,
+            size: 44,
+            sign: !net.isZero,
+            tone: tone,
+            weight: FontWeight.w500,
+          ),
+          const SizedBox(height: 6),
+          _CaptionLine(text: caption, accent: captionAccent, tone: tone),
+          const SizedBox(height: 18),
+          _SplitBar(owedToUser: owedToUser, userOwes: userOwes),
+          const SizedBox(height: 10),
+          _SplitLegend(owedToUser: owedToUser, userOwes: userOwes),
         ],
       ),
     );
   }
+}
 
-  Widget _buildErrorCard(BuildContext context) {
-    return Container(
-      key: HomeKeys.balanceHeroCard,
-      margin: EdgeInsets.symmetric(horizontal: context.spacing.space16),
-      decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: context.shadows.raised,
-        image: const DecorationImage(
-          image: AssetImage('assets/textures/grain.png'),
-          repeat: ImageRepeat.repeat,
-          opacity: 0.035,
-          fit: BoxFit.none,
-          alignment: Alignment.topLeft,
-        ),
-      ),
-      padding: EdgeInsets.all(context.spacing.space16),
-      child: Row(
+extension on Decimal {
+  bool get isZero => this == Decimal.zero;
+}
+
+class _CaptionLine extends StatelessWidget {
+  const _CaptionLine({
+    required this.text,
+    required this.accent,
+    required this.tone,
+  });
+  final String text;
+  final String? accent;
+  final AmountTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final accentColor = switch (tone) {
+      AmountTone.sage => colors.success,
+      AmountTone.rust => colors.error,
+      _ => colors.textPrimary,
+    };
+    if (accent == null) {
+      return Text(
+        text,
+        style: AppTypography.sans(fontSize: 13, color: colors.textSecondary),
+      );
+    }
+    // Reusable spans: ink-3 caption with the accent word highlighted.
+    final parts = text.split(accent!);
+    return Text.rich(
+      TextSpan(
         children: [
-          Icon(Iconsax.warning_2, size: 24, color: context.colors.textSecondary),
-          SizedBox(width: context.spacing.space12),
-          Text(
-            'Balance unavailable',
-            style: TextStyle(
-              fontSize: 14,
-              color: context.colors.textSecondary,
+          TextSpan(
+            text: parts.first,
+            style: AppTypography.sans(
+              fontSize: 13,
+              color: colors.textSecondary,
             ),
           ),
+          TextSpan(
+            text: accent,
+            style: AppTypography.sans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: accentColor,
+            ),
+          ),
+          if (parts.length > 1)
+            TextSpan(
+              text: parts.last,
+              style: AppTypography.sans(
+                fontSize: 13,
+                color: colors.textSecondary,
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _SplitBar extends StatelessWidget {
+  const _SplitBar({required this.owedToUser, required this.userOwes});
+  final Decimal owedToUser;
+  final Decimal userOwes;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final pos = owedToUser.toDouble();
+    final neg = userOwes.toDouble();
+    final total = pos + neg;
+    final posFraction = total > 0 ? pos / total : 0.5;
+    final negFraction = total > 0 ? neg / total : 0.5;
+    final hasAny = total > 0;
+
+    return SizedBox(
+      height: 5,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: Row(
+          children: [
+            if (hasAny)
+              Expanded(
+                flex: (posFraction * 1000).round(),
+                child: Container(color: colors.success),
+              ),
+            if (hasAny)
+              Expanded(
+                flex: (negFraction * 1000).round(),
+                child: Container(color: colors.error),
+              ),
+            if (!hasAny) Expanded(child: Container(color: colors.rule)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SplitLegend extends StatelessWidget {
+  const _SplitLegend({required this.owedToUser, required this.userOwes});
+  final Decimal owedToUser;
+  final Decimal userOwes;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    // Two-line stack — keeps amounts readable on narrow phones without
+    // overflowing the card. Wireframe inlines them but on real device widths
+    // (≤ 360 px) the inline layout overflows; the two-line form matches the
+    // visual weight while staying tabular.
+    return Column(
+      children: [
+        _LegendLine(
+          dotColor: colors.success,
+          label: 'owed to you',
+          amount: owedToUser,
+        ),
+        const SizedBox(height: 6),
+        _LegendLine(dotColor: colors.error, label: 'you owe', amount: userOwes),
+      ],
+    );
+  }
+}
+
+class _LegendLine extends StatelessWidget {
+  const _LegendLine({
+    required this.dotColor,
+    required this.label,
+    required this.amount,
+  });
+
+  final Color dotColor;
+  final String label;
+  final Decimal amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      children: [
+        _LegendDot(color: dotColor),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTypography.sans(
+              fontSize: 12,
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+        RAmount(value: amount, size: 12, tone: AmountTone.ink),
+      ],
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  const _LegendDot({required this.color});
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      key: HomeKeys.balanceHeroCard,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: colors.cardSurface,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: context.shadows.raised,
+      ),
+      child: Text(
+        'Balance unavailable',
+        style: AppTypography.sans(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: colors.textSecondary,
+        ),
       ),
     );
   }
