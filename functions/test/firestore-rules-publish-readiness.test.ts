@@ -171,9 +171,10 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(batch.commit());
   });
 
-  test('invite codes cannot be read, forged, or deleted by arbitrary users', async () => {
+  test('invite codes can be resolved but not listed, forged, or deleted by arbitrary users', async () => {
     const eve = testEnv.authenticatedContext('eve').firestore();
-    await assertFails(eve.doc('inviteCodes/ABC123').get());
+    await assertSucceeds(eve.doc('inviteCodes/ABC123').get());
+    await assertFails(eve.collection('inviteCodes').get());
     await assertFails(eve.doc('inviteCodes/HACK99').set({
       groupId: 'g1',
       createdAt: new Date(),
@@ -207,11 +208,34 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(batch.commit());
   });
 
-  test('non-member cannot join by directly overwriting memberIds', async () => {
+  test('non-member cannot add another user or drop existing members while joining', async () => {
     const eve = testEnv.authenticatedContext('eve').firestore();
     await assertFails(eve.doc('groups/g1').update({
+      memberIds: ['owner', 'member', 'mallory'],
+      updatedAt: new Date(),
+    }));
+    await assertFails(eve.doc('groups/g1').update({
+      memberIds: ['owner', 'eve'],
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('non-member can join by resolving invite code and adding only themself', async () => {
+    const eve = testEnv.authenticatedContext('eve').firestore();
+    const inviteSnap = await assertSucceeds(eve.doc('inviteCodes/ABC123').get());
+    expect(inviteSnap.data()?.groupId).toBe('g1');
+
+    await assertSucceeds(eve.doc('groups/g1').update({
       memberIds: ['owner', 'member', 'eve'],
       updatedAt: new Date(),
+    }));
+    await assertSucceeds(eve.doc('groups/g1/members/eve').set({
+      id: 'eve',
+      userId: 'eve',
+      displayName: 'Eve',
+      role: 'MEMBER',
+      joinedAt: new Date(),
+      isShadow: false,
     }));
   });
 

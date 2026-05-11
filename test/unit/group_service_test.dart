@@ -1,24 +1,12 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 
-class _MockFunctions extends Mock implements FirebaseFunctions {}
-
-class _MockCallable extends Mock implements HttpsCallable {}
-
-class _MockResult extends Mock implements HttpsCallableResult {}
-
 void main() {
-  setUpAll(() {
-    registerFallbackValue(<String, dynamic>{});
-  });
-
   group('GroupService', () {
     group('createGroup', () {
       test(
@@ -203,33 +191,28 @@ void main() {
       );
 
       test(
-        'joinGroup routes through callable and reads returned group',
+        'joinGroup resolves invite code, adds member id, and creates member doc',
         () async {
           SharedPreferences.setMockInitialValues({
             'settings_device_name': 'Joiner',
           });
           final prefs = await SharedPreferences.getInstance();
           final fakeDb = FakeFirebaseFirestore();
-          final functions = _MockFunctions();
-          final callable = _MockCallable();
-          final result = _MockResult();
 
+          await fakeDb.collection('inviteCodes').doc('ABC123').set({
+            'groupId': 'grp-joined',
+            'createdAt': DateTime.now(),
+          });
           await fakeDb.collection('groups').doc('grp-joined').set({
             'id': 'grp-joined',
             'name': 'Joined Group',
             'inviteCode': 'ABC123',
             'createdBy': 'uid-creator',
-            'memberIds': ['uid-creator', 'uid-joiner'],
+            'memberIds': ['uid-creator'],
             'currency': 'OMR',
             'createdAt': DateTime.now(),
             'updatedAt': DateTime.now(),
           });
-
-          when(
-            () => functions.httpsCallable('joinGroupByInviteCode'),
-          ).thenReturn(callable);
-          when(() => result.data).thenReturn({'groupId': 'grp-joined'});
-          when(() => callable.call(any())).thenAnswer((_) async => result);
 
           final container = ProviderContainer(
             overrides: [
@@ -238,7 +221,6 @@ void main() {
                 (ref) => GroupService.withFirestore(
                   ref,
                   fakeDb,
-                  functions: functions,
                   currentUserId: 'uid-joiner',
                 ),
               ),
@@ -252,12 +234,76 @@ void main() {
 
           expect(group.id, equals('grp-joined'));
           expect(group.memberIds, contains('uid-joiner'));
-          verify(
-            () => callable.call({
-              'inviteCode': 'ABC123',
-              'displayName': 'Joiner',
-            }),
-          ).called(1);
+
+          final memberSnap = await fakeDb
+              .collection('groups')
+              .doc('grp-joined')
+              .collection('members')
+              .doc('uid-joiner')
+              .get();
+          expect(memberSnap.exists, isTrue);
+          expect(memberSnap.data(), containsPair('displayName', 'Joiner'));
+          expect(memberSnap.data(), containsPair('role', 'MEMBER'));
+        },
+      );
+
+      test(
+        'joinGroup joins directly through Firestore when functions are unavailable',
+        () async {
+          SharedPreferences.setMockInitialValues({
+            'settings_device_name': 'Direct Joiner',
+          });
+          final prefs = await SharedPreferences.getInstance();
+          final fakeDb = FakeFirebaseFirestore();
+
+          await fakeDb.collection('inviteCodes').doc('ABC123').set({
+            'groupId': 'grp-direct',
+            'createdAt': DateTime.now(),
+          });
+          await fakeDb.collection('groups').doc('grp-direct').set({
+            'id': 'grp-direct',
+            'name': 'Direct Group',
+            'inviteCode': 'ABC123',
+            'createdBy': 'uid-creator',
+            'memberIds': ['uid-creator'],
+            'currency': 'OMR',
+            'createdAt': DateTime.now(),
+            'updatedAt': DateTime.now(),
+          });
+
+          final container = ProviderContainer(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-direct',
+                ),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final group = await container
+              .read(groupServiceProvider)
+              .joinGroup(inviteCode: 'abc123');
+
+          expect(group.id, equals('grp-direct'));
+          expect(group.memberIds, contains('uid-direct'));
+
+          final memberSnap = await fakeDb
+              .collection('groups')
+              .doc('grp-direct')
+              .collection('members')
+              .doc('uid-direct')
+              .get();
+          expect(memberSnap.exists, isTrue);
+          expect(
+            memberSnap.data(),
+            containsPair('displayName', 'Direct Joiner'),
+          );
+          expect(memberSnap.data(), containsPair('role', 'MEMBER'));
         },
       );
     });

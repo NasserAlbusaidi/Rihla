@@ -67,11 +67,11 @@ service cloud.firestore {
         && request.auth.uid == userId;
     }
 
-    // Invite codes are write-only metadata for creators and trusted callables.
-    // Joining is mediated by joinGroupByInviteCode; clients never read this
-    // collection directly.
+    // Invite codes are point-lookups for users who know a 6-character code.
+    // Listing remains denied so clients cannot enumerate valid codes.
     match /inviteCodes/{code} {
-      allow read, list: if false;
+      allow get: if signedIn();
+      allow list: if false;
 
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['groupId', 'createdAt'])
@@ -160,9 +160,38 @@ service cloud.firestore {
           && request.auth.uid in request.resource.data.memberIds;
       }
 
+      function hasMatchingInviteLookup() {
+        return resource.data.inviteCode is string
+          && exists(/databases/$(database)/documents/inviteCodes/$(resource.data.inviteCode))
+          && get(/databases/$(database)/documents/inviteCodes/$(resource.data.inviteCode)).data.groupId == groupId;
+      }
+
+      function validSelfJoin() {
+        return signedIn()
+          && hasMatchingInviteLookup()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['memberIds', 'updatedAt'])
+          && request.resource.data.memberIds is list
+          && !(request.auth.uid in resource.data.memberIds)
+          && request.auth.uid in request.resource.data.memberIds
+          && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+          && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+          && request.resource.data.updatedAt is timestamp;
+      }
+
+      function validSelfJoinRefresh() {
+        return isMember()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['memberIds', 'updatedAt'])
+          && request.resource.data.memberIds == resource.data.memberIds
+          && request.resource.data.updatedAt is timestamp;
+      }
+
       allow read: if isMember();
       allow create: if validGroupCreate();
       allow update: if validCreatorMetadataUpdate()
+        || validSelfJoin()
+        || validSelfJoinRefresh()
         || validSelfLeave()
         || validCreatorRemoveMember();
       allow delete: if isCreator();
