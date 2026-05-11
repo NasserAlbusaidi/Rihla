@@ -171,7 +171,9 @@ class _ScopeTab extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? context.colors.primary : context.colors.textSecondary,
+                color: isSelected
+                    ? context.colors.primary
+                    : context.colors.textSecondary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -248,12 +250,9 @@ class _CustomParticipantSelector extends ConsumerWidget {
           ),
           constraints: const BoxConstraints(maxHeight: 200),
           child: participantsAsync.when(
-            loading: () {
-              return SkeletonLoader.card();
-            },
-            error: (e, _) {
-              return const InlineErrorWidget(message: 'Unable to load participants');
-            },
+            loading: SkeletonLoader.card,
+            error: (e, _) =>
+                const InlineErrorWidget(message: 'Unable to load participants'),
             data: (participants) {
               // Exclude current user from selection (they're auto-included)
               final otherParticipants = participants
@@ -329,7 +328,9 @@ class _ParticipantTile extends StatelessWidget {
             (participant.displayName ?? 'U')[0].toUpperCase(),
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: isSelected ? context.colors.primary : context.colors.textSecondary,
+              color: isSelected
+                  ? context.colors.primary
+                  : context.colors.textSecondary,
             ),
           ),
         ),
@@ -354,9 +355,7 @@ class _ParticipantTile extends StatelessWidget {
       trailing: Checkbox(
         value: isSelected,
         activeColor: context.colors.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         onChanged: (_) => onToggle(),
       ),
       onTap: onToggle,
@@ -432,7 +431,10 @@ class _PayerSelector extends ConsumerWidget {
                         radius: 14,
                         backgroundColor: context.colors.selectionFill,
                         child: Text(
-                          (p.displayName?.isNotEmpty == true ? p.displayName![0] : 'U').toUpperCase(),
+                          (p.displayName?.isNotEmpty == true
+                                  ? p.displayName![0]
+                                  : 'U')
+                              .toUpperCase(),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,

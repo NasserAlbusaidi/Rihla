@@ -98,8 +98,9 @@ class _Content extends StatelessWidget {
             groupName: groupName,
             onSettings: () {
               HapticService.lightClick();
-              GoRouter.of(context)
-                  .push('/group/$groupId/event/$eventId/settings');
+              GoRouter.of(
+                context,
+              ).push('/group/$groupId/event/$eventId/settings');
             },
           ),
         ),
@@ -111,8 +112,9 @@ class _Content extends StatelessWidget {
               offset: const Offset(0, -20),
               child: EventExpenseHero(
                 event: event,
-                onTap: () => GoRouter.of(context)
-                    .push('/group/$groupId/event/$eventId/ledger'),
+                onTap: () => GoRouter.of(
+                  context,
+                ).push('/group/$groupId/event/$eventId/ledger'),
               ),
             ),
           ),
@@ -153,7 +155,7 @@ class _CoverHeader extends StatelessWidget {
     final dateRange = _formatDateRange(event.startDate, event.endDate);
     final captionParts = <String>[
       config.label.toUpperCase(),
-      if (dateRange != null) dateRange,
+      ?dateRange,
       if (groupName != null && groupName!.isNotEmpty) groupName!,
     ];
 
@@ -246,17 +248,23 @@ class _CoverHeader extends StatelessWidget {
   }
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 }
 
 class _PaperIconButton extends StatelessWidget {
-  const _PaperIconButton({
-    super.key,
-    required this.icon,
-    required this.onTap,
-  });
+  const _PaperIconButton({super.key, required this.icon, required this.onTap});
   final IconData icon;
   final VoidCallback onTap;
 

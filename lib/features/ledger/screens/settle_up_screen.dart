@@ -121,8 +121,7 @@ class SettleUpScreen extends ConsumerWidget {
                 );
 
                 final Map<String, String> userNames = {
-                  for (var p in participants)
-                    p.id: p.displayName ?? 'Unknown',
+                  for (var p in participants) p.id: p.displayName ?? 'Unknown',
                 };
 
                 final optimalSettlements =
@@ -143,11 +142,10 @@ class SettleUpScreen extends ConsumerWidget {
                   participants,
                 );
               },
-              loading: () => SkeletonLoader.expenseList(),
+              loading: SkeletonLoader.expenseList,
               error: (e, _) => NetworkErrorWidget(
                 onRetry: () => ref.invalidate(
-                  eventExpensesProvider(
-                      (groupId: groupId, eventId: eventId)),
+                  eventExpensesProvider((groupId: groupId, eventId: eventId)),
                 ),
               ),
             ),
@@ -218,15 +216,15 @@ class SettleUpScreen extends ConsumerWidget {
         children: [
           // 1. Premium Bento-style Summary
           SettlementSummaryCard(
-            netBalance: myBalance.netBalance,
-            totalPending: totalPending,
-            myBalance: myBalance,
-            currency: 'OMR',
-            myDebts: myDebts,
-            onSettleUp: myDebts.isNotEmpty
-                ? () => _confirmPayment(context, ref, event, myDebts.first)
-                : null,
-          )
+                netBalance: myBalance.netBalance,
+                totalPending: totalPending,
+                myBalance: myBalance,
+                currency: 'OMR',
+                myDebts: myDebts,
+                onSettleUp: myDebts.isNotEmpty
+                    ? () => _confirmPayment(context, ref, event, myDebts.first)
+                    : null,
+              )
               .animate()
               .fadeIn(duration: 600.ms)
               .slideX(begin: -0.1, curve: Curves.easeOutCubic),
@@ -248,7 +246,11 @@ class SettleUpScreen extends ConsumerWidget {
             ],
 
             if (debtToMe.isNotEmpty) ...[
-              _buildSectionHeader(context, 'WAITING FOR OTHERS', Iconsax.timer_1),
+              _buildSectionHeader(
+                context,
+                'WAITING FOR OTHERS',
+                Iconsax.timer_1,
+              ),
               const SizedBox(height: 12),
               SettlementGroupCard(
                 settlements: debtToMe,
@@ -298,7 +300,11 @@ class SettleUpScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+  Widget _buildSectionHeader(
+    BuildContext context,
+    String title,
+    IconData icon,
+  ) {
     return Row(
       children: [
         Icon(icon, size: 14, color: context.colors.textSecondary),
@@ -373,7 +379,9 @@ class SettleUpScreen extends ConsumerWidget {
 
       if (context.mounted) {
         ref.invalidate(eventSettlementsProvider(eventRef));
-        ref.invalidate(eventBalancesProvider((eventRef: eventRef, event: event)));
+        ref.invalidate(
+          eventBalancesProvider((eventRef: eventRef, event: event)),
+        );
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -387,7 +395,8 @@ class SettleUpScreen extends ConsumerWidget {
             backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -399,7 +408,8 @@ class SettleUpScreen extends ConsumerWidget {
             backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -415,8 +425,7 @@ class SettleUpScreen extends ConsumerWidget {
     final fromName = settlement['fromUserName'] as String;
     final toName = settlement['toUserName'] as String;
     final amount = settlement['amount'] as Decimal;
-    final amountFormatted =
-        AppFormatters.formatCurrency(amount, 'OMR');
+    final amountFormatted = AppFormatters.formatCurrency(amount, 'OMR');
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
@@ -425,7 +434,7 @@ class SettleUpScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: context.colors.cardSurface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -490,8 +499,7 @@ class SettleUpScreen extends ConsumerWidget {
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.black,
                     shadowColor: Colors.transparent,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

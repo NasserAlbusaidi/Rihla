@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -7,8 +6,9 @@ import '../../../core/services/firestore_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../models/activity_log_model.dart';
 
-final activityServiceProvider =
-    Provider<ActivityService>((ref) => ActivityService());
+final activityServiceProvider = Provider<ActivityService>(
+  (ref) => ActivityService(),
+);
 
 /// NEW: Firestore-backed stream of activity logs for an event.
 ///
@@ -16,27 +16,29 @@ final activityServiceProvider =
 /// Use this for all new code. Replaces [tripActivityProvider].
 final eventActivityProvider =
     StreamProvider.family<List<ActivityLog>, EventRef>((ref, eventRef) {
-  return ref
-      .read(activityServiceProvider)
-      .watchActivityLogs(eventRef.groupId, eventRef.eventId);
-});
+      return ref
+          .read(activityServiceProvider)
+          .watchActivityLogs(eventRef.groupId, eventRef.eventId);
+    });
 
 /// NEW: Transaction-only activity logs from Firestore (category == 'MONEY').
 ///
 /// Use this for all new code. Replaces [tripTransactionActivityProvider].
 final eventTransactionActivityProvider =
     StreamProvider.family<List<ActivityLog>, EventRef>((ref, eventRef) {
-  return ref
-      .read(activityServiceProvider)
-      .watchActivityLogs(eventRef.groupId, eventRef.eventId)
-      .map((logs) => logs.where((log) => log.category == 'MONEY').toList());
-});
+      return ref
+          .read(activityServiceProvider)
+          .watchActivityLogs(eventRef.groupId, eventRef.eventId)
+          .map((logs) => logs.where((log) => log.category == 'MONEY').toList());
+    });
 
 /// @Deprecated('Use eventActivityProvider with EventRef. Will be removed in 04-05.')
 ///
 /// Legacy activity logs stream — returns empty list until screens migrate in 04-05.
-final tripActivityProvider =
-    StreamProvider.family<List<ActivityLog>, String>((ref, tripId) {
+final tripActivityProvider = StreamProvider.family<List<ActivityLog>, String>((
+  ref,
+  tripId,
+) {
   return Stream.value([]);
 });
 
@@ -45,8 +47,8 @@ final tripActivityProvider =
 /// Legacy transaction-only logs stream — returns empty list until screens migrate in 04-05.
 final tripTransactionActivityProvider =
     StreamProvider.family<List<ActivityLog>, String>((ref, tripId) {
-  return Stream.value([]);
-});
+      return Stream.value([]);
+    });
 
 /// Firestore-backed service for activity log operations.
 ///
@@ -56,13 +58,10 @@ class ActivityService extends FirestoreRepository {
   ActivityService() : super();
 
   @visibleForTesting
-  ActivityService.withFirestore(FirebaseFirestore db) : super.withFirestore(db);
+  ActivityService.withFirestore(super.db) : super.withFirestore();
 
   /// Stream of activity logs for an event, ordered by createdAt descending.
-  Stream<List<ActivityLog>> watchActivityLogs(
-    String groupId,
-    String eventId,
-  ) {
+  Stream<List<ActivityLog>> watchActivityLogs(String groupId, String eventId) {
     return eventSubcollection(groupId, eventId, 'activity_logs')
         .orderBy('createdAt', descending: true)
         .snapshots()

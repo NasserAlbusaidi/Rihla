@@ -20,11 +20,7 @@ class EventExpenseHero extends ConsumerWidget {
   final Event event;
   final VoidCallback onTap;
 
-  const EventExpenseHero({
-    super.key,
-    required this.event,
-    required this.onTap,
-  });
+  const EventExpenseHero({super.key, required this.event, required this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -97,10 +93,7 @@ class EventExpenseHero extends ConsumerWidget {
                 // Animated total amount
                 TweenAnimationBuilder<double>(
                   key: EventKeys.expenseHeroTotal,
-                  tween: Tween<double>(
-                    begin: 0,
-                    end: totalExpenses.toDouble(),
-                  ),
+                  tween: Tween<double>(begin: 0, end: totalExpenses.toDouble()),
                   duration: const Duration(milliseconds: 800),
                   curve: Curves.easeOutCubic,
                   builder: (context, value, child) {
@@ -152,7 +145,7 @@ class EventExpenseHero extends ConsumerWidget {
           },
           loading: () => SkeletonLoader.generic(count: 1),
           error: (e, st) => Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: Text(
               'Could not load expenses',
               style: TextStyle(

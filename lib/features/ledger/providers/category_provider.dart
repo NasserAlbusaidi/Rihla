@@ -14,10 +14,10 @@ final categoryErrorProvider = StateProvider<String?>((ref) => null);
 /// built-in defaults that cover common expense types.
 final tripCategoriesProvider =
     StreamProvider.family<List<ExpenseCategory>, String>((ref, tripId) {
-  return Stream.value(_defaultCategories);
-});
+      return Stream.value(_defaultCategories);
+    });
 
-final _defaultCategories = [
+const _defaultCategories = [
   ExpenseCategory(
     id: 'food',
     tripId: '',

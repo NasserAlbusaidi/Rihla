@@ -1,12 +1,12 @@
-/// Generates a 32x32 tileable noise PNG for the grain texture overlay.
-///
-/// Run once: dart run tool/generate_grain.dart
-///
-/// Output: assets/textures/grain.png
-///
-/// The PNG has a transparent background with ~20% of pixels set to white
-/// at varying opacity levels. The result is a subtle paper grain texture
-/// that looks natural at 3-5% opacity.
+// Generates a 32x32 tileable noise PNG for the grain texture overlay.
+//
+// Run once: dart run tool/generate_grain.dart
+//
+// Output: assets/textures/grain.png
+//
+// The PNG has a transparent background with ~20% of pixels set to white
+// at varying opacity levels. The result is a subtle paper grain texture
+// that looks natural at 3-5% opacity.
 
 import 'dart:io';
 import 'dart:math';
@@ -20,7 +20,7 @@ void main() {
     density: 0.20,
   );
 
-  final outputPath = 'assets/textures/grain.png';
+  const outputPath = 'assets/textures/grain.png';
   File(outputPath).writeAsBytesSync(grain);
   stdout.writeln('Written: $outputPath (${grain.length} bytes)');
 }
