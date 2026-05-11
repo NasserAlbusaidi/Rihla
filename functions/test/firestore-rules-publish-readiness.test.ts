@@ -192,6 +192,21 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(batch.commit());
   });
 
+  test('creator can delete group when legacy invite code lookup is missing', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('inviteCodes/ABC123').delete();
+    });
+
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const batch = owner.batch();
+    batch.delete(owner.doc('groups/g1/members/owner'));
+    batch.delete(owner.doc('groups/g1/members/member'));
+    batch.delete(owner.doc('inviteCodes/ABC123'));
+    batch.delete(owner.doc('groups/g1'));
+
+    await assertSucceeds(batch.commit());
+  });
+
   test('non-member cannot join by directly overwriting memberIds', async () => {
     const eve = testEnv.authenticatedContext('eve').firestore();
     await assertFails(eve.doc('groups/g1').update({

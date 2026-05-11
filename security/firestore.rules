@@ -84,10 +84,15 @@ service cloud.firestore {
       allow update: if false;
 
       allow delete: if signedIn()
-        && resource.data.groupId is string
-        && exists(groupPath(resource.data.groupId))
-        && groupData(resource.data.groupId).createdBy == request.auth.uid
-        && !existsAfter(groupPath(resource.data.groupId));
+        && (
+          !exists(/databases/$(database)/documents/inviteCodes/$(code))
+          || (
+            resource.data.groupId is string
+            && exists(groupPath(resource.data.groupId))
+            && groupData(resource.data.groupId).createdBy == request.auth.uid
+            && !existsAfter(groupPath(resource.data.groupId))
+          )
+        );
     }
 
     match /groups/{groupId} {
