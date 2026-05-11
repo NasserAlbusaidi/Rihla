@@ -27,8 +27,8 @@ replace the Firebase production-state check or physical-device QA.
 - [x] Static analysis is clean with infos enabled as non-fatal.
   - Command: `flutter analyze --no-fatal-infos`
 - [x] Non-golden Flutter test suite passes with raw coverage over 80%.
-  - Command: `flutter test --coverage --exclude-tags golden`
-  - Result: 824 passed, 3 skipped
+  - Command: `flutter test --coverage test/architecture test/core test/features test/helpers test/integration test/shared test/unit test/widget_test.dart`
+  - Result: 829 passed, 3 skipped
   - Coverage: 80.9% raw line coverage from `coverage/lcov.info`
 - [x] Local macOS golden tests pass.
   - Command: `flutter test test/goldens/ --tags golden`
