@@ -122,6 +122,20 @@ void main() {
       expect(find.text('CreateGroupScreen'), findsOneWidget);
     });
 
+    testWidgets('empty-state Join Group CTA routes to join-group', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildTestApp(overrides: _baseOverrides([]), prefs: prefs),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Join Group'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('JoinGroupScreen'), findsOneWidget);
+    });
+
     testWidgets('New group action opens create/join sheet', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(

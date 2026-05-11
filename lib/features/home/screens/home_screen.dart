@@ -203,12 +203,73 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   // ──────────────── States ────────────────
 
   Widget _buildEmpty(BuildContext context) {
-    return EmptyStateView(
-      icon: Iconsax.people,
-      title: 'Start your first group',
-      message: 'Plan trips, track expenses, and settle up with friends.',
-      actionLabel: 'Create Group',
-      onAction: () => context.push('/create-group'),
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(context.spacing.space32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.colors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(
+                    context.spacing.radiusLarge,
+                  ),
+                ),
+                child: Icon(
+                  Iconsax.people,
+                  size: 48,
+                  color: context.colors.primary,
+                ),
+              ),
+              SizedBox(height: context.spacing.space20),
+              Text(
+                'Start your first group',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: context.spacing.space8),
+              Text(
+                'Plan trips, track expenses, and settle up with friends.',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: context.colors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: context.spacing.space24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () => context.push('/create-group'),
+                  icon: const Icon(Iconsax.add),
+                  label: const Text('Create Group'),
+                ),
+              ),
+              SizedBox(height: context.spacing.space12),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/join-group'),
+                  icon: const Icon(Iconsax.login_1),
+                  label: const Text('Join Group'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
