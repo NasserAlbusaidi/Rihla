@@ -38,7 +38,8 @@ starts a new run.
   - Command: `flutter test test/goldens/ --tags golden`
   - Result: 8 passed
 - [x] Firebase emulator/rules tests pass under Java 21.
-  - Command: `JAVA_HOME="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home" npx --yes firebase-tools@15.8.0 emulators:exec --project rihla-safar-test --only auth,firestore,storage "npm --prefix functions test"`
+  - Command: `JAVA_HOME="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home" PATH="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home/bin:$PATH" npx --yes firebase-tools@15.8.0 emulators:exec --project rihla-safar-test --only auth,firestore,storage "cd functions && npx --yes node@20 node_modules/jest/bin/jest.js --runInBand"`
+  - Note: Homebrew Java 21 may be installed even when `/usr/libexec/java_home -v 21` still resolves to Java 17; prefer the explicit `brew --prefix openjdk@21` path above.
 - [x] Firestore production database exists for `rihla-safar`.
   - Database: `(default)`, Native mode, location `nam5`
 - [x] Firestore production rules match `security/firestore.rules`, ignoring trailing blank lines.
