@@ -31,8 +31,7 @@ class ThemePickerSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final current =
-        ref.watch(settingsProvider.select((s) => s.themeMode));
+    final current = ref.watch(settingsProvider.select((s) => s.themeMode));
 
     return SafeArea(
       child: Padding(
@@ -43,29 +42,26 @@ class ThemePickerSheet extends ConsumerWidget {
           children: [
             Text('Theme', style: Theme.of(context).textTheme.headlineSmall),
             SizedBox(height: context.spacing.space16),
-            _option(
-              context,
-              ref,
-              AppThemeMode.system,
-              'System',
-              'Follow device setting',
-              current,
-            ),
-            _option(
-              context,
-              ref,
-              AppThemeMode.light,
-              'Light',
-              'Always light',
-              current,
-            ),
-            _option(
-              context,
-              ref,
-              AppThemeMode.dark,
-              'Dark',
-              'Always dark',
-              current,
+            RadioGroup<AppThemeMode>(
+              groupValue: current,
+              onChanged: (v) async {
+                if (v == null) return;
+                await ref.read(settingsProvider.notifier).setThemeMode(v);
+                if (context.mounted) Navigator.of(context).pop();
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _option(
+                    context,
+                    AppThemeMode.system,
+                    'System',
+                    'Follow device setting',
+                  ),
+                  _option(context, AppThemeMode.light, 'Light', 'Always light'),
+                  _option(context, AppThemeMode.dark, 'Dark', 'Always dark'),
+                ],
+              ),
             ),
           ],
         ),
@@ -73,27 +69,11 @@ class ThemePickerSheet extends ConsumerWidget {
     );
   }
 
-  Widget _option(
-    BuildContext c,
-    WidgetRef ref,
-    AppThemeMode mode,
-    String label,
-    String desc,
-    AppThemeMode current,
-  ) {
+  Widget _option(BuildContext c, AppThemeMode mode, String label, String desc) {
     return RadioListTile<AppThemeMode>(
       value: mode,
-      groupValue: current,
       title: Text(label),
-      subtitle: Text(
-        desc,
-        style: TextStyle(color: c.colors.textSecondary),
-      ),
-      onChanged: (v) async {
-        if (v == null) return;
-        await ref.read(settingsProvider.notifier).setThemeMode(v);
-        if (c.mounted) Navigator.of(c).pop();
-      },
+      subtitle: Text(desc, style: TextStyle(color: c.colors.textSecondary)),
     );
   }
 }

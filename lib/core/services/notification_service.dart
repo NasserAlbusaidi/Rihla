@@ -7,12 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_config.dart';
 
-enum NotificationStatus {
-  off,
-  enabled,
-  permissionDenied,
-  error,
-}
+enum NotificationStatus { off, enabled, permissionDenied, error }
 
 /// Provider for the current notification device state.
 final notificationStatusProvider = StateProvider<NotificationStatus>((ref) {
@@ -21,7 +16,11 @@ final notificationStatusProvider = StateProvider<NotificationStatus>((ref) {
 
 /// Provider for notification service.
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService(ref);
+  final service = NotificationService(ref);
+  ref.onDispose(() {
+    unawaited(service.dispose());
+  });
+  return service;
 });
 
 /// Service for handling push notifications via Firebase Cloud Messaging.
@@ -65,8 +64,8 @@ class NotificationService {
         _messageSubscription ??= FirebaseMessaging.onMessage.listen(
           _onForegroundMessage,
         );
-        _messageOpenedSubscription ??=
-            FirebaseMessaging.onMessageOpenedApp.listen(_onMessageTap);
+        _messageOpenedSubscription ??= FirebaseMessaging.onMessageOpenedApp
+            .listen(_onMessageTap);
         return true;
       }
 
@@ -123,12 +122,10 @@ class NotificationService {
   }
 
   /// Handle foreground messages.
-  void _onForegroundMessage(RemoteMessage message) {
-  }
+  void _onForegroundMessage(RemoteMessage message) {}
 
   /// Handle when user taps a notification.
-  void _onMessageTap(RemoteMessage message) {
-  }
+  void _onMessageTap(RemoteMessage message) {}
 
   /// Remove token when notifications are disabled.
   Future<void> removeToken() async {
@@ -144,14 +141,28 @@ class NotificationService {
     } catch (e) {
       if (kDebugMode) debugPrint('FCM: Token removal failed: $e');
     } finally {
+      await _cancelSubscriptions();
       _initialized = false;
       _setStatus(NotificationStatus.off);
     }
+  }
+
+  Future<void> dispose() async {
+    await _cancelSubscriptions();
   }
 
   bool get isInitialized => _initialized;
 
   void _setStatus(NotificationStatus status) {
     _ref.read(notificationStatusProvider.notifier).state = status;
+  }
+
+  Future<void> _cancelSubscriptions() async {
+    await _tokenRefreshSubscription?.cancel();
+    await _messageSubscription?.cancel();
+    await _messageOpenedSubscription?.cancel();
+    _tokenRefreshSubscription = null;
+    _messageSubscription = null;
+    _messageOpenedSubscription = null;
   }
 }
