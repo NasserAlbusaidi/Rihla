@@ -57,6 +57,32 @@ physical-device QA are complete.
     - Offline and reconnect: create/read flows recover without false permanent offline state.
     - Notification opt-in and opt-out: token is written on enable and removed on disable.
 
+## External Actions
+
+These actions cannot be completed safely from this repo without an explicit
+Firebase Console or billing decision:
+
+1. Upgrade `rihla-safar` to Blaze:
+   - Console: `https://console.firebase.google.com/project/rihla-safar/usage/details`
+   - Needed so Cloud Build and Artifact Registry APIs can be enabled for
+     Cloud Functions deployment.
+2. Initialize Firebase Storage:
+   - Console: `https://console.firebase.google.com/project/rihla-safar/storage`
+   - Click **Get Started** and finish the bucket setup.
+3. Deploy backend artifacts from this repo:
+   ```bash
+   RIHLA_CONFIRM_FIREBASE_DEPLOY=yes bash tool/deploy_firebase_backend.sh rihla-safar
+   ```
+4. Re-run the full audit:
+   ```bash
+   bash tool/check_release_readiness.sh
+   ```
+5. Connect physical iOS and Android devices, then run:
+   ```bash
+   bash tool/check_real_device_qa_gate.sh
+   ```
+   If the gate passes, complete `docs/REAL-DEVICE-QA.md`.
+
 ## Deployment Commands
 
 Before deploying, run the read-only production-state check:
