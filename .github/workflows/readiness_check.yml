@@ -63,7 +63,7 @@ jobs:
       - name: Flutter tests with coverage
         run: |
           rm -f coverage/lcov.info
-          flutter test --coverage
+          flutter test --coverage --exclude-tags golden
 
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov

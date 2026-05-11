@@ -80,7 +80,7 @@ run_step "Firebase emulator rules/functions tests" \
     "cd functions && npx --yes node@20 node_modules/jest/bin/jest.js --runInBand"
 run_step "Flutter analyzer" flutter analyze --no-fatal-infos
 run_step "Theme purity check" bash tool/check_theme_purity.sh
-run_step "Flutter tests with coverage" flutter test --coverage
+run_step "Flutter tests with coverage" flutter test --coverage --exclude-tags golden
 run_step "Raw coverage threshold" check_raw_coverage
 run_step "Android release app bundle" \
   flutter build appbundle \

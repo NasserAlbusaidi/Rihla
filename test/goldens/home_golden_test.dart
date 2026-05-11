@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'golden_harness.dart';
 
 void main() {
-  testWidgets('Home screen — light and dark theme-smoke goldens',
-      (tester) async {
+  testWidgets('Home screen — light and dark theme-smoke goldens', (
+    tester,
+  ) async {
     await pumpThemeVariants(
       tester,
       baselineStem: 'goldens/home',
@@ -17,5 +18,5 @@ void main() {
         ],
       ),
     );
-  });
+  }, tags: const ['golden']);
 }

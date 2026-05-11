@@ -74,7 +74,7 @@ jobs:
       - name: Run Tests with Coverage
         run: |
           rm -f coverage/lcov.info
-          flutter test --coverage
+          flutter test --coverage --exclude-tags golden
 
       - name: find.text() regression warning
         run: |

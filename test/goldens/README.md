@@ -14,6 +14,11 @@ If CI runs on Linux x64 and produces pixel-level diffs on unchanged code, regene
 flutter test --update-goldens test/goldens/
 ```
 
+CI excludes the `golden` tag from coverage runs because these PNG baselines were
+generated on macOS and can produce Linux text-rendering diffs without a code
+change. Run the goldens locally when changing theme primitives or regenerating
+the baselines.
+
 Review every PNG under `test/goldens/goldens/*.png` visually before committing — fixture mistakes (overflow, missing data) should be fixed in the harness, not by accepting a bad baseline.
 
 ## Why the harness renders a synthetic shell instead of the real screens

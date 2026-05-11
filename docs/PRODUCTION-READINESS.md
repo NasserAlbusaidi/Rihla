@@ -26,10 +26,13 @@ replace the Firebase production-state check or physical-device QA.
   - Output: `build/app/outputs/bundle/release/app-release.aab` at 52.7 MB
 - [x] Static analysis is clean with infos enabled as non-fatal.
   - Command: `flutter analyze --no-fatal-infos`
-- [x] Full Flutter test suite passes with raw coverage over 80%.
-  - Command: `flutter test --coverage`
-  - Result: 837 passed, 3 skipped
+- [x] Non-golden Flutter test suite passes with raw coverage over 80%.
+  - Command: `flutter test --coverage --exclude-tags golden`
+  - Result: 824 passed, 3 skipped
   - Coverage: 80.9% raw line coverage from `coverage/lcov.info`
+- [x] Local macOS golden tests pass.
+  - Command: `flutter test test/goldens/ --tags golden`
+  - Result: 8 passed
 - [x] Firebase emulator/rules tests pass under Java 21.
   - Command: `JAVA_HOME="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home" npx --yes firebase-tools@15.8.0 emulators:exec --project rihla-safar-test --only auth,firestore,storage "npm --prefix functions test"`
 - [x] Firestore production database exists for `rihla-safar`.
