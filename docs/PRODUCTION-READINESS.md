@@ -20,8 +20,8 @@ pull requests. That workflow covers the local non-deploy gates only; it does not
 replace the Firebase production-state check or physical-device QA.
 
 Latest `main` readiness workflow:
-`https://github.com/NasserAlbusaidi/Rihla/actions/runs/25681070093`
-completed successfully for commit `20ababf`.
+`https://github.com/NasserAlbusaidi/Rihla/actions/runs/25681500765`
+completed successfully for commit `acf9faf`.
 
 ## Verified
 
@@ -51,9 +51,10 @@ completed successfully for commit `20ababf`.
 - [ ] Firebase Functions are not deployed in production.
   - Evidence: `bash tool/check_firebase_prod_state.sh rihla-safar` reports these missing deployed Functions: `getSignedUploadUrl`, `deleteStorageObject`, `joinGroupByInviteCode`, `listDocumentsWithUrls`, `listMemoriesWithUrls`.
   - Local exports expected in production: `getSignedUploadUrl`, `deleteStorageObject`, `joinGroupByInviteCode`, `listDocumentsWithUrls`, `listMemoriesWithUrls`.
-  - Deploy blocker: `firebase deploy --project rihla-safar --only functions --dry-run` requires the project to upgrade to Blaze before Cloud Build and Artifact Registry APIs can be enabled.
+  - Deploy blocker: `npx --yes firebase-tools@15.8.0 deploy --project rihla-safar --only functions --dry-run` requires the project to upgrade to Blaze before `cloudbuild.googleapis.com` and `artifactregistry.googleapis.com` can be enabled.
+  - Currently enabled related APIs: `cloudfunctions.googleapis.com`, `firebase.googleapis.com`, `firebaserules.googleapis.com`, `firebasestorage.googleapis.com`, `firestore.googleapis.com`.
 - [ ] Firebase Storage is not initialized in production.
-  - Evidence: `firebase deploy --project rihla-safar --only storage:rules --dry-run` reports that Firebase Storage has not been set up.
+  - Evidence: `npx --yes firebase-tools@15.8.0 deploy --project rihla-safar --only storage:rules --dry-run` reports that Firebase Storage has not been set up.
   - Required action: open Firebase Console for `rihla-safar`, go to Storage, click **Get Started**, then deploy `security/storage.rules`.
 - [ ] Storage production rules are not deployed.
   - Evidence: `bash tool/check_firebase_prod_state.sh rihla-safar` reports `No active Storage rules release found`.
