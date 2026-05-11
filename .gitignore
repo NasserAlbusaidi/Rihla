@@ -57,6 +57,7 @@ data/run-logs/
 SKILL.md
 .claude/worktrees/
 .clone/worktrees/
+.agent/
 
 # Local release/test artifacts
 *.aab
