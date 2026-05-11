@@ -67,7 +67,17 @@ bash tool/check_firebase_prod_state.sh rihla-safar
 
 The command should fail until Storage rules and all expected Functions are live.
 
-Run these after the Firebase project setup blockers are cleared:
+Run this after the Firebase project setup blockers are cleared:
+
+```bash
+RIHLA_CONFIRM_FIREBASE_DEPLOY=yes bash tool/deploy_firebase_backend.sh rihla-safar
+```
+
+The script installs Functions dependencies from the lockfile, audits production
+dependencies at low severity, builds Functions, deploys Firestore rules/indexes,
+Storage rules, and Functions, then runs `tool/check_firebase_prod_state.sh`.
+
+Equivalent manual deploy command:
 
 ```bash
 npx --yes firebase-tools@15.8.0 deploy \
