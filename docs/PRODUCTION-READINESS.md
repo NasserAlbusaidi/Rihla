@@ -19,6 +19,10 @@ GitHub also runs `.github/workflows/readiness_check.yml` on `main` pushes and
 pull requests. That workflow covers the local non-deploy gates only; it does not
 replace the Firebase production-state check or physical-device QA.
 
+Latest `main` readiness workflow:
+`https://github.com/NasserAlbusaidi/Rihla/actions/runs/25681070093`
+completed successfully for commit `20ababf`.
+
 ## Verified
 
 - [x] Android release bundle builds locally.
@@ -45,17 +49,19 @@ replace the Firebase production-state check or physical-device QA.
 ## Blockers
 
 - [ ] Firebase Functions are not deployed in production.
-  - Evidence: `npx --yes firebase-tools@15.8.0 functions:list --project rihla-safar` reports no functions.
+  - Evidence: `bash tool/check_firebase_prod_state.sh rihla-safar` reports these missing deployed Functions: `getSignedUploadUrl`, `deleteStorageObject`, `joinGroupByInviteCode`, `listDocumentsWithUrls`, `listMemoriesWithUrls`.
   - Local exports expected in production: `getSignedUploadUrl`, `deleteStorageObject`, `joinGroupByInviteCode`, `listDocumentsWithUrls`, `listMemoriesWithUrls`.
   - Deploy blocker: `firebase deploy --project rihla-safar --only functions --dry-run` requires the project to upgrade to Blaze before Cloud Build and Artifact Registry APIs can be enabled.
 - [ ] Firebase Storage is not initialized in production.
   - Evidence: `firebase deploy --project rihla-safar --only storage:rules --dry-run` reports that Firebase Storage has not been set up.
   - Required action: open Firebase Console for `rihla-safar`, go to Storage, click **Get Started**, then deploy `security/storage.rules`.
 - [ ] Storage production rules are not deployed.
+  - Evidence: `bash tool/check_firebase_prod_state.sh rihla-safar` reports `No active Storage rules release found`.
   - Blocked by Firebase Storage initialization.
 - [ ] Real-device QA is not complete.
   - Runbook: `docs/REAL-DEVICE-QA.md`
   - Gate command: `bash tool/check_real_device_qa_gate.sh`
+  - Latest gate result: no physical iOS device and no physical Android device detected; only iPhone 17 Pro and iPhone 17 Pro Max simulators were visible.
   - Required matrix:
     - iOS: create group, join group, delete group.
     - Android: create group, join group, delete group.
