@@ -11,7 +11,7 @@ The most important constraint: **no test ever touches real Firebase**. All Fireb
 
 ### Coverage Target
 
-80% minimum line coverage. Enforced in CI by `lcov`. Several large feature directories are currently excluded from the threshold calculation (see the CI section for the exact exclusion list) while they accumulate tests. The 80% gate applies to everything not excluded.
+80% minimum raw line coverage. CI reads `coverage/lcov.info` directly with `lcov --summary` and does not remove feature directories or bootstrap files before enforcing the threshold.
 
 ### Test Types
 
@@ -626,30 +626,18 @@ CI tracks the number of `find.text()` calls in the test suite against a baseline
 
 ### Coverage threshold
 
-After running `flutter test --coverage`, CI filters the `lcov.info` file to remove generated, bootstrap, and in-progress feature files, then enforces the 80% threshold on the remainder:
+After running `flutter test --coverage`, CI enforces the 80% threshold on the raw `coverage/lcov.info` report:
 
 ```yaml
 - name: Check Coverage Threshold (80%)
   run: |
-    lcov --remove coverage/lcov.info \
-      'lib/firebase_options.dart' \
-      'lib/main.dart' \
-      'lib/app.dart' \
-      '*.g.dart' \
-      '*.freezed.dart' \
-      'lib/features/trip/*' \
-      'lib/features/logistics/*' \
-      ... \
-      -o coverage/lcov_filtered.info
-    COVERAGE=$(lcov --summary coverage/lcov_filtered.info 2>&1 \
-      | grep -oP '\d+\.\d+(?=%)' | head -1)
-    if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-      echo "::error::Coverage ${COVERAGE}% is below 80% threshold"
+    COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 \
+      | awk '/lines\.\.\.\.\.\.\.:/ { gsub("%", "", $2); print $2; exit }')
+    if ! awk -v coverage="$COVERAGE" 'BEGIN { exit (coverage >= 80.0) ? 0 : 1 }'; then
+      echo "::error::Raw coverage ${COVERAGE}% is below 80% threshold"
       exit 1
     fi
 ```
-
-The excluded paths are temporary coverage exemptions for feature modules still under active development. As those modules stabilize, they should be removed from the exclusion list.
 
 ### Required CI secrets
 

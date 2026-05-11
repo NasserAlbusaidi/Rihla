@@ -152,3 +152,5 @@ Requires a signed keystore configured in `android/key.properties` (gitignored).
 Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`.
 
 iOS builds are manual — no iOS CI pipeline.
+
+See `docs/PRODUCTION-READINESS.md` for the current Firebase deployment and real-device QA checklist.

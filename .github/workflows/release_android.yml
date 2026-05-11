@@ -90,43 +90,18 @@ jobs:
 
       - name: Check Coverage Threshold (80%)
         run: |
-          lcov --ignore-errors unused --remove coverage/lcov.info \
-            'lib/firebase_options.dart' \
-            'lib/main.dart' \
-            'lib/app.dart' \
-            '*.g.dart' \
-            '*.freezed.dart' \
-            'lib/features/trip/*' \
-            'lib/features/logistics/*' \
-            'lib/features/gear/*' \
-            'lib/features/memories/*' \
-            'lib/features/vault/*' \
-            'lib/features/settings/*' \
-            'lib/features/ledger/*' \
-            'lib/features/activity/*' \
-            'lib/features/onboarding/*' \
-            'lib/features/auth/*' \
-            'lib/features/home/*' \
-            'lib/core/services/cache_service.dart' \
-            'lib/core/services/notification_service.dart' \
-            'lib/core/services/haptic_service.dart' \
-            'lib/core/services/settings_service.dart' \
-            'lib/core/services/local_database.dart' \
-            'lib/core/router/app_router.dart' \
-            'lib/core/theme/app_theme.dart' \
-            'lib/core/theme/error_widgets.dart' \
-            'lib/core/config/firebase_config.dart' \
-            'lib/core/config/app_metadata.dart' \
-            'lib/core/models/app_settings_model.dart' \
-            -o coverage/lcov_filtered.info
-          COVERAGE=$(lcov --summary coverage/lcov_filtered.info 2>&1 \
-            | grep -oP '\d+\.\d+(?=%)' | head -1)
-          echo "Coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "::error::Coverage ${COVERAGE}% is below 80% threshold"
+          COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 \
+            | awk '/lines\.\.\.\.\.\.\.:/ { gsub("%", "", $2); print $2; exit }')
+          if [ -z "$COVERAGE" ]; then
+            echo "::error::Unable to read line coverage from coverage/lcov.info"
             exit 1
           fi
-          echo "Coverage ${COVERAGE}% meets 80% threshold"
+          echo "Raw coverage: ${COVERAGE}%"
+          if ! awk -v coverage="$COVERAGE" 'BEGIN { exit (coverage >= 80.0) ? 0 : 1 }'; then
+            echo "::error::Raw coverage ${COVERAGE}% is below 80% threshold"
+            exit 1
+          fi
+          echo "Raw coverage ${COVERAGE}% meets 80% threshold"
 
       - name: Clean stale Android plugin registrant
         run: rm -f android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
