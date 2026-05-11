@@ -38,6 +38,7 @@ commands listed here, not as permanent guarantees.
 - [ ] Storage production rules are not deployed.
   - Blocked by Firebase Storage initialization.
 - [ ] Real-device QA is not complete.
+  - Runbook: `docs/REAL-DEVICE-QA.md`
   - Required matrix:
     - iOS: create group, join group, delete group.
     - Android: create group, join group, delete group.
