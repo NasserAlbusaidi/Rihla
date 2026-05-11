@@ -23,8 +23,9 @@ Pass criteria:
   - `android/app/google-services.json`
   - `ios/Runner/GoogleService-Info.plist`
 
-Current local status from 2026-05-11: blocked. Flutter sees only macOS and
-Chrome. The known iPhones are not reachable for wireless debugging.
+Current local status from 2026-05-11: blocked. Flutter sees iOS simulators,
+macOS, and Chrome, but no physical iOS or Android device. The known iPhones are
+not reachable for wireless debugging.
 
 ## Run Commands
 
