@@ -36,20 +36,26 @@ void main() {
       });
 
       // Verify the invite code lookup works
-      final codeDoc =
-          await fakeDb.collection('inviteCodes').doc('TST123').get();
+      final codeDoc = await fakeDb
+          .collection('inviteCodes')
+          .doc('TST123')
+          .get();
       expect(codeDoc.exists, isTrue);
       expect(codeDoc.data()!['groupId'], equals('group-abc'));
     });
 
-    test('invalid invite code document does not exist in FakeFirebaseFirestore',
-        () async {
-      final fakeDb = FakeFirebaseFirestore();
+    test(
+      'invalid invite code document does not exist in FakeFirebaseFirestore',
+      () async {
+        final fakeDb = FakeFirebaseFirestore();
 
-      final codeDoc =
-          await fakeDb.collection('inviteCodes').doc('INVALID').get();
-      expect(codeDoc.exists, isFalse);
-    });
+        final codeDoc = await fakeDb
+            .collection('inviteCodes')
+            .doc('INVALID')
+            .get();
+        expect(codeDoc.exists, isFalse);
+      },
+    );
 
     test('already a member check: memberIds contains uid', () {
       // Verify the membership check logic
@@ -113,7 +119,7 @@ void main() {
       });
 
       // Simulate join: add member doc + update memberIds
-      final memberId = 'member-joiner-001';
+      const memberId = 'member-joiner-001';
       final batch = fakeDb.batch();
 
       batch.set(
@@ -151,10 +157,10 @@ void main() {
       expect(memberDoc.data()!['userId'], equals(joinerUid));
 
       // Verify memberIds was updated
-      final groupDoc =
-          await fakeDb.collection('groups').doc(groupId).get();
-      final memberIds =
-          List<String>.from(groupDoc.data()!['memberIds'] as List);
+      final groupDoc = await fakeDb.collection('groups').doc(groupId).get();
+      final memberIds = List<String>.from(
+        groupDoc.data()!['memberIds'] as List,
+      );
       expect(memberIds, containsAll([creatorUid, joinerUid]));
     });
   });

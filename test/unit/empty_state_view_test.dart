@@ -14,8 +14,9 @@ void main() {
   group('EmptyStateView', () {
     testWidgets('renders title and message', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: Scaffold(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
             body: EmptyStateView(
               icon: Iconsax.calendar,
               title: 'No Events',
@@ -30,32 +31,37 @@ void main() {
       expect(find.text('Start by creating your first event'), findsOneWidget);
     });
 
-    testWidgets('renders action button when actionLabel and onAction provided',
-        (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: EmptyStateView(
-              icon: Iconsax.add_circle,
-              title: 'Nothing Here',
-              message: 'Tap below to get started',
-              actionLabel: 'Create Event',
-              onAction: () {},
+    testWidgets(
+      'renders action button when actionLabel and onAction provided',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
+              body: EmptyStateView(
+                icon: Iconsax.add_circle,
+                title: 'Nothing Here',
+                message: 'Tap below to get started',
+                actionLabel: 'Create Event',
+                onAction: () {},
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump(const Duration(milliseconds: 500));
+        );
+        await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.text('Create Event'), findsOneWidget);
-      expect(find.byKey(SharedKeys.emptyStateCtaButton), findsOneWidget);
-    });
+        expect(find.text('Create Event'), findsOneWidget);
+        expect(find.byKey(SharedKeys.emptyStateCtaButton), findsOneWidget);
+      },
+    );
 
-    testWidgets('action button onPressed calls onAction callback',
-        (tester) async {
+    testWidgets('action button onPressed calls onAction callback', (
+      tester,
+    ) async {
       var tapped = false;
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
+        MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: EmptyStateView(
               icon: Iconsax.add_circle,
@@ -75,11 +81,13 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('does NOT render action button when actionLabel is null',
-        (tester) async {
+    testWidgets('does NOT render action button when actionLabel is null', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: Scaffold(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
             body: EmptyStateView(
               icon: Iconsax.calendar,
               title: 'No Events',

@@ -118,16 +118,16 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          eventExpensesProvider(eventRef).overrideWith(
-            (_) => Stream.value(testExpenses),
-          ),
+          eventExpensesProvider(
+            eventRef,
+          ).overrideWith((_) => Stream.value(testExpenses)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         eventExpensesProvider(eventRef),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -141,16 +141,16 @@ void main() {
     test('emits empty list when no expenses exist', () async {
       final container = ProviderContainer(
         overrides: [
-          eventExpensesProvider(eventRef).overrideWith(
-            (_) => Stream.value(<Expense>[]),
-          ),
+          eventExpensesProvider(
+            eventRef,
+          ).overrideWith((_) => Stream.value(<Expense>[])),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         eventExpensesProvider(eventRef),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -165,9 +165,9 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          eventExpensesProvider(eventRef).overrideWith(
-            (_) => controller.stream,
-          ),
+          eventExpensesProvider(
+            eventRef,
+          ).overrideWith((_) => controller.stream),
         ],
       );
       addTearDown(container.dispose);
@@ -207,18 +207,26 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          eventExpensesProvider(ref1).overrideWith(
-            (_) => Stream.value(expensesA),
-          ),
-          eventExpensesProvider(ref2).overrideWith(
-            (_) => Stream.value(expensesB),
-          ),
+          eventExpensesProvider(
+            ref1,
+          ).overrideWith((_) => Stream.value(expensesA)),
+          eventExpensesProvider(
+            ref2,
+          ).overrideWith((_) => Stream.value(expensesB)),
         ],
       );
       addTearDown(container.dispose);
 
-      container.listen(eventExpensesProvider(ref1), (_, __) {}, fireImmediately: true);
-      container.listen(eventExpensesProvider(ref2), (_, __) {}, fireImmediately: true);
+      container.listen(
+        eventExpensesProvider(ref1),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      container.listen(
+        eventExpensesProvider(ref2),
+        (_, _) {},
+        fireImmediately: true,
+      );
       await _pumpAsync();
 
       final resultA = container.read(eventExpensesProvider(ref1));
@@ -244,25 +252,21 @@ void main() {
           groupId: groupId,
           participantIds: ['uid-1', 'uid-2'],
         ),
-        _makeEvent(
-          id: 'evt-2',
-          groupId: groupId,
-          participantIds: ['uid-1'],
-        ),
+        _makeEvent(id: 'evt-2', groupId: groupId, participantIds: ['uid-1']),
       ];
 
       final container = ProviderContainer(
         overrides: [
-          groupEventsProvider(groupId).overrideWith(
-            (_) => Stream.value(testEvents),
-          ),
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value(testEvents)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         groupEventsProvider(groupId),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -276,16 +280,16 @@ void main() {
     test('emits empty list when group has no events', () async {
       final container = ProviderContainer(
         overrides: [
-          groupEventsProvider(groupId).overrideWith(
-            (_) => Stream.value(<Event>[]),
-          ),
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value(<Event>[])),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         groupEventsProvider(groupId),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -304,18 +308,26 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          groupEventsProvider('grp-1').overrideWith(
-            (_) => Stream.value(eventsG1),
-          ),
-          groupEventsProvider('grp-2').overrideWith(
-            (_) => Stream.value(eventsG2),
-          ),
+          groupEventsProvider(
+            'grp-1',
+          ).overrideWith((_) => Stream.value(eventsG1)),
+          groupEventsProvider(
+            'grp-2',
+          ).overrideWith((_) => Stream.value(eventsG2)),
         ],
       );
       addTearDown(container.dispose);
 
-      container.listen(groupEventsProvider('grp-1'), (_, __) {}, fireImmediately: true);
-      container.listen(groupEventsProvider('grp-2'), (_, __) {}, fireImmediately: true);
+      container.listen(
+        groupEventsProvider('grp-1'),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      container.listen(
+        groupEventsProvider('grp-2'),
+        (_, _) {},
+        fireImmediately: true,
+      );
       await _pumpAsync();
 
       final result1 = container.read(groupEventsProvider('grp-1'));
@@ -348,16 +360,16 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          eventSettlementsProvider(eventRef).overrideWith(
-            (_) => Stream.value(testSettlements),
-          ),
+          eventSettlementsProvider(
+            eventRef,
+          ).overrideWith((_) => Stream.value(testSettlements)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         eventSettlementsProvider(eventRef),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -371,16 +383,16 @@ void main() {
     test('emits empty list when no settlements exist', () async {
       final container = ProviderContainer(
         overrides: [
-          eventSettlementsProvider(eventRef).overrideWith(
-            (_) => Stream.value(<Settlement>[]),
-          ),
+          eventSettlementsProvider(
+            eventRef,
+          ).overrideWith((_) => Stream.value(<Settlement>[])),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         eventSettlementsProvider(eventRef),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -417,16 +429,16 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          eventSettlementsProvider(eventRef).overrideWith(
-            (_) => Stream.value(testSettlements),
-          ),
+          eventSettlementsProvider(
+            eventRef,
+          ).overrideWith((_) => Stream.value(testSettlements)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         eventSettlementsProvider(eventRef),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -444,9 +456,9 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          eventSettlementsProvider(eventRef).overrideWith(
-            (_) => controller.stream,
-          ),
+          eventSettlementsProvider(
+            eventRef,
+          ).overrideWith((_) => controller.stream),
         ],
       );
       addTearDown(container.dispose);
@@ -464,7 +476,7 @@ void main() {
   group('groupDetailProvider', () {
     const groupId = 'grp-1';
 
-    Group _makeGroup({required String id, String name = 'Test Group'}) {
+    Group makeGroup({required String id, String name = 'Test Group'}) {
       return Group(
         id: id,
         name: name,
@@ -477,20 +489,20 @@ void main() {
     }
 
     test('emits group from stream override', () async {
-      final testGroup = _makeGroup(id: groupId, name: 'Adventure Crew');
+      final testGroup = makeGroup(id: groupId, name: 'Adventure Crew');
 
       final container = ProviderContainer(
         overrides: [
-          groupDetailProvider(groupId).overrideWith(
-            (_) => Stream.value(testGroup),
-          ),
+          groupDetailProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value(testGroup)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         groupDetailProvider(groupId),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -504,16 +516,16 @@ void main() {
     test('emits null when group does not exist', () async {
       final container = ProviderContainer(
         overrides: [
-          groupDetailProvider(groupId).overrideWith(
-            (_) => Stream<Group?>.value(null),
-          ),
+          groupDetailProvider(
+            groupId,
+          ).overrideWith((_) => Stream<Group?>.value(null)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         groupDetailProvider(groupId),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -524,23 +536,31 @@ void main() {
     });
 
     test('different group IDs are isolated', () async {
-      final group1 = _makeGroup(id: 'grp-a', name: 'Group A');
-      final group2 = _makeGroup(id: 'grp-b', name: 'Group B');
+      final group1 = makeGroup(id: 'grp-a', name: 'Group A');
+      final group2 = makeGroup(id: 'grp-b', name: 'Group B');
 
       final container = ProviderContainer(
         overrides: [
-          groupDetailProvider('grp-a').overrideWith(
-            (_) => Stream.value(group1),
-          ),
-          groupDetailProvider('grp-b').overrideWith(
-            (_) => Stream.value(group2),
-          ),
+          groupDetailProvider(
+            'grp-a',
+          ).overrideWith((_) => Stream.value(group1)),
+          groupDetailProvider(
+            'grp-b',
+          ).overrideWith((_) => Stream.value(group2)),
         ],
       );
       addTearDown(container.dispose);
 
-      container.listen(groupDetailProvider('grp-a'), (_, __) {}, fireImmediately: true);
-      container.listen(groupDetailProvider('grp-b'), (_, __) {}, fireImmediately: true);
+      container.listen(
+        groupDetailProvider('grp-a'),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      container.listen(
+        groupDetailProvider('grp-b'),
+        (_, _) {},
+        fireImmediately: true,
+      );
       await _pumpAsync();
 
       final resultA = container.read(groupDetailProvider('grp-a'));
@@ -554,9 +574,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          groupDetailProvider(groupId).overrideWith(
-            (_) => controller.stream,
-          ),
+          groupDetailProvider(groupId).overrideWith((_) => controller.stream),
         ],
       );
       addTearDown(container.dispose);
@@ -574,7 +592,7 @@ void main() {
   group('groupMembersProvider', () {
     const groupId = 'grp-1';
 
-    GroupMember _makeMember({
+    GroupMember makeMember({
       required String id,
       required String userId,
       required String displayName,
@@ -592,22 +610,27 @@ void main() {
 
     test('emits member list from stream override', () async {
       final testMembers = [
-        _makeMember(id: 'm1', userId: 'uid-1', displayName: 'Alice', role: 'CREATOR'),
-        _makeMember(id: 'm2', userId: 'uid-2', displayName: 'Bob'),
+        makeMember(
+          id: 'm1',
+          userId: 'uid-1',
+          displayName: 'Alice',
+          role: 'CREATOR',
+        ),
+        makeMember(id: 'm2', userId: 'uid-2', displayName: 'Bob'),
       ];
 
       final container = ProviderContainer(
         overrides: [
-          groupMembersProvider(groupId).overrideWith(
-            (_) => Stream.value(testMembers),
-          ),
+          groupMembersProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value(testMembers)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         groupMembersProvider(groupId),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -622,16 +645,16 @@ void main() {
     test('emits empty list when group has no members', () async {
       final container = ProviderContainer(
         overrides: [
-          groupMembersProvider(groupId).overrideWith(
-            (_) => Stream.value(<GroupMember>[]),
-          ),
+          groupMembersProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value(<GroupMember>[])),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         groupMembersProvider(groupId),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -643,27 +666,35 @@ void main() {
 
     test('different group IDs use independent streams', () async {
       final membersG1 = [
-        _makeMember(id: 'm-g1', userId: 'uid-1', displayName: 'Alice'),
+        makeMember(id: 'm-g1', userId: 'uid-1', displayName: 'Alice'),
       ];
       final membersG2 = [
-        _makeMember(id: 'm-g2a', userId: 'uid-2', displayName: 'Bob'),
-        _makeMember(id: 'm-g2b', userId: 'uid-3', displayName: 'Charlie'),
+        makeMember(id: 'm-g2a', userId: 'uid-2', displayName: 'Bob'),
+        makeMember(id: 'm-g2b', userId: 'uid-3', displayName: 'Charlie'),
       ];
 
       final container = ProviderContainer(
         overrides: [
-          groupMembersProvider('grp-1').overrideWith(
-            (_) => Stream.value(membersG1),
-          ),
-          groupMembersProvider('grp-2').overrideWith(
-            (_) => Stream.value(membersG2),
-          ),
+          groupMembersProvider(
+            'grp-1',
+          ).overrideWith((_) => Stream.value(membersG1)),
+          groupMembersProvider(
+            'grp-2',
+          ).overrideWith((_) => Stream.value(membersG2)),
         ],
       );
       addTearDown(container.dispose);
 
-      container.listen(groupMembersProvider('grp-1'), (_, __) {}, fireImmediately: true);
-      container.listen(groupMembersProvider('grp-2'), (_, __) {}, fireImmediately: true);
+      container.listen(
+        groupMembersProvider('grp-1'),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      container.listen(
+        groupMembersProvider('grp-2'),
+        (_, _) {},
+        fireImmediately: true,
+      );
       await _pumpAsync();
 
       final result1 = container.read(groupMembersProvider('grp-1'));
@@ -677,9 +708,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          groupMembersProvider(groupId).overrideWith(
-            (_) => controller.stream,
-          ),
+          groupMembersProvider(groupId).overrideWith((_) => controller.stream),
         ],
       );
       addTearDown(container.dispose);
@@ -695,7 +724,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('userGroupsProvider', () {
-    Group _makeGroup(String id, String name) {
+    Group makeGroup(String id, String name) {
       return Group(
         id: id,
         name: name,
@@ -709,24 +738,18 @@ void main() {
 
     test('emits group list from stream override', () async {
       final testGroups = [
-        _makeGroup('grp-1', 'Beach Trip'),
-        _makeGroup('grp-2', 'Camping Squad'),
+        makeGroup('grp-1', 'Beach Trip'),
+        makeGroup('grp-2', 'Camping Squad'),
       ];
 
       final container = ProviderContainer(
         overrides: [
-          userGroupsProvider.overrideWith(
-            (_) => Stream.value(testGroups),
-          ),
+          userGroupsProvider.overrideWith((_) => Stream.value(testGroups)),
         ],
       );
       addTearDown(container.dispose);
 
-      container.listen(
-        userGroupsProvider,
-        (_, __) {},
-        fireImmediately: true,
-      );
+      container.listen(userGroupsProvider, (_, _) {}, fireImmediately: true);
       await _pumpAsync();
 
       final result = container.read(userGroupsProvider);
@@ -738,18 +761,12 @@ void main() {
     test('emits empty list when user has no groups', () async {
       final container = ProviderContainer(
         overrides: [
-          userGroupsProvider.overrideWith(
-            (_) => Stream.value(<Group>[]),
-          ),
+          userGroupsProvider.overrideWith((_) => Stream.value(<Group>[])),
         ],
       );
       addTearDown(container.dispose);
 
-      container.listen(
-        userGroupsProvider,
-        (_, __) {},
-        fireImmediately: true,
-      );
+      container.listen(userGroupsProvider, (_, _) {}, fireImmediately: true);
       await _pumpAsync();
 
       final result = container.read(userGroupsProvider);
@@ -761,11 +778,7 @@ void main() {
       final controller = StreamController<List<Group>>.broadcast();
 
       final container = ProviderContainer(
-        overrides: [
-          userGroupsProvider.overrideWith(
-            (_) => controller.stream,
-          ),
-        ],
+        overrides: [userGroupsProvider.overrideWith((_) => controller.stream)],
       );
       addTearDown(container.dispose);
       addTearDown(controller.close);
@@ -779,31 +792,23 @@ void main() {
       final updatesReceived = <int>[];
 
       final container = ProviderContainer(
-        overrides: [
-          userGroupsProvider.overrideWith(
-            (_) => controller.stream,
-          ),
-        ],
+        overrides: [userGroupsProvider.overrideWith((_) => controller.stream)],
       );
       addTearDown(container.dispose);
       addTearDown(controller.close);
 
-      container.listen(
-        userGroupsProvider,
-        (_, next) {
-          if (next is AsyncData<List<Group>>) {
-            updatesReceived.add(next.value.length);
-          }
-        },
-        fireImmediately: true,
-      );
+      container.listen(userGroupsProvider, (_, next) {
+        if (next is AsyncData<List<Group>>) {
+          updatesReceived.add(next.value.length);
+        }
+      }, fireImmediately: true);
 
-      controller.add([_makeGroup('grp-1', 'Group A')]);
+      controller.add([makeGroup('grp-1', 'Group A')]);
       await _pumpAsync();
 
       controller.add([
-        _makeGroup('grp-1', 'Group A'),
-        _makeGroup('grp-2', 'Group B'),
+        makeGroup('grp-1', 'Group A'),
+        makeGroup('grp-2', 'Group B'),
       ]);
       await _pumpAsync();
 
@@ -817,7 +822,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('SettingsNotifier', () {
-    Future<ProviderContainer> _makeContainer() async {
+    Future<ProviderContainer> makeContainer() async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final container = ProviderContainer(
@@ -828,7 +833,7 @@ void main() {
     }
 
     test('initial state has default AppSettings', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final settings = container.read(settingsProvider);
       expect(settings.deviceName, equals(''));
       expect(settings.currencyCode, equals('OMR'));
@@ -838,57 +843,69 @@ void main() {
     });
 
     test('setDeviceName updates deviceName in state', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setDeviceName('Alice');
       expect(container.read(settingsProvider).deviceName, equals('Alice'));
     });
 
     test('setCurrency updates currencyCode in state', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setCurrency('USD');
       expect(container.read(settingsProvider).currencyCode, equals('USD'));
     });
 
     test('setLanguage updates languageCode in state', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setLanguage('ar');
       expect(container.read(settingsProvider).languageCode, equals('ar'));
     });
 
     test('setThemeMode updates themeMode in state', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setThemeMode(AppThemeMode.dark);
-      expect(container.read(settingsProvider).themeMode, equals(AppThemeMode.dark));
+      expect(
+        container.read(settingsProvider).themeMode,
+        equals(AppThemeMode.dark),
+      );
     });
 
-    test('setPushNotificationsEnabled updates pushNotificationsEnabled', () async {
-      final container = await _makeContainer();
-      final notifier = container.read(settingsProvider.notifier);
-      await notifier.setPushNotificationsEnabled(true);
-      expect(container.read(settingsProvider).pushNotificationsEnabled, isTrue);
-    });
+    test(
+      'setPushNotificationsEnabled updates pushNotificationsEnabled',
+      () async {
+        final container = await makeContainer();
+        final notifier = container.read(settingsProvider.notifier);
+        await notifier.setPushNotificationsEnabled(true);
+        expect(
+          container.read(settingsProvider).pushNotificationsEnabled,
+          isTrue,
+        );
+      },
+    );
 
     test('settingsServiceProvider returns SettingsService instance', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final service = container.read(settingsServiceProvider);
       expect(service, isA<SettingsService>());
     });
 
-    test('loadSettings reads stored deviceName from SharedPreferences', () async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'Bob'});
-      final prefs = await SharedPreferences.getInstance();
-      final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      );
-      addTearDown(container.dispose);
+    test(
+      'loadSettings reads stored deviceName from SharedPreferences',
+      () async {
+        SharedPreferences.setMockInitialValues({'settings_device_name': 'Bob'});
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        );
+        addTearDown(container.dispose);
 
-      final settings = container.read(settingsProvider);
-      expect(settings.deviceName, equals('Bob'));
-    });
+        final settings = container.read(settingsProvider);
+        expect(settings.deviceName, equals('Bob'));
+      },
+    );
 
     test('AppSettings.theme returns ThemeMode.dark for dark mode', () {
       const settings = AppSettings(themeMode: AppThemeMode.dark);
@@ -920,16 +937,16 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          eventDetailProvider(params).overrideWith(
-            (_) => Stream.value(testEvent),
-          ),
+          eventDetailProvider(
+            params,
+          ).overrideWith((_) => Stream.value(testEvent)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         eventDetailProvider(params),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -942,16 +959,16 @@ void main() {
     test('emits null when event does not exist', () async {
       final container = ProviderContainer(
         overrides: [
-          eventDetailProvider(params).overrideWith(
-            (_) => Stream<Event?>.value(null),
-          ),
+          eventDetailProvider(
+            params,
+          ).overrideWith((_) => Stream<Event?>.value(null)),
         ],
       );
       addTearDown(container.dispose);
 
       container.listen(
         eventDetailProvider(params),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await _pumpAsync();
@@ -966,9 +983,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          eventDetailProvider(params).overrideWith(
-            (_) => controller.stream,
-          ),
+          eventDetailProvider(params).overrideWith((_) => controller.stream),
         ],
       );
       addTearDown(container.dispose);

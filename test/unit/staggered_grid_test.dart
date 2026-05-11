@@ -8,14 +8,11 @@ void main() {
   group('StaggeredGrid', () {
     testWidgets('renders all child widgets', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: Scaffold(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
             body: StaggeredGrid(
-              children: const [
-                Text('Card 1'),
-                Text('Card 2'),
-                Text('Card 3'),
-              ],
+              children: [Text('Card 1'), Text('Card 2'), Text('Card 3')],
             ),
           ),
         ),
@@ -29,29 +26,25 @@ void main() {
 
     testWidgets('renders empty children without error', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: StaggeredGrid(children: []),
-          ),
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(body: StaggeredGrid(children: [])),
         ),
       );
       await tester.pump();
       expect(find.byType(StaggeredGrid), findsOneWidget);
     });
 
-    testWidgets('with disableAnimations=true children render without Animate',
-        (tester) async {
+    testWidgets('with disableAnimations=true children render without Animate', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: MediaQuery(
-            data: const MediaQueryData(disableAnimations: true),
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const MediaQuery(
+            data: MediaQueryData(disableAnimations: true),
             child: Scaffold(
-              body: StaggeredGrid(
-                children: const [
-                  Text('Gamma'),
-                  Text('Delta'),
-                ],
-              ),
+              body: StaggeredGrid(children: [Text('Gamma'), Text('Delta')]),
             ),
           ),
         ),
@@ -61,8 +54,10 @@ void main() {
       expect(find.text('Gamma'), findsOneWidget);
       expect(find.text('Delta'), findsOneWidget);
       // No Animate widgets when animations disabled
-      expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == 'Animate'),
-          findsNothing);
+      expect(
+        find.byWidgetPredicate((w) => w.runtimeType.toString() == 'Animate'),
+        findsNothing,
+      );
     });
   });
 }

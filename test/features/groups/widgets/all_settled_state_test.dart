@@ -6,12 +6,13 @@ import 'package:safar/features/groups/widgets/all_settled_state.dart';
 
 void main() {
   group('AllSettledState', () {
-    testWidgets('renders all-settled empty state with icon and message',
-        (tester) async {
+    testWidgets('renders all-settled empty state with icon and message', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
-           theme: AppTheme.lightTheme,
-          home: Scaffold(body: AllSettledState()),
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(body: AllSettledState()),
         ),
       );
 

@@ -84,27 +84,27 @@ Widget _wrapSettings({
     routes: [
       GoRoute(
         path: '/group/:gid',
-        builder: (_, __) => const Scaffold(body: Text('GroupDetail')),
+        builder: (_, _) => const Scaffold(body: Text('GroupDetail')),
         routes: [
           GoRoute(
             path: 'event/:eid',
-            builder: (_, __) => const Scaffold(body: Text('EventHub')),
+            builder: (_, _) => const Scaffold(body: Text('EventHub')),
             routes: [
               GoRoute(
                 path: 'settings',
                 builder: (_, state) => ProviderScope(
                   overrides: [
-                    eventDetailProvider(eventRef).overrideWith(
-                      (ref) => Stream.value(event),
-                    ),
+                    eventDetailProvider(
+                      eventRef,
+                    ).overrideWith((ref) => Stream.value(event)),
                     eventServiceProvider.overrideWithValue(mockService),
                     currentUserIdProvider.overrideWithValue(currentUserId),
-                    eventExpensesProvider(eventRef).overrideWith(
-                      (ref) => Stream.value(const []),
-                    ),
-                    eventSettlementsProvider(eventRef).overrideWith(
-                      (ref) => Stream.value(const <Settlement>[]),
-                    ),
+                    eventExpensesProvider(
+                      eventRef,
+                    ).overrideWith((ref) => Stream.value(const [])),
+                    eventSettlementsProvider(
+                      eventRef,
+                    ).overrideWith((ref) => Stream.value(const <Settlement>[])),
                     ...extraOverrides,
                   ],
                   child: EventSettingsScreen(
@@ -152,7 +152,8 @@ void main() {
     testWidgets('delete event tile is visible for creator', (tester) async {
       final event = _makeEvent(createdBy: 'uid-creator');
       await tester.pumpWidget(
-          _wrapSettings(event: event, currentUserId: 'uid-creator'));
+        _wrapSettings(event: event, currentUserId: 'uid-creator'),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Delete event'), findsOneWidget);
@@ -161,7 +162,8 @@ void main() {
     testWidgets('delete event tile is hidden for non-creator', (tester) async {
       final event = _makeEvent(createdBy: 'uid-creator');
       await tester.pumpWidget(
-          _wrapSettings(event: event, currentUserId: 'uid-other'));
+        _wrapSettings(event: event, currentUserId: 'uid-other'),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Delete event'), findsNothing);
@@ -170,7 +172,8 @@ void main() {
     testWidgets('delete tile tap shows confirmation dialog', (tester) async {
       final event = _makeEvent(createdBy: 'uid-creator');
       await tester.pumpWidget(
-          _wrapSettings(event: event, currentUserId: 'uid-creator'));
+        _wrapSettings(event: event, currentUserId: 'uid-creator'),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Delete event'));
@@ -200,24 +203,24 @@ void main() {
         routes: [
           GoRoute(
             path: '/group/:gid',
-            builder: (_, __) => const Scaffold(body: Text('GroupDetail')),
+            builder: (_, _) => const Scaffold(body: Text('GroupDetail')),
             routes: [
               GoRoute(
                 path: 'event/:eid',
-                builder: (_, __) => const Scaffold(body: Text('EventHub')),
+                builder: (_, _) => const Scaffold(body: Text('EventHub')),
                 routes: [
                   GoRoute(
                     path: 'settings',
                     builder: (_, state) => ProviderScope(
                       overrides: [
-                        eventDetailProvider(eventRef).overrideWith(
-                          (ref) => Stream.value(event),
-                        ),
+                        eventDetailProvider(
+                          eventRef,
+                        ).overrideWith((ref) => Stream.value(event)),
                         eventServiceProvider.overrideWithValue(mockService),
                         currentUserIdProvider.overrideWithValue('uid-creator'),
-                        eventExpensesProvider(eventRef).overrideWith(
-                          (ref) => Stream.value(const []),
-                        ),
+                        eventExpensesProvider(
+                          eventRef,
+                        ).overrideWith((ref) => Stream.value(const [])),
                         eventSettlementsProvider(eventRef).overrideWith(
                           (ref) => Stream.value(const <Settlement>[]),
                         ),
@@ -235,7 +238,9 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router));
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+      );
       await tester.pumpAndSettle();
 
       // Change name

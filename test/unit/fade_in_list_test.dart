@@ -8,14 +8,11 @@ void main() {
   group('FadeInList', () {
     testWidgets('renders all child widgets', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: Scaffold(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
             body: FadeInList(
-              children: const [
-                Text('Item 1'),
-                Text('Item 2'),
-                Text('Item 3'),
-              ],
+              children: [Text('Item 1'), Text('Item 2'), Text('Item 3')],
             ),
           ),
         ),
@@ -29,10 +26,9 @@ void main() {
 
     testWidgets('renders empty children without error', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: FadeInList(children: []),
-          ),
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(body: FadeInList(children: [])),
         ),
       );
       await tester.pump();
@@ -40,19 +36,16 @@ void main() {
       expect(find.byType(FadeInList), findsOneWidget);
     });
 
-    testWidgets('with disableAnimations=true children render without Animate',
-        (tester) async {
+    testWidgets('with disableAnimations=true children render without Animate', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
-          home: MediaQuery(
-            data: const MediaQueryData(disableAnimations: true),
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const MediaQuery(
+            data: MediaQueryData(disableAnimations: true),
             child: Scaffold(
-              body: FadeInList(
-                children: const [
-                  Text('Alpha'),
-                  Text('Beta'),
-                ],
-              ),
+              body: FadeInList(children: [Text('Alpha'), Text('Beta')]),
             ),
           ),
         ),
@@ -62,8 +55,10 @@ void main() {
       expect(find.text('Alpha'), findsOneWidget);
       expect(find.text('Beta'), findsOneWidget);
       // No Animate widgets when animations disabled
-      expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == 'Animate'),
-          findsNothing);
+      expect(
+        find.byWidgetPredicate((w) => w.runtimeType.toString() == 'Animate'),
+        findsNothing,
+      );
     });
   });
 }

@@ -14,14 +14,14 @@ void main() {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  Participant _participant(String id) => Participant(
-        id: id,
-        tripId: 'trip-1',
-        role: ParticipantRole.member,
-        joinedAt: DateTime(2026),
-      );
+  Participant participant(String id) => Participant(
+    id: id,
+    tripId: 'trip-1',
+    role: ParticipantRole.member,
+    joinedAt: DateTime(2026),
+  );
 
-  Expense _globalExpense(String amount, List<String> allParticipantIds) =>
+  Expense globalExpense(String amount, List<String> allParticipantIds) =>
       Expense(
         id: 'e-${amount.replaceAll('.', '')}',
         tripId: 'trip-1',
@@ -31,11 +31,7 @@ void main() {
         createdAt: DateTime(2026),
       );
 
-  Expense _customExpense(
-    String amount,
-    String payerId,
-    List<String> splitIds,
-  ) =>
+  Expense customExpense(String amount, String payerId, List<String> splitIds) =>
       Expense(
         id: 'e-custom',
         tripId: 'trip-1',
@@ -53,11 +49,11 @@ void main() {
   group('BalanceCalculator — split rounding invariant', () {
     test('10.000 OMR split 3 ways: sum of owedMap equals 10.000', () {
       final participants = [
-        _participant('p1'),
-        _participant('p2'),
-        _participant('p3'),
+        participant('p1'),
+        participant('p2'),
+        participant('p3'),
       ];
-      final expense = _globalExpense('10.000', ['p1', 'p2', 'p3']);
+      final expense = globalExpense('10.000', ['p1', 'p2', 'p3']);
 
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense],
@@ -78,11 +74,11 @@ void main() {
 
     test('1.000 OMR split 3 ways: sum of owedMap equals 1.000', () {
       final participants = [
-        _participant('p1'),
-        _participant('p2'),
-        _participant('p3'),
+        participant('p1'),
+        participant('p2'),
+        participant('p3'),
       ];
-      final expense = _globalExpense('1.000', ['p1', 'p2', 'p3']);
+      final expense = globalExpense('1.000', ['p1', 'p2', 'p3']);
 
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense],
@@ -96,37 +92,41 @@ void main() {
       expect(
         totalOwed,
         Decimal.parse('1.000'),
-        reason: '1.000 / 3 = 0.333 truncated × 3 = 0.999 — remainder 0.001 lost without fix',
+        reason:
+            '1.000 / 3 = 0.333 truncated × 3 = 0.999 — remainder 0.001 lost without fix',
       );
     });
 
-    test('9.000 OMR split 2 ways: sum of owedMap equals 9.000 (even split)', () {
-      final participants = [_participant('p1'), _participant('p2')];
-      final expense = _globalExpense('9.000', ['p1', 'p2']);
+    test(
+      '9.000 OMR split 2 ways: sum of owedMap equals 9.000 (even split)',
+      () {
+        final participants = [participant('p1'), participant('p2')];
+        final expense = globalExpense('9.000', ['p1', 'p2']);
 
-      final balances = BalanceCalculator.calculateBalances(
-        expenses: [expense],
-        participants: participants,
-      );
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [expense],
+          participants: participants,
+        );
 
-      final totalOwed = balances.fold(
-        Decimal.zero,
-        (sum, b) => sum + b.totalOwed,
-      );
-      expect(
-        totalOwed,
-        Decimal.parse('9.000'),
-        reason: 'Even split should have zero remainder',
-      );
-    });
+        final totalOwed = balances.fold(
+          Decimal.zero,
+          (sum, b) => sum + b.totalOwed,
+        );
+        expect(
+          totalOwed,
+          Decimal.parse('9.000'),
+          reason: 'Even split should have zero remainder',
+        );
+      },
+    );
 
     test('7.001 OMR split 3 ways: sum of owedMap equals 7.001', () {
       final participants = [
-        _participant('p1'),
-        _participant('p2'),
-        _participant('p3'),
+        participant('p1'),
+        participant('p2'),
+        participant('p3'),
       ];
-      final expense = _globalExpense('7.001', ['p1', 'p2', 'p3']);
+      final expense = globalExpense('7.001', ['p1', 'p2', 'p3']);
 
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense],
@@ -140,18 +140,19 @@ void main() {
       expect(
         totalOwed,
         Decimal.parse('7.001'),
-        reason: '7.001 / 3 = 2.333 truncated × 3 = 6.999 — remainder 0.002 must be assigned',
+        reason:
+            '7.001 / 3 = 2.333 truncated × 3 = 6.999 — remainder 0.002 must be assigned',
       );
     });
 
     test('Custom scope: 5.000 split 3 ways sums to 5.000', () {
       final participants = [
-        _participant('p1'),
-        _participant('p2'),
-        _participant('p3'),
+        participant('p1'),
+        participant('p2'),
+        participant('p3'),
       ];
       // p1 pays, p1+p2+p3 split (custom)
-      final expense = _customExpense('5.000', 'p1', ['p1', 'p2', 'p3']);
+      final expense = customExpense('5.000', 'p1', ['p1', 'p2', 'p3']);
 
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense],
@@ -216,8 +217,11 @@ void main() {
       };
       final original = Expense.fromFirestore(data);
       final copy = original.copyWith(description: 'Updated');
-      expect(copy.currency, 'EUR',
-          reason: 'copyWith must not lose the currency field');
+      expect(
+        copy.currency,
+        'EUR',
+        reason: 'copyWith must not lose the currency field',
+      );
     });
 
     test('toFirestore: currency round-trips correctly', () {

@@ -256,7 +256,7 @@ void main() {
     /// Minimal overrides for BottomNavShell tests — ProfileScreen (tab 2)
     /// watches settingsProvider, userGroupsProvider, groupEventsProvider,
     /// and groupBalancesProvider via profileStatsProvider.
-    List<Override> _shellOverrides() => [
+    List<Override> shellOverrides() => [
       sharedPreferencesProvider.overrideWithValue(prefs),
       userGroupsProvider.overrideWith((ref) => Stream.value([])),
       crossGroupActivityProvider.overrideWith(
@@ -277,14 +277,14 @@ void main() {
 
     /// Builds a test app with GoRouter for BottomNavShell — ProfileScreen
     /// requires GoRouter.of(context) for back-button detection.
-    Widget _buildShellApp(List<Override> overrides) {
+    Widget buildShellApp(List<Override> overrides) {
       final router = GoRouter(
         initialLocation: '/home',
         routes: [
           GoRoute(
             path: '/home',
             builder: (ctx, state) =>
-                BottomNavShell(child: const Text('Dashboard Content')),
+                const BottomNavShell(child: Text('Dashboard Content')),
           ),
           GoRoute(
             path: '/profile',
@@ -304,7 +304,7 @@ void main() {
     testWidgets('Test 6: renders 3 tabs: Groups, Activity, Profile', (
       tester,
     ) async {
-      await tester.pumpWidget(_buildShellApp(_shellOverrides()));
+      await tester.pumpWidget(buildShellApp(shellOverrides()));
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
@@ -322,7 +322,7 @@ void main() {
     testWidgets(
       'Test 7: shows CrossGroupActivityScreen when tapping Activity tab',
       (tester) async {
-        await tester.pumpWidget(_buildShellApp(_shellOverrides()));
+        await tester.pumpWidget(buildShellApp(shellOverrides()));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pumpAndSettle();
 
@@ -336,7 +336,7 @@ void main() {
     );
 
     testWidgets('Test 8: Groups tab shows child content', (tester) async {
-      await tester.pumpWidget(_buildShellApp(_shellOverrides()));
+      await tester.pumpWidget(buildShellApp(shellOverrides()));
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 

@@ -86,8 +86,8 @@ List<Override> _phase26Overrides({
   String version = '2.2.0',
 }) {
   final mockNotifService = MockNotificationService();
-  when(() => mockNotifService.initialize()).thenAnswer((_) async => true);
-  when(() => mockNotifService.removeToken()).thenAnswer((_) async {});
+  when(mockNotifService.initialize).thenAnswer((_) async => true);
+  when(mockNotifService.removeToken).thenAnswer((_) async {});
   when(() => mockNotifService.isInitialized).thenReturn(false);
 
   return [

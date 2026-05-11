@@ -14,7 +14,7 @@ import 'package:safar/core/services/settings_service.dart';
 
 void main() {
   group('SettingsNotifier', () {
-    Future<ProviderContainer> _makeContainer() async {
+    Future<ProviderContainer> makeContainer() async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final container = ProviderContainer(
@@ -25,7 +25,7 @@ void main() {
     }
 
     test('initial state has default AppSettings', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final settings = container.read(settingsProvider);
       expect(settings.deviceName, equals(''));
       expect(settings.currencyCode, equals('OMR'));
@@ -35,28 +35,28 @@ void main() {
     });
 
     test('setDeviceName updates deviceName in state', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setDeviceName('Alice');
       expect(container.read(settingsProvider).deviceName, equals('Alice'));
     });
 
     test('setCurrency updates currencyCode in state', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setCurrency('USD');
       expect(container.read(settingsProvider).currencyCode, equals('USD'));
     });
 
     test('setLanguage updates languageCode in state', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setLanguage('ar');
       expect(container.read(settingsProvider).languageCode, equals('ar'));
     });
 
     test('setThemeMode updates themeMode in state', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setThemeMode(AppThemeMode.dark);
       expect(
@@ -65,35 +65,39 @@ void main() {
       );
     });
 
-    test('setPushNotificationsEnabled updates pushNotificationsEnabled',
-        () async {
-      final container = await _makeContainer();
-      final notifier = container.read(settingsProvider.notifier);
-      await notifier.setPushNotificationsEnabled(true);
-      expect(
-        container.read(settingsProvider).pushNotificationsEnabled,
-        isTrue,
-      );
-    });
+    test(
+      'setPushNotificationsEnabled updates pushNotificationsEnabled',
+      () async {
+        final container = await makeContainer();
+        final notifier = container.read(settingsProvider.notifier);
+        await notifier.setPushNotificationsEnabled(true);
+        expect(
+          container.read(settingsProvider).pushNotificationsEnabled,
+          isTrue,
+        );
+      },
+    );
 
     test('settingsServiceProvider returns SettingsService instance', () async {
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final service = container.read(settingsServiceProvider);
       expect(service, isA<SettingsService>());
     });
 
-    test('loadSettings reads stored deviceName from SharedPreferences',
-        () async {
-      SharedPreferences.setMockInitialValues({'settings_device_name': 'Bob'});
-      final prefs = await SharedPreferences.getInstance();
-      final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      );
-      addTearDown(container.dispose);
+    test(
+      'loadSettings reads stored deviceName from SharedPreferences',
+      () async {
+        SharedPreferences.setMockInitialValues({'settings_device_name': 'Bob'});
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        );
+        addTearDown(container.dispose);
 
-      final settings = container.read(settingsProvider);
-      expect(settings.deviceName, equals('Bob'));
-    });
+        final settings = container.read(settingsProvider);
+        expect(settings.deviceName, equals('Bob'));
+      },
+    );
 
     test('AppSettings.theme returns ThemeMode.dark for dark mode', () {
       const settings = AppSettings(themeMode: AppThemeMode.dark);
@@ -110,8 +114,7 @@ void main() {
       expect(settings.theme, equals(ThemeMode.system));
     });
 
-    test('propagateDisplayName is called when setDeviceName is called',
-        () async {
+    test('propagateDisplayName is called when setDeviceName is called', () async {
       // This test verifies that setDeviceName triggers propagateDisplayName.
       // Since propagateDisplayName calls Firestore (which we can't easily mock
       // in a unit test without modifying the constructor), this test verifies
@@ -119,7 +122,7 @@ void main() {
       // The Firestore batch write is fire-and-forget with a try/catch,
       // so it will silently fail in test (no Firestore instance) — which is
       // the expected behavior per D-15 (offline: no error shown).
-      final container = await _makeContainer();
+      final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
       await notifier.setDeviceName('NewName');
       expect(container.read(settingsProvider).deviceName, equals('NewName'));

@@ -54,10 +54,7 @@ final _balancesOwed = (
     'uid-alice': {'event-1': Decimal.parse('7.750')},
     'uid-bob': {'event-1': Decimal.parse('-7.750')},
   },
-  memberNames: <String, String>{
-    'uid-alice': 'Alice',
-    'uid-bob': 'Bob',
-  },
+  memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
 /// All-settled GroupBalances: everyone at zero.
@@ -81,26 +78,23 @@ final _balancesSettled = (
   totalSpent: Decimal.zero,
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
-  memberNames: <String, String>{
-    'uid-alice': 'Alice',
-    'uid-bob': 'Bob',
-  },
+  memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
 /// Wraps the screen with ProviderScope overriding all required providers.
-Widget _wrap(
-  Widget child, {
-  required AsyncValue<GroupBalances> balancesAsync,
-}) {
+Widget _wrap(Widget child, {required AsyncValue<GroupBalances> balancesAsync}) {
   return ProviderScope(
     overrides: [
-      groupDetailProvider(_groupId)
-          .overrideWith((_) => Stream.value(_testGroup)),
+      groupDetailProvider(
+        _groupId,
+      ).overrideWith((_) => Stream.value(_testGroup)),
       groupBalancesProvider(_groupId).overrideWith((_) => balancesAsync),
-      groupEventsProvider(_groupId)
-          .overrideWith((_) => Stream.value(<Event>[])),
-      groupSettlementsProvider(_groupId)
-          .overrideWith((_) => Stream.value(<Settlement>[])),
+      groupEventsProvider(
+        _groupId,
+      ).overrideWith((_) => Stream.value(<Event>[])),
+      groupSettlementsProvider(
+        _groupId,
+      ).overrideWith((_) => Stream.value(<Settlement>[])),
       currentUserIdProvider.overrideWithValue(null),
     ],
     child: MaterialApp(theme: AppTheme.lightTheme, home: child),
@@ -120,11 +114,12 @@ Future<void> _pumpUntilSettled(WidgetTester tester) async {
 
 void main() {
   group('GroupSettleUpScreen', () {
-    testWidgets('shows optimized settlement tiles with pairwise amounts',
-        (tester) async {
+    testWidgets('shows optimized settlement tiles with pairwise amounts', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -143,7 +138,7 @@ void main() {
     testWidgets('settlement tile shows pairwise amount', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -156,11 +151,12 @@ void main() {
       expect(find.textContaining('events'), findsWidgets);
     });
 
-    testWidgets('Record Settlement button appears in YOUR ACTIONS section',
-        (tester) async {
+    testWidgets('Record Settlement button appears in YOUR ACTIONS section', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -170,11 +166,12 @@ void main() {
       expect(find.byKey(GroupKeys.settleUpScreen), findsOneWidget);
     });
 
-    testWidgets('Record settlement shows confirmation bottom sheet',
-        (tester) async {
+    testWidgets('Record settlement shows confirmation bottom sheet', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -195,11 +192,12 @@ void main() {
       expect(find.byKey(GroupKeys.settleUpScreen), findsOneWidget);
     });
 
-    testWidgets('all-settled state shows tick circle and message',
-        (tester) async {
+    testWidgets('all-settled state shows tick circle and message', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesSettled),
         ),
       );
@@ -217,11 +215,12 @@ void main() {
       );
     });
 
-    testWidgets('settlement confirmation pre-fills suggested amount (D-11)',
-        (tester) async {
+    testWidgets('settlement confirmation pre-fills suggested amount (D-11)', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -248,17 +247,21 @@ void main() {
       expect(find.byKey(GroupKeys.settleUpScreen), findsOneWidget);
     });
 
-    testWidgets('shows loading indicator while balances are loading',
-        (tester) async {
+    testWidgets('shows loading indicator while balances are loading', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             // groupDetailProvider returns loading → screen shows spinner
-            groupDetailProvider(_groupId)
-                .overrideWith((_) => const Stream<Group?>.empty()),
+            groupDetailProvider(
+              _groupId,
+            ).overrideWith((_) => const Stream<Group?>.empty()),
             currentUserIdProvider.overrideWithValue(null),
           ],
-          child: MaterialApp(theme: AppTheme.lightTheme, home: GroupSettleUpScreen(groupId: _groupId),
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const GroupSettleUpScreen(groupId: _groupId),
           ),
         ),
       );

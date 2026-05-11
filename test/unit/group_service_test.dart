@@ -507,8 +507,8 @@ void main() {
 
         // When currentUser is null (no real Firebase init),
         // userGroupsProvider should return a Stream.value([]).
-        final stream = container.read(userGroupsProvider.stream);
-        expect(stream, isNotNull);
+        final groups = await container.read(userGroupsProvider.future);
+        expect(groups, isEmpty);
       },
     );
   });

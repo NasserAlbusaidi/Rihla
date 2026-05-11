@@ -27,8 +27,12 @@ Map<String, dynamic> _buildSettlement({
   };
 }
 
-Widget _wrap(Widget child) =>
-    MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
+Widget _wrap(Widget child) => MaterialApp(
+  theme: AppTheme.lightTheme,
+  home: Scaffold(body: child),
+);
+
+Map<int, GlobalKey> _tileKeys() => <int, GlobalKey>{};
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -36,8 +40,9 @@ Widget _wrap(Widget child) =>
 
 void main() {
   group('SettlementTabContent', () {
-    testWidgets('renders empty state when settlements list is empty',
-        (tester) async {
+    testWidgets('renders empty state when settlements list is empty', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           SettlementTabContent(
@@ -48,17 +53,18 @@ void main() {
             emptyTitle: 'Nothing to pay',
             emptyMessage: "You don't owe anyone.",
             currency: 'OMR',
-            tileKeys: {},
+            tileKeys: _tileKeys(),
             preSelectedMemberId: null,
-            onRecord: ({
-              required settlement,
-              required fromName,
-              required toName,
-              required fromUserId,
-              required toUserId,
-              required suggestedAmount,
-            }) {},
-            buildBreakdown: (_, __) => {},
+            onRecord:
+                ({
+                  required settlement,
+                  required fromName,
+                  required toName,
+                  required fromUserId,
+                  required toUserId,
+                  required suggestedAmount,
+                }) {},
+            buildBreakdown: (_, _) => {},
           ),
         ),
       );
@@ -72,8 +78,9 @@ void main() {
       expect(find.byType(GroupSettlementTile), findsNothing);
     });
 
-    testWidgets('renders N tiles when settlements list has N items',
-        (tester) async {
+    testWidgets('renders N tiles when settlements list has N items', (
+      tester,
+    ) async {
       final settlements = [
         _buildSettlement(),
         _buildSettlement(
@@ -95,17 +102,18 @@ void main() {
             emptyTitle: 'All balanced',
             emptyMessage: 'No outstanding amounts.',
             currency: 'OMR',
-            tileKeys: {},
+            tileKeys: _tileKeys(),
             preSelectedMemberId: null,
-            onRecord: ({
-              required settlement,
-              required fromName,
-              required toName,
-              required fromUserId,
-              required toUserId,
-              required suggestedAmount,
-            }) {},
-            buildBreakdown: (_, __) => {},
+            onRecord:
+                ({
+                  required settlement,
+                  required fromName,
+                  required toName,
+                  required fromUserId,
+                  required toUserId,
+                  required suggestedAmount,
+                }) {},
+            buildBreakdown: (_, _) => {},
           ),
         ),
       );

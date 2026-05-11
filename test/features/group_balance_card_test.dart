@@ -26,7 +26,10 @@ UserBalance _balance({
   );
 }
 
-Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
+Widget _wrap(Widget child) => MaterialApp(
+  theme: AppTheme.lightTheme,
+  home: Scaffold(body: child),
+);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -47,8 +50,8 @@ void main() {
             builder: (context, setState) {
               return GroupMemberBalanceCard(
                 balance: _balance(netBalance: '25.000'),
-                perEventBreakdown: {},
-                eventNames: {},
+                perEventBreakdown: const {},
+                eventNames: const {},
                 currency: 'OMR',
                 isExpanded: expanded,
                 onExpandChanged: (v) => setState(() => expanded = v),
@@ -68,8 +71,8 @@ void main() {
         orElse: () => throw StateError('Amount text not found'),
       );
       expect(
-        (amountText.style?.color ?? Colors.transparent).value,
-        AppColorTokens.light.successText.value,
+        (amountText.style?.color ?? Colors.transparent).toARGB32(),
+        AppColorTokens.light.successText.toARGB32(),
         reason: 'Positive balance should be shown in WCAG-safe successText',
       );
     });
@@ -83,8 +86,8 @@ void main() {
             builder: (context, setState) {
               return GroupMemberBalanceCard(
                 balance: _balance(netBalance: '-10.500'),
-                perEventBreakdown: {},
-                eventNames: {},
+                perEventBreakdown: const {},
+                eventNames: const {},
                 currency: 'OMR',
                 isExpanded: expanded,
                 onExpandChanged: (v) => setState(() => expanded = v),
@@ -102,8 +105,8 @@ void main() {
         orElse: () => throw StateError('Amount text not found'),
       );
       expect(
-        (amountText.style?.color ?? Colors.transparent).value,
-        AppColorTokens.light.errorText.value,
+        (amountText.style?.color ?? Colors.transparent).toARGB32(),
+        AppColorTokens.light.errorText.toARGB32(),
         reason: 'Negative balance should be shown in WCAG-safe errorText',
       );
     });
@@ -117,8 +120,8 @@ void main() {
             builder: (context, setState) {
               return GroupMemberBalanceCard(
                 balance: _balance(netBalance: '0'),
-                perEventBreakdown: {},
-                eventNames: {},
+                perEventBreakdown: const {},
+                eventNames: const {},
                 currency: 'OMR',
                 isExpanded: expanded,
                 onExpandChanged: (v) => setState(() => expanded = v),
@@ -140,10 +143,8 @@ void main() {
             builder: (context, setState) {
               return GroupMemberBalanceCard(
                 balance: _balance(netBalance: '15.000'),
-                perEventBreakdown: {
-                  'event1': Decimal.parse('15.000'),
-                },
-                eventNames: {'event1': 'Camping Trip'},
+                perEventBreakdown: {'event1': Decimal.parse('15.000')},
+                eventNames: const {'event1': 'Camping Trip'},
                 currency: 'OMR',
                 isExpanded: expanded,
                 onExpandChanged: (v) => setState(() => expanded = v),
@@ -164,53 +165,57 @@ void main() {
       expect(find.text('Camping Trip'), findsOneWidget);
     });
 
-    testWidgets('onSettleUpTap fires when Settle button tapped in expanded state',
-        (tester) async {
-      bool expanded = true;
-      bool settleUpCalled = false;
+    testWidgets(
+      'onSettleUpTap fires when Settle button tapped in expanded state',
+      (tester) async {
+        bool expanded = true;
+        bool settleUpCalled = false;
 
-      await tester.pumpWidget(
-        _wrap(
-          StatefulBuilder(
-            builder: (context, setState) {
-              return GroupMemberBalanceCard(
-                balance: _balance(netBalance: '-20.000'),
-                perEventBreakdown: {
-                  'event1': Decimal.parse('-20.000'),
-                },
-                eventNames: {'event1': 'Road Trip'},
-                currency: 'OMR',
-                isExpanded: expanded,
-                onExpandChanged: (v) => setState(() => expanded = v),
-                onSettleUpTap: () {
-                  settleUpCalled = true;
-                },
-              );
-            },
+        await tester.pumpWidget(
+          _wrap(
+            StatefulBuilder(
+              builder: (context, setState) {
+                return GroupMemberBalanceCard(
+                  balance: _balance(netBalance: '-20.000'),
+                  perEventBreakdown: {'event1': Decimal.parse('-20.000')},
+                  eventNames: const {'event1': 'Road Trip'},
+                  currency: 'OMR',
+                  isExpanded: expanded,
+                  onExpandChanged: (v) => setState(() => expanded = v),
+                  onSettleUpTap: () {
+                    settleUpCalled = true;
+                  },
+                );
+              },
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      // Settle button should be visible in expanded state with non-zero balance
-      expect(find.byKey(GroupKeys.settleButton), findsOneWidget);
+        // Settle button should be visible in expanded state with non-zero balance
+        expect(find.byKey(GroupKeys.settleButton), findsOneWidget);
 
-      // Tap Settle button
-      await tester.tap(find.byKey(GroupKeys.settleButton));
-      await tester.pump();
+        // Tap Settle button
+        await tester.tap(find.byKey(GroupKeys.settleButton));
+        await tester.pump();
 
-      expect(settleUpCalled, isTrue,
-          reason: 'onSettleUpTap should fire when Settle button is tapped (D-22)');
-    });
+        expect(
+          settleUpCalled,
+          isTrue,
+          reason:
+              'onSettleUpTap should fire when Settle button is tapped (D-22)',
+        );
+      },
+    );
 
     testWidgets('Settle button hidden for zero balance member', (tester) async {
       await tester.pumpWidget(
         _wrap(
           GroupMemberBalanceCard(
             balance: _balance(netBalance: '0'),
-            perEventBreakdown: {},
-            eventNames: {},
+            perEventBreakdown: const {},
+            eventNames: const {},
             currency: 'OMR',
             isExpanded: true,
             onExpandChanged: (_) {},
@@ -226,4 +231,3 @@ void main() {
     });
   });
 }
-

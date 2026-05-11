@@ -9,8 +9,8 @@ void main() {
     // Build a minimal MaterialApp to verify Flutter test infrastructure works
     await tester.pumpWidget(
       MaterialApp(
-           theme: AppTheme.lightTheme,
-        home: Scaffold(body: Center(child: Text('Safar'))),
+        theme: AppTheme.lightTheme,
+        home: const Scaffold(body: Center(child: Text('Safar'))),
       ),
     );
 

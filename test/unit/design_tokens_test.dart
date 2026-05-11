@@ -139,7 +139,7 @@ void main() {
     });
 
     test('light appended saffron tokens are populated', () {
-      final t = AppColorTokens.light;
+      const t = AppColorTokens.light;
       expect(t.paperDeep, equals(const Color(0xFFEFE8D7)));
       expect(t.cardSoft, equals(const Color(0xFFFBF7EE)));
       expect(t.ink2, equals(const Color(0xFF3D3A33)));
@@ -181,7 +181,7 @@ void main() {
     });
 
     test('copyWith does not mutate original instance', () {
-      final original = AppColorTokens.light;
+      const original = AppColorTokens.light;
       original.copyWith(primary: const Color(0xFF000000));
       expect(original.primary, equals(const Color(0xFFD17B2C)));
     });
@@ -218,7 +218,7 @@ void main() {
     });
 
     test('standard has correct full spacing scale', () {
-      final s = AppSpacingTokens.standard;
+      const s = AppSpacingTokens.standard;
       expect(s.space4, equals(4.0));
       expect(s.space8, equals(8.0));
       expect(s.space12, equals(12.0));
@@ -229,7 +229,7 @@ void main() {
     });
 
     test('standard has correct border radii', () {
-      final s = AppSpacingTokens.standard;
+      const s = AppSpacingTokens.standard;
       expect(s.radiusSmall, equals(8.0));
       expect(s.radiusMedium, equals(12.0));
       expect(s.radiusLarge, equals(16.0));

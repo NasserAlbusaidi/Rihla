@@ -20,7 +20,10 @@ GroupMember _buildMember({required String id, required String name}) {
   );
 }
 
-Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
+Widget _wrap(Widget child) => MaterialApp(
+  theme: AppTheme.lightTheme,
+  home: Scaffold(body: child),
+);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -69,8 +72,9 @@ void main() {
       expect(lastToggled, equals('p2'));
     });
 
-    testWidgets('shows checkmark (Checkbox checked) for selected member',
-        (tester) async {
+    testWidgets('shows checkmark (Checkbox checked) for selected member', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           EventParticipantsCard(
@@ -91,25 +95,29 @@ void main() {
       expect(values[2], isFalse, reason: 'Bob (p2) should be unchecked');
     });
 
-    testWidgets('Select All checkbox checked when all members selected',
-        (tester) async {
+    testWidgets('Select All checkbox checked when all members selected', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           EventParticipantsCard(
             members: members,
-            selectedIds: {'p1', 'p2', 'p3'},
+            selectedIds: const {'p1', 'p2', 'p3'},
             onSelectAllChanged: (_) {},
             onToggle: (_) {},
           ),
         ),
       );
 
-      final selectAll = tester.widgetList<Checkbox>(find.byType(Checkbox)).first;
+      final selectAll = tester
+          .widgetList<Checkbox>(find.byType(Checkbox))
+          .first;
       expect(selectAll.value, isTrue);
     });
 
-    testWidgets('calls onSelectAllChanged when Select All tapped',
-        (tester) async {
+    testWidgets('calls onSelectAllChanged when Select All tapped', (
+      tester,
+    ) async {
       Set<String>? received;
 
       await tester.pumpWidget(

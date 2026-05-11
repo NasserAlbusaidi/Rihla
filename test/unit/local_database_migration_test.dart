@@ -1,12 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
-  setUpAll(() {
-    // Initialize sqflite FFI for running tests on macOS/Linux/Windows
-    sqfliteFfiInit();
-  });
+  setUpAll(sqfliteFfiInit);
 
   group('LocalDatabase v6 migration', () {
     late Database db;

@@ -16,8 +16,8 @@ import 'shared_test_contrast_helpers.dart';
 ///   accidentally promotes `textMuted` to functional contrast surfaces as
 ///   a failure here first.
 void main() {
-  final dark = AppColorTokens.dark;
-  final light = AppColorTokens.light;
+  const dark = AppColorTokens.dark;
+  const light = AppColorTokens.light;
 
   group('Dark theme WCAG AA', () {
     final pairs = <({String name, Color fg, Color bg, double min})>[
@@ -77,64 +77,76 @@ void main() {
         expect(
           ratio,
           greaterThanOrEqualTo(p.min),
-          reason:
-              '${p.name}: ${ratio.toStringAsFixed(2)}:1 < ${p.min}:1',
+          reason: '${p.name}: ${ratio.toStringAsFixed(2)}:1 < ${p.min}:1',
         );
       });
     }
 
-    test('textMuted stays decorative-only even when dark-mode ratio is accessible',
-        () {
-      // D-11 classifies textMuted as decorative-only. The CI guard enforces
-      // the `// textMuted-decorative-justified:` comment at every call site
-      // regardless of ratio.
-      //
-      // In the LIGHT palette textMuted is #9CA3AF on white (2.86:1) — genuinely
-      // below AA.
-      // In the DARK palette Slate 400 on Slate 900 incidentally clears AA at
-      // ~6.96:1. That accessibility bonus is a property of the dark palette's
-      // scaffold choice, not a redesignation of the token's role.
-      //
-      // This test encodes the contract: the LIGHT textMuted stays below AA
-      // (so the decorative-only classification is grounded). If the ratio
-      // ever flips above 4.5 there, retire D-11 — don't silence the test.
-      final lightRatio =
-          contrastRatio(light.textMuted, light.scaffoldBackground);
-      expect(
-        lightRatio,
-        lessThan(4.5),
-        reason:
-            'LIGHT textMuted (${lightRatio.toStringAsFixed(2)}:1) must stay '
-            'below AA — this is what grounds the decorative-only rule. '
-            'If it flipped above AA, remove D-11 and the CI guard instead '
-            'of weakening the test.',
-      );
-    });
+    test(
+      'textMuted stays decorative-only even when dark-mode ratio is accessible',
+      () {
+        // D-11 classifies textMuted as decorative-only. The CI guard enforces
+        // the `// textMuted-decorative-justified:` comment at every call site
+        // regardless of ratio.
+        //
+        // In the LIGHT palette textMuted is #9CA3AF on white (2.86:1) — genuinely
+        // below AA.
+        // In the DARK palette Slate 400 on Slate 900 incidentally clears AA at
+        // ~6.96:1. That accessibility bonus is a property of the dark palette's
+        // scaffold choice, not a redesignation of the token's role.
+        //
+        // This test encodes the contract: the LIGHT textMuted stays below AA
+        // (so the decorative-only classification is grounded). If the ratio
+        // ever flips above 4.5 there, retire D-11 — don't silence the test.
+        final lightRatio = contrastRatio(
+          light.textMuted,
+          light.scaffoldBackground,
+        );
+        expect(
+          lightRatio,
+          lessThan(4.5),
+          reason:
+              'LIGHT textMuted (${lightRatio.toStringAsFixed(2)}:1) must stay '
+              'below AA — this is what grounds the decorative-only rule. '
+              'If it flipped above AA, remove D-11 and the CI guard instead '
+              'of weakening the test.',
+        );
+      },
+    );
   });
 
   // Functional text roles (bodySmall/labelSmall) must stay WCAG AA in BOTH
   // brightnesses — Phase 37 B4 correction routed these roles to textSecondary.
-  group('Functional text roles (bodySmall/labelSmall) WCAG AA in BOTH themes',
-      () {
-    test('light: textSecondary on scaffoldBackground >= 4.5:1', () {
-      final ratio =
-          contrastRatio(light.textSecondary, light.scaffoldBackground);
-      expect(
-        ratio,
-        greaterThanOrEqualTo(4.5),
-        reason: 'B4: bodySmall/labelSmall uses textSecondary on scaffold in '
-            'light theme; ratio was ${ratio.toStringAsFixed(2)}:1',
-      );
-    });
+  group(
+    'Functional text roles (bodySmall/labelSmall) WCAG AA in BOTH themes',
+    () {
+      test('light: textSecondary on scaffoldBackground >= 4.5:1', () {
+        final ratio = contrastRatio(
+          light.textSecondary,
+          light.scaffoldBackground,
+        );
+        expect(
+          ratio,
+          greaterThanOrEqualTo(4.5),
+          reason:
+              'B4: bodySmall/labelSmall uses textSecondary on scaffold in '
+              'light theme; ratio was ${ratio.toStringAsFixed(2)}:1',
+        );
+      });
 
-    test('dark: textSecondary on scaffoldBackground >= 4.5:1', () {
-      final ratio = contrastRatio(dark.textSecondary, dark.scaffoldBackground);
-      expect(
-        ratio,
-        greaterThanOrEqualTo(4.5),
-        reason: 'B4: bodySmall/labelSmall uses textSecondary on scaffold in '
-            'dark theme; ratio was ${ratio.toStringAsFixed(2)}:1',
-      );
-    });
-  });
+      test('dark: textSecondary on scaffoldBackground >= 4.5:1', () {
+        final ratio = contrastRatio(
+          dark.textSecondary,
+          dark.scaffoldBackground,
+        );
+        expect(
+          ratio,
+          greaterThanOrEqualTo(4.5),
+          reason:
+              'B4: bodySmall/labelSmall uses textSecondary on scaffold in '
+              'dark theme; ratio was ${ratio.toStringAsFixed(2)}:1',
+        );
+      });
+    },
+  );
 }

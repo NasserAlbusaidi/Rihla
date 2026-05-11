@@ -34,11 +34,9 @@ import 'package:safar/features/groups/widgets/invite_code_display.dart';
 
 void main() {
   group('AppTabBar', () {
-    Widget _buildTabBar({
-      required List<String> tabs,
-      Color? activeColor,
-    }) {
-      return MaterialApp(theme: AppTheme.lightTheme,
+    Widget buildTabBar({required List<String> tabs, Color? activeColor}) {
+      return MaterialApp(
+        theme: AppTheme.lightTheme,
         home: Scaffold(
           body: DefaultTabController(
             length: tabs.length,
@@ -58,7 +56,7 @@ void main() {
     }
 
     testWidgets('renders tab labels', (tester) async {
-      await tester.pumpWidget(_buildTabBar(tabs: ['Alpha', 'Beta']));
+      await tester.pumpWidget(buildTabBar(tabs: ['Alpha', 'Beta']));
       await tester.pump();
 
       expect(find.text('Alpha'), findsOneWidget);
@@ -66,9 +64,7 @@ void main() {
     });
 
     testWidgets('renders three tabs', (tester) async {
-      await tester.pumpWidget(
-        _buildTabBar(tabs: ['One', 'Two', 'Three']),
-      );
+      await tester.pumpWidget(buildTabBar(tabs: ['One', 'Two', 'Three']));
       await tester.pump();
 
       expect(find.text('One'), findsOneWidget);
@@ -78,7 +74,7 @@ void main() {
 
     testWidgets('renders with custom activeColor', (tester) async {
       await tester.pumpWidget(
-        _buildTabBar(tabs: ['X', 'Y'], activeColor: Colors.purple),
+        buildTabBar(tabs: ['X', 'Y'], activeColor: Colors.purple),
       );
       await tester.pump();
 
@@ -87,14 +83,14 @@ void main() {
     });
 
     testWidgets('renders TabBar widget', (tester) async {
-      await tester.pumpWidget(_buildTabBar(tabs: ['Tab1', 'Tab2']));
+      await tester.pumpWidget(buildTabBar(tabs: ['Tab1', 'Tab2']));
       await tester.pump();
 
       expect(find.byType(TabBar), findsOneWidget);
     });
 
     testWidgets('tapping second tab does not throw', (tester) async {
-      await tester.pumpWidget(_buildTabBar(tabs: ['A', 'B', 'C']));
+      await tester.pumpWidget(buildTabBar(tabs: ['A', 'B', 'C']));
       await tester.pump();
 
       await tester.tap(find.byKey(SharedKeys.appTabBarTab('B')));
@@ -109,15 +105,13 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('ModuleHeader', () {
-    Widget _wrap(Widget child) =>
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
+    Widget wrap(Widget child) => MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(body: child),
+    );
 
     testWidgets('renders title in light theme', (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          ModuleHeader(title: 'Expenses'),
-        ),
-      );
+      await tester.pumpWidget(wrap(const ModuleHeader(title: 'Expenses')));
       await tester.pump();
 
       expect(find.text('Expenses'), findsOneWidget);
@@ -125,12 +119,7 @@ void main() {
 
     testWidgets('renders subtitle in light theme', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          ModuleHeader(
-            title: 'Gear',
-            subtitle: 'PACK LIST',
-          ),
-        ),
+        wrap(const ModuleHeader(title: 'Gear', subtitle: 'PACK LIST')),
       );
       await tester.pump();
 
@@ -141,7 +130,7 @@ void main() {
     testWidgets('renders actions in light theme', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           ModuleHeader(
             title: 'Vault',
             actions: [
@@ -163,10 +152,10 @@ void main() {
 
     testWidgets('renders bottom widget in light theme', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          ModuleHeader(
+        wrap(
+          const ModuleHeader(
             title: 'Activities',
-            bottom: const Text('bottom content'),
+            bottom: Text('bottom content'),
           ),
         ),
       );
@@ -177,12 +166,7 @@ void main() {
 
     testWidgets('renders title in dark theme', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          ModuleHeader(
-            title: 'Dark Header',
-            useDarkTheme: true,
-          ),
-        ),
+        wrap(const ModuleHeader(title: 'Dark Header', useDarkTheme: true)),
       );
       await tester.pump();
 
@@ -191,8 +175,8 @@ void main() {
 
     testWidgets('renders subtitle in dark theme', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          ModuleHeader(
+        wrap(
+          const ModuleHeader(
             title: 'Trip',
             subtitle: 'JOURNEY',
             useDarkTheme: true,
@@ -207,13 +191,11 @@ void main() {
 
     testWidgets('renders actions in dark theme', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          ModuleHeader(
+        wrap(
+          const ModuleHeader(
             title: 'Events',
             useDarkTheme: true,
-            actions: [
-              const Icon(Icons.settings),
-            ],
+            actions: [Icon(Icons.settings)],
           ),
         ),
       );
@@ -224,11 +206,11 @@ void main() {
 
     testWidgets('renders bottom widget in dark theme', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          ModuleHeader(
+        wrap(
+          const ModuleHeader(
             title: 'Members',
             useDarkTheme: true,
-            bottom: const Text('dark bottom'),
+            bottom: Text('dark bottom'),
           ),
         ),
       );
@@ -238,9 +220,7 @@ void main() {
     });
 
     testWidgets('back button exists in light theme', (tester) async {
-      await tester.pumpWidget(
-        _wrap(ModuleHeader(title: 'Back Test')),
-      );
+      await tester.pumpWidget(wrap(const ModuleHeader(title: 'Back Test')));
       await tester.pump();
 
       // Back button uses GestureDetector
@@ -249,7 +229,7 @@ void main() {
 
     testWidgets('back button exists in dark theme', (tester) async {
       await tester.pumpWidget(
-        _wrap(ModuleHeader(title: 'Dark Back', useDarkTheme: true)),
+        wrap(const ModuleHeader(title: 'Dark Back', useDarkTheme: true)),
       );
       await tester.pump();
 
@@ -262,73 +242,69 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('InviteCodeDisplay', () {
-    Widget _wrap(Widget child) =>
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
+    Widget wrap(Widget child) => MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(body: child),
+    );
 
     testWidgets('renders invite code text', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const InviteCodeDisplay(code: 'ABC123')),
-      );
+      await tester.pumpWidget(wrap(const InviteCodeDisplay(code: 'ABC123')));
       await tester.pump();
 
       expect(find.text('ABC123'), findsOneWidget);
     });
 
-    testWidgets('renders without action buttons when none provided', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const InviteCodeDisplay(code: 'XYZ789')),
-      );
+    testWidgets('renders without action buttons when none provided', (
+      tester,
+    ) async {
+      await tester.pumpWidget(wrap(const InviteCodeDisplay(code: 'XYZ789')));
       await tester.pump();
 
       expect(find.byKey(SharedKeys.inviteCodeCopyButton), findsNothing);
       expect(find.byKey(SharedKeys.inviteCodeShareButton), findsNothing);
     });
 
-    testWidgets('renders Copy Code button when onCopy is provided', (tester) async {
+    testWidgets('renders Copy Code button when onCopy is provided', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(InviteCodeDisplay(
-          code: 'DEF456',
-          onCopy: () {},
-        )),
+        wrap(InviteCodeDisplay(code: 'DEF456', onCopy: () {})),
       );
       await tester.pump();
 
       expect(find.byKey(SharedKeys.inviteCodeCopyButton), findsOneWidget);
     });
 
-    testWidgets('renders Share button when onShare is provided', (tester) async {
+    testWidgets('renders Share button when onShare is provided', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(InviteCodeDisplay(
-          code: 'GHI789',
-          onShare: () {},
-        )),
+        wrap(InviteCodeDisplay(code: 'GHI789', onShare: () {})),
       );
       await tester.pump();
 
       expect(find.byKey(SharedKeys.inviteCodeShareButton), findsOneWidget);
     });
 
-    testWidgets('renders both Copy Code and Share when both callbacks provided', (tester) async {
-      await tester.pumpWidget(
-        _wrap(InviteCodeDisplay(
-          code: 'JKL012',
-          onCopy: () {},
-          onShare: () {},
-        )),
-      );
-      await tester.pump();
+    testWidgets(
+      'renders both Copy Code and Share when both callbacks provided',
+      (tester) async {
+        await tester.pumpWidget(
+          wrap(
+            InviteCodeDisplay(code: 'JKL012', onCopy: () {}, onShare: () {}),
+          ),
+        );
+        await tester.pump();
 
-      expect(find.byKey(SharedKeys.inviteCodeCopyButton), findsOneWidget);
-      expect(find.byKey(SharedKeys.inviteCodeShareButton), findsOneWidget);
-    });
+        expect(find.byKey(SharedKeys.inviteCodeCopyButton), findsOneWidget);
+        expect(find.byKey(SharedKeys.inviteCodeShareButton), findsOneWidget);
+      },
+    );
 
     testWidgets('tapping Copy Code calls onCopy', (tester) async {
       var copied = false;
       await tester.pumpWidget(
-        _wrap(InviteCodeDisplay(
-          code: 'MNO345',
-          onCopy: () => copied = true,
-        )),
+        wrap(InviteCodeDisplay(code: 'MNO345', onCopy: () => copied = true)),
       );
       await tester.pump();
 
@@ -341,10 +317,7 @@ void main() {
     testWidgets('tapping Share calls onShare', (tester) async {
       var shared = false;
       await tester.pumpWidget(
-        _wrap(InviteCodeDisplay(
-          code: 'PQR678',
-          onShare: () => shared = true,
-        )),
+        wrap(InviteCodeDisplay(code: 'PQR678', onShare: () => shared = true)),
       );
       await tester.pump();
 
@@ -360,12 +333,14 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('GroupBalanceHero', () {
-    Widget _wrap(Widget child) =>
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: SingleChildScrollView(child: child)));
+    Widget wrap(Widget child) => MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(body: SingleChildScrollView(child: child)),
+    );
 
     testWidgets('renders GROUP BALANCES label', (tester) async {
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           GroupBalanceHero(
             totalSpent: Decimal.parse('100.000'),
             userNetBalance: Decimal.zero,
@@ -379,9 +354,11 @@ void main() {
       expect(find.text('GROUP BALANCES'), findsOneWidget);
     });
 
-    testWidgets('shows All balances settled text when userNetBalance is zero', (tester) async {
+    testWidgets('shows All balances settled text when userNetBalance is zero', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           GroupBalanceHero(
             totalSpent: Decimal.parse('50.000'),
             userNetBalance: Decimal.zero,
@@ -397,7 +374,7 @@ void main() {
 
     testWidgets('shows All settled text when balance is zero', (tester) async {
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           GroupBalanceHero(
             totalSpent: Decimal.zero,
             userNetBalance: Decimal.zero,
@@ -414,9 +391,11 @@ void main() {
       );
     });
 
-    testWidgets('shows YOU OWE label when userNetBalance is negative', (tester) async {
+    testWidgets('shows YOU OWE label when userNetBalance is negative', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           GroupBalanceHero(
             totalSpent: Decimal.parse('20.000'),
             userNetBalance: Decimal.parse('-10.000'),
@@ -430,9 +409,11 @@ void main() {
       expect(find.text('YOU OWE'), findsOneWidget);
     });
 
-    testWidgets('shows YOU ARE OWED label when userNetBalance is positive', (tester) async {
+    testWidgets('shows YOU ARE OWED label when userNetBalance is positive', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           GroupBalanceHero(
             totalSpent: Decimal.parse('20.000'),
             userNetBalance: Decimal.parse('10.000'),
@@ -446,9 +427,11 @@ void main() {
       expect(find.text('YOU ARE OWED'), findsOneWidget);
     });
 
-    testWidgets('shows Settle Up button when balance is non-zero', (tester) async {
+    testWidgets('shows Settle Up button when balance is non-zero', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           GroupBalanceHero(
             totalSpent: Decimal.parse('30.000'),
             userNetBalance: Decimal.parse('-15.000'),
@@ -465,7 +448,7 @@ void main() {
     testWidgets('calls onSettleUp when card is tapped', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           GroupBalanceHero(
             totalSpent: Decimal.parse('30.000'),
             userNetBalance: Decimal.parse('-15.000'),
@@ -482,9 +465,11 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('renders You owe text when balance is negative', (tester) async {
+    testWidgets('renders You owe text when balance is negative', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           GroupBalanceHero(
             totalSpent: Decimal.parse('40.000'),
             userNetBalance: Decimal.parse('-20.000'),
@@ -511,34 +496,42 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('SmartModuleCard', () {
-    Widget _wrap(Widget child) =>
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
+    Widget wrap(Widget child) => MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(body: child),
+    );
 
     testWidgets('renders title text', (tester) async {
       await tester.pumpWidget(
-        _wrap(SmartModuleCard(
-          icon: Iconsax.wallet_3,
-          title: 'Ledger',
-          description: 'Track expenses',
-          color: Colors.blue,
-          onTap: () {},
-        )),
+        wrap(
+          SmartModuleCard(
+            icon: Iconsax.wallet_3,
+            title: 'Ledger',
+            description: 'Track expenses',
+            color: Colors.blue,
+            onTap: () {},
+          ),
+        ),
       );
       await tester.pump();
 
       expect(find.text('Ledger'), findsOneWidget);
     });
 
-    testWidgets('renders description when isEmpty and no summaryText', (tester) async {
+    testWidgets('renders description when isEmpty and no summaryText', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(SmartModuleCard(
-          icon: Iconsax.bag_2,
-          title: 'Gear',
-          description: 'Packing list',
-          color: Colors.green,
-          onTap: () {},
-          isEmpty: true,
-        )),
+        wrap(
+          SmartModuleCard(
+            icon: Iconsax.bag_2,
+            title: 'Gear',
+            description: 'Packing list',
+            color: Colors.green,
+            onTap: () {},
+            isEmpty: true,
+          ),
+        ),
       );
       await tester.pump();
 
@@ -547,15 +540,17 @@ void main() {
 
     testWidgets('renders summaryText when not empty', (tester) async {
       await tester.pumpWidget(
-        _wrap(SmartModuleCard(
-          icon: Iconsax.wallet_3,
-          title: 'Ledger',
-          description: 'Track expenses',
-          color: Colors.blue,
-          onTap: () {},
-          summaryText: '3 expenses',
-          isEmpty: false,
-        )),
+        wrap(
+          SmartModuleCard(
+            icon: Iconsax.wallet_3,
+            title: 'Ledger',
+            description: 'Track expenses',
+            color: Colors.blue,
+            onTap: () {},
+            summaryText: '3 expenses',
+            isEmpty: false,
+          ),
+        ),
       );
       await tester.pump();
 
@@ -564,14 +559,16 @@ void main() {
 
     testWidgets('renders actionText when provided', (tester) async {
       await tester.pumpWidget(
-        _wrap(SmartModuleCard(
-          icon: Iconsax.bag_2,
-          title: 'Gear',
-          description: 'Packing',
-          color: Colors.orange,
-          onTap: () {},
-          actionText: '2 items unclaimed',
-        )),
+        wrap(
+          SmartModuleCard(
+            icon: Iconsax.bag_2,
+            title: 'Gear',
+            description: 'Packing',
+            color: Colors.orange,
+            onTap: () {},
+            actionText: '2 items unclaimed',
+          ),
+        ),
       );
       await tester.pump();
 
@@ -581,13 +578,15 @@ void main() {
     testWidgets('calls onTap when tapped', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        _wrap(SmartModuleCard(
-          icon: Iconsax.wallet_3,
-          title: 'Module',
-          description: 'Desc',
-          color: Colors.purple,
-          onTap: () => tapped = true,
-        )),
+        wrap(
+          SmartModuleCard(
+            icon: Iconsax.wallet_3,
+            title: 'Module',
+            description: 'Desc',
+            color: Colors.purple,
+            onTap: () => tapped = true,
+          ),
+        ),
       );
       await tester.pump();
 
@@ -600,13 +599,15 @@ void main() {
 
     testWidgets('renders icon', (tester) async {
       await tester.pumpWidget(
-        _wrap(SmartModuleCard(
-          icon: Iconsax.car,
-          title: 'Logistics',
-          description: 'Cars and rooms',
-          color: Colors.teal,
-          onTap: () {},
-        )),
+        wrap(
+          SmartModuleCard(
+            icon: Iconsax.car,
+            title: 'Logistics',
+            description: 'Cars and rooms',
+            color: Colors.teal,
+            onTap: () {},
+          ),
+        ),
       );
       await tester.pump();
 
@@ -615,13 +616,15 @@ void main() {
 
     testWidgets('renders chevron icon', (tester) async {
       await tester.pumpWidget(
-        _wrap(SmartModuleCard(
-          icon: Iconsax.document_text,
-          title: 'Vault',
-          description: 'Store docs',
-          color: Colors.indigo,
-          onTap: () {},
-        )),
+        wrap(
+          SmartModuleCard(
+            icon: Iconsax.document_text,
+            title: 'Vault',
+            description: 'Store docs',
+            color: Colors.indigo,
+            onTap: () {},
+          ),
+        ),
       );
       await tester.pump();
 
@@ -634,14 +637,14 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('ShimmerPlaceholder', () {
-    Widget _wrap(Widget child) =>
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(body: child));
+    Widget wrap(Widget child) => MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(body: child),
+    );
 
     testWidgets('renders with specified width and height', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          const ShimmerPlaceholder(width: 200, height: 20),
-        ),
+        wrap(const ShimmerPlaceholder(width: 200, height: 20)),
       );
       await tester.pump();
 
@@ -651,7 +654,7 @@ void main() {
 
     testWidgets('renders with custom borderRadius', (tester) async {
       await tester.pumpWidget(
-        _wrap(
+        wrap(
           const ShimmerPlaceholder(width: 100, height: 10, borderRadius: 16),
         ),
       );
@@ -662,9 +665,7 @@ void main() {
 
     testWidgets('animation runs without error on pump', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          const ShimmerPlaceholder(width: 150, height: 15),
-        ),
+        wrap(const ShimmerPlaceholder(width: 150, height: 15)),
       );
       // Run the shimmer animation for a frame
       await tester.pump(const Duration(milliseconds: 500));
@@ -674,9 +675,7 @@ void main() {
 
     testWidgets('disposes animation controller without error', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          const ShimmerPlaceholder(width: 100, height: 12),
-        ),
+        wrap(const ShimmerPlaceholder(width: 100, height: 12)),
       );
       await tester.pump();
 
@@ -699,18 +698,16 @@ void main() {
               (ref) => ConnectivityNotifier()..setOffline(),
             ),
           ],
-          child: MaterialApp(theme: AppTheme.lightTheme,
-            home: Scaffold(body: OfflineBanner()),
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const Scaffold(body: OfflineBanner()),
           ),
         ),
       );
       await tester.pump();
 
       // Offline banner shows the sync message
-      expect(
-        find.textContaining("You're offline"),
-        findsOneWidget,
-      );
+      expect(find.textContaining("You're offline"), findsOneWidget);
     });
 
     testWidgets('hides banner when online', (tester) async {
@@ -721,8 +718,9 @@ void main() {
               (ref) => ConnectivityNotifier()..setOnline(),
             ),
           ],
-          child: MaterialApp(theme: AppTheme.lightTheme,
-            home: Scaffold(body: OfflineBanner()),
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const Scaffold(body: OfflineBanner()),
           ),
         ),
       );
@@ -740,7 +738,8 @@ void main() {
   group('SkeletonLoader', () {
     testWidgets('cardList factory renders without error', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
+        MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               height: 400,
@@ -756,7 +755,8 @@ void main() {
 
     testWidgets('documentList factory renders without error', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
+        MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               height: 400,
@@ -772,7 +772,8 @@ void main() {
 
     testWidgets('groupList factory renders without error', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme,
+        MaterialApp(
+          theme: AppTheme.lightTheme,
           home: Scaffold(
             body: SizedBox(
               height: 500,
@@ -787,4 +788,3 @@ void main() {
     });
   });
 }
-

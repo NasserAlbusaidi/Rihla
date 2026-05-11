@@ -8,10 +8,8 @@ void main() {
     testWidgets('renders child widget', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-           theme: AppTheme.lightTheme,
-          home: GrainOverlay(
-            child: Text('test child'),
-          ),
+          theme: AppTheme.lightTheme,
+          home: const GrainOverlay(child: Text('test child')),
         ),
       );
 
@@ -21,10 +19,8 @@ void main() {
     testWidgets('renders a DecoratedBox', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-           theme: AppTheme.lightTheme,
-          home: GrainOverlay(
-            child: SizedBox(),
-          ),
+          theme: AppTheme.lightTheme,
+          home: const GrainOverlay(child: SizedBox()),
         ),
       );
 
@@ -41,56 +37,57 @@ void main() {
       expect(overlay.opacity, 0.02);
     });
 
-    testWidgets('GrainOverlay widget tree contains DecoratedBox with grain image', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-           theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: GrainOverlay(
-              child: Text('content'),
-            ),
+    testWidgets(
+      'GrainOverlay widget tree contains DecoratedBox with grain image',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const Scaffold(body: GrainOverlay(child: Text('content'))),
           ),
-        ),
-      );
+        );
 
-      final decoratedBox = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox)).firstWhere(
-        (box) {
-          final decoration = box.decoration;
-          if (decoration is BoxDecoration) {
-            return decoration.image?.image is AssetImage;
-          }
-          return false;
-        },
-        orElse: () => throw TestFailure('No DecoratedBox with AssetImage found'),
-      );
+        final decoratedBox = tester
+            .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+            .firstWhere(
+              (box) {
+                final decoration = box.decoration;
+                if (decoration is BoxDecoration) {
+                  return decoration.image?.image is AssetImage;
+                }
+                return false;
+              },
+              orElse: () =>
+                  throw TestFailure('No DecoratedBox with AssetImage found'),
+            );
 
-      final decoration = decoratedBox.decoration as BoxDecoration;
-      final assetImage = decoration.image!.image as AssetImage;
-      expect(assetImage.assetName, 'assets/textures/grain.png');
-    });
+        final decoration = decoratedBox.decoration as BoxDecoration;
+        final assetImage = decoration.image!.image as AssetImage;
+        expect(assetImage.assetName, 'assets/textures/grain.png');
+      },
+    );
 
     testWidgets('grain image uses ImageRepeat.repeat', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-           theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: GrainOverlay(
-              child: SizedBox(),
-            ),
-          ),
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(body: GrainOverlay(child: SizedBox())),
         ),
       );
 
-      final decoratedBox = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox)).firstWhere(
-        (box) {
-          final decoration = box.decoration;
-          if (decoration is BoxDecoration) {
-            return decoration.image?.image is AssetImage;
-          }
-          return false;
-        },
-        orElse: () => throw TestFailure('No DecoratedBox with AssetImage found'),
-      );
+      final decoratedBox = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .firstWhere(
+            (box) {
+              final decoration = box.decoration;
+              if (decoration is BoxDecoration) {
+                return decoration.image?.image is AssetImage;
+              }
+              return false;
+            },
+            orElse: () =>
+                throw TestFailure('No DecoratedBox with AssetImage found'),
+          );
 
       final decoration = decoratedBox.decoration as BoxDecoration;
       expect(decoration.image!.repeat, ImageRepeat.repeat);
@@ -100,26 +97,26 @@ void main() {
       const testOpacity = 0.05;
       await tester.pumpWidget(
         MaterialApp(
-           theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: GrainOverlay(
-              opacity: testOpacity,
-              child: SizedBox(),
-            ),
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: GrainOverlay(opacity: testOpacity, child: SizedBox()),
           ),
         ),
       );
 
-      final decoratedBox = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox)).firstWhere(
-        (box) {
-          final decoration = box.decoration;
-          if (decoration is BoxDecoration) {
-            return decoration.image?.image is AssetImage;
-          }
-          return false;
-        },
-        orElse: () => throw TestFailure('No DecoratedBox with AssetImage found'),
-      );
+      final decoratedBox = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .firstWhere(
+            (box) {
+              final decoration = box.decoration;
+              if (decoration is BoxDecoration) {
+                return decoration.image?.image is AssetImage;
+              }
+              return false;
+            },
+            orElse: () =>
+                throw TestFailure('No DecoratedBox with AssetImage found'),
+          );
 
       final decoration = decoratedBox.decoration as BoxDecoration;
       expect(decoration.image!.opacity, testOpacity);

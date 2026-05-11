@@ -73,10 +73,7 @@ final _balancesOwed = (
     'uid-alice': {'event-1': Decimal.parse('7.750')},
     'uid-bob': {'event-1': Decimal.parse('-7.750')},
   },
-  memberNames: <String, String>{
-    'uid-alice': 'Alice',
-    'uid-bob': 'Bob',
-  },
+  memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
 /// All-settled GroupBalances: everyone at zero.
@@ -100,10 +97,7 @@ final _balancesSettled = (
   totalSpent: Decimal.zero,
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
-  memberNames: <String, String>{
-    'uid-alice': 'Alice',
-    'uid-bob': 'Bob',
-  },
+  memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
 /// Test settlements for History tab.
@@ -149,16 +143,16 @@ Widget _wrap(
 }) {
   return ProviderScope(
     overrides: [
-      groupDetailProvider(_groupId).overrideWith(
-        (_) => Stream.value(_testGroup),
-      ),
+      groupDetailProvider(
+        _groupId,
+      ).overrideWith((_) => Stream.value(_testGroup)),
       groupBalancesProvider(_groupId).overrideWith((_) => balancesAsync),
-      groupSettlementsProvider(_groupId).overrideWith(
-        (_) => Stream.value(settlements ?? []),
-      ),
-      groupEventsProvider(_groupId).overrideWith(
-        (_) => Stream.value(events ?? []),
-      ),
+      groupSettlementsProvider(
+        _groupId,
+      ).overrideWith((_) => Stream.value(settlements ?? [])),
+      groupEventsProvider(
+        _groupId,
+      ).overrideWith((_) => Stream.value(events ?? [])),
       // Always override to avoid FirebaseException in tests
       currentUserIdProvider.overrideWithValue(currentUid),
     ],
@@ -181,11 +175,12 @@ void main() {
     // Basic rendering
     // -----------------------------------------------------------------------
 
-    testWidgets('shows screen title and GROUP TOTAL PENDING label',
-        (tester) async {
+    testWidgets('shows screen title and GROUP TOTAL PENDING label', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -195,28 +190,31 @@ void main() {
       expect(find.text('GROUP TOTAL PENDING'), findsOneWidget);
     });
 
-    testWidgets('shows 4 tab labels: You Owe, Owed to You, Between Others, History',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
-          balancesAsync: AsyncValue.data(_balancesOwed),
-        ),
-      );
-      await tester.pump();
+    testWidgets(
+      'shows 4 tab labels: You Owe, Owed to You, Between Others, History',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+          ),
+        );
+        await tester.pump();
 
-      expect(find.text('You Owe'), findsOneWidget);
-      expect(find.text('Owed to You'), findsOneWidget);
-      expect(find.text('Between Others'), findsOneWidget);
-      expect(find.text('History'), findsOneWidget);
-    });
+        expect(find.text('You Owe'), findsOneWidget);
+        expect(find.text('Owed to You'), findsOneWidget);
+        expect(find.text('Between Others'), findsOneWidget);
+        expect(find.text('History'), findsOneWidget);
+      },
+    );
 
-    testWidgets('shows optimized settlement tiles with member names',
-        (tester) async {
+    testWidgets('shows optimized settlement tiles with member names', (
+      tester,
+    ) async {
       // With uid-bob as current user, they owe Alice — appears on You Owe tab
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           currentUid: 'uid-bob',
         ),
@@ -224,14 +222,17 @@ void main() {
       await tester.pumpAndSettle();
 
       // The Record Payment button is visible — a tile is rendered
-      expect(find.text('Record Payment'), findsOneWidget,
-          reason: 'Settlement tile should be visible on You Owe tab for uid-bob');
+      expect(
+        find.text('Record Payment'),
+        findsOneWidget,
+        reason: 'Settlement tile should be visible on You Owe tab for uid-bob',
+      );
     });
 
     testWidgets('shows OMR amount with correct decimal format', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -243,7 +244,7 @@ void main() {
     testWidgets('GROUP TOTAL PENDING shows 7.750 OMR', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -260,7 +261,7 @@ void main() {
       // uid-bob owes Alice — should appear on first (You Owe) tab
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           currentUid: 'uid-bob',
         ),
@@ -275,12 +276,13 @@ void main() {
       expect(find.text('Record Payment'), findsOneWidget);
     });
 
-    testWidgets('shows per-tab empty state when You Owe has no items',
-        (tester) async {
+    testWidgets('shows per-tab empty state when You Owe has no items', (
+      tester,
+    ) async {
       // uid-alice is the creditor, so You Owe tab is empty for her
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           currentUid: 'uid-alice',
         ),
@@ -295,30 +297,32 @@ void main() {
     // History tab
     // -----------------------------------------------------------------------
 
-    testWidgets('History tab shows past settlements from groupSettlementsProvider',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
-          balancesAsync: AsyncValue.data(_balancesOwed),
-          settlements: [_testSettlement1, _testSettlement2],
-        ),
-      );
-      await tester.pump();
+    testWidgets(
+      'History tab shows past settlements from groupSettlementsProvider',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            settlements: [_testSettlement1, _testSettlement2],
+          ),
+        );
+        await tester.pump();
 
-      // Tap the History tab text
-      await tester.tap(find.text('History'));
-      await tester.pumpAndSettle();
+        // Tap the History tab text
+        await tester.tap(find.text('History'));
+        await tester.pumpAndSettle();
 
-      // History tile shows payer/recipient names
-      expect(find.textContaining('Bob'), findsWidgets);
-      expect(find.textContaining('Alice'), findsWidgets);
-    });
+        // History tile shows payer/recipient names
+        expect(find.textContaining('Bob'), findsWidgets);
+        expect(find.textContaining('Alice'), findsWidgets);
+      },
+    );
 
     testWidgets('History tab empty state when no settlements', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           settlements: const [],
         ),
@@ -336,11 +340,12 @@ void main() {
     // Card-style tiles
     // -----------------------------------------------------------------------
 
-    testWidgets('card-style settlement tiles: tab bar is present',
-        (tester) async {
+    testWidgets('card-style settlement tiles: tab bar is present', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           events: [_testEvent],
         ),
@@ -355,11 +360,12 @@ void main() {
     // All-settled state (D-06)
     // -----------------------------------------------------------------------
 
-    testWidgets('all settled state shows when no settlements and no history',
-        (tester) async {
+    testWidgets('all settled state shows when no settlements and no history', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesSettled),
           settlements: const [],
         ),
@@ -369,30 +375,34 @@ void main() {
       expect(find.text('All settled up'), findsOneWidget);
     });
 
-    testWidgets('all-settled state shows "Everyone is square" body text',
-        (tester) async {
+    testWidgets('all-settled state shows "Everyone is square" body text', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesSettled),
           settlements: const [],
         ),
       );
       await tester.pump();
 
-      expect(find.text('Everyone is square. No outstanding amounts.'),
-          findsOneWidget);
+      expect(
+        find.text('Everyone is square. No outstanding amounts.'),
+        findsOneWidget,
+      );
     });
 
     // -----------------------------------------------------------------------
     // Loading and error states
     // -----------------------------------------------------------------------
 
-    testWidgets('shows loading indicator while balances are loading',
-        (tester) async {
+    testWidgets('shows loading indicator while balances are loading', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: const AsyncValue.loading(),
         ),
       );
@@ -401,11 +411,12 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('shows error state with Retry button on balance fetch error',
-        (tester) async {
+    testWidgets('shows error state with Retry button on balance fetch error', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.error(
             Exception('Network error'),
             StackTrace.current,
@@ -421,11 +432,12 @@ void main() {
     // Record Payment bottom sheet (D-05)
     // -----------------------------------------------------------------------
 
-    testWidgets('Record Payment bottom sheet shows "Record Payment" button',
-        (tester) async {
+    testWidgets('Record Payment bottom sheet shows "Record Payment" button', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           currentUid: 'uid-bob',
         ),
@@ -449,7 +461,7 @@ void main() {
     testWidgets('tapping Record Payment shows bottom sheet', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           currentUid: 'uid-bob',
         ),
@@ -470,7 +482,7 @@ void main() {
     testWidgets('Not Now button dismisses bottom sheet', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           currentUid: 'uid-bob',
         ),
@@ -497,11 +509,12 @@ void main() {
     // preSelectedMemberId
     // -----------------------------------------------------------------------
 
-    testWidgets('renders with preSelectedMemberId without crashing',
-        (tester) async {
+    testWidgets('renders with preSelectedMemberId without crashing', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(
+          const GroupSettleUpScreen(
             groupId: _groupId,
             preSelectedMemberId: 'uid-bob',
           ),
@@ -517,11 +530,12 @@ void main() {
     // Per-event breakdown
     // -----------------------------------------------------------------------
 
-    testWidgets('per-event breakdown shows event name and date (happy path)',
-        (tester) async {
+    testWidgets('per-event breakdown shows event name and date (happy path)', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
           events: [_testEvent],
           currentUid: 'uid-bob',
@@ -531,8 +545,11 @@ void main() {
 
       // Tile is visible on the You Owe tab
       final tileFinder = find.byType(GroupSettlementTile);
-      expect(tileFinder, findsOneWidget,
-          reason: 'Settlement tile should be visible on You Owe tab');
+      expect(
+        tileFinder,
+        findsOneWidget,
+        reason: 'Settlement tile should be visible on You Owe tab',
+      );
 
       // The tile widget should exist and the screen should render correctly
       // (breakdown is collapsible — expanded state tested via tile widget directly)
@@ -541,26 +558,27 @@ void main() {
     });
 
     testWidgets(
-        'per-event breakdown falls back to eventId label when event not in map',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
-          balancesAsync: AsyncValue.data(_balancesOwed),
-          events: const [],
-          currentUid: 'uid-bob',
-        ),
-      );
-      await tester.pumpAndSettle();
+      'per-event breakdown falls back to eventId label when event not in map',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            events: const [],
+            currentUid: 'uid-bob',
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Renders without error; per-event breakdown not visible until expand
-      expect(find.text('Settle Up'), findsOneWidget);
-    });
+        // Renders without error; per-event breakdown not visible until expand
+        expect(find.text('Settle Up'), findsOneWidget);
+      },
+    );
 
     testWidgets('renders Settle Up title and tab bar', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          GroupSettleUpScreen(groupId: _groupId),
+          const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
         ),
       );
@@ -578,7 +596,9 @@ void main() {
       'GroupStatsGrid shows "You owe" subtitle for negative balance',
       (tester) async {
         await tester.pumpWidget(
-          MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
               body: GroupStatsGrid(
                 userNetBalance: Decimal.parse('-5.000'),
                 groupTotal: Decimal.parse('20.000'),
@@ -599,7 +619,9 @@ void main() {
       'GroupStatsGrid shows "Owed to you" subtitle for positive balance',
       (tester) async {
         await tester.pumpWidget(
-          MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
               body: GroupStatsGrid(
                 userNetBalance: Decimal.parse('5.000'),
                 groupTotal: Decimal.parse('20.000'),

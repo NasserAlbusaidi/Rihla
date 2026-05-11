@@ -83,7 +83,7 @@ void main() {
             balancesData: _emptyBalances,
             settlementsAsync: const AsyncValue.data([]),
             currentUid: null,
-            tileKeys: {},
+            tileKeys: const {},
             onRecord:
                 ({
                   required settlement,
@@ -93,7 +93,7 @@ void main() {
                   required toUserId,
                   required suggestedAmount,
                 }) {},
-            buildBreakdown: (_, __) => {},
+            buildBreakdown: (_, _) => {},
           ),
         ),
       );
@@ -124,7 +124,7 @@ void main() {
             balancesData: _emptyBalances,
             settlementsAsync: const AsyncValue.data([]),
             currentUid: 'uid-alice',
-            tileKeys: {},
+            tileKeys: const {},
             onRecord:
                 ({
                   required settlement,
@@ -134,7 +134,7 @@ void main() {
                   required toUserId,
                   required suggestedAmount,
                 }) {},
-            buildBreakdown: (_, __) => {},
+            buildBreakdown: (_, _) => {},
           ),
         ),
       );

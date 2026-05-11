@@ -264,7 +264,7 @@ void main() {
   });
 
   group('HomeScreen dashboard - empty state', () {
-    List<Override> _emptyOverrides() => [
+    List<Override> emptyOverrides() => [
       userGroupsProvider.overrideWith((ref) => Stream.value([])),
       crossGroupBalanceProvider.overrideWith(
         (ref) => AsyncValue.data((
@@ -297,7 +297,7 @@ void main() {
         await tester.pumpWidget(
           _buildTestApp(
             const HomeScreen(),
-            overrides: _emptyOverrides(),
+            overrides: emptyOverrides(),
             prefs: prefs,
           ),
         );
@@ -313,7 +313,7 @@ void main() {
         await tester.pumpWidget(
           _buildTestApp(
             const HomeScreen(),
-            overrides: _emptyOverrides(),
+            overrides: emptyOverrides(),
             prefs: prefs,
           ),
         );
@@ -325,7 +325,7 @@ void main() {
   });
 
   group('HomeScreen dashboard - error state', () {
-    List<Override> _errorOverrides() => [
+    List<Override> errorOverrides() => [
       userGroupsProvider.overrideWith(
         (ref) => Stream.error(Exception('Network error')),
       ),
@@ -360,7 +360,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
-          overrides: _errorOverrides(),
+          overrides: errorOverrides(),
           prefs: prefs,
         ),
       );
@@ -373,7 +373,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
-          overrides: _errorOverrides(),
+          overrides: errorOverrides(),
           prefs: prefs,
         ),
       );
@@ -384,7 +384,7 @@ void main() {
   });
 
   group('HomeScreen dashboard - bottom navigation', () {
-    List<Override> _navOverrides() => [
+    List<Override> navOverrides() => [
       userGroupsProvider.overrideWith((ref) => Stream.value([_group1])),
       crossGroupBalanceProvider.overrideWith(
         (ref) => AsyncValue.data((
@@ -423,7 +423,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
-          overrides: _navOverrides(),
+          overrides: navOverrides(),
           prefs: prefs,
         ),
       );
@@ -443,7 +443,7 @@ void main() {
       await tester.pumpWidget(
         _buildTestApp(
           const HomeScreen(),
-          overrides: _navOverrides(),
+          overrides: navOverrides(),
           prefs: prefs,
         ),
       );
@@ -581,7 +581,7 @@ void main() {
   });
 
   group('HomeScreen dashboard - journey and group enrichment', () {
-    List<Override> _enrichmentOverrides({List<Event>? events}) => [
+    List<Override> enrichmentOverrides({List<Event>? events}) => [
       userGroupsProvider.overrideWith(
         (ref) => Stream.value([_makeGroup('g1', 'Desert Crew')]),
       ),
@@ -619,7 +619,7 @@ void main() {
         _buildTestApp(
           const HomeScreen(),
           prefs: prefs,
-          overrides: _enrichmentOverrides(
+          overrides: enrichmentOverrides(
             events: [_makeEvent('e1', 'Camping Trip', EventType.camping)],
           ),
         ),
@@ -637,7 +637,7 @@ void main() {
         _buildTestApp(
           const HomeScreen(),
           prefs: prefs,
-          overrides: _enrichmentOverrides(
+          overrides: enrichmentOverrides(
             events: [_makeEvent('e1', 'Camping Trip', EventType.camping)],
           ),
         ),
@@ -657,7 +657,7 @@ void main() {
         _buildTestApp(
           const HomeScreen(),
           prefs: prefs,
-          overrides: _enrichmentOverrides(
+          overrides: enrichmentOverrides(
             events: [
               _makeEvent(
                 'e1',
@@ -684,7 +684,7 @@ void main() {
         _buildTestApp(
           const HomeScreen(),
           prefs: prefs,
-          overrides: _enrichmentOverrides(events: []),
+          overrides: enrichmentOverrides(events: []),
         ),
       );
       await tester.pumpAndSettle();
@@ -699,7 +699,7 @@ void main() {
         _buildTestApp(
           const HomeScreen(),
           prefs: prefs,
-          overrides: _enrichmentOverrides(),
+          overrides: enrichmentOverrides(),
         ),
       );
       await tester.pumpAndSettle();
