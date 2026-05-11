@@ -59,11 +59,7 @@ class GroupDangerSection extends ConsumerWidget {
   Widget _buildSectionHeader(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          Iconsax.warning_2,
-          size: 16,
-          color: context.colors.errorText,
-        ),
+        Icon(Iconsax.warning_2, size: 16, color: context.colors.errorText),
         const SizedBox(width: 6),
         Text(
           'DANGER ZONE',
@@ -265,6 +261,9 @@ class GroupDangerSection extends ConsumerWidget {
   }
 
   Future<void> _executeLeave(BuildContext context, WidgetRef ref) async {
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     // Bug 9: Block leave if current user has an outstanding balance.
     final uid = FirebaseConfig.currentUser?.uid;
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
@@ -296,32 +295,33 @@ class GroupDangerSection extends ConsumerWidget {
       final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
           ? ref.read(settingsProvider).deviceName
           : 'Someone';
-      ref.read(groupActivityServiceProvider).logGroupEvent(
-        groupId: groupId,
-        type: 'member_left',
-        actorId: actorId,
-        actorName: actorName,
-        description: 'left the group',
-      );
+      ref
+          .read(groupActivityServiceProvider)
+          .logGroupEvent(
+            groupId: groupId,
+            type: 'member_left',
+            actorId: actorId,
+            actorName: actorName,
+            description: 'left the group',
+          );
     } catch (_) {
       // Activity logging failure must never crash the leave flow.
     }
 
     try {
       await ref.read(groupServiceProvider).leaveGroup(groupId: groupId);
-      if (context.mounted) {
-        context.go('/home');
-      }
+      router.go('/home');
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to leave group: $e')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to leave group: $e')),
+      );
     }
   }
 
   Future<void> _executeDelete(BuildContext context, WidgetRef ref) async {
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     // Bug 9: Block delete if ANY member has an outstanding balance.
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
@@ -345,15 +345,11 @@ class GroupDangerSection extends ConsumerWidget {
 
     try {
       await ref.read(groupServiceProvider).deleteGroup(groupId: groupId);
-      if (context.mounted) {
-        context.go('/home');
-      }
+      router.go('/home');
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete group: $e')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to delete group: $e')),
+      );
     }
   }
 }

@@ -181,6 +181,17 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(eve.doc('inviteCodes/ABC123').delete());
   });
 
+  test('creator can atomically delete group, member docs, and invite code', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const batch = owner.batch();
+    batch.delete(owner.doc('groups/g1/members/owner'));
+    batch.delete(owner.doc('groups/g1/members/member'));
+    batch.delete(owner.doc('inviteCodes/ABC123'));
+    batch.delete(owner.doc('groups/g1'));
+
+    await assertSucceeds(batch.commit());
+  });
+
   test('non-member cannot join by directly overwriting memberIds', async () => {
     const eve = testEnv.authenticatedContext('eve').firestore();
     await assertFails(eve.doc('groups/g1').update({
