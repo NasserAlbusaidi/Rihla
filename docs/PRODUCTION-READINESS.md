@@ -6,6 +6,15 @@ This checklist tracks the remaining launch gates for the Firebase project
 `rihla-safar` and the mobile apps. Treat checked items as verified from the
 commands listed here, not as permanent guarantees.
 
+Run the consolidated read-only audit:
+
+```bash
+bash tool/check_release_readiness.sh
+```
+
+It should fail until Firebase Storage, Firebase Functions deployment, and
+physical-device QA are complete.
+
 ## Verified
 
 - [x] Android release bundle builds locally.
