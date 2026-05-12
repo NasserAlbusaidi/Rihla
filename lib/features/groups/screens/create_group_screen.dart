@@ -390,6 +390,8 @@ class _WireframeTextField extends StatelessWidget {
               color: colors.errorText,
               height: 1.3,
             ),
+            // textMuted-decorative-justified: placeholder copy is non-functional guidance;
+            // field labels and validation errors carry the required meaning.
             hintStyle: AppTypography.sans(
               fontSize: 17,
               color: colors.textMuted,
