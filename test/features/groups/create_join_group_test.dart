@@ -43,17 +43,35 @@ void main() {
       );
     }
 
-    testWidgets('renders AppBar with New Group title', (tester) async {
+    testWidgets('renders top bar with New group title', (tester) async {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
-      expect(find.text('New Group'), findsOneWidget);
+      expect(find.text('New group'), findsOneWidget);
+    });
+
+    testWidgets('renders Create Group wireframe content', (tester) async {
+      await tester.pumpWidget(await buildCreateScreen());
+      await tester.pump();
+      expect(find.text("Who's coming along?"), findsOneWidget);
+      expect(
+        find.text(
+          'A group is a circle of people you share expenses with — a household, a travel crew, a project team.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Group glyph'), findsOneWidget);
+      expect(find.text('⛺'), findsOneWidget);
+      expect(find.text('⌂'), findsOneWidget);
+      expect(find.text('Default currency'), findsOneWidget);
+      expect(find.text('OMR · ر.ع.'), findsOneWidget);
+      expect(find.text("You're the creator."), findsOneWidget);
     });
 
     testWidgets('renders Group Name label and hint', (tester) async {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
       expect(find.text('Group Name'), findsOneWidget);
-      expect(find.text('Enter group name'), findsOneWidget);
+      expect(find.text('e.g. Family trip'), findsOneWidget);
     });
 
     testWidgets('renders Your name in this group label', (tester) async {
@@ -88,10 +106,10 @@ void main() {
       expect(find.text('Test User'), findsOneWidget);
     });
 
-    testWidgets('renders Create Group button', (tester) async {
+    testWidgets('renders top-bar Create action', (tester) async {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
-      expect(find.text('Create Group'), findsOneWidget);
+      expect(find.text('Create'), findsOneWidget);
     });
 
     testWidgets('shows CircularProgressIndicator when loading is true', (
@@ -108,8 +126,8 @@ void main() {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
 
-      // Tap Create Group without filling the group name field
-      await tester.tap(find.text('Create Group'));
+      // Tap Create without filling the group name field
+      await tester.tap(find.text('Create'));
       await tester.pumpAndSettle();
 
       expect(find.text("Group name can't be empty."), findsOneWidget);
@@ -136,7 +154,7 @@ void main() {
       // Type group name but leave display name blank
       final nameFields = find.byType(TextFormField);
       await tester.enterText(nameFields.first, 'My Group');
-      await tester.tap(find.text('Create Group'));
+      await tester.tap(find.text('Create'));
       await tester.pumpAndSettle();
 
       expect(
@@ -150,7 +168,7 @@ void main() {
       });
     });
 
-    testWidgets('renders close button in AppBar', (tester) async {
+    testWidgets('renders close button in top bar', (tester) async {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
       expect(find.byType(CloseButton), findsOneWidget);
