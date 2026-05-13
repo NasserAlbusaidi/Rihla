@@ -35,6 +35,7 @@ class AppRoutes {
   // Groups routes (Phase 2)
   static const String createGroup = '/create-group';
   static const String joinGroup = '/join-group';
+  static const String joinInvite = '/join/:code';
   static const String groupDetail = '/group/:gid';
   static const String groupSettings = '/group/:gid/settings';
   // Group-level routes (Phase 19)
@@ -82,8 +83,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: kDebugMode,
     redirect: (context, state) {
-      final onboardingComplete = ref
-          .read(settingsProvider.select((s) => s.onboardingComplete));
+      final onboardingComplete = ref.read(
+        settingsProvider.select((s) => s.onboardingComplete),
+      );
       final location = state.matchedLocation;
 
       if (location == AppRoutes.splash) {
@@ -159,6 +161,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const JoinGroupScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+              child: child,
+            );
+          },
+        ),
+      ),
+
+      GoRoute(
+        path: AppRoutes.joinInvite,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: JoinGroupScreen(
+            initialInviteCode: state.pathParameters['code'],
+          ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position:

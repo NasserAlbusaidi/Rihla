@@ -18,7 +18,9 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 /// auto-submits when 6 characters are entered. Single step — no name
 /// claiming after join (D-12).
 class JoinGroupScreen extends ConsumerStatefulWidget {
-  const JoinGroupScreen({super.key});
+  const JoinGroupScreen({super.key, this.initialInviteCode});
+
+  final String? initialInviteCode;
 
   @override
   ConsumerState<JoinGroupScreen> createState() => _JoinGroupScreenState();
@@ -28,6 +30,18 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   final _codeController = TextEditingController();
   final _nameController = TextEditingController();
   bool _didInitName = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialInviteCode = widget.initialInviteCode?.trim().toUpperCase();
+    if (initialInviteCode == null || initialInviteCode.isEmpty) return;
+
+    _codeController.value = TextEditingValue(
+      text: initialInviteCode,
+      selection: TextSelection.collapsed(offset: initialInviteCode.length),
+    );
+  }
 
   @override
   void dispose() {
@@ -42,9 +56,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
     final trimmedName = _nameController.text.trim();
     if (trimmedName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter your name first.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter your name first.')));
       return;
     }
 
@@ -55,9 +69,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
 
     try {
-      final group = await ref.read(groupServiceProvider).joinGroup(
-            inviteCode: _codeController.text.trim(),
-          );
+      final group = await ref
+          .read(groupServiceProvider)
+          .joinGroup(inviteCode: _codeController.text.trim());
       ref.read(groupLoadingProvider.notifier).state = false;
 
       // Log member_joined activity (D-14) — fire-and-forget, no await
@@ -66,14 +80,16 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
         final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
             ? ref.read(settingsProvider).deviceName
             : 'Someone';
-        ref.read(groupActivityServiceProvider).logGroupEvent(
-          groupId: group.id,
-          type: 'member_joined',
-          actorId: actorId,
-          actorName: actorName,
-          description: 'joined the group',
-          metadata: {'groupId': group.id},
-        );
+        ref
+            .read(groupActivityServiceProvider)
+            .logGroupEvent(
+              groupId: group.id,
+              type: 'member_joined',
+              actorId: actorId,
+              actorName: actorName,
+              description: 'joined the group',
+              metadata: {'groupId': group.id},
+            );
       } catch (_) {
         // Activity logging failure must never crash the join flow.
       }
@@ -124,8 +140,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
         leading: const BackButton(),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -164,8 +179,8 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                   Text(
                     'Ask a group member for their 6-character code',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: context.colors.textSecondary,
-                        ),
+                      color: context.colors.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 16),
 

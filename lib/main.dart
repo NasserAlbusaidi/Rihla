@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -19,6 +20,7 @@ import 'core/theme/app_theme.dart';
 import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/theme/tokens/color_tokens.dart';
+import 'core/services/deep_link_service.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
 ///
@@ -150,11 +152,25 @@ class _AuthGateState extends State<_AuthGate> {
 }
 
 /// Main application widget
-class SafarApp extends ConsumerWidget {
+class SafarApp extends ConsumerStatefulWidget {
   const SafarApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SafarApp> createState() => _SafarAppState();
+}
+
+class _SafarAppState extends ConsumerState<SafarApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(DeepLinkService.instance.init(ref.read(routerProvider)));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final settings = ref.watch(settingsProvider);
     // Activate bootstrap listeners (notification sync, etc.)
