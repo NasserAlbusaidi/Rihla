@@ -22,7 +22,7 @@ import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
 import '../../features/activity/screens/activity_feed_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
-import '../theme/tokens/domain_aliases.dart';
+import '../screens/splash_screen.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
@@ -86,7 +86,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Splash - auto-redirects to /home
       GoRoute(
         path: AppRoutes.splash,
-        builder: (context, state) => const _SplashScreen(),
+        builder: (context, state) => const SplashScreen(),
       ),
 
       // Home / Trip List
@@ -109,12 +109,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const CreateGroupScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 1),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              ),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             );
           },
@@ -129,12 +133,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const JoinGroupScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 1),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              ),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             );
           },
@@ -154,8 +162,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'settings',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child:
-                  GroupSettingsScreen(groupId: state.pathParameters['gid']!),
+              child: GroupSettingsScreen(groupId: state.pathParameters['gid']!),
               transitionsBuilder: _sharedAxisTransition,
             ),
           ),
@@ -167,8 +174,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: GroupSettleUpScreen(
                 groupId: state.pathParameters['gid']!,
-                preSelectedMemberId:
-                    state.uri.queryParameters['memberId'],
+                preSelectedMemberId: state.uri.queryParameters['memberId'],
               ),
               transitionsBuilder: _sharedAxisTransition,
             ),
@@ -179,9 +185,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'activity',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: GroupActivityScreen(
-                groupId: state.pathParameters['gid']!,
-              ),
+              child: GroupActivityScreen(groupId: state.pathParameters['gid']!),
               transitionsBuilder: _sharedAxisTransition,
             ),
           ),
@@ -331,29 +335,3 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
-
-/// Splash screen that auto-redirects -- branded loading
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // Warm-sand splash/pre-hydration frame — deliberate brand identity,
-      // intentionally NOT theme-aware. Stays constant across light/dark.
-      // design-token-justified: splash brand background, pre-hydration frame
-      backgroundColor: const Color(0xFFF2E8D6),
-      body: Center(
-        child: Text(
-          'Rihla',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            color: context.colors.textPrimary,
-            fontFamily: 'Plus Jakarta Sans',
-          ),
-        ),
-      ),
-    );
-  }
-}

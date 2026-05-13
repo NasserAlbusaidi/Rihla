@@ -27,8 +27,8 @@ import '../providers/group_provider.dart';
 ///  1. Cover header (168px + status bar) — algorithmic cover art, dark
 ///     gradient overlay, floating back + overflow buttons, group name in
 ///     italic display with mono "GROUP · N MEMBERS" caption.
-///  2. Balance card — lifts over the cover by 20px. Italic header + member
-///     avatar stack + RAmount(sign) + sage/rust caption + two CTAs
+///  2. Balance card — sits below the cover with a comfortable gap. Italic
+///     header + member avatar stack + RAmount(sign) + sage/rust caption + two CTAs
 ///     (New event · Settle up).
 ///  3. Events section — `SectionHeader` with member-visible "New event" action,
 ///     then per-event rows (56×56 cover swatch · mono type label · name ·
@@ -96,30 +96,25 @@ class _Content extends ConsumerWidget {
         slivers: [
           SliverToBoxAdapter(child: _CoverHeader(group: group)),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
             sliver: SliverToBoxAdapter(
-              child: Transform.translate(
-                offset: const Offset(0, -20),
-                child: _BalanceCard(
-                  group: group,
-                  userNet: userNet,
-                  memberNames:
-                      balances?.memberNames.values.toList() ?? const <String>[],
-                  onAddPrimary: () {
-                    HapticService.lightClick();
-                    GoRouter.of(
-                      context,
-                    ).push('/group/${group.id}/create-event');
-                  },
-                  onSettleUp: () {
-                    HapticService.lightClick();
-                    GoRouter.of(context).push('/group/${group.id}/settle-up');
-                  },
-                ).animate().fadeIn(delay: 80.ms, duration: 360.ms),
-              ),
+              child: _BalanceCard(
+                group: group,
+                userNet: userNet,
+                memberNames:
+                    balances?.memberNames.values.toList() ?? const <String>[],
+                onAddPrimary: () {
+                  HapticService.lightClick();
+                  GoRouter.of(context).push('/group/${group.id}/create-event');
+                },
+                onSettleUp: () {
+                  HapticService.lightClick();
+                  GoRouter.of(context).push('/group/${group.id}/settle-up');
+                },
+              ).animate().fadeIn(delay: 80.ms, duration: 360.ms),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 6)),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
           SliverToBoxAdapter(
             child: SectionHeader(
               key: GroupKeys.eventsSection,
@@ -278,7 +273,7 @@ class _CoverHeader extends StatelessWidget {
           Positioned(
             left: 20,
             right: 20,
-            bottom: 14,
+            top: statusBar + 56,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -286,7 +281,7 @@ class _CoverHeader extends StatelessWidget {
                   'GROUP · $memberCount MEMBER${memberCount == 1 ? '' : 'S'}',
                   style: AppTypography.mono(
                     fontSize: 9,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: context.colors.textOnPrimary.withValues(alpha: 0.85),
                     letterSpacing: 2,
                   ),
                 ),
@@ -297,9 +292,8 @@ class _CoverHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.display(
                     fontSize: 30,
-                    color: Colors.white,
+                    color: context.colors.textOnPrimary,
                     height: 1.05,
-                    letterSpacing: -0.5,
                   ),
                 ),
               ],
@@ -344,13 +338,16 @@ class _OverflowMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final spacing = context.spacing;
     return Material(
       color: colors.cardSurface.withValues(alpha: 0.94),
       shape: const CircleBorder(),
       elevation: 1,
       child: PopupMenuButton<String>(
         tooltip: 'More',
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(spacing.radiusLarge),
+        ),
         offset: const Offset(0, 44),
         icon: Icon(Iconsax.more, size: 18, color: colors.textPrimary),
         padding: EdgeInsets.zero,
@@ -409,6 +406,7 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final spacing = context.spacing;
     final isPositive = userNet > Decimal.zero;
     final isNegative = userNet < Decimal.zero;
     final tone = isPositive
@@ -430,7 +428,7 @@ class _BalanceCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(spacing.radiusLarge),
         boxShadow: context.shadows.raised,
       ),
       padding: const EdgeInsets.all(18),
@@ -516,12 +514,13 @@ class _PrimaryCtaButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final spacing = context.spacing;
     return Material(
       color: colors.primary,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(spacing.radiusMedium),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(spacing.radiusMedium),
         child: Container(
           height: 42,
           alignment: Alignment.center,
@@ -559,18 +558,19 @@ class _SecondaryCtaButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final spacing = context.spacing;
     return Material(
       color: colors.cardSoft,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(spacing.radiusMedium),
       child: InkWell(
         key: buttonKey,
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(spacing.radiusMedium),
         child: Container(
           height: 42,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(spacing.radiusMedium),
             border: Border.all(color: colors.rule, width: 0.5),
           ),
           child: Text(
@@ -605,6 +605,7 @@ class _EventRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final spacing = context.spacing;
     final dateLabel = _formatDates(event.startDate, event.endDate);
     final subtitle = dateLabel ?? _eventTypeLabel(event.type);
     final share = userShare ?? Decimal.zero;
@@ -620,7 +621,7 @@ class _EventRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(spacing.radiusMedium),
                   child: SizedBox(
                     width: 56,
                     height: 56,
@@ -756,6 +757,7 @@ class _MembersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final spacing = context.spacing;
     final data = balancesAsync.valueOrNull;
 
     if (data == null || data.balances.isEmpty) {
@@ -763,7 +765,7 @@ class _MembersCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
         decoration: BoxDecoration(
           color: colors.cardSurface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(spacing.radiusLarge),
           boxShadow: context.shadows.raised,
         ),
         child: Text(
@@ -777,7 +779,7 @@ class _MembersCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(spacing.radiusLarge),
         boxShadow: context.shadows.raised,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),

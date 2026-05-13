@@ -42,11 +42,14 @@ class SettlementTabContent extends StatelessWidget {
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
-  }) onRecord;
+  })
+  onRecord;
 
   /// Builds the per-event breakdown for a settlement pair.
   final Map<String, Decimal> Function(String fromUserId, String toUserId)
-      buildBreakdown;
+  buildBreakdown;
+
+  final Widget? footer;
 
   const SettlementTabContent({
     super.key,
@@ -61,6 +64,7 @@ class SettlementTabContent extends StatelessWidget {
     required this.onRecord,
     required this.buildBreakdown,
     this.preSelectedMemberId,
+    this.footer,
   });
 
   @override
@@ -77,15 +81,20 @@ class SettlementTabContent extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       physics: const BouncingScrollPhysics(),
-      itemCount: settlements.length,
+      itemCount: settlements.length + (footer == null ? 0 : 1),
       itemBuilder: (context, index) {
+        if (footer != null && index == settlements.length) {
+          return Padding(padding: const EdgeInsets.only(top: 8), child: footer);
+        }
+
         final settlement = settlements[index];
         final fromUserId = settlement['fromUserId'] as String;
         final toUserId = settlement['toUserId'] as String;
         final fromName = settlement['fromUserName'] as String;
         final toName = settlement['toUserName'] as String;
         final amount = settlement['amount'] as Decimal;
-        final isHighlighted = preSelectedMemberId != null &&
+        final isHighlighted =
+            preSelectedMemberId != null &&
             (fromUserId == preSelectedMemberId ||
                 toUserId == preSelectedMemberId);
 
@@ -95,24 +104,24 @@ class SettlementTabContent extends StatelessWidget {
         final breakdown = buildBreakdown(fromUserId, toUserId);
 
         return GroupSettlementTile(
-          fromName: fromName,
-          toName: toName,
-          amount: amount,
-          currency: currency,
-          breakdown: breakdown,
-          isYourAction: isYourAction,
-          isCreditor: isCreditor,
-          isHighlighted: isHighlighted,
-          tileKey: tileKey,
-          onRecord: () => onRecord(
-            settlement: settlement,
-            fromName: fromName,
-            toName: toName,
-            fromUserId: fromUserId,
-            toUserId: toUserId,
-            suggestedAmount: amount,
-          ),
-        )
+              fromName: fromName,
+              toName: toName,
+              amount: amount,
+              currency: currency,
+              breakdown: breakdown,
+              isYourAction: isYourAction,
+              isCreditor: isCreditor,
+              isHighlighted: isHighlighted,
+              tileKey: tileKey,
+              onRecord: () => onRecord(
+                settlement: settlement,
+                fromName: fromName,
+                toName: toName,
+                fromUserId: fromUserId,
+                toUserId: toUserId,
+                suggestedAmount: amount,
+              ),
+            )
             .animate()
             .fadeIn(delay: Duration(milliseconds: index * 50))
             .slideY(begin: 0.1, curve: Curves.easeOutCubic);

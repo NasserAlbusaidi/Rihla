@@ -175,7 +175,7 @@ void main() {
     // Basic rendering
     // -----------------------------------------------------------------------
 
-    testWidgets('shows screen title and GROUP TOTAL PENDING label', (
+    testWidgets('shows screen title and transfer summary chips', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -187,7 +187,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Settle Up'), findsOneWidget);
-      expect(find.text('GROUP TOTAL PENDING'), findsOneWidget);
+      expect(find.text('1 transfer'), findsOneWidget);
     });
 
     testWidgets(
@@ -221,9 +221,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The Record Payment button is visible — a tile is rendered
+      // The Mark paid button is visible — a tile is rendered
       expect(
-        find.text('Record Payment'),
+        find.text('Mark paid'),
         findsOneWidget,
         reason: 'Settlement tile should be visible on You Owe tab for uid-bob',
       );
@@ -272,8 +272,8 @@ void main() {
       expect(find.byKey(GroupKeys.settleUpTabBar), findsOneWidget);
       // You Owe tab label is visible
       expect(find.text('You Owe'), findsOneWidget);
-      // Record Payment button visible since bob owes
-      expect(find.text('Record Payment'), findsOneWidget);
+      // Mark paid button visible since bob owes
+      expect(find.text('Mark paid'), findsOneWidget);
     });
 
     testWidgets('shows per-tab empty state when You Owe has no items', (
@@ -432,9 +432,7 @@ void main() {
     // Record Payment bottom sheet (D-05)
     // -----------------------------------------------------------------------
 
-    testWidgets('Record Payment bottom sheet shows "Record Payment" button', (
-      tester,
-    ) async {
+    testWidgets('Mark paid bottom sheet shows payment actions', (tester) async {
       await tester.pumpWidget(
         _wrap(
           const GroupSettleUpScreen(groupId: _groupId),
@@ -444,8 +442,8 @@ void main() {
       );
       await tester.pump();
 
-      // Find the Record Payment button within a tile
-      final recordBtn = find.text('Record Payment');
+      // Find the Mark paid button within a tile
+      final recordBtn = find.text('Mark paid');
       if (tester.any(recordBtn)) {
         await tester.tap(recordBtn.first);
         await tester.pumpAndSettle();
@@ -468,7 +466,7 @@ void main() {
       );
       await tester.pump();
 
-      final recordBtn = find.text('Record Payment');
+      final recordBtn = find.text('Mark paid');
       if (tester.any(recordBtn)) {
         await tester.tap(recordBtn.first);
         await tester.pumpAndSettle();
@@ -489,7 +487,7 @@ void main() {
       );
       await tester.pump();
 
-      final recordBtn = find.text('Record Payment');
+      final recordBtn = find.text('Mark paid');
       if (tester.any(recordBtn)) {
         await tester.tap(recordBtn.first);
         await tester.pumpAndSettle();

@@ -20,7 +20,7 @@ import '../providers/group_provider.dart';
 ///
 /// Wireframe ref: `Wireframes/Rihla/hifi/screens-group.jsx` → `Hi_GroupActivity()`.
 /// Layout:
-///   1. Top bar — back button + italic display title (group name)
+///   1. Top bar — back button + centered group name
 ///   2. Filter chips — All / Settlements / Events / Members
 ///   3. Day-grouped card-wrapped sections with category-icon-led rows
 ///
@@ -117,8 +117,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(title: groupName),
-            const SizedBox(height: 4),
+            _TopBar(title: groupName, groupId: widget.groupId),
             _FilterStrip(
               current: _filter,
               onChange: (f) => setState(() => _filter = f),
@@ -187,56 +186,54 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
 // ──────────────────────────── Top bar
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title});
+  const _TopBar({required this.title, required this.groupId});
   final String title;
+  final String groupId;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Tooltip(
-            message: 'Back',
-            child: InkResponse(
-              key: GroupKeys.activityBackButton,
-              onTap: () {
-                HapticService.lightClick();
-                if (GoRouter.of(context).canPop()) {
-                  GoRouter.of(context).pop();
-                }
-              },
-              radius: 24,
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: Icon(
-                  Iconsax.arrow_left,
-                  size: 20,
-                  color: colors.textPrimary,
-                ),
+      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
+      child: SizedBox(
+        height: 48,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                key: GroupKeys.activityBackButton,
+                tooltip: 'Back',
+                icon: const Icon(Iconsax.arrow_left_2, size: 20),
+                color: colors.textPrimary,
+                onPressed: () {
+                  HapticService.lightClick();
+                  if (GoRouter.of(context).canPop()) {
+                    GoRouter.of(context).pop();
+                  } else {
+                    GoRouter.of(context).go('/group/$groupId');
+                  }
+                },
               ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 52),
               child: Text(
                 title,
+                key: GroupKeys.activityScreenTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.display(
-                  fontSize: 22,
+                textAlign: TextAlign.center,
+                style: AppTypography.sans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                   color: colors.textPrimary,
-                  letterSpacing: -0.3,
-                  height: 1.05,
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -250,8 +247,8 @@ class _FilterStrip extends StatelessWidget {
   final ValueChanged<_Filter> onChange;
 
   static const _options = [
-    (_Filter.all, 'All', GroupKeys.activityFilterAll),
-    (_Filter.settlements, 'Settlements', GroupKeys.activityFilterSettlements),
+    (_Filter.all, 'Activity', GroupKeys.activityFilterAll),
+    (_Filter.settlements, 'Settles', GroupKeys.activityFilterSettlements),
     (_Filter.events, 'Events', GroupKeys.activityFilterEvents),
     (_Filter.members, 'Members', GroupKeys.activityFilterMembers),
   ];
@@ -305,7 +302,7 @@ class _Chip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: active ? colors.textPrimary : colors.cardSoft,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusSmall),
           border: Border.all(
             color: active ? colors.textPrimary : colors.rule,
             width: 0.5,
@@ -356,7 +353,7 @@ class _DaySection extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: colors.cardSurface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
             boxShadow: context.shadows.raised,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16),

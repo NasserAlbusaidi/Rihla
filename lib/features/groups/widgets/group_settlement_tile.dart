@@ -70,14 +70,14 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
       margin: EdgeInsets.only(bottom: spacing.space12),
       decoration: BoxDecoration(
         color: widget.isHighlighted
-            ? context.colors.primary.withValues(alpha: 0.05)
+            ? context.colors.saffronTint
             : context.colors.cardSurface,
         borderRadius: BorderRadius.circular(spacing.radiusLarge),
         boxShadow: context.shadows.raised,
         border: Border.all(
           color: widget.isHighlighted
-              ? context.colors.primary.withValues(alpha: 0.2)
-              : context.colors.border.withValues(alpha: 0.5),
+              ? context.colors.primary.withValues(alpha: 0.28)
+              : context.colors.rule,
         ),
       ),
       child: Material(
@@ -93,107 +93,146 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Main row: avatar stack | names column | amount column | chevron
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Overlapping avatar pair (40dp each, -12dp offset)
-                    SizedBox(
-                      width: 60,
-                      height: 40,
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            left: 0,
-                            child: _buildAvatar(widget.fromName, isPayer: true),
-                          ),
-                          Positioned(
-                            left: 20,
-                            child: _buildAvatar(widget.toName, isPayer: false),
-                          ),
-                        ],
+                    _buildAvatar(widget.fromName, isPayer: true),
+                    SizedBox(width: spacing.space12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 40,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: _TransferRailPainter(
+                                  color: context.colors.rule2,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: widget.isHighlighted
+                                    ? context.colors.saffronTint
+                                    : context.colors.cardSurface,
+                                borderRadius: BorderRadius.circular(
+                                  spacing.radiusSmall,
+                                ),
+                              ),
+                              child: Text(
+                                AppFormatters.formatCurrency(
+                                  widget.amount,
+                                  widget.currency,
+                                ),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: _amountColor,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              right: 0,
+                              child: Icon(
+                                Iconsax.arrow_right_1,
+                                size: 14,
+                                // textMuted-decorative-justified: transfer direction arrow is decorative; payer/payee text carries the meaning.
+                                color: context.colors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     SizedBox(width: spacing.space12),
-                    // Names + sub-label column
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RichText(
-                            text: TextSpan(
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: context.colors.textPrimary,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: widget.fromName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: ' → ',
-                                  style: TextStyle(
-                                    // textMuted-decorative-justified: arrow glyph connecting payer → payee names, purely visual separator
-                                    color: context.colors.textMuted,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: widget.toName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: spacing.space4),
-                          Text(
-                            _subLabel,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: context.colors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: spacing.space8),
-                    // Amount + currency + chevron
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          AppFormatters.formatCurrency(
-                            widget.amount,
-                            widget.currency,
-                          ),
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: _amountColor,
-                          ),
-                        ),
-                        SizedBox(height: spacing.space4),
-                        if (widget.breakdown.isNotEmpty)
-                          AnimatedRotation(
-                            turns: _isExpanded ? 0.5 : 0.0,
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOutCubic,
-                            child: Icon(
-                              Iconsax.arrow_down_1,
-                              size: 16,
-                              // textMuted-decorative-justified: expand/collapse chevron affordance — meaning is carried by the state change, icon is decorative
-                              color: context.colors.textMuted,
-                            ),
-                          ),
-                      ],
-                    ),
+                    _buildAvatar(widget.toName, isPayer: false),
                   ],
                 ),
+                SizedBox(height: spacing.space12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: RichText(
+                        overflow: TextOverflow.ellipsis,
+                        text: TextSpan(
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.colors.textSecondary,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: _firstName(widget.fromName),
+                              style: TextStyle(
+                                color: context.colors.ink2,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' -> ',
+                              style: TextStyle(
+                                color: context.colors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextSpan(
+                              text: _firstName(widget.toName),
+                              style: TextStyle(
+                                color: context.colors.ink2,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (widget.breakdown.isNotEmpty)
+                      AnimatedRotation(
+                        turns: _isExpanded ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        child: Icon(
+                          Iconsax.arrow_down_1,
+                          size: 16,
+                          // textMuted-decorative-justified: expand/collapse chevron is a visual affordance for the hidden event breakdown.
+                          color: context.colors.textMuted,
+                        ),
+                      ),
+                    if (widget.onRecord != null) ...[
+                      SizedBox(width: spacing.space8),
+                      TextButton(
+                        key: GroupKeys.settleUpRecordPaymentButton,
+                        onPressed: widget.onRecord,
+                        style: TextButton.styleFrom(
+                          backgroundColor: context.colors.saffronTint,
+                          foregroundColor: context.colors.primaryDark,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              spacing.radiusSmall,
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Mark paid',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                Semantics(label: _subLabel, child: const SizedBox.shrink()),
 
                 // Collapsible per-event breakdown
                 if (widget.breakdown.isNotEmpty)
@@ -208,8 +247,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                               Divider(
                                 height: 1,
                                 thickness: 1,
-                                color: context.colors.border
-                                    .withValues(alpha: 0.5),
+                                color: context.colors.border.withValues(
+                                  alpha: 0.5,
+                                ),
                               ),
                               SizedBox(height: spacing.space8),
                               ...widget.breakdown.entries.map(
@@ -224,8 +264,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                           e.key,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color:
-                                                context.colors.textSecondary,
+                                            color: context.colors.textSecondary,
                                             fontWeight: FontWeight.w500,
                                           ),
                                           overflow: TextOverflow.ellipsis,
@@ -238,8 +277,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                         ),
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color:
-                                              context.colors.textSecondary,
+                                          color: context.colors.textSecondary,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -251,45 +289,6 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                           )
                         : const SizedBox.shrink(),
                   ),
-
-                // Record Payment button
-                if (widget.onRecord != null) ...[
-                  SizedBox(height: spacing.space12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: spacing.buttonHeight,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: context.colors.primaryGradient,
-                        borderRadius: BorderRadius.circular(spacing.radiusMedium),
-                      ),
-                      child: ElevatedButton(
-                        key: GroupKeys.settleUpRecordPaymentButton,
-                        onPressed: widget.onRecord,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.white,
-                          shadowColor: Colors.transparent,
-                          padding: EdgeInsets.symmetric(
-                            vertical: spacing.space16,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(spacing.radiusMedium),
-                          ),
-                        ),
-                        child: const Text(
-                          'Record Payment',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -300,33 +299,62 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
 
   Widget _buildAvatar(String name, {required bool isPayer}) {
     return Container(
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
-        color: isPayer
-            ? context.colors.primary.withValues(alpha: 0.15)
-            : context.colors.inputFill,
+        color: isPayer ? context.colors.saffronTint : context.colors.cardSoft,
         shape: BoxShape.circle,
         border: Border.all(
           color: isPayer
-              ? context.colors.primary.withValues(alpha: 0.4)
-              : context.colors.border,
-          width: isPayer ? 2 : 1,
+              ? context.colors.primary.withValues(alpha: 0.35)
+              : context.colors.rule2,
         ),
-        boxShadow: context.shadows.raised,
       ),
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: TextStyle(
             fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: isPayer
-                ? context.colors.primary
-                : context.colors.textSecondary,
+            fontWeight: FontWeight.w800,
+            color: isPayer ? context.colors.primaryDark : context.colors.ink2,
           ),
         ),
       ),
     );
   }
+
+  String _firstName(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    return parts.isEmpty ? name : parts.first;
+  }
+}
+
+class _TransferRailPainter extends CustomPainter {
+  const _TransferRailPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    const dashWidth = 5.0;
+    const dashSpace = 4.0;
+    var startX = 0.0;
+    final y = size.height / 2;
+
+    while (startX < size.width) {
+      canvas.drawLine(
+        Offset(startX, y),
+        Offset((startX + dashWidth).clamp(0, size.width), y),
+        paint,
+      );
+      startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TransferRailPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

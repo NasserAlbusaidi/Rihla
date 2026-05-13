@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/app_tab_bar.dart';
+import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
@@ -41,11 +44,12 @@ class SettleUpTabLayout extends StatelessWidget {
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
-  }) onRecord;
+  })
+  onRecord;
 
   /// Builds the per-event breakdown for a settlement pair.
   final Map<String, Decimal> Function(String fromUserId, String toUserId)
-      buildBreakdown;
+  buildBreakdown;
 
   /// The pre-selected member ID, used for highlight logic.
   final String? preSelectedMemberId;
@@ -75,8 +79,7 @@ class SettleUpTabLayout extends StatelessWidget {
         .toList();
     final betweenOthers = optimalSettlements
         .where(
-          (s) =>
-              s['fromUserId'] != currentUid && s['toUserId'] != currentUid,
+          (s) => s['fromUserId'] != currentUid && s['toUserId'] != currentUid,
         )
         .toList();
 
@@ -90,17 +93,25 @@ class SettleUpTabLayout extends StatelessWidget {
     if (optimalSettlements.isEmpty && historyIsEmpty) {
       return SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _SettlementIntro(transferCount: 0, groupName: group.name),
+            const SizedBox(height: 18),
             GroupSettlementSummaryCard(
               totalPending: Decimal.zero,
               currency: group.currency,
               eventCount: balancesData.eventCount,
+              transferCount: 0,
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
             const AllSettledState(),
+            const SizedBox(height: 24),
+            _NetBalancesSection(
+              balances: balancesData.balances,
+              currency: group.currency,
+            ),
           ],
         ),
       );
@@ -109,11 +120,22 @@ class SettleUpTabLayout extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          child: GroupSettlementSummaryCard(
-            totalPending: totalPending,
-            currency: group.currency,
-            eventCount: balancesData.eventCount,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SettlementIntro(
+                transferCount: optimalSettlements.length,
+                groupName: group.name,
+              ),
+              const SizedBox(height: 18),
+              GroupSettlementSummaryCard(
+                totalPending: totalPending,
+                currency: group.currency,
+                eventCount: balancesData.eventCount,
+                transferCount: optimalSettlements.length,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -133,13 +155,16 @@ class SettleUpTabLayout extends StatelessWidget {
                 isCreditor: false,
                 emptyIcon: Iconsax.wallet_check,
                 emptyTitle: 'Nothing to pay',
-                emptyMessage:
-                    "You don't owe anyone in this group right now.",
+                emptyMessage: "You don't owe anyone in this group right now.",
                 currency: group.currency,
                 tileKeys: tileKeys,
                 preSelectedMemberId: preSelectedMemberId,
                 onRecord: onRecord,
                 buildBreakdown: buildBreakdown,
+                footer: _NetBalancesSection(
+                  balances: balancesData.balances,
+                  currency: group.currency,
+                ),
               ),
               // Tab 1: Owed to You
               SettlementTabContent(
@@ -154,6 +179,10 @@ class SettleUpTabLayout extends StatelessWidget {
                 preSelectedMemberId: preSelectedMemberId,
                 onRecord: onRecord,
                 buildBreakdown: buildBreakdown,
+                footer: _NetBalancesSection(
+                  balances: balancesData.balances,
+                  currency: group.currency,
+                ),
               ),
               // Tab 2: Between Others
               SettlementTabContent(
@@ -162,13 +191,16 @@ class SettleUpTabLayout extends StatelessWidget {
                 isCreditor: false,
                 emptyIcon: Iconsax.people,
                 emptyTitle: 'All balanced',
-                emptyMessage:
-                    'No outstanding amounts between other members.',
+                emptyMessage: 'No outstanding amounts between other members.',
                 currency: group.currency,
                 tileKeys: tileKeys,
                 preSelectedMemberId: preSelectedMemberId,
                 onRecord: onRecord,
                 buildBreakdown: buildBreakdown,
+                footer: _NetBalancesSection(
+                  balances: balancesData.balances,
+                  currency: group.currency,
+                ),
               ),
               // Tab 3: History
               SettleUpHistoryTab(
@@ -179,6 +211,216 @@ class SettleUpTabLayout extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SettlementIntro extends StatelessWidget {
+  const _SettlementIntro({
+    required this.transferCount,
+    required this.groupName,
+  });
+
+  final int transferCount;
+  final String groupName;
+
+  @override
+  Widget build(BuildContext context) {
+    final headline = transferCount == 0
+        ? "Everyone's even."
+        : "$_countWord transfers,\neveryone's even.";
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          headline,
+          style: TextStyle(
+            color: context.colors.textPrimary,
+            fontSize: 28,
+            fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w400,
+            height: 1.05,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text.rich(
+          TextSpan(
+            text: transferCount == 0
+                ? 'No optimized payments are needed across '
+                : 'Optimized to minimise the number of payments across ',
+            children: [
+              TextSpan(
+                text: groupName,
+                style: TextStyle(
+                  color: context.colors.ink2,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const TextSpan(text: '.'),
+            ],
+          ),
+          style: TextStyle(
+            color: context.colors.textSecondary,
+            fontSize: 13,
+            height: 1.5,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String get _countWord {
+    const words = {
+      1: 'One',
+      2: 'Two',
+      3: 'Three',
+      4: 'Four',
+      5: 'Five',
+      6: 'Six',
+      7: 'Seven',
+      8: 'Eight',
+      9: 'Nine',
+      10: 'Ten',
+    };
+    return words[transferCount] ?? transferCount.toString();
+  }
+}
+
+class _NetBalancesSection extends StatelessWidget {
+  const _NetBalancesSection({required this.balances, required this.currency});
+
+  final List<UserBalance> balances;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    if (balances.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              "Each person's net",
+              style: TextStyle(
+                color: context.colors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: context.colors.cardSurface,
+              borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
+              border: Border.all(color: context.colors.rule),
+              boxShadow: context.shadows.raised,
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < balances.length; i++)
+                  _NetBalanceRow(
+                    balance: balances[i],
+                    currency: currency,
+                    showDivider: i < balances.length - 1,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetBalanceRow extends StatelessWidget {
+  const _NetBalanceRow({
+    required this.balance,
+    required this.currency,
+    required this.showDivider,
+  });
+
+  final UserBalance balance;
+  final String currency;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = balance.displayName ?? 'Unknown';
+    final amountColor = balance.netBalance > Decimal.zero
+        ? context.colors.successText
+        : balance.netBalance < Decimal.zero
+        ? context.colors.errorText
+        : context.colors.textSecondary;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: showDivider
+              ? BorderSide(color: context.colors.rule)
+              : BorderSide.none,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          _MiniAvatar(name: name),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              name,
+              style: TextStyle(
+                color: context.colors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            AppFormatters.formatCurrency(balance.netBalance, currency),
+            style: TextStyle(
+              color: amountColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniAvatar extends StatelessWidget {
+  const _MiniAvatar({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: context.colors.saffronTint,
+        shape: BoxShape.circle,
+        border: Border.all(color: context.colors.rule2),
+      ),
+      child: Center(
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: TextStyle(
+            color: context.colors.ink2,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
     );
   }
 }

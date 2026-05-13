@@ -120,9 +120,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
 
     // Loading state
     if (groupAsync.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final group = groupAsync.valueOrNull;
@@ -155,17 +153,18 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
 
     final balancesAsync = ref.watch(groupBalancesProvider(widget.groupId));
     final eventsAsync = ref.watch(groupEventsProvider(widget.groupId));
-    final settlementsAsync =
-        ref.watch(groupSettlementsProvider(widget.groupId));
+    final settlementsAsync = ref.watch(
+      groupSettlementsProvider(widget.groupId),
+    );
     final eventNameMap =
         <String, ({String name, EventType type, DateTime date})>{
-      for (final e in eventsAsync.valueOrNull ?? <Event>[])
-        e.id: (
-          name: e.name,
-          type: e.type,
-          date: e.startDate ?? e.createdAt,
-        ),
-    };
+          for (final e in eventsAsync.valueOrNull ?? <Event>[])
+            e.id: (
+              name: e.name,
+              type: e.type,
+              date: e.startDate ?? e.createdAt,
+            ),
+        };
 
     return Scaffold(
       key: GroupKeys.settleUpScreen,
@@ -173,19 +172,15 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
       body: SafeArea(
         child: Column(
           children: [
-            ModuleHeader(
-              title: 'Settle Up',
-              subtitle: group.name,
-              useDarkTheme: true,
-            ),
+            _SettlementTopBar(groupId: widget.groupId),
             Expanded(
               child: balancesAsync.when(
                 data: (balancesData) {
                   final optimalSettlements =
                       BalanceCalculator.calculateOptimalSettlements(
-                    balances: balancesData.balances,
-                    userNames: balancesData.memberNames,
-                  );
+                        balances: balancesData.balances,
+                        userNames: balancesData.memberNames,
+                      );
 
                   _autoSelectTab(optimalSettlements, currentUid);
 
@@ -198,43 +193,45 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
                     currentUid: currentUid,
                     tileKeys: _tileKeys,
                     preSelectedMemberId: widget.preSelectedMemberId,
-                    onRecord: ({
-                      required settlement,
-                      required fromName,
-                      required toName,
-                      required fromUserId,
-                      required toUserId,
-                      required suggestedAmount,
-                    }) =>
-                        _showRecordPaymentSheet(
-                      context,
-                      group: group,
-                      settlement: settlement,
-                      fromName: fromName,
-                      toName: toName,
-                      fromUserId: fromUserId,
-                      toUserId: toUserId,
-                      suggestedAmount: suggestedAmount,
-                    ),
+                    onRecord:
+                        ({
+                          required settlement,
+                          required fromName,
+                          required toName,
+                          required fromUserId,
+                          required toUserId,
+                          required suggestedAmount,
+                        }) => _showRecordPaymentSheet(
+                          context,
+                          group: group,
+                          settlement: settlement,
+                          fromName: fromName,
+                          toName: toName,
+                          fromUserId: fromUserId,
+                          toUserId: toUserId,
+                          suggestedAmount: suggestedAmount,
+                        ),
                     buildBreakdown: (fromUserId, toUserId) =>
                         _buildPerEventBreakdown(
-                      fromUserId,
-                      toUserId,
-                      balancesData,
-                      eventNameMap,
-                    ),
+                          fromUserId,
+                          toUserId,
+                          balancesData,
+                          eventNameMap,
+                        ),
                   );
                 },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Iconsax.warning_2,
-                            size: 40, color: context.colors.error),
+                        Icon(
+                          Iconsax.warning_2,
+                          size: 40,
+                          color: context.colors.error,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Couldn\'t load balances.',
@@ -247,7 +244,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
                         const SizedBox(height: 8),
                         TextButton(
                           onPressed: () => ref.invalidate(
-                              groupBalancesProvider(widget.groupId)),
+                            groupBalancesProvider(widget.groupId),
+                          ),
                           child: const Text('Retry'),
                         ),
                       ],
@@ -272,10 +270,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
     final fromBreakdown = balancesData.perEventBreakdown[fromUserId] ?? {};
     final toBreakdown = balancesData.perEventBreakdown[toUserId] ?? {};
 
-    final allEventIds = {
-      ...fromBreakdown.keys,
-      ...toBreakdown.keys,
-    };
+    final allEventIds = {...fromBreakdown.keys, ...toBreakdown.keys};
 
     for (final eventId in allEventIds) {
       final fromNet = fromBreakdown[eventId] ?? Decimal.zero;
@@ -307,8 +302,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
         ? entry.name
         : EventTypeConfig.forType(entry.type).label;
 
-    final name =
-        rawName.length > 30 ? '${rawName.substring(0, 27)}...' : rawName;
+    final name = rawName.length > 30
+        ? '${rawName.substring(0, 27)}...'
+        : rawName;
 
     final date = AppFormatters.formatShortMonthDay(entry.date);
     return '$name \u2014 $date';
@@ -334,8 +330,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
 
     if (!context.mounted || result == null) return;
 
-    final editedAmount =
-        Decimal.tryParse(result.amount) ?? suggestedAmount;
+    final editedAmount = Decimal.tryParse(result.amount) ?? suggestedAmount;
     final noteText = result.note.isEmpty ? null : result.note;
 
     if (editedAmount <= Decimal.zero) {
@@ -392,7 +387,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
         actorName = fromName;
       }
 
-      await ref.read(groupSettlementServiceProvider).addGroupSettlement(
+      await ref
+          .read(groupSettlementServiceProvider)
+          .addGroupSettlement(
             groupId: widget.groupId,
             payerParticipantId: fromUserId,
             recipientParticipantId: toUserId,
@@ -410,17 +407,16 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
         currentUid = fromUserId;
       }
 
-      ref.read(groupActivityServiceProvider).logGroupEvent(
+      ref
+          .read(groupActivityServiceProvider)
+          .logGroupEvent(
             groupId: widget.groupId,
             type: 'group_settlement',
             actorId: currentUid,
             actorName: actorName,
             description:
                 'settled ${AppFormatters.formatCurrency(amount, group.currency)} with $toName',
-            metadata: {
-              'amount': amount.toString(),
-              'recipientId': toUserId,
-            },
+            metadata: {'amount': amount.toString(), 'recipientId': toUserId},
           );
 
       if (context.mounted) {
@@ -451,5 +447,49 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
         );
       }
     }
+  }
+}
+
+class _SettlementTopBar extends StatelessWidget {
+  const _SettlementTopBar({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
+      child: SizedBox(
+        height: 48,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                tooltip: 'Back',
+                icon: const Icon(Iconsax.arrow_left_2, size: 20),
+                color: context.colors.textPrimary,
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/group/$groupId');
+                  }
+                },
+              ),
+            ),
+            Text(
+              'Settle Up',
+              style: TextStyle(
+                color: context.colors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
