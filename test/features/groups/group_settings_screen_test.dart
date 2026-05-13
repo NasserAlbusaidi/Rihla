@@ -402,6 +402,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.byKey(GroupKeys.deleteGroupTile));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(GroupKeys.deleteGroupTile));
       await tester.pumpAndSettle();
 
@@ -451,6 +453,8 @@ void main() {
         groupController.add(_testGroup);
         await tester.pumpAndSettle();
 
+        await tester.ensureVisible(find.byKey(GroupKeys.deleteGroupTile));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(GroupKeys.deleteGroupTile));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(GroupKeys.deleteGroupConfirmButton));
