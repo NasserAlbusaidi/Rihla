@@ -69,6 +69,7 @@ class GroupSettingsScreen extends ConsumerWidget {
                         GroupDangerSection(
                           groupId: groupId,
                           isCreator: isCreator,
+                          groupName: group.name,
                         ).animate().fadeIn(delay: 320.ms).slideY(begin: 0.08),
                       ],
                     ),
