@@ -1,7 +1,7 @@
 # "Coming Soon" Implementations — Plan
 
-**Status:** Sprint 1 in progress — Sprint 2+ awaiting kickoff
-**Branch:** `plan/coming-soon-implementations` (worktree: `worktree-coming-soon-plan`)
+**Status:** Sprints 1 & 2 shipped — 4 surfaces remain (T3.J, T3.K, T3.L, T4.N)
+**Branch:** `worktree-plan-coming-soon` (based on `feat/settings-pickers-sprint-2` @ e0942d9)
 **Last updated:** 2026-05-13
 
 ## Goal
@@ -202,3 +202,87 @@ Constants live in `lib/core/config/app_links.dart` as the single source of truth
 - 6 new unit tests in `test/unit/settings_default_split_mode_test.dart` covering round-trip, default, unknown-value fallback, `storageKey` stability, `isAvailable` table, and `copyWith` preservation.
 - 0 new dependencies.
 - **Deferred:** wiring `defaultSplitMode` into `AddExpenseScreen`'s initial selection. `CustomSplitSheet` has no `initialMode` parameter and `showCustomSplitSheet` is only called from `edit_expense_form.dart` today; the integration lands with T4.N when non-equal modes become functional.
+
+---
+
+## Remaining work — re-audited 2026-05-13
+
+Re-scanning `lib/**/*.dart` for literal `"coming soon"` confirms exactly **4 surfaces** survive in shipped code (plus the Arabic locked option in the language picker, which is deliberate and tracked as T5.O):
+
+| # | Surface | Location | Snack copy |
+|---|---|---|---|
+| 11 | Group invite QR icon | `lib/features/groups/widgets/group_info_section.dart:279` | `"QR invite coming soon"` |
+| 12 | Profile QR chip | `lib/features/settings/screens/profile_screen.dart:289` | `"QR sharing coming soon"` |
+| 3  | Ledger cover Search icon | `lib/features/ledger/screens/ledger_screen.dart:214` | `"Search coming soon"` |
+| 14 | CustomSplitSheet → Shares/Exact/Percent | `lib/features/ledger/widgets/custom_split_sheet.dart:163` | `"{mode} splits are coming soon."` |
+
+Ordered from quick win → hardest:
+
+### Sprint 3 (next) — Ledger search (T3.L) · ½–1.5 days
+
+**Why first:** zero new dependencies, single-feature scope, timeline data is already in memory, no native config touched. Highest "polish per hour" of the remaining work.
+
+- Files: new `lib/features/ledger/widgets/ledger_search_sheet.dart`; rewire `ledger_screen.dart:214` to open the sheet.
+- Scope decision (**open**):
+  - **v1 minimal (½ day):** text query only — match expense description, category label, payer display name. Case-insensitive. Empty state when no matches.
+  - **v1 full (1.5 days):** + date-range chip, amount-range chip, payer multiselect chip, category multiselect chip. Reuse `SearchFilterBar` from `lib/shared/widgets/`.
+- Filter is client-side over the existing `expenses + settlements` timeline. No provider/repository changes.
+- Tests: widget test that types a query and asserts filtered card count.
+- **Recommended:** ship v1 minimal first; promote to full filter if QA flags it as too thin.
+
+### Sprint 4 — QR invite bundle (T3.J + T3.K) · 1.5–2 days
+
+**Why bundled:** both surfaces use the same `qr_flutter` integration and the same deep-link plumbing. Doing them together amortises the native config cost.
+
+- Dependency: add `qr_flutter: ^4.1.0` to `pubspec.yaml`.
+- T3.J — Group invite QR:
+  - New `lib/features/groups/widgets/qr_invite_sheet.dart`. Encodes `https://rihla.app/join/${group.inviteCode}` with `rihla://join?code=${code}` fallback.
+  - Router: add `/join/:code` → `JoinGroupScreen` with code pre-filled in `app_router.dart`.
+  - Wire from `group_info_section.dart:274-282` (remove the snack).
+- T3.K — Profile QR chip:
+  - Encodes a static device-handle URL (e.g. `https://rihla.app/u/${handle}`) — no inbound routing required since handles aren't claimable yet, the QR is just an exchange artifact.
+  - Wire from `profile_screen.dart:280-285` (remove the snack).
+- Native config:
+  - Android: intent filter on `MainActivity` for `https://rihla.app` + `rihla://` scheme (`android/app/src/main/AndroidManifest.xml`).
+  - iOS: URL types + Associated Domains entitlement (`ios/Runner/Info.plist`, `ios/Runner/Runner.entitlements`).
+- **Open question (blocker for universal links):** is `apple-app-site-association` / `assetlinks.json` hostable on `rihla.app` today? If no, ship with `rihla://` custom scheme only and add HTTPS verification post-launch. App still works fully — only the "tap link in iMessage → opens app" path requires AASA.
+- Tests: golden test for QR sheet rendering; router test for `/join/:code` pre-fill.
+
+### Sprint 5 — Custom split modes (T4.N) · 3–5 days · the hardest
+
+**Why last:** touches data model, both databases (Supabase migration + `safar_cache.db` bump), balance math, three new editor UIs, and migration of existing equal-mode expenses. Requires a design spec before code.
+
+- **Prerequisite:** write `docs/design/custom-split-spec.md` covering data shape, sum-validation rules per mode, rounding policy (OMR 3dp), and UI affordances.
+- Data model:
+  - Add `split_mode` enum column (`equally|shares|exact|percent`) + `split_distribution` jsonb on `expenses`.
+  - Mirror in `safar_cache.db` schema v6 (migrate from v5).
+  - Per-participant record: `shares: int ≥ 0`, `exact: Decimal`, `percent: Decimal` summing to 100±ε.
+- Sheet UI:
+  - Replace the snack at `custom_split_sheet.dart:163`.
+  - Three editors with live validation. Shares: integer steppers, ratio bar. Exact: amount inputs, "remaining" pill, validate sum=total. Percent: percent inputs, validate sum=100.
+- `BalanceCalculator` (lib/features/ledger/...):
+  - Accept per-pid distribution. Preserve equal-mode parity for existing rows (treat null distribution as equal split across `participants`).
+  - Round-trip tests covering OMR precision edge cases.
+- Sync:
+  - `OfflineRepository.saveExpense` writes mode + distribution to sync_queue.
+  - `SyncService` upload/download paths handle the new columns.
+- Wire `defaultSplitMode` into `AddExpenseScreen`'s initial mode (the Sprint 2 deferred item — finally usable).
+- Tests: balance regression on existing data; per-mode rounding tests; widget tests on each editor's sum validation.
+
+### Backlog (untouched)
+
+- **T5.O — Arabic i18n.** Multi-week. Unlocks real value for the Arabic locked option in `language_picker_sheet.dart`. Not gated on anything in this plan.
+- **T5.P — Native IAP tipping.** Replace the PayPal URL in `profile_support_section.dart` with `in_app_purchase`. Optional, defer indefinitely.
+
+---
+
+## Updated sequencing
+
+| Sprint | Items | Effort | Snacks remaining after |
+|---|---|---|---|
+| 3 | T3.L (ledger search v1 minimal) | ½ day | 3 |
+| 4 | T3.J + T3.K (QR bundle) | 1.5–2 days | 1 |
+| 5 | T4.N (custom split modes) | 3–5 days | 0 |
+| Backlog | T5.O, T5.P | weeks | — (Arabic locked option intentional) |
+
+**Total remaining estimate:** ~5–8 dev-days to zero "Coming soon" snacks.
