@@ -24,17 +24,15 @@ List<Participant> _eventParticipants(Event event) {
   }).toList();
 }
 
-/// Scope selector (global/subgroup/custom/personal) with custom participant
-/// picker and payer selector for leaders.
+/// Scope selector (global/custom/personal) with custom participant picker and
+/// payer selector for leaders. The Phase 39 strip removed the subGroup tab
+/// alongside the logistics feature.
 class SplitScopeSelector extends ConsumerWidget {
   final Event event;
   final ExpenseScope scope;
   final ValueChanged<ExpenseScope> onScopeChanged;
   final Set<String> customSplitParticipants;
   final ValueChanged<Set<String>> onCustomSplitChanged;
-  final String? selectedSubGroupId;
-  final VoidCallback onAutoSelectSubGroup;
-  final ValueChanged<String?> onSubGroupIdCleared;
   final String? selectedPayerId;
   final ValueChanged<String?> onPayerChanged;
 
@@ -45,9 +43,6 @@ class SplitScopeSelector extends ConsumerWidget {
     required this.onScopeChanged,
     required this.customSplitParticipants,
     required this.onCustomSplitChanged,
-    required this.selectedSubGroupId,
-    required this.onAutoSelectSubGroup,
-    required this.onSubGroupIdCleared,
     required this.selectedPayerId,
     required this.onPayerChanged,
   });
@@ -57,56 +52,35 @@ class SplitScopeSelector extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Scope Tabs
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  _ScopeTab(
-                    label: 'Global',
-                    scope: ExpenseScope.global,
-                    icon: Iconsax.global,
-                    isSelected: scope == ExpenseScope.global,
-                    onTap: () => _handleScopeChange(ExpenseScope.global),
-                  ),
-                  _ScopeTab(
-                    label: 'My Car',
-                    scope: ExpenseScope.subGroup,
-                    icon: Iconsax.car,
-                    isSelected: scope == ExpenseScope.subGroup,
-                    onTap: () => _handleScopeChange(ExpenseScope.subGroup),
-                  ),
-                ],
+              _ScopeTab(
+                label: 'Global',
+                icon: Iconsax.global,
+                isSelected: scope == ExpenseScope.global,
+                onTap: () => _handleScopeChange(ExpenseScope.global),
               ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  _ScopeTab(
-                    label: 'Custom',
-                    scope: ExpenseScope.custom,
-                    icon: Iconsax.people,
-                    isSelected: scope == ExpenseScope.custom,
-                    onTap: () => _handleScopeChange(ExpenseScope.custom),
-                  ),
-                  _ScopeTab(
-                    label: 'Personal',
-                    scope: ExpenseScope.personal,
-                    icon: Iconsax.user,
-                    isSelected: scope == ExpenseScope.personal,
-                    onTap: () => _handleScopeChange(ExpenseScope.personal),
-                  ),
-                ],
+              _ScopeTab(
+                label: 'Custom',
+                icon: Iconsax.people,
+                isSelected: scope == ExpenseScope.custom,
+                onTap: () => _handleScopeChange(ExpenseScope.custom),
+              ),
+              _ScopeTab(
+                label: 'Personal',
+                icon: Iconsax.user,
+                isSelected: scope == ExpenseScope.personal,
+                onTap: () => _handleScopeChange(ExpenseScope.personal),
               ),
             ],
           ),
         ),
-        // Custom participant selection
         if (scope == ExpenseScope.custom) ...[
           const SizedBox(height: 16),
           _CustomParticipantSelector(
@@ -116,7 +90,6 @@ class SplitScopeSelector extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 24),
-        // Paid By selector (for leaders only)
         _PayerSelector(
           event: event,
           selectedPayerId: selectedPayerId,
@@ -129,25 +102,17 @@ class SplitScopeSelector extends ConsumerWidget {
   void _handleScopeChange(ExpenseScope newScope) {
     HapticService.selection();
     onScopeChanged(newScope);
-
-    if (newScope == ExpenseScope.subGroup) {
-      onAutoSelectSubGroup();
-    } else {
-      onSubGroupIdCleared(null);
-    }
   }
 }
 
 class _ScopeTab extends StatelessWidget {
   final String label;
-  final ExpenseScope scope;
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _ScopeTab({
     required this.label,
-    required this.scope,
     required this.icon,
     required this.isSelected,
     required this.onTap,
@@ -208,10 +173,8 @@ class _CustomParticipantSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Derive participants from the Event document directly (logistics provider removed in Phase 39).
     final participants = _eventParticipants(event);
     final participantsAsync = AsyncValue.data(participants);
-    // Use currentUid directly — participant IDs are Firebase UIDs
     final currentUid = ref.watch(currentUserProvider)?.uid;
 
     return Column(
@@ -254,7 +217,6 @@ class _CustomParticipantSelector extends ConsumerWidget {
             error: (e, _) =>
                 const InlineErrorWidget(message: 'Unable to load participants'),
             data: (participants) {
-              // Exclude current user from selection (they're auto-included)
               final otherParticipants = participants
                   .where((p) => p.id != currentUid)
                   .toList();
@@ -377,20 +339,15 @@ class _PayerSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Derive participants from the Event document directly (logistics provider removed in Phase 39).
     final participants = _eventParticipants(event);
 
-    // Check if current user is the event creator (leader)
     final currentUid = ref.watch(currentUserProvider)?.uid;
     final isLeader = currentUid != null && event.createdBy == currentUid;
 
-    // If not leader or no participants, don't show
     if (!isLeader || participants.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // Default to current user if no explicit payer set
-    // Participant IDs are Firebase UIDs, so currentUid works directly
     final effectivePayerId = selectedPayerId ?? currentUid;
 
     return Column(
