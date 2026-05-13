@@ -11,6 +11,7 @@ import '../../home/widgets/group_glyph.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
+import 'qr_invite_sheet.dart';
 import 'settings_section_header.dart';
 
 /// Wireframe identity and invite cards for GroupSettingsScreen.
@@ -275,9 +276,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 semanticLabel: 'Show QR code',
                 onTap: () {
                   HapticService.selection();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('QR invite coming soon')),
-                  );
+                  showGroupInviteQrSheet(context, group: widget.group);
                 },
               ),
               const SizedBox(width: 6),

@@ -92,6 +92,7 @@ abstract final class GroupKeys {
   static const infoSection = Key('group_info_section');
   static const groupNameEditIcon = Key('group_settings_group_name_edit_icon');
   static const inviteCodeCopyButton = Key('group_settings_invite_code_copy');
+  static const inviteQrCard = Key('group_settings_invite_qr_card');
 
   // GroupMembersSection
   static const membersSection = Key('group_members_section');

@@ -20,4 +20,7 @@ abstract final class ProfileKeys {
   static const feedbackTile = Key('profile_feedback_tile');
   static const licensesTile = Key('profile_licenses_tile');
   static const coffeeTile = Key('profile_coffee_tile');
+
+  // T3.K — profile QR sheet
+  static const qrCard = Key('profile_qr_card');
 }
