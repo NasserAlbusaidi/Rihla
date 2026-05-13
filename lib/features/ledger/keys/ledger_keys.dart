@@ -11,6 +11,9 @@ abstract final class LedgerKeys {
   static const spendingLabel = Key('ledger_spending_label');
   static const payerSectionLabel = Key('ledger_payer_section_label');
 
+  // Search sheet (T3.L)
+  static const searchField = Key('ledger_search_field');
+
   // Parameterized keys for list items
   static Key expenseCard(String id) => Key('ledger_expense_card_$id');
 }
