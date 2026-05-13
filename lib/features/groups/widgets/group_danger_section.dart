@@ -2,30 +2,34 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
+import 'delete_group_sheet.dart';
+import 'settings_section_header.dart';
 
 /// Danger zone section widget for GroupSettingsScreen.
-///
-/// Shows a Leave Group tile (all members) and a Delete Group tile (creator
-/// only). Both trigger an AlertDialog confirmation before executing. After
-/// leave or delete, navigates to /home (context.go — replaces route stack).
 class GroupDangerSection extends ConsumerWidget {
   const GroupDangerSection({
     super.key,
     required this.groupId,
     required this.isCreator,
+    this.groupName,
   });
 
   final String groupId;
   final bool isCreator;
+
+  /// Used as the type-to-confirm token on the delete sheet. When null we fall
+  /// back to a generic "the group" prompt — callers should pass the real name
+  /// (creator-only screens always have it).
+  final String? groupName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,41 +37,30 @@ class GroupDangerSection extends ConsumerWidget {
       key: GroupKeys.dangerSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(context),
-        const SizedBox(height: 8),
         Container(
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: context.colors.cardSurface,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: context.shadows.raised,
+            color: context.colors.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
+            border: Border.all(
+              color: context.colors.error.withValues(alpha: 0.16),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              SettingsSectionHeader(
+                title: isCreator ? 'Danger zone · Creator only' : 'Danger zone',
+                color: context.colors.error,
+              ),
+              const SizedBox(height: 6),
               _buildLeaveGroupTile(context, ref),
               if (isCreator) ...[
-                Divider(height: 1, color: context.colors.inputFill),
+                const SizedBox(height: 8),
                 _buildDeleteGroupTile(context, ref),
               ],
             ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(BuildContext context) {
-    return Row(
-      children: [
-        Icon(Iconsax.warning_2, size: 16, color: context.colors.errorText),
-        const SizedBox(width: 6),
-        Text(
-          'DANGER ZONE',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: context.colors.errorText,
-            letterSpacing: 1.5,
           ),
         ),
       ],
@@ -82,38 +75,22 @@ class GroupDangerSection extends ConsumerWidget {
         _showLeaveDialog(context, ref);
       },
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: context.colors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Icon(
-                  Iconsax.logout,
-                  size: 18,
-                  color: context.colors.errorText,
-                ),
-              ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: _DangerCopy(
+              title: 'Leave this group',
+              subtitle: "You'll lose access to its events and expenses.",
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Leave Group',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.errorText,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+          _DangerButton(
+            label: 'Leave',
+            onTap: () {
+              HapticService.selection();
+              _showLeaveDialog(context, ref);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -126,38 +103,22 @@ class GroupDangerSection extends ConsumerWidget {
         _showDeleteDialog(context, ref);
       },
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: context.colors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Icon(
-                  Iconsax.trash,
-                  size: 18,
-                  color: context.colors.errorText,
-                ),
-              ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: _DangerCopy(
+              title: 'Delete this group',
+              subtitle: 'All events and expenses will be lost.',
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Delete Group',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.errorText,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+          _DangerButton(
+            label: 'Delete',
+            onTap: () {
+              HapticService.selection();
+              _showDeleteDialog(context, ref);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -169,7 +130,7 @@ class GroupDangerSection extends ConsumerWidget {
         key: GroupKeys.leaveGroupDialog,
         title: Text(
           'Leave group?',
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 20,
             fontWeight: FontWeight.w600,
             color: context.colors.textPrimary,
@@ -177,9 +138,8 @@ class GroupDangerSection extends ConsumerWidget {
         ),
         content: Text(
           "You'll lose access to all events and data in this group.",
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 14,
-            fontWeight: FontWeight.w400,
             color: context.colors.textSecondary,
           ),
         ),
@@ -188,7 +148,10 @@ class GroupDangerSection extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'Stay in group',
-              style: TextStyle(color: context.colors.textSecondary),
+              style: AppTypography.sans(
+                fontSize: 14,
+                color: context.colors.textSecondary,
+              ),
             ),
           ),
           TextButton(
@@ -200,7 +163,8 @@ class GroupDangerSection extends ConsumerWidget {
             },
             child: Text(
               'Leave group',
-              style: TextStyle(
+              style: AppTypography.sans(
+                fontSize: 14,
                 color: context.colors.errorText,
                 fontWeight: FontWeight.w600,
               ),
@@ -212,51 +176,18 @@ class GroupDangerSection extends ConsumerWidget {
   }
 
   void _showDeleteDialog(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        key: GroupKeys.deleteGroupDialog,
-        title: Text(
-          'Delete group?',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: context.colors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'This will permanently delete the group and all its events. This cannot be undone.',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: context.colors.textSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Keep group',
-              style: TextStyle(color: context.colors.textSecondary),
-            ),
-          ),
-          TextButton(
-            key: GroupKeys.deleteGroupConfirmButton,
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              HapticService.medium();
-              _executeDelete(context, ref);
-            },
-            child: Text(
-              'Delete group',
-              style: TextStyle(
-                color: context.colors.errorText,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final balancesAsync = ref.read(groupBalancesProvider(groupId));
+    final balances = balancesAsync.valueOrNull;
+    final memberCount = balances?.balances.length ?? 0;
+
+    showDeleteGroupSheet(
+      context,
+      groupName: groupName ?? 'this group',
+      memberCount: memberCount,
+      onConfirm: () {
+        HapticService.medium();
+        _executeDelete(context, ref);
+      },
     );
   }
 
@@ -264,7 +195,6 @@ class GroupDangerSection extends ConsumerWidget {
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
-    // Bug 9: Block leave if current user has an outstanding balance.
     final uid = FirebaseConfig.currentUser?.uid;
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
@@ -289,7 +219,6 @@ class GroupDangerSection extends ConsumerWidget {
       }
     }
 
-    // Log member_left activity (D-14) — fire-and-forget before navigation.
     try {
       final actorId = FirebaseConfig.currentUser?.uid ?? '';
       final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
@@ -322,7 +251,6 @@ class GroupDangerSection extends ConsumerWidget {
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
-    // Bug 9: Block delete if ANY member has an outstanding balance.
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
     if (balances != null) {
@@ -351,5 +279,67 @@ class GroupDangerSection extends ConsumerWidget {
         SnackBar(content: Text('Failed to delete group: $e')),
       );
     }
+  }
+}
+
+class _DangerCopy extends StatelessWidget {
+  const _DangerCopy({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: AppTypography.sans(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: context.colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: AppTypography.sans(
+            fontSize: 12,
+            color: context.colors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DangerButton extends StatelessWidget {
+  const _DangerButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.colors.errorText,
+      borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Text(
+            label,
+            style: AppTypography.sans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: context.colors.textOnPrimary,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

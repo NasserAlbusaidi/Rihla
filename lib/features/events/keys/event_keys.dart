@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 abstract final class EventKeys {
   // Screen keys (D-10: mandatory for all screens)
   static const screen = Key('event_command_center_screen');
+  static const dayBadge = Key('event_command_center_day_badge');
   static const createEventScreen = Key('create_event_screen');
   static const eventTypePickerScreen = Key('event_type_picker_screen');
   static const eventTypePickerTitle = Key('event_type_picker_title');

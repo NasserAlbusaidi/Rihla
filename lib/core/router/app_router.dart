@@ -21,12 +21,15 @@ import '../../features/ledger/screens/edit_expense_screen.dart';
 import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
 import '../../features/activity/screens/activity_feed_screen.dart';
+import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
-import '../theme/tokens/domain_aliases.dart';
+import '../providers/settings_provider.dart';
+import '../screens/splash_screen.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
   static const String splash = '/';
+  static const String onboarding = '/onboarding';
   static const String home = '/home';
   static const String profile = '/profile';
   // Groups routes (Phase 2)
@@ -71,22 +74,47 @@ Widget _sharedAxisTransition(
   );
 }
 
-/// Router provider — splash always redirects to /home (no onboarding).
+/// Router provider — redirects splash to `/onboarding` on first launch and
+/// `/home` thereafter. Onboarding state is read from [settingsProvider]
+/// (backed by SharedPreferences) which is hydrated synchronously at boot.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: kDebugMode,
     redirect: (context, state) {
-      if (state.matchedLocation == AppRoutes.splash) {
-        return AppRoutes.home;
+      final onboardingComplete = ref
+          .read(settingsProvider.select((s) => s.onboardingComplete));
+      final location = state.matchedLocation;
+
+      if (location == AppRoutes.splash) {
+        return onboardingComplete ? AppRoutes.home : AppRoutes.onboarding;
       }
+
+      // Hard gate: until onboarding is complete, every non-onboarding route
+      // redirects back to /onboarding so deep links can't bypass setup.
+      if (!onboardingComplete && location != AppRoutes.onboarding) {
+        return AppRoutes.onboarding;
+      }
+
       return null;
     },
     routes: [
-      // Splash - auto-redirects to /home
+      // Splash - auto-redirects to /onboarding or /home
       GoRoute(
         path: AppRoutes.splash,
-        builder: (context, state) => const _SplashScreen(),
+        builder: (context, state) => const SplashScreen(),
+      ),
+
+      // Onboarding - 3-page first-launch flow.
+      GoRoute(
+        path: AppRoutes.onboarding,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const OnboardingScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
       ),
 
       // Home / Trip List
@@ -109,12 +137,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const CreateGroupScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 1),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              ),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             );
           },
@@ -129,12 +161,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const JoinGroupScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 1),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              ),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             );
           },
@@ -154,8 +190,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'settings',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child:
-                  GroupSettingsScreen(groupId: state.pathParameters['gid']!),
+              child: GroupSettingsScreen(groupId: state.pathParameters['gid']!),
               transitionsBuilder: _sharedAxisTransition,
             ),
           ),
@@ -167,8 +202,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: GroupSettleUpScreen(
                 groupId: state.pathParameters['gid']!,
-                preSelectedMemberId:
-                    state.uri.queryParameters['memberId'],
+                preSelectedMemberId: state.uri.queryParameters['memberId'],
               ),
               transitionsBuilder: _sharedAxisTransition,
             ),
@@ -179,9 +213,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'activity',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: GroupActivityScreen(
-                groupId: state.pathParameters['gid']!,
-              ),
+              child: GroupActivityScreen(groupId: state.pathParameters['gid']!),
               transitionsBuilder: _sharedAxisTransition,
             ),
           ),
@@ -331,29 +363,3 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
-
-/// Splash screen that auto-redirects -- branded loading
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // Warm-sand splash/pre-hydration frame — deliberate brand identity,
-      // intentionally NOT theme-aware. Stays constant across light/dark.
-      // design-token-justified: splash brand background, pre-hydration frame
-      backgroundColor: const Color(0xFFF2E8D6),
-      body: Center(
-        child: Text(
-          'Rihla',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            color: context.colors.textPrimary,
-            fontFamily: 'Plus Jakarta Sans',
-          ),
-        ),
-      ),
-    );
-  }
-}

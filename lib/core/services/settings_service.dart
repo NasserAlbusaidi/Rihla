@@ -6,7 +6,9 @@ class SettingsService {
   static const String _languageKey = 'settings_language';
   static const String _currencyKey = 'settings_currency';
   static const String _pushNotificationsKey = 'settings_push_notifications';
+  static const String _weeklyDigestKey = 'settings_weekly_digest';
   static const String _deviceNameKey = 'settings_device_name';
+  static const String _onboardingCompleteKey = 'settings_onboarding_complete';
 
   final SharedPreferences _prefs;
 
@@ -23,14 +25,19 @@ class SettingsService {
     final currencyCode = _prefs.getString(_currencyKey) ?? 'OMR';
     final pushNotificationsEnabled =
         _prefs.getBool(_pushNotificationsKey) ?? false;
+    final weeklyDigestEnabled = _prefs.getBool(_weeklyDigestKey) ?? false;
     final deviceName = _prefs.getString(_deviceNameKey) ?? '';
+    final onboardingComplete =
+        _prefs.getBool(_onboardingCompleteKey) ?? false;
 
     return AppSettings(
       themeMode: themeMode,
       languageCode: languageCode,
       currencyCode: currencyCode,
       pushNotificationsEnabled: pushNotificationsEnabled,
+      weeklyDigestEnabled: weeklyDigestEnabled,
       deviceName: deviceName,
+      onboardingComplete: onboardingComplete,
     );
   }
 
@@ -51,7 +58,15 @@ class SettingsService {
     await _prefs.setBool(_pushNotificationsKey, enabled);
   }
 
+  Future<void> saveWeeklyDigestEnabled(bool enabled) async {
+    await _prefs.setBool(_weeklyDigestKey, enabled);
+  }
+
   Future<void> saveDeviceName(String name) async {
     await _prefs.setString(_deviceNameKey, name);
+  }
+
+  Future<void> saveOnboardingComplete(bool complete) async {
+    await _prefs.setBool(_onboardingCompleteKey, complete);
   }
 }

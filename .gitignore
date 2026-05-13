@@ -55,7 +55,7 @@ ios/Runner/GoogleService-Info.plist
 # Agent run logs and generated skill files
 data/run-logs/
 SKILL.md
-.claude/worktrees/
+.claude/
 .clone/worktrees/
 .agent/
 
@@ -75,3 +75,4 @@ analyze_output*.txt
 # Agent harness logs
 .playwright-mcp/
 .paperclip/logs/
+.planning/

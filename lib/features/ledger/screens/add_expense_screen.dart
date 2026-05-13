@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:animations/animations.dart';
+
 import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -7,9 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:uuid/uuid.dart';
-import '../../../core/utils/formatters.dart';
+
 import '../../../core/services/haptic_service.dart';
-import '../../../shared/widgets/module_header.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/formatters.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -19,15 +21,11 @@ import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
 import '../services/receipt_service.dart';
-import '../widgets/amount_input_section.dart';
-import '../widgets/category_selection_step.dart';
 import '../widgets/expense_success_dialog.dart';
 import '../widgets/receipt_picker_section.dart';
 import '../widgets/split_scope_selector.dart';
-import '../../../shared/widgets/dot_step_indicator.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
-/// Omni-Splitter (Add Expense Screen) - Redesigned with 3-step flow
+/// Add Expense screen, aligned to the saffron hi-fi single-page form.
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String eventId;
@@ -44,71 +42,28 @@ class AddExpenseScreen extends ConsumerStatefulWidget {
 
 class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _noteController = TextEditingController();
+  final _amountController = TextEditingController(text: '0');
 
-  // Custom numeric entry state
   String _amount = '0';
-  int _currentStep = 0; // 0: Amount, 1: Classify, 2: Split/Confirm
-
-  /// Tracks direction for SharedAxisTransition vertical animation.
-  /// true = going back (step decreases), false = going forward.
-  bool _goingBack = false;
-
   ExpenseScope _scope = ExpenseScope.global;
   String? _selectedCategoryId;
   String? _selectedSubGroupId;
+  String? _selectedPayerId;
   final Set<String> _customSplitParticipants = {};
 
-  // Leader can add expense on behalf of others
-  String? _selectedPayerId;
-
-  // Receipt capture state
   String? _receiptPath;
   bool _isUploadingReceipt = false;
 
-  /// Get the event's currency code (OMR-only after Phase 39 strip).
   String get _tripCurrency => 'OMR';
 
   @override
   void dispose() {
     _noteController.dispose();
+    _amountController.dispose();
     super.dispose();
   }
 
-  /// No-op stub: sub-group auto-selection was a logistics feature removed in Phase 39.
-  /// Kept as a callback target for surviving widgets that still pass the prop.
   void _autoSelectUserSubGroup() {}
-
-  void _onKeyPress(String key) {
-    HapticService.lightClick();
-    setState(() {
-      if (key == 'back') {
-        if (_amount.length > 1) {
-          _amount = _amount.substring(0, _amount.length - 1);
-        } else {
-          _amount = '0';
-        }
-      } else if (key == '.') {
-        if (!_amount.contains('.')) {
-          _amount += '.';
-        }
-      } else {
-        if (_amount == '0') {
-          _amount = key;
-        } else {
-          // Limit decimal places based on trip currency
-          final maxDecimals = AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3;
-          if (_amount.contains('.')) {
-            final parts = _amount.split('.');
-            if (parts[1].length < maxDecimals) {
-              _amount += key;
-            }
-          } else {
-            _amount += key;
-          }
-        }
-      }
-    });
-  }
 
   Future<void> _submit() async {
     Decimal amount;
@@ -122,6 +77,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       }
       return;
     }
+
     if (amount <= Decimal.zero) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -130,24 +86,25 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       }
       return;
     }
-    HapticService.success(); // D-02: fire on tap after validation, before async write
 
+    HapticService.success();
     final note = _noteController.text.trim();
-
     final currentParticipant = ref.read(
-      currentParticipantProvider(widget.eventId),
+      currentEventParticipantProvider((
+        groupId: widget.groupId,
+        eventId: widget.eventId,
+      )),
     );
+
     if (currentParticipant == null) {
       ref.read(expenseErrorProvider.notifier).state =
           'Could not identify your participant record.';
       return;
     }
 
-    // Guard against double-tap: set loading true before any async work
     ref.read(expenseLoadingProvider.notifier).state = true;
 
     try {
-      // Upload receipt if one was selected
       String? receiptUrl;
       if (_receiptPath != null) {
         setState(() => _isUploadingReceipt = true);
@@ -156,27 +113,26 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         setState(() => _isUploadingReceipt = false);
       }
 
-      final expenseService = ref.read(expenseServiceProvider);
-      final expense = await expenseService.addExpense(
-        groupId: widget.groupId,
-        eventId: widget.eventId,
-        payerParticipantId: _selectedPayerId ?? currentParticipant.id,
-        actorId: currentParticipant.id,
-        actorName: currentParticipant.displayName,
-        amount: amount,
-        description: note.isNotEmpty ? note : null,
-        scope: _scope,
-        subGroupId: _selectedSubGroupId,
-        customSplitParticipants: _scope == ExpenseScope.custom
-            ? _customSplitParticipants.toList()
-            : null,
-        receiptUrl: receiptUrl,
-        categoryId: _selectedCategoryId,
-      );
+      final expense = await ref
+          .read(expenseServiceProvider)
+          .addExpense(
+            groupId: widget.groupId,
+            eventId: widget.eventId,
+            payerParticipantId: _selectedPayerId ?? currentParticipant.id,
+            actorId: currentParticipant.id,
+            actorName: currentParticipant.displayName,
+            amount: amount,
+            description: note.isNotEmpty ? note : null,
+            scope: _scope,
+            subGroupId: _selectedSubGroupId,
+            customSplitParticipants: _scope == ExpenseScope.custom
+                ? _customSplitParticipants.toList()
+                : null,
+            receiptUrl: receiptUrl,
+            categoryId: _selectedCategoryId,
+          );
 
-      if (mounted) {
-        _showSuccessDialog(expense);
-      }
+      if (mounted) _showSuccessDialog(expense);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -190,10 +146,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
   }
 
-  /// Pick a receipt image from gallery or camera
   Future<void> _pickReceipt() async {
     HapticService.lightClick();
-
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
@@ -202,29 +156,21 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (result != null &&
         result.files.isNotEmpty &&
         result.files.first.path != null) {
-      setState(() {
-        _receiptPath = result.files.first.path;
-      });
+      setState(() => _receiptPath = result.files.first.path);
     }
   }
 
-  /// Upload receipt via the gated callable.
-  ///
-  /// Storage rules deny direct SDK access to `receipts/*`, so uploads must
-  /// flow through [ReceiptService] → StorageGateway → signed PUT URL. An
-  /// expense id is pre-generated client-side because the expense row has
-  /// not been persisted yet; this id is then used for both the receipt
-  /// storage path and the Firestore expense document.
   Future<String?> _uploadReceipt(String filePath) async {
     final file = File(filePath);
     final expenseId = const Uuid().v4();
-    final service = ref.read(receiptServiceProvider);
-    return service.uploadReceipt(
-      groupId: widget.groupId,
-      eventId: widget.eventId,
-      expenseId: expenseId,
-      imageFile: file,
-    );
+    return ref
+        .read(receiptServiceProvider)
+        .uploadReceipt(
+          groupId: widget.groupId,
+          eventId: widget.eventId,
+          expenseId: expenseId,
+          imageFile: file,
+        );
   }
 
   void _showSuccessDialog(Expense expense) {
@@ -242,29 +188,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           Navigator.of(context).pop();
           setState(() {
             _amount = '0';
-            _currentStep = 0;
+            _amountController.text = '0';
             _noteController.clear();
+            _selectedCategoryId = null;
+            _scope = ExpenseScope.global;
+            _customSplitParticipants.clear();
           });
         },
       ),
     );
-  }
-
-  void _nextStep() {
-    if (_currentStep == 0 && (Decimal.parse(_amount) <= Decimal.zero)) return;
-    HapticService.medium();
-    setState(() {
-      _goingBack = false;
-      _currentStep++;
-    });
-  }
-
-  void _prevStep() {
-    HapticService.lightClick();
-    setState(() {
-      _goingBack = true;
-      _currentStep--;
-    });
   }
 
   @override
@@ -272,275 +204,811 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final isLoading = ref.watch(expenseLoadingProvider);
     final error = ref.watch(expenseErrorProvider);
     final categoriesAsync = ref.watch(tripCategoriesProvider(widget.eventId));
-    // Watch the Event object so SplitScopeSelector can use eventLogisticsParticipantsProvider
-    final eventAsync = ref.watch(eventDetailProvider(
-      (groupId: widget.groupId, eventId: widget.eventId),
-    ));
+    final eventAsync = ref.watch(
+      eventDetailProvider((groupId: widget.groupId, eventId: widget.eventId)),
+    );
+    final event = eventAsync.valueOrNull;
+    final currentParticipant = ref.watch(
+      currentEventParticipantProvider((
+        groupId: widget.groupId,
+        eventId: widget.eventId,
+      )),
+    );
 
     return Scaffold(
       key: LedgerKeys.addExpenseScreen,
       backgroundColor: context.colors.scaffoldBackground,
-      body: Column(
-        children: [
-          const ModuleHeader(
-            title: 'Add Expense',
-            useDarkTheme: true,
-          ),
-          _buildStepHeader(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _ExpenseTopBar(
+              isLoading: isLoading,
+              onClose: () {
+                HapticService.lightClick();
+                context.pop();
+              },
+              onAdd: _submit,
+            ),
             Expanded(
-              child: PageTransitionSwitcher(
-                reverse: _goingBack,
-                duration: const Duration(milliseconds: 400),
-                transitionBuilder: (child, primary, secondary) {
-                  return SharedAxisTransition(
-                    animation: primary,
-                    secondaryAnimation: secondary,
-                    transitionType: SharedAxisTransitionType.vertical,
-                    child: child,
-                  );
-                },
-                child: _buildCurrentStep(
-                  _currentStep,
-                  error,
-                  eventAsync,
-                  categoriesAsync,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _AmountHero(
+                      controller: _amountController,
+                      amount: _amount,
+                      currency: _tripCurrency,
+                      onChanged: (value) =>
+                          setState(() => _amount = _sanitizeAmount(value)),
+                    ),
+                    _DescriptionField(controller: _noteController),
+                    _Section(
+                      title: 'Category',
+                      child: _CategoryStrip(
+                        categoriesAsync: categoriesAsync,
+                        selectedCategoryId: _selectedCategoryId,
+                        onCategorySelected: (id) {
+                          HapticService.selection();
+                          setState(() => _selectedCategoryId = id);
+                        },
+                      ),
+                    ),
+                    if (event != null) ...[
+                      _Section(
+                        title: 'Paid by',
+                        child: _PaidByCard(
+                          event: event,
+                          payerId: _selectedPayerId ?? currentParticipant?.id,
+                        ),
+                      ),
+                      _Section(
+                        title: 'Split between',
+                        action: 'Customise',
+                        child: _SplitCard(
+                          event: event,
+                          amount: Decimal.tryParse(_amount) ?? Decimal.zero,
+                          scope: _scope,
+                          selectedPayerId: _selectedPayerId,
+                          customSplitParticipants: _customSplitParticipants,
+                          selectedSubGroupId: _selectedSubGroupId,
+                          onScopeChanged: (scope) =>
+                              setState(() => _scope = scope),
+                          onCustomSplitChanged: (participants) {
+                            setState(() {
+                              _customSplitParticipants
+                                ..clear()
+                                ..addAll(participants);
+                            });
+                          },
+                          onPayerChanged: (value) =>
+                              setState(() => _selectedPayerId = value),
+                          onAutoSelectSubGroup: _autoSelectUserSubGroup,
+                          onSubGroupIdCleared: (value) =>
+                              setState(() => _selectedSubGroupId = value),
+                        ),
+                      ),
+                      _Section(
+                        title: 'Where',
+                        child: _WhereCard(event: event),
+                      ),
+                    ] else
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    _Section(
+                      title: 'Receipt',
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: _CardShell(
+                          padding: const EdgeInsets.all(16),
+                          child: ReceiptPickerSection(
+                            receiptPath: _receiptPath,
+                            isUploading: _isUploadingReceipt,
+                            onPick: _pickReceipt,
+                            onRemove: () => setState(() => _receiptPath = null),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (error != null) _ErrorBanner(error: error),
+                  ],
                 ),
               ),
             ),
-            _buildBottomAction(isLoading),
           ],
         ),
+      ),
     );
   }
 
-  /// Returns the step widget for the given [step] index.
-  ///
-  /// Each step widget is wrapped with a [ValueKey] so [PageTransitionSwitcher]
-  /// detects the change and triggers the SharedAxisTransition animation.
-  Widget _buildCurrentStep(
-    int step,
-    String? error,
-    AsyncValue<Event?> eventAsync,
-    AsyncValue<List<ExpenseCategory>> categoriesAsync,
-  ) {
-    switch (step) {
-      case 0:
-        return KeyedSubtree(
-          key: const ValueKey<int>(0),
-          child: SingleChildScrollView(
-            child: Container(
-              margin:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: context.colors.cardSurface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: context.shadows.raised,
-              ),
-              child: AmountInputSection(
-                amount: _amount,
-                currency: _tripCurrency,
-                onKeyPress: _onKeyPress,
-              ),
-            ),
-          ),
-        );
-      case 1:
-        return KeyedSubtree(
-          key: const ValueKey<int>(1),
-          child: Container(
-            margin:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: context.colors.cardSurface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: context.shadows.raised,
-            ),
-            child: CategorySelectionStep(
-              categoriesAsync: categoriesAsync,
-              selectedCategoryId: _selectedCategoryId,
-              onCategorySelected: (id) {
-                setState(() => _selectedCategoryId = id);
-              },
-            ),
-          ),
-        );
-      case 2:
-      default:
-        return KeyedSubtree(
-          key: const ValueKey<int>(2),
-          child: _buildConfirmStep(error, eventAsync),
-        );
-    }
+  String _sanitizeAmount(String value) {
+    final cleaned = value.replaceAll(RegExp(r'[^0-9.]'), '');
+    if (cleaned.isEmpty) return '0';
+    final parts = cleaned.split('.');
+    if (parts.length == 1) return cleaned;
+    final maxDecimals =
+        AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3;
+    final fraction = parts.skip(1).join();
+    final clampedFraction = fraction.substring(
+      0,
+      fraction.length.clamp(0, maxDecimals),
+    );
+    return '${parts.first.isEmpty ? '0' : parts.first}.$clampedFraction';
   }
+}
 
-  Widget _buildStepHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: Icon(
-                  _currentStep == 0 ? Icons.close : Iconsax.arrow_left,
-                  color: context.colors.textSecondary,
-                ),
-                onPressed: () =>
-                    _currentStep == 0 ? context.pop() : _prevStep(),
+class _ExpenseTopBar extends StatelessWidget {
+  const _ExpenseTopBar({
+    required this.isLoading,
+    required this.onClose,
+    required this.onAdd,
+  });
+
+  final bool isLoading;
+  final VoidCallback onClose;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
+      child: SizedBox(
+        height: 48,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                tooltip: 'Close',
+                icon: const Icon(Iconsax.close_circle, size: 20),
+                color: context.colors.textPrimary,
+                onPressed: onClose,
               ),
+            ),
+            Text(
+              'Add expense',
+              style: AppTypography.sans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: context.colors.textPrimary,
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                onPressed: isLoading ? null : onAdd,
+                style: FilledButton.styleFrom(
+                  backgroundColor: context.colors.primary,
+                  foregroundColor: context.colors.textOnPrimary,
+                  minimumSize: const Size(64, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      context.spacing.radiusSmall,
+                    ),
+                  ),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Add'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AmountHero extends StatelessWidget {
+  const _AmountHero({
+    required this.controller,
+    required this.amount,
+    required this.currency,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String amount;
+  final String currency;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = amount.split('.');
+    final whole = parts.first.isEmpty ? '0' : parts.first;
+    final fraction = parts.length > 1 ? '.${parts.last}' : '';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Column(
+            children: [
               Text(
-                [
-                  'ENTER AMOUNT',
-                  'SELECT CATEGORY',
-                  'SPLIT & CONFIRM',
-                ][_currentStep],
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
+                'AMOUNT · $currency',
+                style: AppTypography.mono(
+                  fontSize: 9,
                   letterSpacing: 2,
                   color: context.colors.textSecondary,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 48), // Placeholder for balance
+              const SizedBox(height: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    currency,
+                    style: AppTypography.mono(
+                      fontSize: 22,
+                      color: context.colors.textSecondary,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    whole,
+                    style: AppTypography.mono(
+                      fontSize: 64,
+                      color: context.colors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                    ),
+                  ),
+                  if (fraction.isNotEmpty)
+                    Text(
+                      fraction,
+                      style: AppTypography.mono(
+                        fontSize: 32,
+                        color: context.colors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: 120,
+                height: 2,
+                decoration: BoxDecoration(
+                  color: context.colors.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          // DotStepIndicator (D-27)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: DotStepIndicator(
-              stepCount: 3,
-              currentStep: _currentStep,
-              activeColor: context.colors.focusBorderWarm,
-              showCheckmarks: true,
+          Positioned.fill(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.transparent),
+              cursorColor: Colors.transparent,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                enabledBorder: InputBorder.none,
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildConfirmStep(String? error, AsyncValue<Event?> eventAsync) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+class _DescriptionField extends StatelessWidget {
+  const _DescriptionField({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: TextField(
+        controller: controller,
+        textInputAction: TextInputAction.done,
+        decoration: InputDecoration(
+          labelText: 'Description',
+          hintText: 'What was it for?',
+          filled: true,
+          fillColor: context.colors.scaffoldBackground,
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: context.colors.rule2),
+          ),
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: context.colors.primary, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.child, this.action});
+
+  final String title;
+  final String? action;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Split Details card
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: context.colors.cardSurface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: context.shadows.raised,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
               children: [
-                Text(
-                  'Split Details',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: context.colors.textPrimary,
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTypography.sans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: context.colors.textPrimary,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                // Pass Event to SplitScopeSelector for Firestore-native participant lookup
-                if (eventAsync.valueOrNull != null)
-                  SplitScopeSelector(
-                    event: eventAsync.valueOrNull!,
-                    scope: _scope,
-                    onScopeChanged: (scope) => setState(() => _scope = scope),
-                    customSplitParticipants: _customSplitParticipants,
-                    onCustomSplitChanged: (participants) {
-                      setState(() {
-                        _customSplitParticipants.clear();
-                        _customSplitParticipants.addAll(participants);
-                      });
-                    },
-                    selectedSubGroupId: _selectedSubGroupId,
-                    onAutoSelectSubGroup: _autoSelectUserSubGroup,
-                    onSubGroupIdCleared: (value) {
-                      setState(() => _selectedSubGroupId = value);
-                    },
-                    selectedPayerId: _selectedPayerId,
-                    onPayerChanged: (value) {
-                      setState(() => _selectedPayerId = value);
-                    },
-                  )
-                else
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
+                if (action != null)
+                  Text(
+                    action!,
+                    style: AppTypography.sans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: context.colors.primaryDark,
                     ),
                   ),
               ],
             ),
           ),
-          // Note & Receipt card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: context.colors.cardSurface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: context.shadows.raised,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'NOTE',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: context.colors.textSecondary,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _noteController,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    hintText: 'e.g. Lunch at trailhead...',
-                    fillColor: context.colors.inputFill,
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ReceiptPickerSection(
-                  receiptPath: _receiptPath,
-                  isUploading: _isUploadingReceipt,
-                  onPick: _pickReceipt,
-                  onRemove: () => setState(() => _receiptPath = null),
-                ),
-              ],
-            ),
-          ),
-          if (error != null) _buildErrorBanner(error),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          child,
         ],
       ),
     );
   }
+}
 
-  Widget _buildErrorBanner(String error) {
+class _CategoryStrip extends StatelessWidget {
+  const _CategoryStrip({
+    required this.categoriesAsync,
+    required this.selectedCategoryId,
+    required this.onCategorySelected,
+  });
+
+  final AsyncValue<List<ExpenseCategory>> categoriesAsync;
+  final String? selectedCategoryId;
+  final ValueChanged<String> onCategorySelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return categoriesAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: LinearProgressIndicator(),
+      ),
+      error: (_, _) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Text(
+          'Could not load categories.',
+          style: TextStyle(color: context.colors.errorText),
+        ),
+      ),
+      data: (categories) => SizedBox(
+        height: 42,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          scrollDirection: Axis.horizontal,
+          itemCount: categories.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final category = categories[index];
+            return _CategoryChip(
+              category: category,
+              selected: selectedCategoryId == category.id,
+              onTap: () => onCategorySelected(category.id),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({
+    required this.category,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ExpenseCategory category;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _categoryColor(context, category.name);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? context.colors.textPrimary
+              : context.colors.cardSurface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? context.colors.textPrimary : context.colors.rule2,
+          ),
+          boxShadow: selected ? context.shadows.flat : context.shadows.raised,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withValues(alpha: 0.18)
+                    : context.colors.cardSoft,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                category.iconData,
+                size: 11,
+                color: selected ? Colors.white : color,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              category.name,
+              style: AppTypography.sans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: selected
+                    ? context.colors.scaffoldBackground
+                    : context.colors.ink2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PaidByCard extends StatelessWidget {
+  const _PaidByCard({required this.event, required this.payerId});
+
+  final Event event;
+  final String? payerId;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectivePayerId = payerId ?? event.participantIds.firstOrNull;
+    final payerName =
+        event.participantNames[effectivePayerId] ?? 'Selected payer';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: _CardShell(
+        child: _InfoRow(
+          leading: _Avatar(name: payerName),
+          title: payerName,
+          subtitle: 'Selected · paid the full amount',
+          trailing: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: context.colors.textPrimary,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Iconsax.tick_circle,
+              size: 14,
+              color: context.colors.scaffoldBackground,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SplitCard extends StatelessWidget {
+  const _SplitCard({
+    required this.event,
+    required this.amount,
+    required this.scope,
+    required this.selectedPayerId,
+    required this.customSplitParticipants,
+    required this.selectedSubGroupId,
+    required this.onScopeChanged,
+    required this.onCustomSplitChanged,
+    required this.onPayerChanged,
+    required this.onAutoSelectSubGroup,
+    required this.onSubGroupIdCleared,
+  });
+
+  final Event event;
+  final Decimal amount;
+  final ExpenseScope scope;
+  final String? selectedPayerId;
+  final Set<String> customSplitParticipants;
+  final String? selectedSubGroupId;
+  final ValueChanged<ExpenseScope> onScopeChanged;
+  final ValueChanged<Set<String>> onCustomSplitChanged;
+  final ValueChanged<String?> onPayerChanged;
+  final VoidCallback onAutoSelectSubGroup;
+  final ValueChanged<String?> onSubGroupIdCleared;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = _splitCount;
+    final each = count == 0
+        ? Decimal.zero
+        : (amount / Decimal.fromInt(count)).toDecimal(
+            scaleOnInfinitePrecision: 3,
+          );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: _CardShell(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${_scopeLabel(scope)} · $count way${count == 1 ? '' : 's'}',
+                    style: AppTypography.sans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: context.colors.textPrimary,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${AppFormatters.formatCurrency(each, 'OMR')} each',
+                  style: AppTypography.sans(
+                    fontSize: 12,
+                    color: context.colors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SplitScopeSelector(
+              event: event,
+              scope: scope,
+              onScopeChanged: onScopeChanged,
+              customSplitParticipants: customSplitParticipants,
+              onCustomSplitChanged: onCustomSplitChanged,
+              selectedSubGroupId: selectedSubGroupId,
+              onAutoSelectSubGroup: onAutoSelectSubGroup,
+              onSubGroupIdCleared: onSubGroupIdCleared,
+              selectedPayerId: selectedPayerId,
+              onPayerChanged: onPayerChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int get _splitCount {
+    return switch (scope) {
+      ExpenseScope.personal => 1,
+      ExpenseScope.custom => customSplitParticipants.length + 1,
+      _ => event.participantIds.length,
+    };
+  }
+
+  String _scopeLabel(ExpenseScope scope) {
+    return switch (scope) {
+      ExpenseScope.global => 'Equally',
+      ExpenseScope.subGroup => 'Group split',
+      ExpenseScope.custom => 'Custom',
+      ExpenseScope.personal => 'Personal',
+    };
+  }
+}
+
+class _WhereCard extends StatelessWidget {
+  const _WhereCard({required this.event});
+
+  final Event event;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = event.startDate ?? event.createdAt;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: _CardShell(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            _InfoRow(title: 'Event', trailingText: event.name, dense: true),
+            Divider(height: 1, color: context.colors.rule),
+            _InfoRow(
+              title: 'Date',
+              trailingText: AppFormatters.formatShortMonthDay(date),
+              dense: true,
+            ),
+            Divider(height: 1, color: context.colors.rule),
+            const _InfoRow(
+              title: 'Note',
+              trailingText: 'Use description field',
+              dense: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CardShell extends StatelessWidget {
+  const _CardShell({
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 24),
+      decoration: BoxDecoration(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
+        boxShadow: context.shadows.raised,
+      ),
+      padding: padding,
+      child: child,
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.title,
+    this.subtitle,
+    this.leading,
+    this.trailing,
+    this.trailingText,
+    this.dense = false,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget? leading;
+  final Widget? trailing;
+  final String? trailingText;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: dense ? 12 : 14),
+      child: Row(
+        children: [
+          if (leading != null) ...[leading!, const SizedBox(width: 12)],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.sans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: context.colors.textPrimary,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: AppTypography.sans(
+                      fontSize: 12,
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (trailing != null)
+            trailing!
+          else if (trailingText != null)
+            Flexible(
+              child: Text(
+                trailingText!,
+                textAlign: TextAlign.end,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  color: context.colors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: context.colors.saffronTint,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: AppTypography.sans(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: context.colors.primaryDark,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.error});
+
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.colors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
       ),
       child: Row(
         children: [
@@ -556,80 +1024,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       ),
     );
   }
+}
 
-  Widget _buildBottomAction(bool isLoading) {
-    final isLastStep = _currentStep == 2;
-    final amountValue = Decimal.tryParse(_amount) ?? Decimal.zero;
-    final canContinue = amountValue > Decimal.zero;
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: SizedBox(
-        width: double.infinity,
-        height: 64,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: isLastStep ? context.colors.primaryGradient : null,
-            color: isLastStep
-                ? null
-                : (canContinue
-                      ? context.colors.textPrimary
-                      : context.colors.inputFill),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: canContinue
-                ? [
-                    BoxShadow(
-                      color:
-                          (isLastStep
-                                  ? context.colors.primary
-                                  : context.colors.textPrimary)
-                              .withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: ElevatedButton(
-            onPressed: isLoading
-                ? null
-                : (canContinue ? (isLastStep ? _submit : _nextStep) : null),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isLastStep ? 'CONFIRM & LOG' : 'NEXT STEP',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(Iconsax.arrow_right_1, color: Colors.white),
-                    ],
-                  ),
-          ),
-        ),
-      ),
-    );
+Color _categoryColor(BuildContext context, String name) {
+  final colors = context.colors;
+  final normalized = name.toLowerCase();
+  if (normalized.contains('food')) return colors.cat1;
+  if (normalized.contains('lodg') || normalized.contains('hotel')) {
+    return colors.cat2;
   }
+  if (normalized.contains('trans') || normalized.contains('taxi')) {
+    return colors.cat3;
+  }
+  if (normalized.contains('grocer')) return colors.cat4;
+  if (normalized.contains('activ')) return colors.cat5;
+  return colors.cat6;
 }

@@ -10,7 +10,11 @@ import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../models/expense_category_model.dart';
+import 'category_picker_sheet.dart';
+import 'custom_split_sheet.dart';
 import 'edit_expense_payer_selector.dart';
 import 'edit_expense_scope_section.dart';
 
@@ -65,8 +69,7 @@ class EditExpenseForm extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(tripCategoriesProvider(eventId));
-    final decimals =
-        AppFormatters.currencyConfig[tripCurrency]?.decimals ?? 3;
+    final decimals = AppFormatters.currencyConfig[tripCurrency]?.decimals ?? 3;
 
     return Scaffold(
       key: LedgerKeys.editExpenseSheet,
@@ -124,10 +127,7 @@ class EditExpenseForm extends ConsumerWidget {
                       ),
                       IconButton(
                         onPressed: isSaving ? null : onDelete,
-                        icon: Icon(
-                          Iconsax.trash,
-                          color: context.colors.error,
-                        ),
+                        icon: Icon(Iconsax.trash, color: context.colors.error),
                         tooltip: 'Delete expense',
                       ),
                     ],
@@ -183,7 +183,8 @@ class EditExpenseForm extends ConsumerWidget {
                     valueListenable: amountController,
                     builder: (context, value, _) {
                       final newAmount = Decimal.tryParse(value.text);
-                      final hasChanged = newAmount != null &&
+                      final hasChanged =
+                          newAmount != null &&
                           newAmount != initialExpense.amount;
                       if (!hasChanged) return const SizedBox.shrink();
                       return Padding(
@@ -194,12 +195,14 @@ class EditExpenseForm extends ConsumerWidget {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: context.colors.warning
-                                .withValues(alpha: 0.1),
+                            color: context.colors.warning.withValues(
+                              alpha: 0.1,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: context.colors.warning
-                                  .withValues(alpha: 0.3),
+                              color: context.colors.warning.withValues(
+                                alpha: 0.3,
+                              ),
                             ),
                           ),
                           child: Row(
@@ -211,8 +214,7 @@ class EditExpenseForm extends ConsumerWidget {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                initialExpense.amount
-                                    .toStringAsFixed(decimals),
+                                initialExpense.amount.toStringAsFixed(decimals),
                                 style: TextStyle(
                                   decoration: TextDecoration.lineThrough,
                                   color: context.colors.textSecondary,
@@ -254,52 +256,29 @@ class EditExpenseForm extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   categoriesAsync.when(
-                    loading: () => const SizedBox(height: 50),
-                    error: (err, _) =>
-                        const Text('Error loading categories'),
+                    loading: () => const SizedBox(height: 56),
+                    error: (err, _) => const Text('Error loading categories'),
                     data: (categories) {
                       if (categories.isEmpty) {
                         return const Text('No categories');
                       }
-                      return SizedBox(
-                        height: 44,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: categories.length,
-                          itemBuilder: (context, index) {
-                            final cat = categories[index];
-                            final isSelected =
-                                cat.id == selectedCategoryId;
-                            return GestureDetector(
-                              onTap: () {
-                                HapticService.lightClick();
-                                onCategoryChanged(cat.id);
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? context.colors.primary
-                                      : context.colors.inputFill,
-                                  borderRadius: BorderRadius.circular(22),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  cat.name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : context.colors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                      final selected = categories.firstWhere(
+                        (c) => c.id == selectedCategoryId,
+                        orElse: () => categories.first,
+                      );
+                      return _CategoryPickerTile(
+                        category: selected,
+                        onTap: () async {
+                          HapticService.selection();
+                          final picked = await showCategoryPickerSheet(
+                            context,
+                            tripId: eventId,
+                            selectedCategoryId: selectedCategoryId,
+                          );
+                          if (picked != null) {
+                            onCategoryChanged(picked);
+                          }
+                        },
                       );
                     },
                   ),
@@ -314,6 +293,8 @@ class EditExpenseForm extends ConsumerWidget {
                     customSplitParticipants: customSplitParticipants,
                     onCustomSplitChanged: onCustomSplitChanged,
                   ),
+                  const SizedBox(height: 12),
+                  _SplitPreviewLink(onTap: () => _openSplitPreview(context)),
                   const SizedBox(height: 16),
 
                   // ── Payer selector (leaders only) ───────────────────────
@@ -358,8 +339,7 @@ class EditExpenseForm extends ConsumerWidget {
                         child: OutlinedButton(
                           onPressed: () => context.pop(),
                           style: OutlinedButton.styleFrom(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -373,11 +353,9 @@ class EditExpenseForm extends ConsumerWidget {
                         child: ElevatedButton(
                           onPressed: isSaving ? null : onSubmit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                context.colors.primary,
+                            backgroundColor: context.colors.primary,
                             foregroundColor: Colors.white,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -393,9 +371,7 @@ class EditExpenseForm extends ConsumerWidget {
                                 )
                               : const Text(
                                   'Save Changes',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                         ),
                       ),
@@ -407,6 +383,157 @@ class EditExpenseForm extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openSplitPreview(BuildContext context) {
+    final raw = amountController.text.trim();
+    final amount = Decimal.tryParse(raw.isEmpty ? '0' : raw) ?? Decimal.zero;
+    if (amount == Decimal.zero) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount first to preview the split.'),
+        ),
+      );
+      return;
+    }
+
+    final included = _participantsForScope();
+    if (included.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add participants to preview the split.')),
+      );
+      return;
+    }
+
+    showCustomSplitSheet(
+      context,
+      title: noteController.text.trim().isNotEmpty
+          ? noteController.text.trim()
+          : 'This expense',
+      total: amount,
+      currency: tripCurrency,
+      participants: included
+          .map(
+            (id) => SplitParticipant(
+              id: id,
+              name: event.participantNames[id] ?? 'Member',
+              role: id == selectedPayerId ? 'Paid' : null,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  List<String> _participantsForScope() {
+    switch (scope) {
+      case ExpenseScope.global:
+      case ExpenseScope.subGroup:
+        return event.participantIds;
+      case ExpenseScope.custom:
+        return customSplitParticipants.toList();
+      case ExpenseScope.personal:
+        return selectedPayerId != null ? [selectedPayerId!] : const [];
+    }
+  }
+}
+
+class _SplitPreviewLink extends StatelessWidget {
+  const _SplitPreviewLink({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colors.inputFillWarm,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.borderWarm),
+        ),
+        child: Row(
+          children: [
+            Icon(Iconsax.calculator, size: 16, color: colors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Preview split',
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: colors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryPickerTile extends StatelessWidget {
+  const _CategoryPickerTile({required this.category, required this.onTap});
+
+  final ExpenseCategory category;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colors.cardSurface,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: context.shadows.raised,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: category.resolveColor(colors),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                category.name.isNotEmpty ? category.name[0].toUpperCase() : '·',
+                style: AppTypography.display(fontSize: 18, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                category.name,
+                style: AppTypography.sans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: colors.textSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }

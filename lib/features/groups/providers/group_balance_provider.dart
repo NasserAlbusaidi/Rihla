@@ -274,7 +274,11 @@ Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
 /// makes [crossGroupBalanceProvider] testable via Riverpod overrides without
 /// requiring a real Firebase Auth instance.
 final currentUserIdProvider = Provider<String?>((ref) {
-  return FirebaseConfig.currentUser?.uid;
+  try {
+    return FirebaseConfig.currentUser?.uid;
+  } catch (_) {
+    return null;
+  }
 });
 
 // ---------------------------------------------------------------------------

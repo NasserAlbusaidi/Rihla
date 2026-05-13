@@ -7,12 +7,14 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/initials_circle.dart';
 import '../keys/group_keys.dart';
 import '../models/group_member_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
+import 'settings_section_header.dart';
 
 /// Members section widget for GroupSettingsScreen.
 ///
@@ -40,39 +42,18 @@ class GroupMembersSection extends ConsumerWidget {
       key: GroupKeys.membersSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(context),
-        const SizedBox(height: 8),
+        const SettingsSectionHeader(title: 'Members', actionLabel: 'Manage'),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: context.colors.cardSurface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
             boxShadow: context.shadows.raised,
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: _buildMemberTiles(context, ref),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          Iconsax.people,
-          size: 16,
-          color: context.colors.textSecondary,
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'MEMBERS',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: context.colors.textSecondary,
-            letterSpacing: 1.5,
           ),
         ),
       ],
@@ -83,7 +64,7 @@ class GroupMembersSection extends ConsumerWidget {
     final tiles = <Widget>[];
     for (var i = 0; i < members.length; i++) {
       if (i > 0) {
-        tiles.add(Divider(height: 1, color: context.colors.inputFill));
+        tiles.add(Container(height: 0.5, color: context.colors.rule));
       }
       tiles.add(_buildMemberTile(context, ref, members[i]));
     }
@@ -95,36 +76,31 @@ class GroupMembersSection extends ConsumerWidget {
     WidgetRef ref,
     GroupMember member,
   ) {
-    final canRemove = isCurrentUserCreator &&
+    final canRemove =
+        isCurrentUserCreator &&
         currentUserId != null &&
         member.userId != currentUserId;
 
     return Padding(
       key: GroupKeys.memberTile(member.id),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          InitialsCircle(size: 36, name: member.displayName),
-          const SizedBox(width: 16),
+          InitialsCircle(size: 30, name: member.displayName),
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  member.displayName,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: context.colors.textPrimary,
-                  ),
-                ),
-                if (member.isCreator) ...[
-                  const SizedBox(height: 4),
-                  _buildCreatorBadge(context),
-                ],
-              ],
+            child: Text(
+              member.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.sans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: context.colors.textPrimary,
+              ),
             ),
           ),
+          _buildRoleLabel(context, member),
           if (canRemove)
             IconButton(
               key: GroupKeys.removeMemberButton(member.id),
@@ -144,26 +120,27 @@ class GroupMembersSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildCreatorBadge(BuildContext context) {
-    return Container(
-      key: GroupKeys.creatorBadge,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: context.colors.selectionFill,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        'Creator',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: context.colors.primary,
-        ),
+  Widget _buildRoleLabel(BuildContext context, GroupMember member) {
+    final role = member.isCreator
+        ? 'Creator'
+        : member.userId == currentUserId
+        ? 'You'
+        : 'Member';
+    return Text(
+      key: member.isCreator ? GroupKeys.creatorBadge : null,
+      role,
+      style: AppTypography.sans(
+        fontSize: 12,
+        color: context.colors.textSecondary,
       ),
     );
   }
 
-  Future<void> _handleRemove(BuildContext context, WidgetRef ref, GroupMember member) async {
+  Future<void> _handleRemove(
+    BuildContext context,
+    WidgetRef ref,
+    GroupMember member,
+  ) async {
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
 
@@ -175,7 +152,9 @@ class GroupMembersSection extends ConsumerWidget {
           memberBalance.first.netBalance != Decimal.zero) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Settle up with ${member.displayName} before removing them.'),
+            content: Text(
+              'Settle up with ${member.displayName} before removing them.',
+            ),
             action: SnackBarAction(
               label: 'Settle Up',
               onPressed: () => context.push('/group/$groupId/settle-up'),
@@ -189,21 +168,25 @@ class GroupMembersSection extends ConsumerWidget {
     // Log member_left activity (D-14) — fire-and-forget before remove call.
     try {
       final actorId = FirebaseConfig.currentUser?.uid ?? '';
-      ref.read(groupActivityServiceProvider).logGroupEvent(
-        groupId: groupId,
-        type: 'member_left',
-        actorId: actorId,
-        actorName: ref.read(settingsProvider).deviceName.isNotEmpty
-            ? ref.read(settingsProvider).deviceName
-            : member.displayName,
-        description: '${member.displayName} was removed from the group',
-      );
+      ref
+          .read(groupActivityServiceProvider)
+          .logGroupEvent(
+            groupId: groupId,
+            type: 'member_left',
+            actorId: actorId,
+            actorName: ref.read(settingsProvider).deviceName.isNotEmpty
+                ? ref.read(settingsProvider).deviceName
+                : member.displayName,
+            description: '${member.displayName} was removed from the group',
+          );
     } catch (_) {
       // Activity logging failure must never crash the remove flow.
     }
 
     try {
-      await ref.read(groupServiceProvider).removeMember(
+      await ref
+          .read(groupServiceProvider)
+          .removeMember(
             groupId: groupId,
             memberId: member.id,
             userId: member.userId,
