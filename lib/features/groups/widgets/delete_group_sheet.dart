@@ -23,6 +23,9 @@ Future<void> showDeleteGroupSheet(
     context: context,
     backgroundColor: context.colors.scaffoldBackground,
     isScrollControlled: true,
+    // design-token-justified: destructive-action scrim — darker than the
+    // default Material barrier (#000000 @ 0.32) to signal danger on a sheet
+    // that requires type-to-confirm. No token exists for modal scrims yet.
     barrierColor: const Color(0xFF1B1A17).withValues(alpha: 0.55),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
