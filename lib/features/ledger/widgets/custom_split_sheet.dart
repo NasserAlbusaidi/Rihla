@@ -1,15 +1,13 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/models/split_mode.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
 
-/// Split modes shown on the custom-split sheet. Only [equally] is wired to
-/// the underlying expense model today; the others are surfaced as "Soon"
-/// placeholders to preserve the wireframe's segmented control layout.
-enum SplitMode { equally, shares, exact, percent }
+export '../../../core/models/split_mode.dart' show SplitMode;
 
 /// Bottom-sheet split editor matching Hi_Sheet_Split (tier 6).
 ///

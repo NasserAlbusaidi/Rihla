@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'split_mode.dart';
+
 enum AppThemeMode { light, dark, system }
 
 class AppSettings {
@@ -10,6 +12,7 @@ class AppSettings {
   final bool weeklyDigestEnabled;
   final String deviceName;
   final bool onboardingComplete;
+  final SplitMode defaultSplitMode;
 
   const AppSettings({
     this.themeMode = AppThemeMode.system,
@@ -19,6 +22,7 @@ class AppSettings {
     this.weeklyDigestEnabled = false,
     this.deviceName = '',
     this.onboardingComplete = false,
+    this.defaultSplitMode = SplitMode.equally,
   });
 
   factory AppSettings.defaultSettings() => const AppSettings();
@@ -31,6 +35,7 @@ class AppSettings {
     bool? weeklyDigestEnabled,
     String? deviceName,
     bool? onboardingComplete,
+    SplitMode? defaultSplitMode,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -41,6 +46,7 @@ class AppSettings {
       weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
       deviceName: deviceName ?? this.deviceName,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
+      defaultSplitMode: defaultSplitMode ?? this.defaultSplitMode,
     );
   }
 

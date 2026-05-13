@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings_model.dart';
+import '../models/split_mode.dart';
 
 class SettingsService {
   static const String _themeKey = 'settings_theme';
@@ -9,6 +10,7 @@ class SettingsService {
   static const String _weeklyDigestKey = 'settings_weekly_digest';
   static const String _deviceNameKey = 'settings_device_name';
   static const String _onboardingCompleteKey = 'settings_onboarding_complete';
+  static const String _defaultSplitModeKey = 'settings_default_split_mode';
 
   final SharedPreferences _prefs;
 
@@ -29,6 +31,8 @@ class SettingsService {
     final deviceName = _prefs.getString(_deviceNameKey) ?? '';
     final onboardingComplete =
         _prefs.getBool(_onboardingCompleteKey) ?? false;
+    final defaultSplitMode =
+        splitModeFromStorage(_prefs.getString(_defaultSplitModeKey));
 
     return AppSettings(
       themeMode: themeMode,
@@ -38,6 +42,7 @@ class SettingsService {
       weeklyDigestEnabled: weeklyDigestEnabled,
       deviceName: deviceName,
       onboardingComplete: onboardingComplete,
+      defaultSplitMode: defaultSplitMode,
     );
   }
 
@@ -68,5 +73,9 @@ class SettingsService {
 
   Future<void> saveOnboardingComplete(bool complete) async {
     await _prefs.setBool(_onboardingCompleteKey, complete);
+  }
+
+  Future<void> saveDefaultSplitMode(SplitMode mode) async {
+    await _prefs.setString(_defaultSplitModeKey, mode.storageKey);
   }
 }
