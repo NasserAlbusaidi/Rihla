@@ -86,9 +86,6 @@ class EditExpenseScreen extends ConsumerWidget {
           customSplitParticipants: payload.scope == ExpenseScope.custom
               ? payload.customSplitParticipants
               : null,
-          subGroupId: payload.subGroupId != original.subGroupId
-              ? payload.subGroupId
-              : null,
           categoryId: payload.categoryId != original.categoryId
               ? payload.categoryId
               : null,
