@@ -9,7 +9,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../shared/widgets/initials_circle.dart';
+import '../../../shared/widgets/r_avatar.dart';
 import '../keys/group_keys.dart';
 import '../models/group_member_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -18,7 +18,7 @@ import 'settings_section_header.dart';
 
 /// Members section widget for GroupSettingsScreen.
 ///
-/// Displays a card with a tile per member, showing InitialsCircle, display
+/// Displays a card with a tile per member, showing an [RAvatar], display
 /// name, creator badge (creator only), and a remove button (creator view, for
 /// non-creator members). Balance gate blocks removal when member has a non-zero
 /// balance (D-07).
@@ -86,7 +86,7 @@ class GroupMembersSection extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          InitialsCircle(size: 30, name: member.displayName),
+          RAvatar(size: 30, name: member.displayName),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
