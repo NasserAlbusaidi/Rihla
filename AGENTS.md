@@ -163,7 +163,7 @@ Google Stitch is a **visual oracle only** — used purely for design exploration
 
 ### Workflow Steps
 
-1. **Prepare Stitch input prompt** — Create a prompt .md file in `.planning/phases/{phase}/prompts/` containing:
+1. **Prepare Stitch input prompt** — Create a prompt .md file in `docs/design/prompts/` containing:
    - Full palette (all hex values from `AppColorTokens.light` in `lib/core/theme/tokens/color_tokens.dart`)
    - Spacing scale (4dp through 32dp from `AppSpacingTokens.standard`)
    - Typography (Plus Jakarta Sans, weight hierarchy: 700/600/400)
@@ -173,13 +173,13 @@ Google Stitch is a **visual oracle only** — used purely for design exploration
 
 2. **Run Stitch** — Copy prompt content into Google Stitch. Generate mockup. Review output (1-2 rounds per screen). Store output images externally (not in repo — per D-18).
 
-3. **Apply post-generation checklist** — Run the 4 mandatory checks from `.planning/phases/16-stitch-workflow-design-reference/post-generation-checklist.md`:
+3. **Apply post-generation checklist** — Run the 4 mandatory checks:
    - Color token mapping — every color maps to AppColors/AppColorTokens
    - Spacing consistency — 4dp grid, token names only
    - Component reuse — shared widgets where applicable
    - Accessibility — WCAG AA text pairs, 48dp touch targets
 
-4. **Create annotated design spec** — Write a spec doc in `.planning/design/{screen}-spec.md` with:
+4. **Create annotated design spec** — Write a spec doc in `docs/design/{screen}-spec.md` with:
    - Token mapping table (every visual area to AppColors constant + hex)
    - Component hierarchy (Flutter widget tree structure)
    - Spacing spec (every spacing decision as token name)
@@ -193,15 +193,15 @@ Google Stitch is a **visual oracle only** — used purely for design exploration
 
 - **Palette source of truth:** `lib/core/theme/tokens/color_tokens.dart` (AppColorTokens.light)
 - **Spacing source of truth:** `lib/core/theme/tokens/spacing_tokens.dart` (AppSpacingTokens.standard)
-- **Post-generation checklist:** `.planning/phases/16-stitch-workflow-design-reference/post-generation-checklist.md`
-- **Design specs:** `.planning/design/{screen}-spec.md`
-- **Prompt templates:** `.planning/phases/{phase}/prompts/{screen}-prompt.md`
+- **Post-generation checklist:** inlined in Workflow Step 3 above
+- **Design specs:** `docs/design/{screen}-spec.md`
+- **Prompt templates:** `docs/design/prompts/{screen}-prompt.md`
 
 ### Key Rules
 
 - Never commit Stitch-generated Flutter code — implement from scratch using design spec as visual target
 - All hex values in specs must match AppColorTokens.light exactly
 - textMuted (#9CA3AF) is decorative only — never use for functional text, labels, or amounts (fails WCAG AA at 2.86:1 on white)
-- Every text-on-background pair must be in the WCAG-verified set (see post-generation-checklist.md Check 4)
+- Every text-on-background pair must be in the WCAG-verified set (Check 4 in Workflow Step 3 above)
 - Module accent colors: Ledger = primary teal (#0D7B74), all other modules = gray-500 (#6B7280)
 - DESIGN.md reference primary #006a64 is a candidate only — the canonical token is #0D7B74 (WCAG 5.12:1 verified)
