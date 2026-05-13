@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/services/expense_service.dart';
 
@@ -392,6 +393,150 @@ void main() {
           expect(restored.isDeleted, isFalse);
         },
       );
+    });
+
+    // -------------------------------------------------------------------------
+    // T4.N — split mode + per-participant distribution persistence
+    // -------------------------------------------------------------------------
+
+    group('split mode persistence', () {
+      Future<Map<String, dynamic>> readDoc(String gid, String eid, String xid) async {
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(gid)
+            .collection('events')
+            .doc(eid)
+            .collection('expenses')
+            .doc(xid)
+            .get();
+        return snap.data()!;
+      }
+
+      test('addExpense writes splitMode + shares distribution for non-equal splits',
+          () async {
+        const groupId = 'g1';
+        const eventId = 'e1';
+
+        final expense = await service.addExpense(
+          groupId: groupId,
+          eventId: eventId,
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('30.000'),
+          splitMode: SplitMode.shares,
+          splitDistribution: {
+            'p1': Decimal.fromInt(2),
+            'p2': Decimal.fromInt(1),
+            'p3': Decimal.fromInt(1),
+          },
+        );
+
+        final data = await readDoc(groupId, eventId, expense.id);
+        expect(data['splitMode'], equals('shares'));
+        expect(data['splitDistribution'], equals({'p1': 2, 'p2': 1, 'p3': 1}));
+      });
+
+      test('addExpense encodes exact amounts as currency subunits', () async {
+        final expense = await service.addExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('30.000'),
+          splitMode: SplitMode.exact,
+          splitDistribution: {
+            'p1': Decimal.parse('15.000'),
+            'p2': Decimal.parse('10.000'),
+            'p3': Decimal.parse('5.000'),
+          },
+        );
+
+        final data = await readDoc('g1', 'e1', expense.id);
+        expect(data['splitMode'], equals('exact'));
+        // OMR has 3 decimals so 15.000 → 15000 fils.
+        expect(data['splitDistribution'],
+            equals({'p1': 15000, 'p2': 10000, 'p3': 5000}));
+      });
+
+      test('addExpense scales percent values by 1000 for storage', () async {
+        final expense = await service.addExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('30.000'),
+          splitMode: SplitMode.percent,
+          splitDistribution: {
+            'p1': Decimal.parse('33.333'),
+            'p2': Decimal.parse('33.333'),
+            'p3': Decimal.parse('33.334'),
+          },
+        );
+
+        final data = await readDoc('g1', 'e1', expense.id);
+        expect(data['splitMode'], equals('percent'));
+        expect(data['splitDistribution'],
+            equals({'p1': 33333, 'p2': 33333, 'p3': 33334}));
+      });
+
+      test('addExpense omits splitMode/splitDistribution for equally', () async {
+        final expense = await service.addExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('10.000'),
+          splitMode: SplitMode.equally,
+        );
+
+        final data = await readDoc('g1', 'e1', expense.id);
+        expect(data.containsKey('splitMode'), isFalse);
+        expect(data.containsKey('splitDistribution'), isFalse);
+      });
+
+      test('updateExpense clearSplit removes both fields', () async {
+        final expense = await service.addExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('30.000'),
+          splitMode: SplitMode.shares,
+          splitDistribution: {
+            'p1': Decimal.fromInt(2),
+            'p2': Decimal.fromInt(1),
+          },
+        );
+        var data = await readDoc('g1', 'e1', expense.id);
+        expect(data['splitMode'], equals('shares'));
+
+        await service.updateExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          expenseId: expense.id,
+          clearSplit: true,
+        );
+
+        data = await readDoc('g1', 'e1', expense.id);
+        expect(data.containsKey('splitMode'), isFalse);
+        expect(data.containsKey('splitDistribution'), isFalse);
+      });
+
+      test('round-trip: addExpense → fromFirestore restores distribution',
+          () async {
+        final expense = await service.addExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('30.000'),
+          splitMode: SplitMode.exact,
+          splitDistribution: {
+            'p1': Decimal.parse('20.000'),
+            'p2': Decimal.parse('10.000'),
+          },
+        );
+
+        final data = await readDoc('g1', 'e1', expense.id);
+        final restored = Expense.fromFirestore({...data, 'id': expense.id});
+        expect(restored.splitMode, equals(SplitMode.exact));
+        expect(restored.splitDistribution!['p1'], equals(Decimal.parse('20.000')));
+        expect(restored.splitDistribution!['p2'], equals(Decimal.parse('10.000')));
+      });
     });
   });
 }

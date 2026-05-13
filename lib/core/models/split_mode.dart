@@ -1,9 +1,8 @@
 /// How an expense total is divided across its participants.
 ///
-/// Only [equally] is wired through `BalanceCalculator` and the custom-split
-/// sheet today. [shares], [exact], and [percent] exist so the picker UI and
-/// the user's stored preference round-trip; the actual distribution editors
-/// land with T4.N (`docs/plans/coming-soon-implementations.md`).
+/// All four modes are wired end-to-end: the data layer round-trips through
+/// `Expense.splitMode`/`splitDistribution`, `BalanceCalculator` allocates
+/// each mode, and the custom-split sheet edits them (T4.N shipped 2026-05).
 enum SplitMode { equally, shares, exact, percent }
 
 extension SplitModeX on SplitMode {
@@ -24,9 +23,9 @@ extension SplitModeX on SplitMode {
     SplitMode.percent => 'Percent',
   };
 
-  /// Whether this mode is functional today. Non-equal modes are surfaced in
-  /// the picker but locked behind T4.N.
-  bool get isAvailable => this == SplitMode.equally;
+  /// Whether this mode is functional today. All four modes ship in T4.N;
+  /// kept as a getter so callers don't have to depend on the enum directly.
+  bool get isAvailable => true;
 }
 
 SplitMode splitModeFromStorage(String? raw) {

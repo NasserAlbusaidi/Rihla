@@ -3,6 +3,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/models/split_mode.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
 import '../models/expense_model.dart';
@@ -93,6 +94,8 @@ class ExpenseService extends FirestoreRepository {
     ExpenseScope scope = ExpenseScope.global,
     String? subGroupId,
     List<String>? customSplitParticipants,
+    SplitMode? splitMode,
+    Map<String, Decimal>? splitDistribution,
     String? receiptUrl,
     String? categoryId,
     String? note,
@@ -109,6 +112,14 @@ class ExpenseService extends FirestoreRepository {
       'scope': scope.value,
       'subGroupId': scope == ExpenseScope.subGroup ? subGroupId : null,
       'customSplitParticipants': customSplitParticipants ?? [],
+      if (splitMode != null && splitMode != SplitMode.equally) ...{
+        'splitMode': splitMode.storageKey,
+        'splitDistribution': _encodeDistribution(
+          splitMode,
+          splitDistribution ?? const {},
+          currency,
+        ),
+      },
       'receiptUrl': receiptUrl,
       'categoryId': categoryId,
       'note': note,
@@ -221,6 +232,9 @@ class ExpenseService extends FirestoreRepository {
     ExpenseScope? scope,
     String? subGroupId,
     List<String>? customSplitParticipants,
+    SplitMode? splitMode,
+    Map<String, Decimal>? splitDistribution,
+    bool clearSplit = false,
     String? note,
     String? categoryId,
     String? payerParticipantId,
@@ -236,6 +250,17 @@ class ExpenseService extends FirestoreRepository {
     if (subGroupId != null) updates['subGroupId'] = subGroupId;
     if (customSplitParticipants != null) {
       updates['customSplitParticipants'] = customSplitParticipants;
+    }
+    if (clearSplit) {
+      updates['splitMode'] = FieldValue.delete();
+      updates['splitDistribution'] = FieldValue.delete();
+    } else if (splitMode != null && splitMode != SplitMode.equally) {
+      updates['splitMode'] = splitMode.storageKey;
+      updates['splitDistribution'] = _encodeDistribution(
+        splitMode,
+        splitDistribution ?? const {},
+        currency ?? 'OMR',
+      );
     }
     if (note != null) updates['note'] = note;
     if (categoryId != null) updates['categoryId'] = categoryId;
@@ -284,5 +309,28 @@ class ExpenseService extends FirestoreRepository {
       }
       rethrow;
     }
+  }
+
+  /// Encodes a split distribution map into the integer form Firestore stores.
+  /// Exact: scaled to currency subunits via [MoneySerializer].
+  /// Percent: scaled by 1000 so 33.333 % round-trips as 33333.
+  /// Shares: raw integer count.
+  static Map<String, int> _encodeDistribution(
+    SplitMode mode,
+    Map<String, Decimal> distribution,
+    String currency,
+  ) {
+    return {
+      for (final entry in distribution.entries)
+        entry.key: switch (mode) {
+          SplitMode.exact =>
+            MoneySerializer.toSubunits(entry.value, currency),
+          SplitMode.percent =>
+            (entry.value * Decimal.fromInt(1000)).toBigInt().toInt(),
+          SplitMode.shares ||
+          SplitMode.equally =>
+            entry.value.toBigInt().toInt(),
+        },
+    };
   }
 }

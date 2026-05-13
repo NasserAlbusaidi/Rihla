@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/models/split_mode.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -14,6 +16,7 @@ import '../../trip/providers/trip_provider.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
+import 'custom_split_sheet.dart';
 import 'split_scope_selector.dart';
 
 enum ExpenseEditorMode { add, edit }
@@ -26,6 +29,12 @@ class ExpenseEditorPayload {
   final String? categoryId;
   final String payerParticipantId;
   final List<String>? customSplitParticipants;
+  final SplitMode splitMode;
+
+  /// When [splitMode] is [SplitMode.equally] this is null and the parent
+  /// must NOT persist any distribution. For non-equal modes this is the
+  /// per-participant weight/amount/percent.
+  final Map<String, Decimal>? splitDistribution;
 
   const ExpenseEditorPayload({
     required this.amount,
@@ -34,6 +43,8 @@ class ExpenseEditorPayload {
     required this.categoryId,
     required this.payerParticipantId,
     required this.customSplitParticipants,
+    required this.splitMode,
+    required this.splitDistribution,
   });
 }
 
@@ -84,6 +95,15 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   String? _selectedPayerId;
   late Set<String> _customSplitParticipants;
 
+  /// How the expense total is divided. Defaults to [SplitMode.equally] in add
+  /// mode and to whatever the existing expense stored in edit mode.
+  late SplitMode _splitMode;
+
+  /// Per-participant weights/amounts/percents keyed by participant id.
+  /// Null when [_splitMode] is [SplitMode.equally] — the balance calculator
+  /// handles equal splits without a distribution map.
+  Map<String, Decimal>? _splitDistribution;
+
   bool _isSubmitting = false;
 
   bool get _isEdit => widget.mode == ExpenseEditorMode.edit;
@@ -103,12 +123,18 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       _selectedPayerId = initial.payerParticipantId;
       _customSplitParticipants =
           initial.customSplitParticipants?.toSet() ?? <String>{};
+      _splitMode = initial.splitMode ?? SplitMode.equally;
+      _splitDistribution = initial.splitDistribution == null
+          ? null
+          : Map<String, Decimal>.from(initial.splitDistribution!);
     } else {
       _amount = '0';
       _amountController = TextEditingController(text: '0');
       _noteController = TextEditingController();
       _scope = ExpenseScope.global;
       _customSplitParticipants = <String>{};
+      _splitMode = ref.read(settingsProvider).defaultSplitMode;
+      _splitDistribution = null;
     }
   }
 
@@ -163,6 +189,10 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
           customSplitParticipants: _scope == ExpenseScope.custom
               ? _customSplitParticipants.toList()
               : null,
+          splitMode: _splitMode,
+          splitDistribution: _splitMode == SplitMode.equally
+              ? null
+              : _splitDistribution,
         ),
       );
     } catch (e) {
@@ -244,16 +274,85 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
             required String? payerId,
           }) {
             setState(() {
+              final scopeChanged = scope != _scope;
+              final customChanged =
+                  !_setEquals(custom, _customSplitParticipants);
               _scope = scope;
               _customSplitParticipants
                 ..clear()
                 ..addAll(custom);
               _selectedPayerId = payerId;
+              // Distribution is keyed by participant id; if the participant
+              // set changed, the stored distribution is stale and would
+              // confuse the balance calculator. Reset to equal in that case.
+              if (scopeChanged || customChanged) {
+                _splitMode = SplitMode.equally;
+                _splitDistribution = null;
+              }
             });
           },
         );
       },
     );
+  }
+
+  Future<void> _openSplitModeSheet(Event event) async {
+    HapticService.lightClick();
+    final amount = Decimal.tryParse(_amount) ?? Decimal.zero;
+    final ids = _splitParticipantIds(event);
+    if (ids.length < 2) {
+      _showSnack('Pick at least two people in "Split between" first.');
+      return;
+    }
+    final participants = [
+      for (final id in ids)
+        SplitParticipant(
+          id: id,
+          name: event.participantNames[id] ?? 'Member',
+          role: id == _selectedPayerId ? 'Paid' : null,
+        ),
+    ];
+
+    final result = await showCustomSplitSheet(
+      context,
+      title: _noteController.text.trim().isEmpty
+          ? (_isEdit ? 'Edit expense' : 'New expense')
+          : _noteController.text.trim(),
+      total: amount,
+      currency: _tripCurrency,
+      participants: participants,
+      initialMode: _splitMode,
+      initialDistribution: _splitDistribution,
+    );
+
+    if (result == null || !mounted) return;
+    setState(() {
+      _splitMode = result.mode;
+      _splitDistribution = result.distribution;
+    });
+  }
+
+  List<String> _splitParticipantIds(Event event) {
+    switch (_scope) {
+      case ExpenseScope.global:
+      case ExpenseScope.subGroup:
+        return event.participantIds;
+      case ExpenseScope.custom:
+        final ids = _customSplitParticipants.toList();
+        final p = _selectedPayerId;
+        if (p != null && !ids.contains(p)) ids.insert(0, p);
+        return ids;
+      case ExpenseScope.personal:
+        return _selectedPayerId != null ? [_selectedPayerId!] : const [];
+    }
+  }
+
+  bool _setEquals(Set<String> a, Set<String> b) {
+    if (a.length != b.length) return false;
+    for (final v in a) {
+      if (!b.contains(v)) return false;
+    }
+    return true;
   }
 
   @override
@@ -329,6 +428,20 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                           scope: _scope,
                           payerId: _selectedPayerId ?? currentParticipant?.id,
                           customSplitParticipants: _customSplitParticipants,
+                        ),
+                      ),
+                      _Section(
+                        title: 'How',
+                        action: _splitParticipantIds(event).length < 2
+                            ? null
+                            : 'Customise',
+                        onAction: _splitParticipantIds(event).length < 2
+                            ? null
+                            : () => _openSplitModeSheet(event),
+                        child: _SplitModeCard(
+                          key: const Key('split_mode_card'),
+                          mode: _splitMode,
+                          eligibleCount: _splitParticipantIds(event).length,
                         ),
                       ),
                       _Section(
@@ -1005,6 +1118,79 @@ class _ParticipantSplitTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SplitModeCard extends StatelessWidget {
+  const _SplitModeCard({
+    super.key,
+    required this.mode,
+    required this.eligibleCount,
+  });
+
+  final SplitMode mode;
+  final int eligibleCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final disabled = eligibleCount < 2;
+    final subtitle = disabled
+        ? 'Pick at least two people to split.'
+        : switch (mode) {
+            SplitMode.equally => 'Split evenly across $eligibleCount way${eligibleCount == 1 ? '' : 's'}.',
+            SplitMode.shares => 'Weighted by shares.',
+            SplitMode.exact => 'Per-person amounts.',
+            SplitMode.percent => 'Per-person percents.',
+          };
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: _CardShell(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: colors.selectionFill,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Iconsax.percentage_square,
+                size: 18,
+                color: colors.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    mode.label,
+                    style: AppTypography.sans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTypography.sans(
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

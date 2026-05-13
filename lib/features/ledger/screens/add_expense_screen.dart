@@ -54,6 +54,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             description: payload.description,
             scope: payload.scope,
             customSplitParticipants: payload.customSplitParticipants,
+            splitMode: payload.splitMode,
+            splitDistribution: payload.splitDistribution,
             categoryId: payload.categoryId,
           );
 
