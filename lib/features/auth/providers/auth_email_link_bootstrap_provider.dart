@@ -22,7 +22,10 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         return;
       }
 
-      FirebaseConfig.log('Firebase email-link credential URL received: $link');
+      FirebaseConfig.log(
+        'Firebase email-link credential URL received: '
+        '${AuthEmailLinkConfig.redactForLogging(link)}',
+      );
     },
     onError: (Object error, StackTrace stackTrace) {
       FirebaseConfig.log(

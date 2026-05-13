@@ -27,7 +27,13 @@ class AuthEmailLinkConfig {
       androidPackageName: androidPackageName,
       androidInstallApp: true,
       iOSBundleId: iOSBundleId,
-      linkDomain: trimmedCustomDomain.isEmpty ? null : trimmedCustomDomain,
+      // Pin the linkDomain to the Hosting domain so Firebase emits continue
+      // URLs against `rihla-safar.web.app` (matched by the Android intent
+      // filter and the iOS associated domain) rather than the default
+      // `*.firebaseapp.com` auth domain, which wouldn't be deep-linked.
+      linkDomain: trimmedCustomDomain.isEmpty
+          ? hostingDomain
+          : trimmedCustomDomain,
     );
   }
 
@@ -39,5 +45,25 @@ class AuthEmailLinkConfig {
     if (!uri.path.startsWith(continuePath)) return false;
     return uri.queryParameters['mode'] == 'signIn' &&
         uri.queryParameters.containsKey('oobCode');
+  }
+
+  static const _redactedQueryParams = {'oobCode', 'apiKey'};
+
+  /// Returns a copy of [link] safe for logs and crash reports.
+  ///
+  /// Replaces `oobCode` (the single-use email-link credential) and `apiKey`
+  /// with `REDACTED` so the URL structure stays useful for debugging without
+  /// leaking an active credential.
+  static String redactForLogging(String link) {
+    final uri = Uri.tryParse(link);
+    if (uri == null) return '<unparseable-link>';
+    if (uri.queryParameters.isEmpty) return uri.toString();
+    final redacted = <String, String>{
+      for (final entry in uri.queryParameters.entries)
+        entry.key: _redactedQueryParams.contains(entry.key)
+            ? 'REDACTED'
+            : entry.value,
+    };
+    return uri.replace(queryParameters: redacted).toString();
   }
 }

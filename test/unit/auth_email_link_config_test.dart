@@ -13,6 +13,17 @@ void main() {
       expect(settings.iOSBundleId, 'com.safar.safar');
     });
 
+    test(
+      'pins linkDomain to the Hosting domain so Firebase emits continue URLs '
+      'we can deep-link (not the default firebaseapp.com)',
+      () {
+        final settings = AuthEmailLinkConfig.actionCodeSettings();
+
+        expect(settings.linkDomain, AuthEmailLinkConfig.hostingDomain);
+        expect(settings.linkDomain, 'rihla-safar.web.app');
+      },
+    );
+
     test('keeps the Firebase Hosting continue URL stable', () {
       expect(
         AuthEmailLinkConfig.continueUrl,
@@ -35,5 +46,33 @@ void main() {
         );
       },
     );
+
+    group('redactForLogging', () {
+      test('replaces oobCode and apiKey with REDACTED', () {
+        const link =
+            'https://rihla-safar.web.app/__/auth/links/continue?mode=signIn&oobCode=secret123&apiKey=AIza-fake&lang=en';
+
+        final redacted = AuthEmailLinkConfig.redactForLogging(link);
+
+        expect(redacted, contains('mode=signIn'));
+        expect(redacted, contains('lang=en'));
+        expect(redacted, contains('oobCode=REDACTED'));
+        expect(redacted, contains('apiKey=REDACTED'));
+        expect(redacted, isNot(contains('secret123')));
+        expect(redacted, isNot(contains('AIza-fake')));
+      });
+
+      test('returns sentinel for malformed URLs', () {
+        expect(
+          AuthEmailLinkConfig.redactForLogging('::not a url::'),
+          '<unparseable-link>',
+        );
+      });
+
+      test('passes through URLs that carry no credential params unchanged', () {
+        const link = 'https://rihla-safar.web.app/profile';
+        expect(AuthEmailLinkConfig.redactForLogging(link), link);
+      });
+    });
   });
 }
