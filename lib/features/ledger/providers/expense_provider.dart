@@ -1,7 +1,10 @@
 import 'package:decimal/decimal.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/split_mode.dart';
 import '../../../core/services/cache/expense_cache_repository.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../../core/services/cache/settlement_cache_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
@@ -158,6 +161,9 @@ final eventBalancesProvider = Provider.family<
 
 /// Balance calculation engine
 class BalanceCalculator {
+  static final Decimal _splitTolerance = Decimal.parse('0.001');
+  static final Decimal _hundred = Decimal.fromInt(100);
+
   /// Calculate balances with proper scope handling
   ///
   /// - Global: Split among all participants
@@ -188,6 +194,27 @@ class BalanceCalculator {
       // Track what payer paid
       if (paidMap.containsKey(payerId)) {
         paidMap[payerId] = paidMap[payerId]! + expense.amount;
+      }
+
+      final distribution = expense.splitDistribution;
+      final splitMode = expense.splitMode;
+      if (splitMode != null &&
+          splitMode != SplitMode.equally &&
+          distribution != null &&
+          distribution.isNotEmpty) {
+        final allocations = switch (splitMode) {
+          SplitMode.shares => _allocateShares(expense, distribution),
+          SplitMode.exact => _allocateExact(expense, distribution),
+          SplitMode.percent => _allocatePercent(expense, distribution),
+          SplitMode.equally => <String, Decimal>{},
+        };
+
+        for (final entry in allocations.entries) {
+          if (owedMap.containsKey(entry.key)) {
+            owedMap[entry.key] = owedMap[entry.key]! + entry.value;
+          }
+        }
+        continue;
       }
 
       // Determine who shares this expense based on scope
@@ -241,7 +268,9 @@ class BalanceCalculator {
         if (owedMap.containsKey(recipientId)) {
           final isLast = i == sortedRecipients.length - 1;
           owedMap[recipientId] =
-              owedMap[recipientId]! + perHead + (isLast ? remainder : Decimal.zero);
+              owedMap[recipientId]! +
+              perHead +
+              (isLast ? remainder : Decimal.zero);
         }
       }
     }
@@ -283,6 +312,117 @@ class BalanceCalculator {
         netBalance: netBalance,
       );
     }).toList();
+  }
+
+  static Map<String, Decimal> _allocateShares(
+    Expense expense,
+    Map<String, Decimal> distribution,
+  ) {
+    final totalShares = distribution.values.fold(
+      Decimal.zero,
+      (sum, value) => sum + value,
+    );
+
+    if (totalShares <= Decimal.zero) {
+      debugPrint(
+        'Invalid shares split for expense ${expense.id}; falling back to equal split.',
+      );
+      return _allocateEqual(expense.amount, distribution.keys);
+    }
+
+    return _allocateWeighted(expense.amount, distribution, totalShares);
+  }
+
+  static Map<String, Decimal> _allocateExact(
+    Expense expense,
+    Map<String, Decimal> distribution,
+  ) {
+    final total = distribution.values.fold(
+      Decimal.zero,
+      (sum, value) => sum + value,
+    );
+
+    if ((total - expense.amount).abs() > _splitTolerance) {
+      debugPrint(
+        'Invalid exact split for expense ${expense.id}; falling back to equal split.',
+      );
+      return _allocateEqual(expense.amount, distribution.keys);
+    }
+
+    return Map<String, Decimal>.from(distribution);
+  }
+
+  static Map<String, Decimal> _allocatePercent(
+    Expense expense,
+    Map<String, Decimal> distribution,
+  ) {
+    final totalPercent = distribution.values.fold(
+      Decimal.zero,
+      (sum, value) => sum + value,
+    );
+
+    if ((totalPercent - _hundred).abs() > _splitTolerance) {
+      debugPrint(
+        'Invalid percent split for expense ${expense.id}; falling back to equal split.',
+      );
+      return _allocateEqual(expense.amount, distribution.keys);
+    }
+
+    return _allocateWeighted(expense.amount, distribution, _hundred);
+  }
+
+  static Map<String, Decimal> _allocateWeighted(
+    Decimal amount,
+    Map<String, Decimal> weights,
+    Decimal denominator,
+  ) {
+    final sortedRecipients = weights.keys.toList()..sort();
+    final allocations = <String, Decimal>{};
+    var allocated = Decimal.zero;
+
+    for (int i = 0; i < sortedRecipients.length; i++) {
+      final recipientId = sortedRecipients[i];
+      final isLast = i == sortedRecipients.length - 1;
+      final allocation = isLast
+          ? amount - allocated
+          : _toOmaniPrecision(
+              ((amount * weights[recipientId]!) / denominator).toDecimal(
+                scaleOnInfinitePrecision: 10,
+              ),
+            );
+      allocations[recipientId] = allocation;
+      allocated += allocation;
+    }
+
+    return allocations;
+  }
+
+  static Decimal _toOmaniPrecision(Decimal value) {
+    return MoneySerializer.fromSubunits(
+      MoneySerializer.toSubunits(value, 'OMR'),
+      'OMR',
+    );
+  }
+
+  static Map<String, Decimal> _allocateEqual(
+    Decimal amount,
+    Iterable<String> recipientIds,
+  ) {
+    final sortedRecipients = recipientIds.toList()..sort();
+    final splitCount = sortedRecipients.length;
+    if (splitCount == 0) return {};
+
+    final perHead = (amount / Decimal.fromInt(splitCount)).toDecimal(
+      scaleOnInfinitePrecision: 3,
+    );
+    final remainder = amount - (perHead * Decimal.fromInt(splitCount));
+
+    return {
+      for (int i = 0; i < sortedRecipients.length; i++)
+        sortedRecipients[i]:
+            perHead +
+            (i == sortedRecipients.length - 1 ? remainder : Decimal.zero),
+    };
   }
 
   static List<Map<String, dynamic>> calculateOptimalSettlements({

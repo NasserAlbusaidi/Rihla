@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 
+import '../../../core/models/split_mode.dart';
 import '../../../core/services/money_serializer.dart';
 
 /// Expense scope determines who shares the cost
@@ -31,6 +32,8 @@ class Expense {
   final String? subGroupId;
   final List<String>?
   customSplitParticipants; // Participant IDs for custom scope
+  final SplitMode? splitMode;
+  final Map<String, Decimal>? splitDistribution;
   final String? receiptUrl; // URL to receipt image in storage
   final DateTime createdAt;
   final String? categoryId;
@@ -60,6 +63,8 @@ class Expense {
     required this.scope,
     this.subGroupId,
     this.customSplitParticipants,
+    this.splitMode,
+    this.splitDistribution,
     this.receiptUrl,
     required this.createdAt,
     this.categoryId,
@@ -86,6 +91,7 @@ class Expense {
         customSplit = rawList.cast<String>();
       }
     }
+    final splitMode = _splitModeFromPersisted(json['split_mode']);
 
     return Expense(
       id: json['id'] as String,
@@ -97,6 +103,12 @@ class Expense {
       scope: ExpenseScope.fromString(json['scope'] as String? ?? 'global'),
       subGroupId: json['sub_group_id'] as String?,
       customSplitParticipants: customSplit,
+      splitMode: splitMode,
+      splitDistribution: _splitDistributionFromPersisted(
+        json['split_distribution'],
+        splitMode,
+        'OMR',
+      ),
       receiptUrl: json['receipt_url'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       categoryId: json['category_id'] as String?,
@@ -123,6 +135,10 @@ class Expense {
       'scope': scope.value,
       'sub_group_id': subGroupId,
       'custom_split_participants': customSplitParticipants,
+      if (splitMode != null) ...{
+        'split_mode': splitMode!.storageKey,
+        'split_distribution': _splitDistributionToPersisted(),
+      },
       'receipt_url': receiptUrl,
       'category_id': categoryId,
       'note': note,
@@ -146,6 +162,7 @@ class Expense {
         customSplit = List<String>.from(rawList);
       }
     }
+    final splitMode = _splitModeFromPersisted(data['splitMode']);
 
     return Expense(
       id: data['id'] as String,
@@ -157,6 +174,12 @@ class Expense {
       scope: ExpenseScope.fromString(data['scope'] as String? ?? 'global'),
       subGroupId: data['subGroupId'] as String?,
       customSplitParticipants: customSplit,
+      splitMode: splitMode,
+      splitDistribution: _splitDistributionFromPersisted(
+        data['splitDistribution'],
+        splitMode,
+        currency,
+      ),
       receiptUrl: data['receiptUrl'] as String?,
       createdAt: DateTime.parse(data['createdAt'] as String),
       categoryId: data['categoryId'] as String?,
@@ -186,6 +209,10 @@ class Expense {
       'scope': scope.value,
       'subGroupId': subGroupId,
       'customSplitParticipants': customSplitParticipants ?? [],
+      if (splitMode != null) ...{
+        'splitMode': splitMode!.storageKey,
+        'splitDistribution': _splitDistributionToPersisted(),
+      },
       'receiptUrl': receiptUrl,
       'createdAt': createdAt.toIso8601String(),
       'categoryId': categoryId,
@@ -213,6 +240,8 @@ class Expense {
     ExpenseScope? scope,
     String? subGroupId,
     List<String>? customSplitParticipants,
+    SplitMode? splitMode,
+    Map<String, Decimal>? splitDistribution,
     String? receiptUrl,
     DateTime? createdAt,
     String? categoryId,
@@ -223,6 +252,7 @@ class Expense {
     String? payerAvatarUrl,
     bool? isDeleted,
     DateTime? deletedAt,
+    bool clearSplit = false,
   }) {
     return Expense(
       id: id ?? this.id,
@@ -235,6 +265,10 @@ class Expense {
       subGroupId: subGroupId ?? this.subGroupId,
       customSplitParticipants:
           customSplitParticipants ?? this.customSplitParticipants,
+      splitMode: clearSplit ? null : splitMode ?? this.splitMode,
+      splitDistribution: clearSplit
+          ? null
+          : splitDistribution ?? this.splitDistribution,
       receiptUrl: receiptUrl ?? this.receiptUrl,
       createdAt: createdAt ?? this.createdAt,
       categoryId: categoryId ?? this.categoryId,
@@ -246,6 +280,75 @@ class Expense {
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
     );
+  }
+
+  Map<String, int>? _splitDistributionToPersisted() {
+    final mode = splitMode;
+    final distribution = splitDistribution;
+    if (mode == null || distribution == null) return null;
+
+    return {
+      for (final entry in distribution.entries)
+        entry.key: _splitValueToPersisted(entry.value, mode, currency),
+    };
+  }
+
+  static SplitMode? _splitModeFromPersisted(Object? raw) {
+    if (raw == null) return null;
+    return splitModeFromStorage(raw.toString());
+  }
+
+  static Map<String, Decimal>? _splitDistributionFromPersisted(
+    Object? raw,
+    SplitMode? mode,
+    String currency,
+  ) {
+    if (raw == null || mode == null || raw is! Map) return null;
+
+    final distribution = <String, Decimal>{};
+    for (final entry in raw.entries) {
+      distribution[entry.key.toString()] = _splitValueFromPersisted(
+        entry.value,
+        mode,
+        currency,
+      );
+    }
+    return distribution.isEmpty ? null : distribution;
+  }
+
+  static int _splitValueToPersisted(
+    Decimal value,
+    SplitMode mode,
+    String currency,
+  ) {
+    return switch (mode) {
+      SplitMode.exact => MoneySerializer.toSubunits(value, currency),
+      SplitMode.percent => (value * Decimal.fromInt(1000)).toBigInt().toInt(),
+      SplitMode.shares || SplitMode.equally => value.toBigInt().toInt(),
+    };
+  }
+
+  static Decimal _splitValueFromPersisted(
+    Object? value,
+    SplitMode mode,
+    String currency,
+  ) {
+    final persistedValue = _persistedInt(value);
+    return switch (mode) {
+      SplitMode.exact => MoneySerializer.fromSubunits(persistedValue, currency),
+      SplitMode.percent =>
+        (Decimal.fromInt(persistedValue) / Decimal.fromInt(1000)).toDecimal(
+          scaleOnInfinitePrecision: 3,
+        ),
+      SplitMode.shares || SplitMode.equally => Decimal.fromInt(persistedValue),
+    };
+  }
+
+  static int _persistedInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is Decimal) return value.toBigInt().toInt();
+    return Decimal.parse(value.toString()).toBigInt().toInt();
   }
 }
 
