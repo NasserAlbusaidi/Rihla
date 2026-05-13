@@ -188,7 +188,7 @@ The form must be updated to declare:
 
 Firebase Dynamic Links was **deprecated August 25, 2025**. Every legacy tutorial that says "use Dynamic Links for the email-link continue URL" is stale. The current canonical path:
 
-- Host a continue page (essentially an empty HTML page that triggers the app's deep link) on **Firebase Hosting** under the `rihla-system` project.
+- Host a continue page (essentially an empty HTML page that triggers the app's deep link) on **Firebase Hosting** under the `rihla-safar` project (the current Firebase project in `lib/firebase_options.dart` and `.firebaserc`).
 - Configure **App Links** (Android) via the Digital Asset Links file at `<your-hosting-domain>/.well-known/assetlinks.json`.
 - Configure **Universal Links** (iOS) via the Apple App Site Association file at `<your-hosting-domain>/.well-known/apple-app-site-association`.
 - Set `ActionCodeSettings.handleCodeInApp: true` and `ActionCodeSettings.url` to the hosted continue page.

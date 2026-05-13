@@ -36,11 +36,11 @@ Estimated total: ~2–3 focused weeks of Codex work, depending on how badly the 
 
 **Goal.** Reach the point where, on a real Android device and a real iOS device, a Firebase email-link tapped from Mail opens the Rihla app (not a browser) and lands inside a Flutter route that has the email-link credential in hand.
 
-**Why this first.** Firebase Dynamic Links was deprecated August 2025 (spec §7.1). Every legacy tutorial is wrong. Until we know the new path works for our `rihla-system` Firebase project + `com.safar.safar` Android ID + the iOS bundle ID, we can't size the rest. If this phase blows up, the rest of the plan re-flows.
+**Why this first.** Firebase Dynamic Links was deprecated August 2025 (spec §7.1). Every legacy tutorial is wrong. Until we know the new path works for our `rihla-safar` Firebase project + `com.safar.safar` Android ID + the iOS bundle ID, we can't size the rest. If this phase blows up, the rest of the plan re-flows.
 
 **Work.**
 
-1. Stand up Firebase Hosting under `rihla-system`. A single static `continue.html` is enough — it doesn't render anything important, it just exists at a stable URL so the OS can intercept it.
+1. Stand up Firebase Hosting under `rihla-safar`. A single static `continue.html` is enough — it doesn't render anything important, it just exists at a stable URL so the OS can intercept it.
 2. Add Android **App Links** verification:
    - `<your-domain>/.well-known/assetlinks.json` published from Firebase Hosting.
    - `AndroidManifest.xml` deep link intent filter on `<your-domain>/__/auth/links/*` (or whatever path we settle on), `autoVerify="true"`.
