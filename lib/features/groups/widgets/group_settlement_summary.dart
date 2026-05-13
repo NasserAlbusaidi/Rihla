@@ -5,21 +5,19 @@ import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 
-/// Summary card displayed at the top of the Group Settle-Up screen.
+/// Summary chips displayed below the headline on Group Settle-Up.
 ///
-/// Shows total pending amount across all events in the group.
+/// Matches the wireframe: two pills — transfer count and total amount.
 class GroupSettlementSummaryCard extends StatelessWidget {
   final Decimal totalPending;
   final String currency;
-  final int eventCount;
   final int transferCount;
 
   const GroupSettlementSummaryCard({
     super.key,
     required this.totalPending,
     required this.currency,
-    required this.eventCount,
-    this.transferCount = 0,
+    required this.transferCount,
   });
 
   @override
@@ -37,10 +35,6 @@ class GroupSettlementSummaryCard extends StatelessWidget {
           label:
               '${AppFormatters.formatCurrency(totalPending, currency)} total',
           monogram: currency.isNotEmpty ? currency[0] : r'$',
-        ),
-        _SettlementChip(
-          label: '$eventCount event${eventCount == 1 ? '' : 's'}',
-          dotColor: context.colors.primary,
         ),
       ],
     );

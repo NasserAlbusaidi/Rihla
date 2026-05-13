@@ -210,22 +210,18 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                           backgroundColor: context.colors.saffronTint,
                           foregroundColor: context.colors.primaryDark,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
+                            horizontal: 14,
                             vertical: 8,
                           ),
-                          minimumSize: const Size(0, 36),
+                          minimumSize: const Size(0, 34),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              spacing.radiusSmall,
-                            ),
-                          ),
+                          shape: const StadiumBorder(),
                         ),
                         child: const Text(
                           'Mark paid',
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),

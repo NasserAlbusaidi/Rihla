@@ -18,25 +18,18 @@ import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
 import '../widgets/record_payment_sheet.dart';
-import '../widgets/settle_up_tab_layout.dart';
+import '../widgets/settle_up_page_body.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 
-/// Full-screen cross-event settlement UI with 4-tab layout (D-01, D-02, D-03, D-05, D-06).
+/// Cross-event settlement screen — single-page layout per the Hi_GroupSettle
+/// wireframe (Wireframes/Rihla/hifi/screens-group.jsx).
 ///
-/// Tabs: You Owe / Owed to You / Between Others / History
-/// Uses [ModuleHeader] with dark theme and [AppTabBar] for navigation.
-/// Supports [preSelectedMemberId] for deep-link auto-selection.
-///
-/// Screen responsibilities (post Phase 36 Plan 01 decomposition):
-/// - Data fetching via Riverpod providers
-/// - [_autoSelectTab] logic (mutates [_tabController])
-/// - [_showRecordPaymentSheet] delegates to [showRecordPaymentSheet]
-/// - [_recordSettlement] write operation
-/// - [_buildPerEventBreakdown] and [_buildEventLabel] helpers
+/// Renders an italic headline, two summary chips, optimized transfer cards,
+/// each person's net balances, and inline payment history.
 class GroupSettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
 
-  /// D-22 entry point 2: pre-select a specific member to settle with.
+  /// D-22 entry point 2: highlight a specific member's tile via deep-link.
   final String? preSelectedMemberId;
 
   const GroupSettleUpScreen({
@@ -50,82 +43,21 @@ class GroupSettleUpScreen extends ConsumerStatefulWidget {
       _GroupSettleUpScreenState();
 }
 
-class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
+class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   /// Keys for settlement tiles, used for auto-scroll when
   /// [widget.preSelectedMemberId] is set.
   final Map<int, GlobalKey> _tileKeys = {};
-
-  /// Guard to prevent _autoSelectTab from re-running on every rebuild.
-  bool _hasAutoSelected = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _autoSelectTab(
-    List<Map<String, dynamic>> optimalSettlements,
-    String? currentUid,
-  ) {
-    if (_hasAutoSelected) return;
-    if (widget.preSelectedMemberId == null) return;
-    _hasAutoSelected = true;
-    final pid = widget.preSelectedMemberId!;
-
-    // Check if any settlement in "You Owe" involves preSelectedMemberId
-    final inYouOwe = optimalSettlements.any(
-      (s) =>
-          s['fromUserId'] == currentUid &&
-          (s['toUserId'] == pid || s['fromUserId'] == pid),
-    );
-    if (inYouOwe) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _tabController.animateTo(0);
-      });
-      return;
-    }
-
-    // Check "Owed to You"
-    final inOwedToYou = optimalSettlements.any(
-      (s) =>
-          s['toUserId'] == currentUid &&
-          (s['fromUserId'] == pid || s['toUserId'] == pid),
-    );
-    if (inOwedToYou) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _tabController.animateTo(1);
-      });
-      return;
-    }
-
-    // Default tab 0
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _tabController.animateTo(0);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
-    // Loading state
     if (groupAsync.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final group = groupAsync.valueOrNull;
 
-    // Not-found state per D-11
     if (group == null) {
       return Scaffold(
         backgroundColor: context.colors.scaffoldBackground,
@@ -148,9 +80,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
       );
     }
 
-    // Read currentUid from provider for testability
     final currentUid = ref.watch(currentUserIdProvider);
-
     final balancesAsync = ref.watch(groupBalancesProvider(widget.groupId));
     final eventsAsync = ref.watch(groupEventsProvider(widget.groupId));
     final settlementsAsync = ref.watch(
@@ -182,10 +112,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
                         userNames: balancesData.memberNames,
                       );
 
-                  _autoSelectTab(optimalSettlements, currentUid);
-
-                  return SettleUpTabLayout(
-                    controller: _tabController,
+                  return SettleUpPageBody(
                     group: group,
                     optimalSettlements: optimalSettlements,
                     balancesData: balancesData,
@@ -307,7 +234,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen>
         : rawName;
 
     final date = AppFormatters.formatShortMonthDay(entry.date);
-    return '$name \u2014 $date';
+    return '$name — $date';
   }
 
   Future<void> _showRecordPaymentSheet(

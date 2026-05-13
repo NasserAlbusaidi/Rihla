@@ -18,7 +18,7 @@ import 'core/screens/splash_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
-import '../../core/theme/tokens/color_tokens.dart';
+import 'core/theme/tokens/color_tokens.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
 ///
