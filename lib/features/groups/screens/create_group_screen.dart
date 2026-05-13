@@ -533,6 +533,7 @@ class _SharePrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -540,12 +541,21 @@ class _SharePrompt extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(group.name, style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              group.name,
+              style: AppTypography.display(
+                fontSize: 26,
+                color: colors.textPrimary,
+                height: 1.1,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               'Share this code with your group',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: context.colors.textSecondary,
+              style: AppTypography.sans(
+                fontSize: 13,
+                color: colors.textSecondary,
+                height: 1.5,
               ),
             ),
             const SizedBox(height: 24),
