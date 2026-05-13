@@ -134,18 +134,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            context.spacing.space24,
-            0,
-            context.spacing.space24,
-            context.spacing.space24,
-          ),
-          child: _OnboardingDots(active: _page, count: _pageCount),
-        ),
-      ),
     );
   }
 }
@@ -216,13 +204,21 @@ class _BrandPage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: context.spacing.space24 + 4),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _SaffronCta(
-                    label: 'Begin',
-                    onPressed: onBegin,
-                    icon: Iconsax.arrow_right_3,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const _OnboardingDots(
+                      active: 0,
+                      count: 3,
+                      onDarkBackground: true,
+                    ),
+                    _SaffronCta(
+                      label: 'Begin',
+                      onPressed: onBegin,
+                      icon: Iconsax.arrow_right_3,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -355,13 +351,17 @@ class _HowPage extends StatelessWidget {
               context.spacing.space24,
               context.spacing.space8,
             ),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _PrimaryInkCta(
-                label: 'Next',
-                onPressed: onNext,
-                icon: Iconsax.arrow_right_3,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const _OnboardingDots(active: 1, count: 3),
+                _PrimaryInkCta(
+                  label: 'Next',
+                  onPressed: onNext,
+                  icon: Iconsax.arrow_right_3,
+                ),
+              ],
             ),
           ),
         ],
@@ -559,14 +559,18 @@ class _SetupPage extends StatelessWidget {
               context.spacing.space24,
               context.spacing.space8,
             ),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _SaffronCta(
-                label: 'Open Rihla',
-                onPressed: submitting ? null : onOpenRihla,
-                icon: Iconsax.arrow_right_3,
-                loading: submitting,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const _OnboardingDots(active: 2, count: 3),
+                _SaffronCta(
+                  label: 'Open Rihla',
+                  onPressed: submitting ? null : onOpenRihla,
+                  icon: Iconsax.arrow_right_3,
+                  loading: submitting,
+                ),
+              ],
             ),
           ),
         ],
@@ -841,14 +845,26 @@ class _StepHeader extends StatelessWidget {
 }
 
 class _OnboardingDots extends StatelessWidget {
-  const _OnboardingDots({required this.active, required this.count});
+  const _OnboardingDots({
+    required this.active,
+    required this.count,
+    this.onDarkBackground = false,
+  });
 
   final int active;
   final int count;
 
+  /// When true (brand page), dots invert to light-on-dark so they remain
+  /// visible against the gradient header.
+  final bool onDarkBackground;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final activeColor = onDarkBackground ? colors.cardSurface : colors.textPrimary;
+    final inactiveColor = onDarkBackground
+        ? colors.cardSurface.withValues(alpha: 0.30)
+        : colors.rule2;
     return Semantics(
       label: 'Onboarding step ${active + 1} of $count',
       child: Row(
@@ -863,7 +879,7 @@ class _OnboardingDots extends StatelessWidget {
               width: i == active ? 22 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: i == active ? colors.textPrimary : colors.rule2,
+                color: i == active ? activeColor : inactiveColor,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
