@@ -21,17 +21,18 @@ import '../providers/group_provider.dart';
 /// Wireframe ref: `Wireframes/Rihla/hifi/screens-group.jsx` → `Hi_GroupActivity()`.
 /// Layout:
 ///   1. Top bar — back button + centered group name
-///   2. Filter chips — All / Settlements / Events / Members
+///   2. Pill filter chips — All / Settlements / Events / Members
 ///   3. Day-grouped card-wrapped sections with category-icon-led rows
+///      Day header: `TODAY · MAR 22` (mono caps, dot-separated date)
+///      Settlement rows: sage-tinted arrow icon + signed share amount
 ///
-/// Keeps the existing cursor-based pagination (page size 50, prefetch
-/// within 200px of bottom). Filter is applied client-side to the
-/// already-fetched pages.
+/// Keeps cursor-based pagination (page size 50, prefetch within 200px
+/// of bottom). Filter is applied client-side to fetched pages.
 ///
 /// **Deviation from wireframe:** wireframe shows 3 view-mode chips
 /// (Activity / By person / By category) instead of type filters. Type
-/// filters preserved here for functional behavior parity with the prior
-/// implementation. View modes tracked in `docs/plans/saffron-overhaul.md`.
+/// filters kept for functional parity with the cross-group activity
+/// screen and the prior implementation.
 class GroupActivityScreen extends ConsumerStatefulWidget {
   const GroupActivityScreen({super.key, required this.groupId});
 
@@ -176,7 +177,11 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
         }
         return Padding(
           padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
-          child: _DaySection(label: days[i].label, entries: days[i].entries),
+          child: _DaySection(
+            label: days[i].label,
+            dateSuffix: days[i].dateSuffix,
+            entries: days[i].entries,
+          ),
         );
       },
     );
@@ -302,7 +307,7 @@ class _Chip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: active ? colors.textPrimary : colors.cardSoft,
-          borderRadius: BorderRadius.circular(context.spacing.radiusSmall),
+          borderRadius: BorderRadius.circular(9999),
           border: Border.all(
             color: active ? colors.textPrimary : colors.rule,
             width: 0.5,
@@ -324,27 +329,32 @@ class _Chip extends StatelessWidget {
 // ──────────────────────────── Day section + row
 
 class _DaySection extends StatelessWidget {
-  const _DaySection({required this.label, required this.entries});
+  const _DaySection({
+    required this.label,
+    required this.dateSuffix,
+    required this.entries,
+  });
   final String label;
+  final String? dateSuffix;
   final List<GroupActivityLog> entries;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final labelStyle = AppTypography.mono(
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+      color: colors.textSecondary,
+      letterSpacing: 2,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text(
-              label.toUpperCase(),
-              style: AppTypography.mono(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: colors.textSecondary,
-                letterSpacing: 2,
-              ),
-            ),
+            Text(label.toUpperCase(), style: labelStyle),
+            if (dateSuffix != null)
+              Text(' · ${dateSuffix!.toUpperCase()}', style: labelStyle),
             const SizedBox(width: 10),
             Expanded(child: Container(height: 0.5, color: colors.rule2)),
           ],
@@ -378,7 +388,8 @@ class _ActivityRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final amountRaw = log.metadata['amount'];
-    final amount = amountRaw is num ? amountRaw.toDouble() : null;
+    final amount = _coerceAmount(amountRaw);
+    final isSettlement = log.type == 'group_settlement';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -420,21 +431,31 @@ class _ActivityRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (amount != null)
+                  if (amount != null) ...[
                     RAmount(
-                      value: Decimal.parse(amount.toStringAsFixed(3)),
+                      value: amount,
                       size: 14,
                       showCurrency: false,
                     ),
-                  if (amount != null) const SizedBox(height: 2),
-                  Text(
-                    timeago.format(log.timestamp, locale: 'en_short'),
-                    style: AppTypography.mono(
-                      fontSize: 10,
-                      color: colors.textSecondary,
-                      letterSpacing: 0.4,
+                    const SizedBox(height: 2),
+                  ],
+                  if (isSettlement && amount != null)
+                    RAmount(
+                      value: amount,
+                      size: 11,
+                      sign: true,
+                      tone: AmountTone.sage,
+                      showCurrency: false,
+                    )
+                  else
+                    Text(
+                      timeago.format(log.timestamp, locale: 'en_short'),
+                      style: AppTypography.mono(
+                        fontSize: 10,
+                        color: colors.textSecondary,
+                        letterSpacing: 0.4,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -447,6 +468,20 @@ class _ActivityRow extends StatelessWidget {
       ),
     );
   }
+
+  /// Settlement amounts may arrive as a stringified Decimal (see
+  /// `GroupSettleUpScreen.logGroupEvent` metadata) or as a num. Coerce to a
+  /// 3-decimal `Decimal` so [RAmount] can render OMR baisa precisely.
+  Decimal? _coerceAmount(Object? raw) {
+    if (raw == null) return null;
+    if (raw is num) {
+      return Decimal.parse(raw.toDouble().toStringAsFixed(3));
+    }
+    if (raw is String) {
+      return Decimal.tryParse(raw);
+    }
+    return null;
+  }
 }
 
 class _CategoryIcon extends StatelessWidget {
@@ -456,29 +491,35 @@ class _CategoryIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final (bg, fg, icon) = switch (type) {
+    final sageSoft =
+        Color.alphaBlend(colors.success.withValues(alpha: 0.18), colors.cardSurface);
+    final (bg, fg, icon, hasBorder) = switch (type) {
       'group_settlement' => (
-        colors.cardSoft,
+        sageSoft,
         colors.success,
         Iconsax.arrow_right_3,
+        false,
       ),
       'event_created' => (
         colors.saffronSoft,
         colors.primaryDark,
         Iconsax.calendar_1,
+        true,
       ),
       'event_deleted' => (
         colors.cardSoft,
         colors.textSecondary,
         Iconsax.calendar_remove,
+        true,
       ),
-      'member_joined' => (colors.cardSoft, colors.cat2, Iconsax.user_add),
+      'member_joined' => (colors.cardSoft, colors.cat2, Iconsax.user_add, true),
       'member_left' => (
         colors.cardSoft,
         colors.textSecondary,
         Iconsax.user_minus,
+        true,
       ),
-      _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity),
+      _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity, true),
     };
     return Container(
       width: 36,
@@ -486,7 +527,9 @@ class _CategoryIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.rule, width: 0.5),
+        border: hasBorder
+            ? Border.all(color: colors.rule, width: 0.5)
+            : null,
       ),
       alignment: Alignment.center,
       child: Icon(icon, size: 18, color: fg),
@@ -506,33 +549,50 @@ bool _matches(String type, _Filter f) {
 }
 
 class _DayGroup {
-  const _DayGroup({required this.label, required this.entries});
+  const _DayGroup({
+    required this.label,
+    required this.dateSuffix,
+    required this.entries,
+  });
   final String label;
+  final String? dateSuffix;
   final List<GroupActivityLog> entries;
 }
 
 List<_DayGroup> _groupByDay(List<GroupActivityLog> logs, DateTime now) {
   final today = DateTime(now.year, now.month, now.day);
-  final groups = <String, List<GroupActivityLog>>{};
+  final buckets = <String, _DayBucket>{};
   final order = <String>[];
   for (final log in logs) {
     final ts = log.timestamp;
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
-    final label = diff == 0
-        ? 'Today'
-        : diff == 1
-        ? 'Yesterday'
-        : '${_monthShort(ts.month)} ${ts.day}';
-    if (!groups.containsKey(label)) {
-      groups[label] = [];
+    final dateText = '${_monthShort(ts.month)} ${ts.day}';
+    final (label, suffix) = switch (diff) {
+      0 => ('Today', dateText),
+      1 => ('Yesterday', dateText),
+      _ => (dateText, null),
+    };
+    final bucket = buckets.putIfAbsent(label, () {
       order.add(label);
-    }
-    groups[label]!.add(log);
+      return _DayBucket(suffix: suffix, entries: []);
+    });
+    bucket.entries.add(log);
   }
   return [
-    for (final label in order) _DayGroup(label: label, entries: groups[label]!),
+    for (final label in order)
+      _DayGroup(
+        label: label,
+        dateSuffix: buckets[label]!.suffix,
+        entries: buckets[label]!.entries,
+      ),
   ];
+}
+
+class _DayBucket {
+  _DayBucket({required this.suffix, required this.entries});
+  final String? suffix;
+  final List<GroupActivityLog> entries;
 }
 
 const _months = [
