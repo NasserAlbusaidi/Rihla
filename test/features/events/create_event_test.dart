@@ -54,9 +54,7 @@ final _testMembers = [
 /// Wraps a widget in ProviderScope + MaterialApp with standard test overrides.
 Widget _wrapPicker(Widget child, SharedPreferences prefs) {
   return ProviderScope(
-    overrides: [
-      sharedPreferencesProvider.overrideWithValue(prefs),
-    ],
+    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
     child: MaterialApp(theme: AppTheme.lightTheme, home: child),
   );
 }
@@ -65,12 +63,12 @@ Widget _wrapCreate(Widget child, SharedPreferences prefs) {
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
-      groupMembersProvider('group-1').overrideWith(
-        (ref) => Stream.value(_testMembers),
-      ),
-      groupDetailProvider('group-1').overrideWith(
-        (ref) => Stream.value(_testGroup),
-      ),
+      groupMembersProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupDetailProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testGroup)),
       eventLoadingProvider.overrideWith((ref) => false),
     ],
     child: MaterialApp(theme: AppTheme.lightTheme, home: child),
@@ -96,49 +94,47 @@ void main() {
   group('EventTypePickerScreen', () {
     testWidgets('displays all 5 event type cards', (tester) async {
       await tester.pumpWidget(
-        _wrapPicker(
-          const EventTypePickerScreen(groupId: 'group-1'),
-          prefs,
-        ),
+        _wrapPicker(const EventTypePickerScreen(groupId: 'group-1'), prefs),
       );
       await tester.pumpAndSettle();
 
       // Verify all 5 type labels appear
       for (final config in EventTypeConfig.allTypes) {
-        expect(find.text(config.label), findsOneWidget,
-            reason: 'Expected type label "${config.label}" to appear');
+        expect(
+          find.text(config.label),
+          findsOneWidget,
+          reason: 'Expected type label "${config.label}" to appear',
+        );
       }
     });
 
-    testWidgets('shows ModuleHeader title "New Event"', (tester) async {
+    testWidgets('shows top bar title "New event"', (tester) async {
       await tester.pumpWidget(
-        _wrapPicker(
-          const EventTypePickerScreen(groupId: 'group-1'),
-          prefs,
-        ),
+        _wrapPicker(const EventTypePickerScreen(groupId: 'group-1'), prefs),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('New Event'), findsOneWidget);
+      expect(find.text('New event'), findsOneWidget);
     });
 
     testWidgets('shows 5 type descriptions', (tester) async {
       await tester.pumpWidget(
-        _wrapPicker(
-          const EventTypePickerScreen(groupId: 'group-1'),
-          prefs,
-        ),
+        _wrapPicker(const EventTypePickerScreen(groupId: 'group-1'), prefs),
       );
       await tester.pumpAndSettle();
 
       for (final config in EventTypeConfig.allTypes) {
-        expect(find.text(config.description), findsOneWidget,
-            reason: 'Expected description for ${config.label}');
+        expect(
+          find.text(config.description),
+          findsOneWidget,
+          reason: 'Expected description for ${config.label}',
+        );
       }
     });
 
-    testWidgets('tapping type card navigates to CreateEventScreen',
-        (tester) async {
+    testWidgets('tapping type card navigates to CreateEventScreen', (
+      tester,
+    ) async {
       // EventTypePickerScreen uses context.push so we need MaterialApp.router
       final router = GoRouter(
         initialLocation: '/group/group-1/create-event',
@@ -151,7 +147,8 @@ void main() {
             routes: [
               GoRoute(
                 path: 'create-event',
-                builder: (_, state) => const EventTypePickerScreen(groupId: 'group-1'),
+                builder: (_, state) =>
+                    const EventTypePickerScreen(groupId: 'group-1'),
               ),
               GoRoute(
                 path: 'create-event/:type',
@@ -171,21 +168,27 @@ void main() {
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            groupMembersProvider('group-1').overrideWith(
-              (ref) => Stream.value(_testMembers),
-            ),
-            groupDetailProvider('group-1').overrideWith(
-              (ref) => Stream.value(_testGroup),
-            ),
+            groupMembersProvider(
+              'group-1',
+            ).overrideWith((ref) => Stream.value(_testMembers)),
+            groupDetailProvider(
+              'group-1',
+            ).overrideWith((ref) => Stream.value(_testGroup)),
             eventLoadingProvider.overrideWith((ref) => false),
           ],
-          child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: router,
+          ),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Tap the first card (Trip)
+      // Select the first card (Trip), then continue.
       await tester.tap(find.byKey(EventKeys.eventTypeCard('Trip')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+      await tester.tap(find.byKey(EventKeys.createEventButton));
       await tester.pumpAndSettle();
 
       // AppBar title is gone after Plan 02; event type appears in ModuleHeader
@@ -200,8 +203,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('CreateEventScreen', () {
-    testWidgets('pre-checks all group members in participant picker',
-        (tester) async {
+    testWidgets('pre-checks all group members in participant picker', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrapCreate(
           const CreateEventScreen(
@@ -220,13 +224,17 @@ void main() {
       // Both checkboxes should be checked
       final checkboxes = tester.widgetList<Checkbox>(find.byType(Checkbox));
       for (final checkbox in checkboxes) {
-        expect(checkbox.value, isTrue,
-            reason: 'All participants should be pre-checked by default');
+        expect(
+          checkbox.value,
+          isTrue,
+          reason: 'All participants should be pre-checked by default',
+        );
       }
     });
 
-    testWidgets('shows event type badge with type label, no AppBar title',
-        (tester) async {
+    testWidgets('shows event type badge with type label, no AppBar title', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrapCreate(
           const CreateEventScreen(
@@ -244,8 +252,9 @@ void main() {
       expect(find.text('Camping'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('does NOT show module toggles for non-Custom types',
-        (tester) async {
+    testWidgets('does NOT show module toggles for non-Custom types', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrapCreate(
           const CreateEventScreen(
@@ -284,7 +293,9 @@ void main() {
       expect(find.text("Event name can't be empty."), findsOneWidget);
     });
 
-    testWidgets('shows event name field with correct hint text', (tester) async {
+    testWidgets('shows event name field with correct hint text', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrapCreate(
           const CreateEventScreen(
@@ -299,7 +310,9 @@ void main() {
       expect(find.text('e.g. Summer camping trip'), findsOneWidget);
     });
 
-    testWidgets('shows Select All checkbox in participants card', (tester) async {
+    testWidgets('shows Select All checkbox in participants card', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrapCreate(
           const CreateEventScreen(
@@ -313,8 +326,9 @@ void main() {
       expect(find.byKey(EventKeys.selectAllButton), findsOneWidget);
     });
 
-    testWidgets('Select All selects all participants when tapped',
-        (tester) async {
+    testWidgets('Select All selects all participants when tapped', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrapCreate(
           const CreateEventScreen(
@@ -337,13 +351,17 @@ void main() {
       // All checkboxes (excluding the Select All checkbox itself) should be true
       final checkboxes = tester.widgetList<Checkbox>(find.byType(Checkbox));
       for (final cb in checkboxes) {
-        expect(cb.value, isTrue,
-            reason: 'All participants should be selected after Select All');
+        expect(
+          cb.value,
+          isTrue,
+          reason: 'All participants should be selected after Select All',
+        );
       }
     });
 
-    testWidgets('Select All deselects all when all participants are selected',
-        (tester) async {
+    testWidgets('Select All deselects all when all participants are selected', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrapCreate(
           const CreateEventScreen(
@@ -362,9 +380,12 @@ void main() {
       // The Select All Checkbox will also show value==false — all should be false
       final checkboxes = tester.widgetList<Checkbox>(find.byType(Checkbox));
       for (final cb in checkboxes) {
-        expect(cb.value, isFalse,
-            reason:
-                'All participants should be deselected after Select All toggle');
+        expect(
+          cb.value,
+          isFalse,
+          reason:
+              'All participants should be deselected after Select All toggle',
+        );
       }
     });
   });

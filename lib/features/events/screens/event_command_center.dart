@@ -153,6 +153,7 @@ class _CoverHeader extends StatelessWidget {
     final statusBar = MediaQuery.of(context).padding.top;
     final config = EventTypeConfig.forType(event.type);
     final dateRange = _formatDateRange(event.startDate, event.endDate);
+    final dayBadge = _formatDayBadge(event.startDate, event.endDate);
     final captionParts = <String>[
       config.label.toUpperCase(),
       ?dateRange,
@@ -162,6 +163,7 @@ class _CoverHeader extends StatelessWidget {
     return SizedBox(
       height: 148 + statusBar,
       child: Stack(
+        clipBehavior: Clip.none,
         fit: StackFit.expand,
         children: [
           CoverArt.forEventType(event.type),
@@ -234,6 +236,13 @@ class _CoverHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (dayBadge != null)
+            Positioned(
+              key: EventKeys.dayBadge,
+              right: 20,
+              bottom: -16,
+              child: _DayBadge(label: dayBadge),
+            ),
         ],
       ),
     );
@@ -245,6 +254,22 @@ class _CoverHeader extends StatelessWidget {
     if (start == null) return fmt(end!);
     if (end == null) return fmt(start);
     return '${fmt(start)} — ${fmt(end)}';
+  }
+
+  static String? _formatDayBadge(DateTime? start, DateTime? end) {
+    if (start == null || end == null) return null;
+    final startDay = DateUtils.dateOnly(start);
+    final endDay = DateUtils.dateOnly(end);
+    if (endDay.isBefore(startDay)) return null;
+
+    final today = DateUtils.dateOnly(DateTime.now());
+    if (today.isBefore(startDay) || today.isAfter(endDay)) {
+      return null;
+    }
+
+    final currentDay = today.difference(startDay).inDays + 1;
+    final totalDays = endDay.difference(startDay).inDays + 1;
+    return 'Day $currentDay of $totalDays';
   }
 
   static const _months = [
@@ -261,6 +286,34 @@ class _CoverHeader extends StatelessWidget {
     'Nov',
     'Dec',
   ];
+}
+
+class _DayBadge extends StatelessWidget {
+  const _DayBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: colors.cardSurface,
+        borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
+        border: Border.all(color: colors.rule, width: 0.5),
+        boxShadow: context.shadows.raised,
+      ),
+      child: Text(
+        label,
+        style: AppTypography.sans(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: colors.textPrimary,
+        ),
+      ),
+    );
+  }
 }
 
 class _PaperIconButton extends StatelessWidget {

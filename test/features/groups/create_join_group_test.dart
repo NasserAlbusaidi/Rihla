@@ -385,10 +385,10 @@ void main() {
       );
     });
 
-    testWidgets('renders Group Name label', (tester) async {
+    testWidgets('renders group created subtitle', (tester) async {
       await tester.pumpWidget(await buildSettingsScreen());
       await tester.pumpAndSettle();
-      expect(find.text('Group Name'), findsOneWidget);
+      expect(find.textContaining('Created '), findsOneWidget);
     });
 
     testWidgets('renders group name value', (tester) async {
@@ -397,10 +397,10 @@ void main() {
       expect(find.text('Adventure Crew'), findsOneWidget);
     });
 
-    testWidgets('renders Invite Code label', (tester) async {
+    testWidgets('renders invite-code helper text', (tester) async {
       await tester.pumpWidget(await buildSettingsScreen());
       await tester.pumpAndSettle();
-      expect(find.text('Invite Code'), findsOneWidget);
+      expect(find.text('Anyone with the code can join'), findsOneWidget);
     });
 
     testWidgets('renders invite code value', (tester) async {

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
@@ -11,18 +13,16 @@ import '../providers/group_provider.dart';
 import '../widgets/group_danger_section.dart';
 import '../widgets/group_info_section.dart';
 import '../widgets/group_members_section.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
+import '../widgets/settings_section_header.dart';
 
-/// Screen for managing group settings — name (creator-only), currency, invite
-/// code, member management, and danger zone (leave / delete).
+/// Screen for managing group settings.
 ///
-/// Follows the ProfileScreen layout pattern: no AppBar, inline back button,
-/// SingleChildScrollView with 24px horizontal padding, three section widgets
-/// with staggered entrance animations (D-08, D-09).
+/// Wireframe ref: `Wireframes/Rihla/hifi/screens-group.jsx` →
+/// `Hi_GroupSettings()`.
 class GroupSettingsScreen extends ConsumerWidget {
-  final String groupId;
-
   const GroupSettingsScreen({super.key, required this.groupId});
+
+  final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,128 +36,284 @@ class GroupSettingsScreen extends ConsumerWidget {
       body: SafeArea(
         child: groupAsync.when(
           data: (group) {
-            if (group == null) {
-              return _buildError(context, ref, 'Group not found');
-            }
+            if (group == null) return _ErrorState(groupId: groupId);
 
             final members = membersAsync.valueOrNull ?? [];
             final isCreator = currentUserId == group.createdBy;
 
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildBackButton(context),
-                    const SizedBox(height: 16),
-                    GroupInfoSection(
-                      group: group,
-                      isCreator: isCreator,
-                    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
-                    const SizedBox(height: 16),
-                    GroupMembersSection(
-                      groupId: groupId,
-                      members: members,
-                      currentUserId: currentUserId,
-                      isCurrentUserCreator: isCreator,
-                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-                    const SizedBox(height: 16),
-                    GroupDangerSection(
-                      groupId: groupId,
-                      isCreator: isCreator,
-                    ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
-                    const SizedBox(height: 32),
-                  ],
+            return Column(
+              children: [
+                _SettingsTopBar(groupId: groupId),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        GroupInfoSection(
+                          group: group,
+                          isCreator: isCreator,
+                        ).animate().fadeIn(delay: 80.ms).slideY(begin: 0.08),
+                        const SizedBox(height: 10),
+                        GroupMembersSection(
+                          groupId: groupId,
+                          members: members,
+                          currentUserId: currentUserId,
+                          isCurrentUserCreator: isCreator,
+                        ).animate().fadeIn(delay: 160.ms).slideY(begin: 0.08),
+                        const SizedBox(height: 10),
+                        _DefaultsSection(
+                          currency: group.currency,
+                        ).animate().fadeIn(delay: 240.ms).slideY(begin: 0.08),
+                        const SizedBox(height: 12),
+                        GroupDangerSection(
+                          groupId: groupId,
+                          isCreator: isCreator,
+                          groupName: group.name,
+                        ).animate().fadeIn(delay: 320.ms).slideY(begin: 0.08),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             );
           },
-          loading: () => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 16),
-                _buildBackButton(context),
-                const SizedBox(height: 16),
-                SkeletonLoader.generic(count: 3),
-              ],
+          loading: () => Column(
+            children: [
+              _SettingsTopBar(groupId: groupId),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                  child: SkeletonLoader.generic(count: 3),
+                ),
+              ),
+            ],
+          ),
+          error: (_, _) => _ErrorState(groupId: groupId),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsTopBar extends StatelessWidget {
+  const _SettingsTopBar({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _GhostIconButton(
+                key: GroupKeys.settingsBackButton,
+                icon: Iconsax.arrow_left,
+                onTap: () {
+                  if (GoRouter.of(context).canPop()) {
+                    GoRouter.of(context).pop();
+                  }
+                },
+              ),
             ),
-          ),
-          error: (e, st) => _buildError(context, ref, null),
+            Text(
+              key: GroupKeys.settingsTitle,
+              'Group settings',
+              style: AppTypography.sans(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: context.colors.textPrimary,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildBackButton(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        key: GroupKeys.settingsBackButton,
-        decoration: BoxDecoration(
-          color: context.colors.inputFill,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: context.colors.inputFill),
-        ),
-        child: IconButton(
-          icon: Icon(
-            Iconsax.arrow_left,
-            color: context.colors.textPrimary,
-            size: 20,
-          ),
-          onPressed: () => GoRouter.of(context).pop(),
+class _GhostIconButton extends StatelessWidget {
+  const _GhostIconButton({super.key, required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkResponse(
+        onTap: onTap,
+        radius: 22,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(icon, size: 18, color: context.colors.textPrimary),
         ),
       ),
     );
   }
+}
 
-  Widget _buildError(BuildContext context, WidgetRef ref, String? message) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 16),
-          _buildBackButton(context),
-          const SizedBox(height: 48),
-          Center(
-            child: Column(
-              children: [
-                Icon(Iconsax.warning_2, size: 32, color: context.colors.textSecondary),
-                const SizedBox(height: 8),
-                Text(
-                  'Could not load settings',
-                  style: TextStyle(
+class _DefaultsSection extends StatelessWidget {
+  const _DefaultsSection({required this.currency});
+
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final spacing = context.spacing;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SettingsSectionHeader(title: 'Defaults'),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: colors.cardSurface,
+            borderRadius: BorderRadius.circular(spacing.radiusLarge),
+            boxShadow: context.shadows.raised,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              _DefaultsRow(
+                key: GroupKeys.settingsCurrencyTile,
+                title: 'Currency',
+                value: currency,
+                divider: true,
+              ),
+              const _DefaultsRow(
+                title: 'Default split',
+                value: 'Equal',
+                divider: true,
+              ),
+              const _DefaultsRow(
+                title: 'Reminders',
+                value: 'Weekly',
+                divider: false,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DefaultsRow extends StatelessWidget {
+  const _DefaultsRow({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.divider,
+  });
+
+  final String title;
+  final String value;
+  final bool divider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTypography.sans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: context.colors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Check your connection and try again.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
+              ),
+              Text(
+                value,
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  color: context.colors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (divider) Container(height: 0.5, color: context.colors.rule),
+      ],
+    );
+  }
+}
+
+class _ErrorState extends ConsumerWidget {
+  const _ErrorState({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: [
+        _SettingsTopBar(groupId: groupId),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Iconsax.warning_2,
+                    size: 32,
                     color: context.colors.textSecondary,
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => ref.invalidate(groupDetailProvider(groupId)),
-                  child: Text(
-                    'Try again',
-                    style: TextStyle(color: context.colors.primary),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Could not load settings',
+                    style: AppTypography.sans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.textPrimary,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Check your connection and try again.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.sans(
+                      fontSize: 14,
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () =>
+                        ref.invalidate(groupDetailProvider(groupId)),
+                    child: Text(
+                      'Try again',
+                      style: AppTypography.sans(
+                        fontSize: 14,
+                        color: context.colors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -14,10 +14,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/firebase_config.dart';
 import 'core/models/app_settings_model.dart';
 import 'core/router/app_router.dart';
+import 'core/screens/splash_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
-import '../../core/theme/tokens/color_tokens.dart';
+import 'core/theme/tokens/color_tokens.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
 ///
@@ -50,8 +51,9 @@ void main() async {
         final host = !kIsWeb && Platform.isAndroid ? '10.0.2.2' : 'localhost';
         FirebaseAuth.instance.useAuthEmulator(host, 9099);
         FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
-        FirebaseFunctions.instanceFor(region: 'us-central1')
-            .useFunctionsEmulator(host, 5001);
+        FirebaseFunctions.instanceFor(
+          region: 'us-central1',
+        ).useFunctionsEmulator(host, 5001);
         await FirebaseStorage.instance.useStorageEmulator(host, 9199);
         if (kDebugMode) {
           debugPrint(
@@ -127,9 +129,7 @@ class _AuthGateState extends State<_AuthGate> {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            home: const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
+            home: const SplashScreen(),
           );
         }
         if (snapshot.hasError) {
@@ -137,64 +137,14 @@ class _AuthGateState extends State<_AuthGate> {
             snapshot.error,
             stackTrace: snapshot.stackTrace,
           );
-          return _AuthRetryScreen(onRetry: _retry);
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            home: SplashScreen(hasError: true, onRetry: _retry),
+          );
         }
         return const SafarApp();
       },
-    );
-  }
-}
-
-/// Minimal retry screen shown when Firebase anonymous auth fails.
-class _AuthRetryScreen extends StatelessWidget {
-  final VoidCallback onRetry;
-  const _AuthRetryScreen({required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    // design-token-justified: auth retry renders before settingsProvider hydration; light palette is the only safe default.
-    const colors = AppColorTokens.light;
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: Scaffold(
-        backgroundColor: colors.scaffoldBackground,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.cloud_off_rounded, size: 64, color: colors.textMuted),
-                const SizedBox(height: 16),
-                Text(
-                  'Connection Error',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Unable to connect. Check your internet and try again.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: colors.textSecondary),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: onRetry,
-                    child: const Text('Try Again'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

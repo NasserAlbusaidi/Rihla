@@ -4,194 +4,373 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/animations/tap_bounce.dart';
-import '../../../shared/widgets/module_header.dart';
-import '../../groups/providers/group_provider.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Full-screen event type picker — Step 1 of the event creation flow.
 ///
-/// Displays 5 visual type cards with dark ModuleHeader (group name subtitle).
-/// Each card shows the type's icon, name, description, and enabled module chips.
-/// Tapping a card navigates to [CreateEventScreen] with the selected type.
+/// Displays five visual type cards, stores the selected type locally, and
+/// navigates to [CreateEventScreen] through the bottom continue action.
 ///
 /// Per D-02 and UI-SPEC: EventTypePickerScreen.
-class EventTypePickerScreen extends ConsumerWidget {
+class EventTypePickerScreen extends ConsumerStatefulWidget {
   final String groupId;
 
   const EventTypePickerScreen({super.key, required this.groupId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EventTypePickerScreen> createState() =>
+      _EventTypePickerScreenState();
+}
+
+class _EventTypePickerScreenState extends ConsumerState<EventTypePickerScreen> {
+  EventType _selectedType = EventType.trip;
+
+  @override
+  Widget build(BuildContext context) {
     final disableAnimations = MediaQuery.of(context).disableAnimations;
     final types = EventTypeConfig.allTypes;
-    final groupName =
-        ref.watch(groupDetailProvider(groupId)).valueOrNull?.name ?? '';
+    final selectedConfig = EventTypeConfig.forType(_selectedType);
 
     return Scaffold(
       key: EventKeys.eventTypePickerScreen,
       backgroundColor: context.colors.scaffoldBackground,
-      body: Column(
-        children: [
-          ModuleHeader(
-            useDarkTheme: true,
-            title: 'New Event',
-            subtitle: groupName.isEmpty ? null : groupName,
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: List.generate(types.length, (index) {
-                  final config = types[index];
-                  final enabledModuleNames = _enabledModuleNames(config.type);
-
-                  final card = Column(
-                    children: [
-                      if (index > 0) const SizedBox(height: 12),
-                      Semantics(
-                        label:
-                            '${config.label}: ${config.description}. Modules: ${enabledModuleNames.join(", ")}',
-                        button: true,
-                        child: TapBounce(
-                          key: EventKeys.eventTypeCard(config.label),
-                          onTap: () => context.push(
-                            '/group/$groupId/create-event/${config.type.value}',
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: context.colors.cardSurface,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: context.shadows.raised,
-                            ),
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              children: [
-                                // Type icon container
-                                Builder(builder: (context) {
-                                  final typeColor =
-                                      config.resolveColor(context.colors);
-                                  return Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: typeColor.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: Icon(
-                                      config.icon,
-                                      size: 24,
-                                      color: typeColor,
-                                    ),
-                                  );
-                                }),
-                                const SizedBox(width: 12),
-                                // Text column
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        config.label,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        config.description,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              color:
-                                                  context.colors.textSecondary,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      // Module chips
-                                      Wrap(
-                                        spacing: 4,
-                                        runSpacing: 4,
-                                        children: enabledModuleNames
-                                            .map(
-                                              (name) => _ModuleChip(name: name),
-                                            )
-                                            .toList(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // Trailing arrow
-                                Icon(
-                                  Iconsax.arrow_right_3,
-                                  size: 18,
-                                  color: context.colors.textSecondary,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _PickerTopBar(groupId: widget.groupId),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'What kind of\njourney is this?',
+                      key: EventKeys.eventTypePickerTitle,
+                      style: AppTypography.display(
+                        fontSize: 30,
+                        color: context.colors.textPrimary,
+                        height: 1.05,
                       ),
-                    ],
-                  );
-
-                  if (disableAnimations) return card;
-
-                  return card
-                      .animate()
-                      .fadeIn(
-                        delay: (80 * index).ms,
-                        duration: 400.ms,
-                      )
-                      .slideY(
-                        begin: 0.05,
-                        end: 0,
-                        delay: (80 * index).ms,
-                        duration: 400.ms,
-                        curve: Curves.easeOutCubic,
-                      );
-                }),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "We'll set sensible defaults for categories and splits.",
+                      style: AppTypography.sans(
+                        fontSize: 13,
+                        color: context.colors.textSecondary,
+                        height: 1.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    _TypeGrid(
+                      types: types,
+                      selectedType: _selectedType,
+                      disableAnimations: disableAnimations,
+                      onSelect: (type) {
+                        HapticService.selection();
+                        setState(() => _selectedType = type);
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    _ContinueButton(
+                      label: 'Continue with ${selectedConfig.label}',
+                      onPressed: () => context.push(
+                        '/group/${widget.groupId}/create-event/${_selectedType.value}',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-
-  /// Returns the names of all enabled modules for the given event type.
-  static List<String> _enabledModuleNames(EventType type) {
-    final modules = EventModules.forType(type);
-    return [if (modules.ledger) 'Ledger'];
-  }
 }
 
-/// Chip displaying a single module name in the type picker card.
-class _ModuleChip extends StatelessWidget {
-  final String name;
+class _PickerTopBar extends StatelessWidget {
+  const _PickerTopBar({required this.groupId});
 
-  const _ModuleChip({required this.name});
+  final String groupId;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(
-        name,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
+      child: SizedBox(
+        height: 48,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                tooltip: 'Close',
+                icon: const Icon(Iconsax.close_circle, size: 20),
+                color: context.colors.textPrimary,
+                onPressed: () {
+                  HapticService.lightClick();
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/group/$groupId');
+                  }
+                },
+              ),
+            ),
+            Text(
+              'New event',
+              style: AppTypography.sans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: context.colors.textPrimary,
+              ),
+            ),
+          ],
+        ),
       ),
-      backgroundColor: context.colors.inputFill,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+    );
+  }
+}
+
+class _TypeGrid extends StatelessWidget {
+  const _TypeGrid({
+    required this.types,
+    required this.selectedType,
+    required this.disableAnimations,
+    required this.onSelect,
+  });
+
+  final List<EventTypeConfig> types;
+  final EventType selectedType;
+  final bool disableAnimations;
+  final ValueChanged<EventType> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = context.spacing.space12;
+        final itemWidth = (constraints.maxWidth - gap) / 2;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: List.generate(types.length, (index) {
+            final config = types[index];
+            final fullWidth = config.type == EventType.custom;
+            final card = SizedBox(
+              width: fullWidth ? constraints.maxWidth : itemWidth,
+              child: _TypeCard(
+                config: config,
+                selected: config.type == selectedType,
+                horizontal: fullWidth,
+                onTap: () => onSelect(config.type),
+              ),
+            );
+
+            if (disableAnimations) return card;
+
+            return card
+                .animate()
+                .fadeIn(delay: (70 * index).ms, duration: 320.ms)
+                .slideY(
+                  begin: 0.04,
+                  end: 0,
+                  delay: (70 * index).ms,
+                  duration: 320.ms,
+                  curve: Curves.easeOutCubic,
+                );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _TypeCard extends StatelessWidget {
+  const _TypeCard({
+    required this.config,
+    required this.selected,
+    required this.horizontal,
+    required this.onTap,
+  });
+
+  final EventTypeConfig config;
+  final bool selected;
+  final bool horizontal;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final typeColor = config.resolveColor(colors);
+
+    return Semantics(
+      label: '${config.label}: ${config.description}',
+      button: true,
+      selected: selected,
+      child: TapBounce(
+        key: EventKeys.eventTypeCard(config.label),
+        onTap: onTap,
+        child: Container(
+          constraints: BoxConstraints(minHeight: horizontal ? 84 : 168),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.cardSurface,
+            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
+            border: Border.all(
+              color: selected ? colors.textPrimary : Colors.transparent,
+              width: 2,
+            ),
+            boxShadow: context.shadows.raised,
+          ),
+          child: horizontal
+              ? Row(
+                  children: [
+                    _TypeGlyph(config: config, color: typeColor),
+                    const SizedBox(width: 14),
+                    Expanded(child: _TypeCopy(config: config)),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _TypeGlyph(config: config, color: typeColor),
+                    const SizedBox(height: 14),
+                    _TypeCopy(config: config),
+                  ],
+                ),
+        ),
       ),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
-      side: BorderSide.none,
+    );
+  }
+}
+
+class _TypeGlyph extends StatelessWidget {
+  const _TypeGlyph({required this.config, required this.color});
+
+  final EventTypeConfig config;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final background = switch (config.type) {
+      EventType.trip => colors.moduleLedgerLight,
+      EventType.camping => colors.saffronSoft,
+      EventType.travel => colors.cardSoft,
+      EventType.nightDayOut => colors.moduleMemoriesLight,
+      EventType.custom => colors.cardSoft,
+    };
+
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
+      ),
+      child: Icon(config.icon, size: 22, color: color),
+    );
+  }
+}
+
+class _TypeCopy extends StatelessWidget {
+  const _TypeCopy({required this.config});
+
+  final EventTypeConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          config.type.value.toUpperCase(),
+          style: AppTypography.mono(
+            fontSize: 9,
+            letterSpacing: 1.5,
+            color: context.colors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          config.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.display(
+            fontSize: 20,
+            color: context.colors.textPrimary,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          config.description,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.sans(
+            fontSize: 12,
+            color: context.colors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContinueButton extends StatelessWidget {
+  const _ContinueButton({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: context.spacing.buttonHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: context.colors.primaryGradient,
+          borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
+        ),
+        child: ElevatedButton.icon(
+          key: EventKeys.createEventButton,
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            foregroundColor: context.colors.textOnPrimary,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
+            ),
+          ),
+          label: Text(
+            label,
+            style: AppTypography.sans(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: context.colors.textOnPrimary,
+            ),
+          ),
+          icon: const Icon(Iconsax.arrow_right_3, size: 16),
+        ),
+      ),
     );
   }
 }

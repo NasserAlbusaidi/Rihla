@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../home/widgets/group_glyph.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
+import 'settings_section_header.dart';
 
-/// Group info section widget for GroupSettingsScreen.
-///
-/// Shows two tiles: group name (creator-only edit) and invite code (with copy).
-/// Follows the ProfileAboutSection card pattern.
+/// Wireframe identity and invite cards for GroupSettingsScreen.
 class GroupInfoSection extends ConsumerStatefulWidget {
   const GroupInfoSection({
     super.key,
@@ -54,10 +55,9 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
 
     setState(() => _isSaving = true);
     try {
-      await ref.read(groupServiceProvider).updateGroup(
-            groupId: widget.group.id,
-            name: trimmed,
-          );
+      await ref
+          .read(groupServiceProvider)
+          .updateGroup(groupId: widget.group.id, name: trimmed);
       if (mounted) {
         HapticService.success();
         setState(() {
@@ -84,250 +84,272 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
       key: GroupKeys.infoSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(),
+        _buildIdentityCard(),
+        const SizedBox(height: 10),
+        const SettingsSectionHeader(title: 'Invite'),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: context.colors.cardSurface,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: context.shadows.raised,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildGroupNameTile(),
-              Divider(height: 1, color: context.colors.inputFill),
-              _buildInviteCodeTile(),
-            ],
-          ),
-        ),
+        _buildInviteCodeCard(),
       ],
     );
   }
 
-  Widget _buildSectionHeader() {
-    return Row(
-      children: [
-        Icon(
-          Iconsax.setting_2,
-          size: 16,
-          color: context.colors.textSecondary,
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'GROUP',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: context.colors.textSecondary,
-            letterSpacing: 1.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGroupNameTile() {
-    if (_isEditing) {
-      return GestureDetector(
-        key: GroupKeys.settingsGroupNameTile,
-        behavior: HitTestBehavior.opaque,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
+  Widget _buildIdentityCard() {
+    final spacing = context.spacing;
+    return Container(
+      key: GroupKeys.settingsGroupNameTile,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(spacing.radiusLarge),
+        boxShadow: context.shadows.raised,
+      ),
+      child: Row(
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: context.colors.inputFill,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Icon(
-                    Iconsax.text,
-                    size: 18,
-                    color: context.colors.textSecondary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _nameController,
-                  autofocus: true,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: context.colors.textPrimary,
-                  ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                    filled: false,
-                  ),
-                  onSubmitted: (_) => _saveGroupName(),
-                ),
-              ),
-              _isSaving
-                  ? const SizedBox(
+              GroupGlyph(name: widget.group.name, size: 44),
+              if (widget.isCreator)
+                Positioned(
+                  right: -4,
+                  bottom: -4,
+                  child: GestureDetector(
+                    key: GroupKeys.groupNameEditIcon,
+                    onTap: () {
+                      HapticService.selection();
+                      setState(() {
+                        _isEditing = true;
+                        _nameController.text = widget.group.name;
+                      });
+                    },
+                    child: Container(
                       width: 20,
                       height: 20,
-                      child: Padding(
-                        padding: EdgeInsets.all(2),
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                      decoration: BoxDecoration(
+                        color: context.colors.textPrimary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: context.colors.cardSurface,
+                          width: 2,
+                        ),
                       ),
-                    )
-                  : IconButton(
-                      icon: Icon(
-                        Iconsax.tick_circle,
-                        color: context.colors.primary,
+                      child: Icon(
+                        Iconsax.edit_2,
+                        size: 10,
+                        color: context.colors.cardSurface,
+                        semanticLabel: 'Edit group name',
                       ),
-                      onPressed: _saveGroupName,
                     ),
+                  ),
+                ),
             ],
           ),
-        ),
-      );
-    }
-
-    return GestureDetector(
-      key: GroupKeys.settingsGroupNameTile,
-      onTap: null,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: context.colors.inputFill,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Icon(
-                  Iconsax.text,
-                  size: 18,
-                  color: context.colors.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Group Name',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: context.colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.group.name,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: context.colors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (widget.isCreator)
-              GestureDetector(
-                key: GroupKeys.groupNameEditIcon,
-                onTap: () {
-                  HapticService.selection();
-                  setState(() {
-                    _isEditing = true;
-                    _nameController.text = widget.group.name;
-                  });
-                },
-                child: Icon(
-                  Iconsax.edit_2,
-                  size: 18,
-                  color: context.colors.textSecondary,
-                  semanticLabel: 'Edit group name',
-                ),
-              ),
-          ],
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: _isEditing ? _buildNameEditor() : _buildIdentityText(),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInviteCodeTile() {
-    return Padding(
-      key: GroupKeys.settingsInviteCodeTile,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: context.colors.inputFill,
-              borderRadius: BorderRadius.circular(10),
+  Widget _buildIdentityText() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.group.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.display(
+            fontSize: 22,
+            color: context.colors.textPrimary,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'Created ${_formatCreated(widget.group.createdAt)} · ${widget.group.currency}',
+          style: AppTypography.sans(
+            fontSize: 12,
+            color: context.colors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNameEditor() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _nameController,
+            autofocus: true,
+            style: AppTypography.sans(
+              fontSize: 14,
+              color: context.colors.textPrimary,
             ),
-            child: Center(
-              child: Icon(
-                Iconsax.link,
-                size: 18,
-                color: context.colors.textSecondary,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+              filled: false,
+            ),
+            onSubmitted: (_) => _saveGroupName(),
+          ),
+        ),
+        _isSaving
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: Padding(
+                  padding: EdgeInsets.all(2),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : IconButton(
+                icon: Icon(Iconsax.tick_circle, color: context.colors.primary),
+                onPressed: _saveGroupName,
               ),
+      ],
+    );
+  }
+
+  Widget _buildInviteCodeCard() {
+    final spacing = context.spacing;
+    return Container(
+      key: GroupKeys.settingsInviteCodeTile,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(spacing.radiusLarge),
+        boxShadow: context.shadows.raised,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Anyone with the code can join',
+            style: AppTypography.sans(
+              fontSize: 12,
+              color: context.colors.textSecondary,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Invite Code',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: context.colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   widget.group.inviteCode,
-                  style: TextStyle(
-                    fontSize: 16,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.mono(
+                    fontSize: 24,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 4,
                     color: context.colors.textPrimary,
                   ),
                 ),
-              ],
-            ),
-          ),
-          IconButton(
-            key: GroupKeys.inviteCodeCopyButton,
-            icon: Icon(
-              Iconsax.copy,
-              color: context.colors.textSecondary,
-              semanticLabel: 'Copy invite code',
-            ),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: widget.group.inviteCode));
-              HapticService.success();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Invite code copied'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+              ),
+              const SizedBox(width: 12),
+              _InviteIconButton(
+                key: GroupKeys.inviteCodeCopyButton,
+                icon: Iconsax.copy,
+                semanticLabel: 'Copy invite code',
+                onTap: () {
+                  Clipboard.setData(
+                    ClipboardData(text: widget.group.inviteCode),
+                  );
+                  HapticService.success();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invite code copied'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 6),
+              _InviteIconButton(
+                icon: Iconsax.scan_barcode,
+                semanticLabel: 'Show QR code',
+                onTap: () {
+                  HapticService.selection();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('QR invite coming soon')),
+                  );
+                },
+              ),
+              const SizedBox(width: 6),
+              _InviteIconButton(
+                icon: Iconsax.send_2,
+                semanticLabel: 'Share invite',
+                onTap: () {
+                  HapticService.selection();
+                  Share.share(
+                    'Join my group on Rihla! Use code '
+                    '${widget.group.inviteCode} to join.',
+                    subject: 'Join ${widget.group.name}',
+                  );
+                },
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  static String _formatCreated(DateTime createdAt) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[createdAt.month - 1]} ${createdAt.day}';
+  }
+}
+
+class _InviteIconButton extends StatelessWidget {
+  const _InviteIconButton({
+    super.key,
+    required this.icon,
+    required this.semanticLabel,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String semanticLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.colors.cardSoft,
+      shape: const CircleBorder(),
+      child: InkResponse(
+        onTap: onTap,
+        radius: 22,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(
+            icon,
+            size: 16,
+            color: context.colors.textPrimary,
+            semanticLabel: semanticLabel,
+          ),
+        ),
       ),
     );
   }

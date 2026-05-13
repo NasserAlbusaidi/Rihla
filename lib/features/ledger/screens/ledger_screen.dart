@@ -336,7 +336,7 @@ class _CoverHeader extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 144 + statusBar,
+      height: 120 + statusBar,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1268,7 +1268,7 @@ class _LoadingState extends StatelessWidget {
     return Column(
       children: [
         SizedBox(
-          height: 144 + statusBar,
+          height: 120 + statusBar,
           child: Container(color: colors.cardSoft),
         ),
         const Spacer(),
