@@ -417,6 +417,7 @@ class _HowRowTile extends StatelessWidget {
                     row.number,
                     style: AppTypography.mono(
                       fontSize: 10,
+                      // textMuted-decorative-justified: Row number tag — small decorative numeric mono label (no semantic info).
                       color: colors.textMuted,
                       letterSpacing: 1.5,
                     ),
@@ -537,6 +538,7 @@ class _SetupPage extends StatelessWidget {
                   'Each group can override this later.',
                   style: AppTypography.sans(
                     fontSize: 11,
+                    // textMuted-decorative-justified: Caption beneath inline label — non-essential helper copy.
                     color: colors.textMuted,
                   ),
                 ),
@@ -613,6 +615,7 @@ class _NameField extends StatelessWidget {
       style: AppTypography.sans(fontSize: 15, color: colors.textPrimary),
       decoration: InputDecoration(
         hintText: 'Your name',
+        // textMuted-decorative-justified: TextField hint placeholder — disappears once user types.
         hintStyle: AppTypography.sans(fontSize: 15, color: colors.textMuted),
         filled: true,
         fillColor: colors.inputFill,
@@ -817,6 +820,7 @@ class _StepHeader extends StatelessWidget {
             label,
             style: AppTypography.mono(
               fontSize: 10,
+              // textMuted-decorative-justified: Field label tag above input — decorative mono uppercase, accompanied by adjacent functional label.
               color: colors.textMuted,
               letterSpacing: 2,
             ),
