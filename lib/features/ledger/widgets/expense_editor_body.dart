@@ -551,6 +551,10 @@ class _AmountHero extends StatelessWidget {
               style: const TextStyle(color: Colors.transparent),
               cursorColor: Colors.transparent,
               decoration: const InputDecoration(
+                filled: false,
+                fillColor: Colors.transparent,
+                isCollapsed: true,
+                contentPadding: EdgeInsets.zero,
                 border: InputBorder.none,
                 focusedBorder: InputBorder.none,
                 enabledBorder: InputBorder.none,
