@@ -59,13 +59,6 @@ abstract final class GroupKeys {
   static const settleUpAllSettledMessage = Key('group_settle_up_all_settled');
   static const settleUpRecordSheetTitle = Key('group_settle_up_record_title');
 
-  // Phase 30 — Settle Up tab bar keys (added Wave 0; used by Plan 02 implementation)
-  static const settleUpTabBar = Key('group_settle_up_tab_bar');
-  static const settleUpYouOweTab = Key('group_settle_up_you_owe_tab');
-  static const settleUpOwedToYouTab = Key('group_settle_up_owed_to_you_tab');
-  static const settleUpBetweenOthersTab =
-      Key('group_settle_up_between_others_tab');
-  static const settleUpHistoryTab = Key('group_settle_up_history_tab');
   static const settleUpRecordPaymentButton =
       Key('group_settle_up_record_payment_button');
 
