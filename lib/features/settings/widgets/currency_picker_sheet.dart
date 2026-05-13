@@ -28,6 +28,7 @@ class CurrencyPickerSheet extends ConsumerWidget {
   static Future<void> show(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -42,7 +43,7 @@ class CurrencyPickerSheet extends ConsumerWidget {
     final colors = context.colors;
 
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(context.spacing.space24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
