@@ -851,26 +851,23 @@ class _OnboardingDots extends StatelessWidget {
     final colors = context.colors;
     return Semantics(
       label: 'Onboarding step ${active + 1} of $count',
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < count; i++)
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: EdgeInsets.only(
-                  right: i == count - 1 ? 0 : context.spacing.space4 + 2,
-                ),
-                width: i == active ? 22 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: i == active ? colors.textPrimary : colors.rule2,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < count; i++)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: EdgeInsets.only(
+                right: i == count - 1 ? 0 : context.spacing.space4 + 2,
               ),
-          ],
-        ),
+              width: i == active ? 22 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: i == active ? colors.textPrimary : colors.rule2,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+        ],
       ),
     );
   }
