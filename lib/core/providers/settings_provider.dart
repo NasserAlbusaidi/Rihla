@@ -44,6 +44,19 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(pushNotificationsEnabled: enabled);
   }
 
+  Future<void> setWeeklyDigestEnabled(bool enabled) async {
+    await _service.saveWeeklyDigestEnabled(enabled);
+    state = state.copyWith(weeklyDigestEnabled: enabled);
+  }
+
+  /// Marks the post-install onboarding flow as complete. The router redirect
+  /// uses this flag to decide whether to send the user to `/onboarding` or
+  /// straight to `/home` on launch.
+  Future<void> setOnboardingComplete(bool complete) async {
+    await _service.saveOnboardingComplete(complete);
+    state = state.copyWith(onboardingComplete: complete);
+  }
+
   /// Updates the device name in SharedPreferences and state, then
   /// fire-and-forgets a Firestore batch propagation to all group member
   /// records (D-14, D-15, D-16).

@@ -7,14 +7,18 @@ class AppSettings {
   final String languageCode;
   final String currencyCode;
   final bool pushNotificationsEnabled;
+  final bool weeklyDigestEnabled;
   final String deviceName;
+  final bool onboardingComplete;
 
   const AppSettings({
     this.themeMode = AppThemeMode.system,
     this.languageCode = 'en',
     this.currencyCode = 'OMR',
     this.pushNotificationsEnabled = false,
+    this.weeklyDigestEnabled = false,
     this.deviceName = '',
+    this.onboardingComplete = false,
   });
 
   factory AppSettings.defaultSettings() => const AppSettings();
@@ -24,7 +28,9 @@ class AppSettings {
     String? languageCode,
     String? currencyCode,
     bool? pushNotificationsEnabled,
+    bool? weeklyDigestEnabled,
     String? deviceName,
+    bool? onboardingComplete,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -32,7 +38,9 @@ class AppSettings {
       currencyCode: currencyCode ?? this.currencyCode,
       pushNotificationsEnabled:
           pushNotificationsEnabled ?? this.pushNotificationsEnabled,
+      weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
       deviceName: deviceName ?? this.deviceName,
+      onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     );
   }
 
