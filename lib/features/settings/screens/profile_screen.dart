@@ -4,7 +4,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_links.dart';
 import '../../../core/config/app_metadata.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
@@ -16,6 +19,7 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
+import '../widgets/legal_links_sheet.dart';
 
 /// Profile tab — saffron travel-journal direction.
 ///
@@ -124,20 +128,17 @@ class _TopBar extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _GhostIcon(
-                icon: canPop ? Iconsax.arrow_left : Iconsax.setting_2,
-                onTap: () {
-                  HapticService.lightClick();
-                  if (canPop) {
+            if (canPop)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _GhostIcon(
+                  icon: Iconsax.arrow_left,
+                  onTap: () {
+                    HapticService.lightClick();
                     GoRouter.of(context).pop();
-                  } else {
-                    _showSnack(context, 'Settings coming soon');
-                  }
-                },
+                  },
+                ),
               ),
-            ),
             Text(
               'Profile',
               style: AppTypography.sans(
@@ -152,7 +153,7 @@ class _TopBar extends StatelessWidget {
                 icon: Iconsax.export_1,
                 onTap: () {
                   HapticService.lightClick();
-                  _showSnack(context, 'Share coming soon');
+                  _shareApp();
                 },
               ),
             ),
@@ -563,11 +564,11 @@ class _PreferencesCard extends ConsumerWidget {
 
 // ──────────────────────────── About card
 
-class _AboutCard extends StatelessWidget {
+class _AboutCard extends ConsumerWidget {
   const _AboutCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -580,7 +581,7 @@ class _AboutCard extends StatelessWidget {
               size: 16,
               color: colors.textSecondary,
             ),
-            onTap: () => _showSnack(context, 'Help center soon'),
+            onTap: () => _openExternalUrl(context, AppLinks.helpUrl),
           ),
           _PrefRow(
             tileKey: ProfileKeys.feedbackTile,
@@ -590,7 +591,7 @@ class _AboutCard extends StatelessWidget {
               size: 16,
               color: colors.textSecondary,
             ),
-            onTap: () => _showSnack(context, 'Feedback flow soon'),
+            onTap: () => _sendFeedback(context, ref),
           ),
           _PrefRow(
             tileKey: ProfileKeys.licensesTile,
@@ -600,7 +601,7 @@ class _AboutCard extends StatelessWidget {
               size: 16,
               color: colors.textSecondary,
             ),
-            onTap: () => _showSnack(context, 'Terms & privacy soon'),
+            onTap: () => LegalLinksSheet.show(context),
           ),
           _PrefRow(
             label: 'Sign out',
@@ -867,4 +868,35 @@ void _showSnack(BuildContext context, String message) {
         duration: const Duration(seconds: 2),
       ),
     );
+}
+
+// ──────────────────────────── Outbound action helpers
+
+void _shareApp() {
+  Share.share(
+    "I'm splitting trip expenses with Rihla. Give it a try.",
+    subject: 'Rihla',
+  );
+}
+
+Future<void> _openExternalUrl(BuildContext context, String url) async {
+  final uri = Uri.parse(url);
+  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!ok && context.mounted) {
+    _showSnack(context, "Couldn't open link");
+  }
+}
+
+Future<void> _sendFeedback(BuildContext context, WidgetRef ref) async {
+  final metadata = ref.read(appMetadataProvider).valueOrNull;
+  final versionLabel = metadata?.versionLabel ?? 'Unknown';
+  final uri = Uri(
+    scheme: 'mailto',
+    path: AppLinks.feedbackEmail,
+    queryParameters: {'subject': 'Rihla feedback · v$versionLabel'},
+  );
+  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!ok && context.mounted) {
+    _showSnack(context, 'No email app available');
+  }
 }

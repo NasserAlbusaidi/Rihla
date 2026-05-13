@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -285,8 +286,10 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 semanticLabel: 'Share invite',
                 onTap: () {
                   HapticService.selection();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Invite sharing coming soon')),
+                  Share.share(
+                    'Join my group on Rihla! Use code '
+                    '${widget.group.inviteCode} to join.',
+                    subject: 'Join ${widget.group.name}',
                   );
                 },
               ),

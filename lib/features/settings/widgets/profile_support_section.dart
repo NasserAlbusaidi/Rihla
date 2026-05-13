@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_links.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../keys/profile_keys.dart';
@@ -56,11 +58,18 @@ class ProfileSupportSection extends StatelessWidget {
   Widget _buildCoffeeTile(BuildContext context) {
     return GestureDetector(
       key: ProfileKeys.coffeeTile,
-      onTap: () {
+      onTap: () async {
         HapticService.lightClick();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Coming soon')),
+        final messenger = ScaffoldMessenger.of(context);
+        final ok = await launchUrl(
+          Uri.parse(AppLinks.paypalUrl),
+          mode: LaunchMode.externalApplication,
         );
+        if (!ok) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text("Couldn't open PayPal")),
+          );
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: Padding(
