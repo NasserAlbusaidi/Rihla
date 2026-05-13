@@ -183,3 +183,22 @@ Constants live in `lib/core/config/app_links.dart` as the single source of truth
 - 3 helper functions added to `profile_screen.dart`: `_shareApp`, `_openExternalUrl`, `_sendFeedback`.
 - `_AboutCard` converted `StatelessWidget → ConsumerWidget` for ref access to `appMetadataProvider`.
 - 0 new dependencies. Reused `share_plus`, `url_launcher`, `package_info_plus`.
+
+## Sprint 2 — locked decisions (2026-05-13)
+
+1. **Supported currencies.** OMR, AED, SAR, USD, EUR, GBP — the six already configured in `AppFormatters.currencyConfig`. No new codes added.
+2. **Currency scope copy.** "Default for new trips. Existing trips keep their currency." — explicit to avoid implying retroactive conversion.
+3. **Arabic language.** Rendered in the picker as a locked option labelled "Coming soon" — selecting it is a no-op. Full Arabic ships with T5.O.
+4. **Locked split modes.** Shares / Exact / Percent show "Locked — available in v1.2" subtitle and are non-selectable. `SplitMode.isAvailable` gates the picker.
+5. **SplitMode home.** Lifted from `lib/features/ledger/widgets/custom_split_sheet.dart` into `lib/core/models/split_mode.dart` so `AppSettings` can depend on it without inverting layers. The sheet re-exports the enum so existing callers keep working.
+
+## Sprint 2 — outcome
+
+- 3 snacks removed (T2.G–I): Currency / Language / Default split picker now open real sheets.
+- 1 new shared model: `lib/core/models/split_mode.dart` (`SplitMode`, `SplitModeX`, `splitModeFromStorage`).
+- 3 new picker sheets under `lib/features/settings/widgets/`: `currency_picker_sheet.dart`, `language_picker_sheet.dart`, `default_split_picker_sheet.dart`.
+- `AppSettings.defaultSplitMode` field (defaults to `SplitMode.equally`), persisted to SharedPreferences via `SettingsService.saveDefaultSplitMode`, mutated via `SettingsNotifier.setDefaultSplitMode`.
+- `_PreferencesCard` reads live `currencyCode`, `languageCode`, `defaultSplitMode` from `settingsProvider` and routes taps to the three sheets. Trailing labels come from new `_currencyTrailing` / `_languageTrailing` helpers + `SplitModeX.label`.
+- 6 new unit tests in `test/unit/settings_default_split_mode_test.dart` covering round-trip, default, unknown-value fallback, `storageKey` stability, `isAvailable` table, and `copyWith` preservation.
+- 0 new dependencies.
+- **Deferred:** wiring `defaultSplitMode` into `AddExpenseScreen`'s initial selection. `CustomSplitSheet` has no `initialMode` parameter and `showCustomSplitSheet` is only called from `edit_expense_form.dart` today; the integration lands with T4.N when non-equal modes become functional.
