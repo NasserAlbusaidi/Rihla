@@ -9,16 +9,21 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/config/app_metadata.dart';
+import '../../../core/models/split_mode.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
+import '../widgets/currency_picker_sheet.dart';
+import '../widgets/default_split_picker_sheet.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
+import '../widgets/language_picker_sheet.dart';
 import '../widgets/legal_links_sheet.dart';
 
 /// Profile tab — saffron travel-journal direction.
@@ -537,14 +542,14 @@ class _PreferencesCard extends ConsumerWidget {
           _PrefRow(
             leading: _PrefIcon(icon: Iconsax.global, bg: colors.cardSoft),
             label: 'Currency',
-            trailingText: 'OMR · ر.ع.',
-            onTap: () => _showSnack(context, 'Currency picker soon'),
+            trailingText: _currencyTrailing(settings.currencyCode),
+            onTap: () => CurrencyPickerSheet.show(context),
           ),
           _PrefRow(
             leading: _PrefIconLetter(letter: 'Aa', bg: colors.saffronTint),
             label: 'Language',
-            trailingText: 'English',
-            onTap: () => _showSnack(context, 'Language picker soon'),
+            trailingText: _languageTrailing(settings.languageCode),
+            onTap: () => LanguagePickerSheet.show(context),
           ),
           _PrefRow(
             leading: _PrefIcon(
@@ -552,8 +557,8 @@ class _PreferencesCard extends ConsumerWidget {
               bg: colors.cardSoft,
             ),
             label: 'Default split',
-            trailingText: 'Equal',
-            onTap: () => _showSnack(context, 'Split preferences soon'),
+            trailingText: settings.defaultSplitMode.label,
+            onTap: () => DefaultSplitPickerSheet.show(context),
             divider: false,
           ),
         ],
@@ -853,6 +858,23 @@ class _PrefIconLetter extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ──────────────────────────── Preference row label helpers
+
+String _currencyTrailing(String code) {
+  final symbol = AppFormatters.currencyConfig[code]?.symbol;
+  return symbol == null ? code : '$code · $symbol';
+}
+
+String _languageTrailing(String code) {
+  switch (code) {
+    case 'ar':
+      return 'العربية';
+    case 'en':
+    default:
+      return 'English';
   }
 }
 

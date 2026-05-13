@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/firebase_config.dart';
 import '../models/app_settings_model.dart';
+import '../models/split_mode.dart';
 import '../services/settings_service.dart';
 
 /// Provider for SharedPreferences instance
@@ -55,6 +56,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> setOnboardingComplete(bool complete) async {
     await _service.saveOnboardingComplete(complete);
     state = state.copyWith(onboardingComplete: complete);
+  }
+
+  /// Stores the user's preferred default split mode for new expenses.
+  /// Only [SplitMode.equally] is functional today; the picker prevents
+  /// selecting locked modes (`SplitMode.isAvailable`).
+  Future<void> setDefaultSplitMode(SplitMode mode) async {
+    await _service.saveDefaultSplitMode(mode);
+    state = state.copyWith(defaultSplitMode: mode);
   }
 
   /// Updates the device name in SharedPreferences and state, then
