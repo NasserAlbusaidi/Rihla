@@ -7,25 +7,33 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
+import 'delete_group_sheet.dart';
 
 /// Danger zone section widget for GroupSettingsScreen.
 ///
 /// Shows a Leave Group tile (all members) and a Delete Group tile (creator
-/// only). Both trigger an AlertDialog confirmation before executing. After
-/// leave or delete, navigates to /home (context.go — replaces route stack).
+/// only). Leave still uses an AlertDialog confirmation; Delete opens the
+/// wireframe-aligned bottom sheet (`delete_group_sheet.dart`) with a
+/// type-to-confirm gate. After leave or delete, navigates to /home.
 class GroupDangerSection extends ConsumerWidget {
   const GroupDangerSection({
     super.key,
     required this.groupId,
     required this.isCreator,
+    this.groupName,
   });
 
   final String groupId;
   final bool isCreator;
+
+  /// Used as the type-to-confirm token on the delete sheet. When null we fall
+  /// back to a generic "the group" prompt — callers should pass the real name
+  /// (creator-only screens always have it).
+  final String? groupName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -212,51 +220,18 @@ class GroupDangerSection extends ConsumerWidget {
   }
 
   void _showDeleteDialog(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        key: GroupKeys.deleteGroupDialog,
-        title: Text(
-          'Delete group?',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: context.colors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'This will permanently delete the group and all its events. This cannot be undone.',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: context.colors.textSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Keep group',
-              style: TextStyle(color: context.colors.textSecondary),
-            ),
-          ),
-          TextButton(
-            key: GroupKeys.deleteGroupConfirmButton,
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              HapticService.medium();
-              _executeDelete(context, ref);
-            },
-            child: Text(
-              'Delete group',
-              style: TextStyle(
-                color: context.colors.errorText,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final balancesAsync = ref.read(groupBalancesProvider(groupId));
+    final balances = balancesAsync.valueOrNull;
+    final memberCount = balances?.balances.length ?? 0;
+
+    showDeleteGroupSheet(
+      context,
+      groupName: groupName ?? 'this group',
+      memberCount: memberCount,
+      onConfirm: () {
+        HapticService.medium();
+        _executeDelete(context, ref);
+      },
     );
   }
 

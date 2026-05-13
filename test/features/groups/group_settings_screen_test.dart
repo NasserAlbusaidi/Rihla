@@ -453,6 +453,15 @@ void main() {
 
         await tester.tap(find.byKey(GroupKeys.deleteGroupTile));
         await tester.pumpAndSettle();
+        // Type-to-confirm: enter the group name to enable the destructive button.
+        await tester.enterText(
+          find.descendant(
+            of: find.byKey(GroupKeys.deleteGroupDialog),
+            matching: find.byType(TextField),
+          ),
+          _testGroup.name,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(GroupKeys.deleteGroupConfirmButton));
         await deleteStarted.future;
         await tester.pumpAndSettle();
