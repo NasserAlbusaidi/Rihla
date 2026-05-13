@@ -415,6 +415,8 @@ class _HowRowTile extends StatelessWidget {
                 children: [
                   Text(
                     row.number,
+                    // textMuted-decorative-justified: list row counter ("01",
+                    // "02") next to a primary title — purely ornamental.
                     style: AppTypography.mono(
                       fontSize: 10,
                       color: colors.textMuted,
@@ -535,6 +537,8 @@ class _SetupPage extends StatelessWidget {
                 SizedBox(height: context.spacing.space8),
                 Text(
                   'Each group can override this later.',
+                  // textMuted-decorative-justified: tertiary helper caption
+                  // beneath an already-labelled control — decorative.
                   style: AppTypography.sans(
                     fontSize: 11,
                     color: colors.textMuted,
@@ -609,6 +613,8 @@ class _NameField extends StatelessWidget {
       style: AppTypography.sans(fontSize: 15, color: colors.textPrimary),
       decoration: InputDecoration(
         hintText: 'Your name',
+        // textMuted-decorative-justified: TextField hint copy — disappears
+        // on focus / typing, never carries functional information.
         hintStyle: AppTypography.sans(fontSize: 15, color: colors.textMuted),
         filled: true,
         fillColor: colors.inputFill,
@@ -811,6 +817,8 @@ class _StepHeader extends StatelessWidget {
         children: [
           Text(
             label,
+            // textMuted-decorative-justified: monospaced step indicator
+            // ("STEP 01 / 03") — decorative, not functional copy.
             style: AppTypography.mono(
               fontSize: 10,
               color: colors.textMuted,
