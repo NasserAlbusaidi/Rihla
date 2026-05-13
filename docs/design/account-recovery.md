@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — pre-planning |
+| **Status** | Decisions locked 2026-05-13 — ready for implementation planning |
 | **Target release** | v1.2+ (before public Play Store launch) |
 | **Author** | Nasser Albusaidi |
 | **Created** | 2026-05-12 |
@@ -56,11 +56,11 @@ This means:
 ### 4.1 Primary: User links email on their main device
 
 1. User opens the app (existing anonymous session, has groups / expenses).
-2. After joining or creating their first group, a dismissible banner appears in Home: *"Add your email so you can restore Rihla if you lose this phone. Tap to set up."*
-3. User taps the banner (or finds it later in Settings → "Linked email").
+2. User navigates to Settings → "Linked email" (no proactive Home banner; entry is opt-in only per OD-1).
+3. Settings shows "Not set" with a "Set up" CTA. User taps it.
 4. User enters their email. App calls `linkWithCredential` with an email-link credential.
 5. Firebase sends a confirmation link to the email. User taps the link on the same device.
-6. App returns to Settings showing the email as linked. Banner is dismissed permanently.
+6. App returns to Settings showing the email as linked.
 7. From this point forward, the email is permanently attached to this Firebase identity.
 
 ### 4.2 Primary: User restores on a new device
@@ -124,7 +124,7 @@ User explicitly wants to remove their identity from a device (e.g., selling the 
 ### 5.1 Linking flow (FR-LINK)
 
 - **FR-LINK-1:** Settings shows a "Linked email" section. When unlinked, it shows "Not set" + a "Set up" CTA. When linked, it shows the email + a "Sign out of this device" action.
-- **FR-LINK-2:** After the user joins or creates their first group, a dismissible banner appears in Home prompting them to link an email. Banner persists across launches until either (a) the user links an email, or (b) the user explicitly dismisses it (≥3 dismissals → permanent dismissal).
+- **FR-LINK-2:** *(Removed per OD-1 — no proactive Home banner in v1.2. Entry is Settings-only.)*
 - **FR-LINK-3:** Linking is initiated by entering an email. The app sends a sign-in link via Firebase Auth's email-link mechanism, with the continue URL pointing back into the app via App Links / Universal Links.
 - **FR-LINK-4:** On link confirmation tap, the app calls `linkWithCredential` to attach the email credential to the current anonymous user. The user's UID does **not** change.
 - **FR-LINK-5:** If the email is already linked to another Firebase user, linking fails with a clear, actionable error message and a suggestion to restore from that account instead.
@@ -188,7 +188,7 @@ The form must be updated to declare:
 
 Firebase Dynamic Links was **deprecated August 25, 2025**. Every legacy tutorial that says "use Dynamic Links for the email-link continue URL" is stale. The current canonical path:
 
-- Host a continue page (essentially an empty HTML page that triggers the app's deep link) on **Firebase Hosting** under the `rihla-system` project.
+- Host a continue page (essentially an empty HTML page that triggers the app's deep link) on **Firebase Hosting** under the `rihla-safar` project (the current Firebase project in `lib/firebase_options.dart` and `.firebaserc`).
 - Configure **App Links** (Android) via the Digital Asset Links file at `<your-hosting-domain>/.well-known/assetlinks.json`.
 - Configure **Universal Links** (iOS) via the Apple App Site Association file at `<your-hosting-domain>/.well-known/apple-app-site-association`.
 - Set `ActionCodeSettings.handleCodeInApp: true` and `ActionCodeSettings.url` to the hosted continue page.
@@ -233,26 +233,26 @@ Firestore's offline persistence queues writes locally. If the user signs out (re
 
 Email is PII. Make sure email values are never logged to Sentry breadcrumbs, never sent in error reports, and never appear in any analytics event. Audit before launch.
 
-## 8. Open Decisions
+## 8. Open Decisions — LOCKED 2026-05-13
 
-These are calls that need confirmation before `/speckit.plan` (or whatever planning step happens). Recommended answers in **bold**; alternatives noted for explicit override.
+All eight decisions resolved. Implementation planning may proceed.
 
-| # | Decision | Recommendation | Alternatives |
+| # | Decision | Final answer | Note |
 |---|---|---|---|
-| OD-1 | When to prompt the user to link an email | **Dismissible banner in Home after first group joined/created. Persists until linked or dismissed 3+ times.** | (a) Pure opt-in via Settings only — lower friction, lower save rate. (b) Hard modal after first group — high save rate, high friction, off-brand. |
-| OD-2 | Sign-out UX | **"Sign out of this device" visible in Settings only when an email is linked. Confirmation: "Your data stays in the cloud."** | (a) No sign-out at all (closer to today's model). (b) Sign-out always available; show a warning if no email linked. |
-| OD-3 | Cache invalidation strategy on UID swap | **Wipe-and-rehydrate `safar_cache.db`.** | (a) UID-scope every row in the schema — overkill for rarity of UID swap. (b) Lazy invalidation (mark stale, refresh on read) — adds complexity. |
-| OD-4 | Email link expiry duration | **24 hours (Firebase default-compatible window).** | (a) 1 hour — more secure, more user friction. (b) 7 days — Firebase max, low security. |
-| OD-5 | Rate-limiting strategy | **Rely on Firebase Auth's built-in throttling for v1.2. Add Cloud Function rate-limiter if abuse emerges.** | (a) Custom rate-limiter from day one (requires Blaze). |
-| OD-6 | Can the linked email be changed later? | **No. Permanent in v1.2. Revisit if support load demands.** | (a) Allow change via "unlink + relink" with confirmation flow — gnarly security implications, not worth it for v1.2. |
-| OD-7 | What happens to orphaned anon UIDs after recovery? | **Leave them. No client cleanup. Document as a known accumulation.** | (a) Periodic Cloud Function cleanup of anon UIDs with no participant docs. Future optimization. |
-| OD-8 | Does this block v1.x public Play Store launch? | **Strong recommend: yes. Treat as P0 for public launch.** | (a) Ship public without it + a "tourniquet" banner warning users their data is device-only. Faster to launch, accepts data-loss reviews risk. |
+| OD-1 | When to prompt the user to link an email | **Settings only, no Home banner.** | Override of original recommendation. Trades save-rate for restraint and simpler implementation (no banner state machine, no dismissal counter). SC-1 target revised downward (see §9). |
+| OD-2 | Sign-out UX | **"Sign out of this device" visible in Settings only when an email is linked.** Confirmation copy: *"Your data stays in the cloud."* | Matches rec. Without a linked email, sign-out does not exist — there's no way back. |
+| OD-3 | Cache invalidation on UID swap | **Wipe-and-rehydrate `safar_cache.db`.** | Matches rec. Safe because the SQLite cache is fully reconstructable from Firestore on next read. |
+| OD-4 | Email link expiry duration | **24 hours.** | Matches rec. Firebase default-compatible window; balances "check email after work" UX with leaked-link blast radius. |
+| OD-5 | Rate-limiting | **Firebase Auth built-in throttling only for v1.2.** | Matches rec. Ship on Spark. Cloud Function rate-limiter is a post-launch follow-up if abuse emerges. |
+| OD-6 | Mutable linked email | **No. Permanent in v1.2.** | Matches rec. Revisit only if support load demands a change-email path. |
+| OD-7 | Orphaned anon UIDs after recovery | **Leave them. No client cleanup.** | Matches rec. Documented as known accumulation. Future Cloud Function cleanup is optional. |
+| OD-8 | Public Play Store launch gate | **P0 blocker. Public launch waits for v1.2 + privacy policy + data deletion.** | Matches rec. Closed alpha continues unblocked. |
 
 ## 9. Success Criteria
 
 Measurable outcomes for after v1.2 ships:
 
-- **SC-1:** ≥40% of users who join or create their first group within a 30-day window link an email (measured: link conversion among users who have ≥1 group).
+- **SC-1:** *Revised post-OD-1 lock (was ≥40%, which assumed a Home banner).* ≥10% of users with ≥1 group link an email within 30 days. Lower target reflects the deliberate restraint of Settings-only entry. If conversion stays below 5% after a quarter, revisit OD-1 and consider re-introducing a banner.
 - **SC-2:** ≥95% of recovery attempts on devices that previously linked an email complete successfully (measured: successful `signInWithEmailLink` over recovery attempts initiated).
 - **SC-3:** Time from "I lost my phone" to "back in Rihla with my data" is under 3 minutes end-to-end for a user who has the linked email open on the new device (measured: time from recovery-screen first-paint to Home loaded with restored data).
 - **SC-4:** Zero confirmed data-loss support tickets among users who linked an email and recovered. (Failed recovery attempts are acceptable; silent data loss is not.)

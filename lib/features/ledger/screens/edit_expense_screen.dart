@@ -1,28 +1,21 @@
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+
 import '../../../core/services/haptic_service.dart';
-import '../../events/providers/event_provider.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
-import '../widgets/edit_expense_form.dart';
+import '../widgets/expense_editor_body.dart';
 
-/// Full-page screen for editing an existing expense.
-///
-/// Converted from a modal bottom sheet to a GoRouter route per D-07.
-/// Takes expenseId as a string for deep-link compatibility — loads the
-/// expense from [eventExpensesProvider] internally.
-///
-/// This screen is an orchestrator: it owns all mutable state, the submit
-/// handler, and the delete handler. The form UI is delegated to
-/// [EditExpenseForm], which is a stateless controlled component.
-class EditExpenseScreen extends ConsumerStatefulWidget {
+/// Thin host that loads the target expense and feeds [ExpenseEditorBody] in
+/// edit mode. Owns the updateExpense and deleteExpense service calls so the
+/// shared body stays free of save/delete plumbing.
+class EditExpenseScreen extends ConsumerWidget {
   final String groupId;
   final String eventId;
   final String expenseId;
@@ -35,267 +28,131 @@ class EditExpenseScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<EditExpenseScreen> createState() => _EditExpenseScreenState();
-}
-
-class _EditExpenseScreenState extends ConsumerState<EditExpenseScreen> {
-  late TextEditingController _amountController;
-  late TextEditingController _noteController;
-  late String? _selectedCategoryId;
-  bool _isSubmitting = false;
-  bool _initialized = false;
-
-  // Scope editing
-  late ExpenseScope _scope;
-  late Set<String> _customSplitParticipants;
-
-  // Payer selection (for leaders)
-  String? _selectedPayerId;
-
-  /// Currency code for this event (OMR-only after Phase 39 strip).
-  String get _tripCurrency => 'OMR';
-
-  void _initializeControllers(Expense expense) {
-    if (_initialized) return;
-    _amountController = TextEditingController(
-      text: expense.amount.toString(),
-    );
-    _noteController = TextEditingController(
-      text: expense.description ?? '',
-    );
-    _selectedCategoryId = expense.categoryId;
-    _scope = expense.scope;
-    _customSplitParticipants =
-        expense.customSplitParticipants?.toSet() ?? {};
-    _selectedPayerId = expense.payerParticipantId;
-    _initialized = true;
-  }
-
-  @override
-  void dispose() {
-    if (_initialized) {
-      _amountController.dispose();
-      _noteController.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _save(Expense expense) async {
-    if (_isSubmitting) return;
-
-    setState(() => _isSubmitting = true);
-    HapticService.lightClick();
-
-    final newAmount = Decimal.tryParse(_amountController.text);
-    if (newAmount == null || newAmount <= Decimal.zero) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid amount')),
-      );
-      setState(() => _isSubmitting = false);
-      return;
-    }
-
-    final expenseService = ref.read(expenseServiceProvider);
-    await expenseService.updateExpense(
-      groupId: widget.groupId,
-      eventId: widget.eventId,
-      expenseId: expense.id,
-      amount: newAmount != expense.amount ? newAmount : null,
-      description: _noteController.text.trim() != expense.description
-          ? _noteController.text.trim()
-          : null,
-      scope: _scope != expense.scope ? _scope : null,
-      customSplitParticipants: _scope == ExpenseScope.custom
-          ? _customSplitParticipants.toList()
-          : null,
-      categoryId: _selectedCategoryId != expense.categoryId
-          ? _selectedCategoryId
-          : null,
-      payerParticipantId:
-          _selectedPayerId != expense.payerParticipantId
-              ? _selectedPayerId
-              : null,
-    );
-
-    setState(() => _isSubmitting = false);
-
-    if (mounted) {
-      ref.invalidate(
-        eventExpensesProvider(
-          (groupId: widget.groupId, eventId: widget.eventId),
-        ),
-      );
-      HapticService.success();
-      context.pop();
-    }
-  }
-
-  /// Shows a confirmation dialog then deletes the expense.
-  Future<void> _confirmDelete(Expense expense) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(Iconsax.trash, color: context.colors.error),
-            const SizedBox(width: 12),
-            const Text('Delete Expense?'),
-          ],
-        ),
-        content: Text(
-          'Are you sure you want to delete '
-          '"${expense.description ?? expense.categoryName ?? "this expense"}"?\n\n'
-          "This will update everyone's balances.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Delete',
-              style: TextStyle(color: context.colors.error),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      setState(() => _isSubmitting = true);
-
-      await ref.read(expenseServiceProvider).deleteExpense(
-            groupId: widget.groupId,
-            eventId: widget.eventId,
-            expenseId: expense.id,
-          );
-
-      setState(() => _isSubmitting = false);
-
-      if (mounted) {
-        ref.invalidate(
-          eventExpensesProvider(
-            (groupId: widget.groupId, eventId: widget.eventId),
-          ),
-        );
-        HapticService.success();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Expense deleted'),
-            backgroundColor: context.colors.success,
-          ),
-        );
-        context.pop();
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventRef = (groupId: groupId, eventId: eventId);
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
-    final eventAsync = ref.watch(eventDetailProvider(eventRef));
 
     return expensesAsync.when(
       loading: () => Scaffold(
+        key: LedgerKeys.editExpenseSheet,
         backgroundColor: context.colors.scaffoldBackground,
-        body: Column(
-          children: [
-            const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
-            Expanded(child: SkeletonLoader.expenseList()),
-          ],
-        ),
+        body: SafeArea(child: SkeletonLoader.expenseList()),
       ),
-      error: (e, _) => Scaffold(
-        backgroundColor: context.colors.scaffoldBackground,
-        body: Column(
-          children: [
-            const ModuleHeader(title: 'Edit Expense', useDarkTheme: true),
-            Expanded(
-              child: EmptyStateView(
-                icon: Iconsax.warning_2,
-                title: 'Error loading expense',
-                message: 'Could not load the expense data.',
-                actionLabel: 'Go Back',
-                onAction: () => context.pop(),
-                iconColor: context.colors.textSecondary,
-              ),
-            ),
-          ],
-        ),
+      error: (_, _) => const _ErrorScaffold(
+        title: 'Could not load expense',
+        message: 'Something went wrong. Try again in a moment.',
       ),
       data: (expenses) {
-        final expense =
-            expenses.where((e) => e.id == widget.expenseId).firstOrNull;
-
+        final expense = expenses
+            .where((e) => e.id == expenseId)
+            .firstOrNull;
         if (expense == null) {
-          return Scaffold(
-            backgroundColor: context.colors.scaffoldBackground,
-            body: Column(
-              children: [
-                const ModuleHeader(
-                  title: 'Edit Expense',
-                  useDarkTheme: true,
-                ),
-                Expanded(
-                  child: EmptyStateView(
-                    icon: Iconsax.warning_2,
-                    title: 'Expense not found',
-                    message: 'This expense may have been deleted.',
-                    actionLabel: 'Go Back',
-                    onAction: () => context.pop(),
-                    iconColor: context.colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+          return const _ErrorScaffold(
+            title: 'Expense not found',
+            message: 'This expense may have been deleted.',
           );
         }
-
-        _initializeControllers(expense);
-
-        final event = eventAsync.valueOrNull;
-        if (event == null) {
-          return Scaffold(
-            backgroundColor: context.colors.scaffoldBackground,
-            body: Column(
-              children: [
-                const ModuleHeader(
-                  title: 'Edit Expense',
-                  useDarkTheme: true,
-                ),
-                Expanded(child: SkeletonLoader.expenseList()),
-              ],
-            ),
-          );
-        }
-
-        return EditExpenseForm(
-          initialExpense: expense,
-          groupId: widget.groupId,
-          eventId: widget.eventId,
-          event: event,
-          tripCurrency: _tripCurrency,
-          amountController: _amountController,
-          noteController: _noteController,
-          selectedCategoryId: _selectedCategoryId,
-          onCategoryChanged: (id) => setState(() => _selectedCategoryId = id),
-          scope: _scope,
-          onScopeChanged: (s) => setState(() => _scope = s),
-          customSplitParticipants: _customSplitParticipants,
-          onCustomSplitChanged: (set) =>
-              setState(() => _customSplitParticipants = set),
-          selectedPayerId: _selectedPayerId,
-          onPayerChanged: (id) => setState(() => _selectedPayerId = id),
-          onSubmit: () => _save(expense),
-          onDelete: () => _confirmDelete(expense),
-          isSaving: _isSubmitting,
+        return KeyedSubtree(
+          key: LedgerKeys.editExpenseSheet,
+          child: ExpenseEditorBody(
+            groupId: groupId,
+            eventId: eventId,
+            mode: ExpenseEditorMode.edit,
+            initial: expense,
+            onSubmit: (payload) => _save(ref, expense, payload),
+            onDelete: () => _delete(context, ref, expense),
+          ),
         );
       },
+    );
+  }
+
+  Future<void> _save(
+    WidgetRef ref,
+    Expense original,
+    ExpenseEditorPayload payload,
+  ) async {
+    await ref
+        .read(expenseServiceProvider)
+        .updateExpense(
+          groupId: groupId,
+          eventId: eventId,
+          expenseId: original.id,
+          amount: payload.amount != original.amount ? payload.amount : null,
+          description: payload.description != original.description
+              ? payload.description ?? ''
+              : null,
+          scope: payload.scope != original.scope ? payload.scope : null,
+          customSplitParticipants: payload.scope == ExpenseScope.custom
+              ? payload.customSplitParticipants
+              : null,
+          categoryId: payload.categoryId != original.categoryId
+              ? payload.categoryId
+              : null,
+          payerParticipantId:
+              payload.payerParticipantId != original.payerParticipantId
+              ? payload.payerParticipantId
+              : null,
+        );
+
+    ref.invalidate(
+      eventExpensesProvider((groupId: groupId, eventId: eventId)),
+    );
+    HapticService.success();
+
+    final ctx = ref.context;
+    if (ctx.mounted) ctx.pop();
+  }
+
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    Expense expense,
+  ) async {
+    await ref
+        .read(expenseServiceProvider)
+        .deleteExpense(
+          groupId: groupId,
+          eventId: eventId,
+          expenseId: expense.id,
+        );
+    ref.invalidate(
+      eventExpensesProvider((groupId: groupId, eventId: eventId)),
+    );
+    HapticService.success();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Expense deleted'),
+          backgroundColor: context.colors.success,
+        ),
+      );
+      context.pop();
+    }
+  }
+}
+
+class _ErrorScaffold extends StatelessWidget {
+  const _ErrorScaffold({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: LedgerKeys.editExpenseSheet,
+      backgroundColor: context.colors.scaffoldBackground,
+      body: SafeArea(
+        child: EmptyStateView(
+          icon: Iconsax.warning_2,
+          title: title,
+          message: message,
+          actionLabel: 'Go back',
+          onAction: () => context.pop(),
+          iconColor: context.colors.textSecondary,
+        ),
+      ),
     );
   }
 }

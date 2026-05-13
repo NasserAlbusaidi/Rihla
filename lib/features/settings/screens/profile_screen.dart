@@ -16,6 +16,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../auth/widgets/debug_email_link_tile.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
@@ -81,6 +82,8 @@ class ProfileScreen extends ConsumerWidget {
                       delay: 340.ms,
                       duration: 400.ms,
                     ),
+                    const SizedBox(height: 18),
+                    const DebugEmailLinkTile(),
                     const SizedBox(height: 18),
                     const _VersionStamp(),
                   ],

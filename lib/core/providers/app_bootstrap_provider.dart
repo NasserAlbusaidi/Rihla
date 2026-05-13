@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
 
 /// Keeps opt-in services in sync with persisted settings.
 final appBootstrapProvider = Provider<void>((ref) {
+  ref.watch(authEmailLinkBootstrapProvider);
+
   Future<void> syncNotifications() async {
     final settings = ref.read(settingsProvider);
     final notificationService = ref.read(notificationServiceProvider);

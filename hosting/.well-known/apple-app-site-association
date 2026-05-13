@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "GC6NXQSRUU.com.safar.safar"
+        ],
+        "components": [
+          {
+            "/": "/__/auth/links/*",
+            "comment": "Firebase Auth email-link continue URLs for Rihla account recovery."
+          }
+        ]
+      }
+    ]
+  }
+}
