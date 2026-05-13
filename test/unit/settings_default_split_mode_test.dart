@@ -48,11 +48,10 @@ void main() {
       expect(SplitMode.percent.storageKey, 'percent');
     });
 
-    test('only equally is available today', () {
-      expect(SplitMode.equally.isAvailable, isTrue);
-      expect(SplitMode.shares.isAvailable, isFalse);
-      expect(SplitMode.exact.isAvailable, isFalse);
-      expect(SplitMode.percent.isAvailable, isFalse);
+    test('all modes are available after T4.N', () {
+      for (final mode in SplitMode.values) {
+        expect(mode.isAvailable, isTrue, reason: '$mode should be available');
+      }
     });
 
     test('copyWith preserves defaultSplitMode when not overridden', () {

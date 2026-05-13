@@ -69,6 +69,9 @@ dependencies:
   image_picker: ^1.2.1
   package_info_plus: ^8.2.1
 
+  # QR codes (T3.J/K)
+  qr_flutter: ^4.1.0
+
   # Push Notifications
   firebase_core: ^4.6.0
   firebase_messaging: ^16.1.3

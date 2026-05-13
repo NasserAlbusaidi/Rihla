@@ -21,6 +21,7 @@ import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
+import '../widgets/ledger_search_sheet.dart';
 
 /// Sealed timeline-item type — merges expenses and settlements into one
 /// chronological feed.
@@ -211,7 +212,13 @@ class _Body extends StatelessWidget {
             onSettings: () => GoRouter.of(
               context,
             ).push('/group/$groupId/event/$eventId/settings'),
-            onSearch: () => _showSnack(context, 'Search coming soon'),
+            onSearch: () => showLedgerSearchSheet(
+              context,
+              expenses: expenses,
+              settlements: settlements,
+              groupId: groupId,
+              eventId: eventId,
+            ),
           ),
         ),
         const SliverToBoxAdapter(child: OfflineBanner()),
@@ -1242,20 +1249,6 @@ const _months = [
   'Dec',
 ];
 String _monthShort(int m) => _months[m - 1];
-
-// ──────────────────────────── Snack
-
-void _showSnack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..removeCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-}
 
 // ──────────────────────────── States
 

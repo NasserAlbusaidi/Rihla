@@ -8,10 +8,6 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Bottom sheet for picking the default split mode used when adding a new
 /// expense.
-///
-/// Only [SplitMode.equally] is functional. Locked modes are shown so the
-/// picker matches the wireframe and surfaces the v1.2 roadmap, but selecting
-/// them is a no-op (`SplitMode.isAvailable`).
 class DefaultSplitPickerSheet extends ConsumerWidget {
   const DefaultSplitPickerSheet({super.key});
 
@@ -53,7 +49,7 @@ class DefaultSplitPickerSheet extends ConsumerWidget {
             RadioGroup<SplitMode>(
               groupValue: current,
               onChanged: (mode) async {
-                if (mode == null || !mode.isAvailable) return;
+                if (mode == null) return;
                 HapticService.selection();
                 await ref
                     .read(settingsProvider.notifier)
@@ -66,19 +62,7 @@ class DefaultSplitPickerSheet extends ConsumerWidget {
                   for (final mode in SplitMode.values)
                     RadioListTile<SplitMode>(
                       value: mode,
-                      title: Text(
-                        mode.label,
-                        style: mode.isAvailable
-                            ? null
-                            : TextStyle(color: colors.textSecondary),
-                      ),
-                      subtitle: mode.isAvailable
-                          ? null
-                          : Text(
-                              'Locked — available in v1.2',
-                              style: TextStyle(color: colors.textSecondary),
-                            ),
-                      enabled: mode.isAvailable,
+                      title: Text(mode.label),
                     ),
                 ],
               ),

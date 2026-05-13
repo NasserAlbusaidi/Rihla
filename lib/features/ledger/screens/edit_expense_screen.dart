@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/models/split_mode.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -72,6 +73,10 @@ class EditExpenseScreen extends ConsumerWidget {
     Expense original,
     ExpenseEditorPayload payload,
   ) async {
+    final splitChanged = payload.splitMode != (original.splitMode ?? SplitMode.equally) ||
+        !_distributionEquals(payload.splitDistribution, original.splitDistribution);
+    final goingEqual = splitChanged && payload.splitMode == SplitMode.equally;
+
     await ref
         .read(expenseServiceProvider)
         .updateExpense(
@@ -86,6 +91,10 @@ class EditExpenseScreen extends ConsumerWidget {
           customSplitParticipants: payload.scope == ExpenseScope.custom
               ? payload.customSplitParticipants
               : null,
+          splitMode: splitChanged && !goingEqual ? payload.splitMode : null,
+          splitDistribution:
+              splitChanged && !goingEqual ? payload.splitDistribution : null,
+          clearSplit: goingEqual,
           categoryId: payload.categoryId != original.categoryId
               ? payload.categoryId
               : null,
@@ -102,6 +111,20 @@ class EditExpenseScreen extends ConsumerWidget {
 
     final ctx = ref.context;
     if (ctx.mounted) ctx.pop();
+  }
+
+  bool _distributionEquals(
+    Map<String, dynamic>? a,
+    Map<String, dynamic>? b,
+  ) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      if (!b.containsKey(entry.key)) return false;
+      if (b[entry.key].toString() != entry.value.toString()) return false;
+    }
+    return true;
   }
 
   Future<void> _delete(

@@ -1,6 +1,6 @@
 # "Coming Soon" Implementations — Plan
 
-**Status:** Sprints 1 & 2 shipped — 4 surfaces remain (T3.J, T3.K, T3.L, T4.N)
+**Status:** All Sprints shipped — every "Coming soon" snack burned down (T3.J, T3.K, T3.L, T4.N)
 **Branch:** `worktree-plan-coming-soon` (based on `feat/settings-pickers-sprint-2` @ e0942d9)
 **Last updated:** 2026-05-13
 
@@ -286,3 +286,56 @@ Ordered from quick win → hardest:
 | Backlog | T5.O, T5.P | weeks | — (Arabic locked option intentional) |
 
 **Total remaining estimate:** ~5–8 dev-days to zero "Coming soon" snacks.
+
+---
+
+## Sprint 3 — outcome (2026-05-13)
+
+- 1 snack removed (T3.L): `'Search coming soon'` → full-height bottom sheet.
+- New widget: `lib/features/ledger/widgets/ledger_search_sheet.dart`.
+  - Case-insensitive substring filter across expense (`description`, `categoryName`, `payerName`) and settlement (`payerName`, `recipientName`, `note`).
+  - Results sort newest-first; empty-state hints for empty query and no-match.
+  - Tapping an expense closes the sheet and pushes `/ledger/edit/:id`.
+- New tests: `test/unit/ledger_search_filter_test.dart` (8 cases).
+- Updated test: `test/features/ledger/ledger_screen_overflow_test.dart` asserts the sheet opens.
+- Scope landed: **v1 minimal** (text query only). Filter chips (date / amount / payer / category) deferred.
+- 0 new dependencies.
+
+## Sprint 4 — outcome (2026-05-13)
+
+- 2 snacks removed (T3.J + T3.K): `'QR invite coming soon'` and `'QR sharing coming soon'`.
+- New widgets:
+  - `lib/features/groups/widgets/qr_invite_sheet.dart` — encodes `https://rihla.app/join/<code>`; wired from `group_info_section.dart`.
+  - `lib/features/settings/widgets/profile_qr_sheet.dart` — encodes `https://rihla.app/u/<handle>`; wired from the profile identity-chip row.
+- 1 new dependency: `qr_flutter: ^4.1.0`.
+- 2 widget tests pumping the sheets.
+- The T3.J deep-link plumbing (`/join/:code` route, `app_links` cold/warm-start handler, Android intent filters, iOS URL types + Associated Domains) landed earlier on `codex/t3j-deeplink-routing` — the QR sheets ride on top.
+- **Open question still open:** `apple-app-site-association` + `assetlinks.json` hosting on `rihla.app`. Without it, the HTTPS link won't autoverify; users get the in-app routing only via the custom `rihla://` scheme. The QR encodes the HTTPS form anyway because it's strictly the better long-term URI.
+
+## Sprint 5 — outcome (2026-05-13)
+
+The T4.N **data layer** shipped earlier on `codex/t4n-split-data-layer` (merged to main): `Expense.splitMode` + `splitDistribution`, sqflite v7→v8, `BalanceCalculator` mode dispatch with legacy parity + remainder-safe weighted allocation, 15 unit tests.
+
+The **UI layer** lands now:
+- `custom_split_sheet.dart` rewritten end-to-end:
+  - Returns `SplitResult(SplitMode mode, Map<String, Decimal>? distribution)`. Equally returns `null` distribution (calculator handles the equal path); the other three modes return per-participant weights/amounts/percents.
+  - Shares: per-participant integer stepper (0–99), Apply enabled when sum > 0.
+  - Exact: per-participant amount inputs, Apply enabled when `|sum − total| ≤ 0.001`.
+  - Percent: per-participant percent inputs, Apply enabled when `|sum − 100| ≤ 0.001`.
+  - Live footer shows total or remainder, depending on mode.
+- New "How" section in `ExpenseEditorBody` (orthogonal to the existing "Split between" scope picker). Hidden when fewer than 2 people are eligible. Tapping Customise opens the sheet with the current mode + distribution.
+- `ExpenseEditorPayload` carries `splitMode` + `splitDistribution`; `addExpense` writes them to Firestore for non-equal modes (omitted for equally). `updateExpense` accepts `clearSplit: true` for revert-to-equal.
+- Initial mode in add: `AppSettings.defaultSplitMode`. In edit: whatever the existing expense stored.
+- When scope or custom-split membership changes, the editor resets to equally — keyed-by-id distribution would otherwise be stale.
+- `SplitModeX.isAvailable` is now permanently `true`; `DefaultSplitPickerSheet` no longer shows the "Locked — v1.2" placeholder.
+- 9 widget tests for the sheet (`test/features/ledger/custom_split_sheet_test.dart`) + 6 persistence tests in `expense_service_test.dart`. Suite: **921 passing**, 3 skipped.
+
+## Current state — 2026-05-13 8:30pm
+
+| Surface | Status |
+|---|---|
+| Group invite QR icon | **Shipped** (T3.J) |
+| Profile QR chip | **Shipped** (T3.K) |
+| Ledger search icon | **Shipped** (T3.L) |
+| CustomSplitSheet → Shares/Exact/Percent | **Shipped** (T4.N: data + UI) |
+| Arabic locked language option | Intentional (T5.O backlog) |

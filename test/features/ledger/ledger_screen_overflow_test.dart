@@ -9,6 +9,7 @@ import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
+import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/ledger_screen.dart';
 
@@ -112,7 +113,7 @@ void main() {
       expect(find.byType(PopupMenuButton<String>), findsNothing);
     });
 
-    testWidgets('search button shows search placeholder feedback', (
+    testWidgets('search button opens the ledger search sheet', (
       tester,
     ) async {
       await tester.pumpWidget(buildLedger());
@@ -121,7 +122,8 @@ void main() {
       await tester.tap(find.byTooltip('Search expenses'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Search coming soon'), findsOneWidget);
+      expect(find.byKey(LedgerKeys.searchField), findsOneWidget);
+      expect(find.text('Search expenses'), findsWidgets);
     });
 
     testWidgets('settings button navigates to event settings route', (

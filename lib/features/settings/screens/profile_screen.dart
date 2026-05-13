@@ -26,6 +26,7 @@ import '../widgets/default_split_picker_sheet.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/legal_links_sheet.dart';
+import '../widgets/profile_qr_sheet.dart';
 
 /// Profile tab — saffron travel-journal direction.
 ///
@@ -285,8 +286,11 @@ class _IdentityCard extends StatelessWidget {
                       _IdentityChip(
                         leadingIcon: Iconsax.scan_barcode,
                         label: 'QR',
-                        onTap: () =>
-                            _showSnack(context, 'QR sharing coming soon'),
+                        onTap: () => showProfileQrSheet(
+                          context,
+                          displayName: displayName,
+                          handle: handle,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       _IdentityChip(
