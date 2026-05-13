@@ -14,20 +14,28 @@ void main() {
     });
 
     test(
-      'pins linkDomain to the Hosting domain so Firebase emits continue URLs '
-      'we can deep-link (not the default firebaseapp.com)',
+      'leaves linkDomain unset so Firebase auto-selects the project default '
+      '(passing *.web.app or *.firebaseapp.com here is rejected as '
+      'auth/invalid-hosting-link-domain)',
       () {
         final settings = AuthEmailLinkConfig.actionCodeSettings();
 
-        expect(settings.linkDomain, AuthEmailLinkConfig.hostingDomain);
-        expect(settings.linkDomain, 'rihla-safar.web.app');
+        expect(settings.linkDomain, isNull);
+      },
+    );
+
+    test(
+      'pins the Hosting domain to the project firebaseapp.com alias — the '
+      'auto-selected Firebase Auth continue-URL host',
+      () {
+        expect(AuthEmailLinkConfig.hostingDomain, 'rihla-safar.firebaseapp.com');
       },
     );
 
     test('keeps the Firebase Hosting continue URL stable', () {
       expect(
         AuthEmailLinkConfig.continueUrl,
-        'https://rihla-safar.web.app/__/auth/links/continue',
+        'https://rihla-safar.firebaseapp.com/__/auth/links/continue',
       );
     });
 
@@ -35,12 +43,12 @@ void main() {
       'classifies Firebase email auth links without accepting random links',
       () {
         const emailLink =
-            'https://rihla-safar.web.app/__/auth/links/continue?mode=signIn&oobCode=abc123&apiKey=fake';
+            'https://rihla-safar.firebaseapp.com/__/auth/links/continue?mode=signIn&oobCode=abc123&apiKey=fake';
 
         expect(AuthEmailLinkConfig.looksLikeEmailAuthLink(emailLink), isTrue);
         expect(
           AuthEmailLinkConfig.looksLikeEmailAuthLink(
-            'https://rihla-safar.web.app/profile',
+            'https://rihla-safar.firebaseapp.com/profile',
           ),
           isFalse,
         );
@@ -50,7 +58,7 @@ void main() {
     group('redactForLogging', () {
       test('replaces oobCode and apiKey with REDACTED', () {
         const link =
-            'https://rihla-safar.web.app/__/auth/links/continue?mode=signIn&oobCode=secret123&apiKey=AIza-fake&lang=en';
+            'https://rihla-safar.firebaseapp.com/__/auth/links/continue?mode=signIn&oobCode=secret123&apiKey=AIza-fake&lang=en';
 
         final redacted = AuthEmailLinkConfig.redactForLogging(link);
 
@@ -70,7 +78,7 @@ void main() {
       });
 
       test('passes through URLs that carry no credential params unchanged', () {
-        const link = 'https://rihla-safar.web.app/profile';
+        const link = 'https://rihla-safar.firebaseapp.com/profile';
         expect(AuthEmailLinkConfig.redactForLogging(link), link);
       });
     });

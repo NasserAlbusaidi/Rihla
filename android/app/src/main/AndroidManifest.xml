@@ -24,7 +24,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="rihla-safar.web.app"
+                    android:host="rihla-safar.firebaseapp.com"
                     android:pathPrefix="/__/auth/links" />
             </intent-filter>
 

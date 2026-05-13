@@ -9,10 +9,21 @@ class AuthEmailLinkConfig {
 
   static const androidPackageName = 'com.safar.safar';
   static const iOSBundleId = 'com.safar.safar';
+  // Use the project's default Firebase Hosting `*.firebaseapp.com` alias —
+  // NOT `*.web.app`. Both alias the same Hosting site, but post-Dynamic-Links
+  // Firebase Auth auto-generates email-link continue URLs against
+  // `<project>.firebaseapp.com` and explicitly rejects either default Hosting
+  // domain as a value for `ActionCodeSettings.linkDomain`
+  // (auth/invalid-hosting-link-domain). The App Links / Universal Links
+  // setup must therefore target the firebaseapp.com alias for the deep-link
+  // to match what Firebase actually emits.
   static const hostingDomain = String.fromEnvironment(
     'RIHLA_AUTH_LINK_DOMAIN',
-    defaultValue: 'rihla-safar.web.app',
+    defaultValue: 'rihla-safar.firebaseapp.com',
   );
+  // Reserved for a future real custom Hosting domain (e.g. `auth.rihla.app`).
+  // Setting it via --dart-define switches both the continue URL and the
+  // `linkDomain` field below to that domain.
   static const customFirebaseHostingDomain = String.fromEnvironment(
     'RIHLA_AUTH_LINK_CUSTOM_DOMAIN',
   );
@@ -27,13 +38,12 @@ class AuthEmailLinkConfig {
       androidPackageName: androidPackageName,
       androidInstallApp: true,
       iOSBundleId: iOSBundleId,
-      // Pin the linkDomain to the Hosting domain so Firebase emits continue
-      // URLs against `rihla-safar.web.app` (matched by the Android intent
-      // filter and the iOS associated domain) rather than the default
-      // `*.firebaseapp.com` auth domain, which wouldn't be deep-linked.
-      linkDomain: trimmedCustomDomain.isEmpty
-          ? hostingDomain
-          : trimmedCustomDomain,
+      // Only set `linkDomain` when a real custom Hosting domain is configured.
+      // Firebase rejects default Hosting domains (*.web.app / *.firebaseapp.com)
+      // here with `auth/invalid-hosting-link-domain`; when omitted, Firebase
+      // auto-selects the project's default `*.firebaseapp.com` alias, which
+      // is exactly what we want.
+      linkDomain: trimmedCustomDomain.isEmpty ? null : trimmedCustomDomain,
     );
   }
 

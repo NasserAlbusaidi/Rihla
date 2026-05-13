@@ -72,7 +72,7 @@ void main() {
     ).readAsStringSync();
 
     expect(manifest, contains('android:autoVerify="true"'));
-    expect(manifest, contains('android:host="rihla-safar.web.app"'));
+    expect(manifest, contains('android:host="rihla-safar.firebaseapp.com"'));
     expect(manifest, contains('android:pathPrefix="/__/auth/links"'));
   });
 
@@ -82,6 +82,6 @@ void main() {
     ).readAsStringSync();
 
     expect(entitlements, contains('com.apple.developer.associated-domains'));
-    expect(entitlements, contains('applinks:rihla-safar.web.app'));
+    expect(entitlements, contains('applinks:rihla-safar.firebaseapp.com'));
   });
 }
