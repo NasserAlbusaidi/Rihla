@@ -7,10 +7,14 @@
 // NOTE: The `trip_id` column stores the Firestore event ID for historical
 // schema reasons. Do NOT rename without a SQLite migration (version bump in
 // LocalDatabase._databaseVersion and corresponding _onUpgrade entry).
+import 'dart:convert';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../../core/models/split_mode.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../../features/ledger/models/expense_model.dart';
 import '../local_database.dart';
 
@@ -21,7 +25,7 @@ final expenseCacheRepositoryProvider = Provider<ExpenseCacheRepository>(
 
 /// SQLite cache repository for [Expense] records.
 ///
-/// Owned table: `expenses` (schema version 6, column `trip_id` stores eventId).
+/// Owned table: `expenses` (schema version 8, column `trip_id` stores eventId).
 class ExpenseCacheRepository {
   /// Persist [expenses] for [eventId], replacing any prior snapshot atomically.
   ///
@@ -50,6 +54,8 @@ class ExpenseCacheRepository {
           'category_name': expense.categoryName,
           'scope': expense.scope.value,
           'sub_group_id': expense.subGroupId,
+          'split_mode': expense.splitMode?.storageKey,
+          'split_distribution': _encodeSplitDistribution(expense),
           'created_at': expense.createdAt.toIso8601String(),
           'synced_at': syncedAt,
           'is_deleted': expense.isDeleted ? 1 : 0,
@@ -72,6 +78,7 @@ class ExpenseCacheRepository {
       orderBy: 'created_at DESC',
     );
     return maps.map((map) {
+      final splitMode = _decodeSplitMode(map['split_mode']);
       return Expense(
         id: map['id'] as String,
         tripId: map['trip_id'] as String,
@@ -88,6 +95,11 @@ class ExpenseCacheRepository {
           orElse: () => ExpenseScope.global,
         ),
         subGroupId: map['sub_group_id'] as String?,
+        splitMode: splitMode,
+        splitDistribution: _decodeSplitDistribution(
+          map['split_distribution'],
+          splitMode,
+        ),
         createdAt: DateTime.parse(map['created_at'] as String),
         isDeleted: (map['is_deleted'] as int?) == 1,
         deletedAt: map['deleted_at'] != null
@@ -96,4 +108,62 @@ class ExpenseCacheRepository {
       );
     }).toList();
   }
+}
+
+String? _encodeSplitDistribution(Expense expense) {
+  final mode = expense.splitMode;
+  final distribution = expense.splitDistribution;
+  if (mode == null || distribution == null) return null;
+
+  final encoded = {
+    for (final entry in distribution.entries)
+      entry.key: _encodeSplitValue(entry.value, mode, expense.currency),
+  };
+  return jsonEncode(encoded);
+}
+
+SplitMode? _decodeSplitMode(Object? raw) {
+  if (raw == null) return null;
+  return splitModeFromStorage(raw.toString());
+}
+
+Map<String, Decimal>? _decodeSplitDistribution(Object? raw, SplitMode? mode) {
+  if (raw == null || mode == null) return null;
+
+  final decodedJson = jsonDecode(raw as String);
+  if (decodedJson is! Map) return null;
+
+  final decoded = <String, Decimal>{};
+  for (final entry in decodedJson.entries) {
+    decoded[entry.key.toString()] = _decodeSplitValue(entry.value, mode);
+  }
+
+  return decoded.isEmpty ? null : decoded;
+}
+
+int _encodeSplitValue(Decimal value, SplitMode mode, String currency) {
+  return switch (mode) {
+    SplitMode.exact => MoneySerializer.toSubunits(value, currency),
+    SplitMode.percent => (value * Decimal.fromInt(1000)).toBigInt().toInt(),
+    SplitMode.shares || SplitMode.equally => value.toBigInt().toInt(),
+  };
+}
+
+Decimal _decodeSplitValue(Object? value, SplitMode mode) {
+  final persistedValue = _persistedInt(value);
+  return switch (mode) {
+    SplitMode.exact => MoneySerializer.fromSubunits(persistedValue, 'OMR'),
+    SplitMode.percent =>
+      (Decimal.fromInt(persistedValue) / Decimal.fromInt(1000)).toDecimal(
+        scaleOnInfinitePrecision: 3,
+      ),
+    SplitMode.shares || SplitMode.equally => Decimal.fromInt(persistedValue),
+  };
+}
+
+int _persistedInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is Decimal) return value.toBigInt().toInt();
+  return Decimal.parse(value.toString()).toBigInt().toInt();
 }

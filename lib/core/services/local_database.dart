@@ -9,7 +9,7 @@ class LocalDatabase {
   static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
   static const int _databaseVersion =
-      7; // Phase 39 strip — drop gear_items + cut tables + trips.currency
+      8; // T4.N split mode + split distribution columns on expenses
   static String? _databasePathOverride;
 
   /// Get database instance (safe for concurrent access).
@@ -75,6 +75,8 @@ class LocalDatabase {
         category_name TEXT,
         scope TEXT DEFAULT 'GLOBAL',
         sub_group_id TEXT,
+        split_mode TEXT,
+        split_distribution TEXT,
         created_at TEXT NOT NULL,
         synced_at TEXT,
         is_deleted INTEGER DEFAULT 0,
@@ -461,6 +463,21 @@ class LocalDatabase {
         await db.execute('ALTER TABLE trips DROP COLUMN currency');
       } catch (_) {
         // Older SQLite — column stays. Not load-bearing post-strip.
+      }
+    }
+
+    if (oldVersion < 8) {
+      try {
+        await db.execute('ALTER TABLE expenses ADD COLUMN split_mode TEXT');
+      } catch (_) {
+        // Column already exists from a previous migration — safe to ignore.
+      }
+      try {
+        await db.execute(
+          'ALTER TABLE expenses ADD COLUMN split_distribution TEXT',
+        );
+      } catch (_) {
+        // Column already exists from a previous migration — safe to ignore.
       }
     }
   }
