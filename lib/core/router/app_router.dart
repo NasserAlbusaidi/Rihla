@@ -21,12 +21,15 @@ import '../../features/ledger/screens/edit_expense_screen.dart';
 import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
 import '../../features/activity/screens/activity_feed_screen.dart';
+import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
+import '../providers/settings_provider.dart';
 import '../screens/splash_screen.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
   static const String splash = '/';
+  static const String onboarding = '/onboarding';
   static const String home = '/home';
   static const String profile = '/profile';
   // Groups routes (Phase 2)
@@ -71,22 +74,47 @@ Widget _sharedAxisTransition(
   );
 }
 
-/// Router provider — splash always redirects to /home (no onboarding).
+/// Router provider — redirects splash to `/onboarding` on first launch and
+/// `/home` thereafter. Onboarding state is read from [settingsProvider]
+/// (backed by SharedPreferences) which is hydrated synchronously at boot.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: kDebugMode,
     redirect: (context, state) {
-      if (state.matchedLocation == AppRoutes.splash) {
-        return AppRoutes.home;
+      final onboardingComplete = ref
+          .read(settingsProvider.select((s) => s.onboardingComplete));
+      final location = state.matchedLocation;
+
+      if (location == AppRoutes.splash) {
+        return onboardingComplete ? AppRoutes.home : AppRoutes.onboarding;
       }
+
+      // Hard gate: until onboarding is complete, every non-onboarding route
+      // redirects back to /onboarding so deep links can't bypass setup.
+      if (!onboardingComplete && location != AppRoutes.onboarding) {
+        return AppRoutes.onboarding;
+      }
+
       return null;
     },
     routes: [
-      // Splash - auto-redirects to /home
+      // Splash - auto-redirects to /onboarding or /home
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
+      ),
+
+      // Onboarding - 3-page first-launch flow.
+      GoRoute(
+        path: AppRoutes.onboarding,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const OnboardingScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
       ),
 
       // Home / Trip List
