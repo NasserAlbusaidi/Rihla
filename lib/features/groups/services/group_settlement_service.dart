@@ -99,19 +99,8 @@ class GroupSettlementService extends FirestoreRepository {
     return Settlement.fromFirestore(data);
   }
 
-  /// Soft-deletes a group settlement by setting [isDeleted] = true.
-  Future<void> deleteGroupSettlement({
-    required String groupId,
-    required String settlementId,
-  }) async {
-    try {
-      await _settlementsRef(groupId).doc(settlementId).update({
-        'isDeleted': true,
-        'deletedAt': DateTime.now().toUtc().toIso8601String(),
-      });
-    } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('GroupSettlementService.deleteGroupSettlement failed: ${e.code} ${e.message}');
-      rethrow;
-    }
-  }
+  // E3 / B3: group settlements are append-only. There is no
+  // deleteGroupSettlement — the corresponding Firestore rule denies
+  // update + delete on settlement docs. The watch stream still honors
+  // the legacy isDeleted flag on any pre-B3 records that may have it.
 }

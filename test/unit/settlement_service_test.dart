@@ -110,8 +110,13 @@ void main() {
       );
 
       test(
-        'filters out soft-deleted settlements (isDeleted=true)',
+        'filters out legacy soft-deleted settlements (isDeleted=true)',
         () async {
+          // E3 / B3: addSettlement no longer pairs with a deleteSettlement
+          // method — settlements are append-only at the rules layer. This
+          // test still asserts the watchSettlements stream filters any
+          // pre-B3 records that legitimately had isDeleted set, by
+          // writing such a row directly through the fake DB.
           const groupId = 'g1';
           const eventId = 'e1';
 
@@ -124,54 +129,23 @@ void main() {
             amount: Decimal.parse('5.000'),
           );
 
-          await service.deleteSettlement(
-            groupId: groupId,
-            eventId: eventId,
-            settlementId: settlement.id,
-          );
-
-          final settlements = await service
-              .watchSettlements(groupId, eventId)
-              .first;
-
-          expect(settlements, isEmpty);
-        },
-      );
-    });
-
-    group('deleteSettlement', () {
-      test(
-        'uses soft-delete pattern (sets isDeleted=true, deletedAt timestamp)',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
-
-          final settlement = await service.addSettlement(
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('5.000'),
-          );
-
-          await service.deleteSettlement(
-            groupId: groupId,
-            eventId: eventId,
-            settlementId: settlement.id,
-          );
-
-          final snap = await fakeDb
+          await fakeDb
               .collection('groups')
               .doc(groupId)
               .collection('events')
               .doc(eventId)
               .collection('settlements')
               .doc(settlement.id)
-              .get();
+              .update({
+                'isDeleted': true,
+                'deletedAt': DateTime.now().toUtc().toIso8601String(),
+              });
 
-          expect(snap.data()!['isDeleted'], isTrue);
-          expect(snap.data()!['deletedAt'], isNotNull);
+          final settlements = await service
+              .watchSettlements(groupId, eventId)
+              .first;
+
+          expect(settlements, isEmpty);
         },
       );
     });

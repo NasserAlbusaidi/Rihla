@@ -93,23 +93,8 @@ class SettlementService extends FirestoreRepository {
     return Settlement.fromFirestore(data);
   }
 
-  /// Soft-deletes a settlement by setting [isDeleted] = true and recording a
-  /// [deletedAt] timestamp. The document is NOT removed from Firestore.
-  Future<void> deleteSettlement({
-    required String groupId,
-    required String eventId,
-    required String settlementId,
-  }) async {
-    try {
-      await eventSubcollection(groupId, eventId, 'settlements')
-          .doc(settlementId)
-          .update({
-        'isDeleted': true,
-        'deletedAt': DateTime.now().toUtc().toIso8601String(),
-      });
-    } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('SettlementService.deleteSettlement failed: ${e.code} ${e.message}');
-      rethrow;
-    }
-  }
+  // E3 / B3: settlements are append-only. There is no deleteSettlement —
+  // the corresponding Firestore rule denies update + delete on settlement
+  // docs. The watchSettlements stream still honors the legacy isDeleted
+  // flag on any pre-B3 records that may have it.
 }
