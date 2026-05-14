@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delete your data — Rihla</title>
+  <meta name="description" content="How to delete your data from Rihla.">
+  <link rel="stylesheet" href="/_styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="brand">
+      <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
+        <span class="logo">R</span>
+        <span class="name">Rihla</span>
+      </a>
+    </header>
+
+    <h1>Delete your data</h1>
+    <p class="subtitle">How to remove your data from Rihla — and what gets removed.</p>
+
+    <p>
+      Rihla does not use email accounts. Your data is tied to an anonymous
+      session created on your device when you first opened the app. That makes
+      deletion a two-part process: data that lives on your device, and data
+      that lives on our backend.
+    </p>
+
+    <div class="callout warn">
+      <strong>This action is permanent.</strong> Deleted data cannot be
+      restored. If you are part of a shared group, your group members will lose
+      visibility into expenses you added once your records are scrubbed.
+    </div>
+
+    <h2>1. Delete local data (you can do this yourself)</h2>
+    <p>
+      Uninstalling the Rihla app removes everything stored locally on your
+      device — the offline cache, your anonymous session, and the device name
+      you saved in app settings. On Android: long-press the app icon →
+      Uninstall. On iOS: long-press the app icon → Remove App → Delete App.
+    </p>
+    <p>
+      If you reinstall the app afterwards, you will start with a fresh
+      anonymous session and will not see your previous groups.
+    </p>
+
+    <h2>2. Delete server data (email request)</h2>
+    <p>
+      Because Rihla cannot identify you without your active device, the way to
+      request deletion of data stored on our backend is to email us. Send a
+      message to
+      <a href="mailto:nasserbusaidi@gmail.com?subject=Rihla%20data%20deletion%20request">nasserbusaidi@gmail.com</a>
+      from any address with the following information:
+    </p>
+    <ul>
+      <li>
+        Subject line: <code>Rihla data deletion request</code>
+      </li>
+      <li>
+        The display name(s) you used inside Rihla.
+      </li>
+      <li>
+        The invite code(s) of the group(s) you participated in, if you have
+        them. (Open the group → Settings → Invite code.)
+      </li>
+      <li>
+        Any expense descriptions or dates that will help us locate your
+        records. The more specific you are, the faster we can find them.
+      </li>
+    </ul>
+
+    <h2>What we delete</h2>
+    <ul>
+      <li>
+        Your push-notification token from our backend.
+      </li>
+      <li>
+        Your membership in any groups you identify.
+      </li>
+      <li>
+        Your display name from those groups&apos; participant lists. Existing
+        expenses that reference your participant ID are scrubbed so other
+        members no longer see your name attached to them.
+      </li>
+      <li>
+        Any receipt photos you uploaded.
+      </li>
+    </ul>
+
+    <h2>What we keep</h2>
+    <ul>
+      <li>
+        The bare existence of an expense in the group ledger may remain so the
+        other members&apos; balances stay correct — your name is removed, but
+        the amount that was split is not retroactively erased from their
+        history.
+      </li>
+      <li>
+        Crash and error reports captured by Sentry. These do not contain your
+        display name or group data and are deleted on Sentry&apos;s default
+        retention schedule.
+      </li>
+    </ul>
+
+    <h2>How long this takes</h2>
+    <p>
+      Deletion requests are processed manually. Please allow up to 30 days. We
+      will reply to the address you wrote in from once the deletion is complete.
+    </p>
+
+    <h2>Questions</h2>
+    <p>
+      Email <a href="mailto:nasserbusaidi@gmail.com">nasserbusaidi@gmail.com</a>.
+    </p>
+
+    <footer class="nav">
+      <a href="/">Home</a>
+      <span class="sep">·</span>
+      <a href="/privacy">Privacy</a>
+      <span class="sep">·</span>
+      <a href="/terms">Terms</a>
+      <span class="sep">·</span>
+      <a href="/help">Help</a>
+      <div class="copyright">© 2026 Rihla. All rights reserved.</div>
+    </footer>
+  </main>
+</body>
+</html>

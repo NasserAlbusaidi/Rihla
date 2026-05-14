@@ -9,6 +9,7 @@ class AppLinks {
   static const String helpUrl = 'https://rihla.app/help';
   static const String termsUrl = 'https://rihla.app/terms';
   static const String privacyUrl = 'https://rihla.app/privacy';
+  static const String deleteDataUrl = 'https://rihla.app/delete-data';
 
   static const String feedbackEmail = 'nasserbusaidi@gmail.com';
 

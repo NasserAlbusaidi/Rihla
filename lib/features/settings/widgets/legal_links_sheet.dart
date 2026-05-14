@@ -80,6 +80,12 @@ class LegalLinksSheet extends StatelessWidget {
               label: 'Privacy policy',
               url: AppLinks.privacyUrl,
             ),
+            Divider(height: 1, color: colors.rule),
+            const _LegalRow(
+              icon: Iconsax.trash,
+              label: 'Delete my data',
+              url: AppLinks.deleteDataUrl,
+            ),
             SizedBox(height: spacing.space8),
           ],
         ),
