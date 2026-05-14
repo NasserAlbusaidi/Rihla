@@ -44,13 +44,14 @@ import '../widgets/profile_qr_sheet.dart';
 ///   5. About card (Help / Feedback / Terms / Sign out)
 ///   6. Version stamp
 class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.showBack = false});
+
+  final bool showBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final statsAsync = ref.watch(profileStatsProvider);
-    final canPop = GoRouter.of(context).canPop();
 
     return Scaffold(
       key: ProfileKeys.screen,
@@ -58,7 +59,7 @@ class ProfileScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(canPop: canPop),
+            _TopBar(canPop: showBack),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 32),
