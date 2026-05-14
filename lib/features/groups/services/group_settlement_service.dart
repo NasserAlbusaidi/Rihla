@@ -57,11 +57,20 @@ class GroupSettlementService extends FirestoreRepository {
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
+    required String createdBy,
     String currency = 'OMR',
     String? note,
     String? payerName,
     String? recipientName,
   }) async {
+    if (createdBy.isEmpty) {
+      throw ArgumentError.value(
+        createdBy,
+        'createdBy',
+        'createdBy must be the auth UID of the current user — Firestore '
+            'rules reject group settlement writes without it.',
+      );
+    }
     final id = const Uuid().v4();
     final now = DateTime.now().toUtc();
     final data = <String, dynamic>{
@@ -79,6 +88,7 @@ class GroupSettlementService extends FirestoreRepository {
       'isDeleted': false,
       'deletedAt': null,
       'settledAt': now.toIso8601String(),
+      'createdBy': createdBy,
     };
     try {
       await _settlementsRef(groupId).doc(id).set(data);

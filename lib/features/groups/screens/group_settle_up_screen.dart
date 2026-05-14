@@ -314,6 +314,18 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         actorName = fromName;
       }
 
+      String currentUid;
+      try {
+        currentUid = FirebaseConfig.currentUser?.uid ?? fromUserId;
+      } catch (_) {
+        currentUid = fromUserId;
+      }
+      if (currentUid.isEmpty) {
+        throw StateError(
+          'Cannot record group settlement without an authenticated user.',
+        );
+      }
+
       await ref
           .read(groupSettlementServiceProvider)
           .addGroupSettlement(
@@ -325,14 +337,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             note: note,
             payerName: fromName,
             recipientName: toName,
+            createdBy: currentUid,
           );
-
-      String? currentUid;
-      try {
-        currentUid = FirebaseConfig.currentUser?.uid ?? fromUserId;
-      } catch (_) {
-        currentUid = fromUserId;
-      }
 
       ref
           .read(groupActivityServiceProvider)

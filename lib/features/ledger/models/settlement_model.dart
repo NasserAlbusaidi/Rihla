@@ -23,6 +23,11 @@ class Settlement {
   /// Added per D-10.
   final String? groupId;
 
+  /// Auth UID of the user who created this settlement record. Stamped at
+  /// create time and immutable thereafter — Firestore rules reject updates
+  /// from any other UID. Empty string means "unknown" (legacy / test-only).
+  final String createdBy;
+
   const Settlement({
     required this.id,
     required this.tripId,
@@ -37,6 +42,7 @@ class Settlement {
     this.deletedAt,
     this.scope = 'event',
     this.groupId,
+    this.createdBy = '',
   });
 
   factory Settlement.fromJson(Map<String, dynamic> json) {
@@ -113,6 +119,7 @@ class Settlement {
           : null,
       scope: scope,
       groupId: groupId,
+      createdBy: data['createdBy'] as String? ?? '',
     );
   }
 
@@ -134,6 +141,7 @@ class Settlement {
       'deletedAt': deletedAt?.toIso8601String(),
       'scope': scope,
       'groupId': groupId,
+      'createdBy': createdBy,
     };
   }
 }

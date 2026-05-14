@@ -126,6 +126,7 @@ describe('Publish readiness Firestore rules', () => {
     return {
       id: 'exp1',
       eventId: 'e1',
+      createdBy: 'member',
       payerParticipantId: 'owner',
       amountFils: 10500,
       currency: 'OMR',
@@ -147,6 +148,7 @@ describe('Publish readiness Firestore rules', () => {
     return {
       id: 'set1',
       eventId: 'e1',
+      createdBy: 'member',
       payerParticipantId: 'member',
       recipientParticipantId: 'owner',
       amountFils: 5000,
@@ -164,6 +166,7 @@ describe('Publish readiness Firestore rules', () => {
       id: 'gset1',
       groupId: 'g1',
       eventId: 'g1',
+      createdBy: 'member',
       scope: 'group',
       payerParticipantId: 'member',
       recipientParticipantId: 'owner',
@@ -177,6 +180,33 @@ describe('Publish readiness Firestore rules', () => {
       settledAt: new Date().toISOString(),
       ...overrides,
     };
+  }
+
+  function withoutField(data: Record<string, unknown>, field: string): Record<string, unknown> {
+    const copy = { ...data };
+    delete copy[field];
+    return copy;
+  }
+
+  async function seedExpense(overrides: Record<string, unknown> = {}): Promise<void> {
+    const data = validExpense({ createdBy: 'owner', ...overrides });
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(`groups/g1/events/e1/expenses/${data.id}`).set(data);
+    });
+  }
+
+  async function seedEventSettlement(overrides: Record<string, unknown> = {}): Promise<void> {
+    const data = validSettlement({ createdBy: 'owner', ...overrides });
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(`groups/g1/events/e1/settlements/${data.id}`).set(data);
+    });
+  }
+
+  async function seedGroupSettlement(overrides: Record<string, unknown> = {}): Promise<void> {
+    const data = validGroupSettlement({ createdBy: 'owner', ...overrides });
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(`groups/g1/settlements/${data.id}`).set(data);
+    });
   }
 
   test('creator can atomically create a group and matching invite code', async () => {
@@ -509,6 +539,69 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(ref.delete());
   });
 
+  test('expense creator can update own record', async () => {
+    await seedExpense();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+    }));
+  });
+
+  test('expense non-creator cannot update peer record', async () => {
+    await seedExpense();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+    }));
+  });
+
+  test('expense non-creator cannot soft-delete peer record', async () => {
+    await seedExpense();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
+
+  test('expense create without createdBy is rejected', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expMissingCreator').set(
+      withoutField(validExpense({ id: 'expMissingCreator' }), 'createdBy'),
+    ));
+  });
+
+  test('expense create with mismatched createdBy is rejected', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expWrongCreator').set(
+      validExpense({ id: 'expWrongCreator', createdBy: 'owner' }),
+    ));
+  });
+
+  test('expense update cannot mutate createdBy', async () => {
+    await seedExpense();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertFails(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      createdBy: 'member',
+    }));
+  });
+
+  test('expense creator can soft-delete own record', async () => {
+    await seedExpense();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
+
   test('event settlements and group settlements validate participants and amount', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertSucceeds(member.doc('groups/g1/events/e1/settlements/set1').set(validSettlement()));
@@ -519,5 +612,106 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(member.doc('groups/g1/settlements/gset2').set(
       validGroupSettlement({ id: 'gset2', amountFils: -1 }),
     ));
+  });
+
+  test('event settlement creator can update own record', async () => {
+    await seedEventSettlement();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e1/settlements/set1').update({
+      note: 'Settled after dinner',
+    }));
+  });
+
+  test('event settlement non-creator cannot update peer record', async () => {
+    await seedEventSettlement();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1/settlements/set1').update({
+      note: 'Hijacked note',
+    }));
+  });
+
+  test('event settlement non-creator cannot soft-delete peer record', async () => {
+    await seedEventSettlement();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1/settlements/set1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
+
+  test('event settlement create without createdBy is rejected', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setMissingCreator').set(
+      withoutField(validSettlement({ id: 'setMissingCreator' }), 'createdBy'),
+    ));
+  });
+
+  test('event settlement creator can soft-delete own record', async () => {
+    await seedEventSettlement();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e1/settlements/set1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
+
+  test('group settlement creator can update own record', async () => {
+    await seedGroupSettlement();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/settlements/gset1').update({
+      note: 'Settled at group level',
+    }));
+  });
+
+  test('group settlement non-creator cannot update peer record', async () => {
+    await seedGroupSettlement();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/settlements/gset1').update({
+      note: 'Hijacked group note',
+    }));
+  });
+
+  test('group settlement non-creator cannot soft-delete peer record', async () => {
+    await seedGroupSettlement();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/settlements/gset1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
+
+  test('group settlement create without createdBy is rejected', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/settlements/gsetMissingCreator').set(
+      withoutField(validGroupSettlement({ id: 'gsetMissingCreator' }), 'createdBy'),
+    ));
+  });
+
+  test('group settlement update cannot mutate createdBy', async () => {
+    await seedGroupSettlement();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertFails(owner.doc('groups/g1/settlements/gset1').update({
+      createdBy: 'member',
+    }));
+  });
+
+  test('group settlement creator can soft-delete own record', async () => {
+    await seedGroupSettlement();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/settlements/gset1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
   });
 });

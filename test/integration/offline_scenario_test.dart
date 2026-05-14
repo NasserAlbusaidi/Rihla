@@ -67,6 +67,7 @@ void main() {
 
         // Write an expense via ExpenseService (writes to FakeFirebaseFirestore)
         final expense = await expenseService.addExpense(
+          createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'uid-alice',
@@ -108,6 +109,7 @@ void main() {
 
         // Write expense: Alice paid 30.000 OMR for a shared expense
         final expense = await expenseService.addExpense(
+          createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'uid-alice',
@@ -119,6 +121,7 @@ void main() {
 
         // Write settlement: Bob pays Alice 15.000 OMR (his share)
         final settlement = await settlementService.addSettlement(
+          createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'uid-bob',
@@ -194,6 +197,7 @@ void main() {
 
         // Write 3 expenses with different amounts
         final expense1 = await expenseService.addExpense(
+          createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'uid-alice',
@@ -203,6 +207,7 @@ void main() {
         );
 
         final expense2 = await expenseService.addExpense(
+          createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'uid-bob',
@@ -212,6 +217,7 @@ void main() {
         );
 
         final expense3 = await expenseService.addExpense(
+          createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'uid-alice',

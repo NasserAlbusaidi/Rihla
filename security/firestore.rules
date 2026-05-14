@@ -61,6 +61,17 @@ service cloud.firestore {
         && request.auth.uid in eventData(groupId, eventId).participantIds;
     }
 
+    // Money-record ownership (B1):
+    // - Every expense and settlement carries a `createdBy` (auth UID) stamped at
+    //   create time. Updates and soft-deletes require the caller to match
+    //   `createdBy`. The field itself is immutable. This means any peer can still
+    //   *create* a record naming someone else as payer/recipient, but only the
+    //   creator can later change or remove it. Pair with B2/B3 if forging false
+    //   claims becomes a real concern.
+    function requesterIsRecordCreator() {
+      return signedIn() && resource.data.createdBy == request.auth.uid;
+    }
+
     // Default: deny all
     match /{document=**} {
       allow read, write: if false;
@@ -339,6 +350,7 @@ service cloud.firestore {
             return data.keys().hasOnly([
               'id',
               'eventId',
+              'createdBy',
               'payerParticipantId',
               'amountFils',
               'currency',
@@ -357,6 +369,8 @@ service cloud.firestore {
             ])
             && data.id == docId
             && data.eventId == eventId
+            && data.createdBy is string
+            && data.createdBy.size() > 0
             && data.payerParticipantId in participants()
             && positiveInt(data.amountFils)
             && validCurrency(data.currency)
@@ -378,6 +392,7 @@ service cloud.firestore {
             return module == 'expenses'
               && isEventParticipant(groupId, eventId)
               && validExpenseBase(request.resource.data)
+              && request.resource.data.createdBy == request.auth.uid
               && request.resource.data.isDeleted == false
               && request.resource.data.deletedAt == null;
           }
@@ -393,6 +408,8 @@ service cloud.firestore {
           function validExpenseUpdate() {
             return module == 'expenses'
               && isEventParticipant(groupId, eventId)
+              && requesterIsRecordCreator()
+              && request.resource.data.createdBy == resource.data.createdBy
               && request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly([
                   'payerParticipantId',
@@ -423,6 +440,7 @@ service cloud.firestore {
             return data.keys().hasOnly([
               'id',
               'eventId',
+              'createdBy',
               'payerParticipantId',
               'recipientParticipantId',
               'amountFils',
@@ -434,6 +452,8 @@ service cloud.firestore {
             ])
             && data.id == docId
             && data.eventId == eventId
+            && data.createdBy is string
+            && data.createdBy.size() > 0
             && data.payerParticipantId in participants()
             && data.recipientParticipantId in participants()
             && data.payerParticipantId != data.recipientParticipantId
@@ -449,6 +469,7 @@ service cloud.firestore {
             return module == 'settlements'
               && isEventParticipant(groupId, eventId)
               && validEventSettlementBase(request.resource.data)
+              && request.resource.data.createdBy == request.auth.uid
               && request.resource.data.isDeleted == false
               && request.resource.data.deletedAt == null;
           }
@@ -456,10 +477,17 @@ service cloud.firestore {
           function validEventSettlementUpdate() {
             return module == 'settlements'
               && isEventParticipant(groupId, eventId)
+              && requesterIsRecordCreator()
+              && request.resource.data.createdBy == resource.data.createdBy
               && request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['isDeleted', 'deletedAt'])
+                .hasOnly(['note', 'isDeleted', 'deletedAt'])
               && validEventSettlementBase(request.resource.data)
-              && validSoftDelete();
+              && (
+                (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
+                  && request.resource.data.isDeleted == resource.data.isDeleted
+                  && request.resource.data.deletedAt == resource.data.deletedAt)
+                || validSoftDelete()
+              );
           }
 
           function validActivityCreate() {
@@ -590,6 +618,7 @@ service cloud.firestore {
             'id',
             'groupId',
             'eventId',
+            'createdBy',
             'scope',
             'payerParticipantId',
             'recipientParticipantId',
@@ -605,6 +634,8 @@ service cloud.firestore {
           && data.id == settlementId
           && data.groupId == groupId
           && data.eventId == groupId
+          && data.createdBy is string
+          && data.createdBy.size() > 0
           && data.scope == 'group'
           && data.payerParticipantId in groupData(groupId).memberIds
           && data.recipientParticipantId in groupData(groupId).memberIds
@@ -622,20 +653,30 @@ service cloud.firestore {
         function validGroupSettlementCreate() {
           return isGroupMember(groupId)
             && validGroupSettlementBase(request.resource.data)
+            && request.resource.data.createdBy == request.auth.uid
             && request.resource.data.isDeleted == false
             && request.resource.data.deletedAt == null;
         }
 
         function validGroupSettlementUpdate() {
           return isGroupMember(groupId)
+            && requesterIsRecordCreator()
+            && request.resource.data.createdBy == resource.data.createdBy
             && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['isDeleted', 'deletedAt'])
+              .hasOnly(['note', 'isDeleted', 'deletedAt'])
             && validGroupSettlementBase(request.resource.data)
-            && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['isDeleted', 'deletedAt'])
-            && resource.data.isDeleted == false
-            && request.resource.data.isDeleted == true
-            && request.resource.data.deletedAt is string;
+            && (
+              (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
+                && request.resource.data.isDeleted == resource.data.isDeleted
+                && request.resource.data.deletedAt == resource.data.deletedAt)
+              || (
+                request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['isDeleted', 'deletedAt'])
+                && resource.data.isDeleted == false
+                && request.resource.data.isDeleted == true
+                && request.resource.data.deletedAt is string
+              )
+            );
         }
 
         allow read: if isGroupMember(groupId);

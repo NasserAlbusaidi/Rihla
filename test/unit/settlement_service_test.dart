@@ -23,6 +23,7 @@ void main() {
           const eventId = 'e1';
 
           final settlement = await service.addSettlement(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -55,6 +56,7 @@ void main() {
 
           // OMR 10.500 = 10500 fils
           final settlement = await service.addSettlement(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -88,6 +90,7 @@ void main() {
           const eventId = 'e1';
 
           await service.addSettlement(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -113,6 +116,7 @@ void main() {
           const eventId = 'e1';
 
           final settlement = await service.addSettlement(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -143,6 +147,7 @@ void main() {
           const eventId = 'e1';
 
           final settlement = await service.addSettlement(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -179,6 +184,7 @@ void main() {
           const eventId = 'e1';
 
           final original = await service.addSettlement(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',

@@ -8,6 +8,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../groups/providers/group_balance_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
@@ -51,6 +52,18 @@ class EditExpenseScreen extends ConsumerWidget {
           return const _ErrorScaffold(
             title: 'Expense not found',
             message: 'This expense may have been deleted.',
+          );
+        }
+        final currentUid = ref.watch(currentUserIdProvider);
+        // B1: only the original creator can edit/delete; legacy records with
+        // empty createdBy are still editable (no enforcement to migrate from).
+        final isCreator = expense.createdBy.isEmpty ||
+            (currentUid != null && currentUid == expense.createdBy);
+        if (!isCreator) {
+          return const _ErrorScaffold(
+            title: 'View only',
+            message:
+                'Only the person who added this expense can edit or delete it.',
           );
         }
         return KeyedSubtree(
