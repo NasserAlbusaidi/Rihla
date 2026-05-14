@@ -20,6 +20,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/sign_out_confirm_dialog.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
 import '../widgets/currency_picker_sheet.dart';
@@ -648,6 +649,25 @@ class _AboutCard extends ConsumerWidget {
 class _AccountCard extends ConsumerWidget {
   const _AccountCard();
 
+  Future<void> _signOut(
+    BuildContext context,
+    WidgetRef ref,
+    String email,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed =
+        await SignOutConfirmDialog.show(context, email: email);
+    if (confirmed != true) return;
+    try {
+      await ref.read(authRecoveryServiceProvider).signOutCurrentDevice();
+      messenger.showSnackBar(const SnackBar(content: Text('Signed out')));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Couldn't sign out. Try again.")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
@@ -692,8 +712,21 @@ class _AccountCard extends ConsumerWidget {
             onTap: isLinked
                 ? null
                 : () => context.push(AppRoutes.linkEmail),
-            divider: false,
+            divider: isLinked,
           ),
+          if (isLinked)
+            _PrefRow(
+              tileKey: ProfileKeys.signOutDeviceTile,
+              leading: _PrefIcon(icon: Iconsax.logout, bg: colors.cardSoft),
+              label: 'Sign out of this device',
+              trailing: Icon(
+                Iconsax.arrow_right_3,
+                size: 16,
+                color: colors.error,
+              ),
+              onTap: () => _signOut(context, ref, linkedEmail),
+              divider: false,
+            ),
         ],
       ),
     );

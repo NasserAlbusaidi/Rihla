@@ -26,4 +26,7 @@ abstract final class ProfileKeys {
 
   // P3 — account recovery (linked email)
   static const linkedEmailTile = Key('profile_linked_email_tile');
+
+  // P5 — sign out of this device (linked users only)
+  static const signOutDeviceTile = Key('profile_sign_out_device_tile');
 }
