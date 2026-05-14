@@ -87,6 +87,7 @@ class ExpenseService extends FirestoreRepository {
     required String eventId,
     required String payerParticipantId,
     required Decimal amount,
+    required String createdBy,
     String? actorId,
     String? actorName,
     String currency = 'OMR',
@@ -100,6 +101,14 @@ class ExpenseService extends FirestoreRepository {
     String? categoryId,
     String? note,
   }) async {
+    if (createdBy.isEmpty) {
+      throw ArgumentError.value(
+        createdBy,
+        'createdBy',
+        'createdBy must be the auth UID of the current user — Firestore '
+            'rules reject expense writes without it.',
+      );
+    }
     final id = const Uuid().v4();
     final now = DateTime.now().toUtc();
     final data = <String, dynamic>{
@@ -126,6 +135,7 @@ class ExpenseService extends FirestoreRepository {
       'isDeleted': false,
       'deletedAt': null,
       'createdAt': now.toIso8601String(),
+      'createdBy': createdBy,
     };
     try {
       await eventSubcollection(groupId, eventId, 'expenses').doc(id).set(data);

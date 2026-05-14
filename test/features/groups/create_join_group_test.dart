@@ -130,7 +130,7 @@ void main() {
       await tester.tap(find.text('Create'));
       await tester.pumpAndSettle();
 
-      expect(find.text("Group name can't be empty."), findsOneWidget);
+      expect(find.text("Name can't be empty."), findsOneWidget);
     });
 
     testWidgets('validates display name is required on submit', (tester) async {
@@ -157,10 +157,8 @@ void main() {
       await tester.tap(find.text('Create'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Enter your name so others know who you are.'),
-        findsOneWidget,
-      );
+      // Unified validator: both fields share the same empty-name message.
+      expect(find.text("Name can't be empty."), findsWidgets);
 
       // Reset for subsequent tests
       SharedPreferences.setMockInitialValues({

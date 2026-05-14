@@ -1,5 +1,6 @@
 import functionsTest from 'firebase-functions-test';
 import { getFirestore } from 'firebase-admin/firestore';
+import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 import { joinGroupByInviteCode } from '../../src/callables/joinGroupByInviteCode';
 
@@ -42,6 +43,10 @@ afterAll(async () => {
   testEnv.cleanup();
 });
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 describe('joinGroupByInviteCode', () => {
   test('unauthenticated request rejected', async () => {
     await expect(wrapped({ data: { inviteCode: 'ABC123' }, auth: undefined } as any))
@@ -53,6 +58,20 @@ describe('joinGroupByInviteCode', () => {
       data: { inviteCode: 'NOPE99', displayName: 'Eve' },
       auth: { uid: 'eve' },
     } as any)).rejects.toMatchObject({ code: 'not-found' });
+  });
+
+  test('bad invite attempts lock the caller after five failures', async () => {
+    for (let i = 0; i < 5; i += 1) {
+      await expect(wrapped({
+        data: { inviteCode: 'NOPE99', displayName: 'Eve' },
+        auth: { uid: 'eve' },
+      } as any)).rejects.toMatchObject({ code: 'not-found' });
+    }
+
+    await expect(wrapped({
+      data: { inviteCode: 'NOPE99', displayName: 'Eve' },
+      auth: { uid: 'eve' },
+    } as any)).rejects.toMatchObject({ code: 'resource-exhausted' });
   });
 
   test('join adds uid to group and creates member document', async () => {
@@ -75,6 +94,45 @@ describe('joinGroupByInviteCode', () => {
       role: 'MEMBER',
       isShadow: false,
     });
+  });
+
+  test('successful join clears previous failed attempt counter', async () => {
+    for (let i = 0; i < 4; i += 1) {
+      await expect(wrapped({
+        data: { inviteCode: 'NOPE99', displayName: 'Bob' },
+        auth: { uid: 'bob' },
+      } as any)).rejects.toMatchObject({ code: 'not-found' });
+    }
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Bob' },
+      auth: { uid: 'bob' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const counterSnap = await getFirestore().doc('joinAttempts/bob').get();
+    expect(counterSnap.exists).toBe(false);
+
+    await expect(wrapped({
+      data: { inviteCode: 'NOPE99', displayName: 'Bob' },
+      auth: { uid: 'bob' },
+    } as any)).rejects.toMatchObject({ code: 'not-found' });
+  });
+
+  test('success log omits raw invite code', async () => {
+    const infoSpy = jest
+      .spyOn(logger, 'info')
+      .mockImplementation(() => undefined);
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Carol' },
+      auth: { uid: 'carol' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    expect(infoSpy).toHaveBeenCalledWith('group-join succeeded', {
+      uid: 'carol',
+      groupId: 'g1',
+    });
+    expect(JSON.stringify(infoSpy.mock.calls)).not.toContain('ABC123');
   });
 
   test('already-member join is idempotent', async () => {

@@ -57,9 +57,18 @@ class SettlementService extends FirestoreRepository {
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
+    required String createdBy,
     String currency = 'OMR',
     String? note,
   }) async {
+    if (createdBy.isEmpty) {
+      throw ArgumentError.value(
+        createdBy,
+        'createdBy',
+        'createdBy must be the auth UID of the current user — Firestore '
+            'rules reject settlement writes without it.',
+      );
+    }
     final id = const Uuid().v4();
     final now = DateTime.now().toUtc();
     final data = <String, dynamic>{
@@ -73,6 +82,7 @@ class SettlementService extends FirestoreRepository {
       'isDeleted': false,
       'deletedAt': null,
       'settledAt': now.toIso8601String(),
+      'createdBy': createdBy,
     };
     try {
       await eventSubcollection(groupId, eventId, 'settlements').doc(id).set(data);
@@ -83,23 +93,8 @@ class SettlementService extends FirestoreRepository {
     return Settlement.fromFirestore(data);
   }
 
-  /// Soft-deletes a settlement by setting [isDeleted] = true and recording a
-  /// [deletedAt] timestamp. The document is NOT removed from Firestore.
-  Future<void> deleteSettlement({
-    required String groupId,
-    required String eventId,
-    required String settlementId,
-  }) async {
-    try {
-      await eventSubcollection(groupId, eventId, 'settlements')
-          .doc(settlementId)
-          .update({
-        'isDeleted': true,
-        'deletedAt': DateTime.now().toUtc().toIso8601String(),
-      });
-    } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('SettlementService.deleteSettlement failed: ${e.code} ${e.message}');
-      rethrow;
-    }
-  }
+  // E3 / B3: settlements are append-only. There is no deleteSettlement —
+  // the corresponding Firestore rule denies update + delete on settlement
+  // docs. The watchSettlements stream still honors the legacy isDeleted
+  // flag on any pre-B3 records that may have it.
 }

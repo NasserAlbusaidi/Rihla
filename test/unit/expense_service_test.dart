@@ -24,6 +24,7 @@ void main() {
           const eventId = 'e1';
 
           final expense = await service.addExpense(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -54,6 +55,7 @@ void main() {
 
           // OMR 10.500 = 10500 fils (1000 subunits per OMR)
           final expense = await service.addExpense(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -82,6 +84,7 @@ void main() {
         const eventId = 'e1';
 
         final expense = await service.addExpense(
+          createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'p1',
@@ -127,6 +130,7 @@ void main() {
           const eventId = 'e1';
 
           await service.addExpense(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -151,6 +155,7 @@ void main() {
           const eventId = 'e1';
 
           final expense = await service.addExpense(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -181,6 +186,7 @@ void main() {
           const eventId = 'e1';
 
           final expense = await service.addExpense(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -220,6 +226,7 @@ void main() {
           const eventId = 'e1';
 
           final expense = await service.addExpense(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -365,6 +372,7 @@ void main() {
           const eventId = 'e1';
 
           final original = await service.addExpense(
+            createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
             payerParticipantId: 'p1',
@@ -418,6 +426,7 @@ void main() {
         const eventId = 'e1';
 
         final expense = await service.addExpense(
+          createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'p1',
@@ -437,6 +446,7 @@ void main() {
 
       test('addExpense encodes exact amounts as currency subunits', () async {
         final expense = await service.addExpense(
+          createdBy: 'test-uid',
           groupId: 'g1',
           eventId: 'e1',
           payerParticipantId: 'p1',
@@ -458,6 +468,7 @@ void main() {
 
       test('addExpense scales percent values by 1000 for storage', () async {
         final expense = await service.addExpense(
+          createdBy: 'test-uid',
           groupId: 'g1',
           eventId: 'e1',
           payerParticipantId: 'p1',
@@ -478,6 +489,7 @@ void main() {
 
       test('addExpense omits splitMode/splitDistribution for equally', () async {
         final expense = await service.addExpense(
+          createdBy: 'test-uid',
           groupId: 'g1',
           eventId: 'e1',
           payerParticipantId: 'p1',
@@ -492,6 +504,7 @@ void main() {
 
       test('updateExpense clearSplit removes both fields', () async {
         final expense = await service.addExpense(
+          createdBy: 'test-uid',
           groupId: 'g1',
           eventId: 'e1',
           payerParticipantId: 'p1',
@@ -520,6 +533,7 @@ void main() {
       test('round-trip: addExpense → fromFirestore restores distribution',
           () async {
         final expense = await service.addExpense(
+          createdBy: 'test-uid',
           groupId: 'g1',
           eventId: 'e1',
           payerParticipantId: 'p1',

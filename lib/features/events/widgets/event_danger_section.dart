@@ -15,9 +15,10 @@ import '../providers/event_provider.dart';
 
 /// Danger zone section for EventSettingsScreen.
 ///
-/// Only visible when [isCreator] is true.
-/// Shows a balance warning row when the event has unsettled expenses,
-/// and a delete event tile with confirmation dialog.
+/// Only visible when [isAdmin] is true. Under the C-Hierarchy permission model,
+/// admin = event creator OR group creator (see `EventPermissions.isEventAdmin`).
+/// Shows a balance warning row when the event has unsettled expenses, and a
+/// delete event tile with confirmation dialog.
 ///
 /// Activity logging (event_deleted) is wrapped in try/catch per D-14:
 /// logging failure must never crash the delete flow.
@@ -27,17 +28,17 @@ class EventDangerSection extends ConsumerWidget {
     required this.groupId,
     required this.eventId,
     required this.event,
-    required this.isCreator,
+    required this.isAdmin,
   });
 
   final String groupId;
   final String eventId;
   final Event event;
-  final bool isCreator;
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!isCreator) return const SizedBox.shrink();
+    if (!isAdmin) return const SizedBox.shrink();
 
     final eventRef = (groupId: groupId, eventId: eventId);
     final expenses =

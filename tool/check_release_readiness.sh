@@ -95,7 +95,7 @@ run_step "Functions TypeScript build" npm20 --prefix functions run build
 run_step "Firebase emulator rules/functions tests" \
   npx --yes firebase-tools@15.8.0 emulators:exec \
     --project rihla-safar-test \
-    --only auth,firestore,storage \
+    --only auth,firestore \
     "cd functions && npx --yes node@20 node_modules/jest/bin/jest.js --runInBand"
 run_step "Flutter analyzer" flutter analyze --no-fatal-infos
 run_step "Theme purity check" bash tool/check_theme_purity.sh

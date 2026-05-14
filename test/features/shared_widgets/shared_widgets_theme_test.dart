@@ -20,8 +20,8 @@ import 'package:safar/shared/widgets/app_tab_bar.dart';
 import 'package:safar/shared/widgets/dot_step_indicator.dart';
 import 'package:safar/shared/widgets/empty_state_view.dart';
 import 'package:safar/shared/widgets/grain_overlay.dart';
-import 'package:safar/shared/widgets/initials_circle.dart';
 import 'package:safar/shared/widgets/loading_button.dart';
+import 'package:safar/shared/widgets/r_avatar.dart';
 import 'package:safar/shared/widgets/module_header.dart';
 import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/shared/widgets/search_filter_bar.dart';
@@ -103,7 +103,7 @@ void main() {
     'GrainOverlay': () => const GrainOverlay(
           child: SizedBox(width: 100, height: 100),
         ),
-    'InitialsCircle': () => const InitialsCircle(size: 48, name: 'Alice Smith'),
+    'RAvatar': () => const RAvatar(size: 48, name: 'Alice Smith'),
     'LoadingButton (idle)': () => LoadingButton(
           label: 'Tap',
           isLoading: false,

@@ -19,31 +19,44 @@ import 'package:safar/features/groups/services/group_activity_service.dart';
 // Test fixture data
 // ---------------------------------------------------------------------------
 
-final _todayActivity = GroupActivityLog(
+/// Returns a DateTime at noon, `dayOffset` days from today's local date.
+///
+/// Fixtures used to subtract small hour offsets from `DateTime.now()` (e.g.
+/// `now - 1h` for "today"), which rolled to the previous day whenever the
+/// test happened to run in the first hour or two after midnight. Anchoring
+/// at midday gives ~12 hours of slack on each side of the day boundary, so
+/// the bucketing the production code does (calendar-day comparison in
+/// `_groupByDay`) always lands on the intended day.
+DateTime _atMidday(int dayOffset) {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day + dayOffset, 12);
+}
+
+GroupActivityLog _todayActivity() => GroupActivityLog(
   id: 'act-1',
   type: 'group_settlement',
   actorId: 'uid-alice',
   actorName: 'Alice',
   description: 'paid Bob',
-  timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+  timestamp: _atMidday(0),
 );
 
-final _yesterdayActivity = GroupActivityLog(
+GroupActivityLog _yesterdayActivity() => GroupActivityLog(
   id: 'act-2',
   type: 'event_created',
   actorId: 'uid-bob',
   actorName: 'Bob',
   description: 'created Camping Trip',
-  timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+  timestamp: _atMidday(-1),
 );
 
-final _memberActivity = GroupActivityLog(
+GroupActivityLog _memberActivity() => GroupActivityLog(
   id: 'act-3',
   type: 'member_joined',
   actorId: 'uid-carol',
   actorName: 'Carol',
   description: 'joined the group',
-  timestamp: DateTime.now().subtract(const Duration(days: 2)),
+  timestamp: _atMidday(-2),
 );
 
 // Minimal test Group used to satisfy groupDetailProvider override
@@ -219,8 +232,8 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       await _seedActivities(fakeDb, 'grp-dates', [
-        _todayActivity,
-        _yesterdayActivity,
+        _todayActivity(),
+        _yesterdayActivity(),
       ]);
 
       await tester.pumpWidget(
@@ -259,7 +272,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       await _seedActivities(fakeDb, 'grp-filter', [
-        _todayActivity, // group_settlement — 'paid Bob'
+        _todayActivity(), // group_settlement — 'paid Bob'
         GroupActivityLog(
           id: 'act-event',
           type: 'event_created',
@@ -364,16 +377,16 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       await _seedActivities(fakeDb, 'grp-all', [
-        _todayActivity, // group_settlement
+        _todayActivity(), // group_settlement
         GroupActivityLog(
           id: 'act-event',
           type: 'event_created',
           actorId: 'uid-bob',
           actorName: 'Bob',
           description: 'created Weekend Hike',
-          timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+          timestamp: _atMidday(0),
         ),
-        _memberActivity, // member_joined
+        _memberActivity(), // member_joined
       ]);
 
       await tester.pumpWidget(
@@ -394,7 +407,7 @@ void main() {
 
       // Seed only settlement activities
       await _seedActivities(fakeDb, 'grp-no-member', [
-        _todayActivity, // group_settlement
+        _todayActivity(), // group_settlement
       ]);
 
       await tester.pumpWidget(

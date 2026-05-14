@@ -8,6 +8,7 @@ import '../../../shared/widgets/grain_overlay.dart';
 import '../keys/home_keys.dart';
 import '../screens/cross_group_activity_screen.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Bottom navigation shell for the home dashboard.
 ///
@@ -84,14 +85,14 @@ class _BottomNavShellState extends State<BottomNavShell> {
               color: context.colors.primary,
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppTypography.sansFamily,
             );
           }
           return TextStyle(
             color: context.colors.bottomNavInactiveIcon,
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppTypography.sansFamily,
           );
         }),
       ),

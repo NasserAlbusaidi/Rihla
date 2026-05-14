@@ -1,6 +1,6 @@
 # Production Readiness
 
-Last verified: 2026-05-11
+Last verified: 2026-05-14
 
 This checklist tracks the remaining launch gates for the Firebase project
 `rihla-safar` and the mobile apps. Treat checked items as verified from the
@@ -12,8 +12,8 @@ Run the consolidated read-only audit:
 bash tool/check_release_readiness.sh
 ```
 
-It should fail until Firebase Storage, Firebase Functions deployment, and
-physical-device QA are complete.
+It should fail until Firebase Functions deployment and physical-device QA are
+complete.
 
 GitHub also runs `.github/workflows/readiness_check.yml` on `main` pushes and
 pull requests. That workflow covers the local non-deploy gates only; it does not
@@ -38,7 +38,7 @@ starts a new run.
   - Command: `flutter test test/goldens/ --tags golden`
   - Result: 8 passed
 - [x] Firebase emulator/rules tests pass under Java 21.
-  - Command: `JAVA_HOME="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home" PATH="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home/bin:$PATH" npx --yes firebase-tools@15.8.0 emulators:exec --project rihla-safar-test --only auth,firestore,storage "cd functions && npx --yes node@20 node_modules/jest/bin/jest.js --runInBand"`
+  - Command: `JAVA_HOME="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home" PATH="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home/bin:$PATH" npx --yes firebase-tools@15.8.0 emulators:exec --project rihla-safar-test --only auth,firestore "cd functions && npx --yes node@20 node_modules/jest/bin/jest.js --runInBand"`
   - Note: Homebrew Java 21 may be installed even when `/usr/libexec/java_home -v 21` still resolves to Java 17; prefer the explicit `brew --prefix openjdk@21` path above.
 - [x] Firestore production database exists for `rihla-safar`.
   - Database: `(default)`, Native mode, location `nam5`
@@ -50,16 +50,12 @@ starts a new run.
 ## Blockers
 
 - [ ] Firebase Functions are not deployed in production.
-  - Evidence: `bash tool/check_firebase_prod_state.sh rihla-safar` reports these missing deployed Functions: `getSignedUploadUrl`, `deleteStorageObject`, `joinGroupByInviteCode`, `listDocumentsWithUrls`, `listMemoriesWithUrls`.
-  - Local exports expected in production: `getSignedUploadUrl`, `deleteStorageObject`, `joinGroupByInviteCode`, `listDocumentsWithUrls`, `listMemoriesWithUrls`.
+  - Evidence: `bash tool/check_firebase_prod_state.sh rihla-safar` reports the missing deployed Function: `joinGroupByInviteCode`.
+  - Local exports expected in production: `joinGroupByInviteCode`.
   - Deploy blocker: `npx --yes firebase-tools@15.8.0 deploy --project rihla-safar --only functions --dry-run` requires the project to upgrade to Blaze before `cloudbuild.googleapis.com` and `artifactregistry.googleapis.com` can be enabled.
-  - Currently enabled related APIs: `cloudfunctions.googleapis.com`, `firebase.googleapis.com`, `firebaserules.googleapis.com`, `firebasestorage.googleapis.com`, `firestore.googleapis.com`.
-- [ ] Firebase Storage is not initialized in production.
-  - Evidence: `npx --yes firebase-tools@15.8.0 deploy --project rihla-safar --only storage:rules --dry-run` reports that Firebase Storage has not been set up.
-  - Required action: open Firebase Console for `rihla-safar`, go to Storage, click **Get Started**, then deploy `security/storage.rules`.
-- [ ] Storage production rules are not deployed.
-  - Evidence: `bash tool/check_firebase_prod_state.sh rihla-safar` reports `No active Storage rules release found`.
-  - Blocked by Firebase Storage initialization.
+  - Currently enabled related APIs: `cloudfunctions.googleapis.com`, `firebase.googleapis.com`, `firebaserules.googleapis.com`, `firestore.googleapis.com`.
+- [ ] Group join callable deployed and clients route through it.
+  - Local code now routes joins through `joinGroupByInviteCode`; production still needs the callable and Firestore rules deployed together.
 - [ ] Real-device QA is not complete.
   - Runbook: `docs/REAL-DEVICE-QA.md`
   - Gate command: `bash tool/check_real_device_qa_gate.sh`
@@ -81,18 +77,15 @@ Firebase Console or billing decision:
    - Console: `https://console.firebase.google.com/project/rihla-safar/usage/details`
    - Needed so Cloud Build and Artifact Registry APIs can be enabled for
      Cloud Functions deployment.
-2. Initialize Firebase Storage:
-   - Console: `https://console.firebase.google.com/project/rihla-safar/storage`
-   - Click **Get Started** and finish the bucket setup.
-3. Deploy backend artifacts from this repo:
+2. Deploy backend artifacts from this repo:
    ```bash
    RIHLA_CONFIRM_FIREBASE_DEPLOY=yes bash tool/deploy_firebase_backend.sh rihla-safar
    ```
-4. Re-run the full audit:
+3. Re-run the full audit:
    ```bash
    bash tool/check_release_readiness.sh
    ```
-5. Connect physical iOS and Android devices, then run:
+4. Connect physical iOS and Android devices, then run:
    ```bash
    bash tool/check_real_device_qa_gate.sh
    ```
@@ -106,7 +99,7 @@ Before deploying, run the read-only production-state check:
 bash tool/check_firebase_prod_state.sh rihla-safar
 ```
 
-The command should fail until Storage rules and all expected Functions are live.
+The command should fail until the join callable is live.
 
 Run this after the Firebase project setup blockers are cleared:
 
@@ -116,14 +109,14 @@ RIHLA_CONFIRM_FIREBASE_DEPLOY=yes bash tool/deploy_firebase_backend.sh rihla-saf
 
 The script installs Functions dependencies from the lockfile, audits production
 dependencies at low severity, builds Functions, deploys Firestore rules/indexes,
-Storage rules, and Functions, then runs `tool/check_firebase_prod_state.sh`.
+and Functions, then runs `tool/check_firebase_prod_state.sh`.
 
 Equivalent manual deploy command:
 
 ```bash
 npx --yes firebase-tools@15.8.0 deploy \
   --project rihla-safar \
-  --only firestore:rules,firestore:indexes,storage:rules,functions
+  --only firestore:rules,firestore:indexes,functions
 ```
 
 Then confirm production state:

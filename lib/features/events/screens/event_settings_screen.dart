@@ -7,8 +7,10 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../groups/providers/group_provider.dart';
 import '../keys/event_keys.dart';
 import '../providers/event_provider.dart';
+import '../utils/event_permissions.dart';
 import '../widgets/event_danger_section.dart';
 import '../widgets/event_info_section.dart';
 
@@ -33,6 +35,7 @@ class EventSettingsScreen extends ConsumerWidget {
     final eventAsync = ref.watch(
       eventDetailProvider((groupId: groupId, eventId: eventId)),
     );
+    final groupAsync = ref.watch(groupDetailProvider(groupId));
     final currentUserId = ref.watch(currentUserIdProvider);
 
     return Scaffold(
@@ -45,8 +48,13 @@ class EventSettingsScreen extends ConsumerWidget {
               return _buildError(context, ref, 'Event not found');
             }
 
-            final isCreator =
-                currentUserId != null && currentUserId == event.createdBy;
+            final group = groupAsync.valueOrNull;
+            final isAdmin = group != null &&
+                EventPermissions.isEventAdmin(
+                  event: event,
+                  group: group,
+                  currentUserId: currentUserId,
+                );
 
             return SingleChildScrollView(
               child: Padding(
@@ -71,12 +79,12 @@ class EventSettingsScreen extends ConsumerWidget {
                         .fadeIn(delay: 100.ms, duration: 400.ms)
                         .slideY(begin: 0.1, curve: Curves.easeOutCubic),
                     const SizedBox(height: 16),
-                    if (isCreator)
+                    if (isAdmin)
                       EventDangerSection(
                         groupId: groupId,
                         eventId: eventId,
                         event: event,
-                        isCreator: isCreator,
+                        isAdmin: isAdmin,
                       )
                           .animate()
                           .fadeIn(delay: 200.ms, duration: 400.ms)

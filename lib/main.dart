@@ -4,7 +4,6 @@ import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -56,10 +55,9 @@ void main() async {
         FirebaseFunctions.instanceFor(
           region: 'us-central1',
         ).useFunctionsEmulator(host, 5001);
-        await FirebaseStorage.instance.useStorageEmulator(host, 9199);
         if (kDebugMode) {
           debugPrint(
-            'Firebase emulators ON host=$host (auth:9099 firestore:8080 functions:5001 storage:9199)',
+            'Firebase emulators ON host=$host (auth:9099 firestore:8080 functions:5001)',
           );
         }
       }

@@ -174,7 +174,7 @@ flutter build appbundle \
 
 **Java / Kotlin compatibility**: Java 17, Kotlin JVM target 17.
 
-**Release signing**: configured via `android/key.properties`. This file is not gitignored but contains local paths and passwords — treat it as local-only. The CI workflow creates it from the `KEY_PROPERTIES` GitHub secret. Fields:
+**Release signing**: configured via `android/key.properties`. This file is gitignored via `android/.gitignore` and contains local paths and passwords — treat it as local-only. The CI workflow creates it from the `KEY_PROPERTIES` GitHub secret. Fields:
 
 | Field | Description |
 |-------|-------------|
@@ -217,4 +217,4 @@ The GitHub Actions workflow at `.github/workflows/release_android.yml` handles A
 | `CONFIG_JSON` | Full contents of `config.json` with production values |
 | `GOOGLE_PLAY_JSON_KEY` | Google Play service account JSON for the upload-google-play action |
 
-The CI pipeline runs `flutter analyze`, tests with 80% coverage enforcement, a hardcoded color lint, then builds the AAB and uploads to the Play Store Closed Testing (first track).
+The CI pipeline runs `flutter analyze`, tests with 80% coverage enforcement, a hardcoded color lint, then builds the AAB and uploads to the Play Store Closed Testing (alpha track).

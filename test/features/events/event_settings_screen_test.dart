@@ -14,7 +14,9 @@ import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/event_settings_screen.dart';
 import 'package:safar/features/events/services/event_service.dart';
+import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 
@@ -53,12 +55,28 @@ Event _makeEvent({
   );
 }
 
+Group _makeGroup({
+  String id = 'group-1',
+  String createdBy = 'uid-group-other',
+}) {
+  return Group(
+    id: id,
+    name: 'Trip Squad',
+    inviteCode: 'ABCDEF',
+    createdBy: createdBy,
+    memberIds: const ['uid-group-other', 'uid-creator'],
+    createdAt: DateTime(2026, 1, 1),
+  );
+}
+
 Widget _wrapSettings({
   required Event event,
   String currentUserId = 'uid-creator',
+  Group? group,
   List<Override> extraOverrides = const [],
 }) {
   final eventRef = (groupId: event.groupId, eventId: event.id);
+  final resolvedGroup = group ?? _makeGroup(id: event.groupId);
   final mockService = _MockEventService();
 
   when(
@@ -97,6 +115,9 @@ Widget _wrapSettings({
                     eventDetailProvider(
                       eventRef,
                     ).overrideWith((ref) => Stream.value(event)),
+                    groupDetailProvider(
+                      event.groupId,
+                    ).overrideWith((ref) => Stream.value(resolvedGroup)),
                     eventServiceProvider.overrideWithValue(mockService),
                     currentUserIdProvider.overrideWithValue(currentUserId),
                     eventExpensesProvider(
@@ -169,6 +190,26 @@ void main() {
       expect(find.text('Delete event'), findsNothing);
     });
 
+    testWidgets(
+      'delete event tile is visible for group creator (not event creator)',
+      (tester) async {
+        final event = _makeEvent(createdBy: 'uid-event-creator');
+        await tester.pumpWidget(
+          _wrapSettings(
+            event: event,
+            currentUserId: 'uid-group-creator',
+            group: _makeGroup(
+              id: event.groupId,
+              createdBy: 'uid-group-creator',
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Delete event'), findsOneWidget);
+      },
+    );
+
     testWidgets('delete tile tap shows confirmation dialog', (tester) async {
       final event = _makeEvent(createdBy: 'uid-creator');
       await tester.pumpWidget(
@@ -216,6 +257,9 @@ void main() {
                         eventDetailProvider(
                           eventRef,
                         ).overrideWith((ref) => Stream.value(event)),
+                        groupDetailProvider(event.groupId).overrideWith(
+                          (ref) => Stream.value(_makeGroup(id: event.groupId)),
+                        ),
                         eventServiceProvider.overrideWithValue(mockService),
                         currentUserIdProvider.overrideWithValue('uid-creator'),
                         eventExpensesProvider(

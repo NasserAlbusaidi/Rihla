@@ -57,11 +57,20 @@ class GroupSettlementService extends FirestoreRepository {
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
+    required String createdBy,
     String currency = 'OMR',
     String? note,
     String? payerName,
     String? recipientName,
   }) async {
+    if (createdBy.isEmpty) {
+      throw ArgumentError.value(
+        createdBy,
+        'createdBy',
+        'createdBy must be the auth UID of the current user — Firestore '
+            'rules reject group settlement writes without it.',
+      );
+    }
     final id = const Uuid().v4();
     final now = DateTime.now().toUtc();
     final data = <String, dynamic>{
@@ -79,6 +88,7 @@ class GroupSettlementService extends FirestoreRepository {
       'isDeleted': false,
       'deletedAt': null,
       'settledAt': now.toIso8601String(),
+      'createdBy': createdBy,
     };
     try {
       await _settlementsRef(groupId).doc(id).set(data);
@@ -89,19 +99,8 @@ class GroupSettlementService extends FirestoreRepository {
     return Settlement.fromFirestore(data);
   }
 
-  /// Soft-deletes a group settlement by setting [isDeleted] = true.
-  Future<void> deleteGroupSettlement({
-    required String groupId,
-    required String settlementId,
-  }) async {
-    try {
-      await _settlementsRef(groupId).doc(settlementId).update({
-        'isDeleted': true,
-        'deletedAt': DateTime.now().toUtc().toIso8601String(),
-      });
-    } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('GroupSettlementService.deleteGroupSettlement failed: ${e.code} ${e.message}');
-      rethrow;
-    }
-  }
+  // E3 / B3: group settlements are append-only. There is no
+  // deleteGroupSettlement — the corresponding Firestore rule denies
+  // update + delete on settlement docs. The watch stream still honors
+  // the legacy isDeleted flag on any pre-B3 records that may have it.
 }

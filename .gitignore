@@ -72,7 +72,11 @@ functions/coverage/
 firestore-debug.log
 analyze_output*.txt
 
+# Firebase CLI deploy cache
+.firebase/
+
 # Agent harness logs
 .playwright-mcp/
 .paperclip/logs/
 .planning/
+audit-reports/

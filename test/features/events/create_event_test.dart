@@ -290,7 +290,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Validator error message should appear
-      expect(find.text("Event name can't be empty."), findsOneWidget);
+      expect(find.text("Name can't be empty."), findsOneWidget);
     });
 
     testWidgets('shows event name field with correct hint text', (

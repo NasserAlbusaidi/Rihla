@@ -14,6 +14,7 @@ import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
+import '../../groups/providers/group_balance_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
@@ -365,6 +366,10 @@ class SettleUpScreen extends ConsumerWidget {
   ) async {
     HapticService.success(); // D-02: fire on tap before async write
     final eventRef = (groupId: groupId, eventId: eventId);
+    final currentUid = ref.read(currentUserIdProvider);
+    if (currentUid == null || currentUid.isEmpty) {
+      throw StateError('Cannot record settlement without an authenticated user.');
+    }
     try {
       await ref
           .read(settlementServiceProvider)
@@ -375,6 +380,7 @@ class SettleUpScreen extends ConsumerWidget {
             recipientParticipantId: settlement['toUserId'] as String,
             amount: settlement['amount'] as Decimal,
             currency: 'OMR',
+            createdBy: currentUid,
           );
 
       if (context.mounted) {

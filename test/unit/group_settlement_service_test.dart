@@ -125,6 +125,7 @@ void main() {
       'addGroupSettlement writes document with scope=group and groupId',
       () async {
         final settlement = await service.addGroupSettlement(
+          createdBy: 'test-uid',
           groupId: groupId,
           payerParticipantId: 'p1',
           recipientParticipantId: 'p2',
@@ -149,6 +150,7 @@ void main() {
       () async {
         // OMR 10.500 = 10500 fils
         final settlement = await service.addGroupSettlement(
+          createdBy: 'test-uid',
           groupId: groupId,
           payerParticipantId: 'p1',
           recipientParticipantId: 'p2',

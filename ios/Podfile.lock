@@ -1188,6 +1188,8 @@ PODS:
     - abseil/meta/type_traits
     - abseil/xcprivacy
   - abseil/xcprivacy (1.20240722.0)
+  - app_links (7.0.0):
+    - Flutter
   - app_settings (6.1.2):
     - Flutter
   - BoringSSL-GRPC (0.0.37):
@@ -1252,9 +1254,6 @@ PODS:
   - Firebase/Messaging (12.12.0):
     - Firebase/CoreOnly
     - FirebaseMessaging (~> 12.12.0)
-  - Firebase/Storage (12.12.0):
-    - Firebase/CoreOnly
-    - FirebaseStorage (~> 12.12.0)
   - firebase_auth (6.3.0):
     - Firebase/Auth (= 12.12.0)
     - firebase_core
@@ -1264,10 +1263,6 @@ PODS:
     - Flutter
   - firebase_messaging (16.1.3):
     - Firebase/Messaging (= 12.12.0)
-    - firebase_core
-    - Flutter
-  - firebase_storage (13.2.0):
-    - Firebase/Storage (= 12.12.0)
     - firebase_core
     - Flutter
   - FirebaseAppCheckInterop (12.12.0)
@@ -1333,13 +1328,6 @@ PODS:
     - nanopb (~> 3.30910.0)
   - FirebaseMessagingInterop (12.12.0)
   - FirebaseSharedSwift (12.12.0)
-  - FirebaseStorage (12.12.1):
-    - FirebaseAppCheckInterop (~> 12.12.0)
-    - FirebaseAuthInterop (~> 12.12.0)
-    - FirebaseCore (~> 12.12.0)
-    - FirebaseCoreExtension (~> 12.12.0)
-    - GoogleUtilities/Environment (~> 8.1)
-    - GTMSessionFetcher/Core (< 6.0, >= 3.4)
   - Flutter (1.0.0)
   - GoogleDataTransport (10.1.0):
     - nanopb (~> 3.30910.0)
@@ -1500,6 +1488,7 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
+  - app_links (from `.symlinks/plugins/app_links/ios`)
   - app_settings (from `.symlinks/plugins/app_settings/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
   - cloud_functions (from `.symlinks/plugins/cloud_functions/ios`)
@@ -1507,7 +1496,6 @@ DEPENDENCIES:
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - firebase_messaging (from `.symlinks/plugins/firebase_messaging/ios`)
-  - firebase_storage (from `.symlinks/plugins/firebase_storage/ios`)
   - Flutter (from `Flutter`)
   - haptic_feedback (from `.symlinks/plugins/haptic_feedback/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
@@ -1540,7 +1528,6 @@ SPEC REPOS:
     - FirebaseMessaging
     - FirebaseMessagingInterop
     - FirebaseSharedSwift
-    - FirebaseStorage
     - GoogleDataTransport
     - GoogleUtilities
     - "gRPC-C++"
@@ -1555,6 +1542,8 @@ SPEC REPOS:
     - SwiftyGif
 
 EXTERNAL SOURCES:
+  app_links:
+    :path: ".symlinks/plugins/app_links/ios"
   app_settings:
     :path: ".symlinks/plugins/app_settings/ios"
   cloud_firestore:
@@ -1569,8 +1558,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/firebase_core/ios"
   firebase_messaging:
     :path: ".symlinks/plugins/firebase_messaging/ios"
-  firebase_storage:
-    :path: ".symlinks/plugins/firebase_storage/ios"
   Flutter:
     :path: Flutter
   haptic_feedback:
@@ -1596,6 +1583,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
+  app_links: a754cbec3c255bd4bbb4d236ecc06f28cd9a7ce8
   app_settings: 0341ec6daa4f0c50f5a421bf0ad7c36084db6e90
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
   cloud_firestore: 9e488a9de7b14e42765ebd478d33f7d15a6fef57
@@ -1607,7 +1595,6 @@ SPEC CHECKSUMS:
   firebase_auth: 6cc909f2a33d7ee4c1f05614ca1ab1a40e828dc4
   firebase_core: 9156a152117c843440b0b990c785aa0259bc5447
   firebase_messaging: 4cf2e2573cd7a4e84b1797d115ba3a62f3e77133
-  firebase_storage: dbbc6ec25f560bc677ae8e32bcf065132fbe514f
   FirebaseAppCheckInterop: c63ae0d003274f145174849c545ab861593beaf9
   FirebaseAuth: bcfebbc0ca055a6335f2252a90e57363d7ea5e65
   FirebaseAuthInterop: 917aa3a17ecf144d5f1823b51ef372da06909a4b
@@ -1621,7 +1608,6 @@ SPEC CHECKSUMS:
   FirebaseMessaging: 341004946fa7ffc741344b20f1b667514fc93e31
   FirebaseMessagingInterop: bcf56f6a07054150163621d62676e34edab5d5eb
   FirebaseSharedSwift: bccaff90721d14bafc14be34f28b77fdd7c91dc9
-  FirebaseStorage: b3682c96ae7016420c1f6eb43d45057a0e909c9f
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1

@@ -24,7 +24,6 @@ echo "Preparing Firebase backend deploy for project: ${PROJECT_ID}"
 echo
 echo "Prerequisites:"
 echo "- Firebase project is on the Blaze plan."
-echo "- Firebase Storage has been initialized in the Firebase Console."
 echo "- Required APIs for Cloud Functions, Cloud Build, and Artifact Registry can be enabled."
 echo
 
@@ -41,6 +40,6 @@ npm20 --prefix functions run build
 
 npx --yes "firebase-tools@${FIREBASE_TOOLS_VERSION}" deploy \
   --project "$PROJECT_ID" \
-  --only firestore:rules,firestore:indexes,storage:rules,functions
+  --only firestore:rules,firestore:indexes,functions
 
 bash tool/check_firebase_prod_state.sh "$PROJECT_ID"

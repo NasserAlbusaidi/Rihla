@@ -95,14 +95,13 @@ Screens receive groupId/eventId as strings from GoRouter path parameters. Data i
 
 ### Offline / Sync
 
-Data flow: **Providers** → `OfflineRepository.watch*()` → `CacheService` (SQLite reads). Writes go: `OfflineRepository.save*()` → SQLite + sync_queue → `SyncService` uploads to Supabase.
+Data flow: Firestore streams/providers read live data, successful snapshots are written into SQLite cache repositories for fast local reads, and Firestore SDK persistence handles queued offline writes.
 
-- `LocalDatabase` (Sqflite): `safar_cache.db` (version 5) with tables: `trips`, `expenses`, `gear_items`, `settlements`, `sync_queue`, `participants`, `sub_groups`, `sub_group_members`, `activity_logs`, `categories`
-- `OfflineRepository`: reactive SQLite wrapper. `watch*()` returns streams (providers subscribe), `save*()/delete*()` writes locally + enqueues sync. `notifyChange()` triggers stream re-emission after sync downloads
-- `CacheService`: static methods for batch cache read/write and sync queue management
-- `SyncService`: uploads pending queue to Supabase (max 5 retries with exponential backoff), downloads fresh data. `fullSync()` = upload + download. `downloadTripData()` pulls all trip tables in parallel
-- `ConnectivityNotifier`: checks online status every 60 seconds via `auth.refreshSession()`. `SyncController` orchestrates full sync and updates connectivity state
-- **Seed-on-entry**: `CommandCenter` uses a `FutureProvider.family` (`_tripDataSeedProvider`) to eagerly download trip data from Supabase on first visit, and re-downloads on offline→online transition
+- Firestore offline persistence is enabled in `FirebaseConfig.initialize()` via `FirebaseFirestore.instance.settings` with unlimited cache size, before any Firestore read/write
+- `LocalDatabase` (Sqflite): `safar_cache.db` (version 8) backs local snapshot caches for trips, expenses, settlements, participants, activity logs, categories, groups, group members, and group ledger
+- Cache repositories under `lib/core/services/cache/` are instance-based Riverpod services that own SQLite reads/writes for one domain; they do not upload server state
+- Firestore-facing feature services remain the write path. Do not recreate a manual sync queue; the Firestore SDK replays offline writes automatically
+- `ConnectivityNotifier` lives in `lib/core/providers/connectivity_provider.dart` and checks online status every 60 seconds with a Firestore `Source.server` read against the signed-in user's `fcm_tokens/{uid}` document
 
 ### Shared Widgets (`lib/shared/widgets/`)
 

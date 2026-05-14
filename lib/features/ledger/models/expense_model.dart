@@ -39,6 +39,11 @@ class Expense {
   final String? categoryId;
   final String? note;
 
+  /// Auth UID of the user who created this record. Stamped at create time
+  /// and immutable thereafter — Firestore rules reject updates from any
+  /// other UID. Empty string means "unknown" (legacy / test-only data).
+  final String createdBy;
+
   // Category info
   final String? categoryName;
   final String? categoryIcon;
@@ -75,6 +80,7 @@ class Expense {
     this.payerAvatarUrl,
     this.isDeleted = false,
     this.deletedAt,
+    this.createdBy = '',
     String currency = 'OMR',
   }) : _currency = currency;
 
@@ -188,6 +194,7 @@ class Expense {
       deletedAt: data['deletedAt'] != null
           ? DateTime.parse(data['deletedAt'] as String)
           : null,
+      createdBy: data['createdBy'] as String? ?? '',
     );
   }
 
@@ -219,6 +226,7 @@ class Expense {
       'note': note,
       'isDeleted': isDeleted,
       'deletedAt': deletedAt?.toIso8601String(),
+      'createdBy': createdBy,
     };
   }
 
@@ -252,6 +260,7 @@ class Expense {
     String? payerAvatarUrl,
     bool? isDeleted,
     DateTime? deletedAt,
+    String? createdBy,
     bool clearSplit = false,
   }) {
     return Expense(
@@ -279,6 +288,7 @@ class Expense {
       payerAvatarUrl: payerAvatarUrl ?? this.payerAvatarUrl,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 
