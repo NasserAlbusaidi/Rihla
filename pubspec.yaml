@@ -104,6 +104,11 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
 
+# Launcher icon config lives in flutter_launcher_icons.yaml at the project
+# root. Source PNGs are produced by
+# `flutter test tool/generate_app_icons.dart` from the RouteMark painter so
+# they cannot drift from the in-app widget.
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
