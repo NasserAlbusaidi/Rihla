@@ -152,15 +152,16 @@ class EventService extends FirestoreRepository {
     }
   }
 
-  /// Update the participant list for an event.
+  /// Add a participant to the event (additive; light path under C-Hierarchy).
   ///
-  /// Replaces participantIds and participantNames entirely (not merged).
-  /// Per D-10: only group members can be selected as participants.
-  Future<void> updateParticipants({
+  /// Allowed for any current event participant — Firestore rules enforce that
+  /// `participantIds` and `participantNames` only grow (no removals, no
+  /// changed values for existing keys) on the light path.
+  Future<void> addParticipant({
     required String groupId,
     required String eventId,
-    required List<String> participantIds,
-    required Map<String, String> participantNames,
+    required String participantId,
+    required String displayName,
   }) async {
     try {
       await db
@@ -169,14 +170,44 @@ class EventService extends FirestoreRepository {
           .collection('events')
           .doc(eventId)
           .update({
-            'participantIds': participantIds,
-            'participantNames': participantNames,
+            'participantIds': FieldValue.arrayUnion([participantId]),
+            'participantNames.$participantId': displayName,
             'updatedAt': FieldValue.serverTimestamp(),
           });
     } on FirebaseException catch (e) {
       if (kDebugMode) {
         debugPrint(
-          'EventService.updateParticipants failed: ${e.code} ${e.message}',
+          'EventService.addParticipant failed: ${e.code} ${e.message}',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Remove a participant from the event (admin path under C-Hierarchy).
+  ///
+  /// Firestore rules reject this for callers who are not the event creator
+  /// or the group creator — surfaces as `permission-denied`.
+  Future<void> removeParticipant({
+    required String groupId,
+    required String eventId,
+    required String participantId,
+  }) async {
+    try {
+      await db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .update({
+            'participantIds': FieldValue.arrayRemove([participantId]),
+            'participantNames.$participantId': FieldValue.delete(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+    } on FirebaseException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          'EventService.removeParticipant failed: ${e.code} ${e.message}',
         );
       }
       rethrow;

@@ -194,6 +194,26 @@ service cloud.firestore {
           return signedIn() && request.auth.uid in resource.data.participantIds;
         }
 
+        // Event-mutation policy (C-Hierarchy):
+        // - Light path: any current event participant may rename, shift dates, edit
+        //   description, and ADD participants (additive only - no removals, no
+        //   participantNames key value changes).
+        // - Admin path: event creator OR group creator may additionally remove
+        //   participants, modify modules, and soft-delete the event.
+        // Soft-delete remains one-way (false -> true) for both paths.
+        function requesterIsEventCreator() {
+          return signedIn() && resource.data.createdBy == request.auth.uid;
+        }
+
+        function requesterIsGroupCreator() {
+          return signedIn()
+            && get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid;
+        }
+
+        function requesterIsEventAdmin() {
+          return requesterIsEventCreator() || requesterIsGroupCreator();
+        }
+
         function validModules(modules) {
           return modules is map
             && modules.keys().hasOnly(['ledger'])
@@ -247,8 +267,36 @@ service cloud.firestore {
             && validEventBase(request.resource.data);
         }
 
-        function validEventUpdate() {
+        function validEventUpdateCommon() {
+          return request.resource.data.groupId == resource.data.groupId
+            && request.resource.data.createdBy == resource.data.createdBy
+            && request.resource.data.type == resource.data.type
+            && request.resource.data.createdAt == resource.data.createdAt
+            && validEventBase(request.resource.data);
+        }
+
+        function validEventLightUpdate() {
           return requesterIsParticipant()
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly([
+                'name',
+                'participantIds',
+                'participantNames',
+                'startDate',
+                'endDate',
+                'updatedAt',
+                'description'
+              ])
+            && validEventUpdateCommon()
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantIds'])
+              || request.resource.data.participantIds.hasAll(resource.data.participantIds))
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantNames'])
+              || (request.resource.data.participantNames.diff(resource.data.participantNames).removedKeys().size() == 0
+                && request.resource.data.participantNames.diff(resource.data.participantNames).changedKeys().size() == 0));
+        }
+
+        function validEventAdminUpdate() {
+          return requesterIsEventAdmin()
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly([
                 'name',
@@ -262,11 +310,7 @@ service cloud.firestore {
                 'updatedAt',
                 'description'
               ])
-            && request.resource.data.groupId == resource.data.groupId
-            && request.resource.data.createdBy == resource.data.createdBy
-            && request.resource.data.type == resource.data.type
-            && request.resource.data.createdAt == resource.data.createdAt
-            && validEventBase(request.resource.data)
+            && validEventUpdateCommon()
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
               || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isDeleted', 'deletedAt', 'updatedAt'])
                 && resource.data.isDeleted == false
@@ -276,7 +320,7 @@ service cloud.firestore {
 
         allow read: if isGroupMember(groupId);
         allow create: if validEventCreate();
-        allow update: if validEventUpdate();
+        allow update: if validEventLightUpdate() || validEventAdminUpdate();
         allow delete: if false;
 
         match /{module}/{docId} {

@@ -91,6 +91,37 @@ describe('Publish readiness Firestore rules', () => {
     };
   }
 
+  async function addGroupMember(userId: string, displayName = userId): Promise<void> {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const groupRef = db.doc('groups/g1');
+      const groupSnap = await groupRef.get();
+      const group = groupSnap.data() as { memberIds: string[] };
+      const memberIds = group.memberIds.includes(userId)
+        ? group.memberIds
+        : [...group.memberIds, userId];
+
+      await groupRef.update({
+        memberIds,
+        updatedAt: new Date(),
+      });
+      await db.doc(`groups/g1/members/${userId}`).set({
+        id: userId,
+        userId,
+        displayName,
+        role: 'MEMBER',
+        joinedAt: new Date(),
+        isShadow: false,
+      });
+    });
+  }
+
+  async function seedEvent(eventId: string, overrides: Record<string, unknown>): Promise<void> {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(`groups/g1/events/${eventId}`).set(validEvent(overrides));
+    });
+  }
+
   function validExpense(overrides: Record<string, unknown> = {}): Record<string, unknown> {
     return {
       id: 'exp1',
@@ -283,6 +314,148 @@ describe('Publish readiness Firestore rules', () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertFails(member.doc('groups/g1/events/e1').update({
       createdBy: 'member',
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('participant can rename event', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1/events/e1').update({
+      name: 'Updated Camp',
+      description: 'Bring warm layers.',
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('participant can shift event dates', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1/events/e1').update({
+      startDate: new Date('2026-01-15T08:00:00.000Z'),
+      endDate: new Date('2026-01-17T18:00:00.000Z'),
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('participant can add another participant', async () => {
+    await addGroupMember('guest', 'Guest');
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1/events/e1').update({
+      participantIds: ['owner', 'member', 'guest'],
+      participantNames: { owner: 'Owner', member: 'Member', guest: 'Guest' },
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('participant cannot remove a participant', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1').update({
+      participantIds: ['member'],
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('participant cannot rename a peer', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1').update({
+      participantNames: { owner: 'Renamed Owner', member: 'Member' },
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('participant cannot toggle event modules', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1').update({
+      modules: { ledger: false },
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('participant cannot soft-delete event', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertFails(member.doc('groups/g1/events/e1').update({
+      isDeleted: true,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('event creator can remove a participant', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+      participantIds: ['owner'],
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('event creator can soft-delete event', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+      isDeleted: true,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('group creator can soft-delete an event they did not create or join', async () => {
+    await seedEvent('e2', {
+      createdBy: 'member',
+      participantIds: ['member'],
+      participantNames: { member: 'Member' },
+    });
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e2').update({
+      isDeleted: true,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('group creator can remove a participant from an event they did not create', async () => {
+    await addGroupMember('peer', 'Peer');
+    await seedEvent('e2', {
+      createdBy: 'member',
+      participantIds: ['member', 'peer'],
+      participantNames: { member: 'Member', peer: 'Peer' },
+    });
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e2').update({
+      participantIds: ['member'],
+      participantNames: { member: 'Member' },
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('random group member who is not participant or creator cannot update event', async () => {
+    await addGroupMember('peer', 'Peer');
+    const peer = testEnv.authenticatedContext('peer').firestore();
+
+    await assertFails(peer.doc('groups/g1/events/e1').update({
+      name: 'Peer Edit',
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('soft-delete cannot be undone', async () => {
+    await seedEvent('e1', {
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertFails(owner.doc('groups/g1/events/e1').update({
+      isDeleted: false,
+      deletedAt: null,
       updatedAt: new Date(),
     }));
   });
