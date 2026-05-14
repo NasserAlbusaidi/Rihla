@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/name_validators.dart';
 
 /// Card widget containing the event name field and start/end date pickers.
 ///
@@ -50,10 +51,7 @@ class EventDetailsCard extends StatelessWidget {
             decoration: const InputDecoration(
               hintText: 'e.g. Summer camping trip',
             ),
-            validator: (v) =>
-                v == null || v.trim().isEmpty
-                    ? "Event name can't be empty."
-                    : null,
+            validator: validateDisplayName,
           ),
 
           const SizedBox(height: 24),

@@ -8,6 +8,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/name_validators.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
@@ -134,9 +135,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                         controller: _nameController,
                         hintText: 'e.g. Family trip',
                         textCapitalization: TextCapitalization.words,
-                        validator: (v) => v == null || v.trim().isEmpty
-                            ? "Group name can't be empty."
-                            : null,
+                        validator: validateDisplayName,
                       ),
                       const SizedBox(height: 18),
                       _WireframeTextField(
@@ -147,9 +146,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                         helperText:
                             'You can use a different name in each group.',
                         textCapitalization: TextCapitalization.words,
-                        validator: (v) => v == null || v.trim().isEmpty
-                            ? 'Enter your name so others know who you are.'
-                            : null,
+                        validator: validateDisplayName,
                       ),
                       const SizedBox(height: 18),
                       const _ReadOnlyCurrencyField(),

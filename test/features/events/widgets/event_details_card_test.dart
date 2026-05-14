@@ -126,7 +126,7 @@ void main() {
       formKey.currentState!.validate();
       await tester.pump();
 
-      expect(find.text("Event name can't be empty."), findsOneWidget);
+      expect(find.text("Name can't be empty."), findsOneWidget);
     });
   });
 }

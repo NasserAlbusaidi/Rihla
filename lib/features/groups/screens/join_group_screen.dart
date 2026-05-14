@@ -8,6 +8,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
@@ -59,10 +60,11 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (isLoading) return;
 
     final trimmedName = _nameController.text.trim();
-    if (trimmedName.isEmpty) {
+    final nameError = validateDisplayName(_nameController.text);
+    if (nameError != null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Enter your name first.')));
+      ).showSnackBar(SnackBar(content: Text(nameError)));
       return;
     }
 
