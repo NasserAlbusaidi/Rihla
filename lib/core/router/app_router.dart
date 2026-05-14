@@ -378,7 +378,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.profile,
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: const ProfileScreen(),
+          child: const ProfileScreen(showBack: true),
           transitionsBuilder: _sharedAxisTransition,
         ),
         routes: [
