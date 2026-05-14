@@ -492,6 +492,20 @@ class LocalDatabase {
     }
   }
 
+  /// Drops the cache file and re-creates it from the current schema.
+  ///
+  /// Called on UID change (account-recovery FR-CACHE-1 / OD-3): the cache
+  /// is hydrated per-UID, so on swap we delete the file and let providers
+  /// re-fetch from Firestore. Schema-agnostic — drives `_onCreate` on the
+  /// fresh handle so it survives future migrations.
+  static Future<void> wipeAndReinitialize() async {
+    await close();
+    final databasesPath = await getDatabasesPath();
+    final path = _databasePathOverride ?? join(databasesPath, _databaseName);
+    await deleteDatabase(path);
+    await database;
+  }
+
   /// Override the database path in tests so parallel suites do not share locks.
   static Future<void> setDatabasePathForTesting(String? path) async {
     await close();
