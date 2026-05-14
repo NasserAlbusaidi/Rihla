@@ -363,6 +363,7 @@ class _InviteCodeField extends StatelessWidget {
             hintStyle: AppTypography.mono(
               fontSize: 28,
               fontWeight: FontWeight.w700,
+              // textMuted-decorative-justified: hint "ABC123" is placeholder text that disappears on input; never read as functional content.
               color: colors.textMuted,
               letterSpacing: 8,
             ),
