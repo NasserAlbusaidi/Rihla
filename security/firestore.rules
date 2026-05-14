@@ -15,6 +15,34 @@ service cloud.firestore {
       return value == null || value is string;
     }
 
+    // E1 - display-name validation.
+    //
+    // Accepts non-empty strings between 1 and 32 chars (inclusive). Rejects
+    // control characters (\x00-\x1F and \x7F) which can be used for injection
+    // or to confuse downstream rendering. Whitespace-only strings are rejected
+    // via the trimmed-length check.
+    function isValidDisplayName(s) {
+      return s is string
+        && s.size() >= 1
+        && s.size() <= 32
+        && s.trim().size() >= 1
+        && s.matches('^[^\\x00-\\x1f\\x7f]+$');
+    }
+
+    function isValidNullableDisplayName(s) {
+      return s == null || isValidDisplayName(s);
+    }
+
+    // Firestore Rules has no map-value loop. This validates every map value by
+    // joining values with a separator that is first forbidden inside each value.
+    function displayNameMapValuesAreValid(names) {
+      return names is map
+        && names.size() > 0
+        && names.values().join('').matches('^[^\\x00-\\x1f\\x7f]+$')
+        && names.values().join('\n').matches('^[^\\n]{1,32}(\\n[^\\n]{1,32})*$')
+        && names.values().join('\n').matches('^[^\\n]*[^\\n ][^\\n]*(\\n[^\\n]*[^\\n ][^\\n]*)*$');
+    }
+
     function validCurrency(value) {
       return value is string && value.size() == 3;
     }
@@ -137,8 +165,7 @@ service cloud.firestore {
             'updatedAt'
           ])
           && request.resource.data.id == groupId
-          && request.resource.data.name is string
-          && request.resource.data.name.size() > 0
+          && isValidDisplayName(request.resource.data.name)
           && request.resource.data.inviteCode is string
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.memberIds == [request.auth.uid]
@@ -152,8 +179,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['name', 'currency', 'updatedAt'])
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['name'])
-            || (request.resource.data.name is string
-              && request.resource.data.name.size() > 0))
+            || isValidDisplayName(request.resource.data.name))
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['currency'])
             || validCurrency(request.resource.data.currency))
           && request.resource.data.updatedAt is timestamp;
@@ -232,8 +258,7 @@ service cloud.firestore {
         }
 
         function validEventBase(data) {
-          return data.name is string
-            && data.name.size() > 0
+          return isValidDisplayName(data.name)
             && data.type in ['trip', 'camping', 'travel', 'night_day_out', 'custom']
             && data.groupId == groupId
             && data.createdBy is string
@@ -241,6 +266,7 @@ service cloud.firestore {
             && data.participantIds.size() > 0
             && data.participantIds.hasOnly(groupMembers())
             && data.participantNames is map
+            && displayNameMapValuesAreValid(data.participantNames)
             && validModules(data.modules)
             && (data.startDate == null || data.startDate is timestamp)
             && (data.endDate == null || data.endDate is timestamp)
@@ -510,7 +536,7 @@ service cloud.firestore {
               && request.resource.data.category is string
               && request.resource.data.eventType is string
               && request.resource.data.logText is string
-              && nullableString(request.resource.data.actorName)
+              && isValidNullableDisplayName(request.resource.data.actorName)
               && request.resource.data.metadata is map
               && request.resource.data.createdAt is string;
           }
@@ -520,13 +546,19 @@ service cloud.firestore {
           allow create: if validExpenseCreate()
             || validEventSettlementCreate()
             || validActivityCreate();
-          allow update: if validExpenseUpdate()
-            || validEventSettlementUpdate();
+          allow update: if validExpenseUpdate();
           allow delete: if false;
 
           match /{nestedCol}/{nestedDocId} {
             allow read, write: if false;
           }
+        }
+
+        match /settlements/{settlementId} {
+          // B3: settlements are append-only.
+          allow update: if false;
+          // B3: settlements are append-only.
+          allow delete: if false;
         }
       }
 
@@ -551,7 +583,7 @@ service cloud.firestore {
             ])
             && request.resource.data.id == memberId
             && request.resource.data.userId == request.auth.uid
-            && request.resource.data.displayName is string
+            && isValidDisplayName(request.resource.data.displayName)
             && request.resource.data.role in ['CREATOR', 'MEMBER']
             && (request.resource.data.role == 'MEMBER'
               || groupData(groupId).createdBy == request.auth.uid)
@@ -564,7 +596,7 @@ service cloud.firestore {
             && resource.data.userId == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['displayName'])
-            && request.resource.data.displayName is string;
+            && isValidDisplayName(request.resource.data.displayName);
         }
 
         function validMemberDelete() {
@@ -601,7 +633,7 @@ service cloud.firestore {
             && request.resource.data.id == activityId
             && request.resource.data.actorId == request.auth.uid
             && request.resource.data.type is string
-            && request.resource.data.actorName is string
+            && isValidDisplayName(request.resource.data.actorName)
             && request.resource.data.description is string
             && request.resource.data.metadata is map
             && request.resource.data.timestamp is string;
@@ -643,8 +675,8 @@ service cloud.firestore {
           && positiveInt(data.amountFils)
           && validCurrency(data.currency)
           && nullableString(data.note)
-          && nullableString(data.payerName)
-          && nullableString(data.recipientName)
+          && isValidNullableDisplayName(data.payerName)
+          && isValidNullableDisplayName(data.recipientName)
           && data.isDeleted is bool
           && (data.deletedAt == null || data.deletedAt is string)
           && data.settledAt is string;
@@ -681,7 +713,9 @@ service cloud.firestore {
 
         allow read: if isGroupMember(groupId);
         allow create: if validGroupSettlementCreate();
-        allow update: if validGroupSettlementUpdate();
+        // B3: settlements are append-only.
+        allow update: if false;
+        // B3: settlements are append-only.
         allow delete: if false;
       }
     }

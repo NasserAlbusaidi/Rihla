@@ -91,6 +91,20 @@ describe('Publish readiness Firestore rules', () => {
     };
   }
 
+  function validGroup(groupId: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id: groupId,
+      name: 'New Group',
+      inviteCode: `${groupId.toUpperCase()}123`,
+      createdBy: 'owner',
+      memberIds: ['owner'],
+      currency: 'OMR',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...overrides,
+    };
+  }
+
   async function addGroupMember(userId: string, displayName = userId): Promise<void> {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore();
@@ -232,6 +246,61 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(batch.commit());
   });
 
+  test('group create accepts valid display name boundaries', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/group-one-char').set(
+      validGroup('group-one-char', {
+        name: 'A',
+        inviteCode: 'ONE123',
+      }),
+    ));
+    await assertSucceeds(owner.doc('groups/group-thirty-two').set(
+      validGroup('group-thirty-two', {
+        name: 'A'.repeat(32),
+        inviteCode: 'THIRTY2',
+      }),
+    ));
+  });
+
+  test('group create rejects empty, overlong, and control-character names', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertFails(owner.doc('groups/group-empty').set(
+      validGroup('group-empty', {
+        name: '',
+        inviteCode: 'EMPTY0',
+      }),
+    ));
+    await assertFails(owner.doc('groups/group-thirty-three').set(
+      validGroup('group-thirty-three', {
+        name: 'A'.repeat(33),
+        inviteCode: 'THIRTY3',
+      }),
+    ));
+    await assertFails(owner.doc('groups/group-newline').set(
+      validGroup('group-newline', {
+        name: 'Line\nBreak',
+        inviteCode: 'NEWLINE',
+      }),
+    ));
+    await assertFails(owner.doc('groups/group-null-byte').set(
+      validGroup('group-null-byte', {
+        name: 'Null\x00Byte',
+        inviteCode: 'NULLBYT',
+      }),
+    ));
+  });
+
+  test('group update rejects whitespace-only display name', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertFails(owner.doc('groups/g1').update({
+      name: '   ',
+      updatedAt: new Date(),
+    }));
+  });
+
   test('invite codes cannot be read, listed, forged, or deleted by arbitrary users', async () => {
     const eve = testEnv.authenticatedContext('eve').firestore();
     await assertFails(eve.doc('inviteCodes/ABC123').get());
@@ -356,6 +425,38 @@ describe('Publish readiness Firestore rules', () => {
       description: 'Bring warm layers.',
       updatedAt: new Date(),
     }));
+  });
+
+  test('event create accepts valid participant display names', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertSucceeds(owner.doc('groups/g1/events/e-valid-name').set(
+      validEvent({
+        name: 'A',
+        createdBy: 'owner',
+        participantIds: ['owner'],
+        participantNames: { owner: 'Owner' },
+      }),
+    ));
+  });
+
+  test('event create rejects invalid participant display names', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+
+    await assertFails(owner.doc('groups/g1/events/e-overlong-name').set(
+      validEvent({
+        createdBy: 'owner',
+        participantIds: ['owner', 'member'],
+        participantNames: { owner: 'Owner', member: 'A'.repeat(33) },
+      }),
+    ));
+    await assertFails(owner.doc('groups/g1/events/e-control-name').set(
+      validEvent({
+        createdBy: 'owner',
+        participantIds: ['owner', 'member'],
+        participantNames: { owner: 'Owner', member: 'Bad\nName' },
+      }),
+    ));
   });
 
   test('participant can shift event dates', async () => {
@@ -614,11 +715,22 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
-  test('event settlement creator can update own record', async () => {
+  test('new settlement creates with createdBy stamps still succeed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setB3').set(
+      validSettlement({ id: 'setB3', createdBy: 'member' }),
+    ));
+    await assertSucceeds(member.doc('groups/g1/settlements/gsetB3').set(
+      validGroupSettlement({ id: 'gsetB3', createdBy: 'member' }),
+    ));
+  });
+
+  test('event settlement creator cannot update own record', async () => {
     await seedEventSettlement();
     const owner = testEnv.authenticatedContext('owner').firestore();
 
-    await assertSucceeds(owner.doc('groups/g1/events/e1/settlements/set1').update({
+    await assertFails(owner.doc('groups/g1/events/e1/settlements/set1').update({
       note: 'Settled after dinner',
     }));
   });
@@ -650,21 +762,18 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
-  test('event settlement creator can soft-delete own record', async () => {
+  test('event settlement creator cannot delete own record', async () => {
     await seedEventSettlement();
     const owner = testEnv.authenticatedContext('owner').firestore();
 
-    await assertSucceeds(owner.doc('groups/g1/events/e1/settlements/set1').update({
-      isDeleted: true,
-      deletedAt: new Date().toISOString(),
-    }));
+    await assertFails(owner.doc('groups/g1/events/e1/settlements/set1').delete());
   });
 
-  test('group settlement creator can update own record', async () => {
+  test('group settlement creator cannot update own record', async () => {
     await seedGroupSettlement();
     const owner = testEnv.authenticatedContext('owner').firestore();
 
-    await assertSucceeds(owner.doc('groups/g1/settlements/gset1').update({
+    await assertFails(owner.doc('groups/g1/settlements/gset1').update({
       note: 'Settled at group level',
     }));
   });
@@ -705,13 +814,10 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('group settlement creator can soft-delete own record', async () => {
+  test('group settlement creator cannot delete own record', async () => {
     await seedGroupSettlement();
     const owner = testEnv.authenticatedContext('owner').firestore();
 
-    await assertSucceeds(owner.doc('groups/g1/settlements/gset1').update({
-      isDeleted: true,
-      deletedAt: new Date().toISOString(),
-    }));
+    await assertFails(owner.doc('groups/g1/settlements/gset1').delete());
   });
 });
