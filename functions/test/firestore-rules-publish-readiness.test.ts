@@ -171,15 +171,26 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(batch.commit());
   });
 
-  test('invite codes can be resolved but not listed, forged, or deleted by arbitrary users', async () => {
+  test('invite codes cannot be read, listed, forged, or deleted by arbitrary users', async () => {
     const eve = testEnv.authenticatedContext('eve').firestore();
-    await assertSucceeds(eve.doc('inviteCodes/ABC123').get());
+    await assertFails(eve.doc('inviteCodes/ABC123').get());
     await assertFails(eve.collection('inviteCodes').get());
     await assertFails(eve.doc('inviteCodes/HACK99').set({
       groupId: 'g1',
       createdAt: new Date(),
     }));
     await assertFails(eve.doc('inviteCodes/ABC123').delete());
+  });
+
+  test('join attempt counters are not readable or writable by clients', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('joinAttempts/owner').get());
+    await assertFails(owner.collection('joinAttempts').get());
+    await assertFails(owner.doc('joinAttempts/owner').set({
+      failCount: 1,
+      firstFailAt: new Date(),
+      lockedUntil: null,
+    }));
   });
 
   test('creator can atomically delete group, member docs, and invite code', async () => {
@@ -220,16 +231,15 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('non-member can join by resolving invite code and adding only themself', async () => {
+  test('non-member cannot self-join through direct Firestore writes', async () => {
     const eve = testEnv.authenticatedContext('eve').firestore();
-    const inviteSnap = await assertSucceeds(eve.doc('inviteCodes/ABC123').get());
-    expect(inviteSnap.data()?.groupId).toBe('g1');
+    await assertFails(eve.doc('inviteCodes/ABC123').get());
 
-    await assertSucceeds(eve.doc('groups/g1').update({
+    await assertFails(eve.doc('groups/g1').update({
       memberIds: ['owner', 'member', 'eve'],
       updatedAt: new Date(),
     }));
-    await assertSucceeds(eve.doc('groups/g1/members/eve').set({
+    await assertFails(eve.doc('groups/g1/members/eve').set({
       id: 'eve',
       userId: 'eve',
       displayName: 'Eve',
@@ -285,6 +295,33 @@ describe('Publish readiness Firestore rules', () => {
     ));
     await assertFails(member.doc('groups/g1/events/e1/expenses/exp3').set(
       validExpense({ id: 'exp3', payerParticipantId: 'eve' }),
+    ));
+  });
+
+  test('expenses allow valid custom splits and reject unknown split modes', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expCustom').set(
+      validExpense({
+        id: 'expCustom',
+        splitMode: 'exact',
+        splitDistribution: { owner: 1234 },
+      }),
+    ));
+
+    const ref = member.doc('groups/g1/events/e1/expenses/exp1');
+    await assertSucceeds(ref.set(validExpense()));
+    await assertSucceeds(ref.update({
+      splitMode: 'percent',
+      splitDistribution: { owner: 50, member: 50 },
+    }));
+
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expInvalid').set(
+      validExpense({
+        id: 'expInvalid',
+        splitMode: 'totally_made_up',
+        splitDistribution: { owner: 1234 },
+      }),
     ));
   });
 

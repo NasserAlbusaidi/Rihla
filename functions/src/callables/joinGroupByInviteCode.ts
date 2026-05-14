@@ -1,4 +1,10 @@
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import {
+  getFirestore,
+  FieldValue,
+  Firestore,
+  Timestamp,
+  Transaction,
+} from 'firebase-admin/firestore';
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import '../admin';
@@ -11,6 +17,10 @@ export interface JoinGroupByInviteCodeInput {
 export interface JoinGroupByInviteCodeOutput {
   groupId: string;
 }
+
+const JOIN_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
+const JOIN_ATTEMPT_LOCK_MS = 60 * 60 * 1000;
+const JOIN_ATTEMPT_LIMIT = 5;
 
 function normalizeInviteCode(inviteCode: unknown): string {
   if (typeof inviteCode !== 'string') {
@@ -29,6 +39,79 @@ function normalizeDisplayName(displayName: unknown): string {
   return trimmed.length > 0 ? trimmed.substring(0, 80) : 'Anonymous';
 }
 
+function isTimestamp(value: unknown): value is Timestamp {
+  return value instanceof Timestamp;
+}
+
+function isLookupFailure(error: unknown): boolean {
+  const code = (error as { code?: unknown }).code;
+  return code === 'not-found' || code === 'failed-precondition';
+}
+
+function tooManyAttemptsError(): HttpsError {
+  return new HttpsError('resource-exhausted', 'Too many attempts. Try again later.');
+}
+
+async function assertJoinNotLocked(db: Firestore, uid: string): Promise<void> {
+  const attemptRef = db.doc(`joinAttempts/${uid}`);
+
+  await db.runTransaction(async (tx) => {
+    const attemptSnap = await tx.get(attemptRef);
+    const lockedUntil = attemptSnap.get('lockedUntil');
+    if (
+      isTimestamp(lockedUntil)
+      && lockedUntil.toMillis() > Timestamp.now().toMillis()
+    ) {
+      throw tooManyAttemptsError();
+    }
+  });
+}
+
+async function recordFailedJoinAttempt(db: Firestore, uid: string): Promise<boolean> {
+  const attemptRef = db.doc(`joinAttempts/${uid}`);
+
+  return db.runTransaction(async (tx: Transaction) => {
+    const now = Timestamp.now();
+    const attemptSnap = await tx.get(attemptRef);
+    const data = attemptSnap.data() ?? {};
+    const firstFailAt = data.firstFailAt;
+    const insideWindow =
+      isTimestamp(firstFailAt)
+      && now.toMillis() - firstFailAt.toMillis() < JOIN_ATTEMPT_WINDOW_MS;
+    const currentFailCount =
+      insideWindow && typeof data.failCount === 'number' ? data.failCount : 0;
+    const effectiveFirstFailAt = insideWindow ? firstFailAt : now;
+
+    if (currentFailCount >= JOIN_ATTEMPT_LIMIT) {
+      tx.set(
+        attemptRef,
+        {
+          failCount: currentFailCount,
+          firstFailAt: effectiveFirstFailAt,
+          lockedUntil: Timestamp.fromMillis(now.toMillis() + JOIN_ATTEMPT_LOCK_MS),
+        },
+        { merge: true },
+      );
+      return true;
+    }
+
+    const nextFailCount = currentFailCount + 1;
+    tx.set(
+      attemptRef,
+      {
+        failCount: nextFailCount,
+        firstFailAt: effectiveFirstFailAt,
+        lockedUntil:
+          nextFailCount >= JOIN_ATTEMPT_LIMIT
+            ? Timestamp.fromMillis(now.toMillis() + JOIN_ATTEMPT_LOCK_MS)
+            : null,
+      },
+      { merge: true },
+    );
+    return false;
+  });
+}
+
 export const joinGroupByInviteCode = onCall<
   JoinGroupByInviteCodeInput,
   Promise<JoinGroupByInviteCodeOutput>
@@ -43,54 +126,69 @@ export const joinGroupByInviteCode = onCall<
   const db = getFirestore();
   const inviteRef = db.doc(`inviteCodes/${inviteCode}`);
 
-  const groupId = await db.runTransaction(async (tx) => {
-    const inviteSnap = await tx.get(inviteRef);
-    if (!inviteSnap.exists) {
-      throw new HttpsError('not-found', 'Invalid invite code.');
-    }
+  // TODO: enforce App Check tokens (request.app != null) before public launch — requires Firebase Console enrolment.
+  await assertJoinNotLocked(db, uid);
 
-    const inviteData = inviteSnap.data() ?? {};
-    const resolvedGroupId = inviteData.groupId;
-    if (typeof resolvedGroupId !== 'string' || resolvedGroupId.length === 0) {
-      throw new HttpsError('failed-precondition', 'Invite code is malformed.');
-    }
+  let groupId: string;
+  try {
+    groupId = await db.runTransaction(async (tx) => {
+      const inviteSnap = await tx.get(inviteRef);
+      if (!inviteSnap.exists) {
+        throw new HttpsError('not-found', 'Invalid invite code.');
+      }
 
-    const groupRef = db.doc(`groups/${resolvedGroupId}`);
-    const memberRef = groupRef.collection('members').doc(uid);
-    const [groupSnap, memberSnap] = await Promise.all([
-      tx.get(groupRef),
-      tx.get(memberRef),
-    ]);
+      const inviteData = inviteSnap.data() ?? {};
+      const resolvedGroupId = inviteData.groupId;
+      if (typeof resolvedGroupId !== 'string' || resolvedGroupId.length === 0) {
+        throw new HttpsError('failed-precondition', 'Invite code is malformed.');
+      }
 
-    if (!groupSnap.exists) {
-      throw new HttpsError('not-found', 'Group not found.');
-    }
+      const groupRef = db.doc(`groups/${resolvedGroupId}`);
+      const memberRef = groupRef.collection('members').doc(uid);
+      const [groupSnap, memberSnap] = await Promise.all([
+        tx.get(groupRef),
+        tx.get(memberRef),
+      ]);
 
-    const groupData = groupSnap.data() ?? {};
-    const memberIds = (groupData.memberIds ?? []) as string[];
-    if (memberIds.includes(uid)) {
-      return resolvedGroupId;
-    }
+      if (!groupSnap.exists) {
+        throw new HttpsError('not-found', 'Group not found.');
+      }
 
-    tx.update(groupRef, {
-      memberIds: FieldValue.arrayUnion(uid),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+      const groupData = groupSnap.data() ?? {};
+      const memberIds = (groupData.memberIds ?? []) as string[];
+      if (memberIds.includes(uid)) {
+        return resolvedGroupId;
+      }
 
-    if (!memberSnap.exists) {
-      tx.set(memberRef, {
-        id: uid,
-        userId: uid,
-        displayName,
-        role: 'MEMBER',
-        joinedAt: FieldValue.serverTimestamp(),
-        isShadow: false,
+      tx.update(groupRef, {
+        memberIds: FieldValue.arrayUnion(uid),
+        updatedAt: FieldValue.serverTimestamp(),
       });
+
+      if (!memberSnap.exists) {
+        tx.set(memberRef, {
+          id: uid,
+          userId: uid,
+          displayName,
+          role: 'MEMBER',
+          joinedAt: FieldValue.serverTimestamp(),
+          isShadow: false,
+        });
+      }
+
+      return resolvedGroupId;
+    });
+  } catch (error) {
+    if (isLookupFailure(error)) {
+      const throttled = await recordFailedJoinAttempt(db, uid);
+      if (throttled) {
+        throw tooManyAttemptsError();
+      }
     }
+    throw error;
+  }
 
-    return resolvedGroupId;
-  });
-
-  logger.info('group-join succeeded', { uid, groupId, inviteCode });
+  await db.doc(`joinAttempts/${uid}`).delete();
+  logger.info('group-join succeeded', { uid, groupId });
   return { groupId };
 });

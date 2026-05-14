@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,15 +30,23 @@ final groupErrorProvider = StateProvider<String?>((ref) => null);
 /// Service for group CRUD operations against Firestore.
 ///
 /// Extends [FirestoreRepository] so all Firestore access flows through the
-/// base class `db` getter (MIG-05). Uses WriteBatch for atomic multi-document
-/// writes (createGroup writes 3 docs; joinGroup writes 2 docs atomically
-/// per research Pattern 1 & 2).
+/// base class `db` getter (MIG-05). Uses WriteBatch for createGroup's
+/// multi-document writes; joinGroup routes membership mutation through the
+/// joinGroupByInviteCode callable.
 class GroupService extends FirestoreRepository {
   final Ref _ref;
   final String? _currentUserIdOverride;
+  final Future<String> Function({
+    required String inviteCode,
+    required String displayName,
+  })?
+  _joinGroupCallableOverride;
 
   /// Production constructor — uses [FirebaseConfig.firestore] via base class.
-  GroupService(this._ref) : _currentUserIdOverride = null, super();
+  GroupService(this._ref)
+    : _currentUserIdOverride = null,
+      _joinGroupCallableOverride = null,
+      super();
 
   /// Test constructor — injects a [FakeFirebaseFirestore] for unit testing.
   @visibleForTesting
@@ -45,7 +54,13 @@ class GroupService extends FirestoreRepository {
     this._ref,
     FirebaseFirestore firestoreDb, {
     String? currentUserId,
+    Future<String> Function({
+      required String inviteCode,
+      required String displayName,
+    })?
+    joinGroupCallableOverride,
   }) : _currentUserIdOverride = currentUserId,
+       _joinGroupCallableOverride = joinGroupCallableOverride,
        super.withFirestore(firestoreDb);
 
   String? get _currentUid =>
@@ -154,23 +169,18 @@ class GroupService extends FirestoreRepository {
 
   /// Join an existing group via its invite code.
   ///
-  /// Writes through Firestore directly so joining works on Firebase projects
-  /// without Cloud Functions billing enabled:
-  /// 1. Resolve inviteCodes/{inviteCode}
-  /// 2. Add the current UID to groups/{groupId}.memberIds
-  /// 3. Create the joiner's member document if it is missing
+  /// Group joins are callable-first: the client sends the normalized invite
+  /// code and display name to `joinGroupByInviteCode`, and the callable performs
+  /// the privileged invite lookup plus `memberIds`/member document writes. The
+  /// client never reads `inviteCodes/{code}` and never writes itself into
+  /// `groups/{groupId}.memberIds`.
   ///
-  /// Throws [Exception('Invalid invite code')] if the code doesn't exist.
-  /// If the user is already a member, retrying join returns the group and
-  /// repairs a missing member document if needed.
+  /// After the callable returns the group ID, the client reads the group
+  /// document to preserve this method's [Future<Group>] contract. A single
+  /// short retry covers the edge where Firestore rules have not yet observed
+  /// the callable's membership write.
   ///
-  /// NOTE on atomicity: The memberIds update and member doc creation are
-  /// intentionally separate writes. Security rules require the user to be in
-  /// `memberIds` before allowing member subcollection writes. If member doc
-  /// creation fails after the memberIds update succeeds, retrying join repairs
-  /// the missing member document.
-  ///
-  /// The invite code is uppercased before the Firestore lookup (D-13).
+  /// The invite code is uppercased before the callable invocation (D-13).
   Future<Group> joinGroup({required String inviteCode}) async {
     final uid = _currentUid;
     if (uid == null) {
@@ -184,47 +194,69 @@ class GroupService extends FirestoreRepository {
       throw Exception('Invalid invite code');
     }
 
-    final inviteDoc = await db
-        .collection('inviteCodes')
-        .doc(normalizedCode)
-        .get();
-    if (!inviteDoc.exists) {
-      throw Exception('Invalid invite code');
+    final groupId = await _callJoinGroupByInviteCode(
+      inviteCode: normalizedCode,
+      displayName: displayName,
+    );
+    final groupDoc = await _readJoinedGroupWithRetry(
+      db.collection('groups').doc(groupId),
+    );
+    return Group.fromDoc(groupDoc);
+  }
+
+  Future<String> _callJoinGroupByInviteCode({
+    required String inviteCode,
+    required String displayName,
+  }) async {
+    try {
+      final override = _joinGroupCallableOverride;
+      if (override != null) {
+        return await override(inviteCode: inviteCode, displayName: displayName);
+      }
+
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('joinGroupByInviteCode')
+          .call({'inviteCode': inviteCode, 'displayName': displayName});
+      return result.data['groupId'] as String;
+    } on FirebaseFunctionsException catch (error) {
+      throw Exception(_joinGroupErrorMessage(error.code));
+    }
+  }
+
+  String _joinGroupErrorMessage(String code) {
+    return switch (code) {
+      'unauthenticated' => 'Please sign in and try again.',
+      'invalid-argument' => 'Invalid invite code.',
+      'not-found' => 'Invalid invite code.',
+      'resource-exhausted' => 'Too many attempts. Try again later.',
+      _ => 'Could not join group. Try again.',
+    };
+  }
+
+  Future<DocumentSnapshot> _readJoinedGroupWithRetry(
+    DocumentReference groupRef,
+  ) async {
+    Future<DocumentSnapshot?> tryRead() async {
+      try {
+        final snapshot = await groupRef.get();
+        return snapshot.exists ? snapshot : null;
+      } on FirebaseException catch (error) {
+        if (error.code == 'permission-denied') {
+          return null;
+        }
+        rethrow;
+      }
     }
 
-    final inviteData = inviteDoc.data();
-    final groupId = inviteData?['groupId'];
-    if (groupId is! String || groupId.isEmpty) {
-      throw Exception('Invalid invite code');
+    var snapshot = await tryRead();
+    if (snapshot == null) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      snapshot = await tryRead();
     }
-
-    final groupRef = db.collection('groups').doc(groupId);
-    await groupRef.update({
-      'memberIds': FieldValue.arrayUnion([uid]),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    final existingMember = await groupRef
-        .collection('members')
-        .where('userId', isEqualTo: uid)
-        .limit(1)
-        .get();
-    if (existingMember.docs.isEmpty) {
-      await groupRef.collection('members').doc(uid).set({
-        'id': uid,
-        'userId': uid,
-        'displayName': displayName,
-        'role': 'MEMBER',
-        'joinedAt': FieldValue.serverTimestamp(),
-        'isShadow': false,
-      });
+    if (snapshot == null) {
+      throw Exception('Could not join group. Try again.');
     }
-
-    final updatedDoc = await db.collection('groups').doc(groupId).get();
-    if (!updatedDoc.exists) {
-      throw Exception('Invalid invite code');
-    }
-    return Group.fromDoc(updatedDoc);
+    return snapshot;
   }
 
   /// Update group metadata (name and/or currency).

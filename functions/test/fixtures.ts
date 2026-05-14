@@ -43,54 +43,8 @@ export async function clearFirestore(): Promise<void> {
   for (const code of inviteCodes) {
     await code.delete();
   }
-}
-
-export interface DocSeed {
-  id: string;
-  fileName: string;
-  mimeType: string;
-  storagePath: string;
-  sizeBytes: number;
-  isDeleted?: boolean;
-}
-
-export interface MemorySeed {
-  id: string;
-  storagePath: string;
-}
-
-export async function seedDocuments(
-  groupId: string,
-  eventId: string,
-  docs: DocSeed[],
-): Promise<void> {
-  const db = getFirestore();
-  for (const d of docs) {
-    await db.doc(`groups/${groupId}/events/${eventId}/documents/${d.id}`).set({
-      id: d.id,
-      fileName: d.fileName,
-      mimeType: d.mimeType,
-      storagePath: d.storagePath,
-      sizeBytes: d.sizeBytes,
-      uploadedBy: 'alice',
-      uploadedAt: new Date(),
-      isDeleted: d.isDeleted ?? false,
-    });
-  }
-}
-
-export async function seedMemories(
-  groupId: string,
-  eventId: string,
-  mems: MemorySeed[],
-): Promise<void> {
-  const db = getFirestore();
-  for (const m of mems) {
-    await db.doc(`groups/${groupId}/events/${eventId}/memories/${m.id}`).set({
-      id: m.id,
-      storagePath: m.storagePath,
-      uploadedBy: 'alice',
-      createdAt: new Date(),
-    });
+  const joinAttempts = await db.collection('joinAttempts').listDocuments();
+  for (const attempt of joinAttempts) {
+    await attempt.delete();
   }
 }

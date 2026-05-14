@@ -76,3 +76,4 @@ analyze_output*.txt
 .playwright-mcp/
 .paperclip/logs/
 .planning/
+audit-reports/

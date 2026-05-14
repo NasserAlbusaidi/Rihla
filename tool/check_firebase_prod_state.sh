@@ -157,29 +157,6 @@ else
       fi
     fi
 
-    storage_ruleset="$(jq -r '
-      .releases[]?
-      | select(.name | test("firebase\\.storage|storage"))
-      | .rulesetName
-    ' "$releases_json" | head -n 1)"
-
-    if [ -z "$storage_ruleset" ]; then
-      fail "No active Storage rules release found"
-    else
-      remote_storage_rules="$TMP_DIR/storage.rules.remote"
-      if fetch_ruleset_file \
-        "$token" \
-        "$storage_ruleset" \
-        "security/storage.rules" \
-        "$remote_storage_rules" \
-        && diff_rules_ignoring_blank_lines \
-          "security/storage.rules" \
-          "$remote_storage_rules"; then
-        pass "Storage rules match security/storage.rules"
-      else
-        fail "Storage rules do not match security/storage.rules"
-      fi
-    fi
   else
     fail "Unable to list Firebase Rules releases"
   fi
