@@ -11,6 +11,7 @@ import '../../../core/config/app_links.dart';
 import '../../../core/config/app_metadata.dart';
 import '../../../core/models/split_mode.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -18,7 +19,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
-import '../../auth/widgets/debug_email_link_tile.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
 import '../widgets/currency_picker_sheet.dart';
@@ -82,14 +83,19 @@ class ProfileScreen extends ConsumerWidget {
                       duration: 400.ms,
                     ),
                     const SizedBox(height: 18),
-                    const _SectionLabel(label: 'About'),
+                    const _SectionLabel(label: 'Account'),
                     const SizedBox(height: 8),
-                    const _AboutCard().animate().fadeIn(
-                      delay: 340.ms,
+                    const _AccountCard().animate().fadeIn(
+                      delay: 320.ms,
                       duration: 400.ms,
                     ),
                     const SizedBox(height: 18),
-                    const DebugEmailLinkTile(),
+                    const _SectionLabel(label: 'About'),
+                    const SizedBox(height: 8),
+                    const _AboutCard().animate().fadeIn(
+                      delay: 380.ms,
+                      duration: 400.ms,
+                    ),
                     const SizedBox(height: 18),
                     const _VersionStamp(),
                   ],
@@ -629,6 +635,63 @@ class _AboutCard extends ConsumerWidget {
               context,
               'Anonymous sessions persist across launches',
             ),
+            divider: false,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────── Account (Linked email)
+
+class _AccountCard extends ConsumerWidget {
+  const _AccountCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final linkedEmail = ref.watch(linkedEmailProvider);
+    final isLinked = linkedEmail != null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: _RowsCard(
+        rows: [
+          _PrefRow(
+            tileKey: ProfileKeys.linkedEmailTile,
+            leading: _PrefIcon(icon: Iconsax.sms, bg: colors.cardSoft),
+            label: 'Linked email',
+            trailing: isLinked
+                ? Text(
+                    linkedEmail,
+                    style: AppTypography.sans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Not set',
+                        style: AppTypography.sans(
+                          fontSize: 13,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Iconsax.arrow_right_3,
+                        size: 16,
+                        color: colors.textSecondary,
+                      ),
+                    ],
+                  ),
+            onTap: isLinked
+                ? null
+                : () => context.push(AppRoutes.linkEmail),
             divider: false,
           ),
         ],

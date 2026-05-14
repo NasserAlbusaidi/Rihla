@@ -22,6 +22,8 @@ import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
 import '../../features/activity/screens/activity_feed_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
+import '../../features/auth/screens/link_email_screen.dart';
+import '../../features/auth/screens/link_email_sent_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
 import '../providers/settings_provider.dart';
 import '../screens/splash_screen.dart';
@@ -32,6 +34,9 @@ class AppRoutes {
   static const String onboarding = '/onboarding';
   static const String home = '/home';
   static const String profile = '/profile';
+  // Account recovery (P3)
+  static const String linkEmail = '/profile/link-email';
+  static const String linkEmailSent = '/profile/link-email/sent';
   // Groups routes (Phase 2)
   static const String createGroup = '/create-group';
   static const String joinGroup = '/join-group';
@@ -372,6 +377,32 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const ProfileScreen(),
           transitionsBuilder: _sharedAxisTransition,
         ),
+        routes: [
+          // Account recovery — link flow (P3)
+          GoRoute(
+            path: 'link-email',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const LinkEmailScreen(),
+              transitionsBuilder: _sharedAxisTransition,
+            ),
+            routes: [
+              GoRoute(
+                path: 'sent',
+                pageBuilder: (context, state) {
+                  final email = state.extra is String
+                      ? state.extra as String
+                      : '';
+                  return CustomTransitionPage(
+                    key: state.pageKey,
+                    child: LinkEmailSentScreen(email: email),
+                    transitionsBuilder: _sharedAxisTransition,
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
       ),
 
       // Cross-group activity (Phase 23)
