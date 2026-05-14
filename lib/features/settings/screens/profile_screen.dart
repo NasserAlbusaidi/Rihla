@@ -20,6 +20,8 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/services/data_deletion_service.dart';
+import '../../auth/widgets/delete_account_dialog.dart';
 import '../../auth/widgets/sign_out_confirm_dialog.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
@@ -649,6 +651,22 @@ class _AboutCard extends ConsumerWidget {
 class _AccountCard extends ConsumerWidget {
   const _AccountCard();
 
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await DeleteAccountDialog.show(context);
+    if (confirmed != true) return;
+    final result =
+        await ref.read(dataDeletionServiceProvider).deleteAccount();
+    final message = switch (result) {
+      DeletionResult.ok => 'Account deleted.',
+      DeletionResult.requiresRecentLogin =>
+        'Sign out and back in via your linked email, then try again.',
+      DeletionResult.noUser => 'No active account to delete.',
+      DeletionResult.error => "Couldn't delete the account. Try again.",
+    };
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _signOut(
     BuildContext context,
     WidgetRef ref,
@@ -725,8 +743,23 @@ class _AccountCard extends ConsumerWidget {
                 color: colors.error,
               ),
               onTap: () => _signOut(context, ref, linkedEmail),
-              divider: false,
+              divider: true,
             ),
+          _PrefRow(
+            tileKey: ProfileKeys.deleteAccountTile,
+            leading: _PrefIcon(icon: Iconsax.trash, bg: colors.cardSoft),
+            label: 'Delete account',
+            trailing: Text(
+              'Permanent',
+              style: AppTypography.sans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: colors.error,
+              ),
+            ),
+            onTap: () => _deleteAccount(context, ref),
+            divider: false,
+          ),
         ],
       ),
     );

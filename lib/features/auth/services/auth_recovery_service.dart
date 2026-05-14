@@ -93,7 +93,7 @@ class AuthRecoveryService {
       email: email.trim(),
       actionCodeSettings: AuthEmailLinkConfig.actionCodeSettings(),
     );
-    FirebaseConfig.log('Recovery: link email send queued for ${email.trim()}');
+    FirebaseConfig.log('Recovery: link email send queued (email redacted)');
   }
 
   /// Send a recovery sign-in link for a device that's never been linked.
@@ -108,7 +108,7 @@ class AuthRecoveryService {
       email: email.trim(),
       actionCodeSettings: AuthEmailLinkConfig.actionCodeSettings(),
     );
-    FirebaseConfig.log('Recovery: recovery link send queued for ${email.trim()}');
+    FirebaseConfig.log('Recovery: recovery link send queued (email redacted)');
   }
 
   /// Attach the email-link credential to the current Firebase user.
