@@ -24,6 +24,8 @@ import '../../features/activity/screens/activity_feed_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/auth/screens/link_email_screen.dart';
 import '../../features/auth/screens/link_email_sent_screen.dart';
+import '../../features/auth/screens/recover_pending_screen.dart';
+import '../../features/auth/screens/recover_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
 import '../providers/settings_provider.dart';
 import '../screens/splash_screen.dart';
@@ -34,9 +36,11 @@ class AppRoutes {
   static const String onboarding = '/onboarding';
   static const String home = '/home';
   static const String profile = '/profile';
-  // Account recovery (P3)
+  // Account recovery (P3 + P4)
   static const String linkEmail = '/profile/link-email';
   static const String linkEmailSent = '/profile/link-email/sent';
+  static const String recover = '/recover';
+  static const String recoverPending = '/recover/pending';
   // Groups routes (Phase 2)
   static const String createGroup = '/create-group';
   static const String joinGroup = '/join-group';
@@ -413,6 +417,29 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const CrossGroupActivityScreen(),
           transitionsBuilder: _sharedAxisTransition,
         ),
+      ),
+
+      // Account recovery — restore flow (P4)
+      GoRoute(
+        path: AppRoutes.recover,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const RecoverScreen(),
+          transitionsBuilder: _sharedAxisTransition,
+        ),
+        routes: [
+          GoRoute(
+            path: 'pending',
+            pageBuilder: (context, state) {
+              final email = state.extra is String ? state.extra as String : '';
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: RecoverPendingScreen(email: email),
+                transitionsBuilder: _sharedAxisTransition,
+              );
+            },
+          ),
+        ],
       ),
     ],
 

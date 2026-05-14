@@ -26,7 +26,7 @@ GoRouter _buildRouter() {
     routes: [
       GoRoute(
         path: '/profile/link-email',
-        builder: (_, __) => const LinkEmailScreen(),
+        builder: (_, _) => const LinkEmailScreen(),
         routes: [
           GoRoute(
             path: 'sent',
