@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../services/auth_email_link_config.dart';
+import '../services/auth_recovery_service.dart';
 import 'auth_provider.dart';
 
 final appLinksProvider = Provider<AppLinks>((ref) => AppLinks());
@@ -48,19 +49,29 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         return;
       }
 
+      // P4: dispatch by the in-flight operation flag set when the send
+      // request was made. 'link' attaches the email to the current anon
+      // UID; 'recover' swaps to the previously-linked UID. Default to
+      // 'link' when nothing is set so legacy / pre-P4 flows still work.
+      final op = service.readInFlightOp() ?? AuthRecoveryService.opLink;
       try {
-        await service.completeEmailLink(link);
+        if (op == AuthRecoveryService.opRecover) {
+          await service.completeRecovery(link);
+          FirebaseConfig.log('Recovery: completeRecovery succeeded');
+        } else {
+          await service.completeEmailLink(link);
+          FirebaseConfig.log('Recovery: completeEmailLink succeeded');
+        }
         ref.read(pendingEmailLinkProvider.notifier).state = null;
-        FirebaseConfig.log('Recovery: email link completed successfully');
       } on FirebaseAuthException catch (error, stack) {
         FirebaseConfig.log(
-          'Recovery: linkWithCredential failed (${error.code})',
+          'Recovery: $op completion failed (${error.code})',
           error: error,
           stackTrace: stack,
         );
       } catch (error, stack) {
         FirebaseConfig.log(
-          'Recovery: link completion failed',
+          'Recovery: $op completion failed',
           error: error,
           stackTrace: stack,
         );

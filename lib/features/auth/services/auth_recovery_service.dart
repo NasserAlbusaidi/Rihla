@@ -37,6 +37,15 @@ class AuthRecoveryService {
   final Future<void> Function() _anonymousSessionFactory;
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
+  static const _inFlightOpKey = 'auth.inFlightOp';
+
+  /// In-flight email-link operation kind. `'link'` attaches to the current
+  /// anon UID via [User.linkWithCredential]; `'recover'` swaps to the
+  /// previously-linked UID via [FirebaseAuth.signInWithEmailLink]. Tracked
+  /// so the deep-link bootstrap can dispatch correctly when the user taps
+  /// the email link.
+  static const String opLink = 'link';
+  static const String opRecover = 'recover';
 
   String? readPendingEmail() {
     final value = _prefs.getString(_pendingEmailKey);
@@ -56,6 +65,21 @@ class AuthRecoveryService {
     await _prefs.remove(_pendingEmailKey);
   }
 
+  String? readInFlightOp() {
+    final value = _prefs.getString(_inFlightOpKey);
+    if (value == opLink || value == opRecover) return value;
+    return null;
+  }
+
+  Future<void> _setInFlightOp(String op) async {
+    assert(op == opLink || op == opRecover);
+    await _prefs.setString(_inFlightOpKey, op);
+  }
+
+  Future<void> clearInFlightOp() async {
+    await _prefs.remove(_inFlightOpKey);
+  }
+
   /// Send a sign-in link to attach [email] to the current anonymous user.
   ///
   /// Persists [email] to SharedPreferences so the bootstrap listener can
@@ -64,11 +88,12 @@ class AuthRecoveryService {
   /// settings from [AuthEmailLinkConfig].
   Future<void> linkEmailToCurrentUser(String email) async {
     await setPendingEmail(email);
+    await _setInFlightOp(opLink);
     await _auth.sendSignInLinkToEmail(
       email: email.trim(),
       actionCodeSettings: AuthEmailLinkConfig.actionCodeSettings(),
     );
-    FirebaseConfig.log('Recovery: link email send queued for ${email.trim()}');
+    FirebaseConfig.log('Recovery: link email send queued (email redacted)');
   }
 
   /// Send a recovery sign-in link for a device that's never been linked.
@@ -78,11 +103,12 @@ class AuthRecoveryService {
   /// `inFlightOp` flag in later phases (spec §4 / plan §P4).
   Future<void> sendRecoveryLink(String email) async {
     await setPendingEmail(email);
+    await _setInFlightOp(opRecover);
     await _auth.sendSignInLinkToEmail(
       email: email.trim(),
       actionCodeSettings: AuthEmailLinkConfig.actionCodeSettings(),
     );
-    FirebaseConfig.log('Recovery: recovery link send queued for ${email.trim()}');
+    FirebaseConfig.log('Recovery: recovery link send queued (email redacted)');
   }
 
   /// Attach the email-link credential to the current Firebase user.
@@ -112,6 +138,7 @@ class AuthRecoveryService {
     );
     final result = await user.linkWithCredential(credential);
     await clearPendingEmail();
+    await clearInFlightOp();
     FirebaseConfig.log(
       'Recovery: linked email to uid ${result.user?.uid}',
     );
@@ -139,6 +166,7 @@ class AuthRecoveryService {
       emailLink: emailLink,
     );
     await clearPendingEmail();
+    await clearInFlightOp();
     FirebaseConfig.log(
       'Recovery: recovered uid ${result.user?.uid}',
     );

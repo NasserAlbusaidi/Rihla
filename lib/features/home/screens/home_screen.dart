@@ -266,6 +266,19 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   label: const Text('Join Group'),
                 ),
               ),
+              SizedBox(height: context.spacing.space20),
+              TextButton(
+                key: const Key('home_empty_recover_cta'),
+                onPressed: () => context.push('/recover'),
+                child: Text(
+                  'I had Rihla before — restore',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: context.colors.textSecondary,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

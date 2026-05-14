@@ -23,4 +23,13 @@ abstract final class ProfileKeys {
 
   // T3.K — profile QR sheet
   static const qrCard = Key('profile_qr_card');
+
+  // P3 — account recovery (linked email)
+  static const linkedEmailTile = Key('profile_linked_email_tile');
+
+  // P5 — sign out of this device (linked users only)
+  static const signOutDeviceTile = Key('profile_sign_out_device_tile');
+
+  // P6 — in-app account deletion (always visible)
+  static const deleteAccountTile = Key('profile_delete_account_tile');
 }
