@@ -42,21 +42,21 @@ Review each item and decide: implement it, simplify it, or remove the wireframe 
 
 ### 3. Profile — email + handle + QR profile card
 **Wireframe:** Profile card shows email address (`sam@example.com`), an `@handle` chip, and a QR code that deeplinks to the user's profile.  
-**Backend:** App uses anonymous Supabase auth — no email, no username, no shareable profile link. `display_name` is stored per-participant row, not on a global profile.  
-**Decision needed:** Add optional email + handle to settings (stored in SharedPreferences or a `profiles` row), or remove email/handle from the profile card and show only display name + avatar?
+**Backend:** App uses anonymous Firebase Auth. v1.2 added optional email-link recovery, so `linkedEmail` can live on `AppSettings` (SharedPreferences) when set — but there is no global username or profile document. `displayName` is stored per-group on `groups/{gid}/members/{uid}`.  
+**Decision needed:** Surface the linked email (when present) on the profile card and add an optional `@handle` for sharing, or keep the profile card display-name-only and only show the email inside the linked-email section?
 
 ---
 
 ### 4. Activity feed — "Mentions you" filter chip
 **Wireframe:** Activity filter row includes a "Mentions you" chip alongside All/Expenses/Settlements/Edits.  
-**Backend:** No mention/tagging system exists in `trip_activity_logs`.  
+**Backend:** No mention/tagging system exists in the Firestore activity-log subcollections.  
 **Decision needed:** Drop the "Mentions you" chip from the filter row (activity feed still works without it), or implement a mention system?
 
 ---
 
 ### 5. Mark Paid — payment method + confirmation flow
 **Wireframe:** Bottom sheet has Cash / Bank transfer / Other chips, plus "Alex will be notified and asked to confirm" copy implying a push notification confirmation round-trip.  
-**Backend:** `settlements` table records the settlement but has no `payment_method` column and no confirmation state. FCM infrastructure exists but no confirmation flow is wired.  
+**Backend:** Settlement documents (Firestore subcollections under `groups/{gid}/events/{eid}/settlements` and `groups/{gid}/settlements`) record amounts but have no `payment_method` field and no confirmation state. Settlements are **append-only** (B3), so any confirmation flow needs to be additive (new doc) rather than mutating. FCM infrastructure exists but no confirmation flow is wired.  
 **Decision needed:** Add `payment_method` enum column to settlements + a `confirmed_at` field + send FCM on mark-paid, or simplify to one-tap mark paid with no method/confirmation?
 
 ---
@@ -70,36 +70,36 @@ Review each item and decide: implement it, simplify it, or remove the wireframe 
 
 ### 7. Group/trip delete — 30-day soft retention
 **Wireframe:** Delete confirmation copy: "A copy is kept for 30 days in case you change your mind."  
-**Backend:** Deletes are immediate. Expenses/gear/settlements have `is_deleted` soft-delete flags but groups/trips have no retention window; cascade deletes are hard.  
-**Decision needed:** Implement 30-day soft-delete for groups/trips (requires a scheduled cleanup job or Supabase edge function), or change the confirmation copy to "This is permanent"?
+**Backend:** Events and groups already use `isDeleted` + `deletedAt` for soft-delete, but there is no retention-window cleanup. Settlements are append-only; expenses are soft-deleted indefinitely.  
+**Decision needed:** Implement a 30-day retention window for groups/events (requires a scheduled Cloud Function on Blaze), or change the confirmation copy to "This is permanent"?
 
 ---
 
 ### 8. Event settings — "Auto-include all" toggle
 **Wireframe:** Settings screen has a "Splits & defaults" section with an "Auto-include all" toggle that automatically adds new group members to all future expenses in the event.  
-**Backend:** No such flag exists on the trips/events table. New participants are not auto-added to existing expenses.  
+**Backend:** No such flag exists on the event document. New participants are not auto-added to existing expenses.  
 **Decision needed:** Add `auto_include_all` boolean to the event/trip row and implement the fan-out logic on participant add, or drop the toggle from Event Settings?
 
 ---
 
 ### 9. Event cover — generative scenery keyed to event "kind"
 **Wireframe:** Event type picker has kinds (TRIP/CAMPING/TRAVEL/NIGHTOUT/CUSTOM) and event covers use generative SVG landscape scenes (marrakech/lisbon/hokkaido variants referenced in wireframe comments).  
-**Backend:** Events store a `cover_url` (user-uploaded or generated). No "kind" enum is stored. No generative scene system exists.  
-**Decision needed:** Store the `kind` selected in EventPicker and map it to a bundled SVG asset per kind, or use a solid-color/gradient cover based on kind without generative art?
+**Backend:** Events store `type` (`EventType` enum: trip/camping/travel/nightDayOut/custom). The `CoverArt` shared widget already renders a procedural ticket-stub illustration keyed off event type + id. No generative scenery beyond that is currently implemented.  
+**Decision needed:** Extend `CoverArt` with kind-specific scenery variants, or keep the ticket-stub aesthetic and call this gap closed?
 
 ---
 
 ### 10. Group identity — glyph picker
 **Wireframe:** CreateGroup has a glyph picker with 6 specific Unicode symbols (⛺ ⌂ ↗ ✦ ◐ ⌘) as the group's avatar glyph.  
-**Backend:** Groups have a `cover_url` and potentially a name/emoji field but no dedicated `glyph` column.  
+**Backend:** Groups have no dedicated `glyph` field; the group avatar today is rendered procedurally from `groupAvatarSlot(groupId)` + initials via `RAvatar`.  
 **Decision needed:** Add `glyph` column to groups table and implement the picker UI, or use the group name initial as the avatar?
 
 ---
 
 ### 11. Join group — QR scan
 **Wireframe:** JoinGroup screen has a "scan QR code" option alongside manual code entry.  
-**Backend:** Invite codes exist. No QR generation or scanning is implemented.  
-**Decision needed:** Implement QR code generation (for sharing) + camera scan (for joining), or drop QR and keep manual code entry only?
+**Status:** QR **generation** shipped in v1.2 (T3.J/T3.K — `qr_invite_sheet.dart`, `profile_qr_sheet.dart`, deep-link `/join/:code` route). QR **scanning** is still not implemented.  
+**Decision needed:** Add a camera scanner (`mobile_scanner` package) for joining, or rely on tap-the-QR-link UX via deep links?
 
 ---
 
@@ -139,7 +139,7 @@ Review each item and decide: implement it, simplify it, or remove the wireframe 
 | 8 | Event "Auto-include all" toggle | Medium | DECIDE |
 | 9 | Generative event cover per kind | Medium | DECIDE |
 | 10 | Group glyph picker | Low | DECIDE |
-| 11 | QR scan for invite codes | Medium | DECIDE |
+| 11 | QR scan for invite codes (generation shipped in v1.2; scan still gap) | Medium | DECIDE |
 | 12 | Currency display (USD → OMR) | None | No action needed |
 | 13 | EventHub "Day X of Y" badge | Low | EASY |
 | 14 | Home journey ticket cards | Medium | DECIDE |

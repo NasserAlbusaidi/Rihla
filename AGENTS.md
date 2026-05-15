@@ -45,7 +45,7 @@ Firebase platform config files are `android/app/google-services.json` and `ios/R
 
 Each feature under `lib/features/` is self-contained with `models/`, `providers/`, `screens/`, `services/`, and optionally `widgets/`. Shared Firestore access should go through `FirestoreRepository` or existing feature services instead of new global repositories.
 
-Active features: `auth`, `activity`, `events`, `groups`, `home`, `ledger`, `settings`, and legacy `trip` compatibility models/providers. Gear, logistics, vault, memories, and onboarding were stripped from the shippable v1 surface.
+Active features: `activity`, `auth` (anon session + email-link recovery), `events`, `groups`, `home`, `ledger`, `onboarding` (restored in v1.2), `settings`, and legacy `trip` compatibility models/providers. Gear, logistics, vault, and memories were stripped in Phase 39 — do not reintroduce.
 
 ### State Management: Riverpod
 
@@ -64,28 +64,38 @@ All navigation uses GoRouter declarative routing. Do not add imperative `Navigat
 Current route tree:
 
 ```
-/ (splash -> redirect to /home)
-/home
-/profile
-/activity
+/ (splash — redirects to /home if onboarded, else /onboarding)
+/onboarding
+/home                             (BottomNavShell wraps Groups/Activity/Profile)
+/activity                         (CrossGroupActivityScreen — also nav tab 1)
+/profile                          (ProfileScreen — also nav tab 2)
+  /link-email                     (LinkEmailScreen)
+    /sent                         (LinkEmailSentScreen — extra: email)
+/recover                          (RecoverScreen)
+  /pending                        (RecoverPendingScreen — extra: email)
 /create-group
 /join-group
-/group/:gid (GroupDetailScreen)
-  /settings (GroupSettingsScreen)
-  /settle-up (GroupSettleUpScreen, optional ?memberId query param)
-  /activity (GroupActivityScreen)
-  /create-event (EventTypePickerScreen)
-  /create-event/:type (CreateEventScreen)
-  /event/:eid (EventCommandCenter)
-    /ledger (LedgerScreen)
-      /add (AddExpenseScreen)
-      /edit/:expId (EditExpenseScreen)
-      /settle-up (SettleUpScreen)
-    /activity (EventActivityScreen placeholder)
-    /settings (EventSettingsScreen)
+/join/:code                       (deep-link entry into JoinGroupScreen)
+/group/:gid                       (GroupDetailScreen)
+  /settings                       (GroupSettingsScreen)
+  /settle-up                      (GroupSettleUpScreen, optional ?memberId)
+  /activity                       (GroupActivityScreen)
+  /create-event                   (EventTypePickerScreen)
+  /create-event/:type             (CreateEventScreen)
+  /event/:eid                     (EventCommandCenter — reachable but UI bypasses to /ledger)
+    /ledger                       (LedgerScreen)
+      /add                        (AddExpenseScreen)
+      /edit/:expId                (EditExpenseScreen)
+      /settle-up                  (SettleUpScreen)
+    /activity                     (ActivityFeedScreen — event-scoped)
+    /settings                     (EventSettingsScreen)
 ```
 
-Routes use `CustomTransitionPage` in `lib/core/router/app_router.dart`. The shared `_slideRightTransition` provides slide-right (Offset(1,0) → zero) for module-level routes. `/home`, `/profile`, and `/activity` use fade transitions; `/create-group` and `/join-group` use slide-up.
+Routes use `CustomTransitionPage` in `lib/core/router/app_router.dart` with the shared `_sharedAxisTransition` (Material 3 `SharedAxisTransition`, horizontal) for module-level routes. `/onboarding`, `/home`, `/profile`, `/activity` use `FadeTransition`; `/create-group` and `/join-group` use slide-up.
+
+`BottomNavShell` renders three tabs by stacking screens with `AnimatedOpacity` + `IgnorePointer` (state-preserving): index 0 Groups (HomeScreen), 1 Activity (CrossGroupActivityScreen), 2 Profile (ProfileScreen). Tab switching is not GoRouter-driven.
+
+> Note: `/group/:gid/event/:eid` (EventCommandCenter) is in the router but the UI never navigates to it — event cards jump straight to `/event/:eid/ledger` after Phase 39 reduced events to a single visible module.
 
 Screens receive `groupId`/`eventId` as strings from GoRouter path parameters. Event-scoped providers use the `EventRef` record type `({String groupId, String eventId})`. Avoid `state.extra` for required data so deep links work without pre-loaded objects.
 
@@ -93,54 +103,77 @@ Screens receive `groupId`/`eventId` as strings from GoRouter path parameters. Ev
 
 Data flow: Firestore streams/providers fetch live data, cache repositories persist snapshots into SQLite for fast local reads, and Firestore's SDK handles offline write replay.
 
-- `LocalDatabase` (sqflite): `safar_cache.db` (version 6) with tables for trips, expenses, settlements, gear_items, participants, sub_groups, sub_group_members, activity_logs, categories, and sync_queue.
+- `LocalDatabase` (sqflite): `safar_cache.db` **version 8** with tables for trips, expenses, settlements, participants, activity_logs, categories, groups, group_members, and group_ledger. Writes use a delete-all-then-batch-insert pattern (ghost-row-free).
 - Cache repositories live under `lib/core/services/cache/` and are instance-based Riverpod providers. Each owns SQLite I/O for one domain.
-- `FirestoreRepository` is the shared base for Firestore services and exposes `eventSubcollection(groupId, eventId, module)`.
-- `ConnectivityNotifier` checks online status every 60 seconds by pinging Firestore (`inviteCodes` with `Source.server`).
-- `StorageGateway` and `ReceiptService` call Cloud Functions for uploads/downloads. Do not call Firebase Storage SDK directly for protected trip document, memory, or receipt paths.
+- `FirestoreRepository` is the shared base for Firestore services and exposes `eventSubcollection(groupId, eventId, module)` plus a `withFirestore` test-injection constructor.
+- `ConnectivityNotifier` checks online status every 60 seconds with a `Source.server` read against `inviteCodes`.
+- **No Firebase Storage SDK use.** Protected media (when needed) goes through Cloud Functions. Account-recovery's `UidChangeListener` wipes the local SQLite cache when Firebase Auth swaps UIDs so cross-UID data cannot leak.
 
 ### Shared Widgets (`lib/shared/widgets/`)
 
 Reusable UI components used across features:
-- `ModuleHeader` — dark gradient header replacing per-screen duplicates
-- `AppTabBar` — unified tab bar with gradient pill indicator
+- `CoverArt` — procedural ticket-stub illustration for events and groups
+- `RAmount` — money display with Geist Mono tabular figures
+- `RAvatar` — initials avatar with stable per-id slot colour
+- `WordmarkLogo` — Rihla wordmark
+- `ModuleHeader` — gradient module header
+- `SectionHeader` — italic Instrument Serif section heading
+- `AppTabBar` — pill-indicator tab bar
 - `OfflineBanner` — connectivity indicator (watches `connectivityProvider`)
 - `EmptyStateView` — consistent empty states with optional CTA
 - `SearchFilterBar` — expandable search + filter chips
-- `SmartModuleCard` — module cards for CommandCenter
-- `LoadingButton` / `SkeletonLoader` — loading states
+- `SmartModuleCard` — module cards on `EventCommandCenter`
+- `AnimatedCurrencyText` — animated number transition for money
+- `LoadingButton` / `SkeletonLoader` / `SkeletonPrimitives` — loading states
+- `GrainOverlay` — texture layer (`assets/textures/grain.png`)
+- `DotStepIndicator` — onboarding page dots
+- `InitialsCircle` — legacy avatar fallback
 
 ### Design Tokens (`lib/core/theme/`)
 
-Theme tokens are `ThemeExtension`s:
-- `AppColorTokens` in `tokens/color_tokens.dart`
+Theme tokens are `ThemeExtension`s registered in `AppTheme`:
+- `AppColorTokens` in `tokens/color_tokens.dart` — Saffron palette: paper background `#F6F1E6`, saffron primary `#D17B2C`, sage success `#5C7A57`, rust error `#A84B33`, category + avatar slot colours
 - `AppSpacingTokens` in `tokens/spacing_tokens.dart`
 - `AppShadowTokens` in `tokens/shadow_tokens.dart`
 
-Use `context.colors`, `context.spacing`, and `context.shadows` from `tokens/domain_aliases.dart` in UI code. Avoid hardcoded `Color(0xFF...)` literals outside token definitions.
+Use `context.colors`, `context.spacing`, and `context.shadows` from `tokens/domain_aliases.dart` in UI code. Avoid hardcoded `Color(0xFF...)` literals outside token definitions — CI's hardcoded-color lint rejects them.
+
+Typography: **Geist** (sans), **Geist Mono** (tabular figures for money), **Instrument Serif** italic (display + section headers) — all via `google_fonts`.
 
 ### Page Transitions
 
-Transitions are handled by `CustomTransitionPage` in `lib/core/router/app_router.dart`. The shared `_slideRightTransition` function provides slide-right (Offset(1,0) → zero) for all module-level routes. Slide-up is used for /create-group and /join-group. `lib/core/utils/page_transitions.dart` was deleted in Phase 19 — `AppPageRoute` and `AppBottomSheetRoute` no longer exist.
+Transitions are handled by `CustomTransitionPage` in `lib/core/router/app_router.dart`. The shared `_sharedAxisTransition` function provides Material 3 `SharedAxisTransition` (horizontal) for all module-level routes. Slide-up is used for `/create-group` and `/join-group`. `/onboarding`, `/home`, `/profile`, `/activity` use `FadeTransition`. `lib/core/utils/page_transitions.dart` was deleted in Phase 19.
 
 ### Financial Calculations
 
-All money math uses the `Decimal` package (not `double`). Currency is OMR (Omani Rial, 3 decimal places). `BalanceCalculator` in ledger handles four expense scopes: `global`, `subGroup`, `personal`, `custom`. Settlement optimization uses a greedy min-transactions algorithm.
+All money math uses the `decimal` package (not `double`). Default currency is OMR (Omani Rial, 3 decimal places). `BalanceCalculator` in ledger handles four expense scopes: `global`, `subGroup` (legacy), `personal`, `custom`, and four split modes: `equally`, `shares`, `exact`, `percent`. Rounding remainder goes to the alphabetically-last recipient. Settlement optimization uses a greedy min-transactions algorithm. `MoneySerializer` converts `Decimal` ↔ integer subunits at the Firestore boundary only.
 
 ## Key Technical Details
 
-- **Soft deletes**: Expenses, events, groups, and settlements use `isDeleted`/deleted timestamp fields in Firestore-facing models where supported. Avoid hard deletes unless the existing service already does so intentionally.
-- **Name-based members**: Group creator adds member names during creation and picks which name is theirs. Joiners enter invite code then pick an unclaimed name. Display names are stored on group member records and mirrored from `settingsProvider.deviceName`.
-- **Event modules**: `EventModules` controls which event modules appear. The shippable v1 surface keeps Ledger and Activity visible; removed module code should not be reintroduced casually.
-- **Protected storage**: storage rules deny direct SDK access for trip documents, memories, and receipts. Use Cloud Functions through `StorageGateway`/receipt services.
-- **Onboarding**: Onboarding was removed from the current router; splash redirects to `/home`.
+- **Soft deletes**: Expenses use `isDeleted` + `deletedAt`. Settlements are **append-only** (B3) — corrections create a new offsetting row, never an edit. Events and groups support soft-delete via `isDeleted`/`deletedAt`.
+- **Ownership invariants (B1)**: `createdBy` is immutable on expenses and settlements; only the creator can edit/soft-delete their own rows. Enforced client-side and in `security/firestore.rules`.
+- **Name-based members**: Group creator adds member names during creation and picks which name is theirs. Joiners enter invite code then pick an unclaimed name. Display names are stored on `groups/{gid}/members/{uid}` and mirrored from `settingsProvider.deviceName`.
+- **Display-name validation**: 1-32 chars, no control chars, unified across client and rules via `isValidDisplayName`.
+- **Event modules**: `EventModules` only carries `ledger` after Phase 39. Legacy keys (gear/logistics/vault/memories) are silently ignored from existing data.
+- **Group join**: routed through the `joinGroupByInviteCode` Cloud Function (`functions/src/callables/`) — atomic, validated, rate-limited (5 attempts/hour per UID), idempotent on re-join.
+- **Account recovery (v1.2)**: Optional email-link recovery via Firebase Auth. `AuthRecoveryService` (`lib/features/auth/services/auth_recovery_service.dart`) orchestrates link/send/recover. `UidChangeListener` wipes the local SQLite cache on UID swap. App Links + Universal Links route the magic link back into the app. Linked email is permanent in v1.2.
+- **Account deletion**: server-side cascade via `data_deletion_service.dart` — Firebase Auth user + Firestore + FCM tokens. Sentry breadcrumbs redact email PII.
+- **Onboarding**: 3-page first-launch flow gated by `AppSettings.onboardingComplete` (SharedPreferences). Router hard-redirects every non-onboarding route to `/onboarding` until complete. Restored in v1.2.
 - **Multi-currency**: Expenses support currency metadata and Decimal math. Convert to integer subunits only at Firestore read/write boundaries via `MoneySerializer`.
-- **Push notifications**: Firebase Cloud Messaging (FCM). Token storage in `fcm_tokens` table.
-- **Auth**: Firebase anonymous sign-in. No login screen — `_AuthGate` calls `FirebaseConfig.ensureAnonymousSession()` and retries on failure. No email/password, no password reset.
+- **Push notifications**: Firebase Cloud Messaging (FCM). Token storage at `fcm_tokens/{uid}`. Opt-in only.
+- **Auth**: Firebase anonymous sign-in. No login screen — `_AuthGate` calls `FirebaseConfig.ensureAnonymousSession()` and retries on `internal-error` for corrupted restored sessions.
+- **Deep links**: `rihla.app/join/<code>` opens the join-group flow with the code pre-filled. Email-link recovery URLs route back via App Links / Universal Links.
 
 ## Database
 
-Firestore is the source of truth. Core paths include `groups`, group `members`, group `events`, event `expenses`, event/group `settlements`, activity logs, `inviteCodes`, and `fcm_tokens`. SQLite is a local cache only; do not add SQL migrations for server state.
+Firestore is the source of truth. Core paths:
+- `groups/{gid}` / `groups/{gid}/members/{uid}` / `groups/{gid}/events/{eid}`
+- `groups/{gid}/events/{eid}/expenses/{xid}` and `.../settlements/{sid}`
+- `groups/{gid}/settlements/{sid}` — group-scoped (cross-event) settlements
+- `groups/{gid}/activityLogs/{aid}` and `groups/{gid}/events/{eid}/activityLogs/{aid}`
+- `inviteCodes/{code}`, `fcm_tokens/{uid}`, `joinAttempts/{uid}` (rate-limit)
+
+Security rules in `security/firestore.rules` enforce display-name validation, the C-Hierarchy event light/admin update split, server-only invite codes, expense `createdBy` immutability, and append-only settlements. SQLite is a local cache only; **do not** add SQL migrations for server state.
 
 ## Testing
 
@@ -155,7 +188,13 @@ Firestore is the source of truth. Core paths include `groups`, group `members`, 
 
 ## CI/CD
 
-GitHub Actions workflow (`.github/workflows/release_android.yml`): manual dispatch or `v*` tag push. Runs tests then builds and uploads AAB to Google Play alpha track. Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`. No iOS CI — iOS builds are manual.
+Two GitHub Actions workflows:
+- `.github/workflows/release_android.yml` — manual dispatch or `v*` tag push. Runs analyze + tests + AAB build, uploads to Google Play alpha. Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`.
+- `.github/workflows/readiness_check.yml` — runs on `main` pushes and PRs. Analyze + hardcoded-color lint + tests with coverage threshold.
+
+**Coverage gate**: temporarily **70%** in both workflows while auth/profile/settings suites catch up (local raw coverage is ~80%+). Ratchet back to 80% once the TODOs in both workflows are cleared.
+
+No iOS CI — iOS builds are manual. Toolchain: Java 17 for the Android build, Java 21 for Firebase emulator tests in `functions/`. AGP 8.9.1, Kotlin 2.1.0.
 
 ## Stitch-to-Flutter Workflow
 
@@ -166,7 +205,7 @@ Google Stitch is a **visual oracle only** — used purely for design exploration
 1. **Prepare Stitch input prompt** — Create a prompt .md file in `docs/design/prompts/` containing:
    - Full palette (all hex values from `AppColorTokens.light` in `lib/core/theme/tokens/color_tokens.dart`)
    - Spacing scale (4dp through 32dp from `AppSpacingTokens.standard`)
-   - Typography (Plus Jakarta Sans, weight hierarchy: 700/600/400)
+   - Typography (Geist sans, Geist Mono tabular figures, Instrument Serif italic display)
    - Component inventory (shared widgets from `lib/shared/widgets/`)
    - Screen-specific layout description with all states (loaded, empty, loading, error)
    - Constraints (~390px width, generic placeholder data, dense information density)
@@ -199,9 +238,8 @@ Google Stitch is a **visual oracle only** — used purely for design exploration
 
 ### Key Rules
 
-- Never commit Stitch-generated Flutter code — implement from scratch using design spec as visual target
-- All hex values in specs must match AppColorTokens.light exactly
-- textMuted (#9CA3AF) is decorative only — never use for functional text, labels, or amounts (fails WCAG AA at 2.86:1 on white)
-- Every text-on-background pair must be in the WCAG-verified set (Check 4 in Workflow Step 3 above)
-- Module accent colors: Ledger = primary teal (#0D7B74), all other modules = gray-500 (#6B7280)
-- DESIGN.md reference primary #006a64 is a candidate only — the canonical token is #0D7B74 (WCAG 5.12:1 verified)
+- Never commit Stitch-generated Flutter code — implement from scratch using the design spec as visual target
+- All hex values in specs must match `AppColorTokens.light` exactly
+- Functional text must clear WCAG AA contrast; decorative-only colours must never be used for amounts, labels, or status text
+- Use `context.colors` / `context.spacing` / `context.shadows` in widget code — not raw hex literals
+- After Phase 39, Ledger is the only event module; do not design new event module surfaces without explicit scope approval

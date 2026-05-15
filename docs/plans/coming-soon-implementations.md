@@ -250,12 +250,12 @@ Ordered from quick win → hardest:
 
 ### Sprint 5 — Custom split modes (T4.N) · 3–5 days · the hardest
 
-**Why last:** touches data model, both databases (Supabase migration + `safar_cache.db` bump), balance math, three new editor UIs, and migration of existing equal-mode expenses. Requires a design spec before code.
+**Why last:** touches data model, Firestore expense docs + `safar_cache.db` bump, balance math, three new editor UIs, and migration of existing equal-mode expenses. Requires a design spec before code.
 
 - **Prerequisite:** write `docs/design/custom-split-spec.md` covering data shape, sum-validation rules per mode, rounding policy (OMR 3dp), and UI affordances.
 - Data model:
-  - Add `split_mode` enum column (`equally|shares|exact|percent`) + `split_distribution` jsonb on `expenses`.
-  - Mirror in `safar_cache.db` schema v6 (migrate from v5).
+  - Add `splitMode` + `splitDistribution` fields to expense Firestore docs.
+  - Mirror in `safar_cache.db` (v7 → v8 migration).
   - Per-participant record: `shares: int ≥ 0`, `exact: Decimal`, `percent: Decimal` summing to 100±ε.
 - Sheet UI:
   - Replace the snack at `custom_split_sheet.dart:163`.
@@ -263,9 +263,7 @@ Ordered from quick win → hardest:
 - `BalanceCalculator` (lib/features/ledger/...):
   - Accept per-pid distribution. Preserve equal-mode parity for existing rows (treat null distribution as equal split across `participants`).
   - Round-trip tests covering OMR precision edge cases.
-- Sync:
-  - `OfflineRepository.saveExpense` writes mode + distribution to sync_queue.
-  - `SyncService` upload/download paths handle the new columns.
+- Sync: writes go through `ExpenseService` directly to Firestore. Firestore's offline persistence queues writes when offline and replays automatically — no custom sync queue.
 - Wire `defaultSplitMode` into `AddExpenseScreen`'s initial mode (the Sprint 2 deferred item — finally usable).
 - Tests: balance regression on existing data; per-mode rounding tests; widget tests on each editor's sum validation.
 
