@@ -527,6 +527,7 @@ class _BreakdownRow extends StatelessWidget {
                 tone: isOwed ? AmountTone.sage : AmountTone.rust,
               ),
               const SizedBox(width: 2),
+              // textMuted-decorative-justified: disclosure chevron is purely decorative affordance
               Icon(Icons.chevron_right, size: 18, color: colors.textMuted),
             ],
           ),
@@ -815,6 +816,7 @@ class _AddFirstExpenseCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: _DashedBorderBox(
           radius: 16,
+          // textMuted-decorative-justified: dashed-border stroke is decorative, not text contrast
           color: colors.textMuted,
           child: Padding(
             padding: const EdgeInsets.all(18),
