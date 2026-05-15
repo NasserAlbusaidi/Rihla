@@ -12,8 +12,13 @@ Run the consolidated read-only audit:
 RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
 ```
 
-It should fail until Firebase backend/Hosting deployment, App Check setup, and
-physical-device QA are complete.
+Backend deployment, App Check Console enrolment, and the Firebase production-
+state audit are complete as of 2026-05-15. v1.2 launches Android-only on
+Google Play; iOS is soft-deferred to follow within weeks of Android
+Production. The remaining release gates are Android-only physical-device QA
+(`docs/REAL-DEVICE-QA.md` with `RIHLA_SKIP_IOS_QA=yes`) and the three CI
+release-confirmation repo variables. The consolidated audit will continue to
+fail until those two gates are recorded as passing.
 
 GitHub also runs `.github/workflows/readiness_check.yml` on `main` pushes and
 pull requests. That workflow covers the local non-deploy gates only; it does not
@@ -85,70 +90,78 @@ starts a new run.
 - [x] Device-name persistence cannot carry invalid names into later backend writes.
   - Evidence: `SettingsNotifier.setDeviceName()` rejects invalid non-empty names, normalizes valid names before saving, and avoids propagating empty names to Firestore.
   - Evidence: `SettingsService.loadSettings()` drops invalid legacy persisted names instead of surfacing them to create/join flows.
+- [x] Firebase project upgraded to Blaze plan.
+  - Evidence: Cloud Functions are deployed (see below), which requires `cloudbuild.googleapis.com` and `artifactregistry.googleapis.com` — both gated on Blaze.
+- [x] Firebase production-state audit passes.
+  - Command: `bash tool/check_firebase_prod_state.sh rihla-safar`
+  - Latest result (2026-05-15): 12 checks PASS, exit 0.
+- [x] Firebase Functions are deployed in production.
+  - Evidence: production-state audit confirms expected functions are deployed (`joinGroupByInviteCode`).
+- [x] Firestore production rules match `security/firestore.rules`.
+  - Evidence: production-state audit diffs the active ruleset against the repo and reports PASS.
+- [x] Firestore production indexes match `firestore.indexes.json`.
+  - Evidence: production-state audit confirms index set matches the repo config; legacy `gear_items` index removed.
+- [x] Firebase Hosting invite/auth link files are deployed on both default domains.
+  - Evidence: production-state audit verifies `/join/<code>` invite fallback, Apple App Site Association `/join/*` entries, Digital Asset Links matching `com.safar.safar`, and the auth continue page containing `rihla://auth-link` on both `rihla-safar.web.app` and `rihla-safar.firebaseapp.com`.
+- [x] Firebase App Check Console enrolment is verified.
+  - Evidence: Android app enrolled with Play Integrity; iOS app enrolled with App Attest (with DeviceCheck fallback). Enforced `joinGroupByInviteCode` callable is live in production.
+  - Re-verify path: Firebase Console → App Check → confirm enforcement is ON for Cloud Functions and that both platform apps show "Enforced".
 
 ## Blockers
 
-- [ ] Firebase production-state audit fails.
-  - Command: `bash tool/check_firebase_prod_state.sh rihla-safar`
-  - Latest result (2026-05-15): 9 issues.
-- [ ] Firebase Functions are not deployed in production.
-  - Evidence: `bash tool/check_firebase_prod_state.sh rihla-safar` reports the missing deployed Function: `joinGroupByInviteCode`.
-  - Local exports expected in production: `joinGroupByInviteCode`.
-  - Deploy blocker: `npx --yes firebase-tools@15.8.0 deploy --project rihla-safar --only functions --dry-run` requires the project to upgrade to Blaze before `cloudbuild.googleapis.com` and `artifactregistry.googleapis.com` can be enabled.
-  - Currently enabled related APIs: `cloudfunctions.googleapis.com`, `firebase.googleapis.com`, `firebaserules.googleapis.com`, `firestore.googleapis.com`.
-- [ ] Group join callable deployed and clients route through it.
-  - Local code now routes joins through `joinGroupByInviteCode`; production still needs the callable and Firestore rules deployed together.
-- [ ] Firestore production rules are stale and weaker than `security/firestore.rules`.
-  - The deployed rules still allow direct invite-code reads and older join/update patterns that the local callable-based rules remove.
-- [ ] Firestore production indexes do not match `firestore.indexes.json`.
-  - The remote database still has an extra `gear_items` collection-group index from removed module work; the confirmed deploy command uses `--force` so production converges to the repo index config instead of preserving stale removed-module indexes.
-- [ ] Firebase Hosting invite/auth link files deployed.
-  - Local code now generates `https://rihla-safar.web.app/join/<code>` invite links and depends on Hosting rewrites plus App/Asset Link files being live on both Firebase default domains.
-  - Latest production-state check: `/join/ABC123` returns 404, the live Apple App Site Association file does not contain `/join/*`, and the live auth continue page does not contain `rihla://auth-link` on both `rihla-safar.web.app` and `rihla-safar.firebaseapp.com`.
-- [ ] Firebase App Check Console enrolment is not verified.
-  - Local code is ready, but production release still requires the Android app to be enrolled with Play Integrity and the iOS app to be enrolled with App Attest/DeviceCheck in Firebase Console before deploying the enforced callable.
-  - Current mitigation: callers must be Firebase-authenticated and failed invite lookups are rate-limited through server-only `joinAttempts/{uid}` documents.
-- [ ] Real-device QA is not complete.
+- [ ] Real-device QA is not complete (Android-only for v1.2).
   - Runbook: `docs/REAL-DEVICE-QA.md`
-  - Gate command: `bash tool/check_real_device_qa_gate.sh`
-  - Latest gate result (2026-05-15): no physical iOS device and no physical Android device detected; only an iPhone 17 Pro Max simulator was visible; RD-01 through RD-08 are still missing recorded iOS/Android pass results and concrete evidence.
-  - Required matrix:
-    - iOS: create group, join group, delete group.
-    - Android: create group, join group, delete group.
-    - Two devices in one group: one user pays an expense and each device shows the correct payer/ower identity.
-    - iOS and Android expense entry keyboards expose decimal input for OMR amounts.
+  - Gate command (v1.2 Android-only):
+    ```bash
+    RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
+    ```
+  - Latest gate result (2026-05-15): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty.
+  - Required Android matrix (RD-01..08):
+    - Create group, join group by invite code, delete group.
+    - Two-device ledger identity (two Android devices in one group; one pays an expense and each device shows the correct payer/ower identity).
+    - Android expense entry keyboard exposes decimal input for OMR amounts.
     - Offline and reconnect: create/read flows recover without false permanent offline state.
     - Notification opt-in and opt-out: token is written on enable and removed on disable.
+  - iOS re-activation: when iOS ships, unset `RIHLA_SKIP_IOS_QA` and replace `Deferred ...` cells with `Pass ...` and concrete iOS evidence.
 - [ ] Android release workflow external confirmations are not set.
   - `.github/workflows/release_android.yml` now refuses to upload unless `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, and `RIHLA_REAL_DEVICE_QA_READY` repository variables are all set to `yes`.
   - Leave these unset until the production-state audit, App Check Console enrolment, and physical-device QA matrix pass.
 
 ## External Actions
 
-These actions cannot be completed safely from this repo without an explicit
-Firebase Console or billing decision:
+These actions cannot be completed from this repo and remain before release:
 
-1. Upgrade `rihla-safar` to Blaze:
-   - Console: `https://console.firebase.google.com/project/rihla-safar/usage/details`
-   - Needed so Cloud Build and Artifact Registry APIs can be enabled for
-     Cloud Functions deployment.
-2. Deploy backend and Hosting artifacts from this repo:
+1. Connect a physical Android device (or two for RD-04), then run:
    ```bash
-   RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/deploy_firebase_backend.sh rihla-safar
+   RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
    ```
-3. Enroll Firebase App Check for the Android and iOS apps in Firebase Console
-   before deploying the enforced `joinGroupByInviteCode` callable.
-4. Re-run the full audit:
+   If the gate passes, complete the `docs/REAL-DEVICE-QA.md` matrix
+   (RD-01..08) with concrete Android evidence. iOS cells stay marked
+   `Deferred — v1.2 Android-only` until iOS ships.
+2. After RD-QA is recorded and the backend re-audit still passes, set the
+   three Android release-workflow repository variables to `yes`:
+   `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`,
+   `RIHLA_REAL_DEVICE_QA_READY`. The release workflow refuses to upload
+   to Play until all three are set.
+3. Re-run the full audit before promoting the Play Store track:
    ```bash
    RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
    ```
-5. Connect physical iOS and Android devices, then run:
-   ```bash
-   bash tool/check_real_device_qa_gate.sh
-   ```
-   If the gate passes, complete `docs/REAL-DEVICE-QA.md`.
+
+Historical external actions completed on or before 2026-05-15:
+
+- Upgraded `rihla-safar` to Blaze plan.
+- Deployed Firestore rules, indexes, Functions, and Hosting via
+  `tool/deploy_firebase_backend.sh`.
+- Enrolled Firebase App Check (Play Integrity for Android, App Attest /
+  DeviceCheck fallback for iOS).
+- Re-ran `bash tool/check_firebase_prod_state.sh rihla-safar` — 12 checks
+  PASS.
 
 ## Deployment Commands
+
+The initial production deploy is complete. Use these commands for subsequent
+backend changes.
 
 Before deploying, run the read-only production-state check:
 
@@ -156,9 +169,11 @@ Before deploying, run the read-only production-state check:
 bash tool/check_firebase_prod_state.sh rihla-safar
 ```
 
-The command should fail until the join callable is live.
+The command should report 12 PASS lines and exit 0 against the currently
+deployed backend. If it fails, the deployed state has drifted from the repo
+and needs a redeploy.
 
-Run this after the Firebase project setup blockers are cleared:
+Redeploy backend after a rules / indexes / Functions / Hosting change:
 
 ```bash
 RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/deploy_firebase_backend.sh rihla-safar
