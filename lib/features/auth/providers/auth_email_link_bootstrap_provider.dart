@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/services/app_messenger.dart';
 import '../services/auth_email_link_config.dart';
 import '../services/auth_recovery_service.dart';
 import 'auth_provider.dart';
@@ -34,12 +36,59 @@ String? _emailLinkFromUri(Uri uri) {
   return null;
 }
 
+void _showSnack(String message, {bool isError = false}) {
+  final messenger = appMessengerKey.currentState;
+  if (messenger == null) return;
+  messenger.removeCurrentSnackBar();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: isError ? Colors.red.shade700 : null,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 4),
+    ),
+  );
+}
+
+String _humanize(FirebaseAuthException error) {
+  switch (error.code) {
+    case 'invalid-action-code':
+    case 'expired-action-code':
+      return 'This link has expired or was already used. Send a new one.';
+    case 'invalid-email':
+      return "That email doesn't look valid.";
+    case 'user-disabled':
+      return 'This account has been disabled.';
+    case 'network-request-failed':
+      return 'No connection. Try again when you\'re online.';
+    case 'too-many-requests':
+      return 'Too many attempts. Wait a few minutes and try again.';
+    case 'email-already-in-use':
+    case 'credential-already-in-use':
+    case 'provider-already-linked':
+      return 'This email is already linked to a Rihla account. '
+          'Restore from that account instead.';
+    default:
+      return 'Something went wrong (${error.code}). Please try again.';
+  }
+}
+
 /// Starts the email-link listener early enough to catch cold-start links.
 ///
-/// P0 just logged receipt; P1 wires the receive-side: when a Firebase
-/// email-link arrives we attempt to complete it against the persisted
-/// pending email and stash the URL in [pendingEmailLinkProvider] if we
-/// can't (so the UI can finish the flow with a manual email prompt).
+/// Handles three cases:
+///   1. `recover` op (Settings hadn't linked yet → user typed email on
+///      Recover screen) → swap UID via `signInWithEmailLink`.
+///   2. `link` op (default; Settings → "Link my email") → attach email to
+///      the current anon UID via `linkWithCredential`. Auto-falls-back to
+///      `recover` when the email is already owned by a different UID
+///      (`email-already-in-use` and friends) — that means the user is on a
+///      new install/device, so recovery is what they actually want.
+///   3. No pending email at all → stash the link URL in
+///      [pendingEmailLinkProvider] so the UI can finish with a manual
+///      prompt.
+///
+/// Outcome is surfaced via `appMessengerKey` so the user sees a SnackBar
+/// regardless of which screen they're on when the deep link arrives.
 final authEmailLinkBootstrapProvider = Provider<void>((ref) {
   final appLinks = ref.watch(appLinksProvider);
 
@@ -64,35 +113,80 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         'Recovery: no pending email saved — surfacing link for UI prompt',
       );
       ref.read(pendingEmailLinkProvider.notifier).state = link;
+      _showSnack(
+        'Open Rihla from the device where you requested the email, '
+        'or enter the email again here.',
+        isError: true,
+      );
       return;
     }
 
-    // P4: dispatch by the in-flight operation flag set when the send
-    // request was made. 'link' attaches the email to the current anon
-    // UID; 'recover' swaps to the previously-linked UID. Default to
-    // 'link' when nothing is set so legacy / pre-P4 flows still work.
     final op = service.readInFlightOp() ?? AuthRecoveryService.opLink;
+
     try {
       if (op == AuthRecoveryService.opRecover) {
-        await service.completeRecovery(link);
+        final result = await service.completeRecovery(link);
         FirebaseConfig.log('Recovery: completeRecovery succeeded');
+        ref.read(pendingEmailLinkProvider.notifier).state = null;
+        _showSnack('Restored ${result.user?.email ?? pendingEmail}');
       } else {
-        await service.completeEmailLink(link);
+        final result = await service.completeEmailLink(link);
         FirebaseConfig.log('Recovery: completeEmailLink succeeded');
+        ref.read(pendingEmailLinkProvider.notifier).state = null;
+        _showSnack('Linked ${result.user?.email ?? pendingEmail}');
       }
-      ref.read(pendingEmailLinkProvider.notifier).state = null;
     } on FirebaseAuthException catch (error, stack) {
+      final shouldFallback =
+          op == AuthRecoveryService.opLink &&
+          (error.code == 'email-already-in-use' ||
+              error.code == 'credential-already-in-use' ||
+              error.code == 'provider-already-linked');
+
+      if (shouldFallback) {
+        FirebaseConfig.log(
+          'Recovery: link failed with ${error.code}; '
+          'falling back to recover (existing UID owns this email)',
+        );
+        try {
+          // completeEmailLink throws before clearing prefs, so pendingEmail
+          // and inFlightOp are still primed. completeRecovery reads them.
+          final result = await service.completeRecovery(link);
+          FirebaseConfig.log('Recovery: fallback recover succeeded');
+          ref.read(pendingEmailLinkProvider.notifier).state = null;
+          _showSnack('Restored ${result.user?.email ?? pendingEmail}');
+          return;
+        } on FirebaseAuthException catch (e2, s2) {
+          FirebaseConfig.log(
+            'Recovery: fallback recover also failed (${e2.code})',
+            error: e2,
+            stackTrace: s2,
+          );
+          _showSnack(_humanize(e2), isError: true);
+          return;
+        } catch (e2, s2) {
+          FirebaseConfig.log(
+            'Recovery: fallback recover failed',
+            error: e2,
+            stackTrace: s2,
+          );
+          _showSnack("Couldn't restore your account. Try again.", isError: true);
+          return;
+        }
+      }
+
       FirebaseConfig.log(
         'Recovery: $op completion failed (${error.code})',
         error: error,
         stackTrace: stack,
       );
+      _showSnack(_humanize(error), isError: true);
     } catch (error, stack) {
       FirebaseConfig.log(
         'Recovery: $op completion failed',
         error: error,
         stackTrace: stack,
       );
+      _showSnack("Couldn't complete the email link. Try again.", isError: true);
     }
   }
 

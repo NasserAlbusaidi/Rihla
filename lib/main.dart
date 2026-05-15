@@ -19,6 +19,7 @@ import 'core/theme/app_theme.dart';
 import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/theme/tokens/color_tokens.dart';
+import 'core/services/app_messenger.dart';
 import 'core/services/deep_link_service.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
@@ -180,6 +181,7 @@ class _SafarAppState extends ConsumerState<SafarApp> {
       child: MaterialApp.router(
         title: 'Rihla',
         debugShowCheckedModeBanner: false,
+        scaffoldMessengerKey: appMessengerKey,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: settings.themeMode.toMaterialThemeMode(),
