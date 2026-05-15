@@ -330,7 +330,9 @@ void main() {
       expect(find.text('Create Event'), findsOneWidget);
     });
 
-    testWidgets('tapping event card navigates to Ledger route', (tester) async {
+    testWidgets('tapping event card navigates to EventHub route', (
+      tester,
+    ) async {
       final event = _makeEvent(id: 'evt-tap', name: 'Tap Navigation Trip');
 
       await tester.pumpWidget(
@@ -352,7 +354,7 @@ void main() {
       await tester.tap(find.text('Tap Navigation Trip'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Ledger:evt-tap'), findsOneWidget);
+      expect(find.text('EventHub:evt-tap'), findsOneWidget);
     });
   });
 

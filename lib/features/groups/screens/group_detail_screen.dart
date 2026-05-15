@@ -196,7 +196,7 @@ class _Content extends ConsumerWidget {
               divider: !isLast,
               onTap: () => GoRouter.of(
                 context,
-              ).push('/group/$groupId/event/${events[index].id}/ledger'),
+              ).push('/group/$groupId/event/${events[index].id}'),
             );
           }, childCount: events.length),
         );

@@ -538,7 +538,7 @@ void main() {
       );
     });
 
-    testWidgets('tapping event card navigates to ledger route', (tester) async {
+    testWidgets('tapping event card navigates to event hub', (tester) async {
       final testEvent = Event(
         id: 'event-1',
         groupId: _groupId,
@@ -623,7 +623,7 @@ void main() {
 
       expect(
         navigatedRoutes,
-        contains('/group/$_groupId/event/${testEvent.id}/ledger'),
+        contains('/group/$_groupId/event/${testEvent.id}'),
       );
     });
 
