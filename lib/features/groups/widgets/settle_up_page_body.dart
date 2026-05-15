@@ -10,21 +10,22 @@ import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
-import '../models/group_model.dart';
-import '../providers/group_balance_provider.dart';
 import '../widgets/group_settlement_summary.dart';
 import 'all_settled_state.dart';
 import 'group_settlement_tile.dart';
 
-/// Single-page body for the Group Settle-Up screen.
+/// Single-page body for the Settle-Up screens (group + event).
 ///
 /// Wireframe (Hi_GroupSettle, screens-group.jsx) renders one scrollable view:
 /// italic headline, two summary chips, optimized transfer cards, then
 /// "Each person's net" and a small recorded-payment history.
 class SettleUpPageBody extends StatelessWidget {
-  final Group group;
+  /// Label shown after "Optimized to minimise the number of payments across …"
+  /// — group name on the group screen, event name on the event screen.
+  final String subjectName;
+  final String currency;
   final List<Map<String, dynamic>> optimalSettlements;
-  final GroupBalances balancesData;
+  final List<UserBalance> balances;
   final AsyncValue<List<Settlement>> settlementsAsync;
   final String? currentUid;
   final Map<int, GlobalKey> tileKeys;
@@ -42,19 +43,22 @@ class SettleUpPageBody extends StatelessWidget {
   })
   onRecord;
 
-  final Map<String, Decimal> Function(String fromUserId, String toUserId)
+  /// Optional per-tile breakdown (e.g. group-level "per event" attribution).
+  /// Return an empty map (or pass null) to hide the expand affordance.
+  final Map<String, Decimal> Function(String fromUserId, String toUserId)?
   buildBreakdown;
 
   const SettleUpPageBody({
     super.key,
-    required this.group,
+    required this.subjectName,
+    required this.currency,
     required this.optimalSettlements,
-    required this.balancesData,
+    required this.balances,
     required this.settlementsAsync,
     required this.currentUid,
     required this.tileKeys,
     required this.onRecord,
-    required this.buildBreakdown,
+    this.buildBreakdown,
     this.preSelectedMemberId,
   });
 
@@ -76,12 +80,12 @@ class SettleUpPageBody extends StatelessWidget {
         children: [
           _SettlementIntro(
             transferCount: optimalSettlements.length,
-            groupName: group.name,
+            subjectName: subjectName,
           ),
           const SizedBox(height: 18),
           GroupSettlementSummaryCard(
             totalPending: totalPending,
-            currency: group.currency,
+            currency: currency,
             transferCount: optimalSettlements.length,
           ),
           if (allSettled) ...[
@@ -93,18 +97,18 @@ class SettleUpPageBody extends StatelessWidget {
             for (var i = 0; i < optimalSettlements.length; i++)
               _buildTile(context, optimalSettlements[i], i),
           ],
-          if (balancesData.balances.isNotEmpty) ...[
+          if (balances.isNotEmpty) ...[
             const SizedBox(height: 24),
             _NetBalancesSection(
-              balances: balancesData.balances,
-              currency: group.currency,
+              balances: balances,
+              currency: currency,
             ),
           ],
           if (history.isNotEmpty) ...[
             const SizedBox(height: 24),
             _PaymentHistorySection(
               settlements: history,
-              currency: group.currency,
+              currency: currency,
             ),
           ],
         ],
@@ -133,12 +137,15 @@ class SettleUpPageBody extends StatelessWidget {
     final tileKey = GlobalKey();
     tileKeys[index] = tileKey;
 
+    final breakdown = buildBreakdown?.call(fromUserId, toUserId) ??
+        const <String, Decimal>{};
+
     return GroupSettlementTile(
           fromName: fromName,
           toName: toName,
           amount: amount,
-          currency: group.currency,
-          breakdown: buildBreakdown(fromUserId, toUserId),
+          currency: currency,
+          breakdown: breakdown,
           isYourAction: isYourAction,
           isCreditor: isCreditor,
           isHighlighted: isHighlighted,
@@ -163,11 +170,11 @@ class SettleUpPageBody extends StatelessWidget {
 class _SettlementIntro extends StatelessWidget {
   const _SettlementIntro({
     required this.transferCount,
-    required this.groupName,
+    required this.subjectName,
   });
 
   final int transferCount;
-  final String groupName;
+  final String subjectName;
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +203,7 @@ class _SettlementIntro extends StatelessWidget {
                 : 'Optimized to minimise the number of payments across ',
             children: [
               TextSpan(
-                text: groupName,
+                text: subjectName,
                 style: TextStyle(
                   color: context.colors.ink2,
                   fontWeight: FontWeight.w700,

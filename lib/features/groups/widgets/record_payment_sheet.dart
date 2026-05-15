@@ -8,7 +8,6 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../keys/group_keys.dart';
-import '../models/group_model.dart';
 
 /// Bottom-sheet "Mark paid" confirmation aligned with Hi_Sheet_MarkPaid
 /// (tier 6 · sheets & pickers).
@@ -19,7 +18,7 @@ import '../models/group_model.dart';
 /// confirm; null on dismiss.
 Future<RecordPaymentResult?> showRecordPaymentSheet(
   BuildContext context, {
-  required Group group,
+  required String currency,
   required String fromName,
   required String toName,
   required Decimal suggestedAmount,
@@ -32,7 +31,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (sheetContext) => _MarkPaidSheet(
-      group: group,
+      currency: currency,
       fromName: fromName,
       toName: toName,
       suggestedAmount: suggestedAmount,
@@ -42,13 +41,13 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
 
 class _MarkPaidSheet extends StatefulWidget {
   const _MarkPaidSheet({
-    required this.group,
+    required this.currency,
     required this.fromName,
     required this.toName,
     required this.suggestedAmount,
   });
 
-  final Group group;
+  final String currency;
   final String fromName;
   final String toName;
   final Decimal suggestedAmount;
@@ -68,7 +67,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
     super.initState();
     _amountController = TextEditingController(
       text: widget.suggestedAmount.toStringAsFixed(
-        widget.group.currency == 'OMR' ? 3 : 2,
+        widget.currency == 'OMR' ? 3 : 2,
       ),
     );
     _noteController = TextEditingController();
@@ -157,7 +156,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: spacing.space24),
                 child: _PayeeCard(
-                  group: widget.group,
+                  currency: widget.currency,
                   fromName: widget.fromName,
                   toName: widget.toName,
                   suggestedAmount: widget.suggestedAmount,
@@ -339,7 +338,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
 
 class _PayeeCard extends StatelessWidget {
   const _PayeeCard({
-    required this.group,
+    required this.currency,
     required this.fromName,
     required this.toName,
     required this.suggestedAmount,
@@ -348,7 +347,7 @@ class _PayeeCard extends StatelessWidget {
     required this.onToggleEditor,
   });
 
-  final Group group;
+  final String currency;
   final String fromName;
   final String toName;
   final Decimal suggestedAmount;
@@ -419,7 +418,7 @@ class _PayeeCard extends StatelessWidget {
               ),
               RAmount(
                 value: suggestedAmount,
-                currency: group.currency,
+                currency: currency,
                 size: 20,
                 tone: AmountTone.sage,
               ),
@@ -441,7 +440,7 @@ class _PayeeCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
               decoration: InputDecoration(
-                labelText: 'Amount (${group.currency})',
+                labelText: 'Amount ($currency)',
                 filled: true,
                 fillColor: colors.inputFillWarm,
                 contentPadding: const EdgeInsets.symmetric(
@@ -469,7 +468,7 @@ class _PayeeCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Suggested: ${AppFormatters.formatCurrency(suggestedAmount, group.currency)}',
+                'Suggested: ${AppFormatters.formatCurrency(suggestedAmount, currency)}',
                 style: AppTypography.sans(
                   fontSize: 11,
                   color: colors.textSecondary,

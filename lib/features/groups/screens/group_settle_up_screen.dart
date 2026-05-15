@@ -113,9 +113,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                       );
 
                   return SettleUpPageBody(
-                    group: group,
+                    subjectName: group.name,
+                    currency: group.currency,
                     optimalSettlements: optimalSettlements,
-                    balancesData: balancesData,
+                    balances: balancesData.balances,
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
                     tileKeys: _tileKeys,
@@ -249,7 +250,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   }) async {
     final result = await showRecordPaymentSheet(
       context,
-      group: group,
+      currency: group.currency,
       fromName: fromName,
       toName: toName,
       suggestedAmount: suggestedAmount,
