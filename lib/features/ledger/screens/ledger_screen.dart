@@ -11,8 +11,6 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
-import '../../../shared/widgets/r_amount.dart';
-import '../../../shared/widgets/r_avatar.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -21,46 +19,35 @@ import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
+import '../utils/ledger_categories.dart';
+import '../utils/ledger_timeline.dart';
+import '../widgets/ledger_category_strip.dart';
+import '../widgets/ledger_day_card.dart';
+import '../widgets/ledger_hero_block.dart';
+import '../widgets/ledger_roster_strip.dart';
 import '../widgets/ledger_search_sheet.dart';
+import '../widgets/ledger_sticky_cta.dart';
 
-/// Sealed timeline-item type — merges expenses and settlements into one
-/// chronological feed.
-sealed class _TimelineItem {
-  DateTime get date;
-}
-
-final class _ExpenseItem extends _TimelineItem {
-  _ExpenseItem(this.expense);
-  final Expense expense;
-  @override
-  DateTime get date => expense.createdAt;
-}
-
-final class _SettlementItem extends _TimelineItem {
-  _SettlementItem(this.settlement);
-  final Settlement settlement;
-  @override
-  DateTime get date => settlement.settledAt;
-}
-
-/// Ledger — the showpiece. Saffron travel-journal direction.
+/// V5R ledger — saffron travel-journal direction.
 ///
-/// Wireframe ref: `Wireframes/Rihla/hifi/screens-ledger.jsx` → `Hi_Ledger()`.
 /// Layout top to bottom:
-///   1. Cover header (120px + status bar) — `CoverArt.forEventType`, dark
-///      gradient overlay, floating paper-style back · search · settings
-///      buttons, mono caption ("DATES · N PEOPLE") + italic event title.
-///   2. Hero card lifted -22 over cover — italic "Your tally on this trip" +
-///      mono "OMR" header, big sage `RAmount(sign, 48)`, caption with inline
-///      trip-total `RAmount`, per-person sage/rust bars (top 3), then a
-///      full-width CTA strip ("Add expense" ink-filled · "Settle up").
-///   3. Category chip strip — All · N / category chips with colored dots.
-///   4. Day-grouped timeline — italic 18 date headers, card-wrapped rows
-///      (category icon · expense title · payer + split caption · `RAmount` +
-///      sage/rust share preview).
-///   5. Footer: mono "· END OF LEDGER ·".
+///   1. 120px CoverArt cover header with floating paper buttons (back ·
+///      search · settings) and bottom-aligned mono meta + italic title.
+///   2. Italic statement hero ("You're up [+OMR 12.450] across 3 people.").
+///   3. Mono trip-total caption ("TRIP TOTAL · OMR 142.350 · 6 expenses · 2 settled").
+///   4. Horizontal roster strip — You anchor + per-person signed chips.
+///   5. Category chip filter (cat-color dots, "All · N" first).
+///   6. Day-grouped white cards with two-row italic day stamps. Distinct
+///      settlement rows (dashed sage inset with sage-text overline).
+///   7. Footer: mono "· END OF LEDGER ·".
+///   8. Sticky bottom CTA bar — ink "Add expense" + ghost "Settle up"
+///      (dimmed when settled).
 class LedgerScreen extends ConsumerStatefulWidget {
-  const LedgerScreen({super.key, required this.groupId, required this.eventId});
+  const LedgerScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   final String groupId;
   final String eventId;
@@ -70,15 +57,11 @@ class LedgerScreen extends ConsumerStatefulWidget {
 }
 
 class _LedgerScreenState extends ConsumerState<LedgerScreen> {
-  /// Category bucket filter, 1-6. Null = All.
   int? _categoryFilter;
-
-  String get groupId => widget.groupId;
-  String get eventId => widget.eventId;
 
   @override
   Widget build(BuildContext context) {
-    final eventRef = (groupId: groupId, eventId: eventId);
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
@@ -95,22 +78,21 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           if (event == null) return const _NotFoundState();
           if (expensesAsync.hasError || settlementsAsync.hasError) {
             return _DataErrorState(
-              event: event,
               onRetry: () {
                 ref.invalidate(eventExpensesProvider(eventRef));
                 ref.invalidate(eventSettlementsProvider(eventRef));
               },
             );
           }
-          final expenses = (expensesAsync.valueOrNull ?? []).map((e) {
+          final expenses = (expensesAsync.valueOrNull ?? <Expense>[]).map((e) {
             final name = event.participantNames[e.payerParticipantId];
             return name != null ? e.copyWith(payerName: name) : e;
           }).toList();
-          final settlements = settlementsAsync.valueOrNull ?? [];
+          final settlements = settlementsAsync.valueOrNull ?? <Settlement>[];
           final currentUserId = ref.watch(currentUserIdProvider);
           return _Body(
-            groupId: groupId,
-            eventId: eventId,
+            groupId: widget.groupId,
+            eventId: widget.eventId,
             event: event,
             expenses: expenses,
             settlements: settlements,
@@ -123,8 +105,6 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     );
   }
 }
-
-// ──────────────────────────── Body
 
 class _Body extends StatelessWidget {
   const _Body({
@@ -160,16 +140,205 @@ class _Body extends StatelessWidget {
           ),
         )
         .toList();
-    final currentPid = event.participantIds.contains(currentUserId)
-        ? currentUserId
-        : null;
+    final currentPid =
+        event.participantIds.contains(currentUserId) ? currentUserId : null;
 
     final balances = BalanceCalculator.calculateBalances(
       expenses: expenses,
       settlements: settlements,
       participants: participants,
     );
-    final myBalance = balances.firstWhere(
+    final myBalance = _resolveMyBalance(balances, currentPid);
+    final eventTotal = expenses.fold<Decimal>(
+      Decimal.zero,
+      (sum, e) => sum + e.amount,
+    );
+
+    // From the current user's perspective:
+    //   negative net for someone else → they owe you (positive chip)
+    //   positive net for someone else → you owe them (negative chip)
+    final roster =
+        balances
+            .where((b) => b.participantId != currentPid)
+            .map(
+              (b) => LedgerRosterPerson(
+                participantId: b.participantId,
+                displayName: b.displayName ?? 'Member',
+                signedAmount: -b.netBalance,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.signedAmount.abs().compareTo(a.signedAmount.abs()));
+
+    final hasExpenses = expenses.isNotEmpty;
+    final isSettled = hasExpenses && myBalance.netBalance == Decimal.zero;
+    final heroKind = !hasExpenses
+        ? LedgerHeroKind.empty
+        : isSettled
+        ? LedgerHeroKind.settled
+        : myBalance.netBalance > Decimal.zero
+        ? LedgerHeroKind.positive
+        : LedgerHeroKind.negative;
+    final rosterState = !hasExpenses
+        ? LedgerRosterState.empty
+        : isSettled
+        ? LedgerRosterState.settled
+        : LedgerRosterState.live;
+    final peopleCount = roster
+        .where((p) => p.signedAmount != Decimal.zero)
+        .length;
+
+    final filteredExpenses = categoryFilter == null
+        ? expenses
+        : expenses
+              .where((e) => ledgerCategoryBucket(e.categoryName) == categoryFilter)
+              .toList();
+    final filteredSettlements = categoryFilter == null
+        ? settlements
+        : <Settlement>[];
+    final timeline = <LedgerTimelineItem>[
+      ...filteredExpenses.map(LedgerExpenseItem.new),
+      ...filteredSettlements.map(LedgerSettlementItem.new),
+    ]..sort((a, b) => b.date.compareTo(a.date));
+    final days = groupTimelineByDay(timeline, DateTime.now());
+
+    return Column(
+      children: [
+        Expanded(
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _CoverHeader(
+                  event: event,
+                  participantCount: participants.length,
+                  onSettings: () => GoRouter.of(
+                    context,
+                  ).push('/group/$groupId/event/$eventId/settings'),
+                  onSearch: () => showLedgerSearchSheet(
+                    context,
+                    expenses: expenses,
+                    settlements: settlements,
+                    groupId: groupId,
+                    eventId: eventId,
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: OfflineBanner()),
+              SliverToBoxAdapter(
+                child: LedgerHeroStatement(
+                  kind: heroKind,
+                  amount: myBalance.netBalance,
+                  peopleCount: peopleCount,
+                ),
+              ),
+              if (hasExpenses)
+                SliverToBoxAdapter(
+                  child: LedgerTripCaption(
+                    total: eventTotal,
+                    expenseCount: expenses.length,
+                    settledCount: settlements.length,
+                  ),
+                ),
+              SliverToBoxAdapter(
+                child: LedgerRosterStrip(
+                  state: rosterState,
+                  others: roster,
+                  currentUserDisplayName: myBalance.displayName ?? 'You',
+                  onPersonTap: (p) => GoRouter.of(context).push(
+                    '/group/$groupId/event/$eventId/ledger/'
+                    'settle-up?memberId=${Uri.encodeComponent(p.participantId)}',
+                  ),
+                ),
+              ),
+              if (hasExpenses)
+                SliverToBoxAdapter(
+                  child: LedgerCategoryStrip(
+                    expenses: expenses,
+                    totalCount: expenses.length,
+                    active: categoryFilter,
+                    onChange: onCategoryFilter,
+                  ),
+                )
+              else
+                const SliverToBoxAdapter(
+                  child: LedgerCategoryStripEmpty(),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
+              if (timeline.isEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: hasExpenses
+                        ? const EmptyStateView(
+                            icon: Iconsax.receipt_item,
+                            title: 'Nothing in this category',
+                            message:
+                                'Try a different category, or switch back to All.',
+                          )
+                        : const _EmptyStateBody(),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final day = days[index];
+                    return Padding(
+                      padding: EdgeInsets.only(top: index == 0 ? 4 : 14),
+                      child: LedgerDayCard(
+                        dayLabel: day.label,
+                        sub: null,
+                        items: day.items,
+                        currentParticipantId: currentPid,
+                        participantCount: participants.length,
+                        onExpenseTap: (expense) => GoRouter.of(context).push(
+                          '/group/$groupId/event/$eventId/ledger/'
+                          'edit/${expense.id}',
+                        ),
+                      ),
+                    );
+                  }, childCount: days.length),
+                ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      isSettled
+                          ? '· END OF LEDGER · 0.000 ·'
+                          : '· END OF LEDGER ·',
+                      style: AppTypography.mono(
+                        fontSize: 9,
+                        color: context.colors.textSecondary,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        LedgerStickyCta(
+          settleEnabled: !isSettled && hasExpenses,
+          onAddExpense: () => GoRouter.of(
+            context,
+          ).push('/group/$groupId/event/$eventId/ledger/add'),
+          onSettleUp: () => GoRouter.of(
+            context,
+          ).push('/group/$groupId/event/$eventId/ledger/settle-up'),
+        ),
+      ],
+    );
+  }
+
+  static UserBalance _resolveMyBalance(
+    List<UserBalance> balances,
+    String? currentPid,
+  ) {
+    return balances.firstWhere(
       (b) => b.participantId == currentPid,
       orElse: () => UserBalance(
         participantId: currentPid ?? '',
@@ -179,141 +348,6 @@ class _Body extends StatelessWidget {
         netBalance: Decimal.zero,
       ),
     );
-    final otherBalances =
-        balances.where((b) => b.participantId != currentPid).toList()
-          ..sort((a, b) => b.netBalance.abs().compareTo(a.netBalance.abs()));
-
-    final eventTotal = expenses.fold<Decimal>(
-      Decimal.zero,
-      (sum, e) => sum + e.amount,
-    );
-
-    final filteredExpenses = categoryFilter == null
-        ? expenses
-        : expenses
-              .where((e) => _categoryBucket(e.categoryName) == categoryFilter)
-              .toList();
-    // Settlements only appear in the "All" view since they don't have categories.
-    final filteredSettlements = categoryFilter == null
-        ? settlements
-        : <Settlement>[];
-    final timeline = <_TimelineItem>[
-      ...filteredExpenses.map(_ExpenseItem.new),
-      ...filteredSettlements.map(_SettlementItem.new),
-    ]..sort((a, b) => b.date.compareTo(a.date));
-    final days = _groupByDay(timeline, DateTime.now());
-
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: _CoverHeader(
-            event: event,
-            participants: participants,
-            onSettings: () => GoRouter.of(
-              context,
-            ).push('/group/$groupId/event/$eventId/settings'),
-            onSearch: () => showLedgerSearchSheet(
-              context,
-              expenses: expenses,
-              settlements: settlements,
-              groupId: groupId,
-              eventId: eventId,
-            ),
-          ),
-        ),
-        const SliverToBoxAdapter(child: OfflineBanner()),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-          sliver: SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -22),
-              child: _HeroCard(
-                netBalance: myBalance.netBalance,
-                eventTotal: eventTotal,
-                otherBalances: otherBalances,
-                currentPid: currentPid,
-                participants: participants,
-                onAddExpense: () {
-                  HapticService.medium();
-                  GoRouter.of(
-                    context,
-                  ).push('/group/$groupId/event/$eventId/ledger/add');
-                },
-                onSettleUp: () {
-                  HapticService.lightClick();
-                  GoRouter.of(
-                    context,
-                  ).push('/group/$groupId/event/$eventId/ledger/settle-up');
-                },
-              ),
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: _CategoryStrip(
-            total: expenses.length,
-            active: categoryFilter,
-            onChange: onCategoryFilter,
-            expenses: expenses,
-          ),
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: 6)),
-        if (timeline.isEmpty)
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            sliver: SliverToBoxAdapter(
-              child: EmptyStateView(
-                icon: Iconsax.receipt_item,
-                title: categoryFilter == null
-                    ? 'No expenses yet'
-                    : 'Nothing in this category',
-                message: categoryFilter == null
-                    ? 'Add your first expense to start tracking who paid what.'
-                    : 'Try a different category, or switch back to All.',
-                actionLabel: categoryFilter == null ? 'Add Expense' : null,
-                onAction: categoryFilter == null
-                    ? () => GoRouter.of(
-                        context,
-                      ).push('/group/$groupId/event/$eventId/ledger/add')
-                    : null,
-              ),
-            ),
-          )
-        else
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final day = days[index];
-              return Padding(
-                padding: EdgeInsets.fromLTRB(20, index == 0 ? 8 : 18, 20, 0),
-                child: _DaySection(
-                  label: day.label,
-                  items: day.items,
-                  participants: participants,
-                  currentPid: currentPid,
-                  onExpenseTap: (expense) => GoRouter.of(context).push(
-                    '/group/$groupId/event/$eventId/ledger/edit/${expense.id}',
-                  ),
-                ),
-              );
-            }, childCount: days.length),
-          ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 28),
-            child: Center(
-              child: Text(
-                '· END OF LEDGER ·',
-                style: AppTypography.mono(
-                  fontSize: 9,
-                  color: context.colors.textSecondary,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -322,24 +356,25 @@ class _Body extends StatelessWidget {
 class _CoverHeader extends StatelessWidget {
   const _CoverHeader({
     required this.event,
-    required this.participants,
+    required this.participantCount,
     required this.onSettings,
     required this.onSearch,
   });
 
   final Event event;
-  final List<Participant> participants;
+  final int participantCount;
   final VoidCallback onSettings;
   final VoidCallback onSearch;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final statusBar = MediaQuery.of(context).padding.top;
-    final dateRange = _formatDateRange(event.startDate, event.endDate);
+    final dateRange = formatEventDateRange(event.startDate, event.endDate);
     final captionParts = <String>[
       ?dateRange,
-      '${participants.length} '
-          'PEOPLE',
+      '$participantCount '
+          '${participantCount == 1 ? 'PERSON' : 'PEOPLE'}',
     ];
 
     return SizedBox(
@@ -355,7 +390,7 @@ class _CoverHeader extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  context.colors.textPrimary.withValues(alpha: 0.55),
+                  colors.textPrimary.withValues(alpha: 0.55),
                 ],
                 stops: const [0.3, 1.0],
               ),
@@ -410,7 +445,7 @@ class _CoverHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  captionParts.join(' · ').toUpperCase(),
+                  captionParts.join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.mono(
@@ -437,14 +472,6 @@ class _CoverHeader extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  static String? _formatDateRange(DateTime? start, DateTime? end) {
-    if (start == null && end == null) return null;
-    String fmt(DateTime d) => '${_months[d.month - 1]} ${d.day}';
-    if (start == null) return fmt(end!);
-    if (end == null) return fmt(start);
-    return '${fmt(start)} — ${fmt(end)}';
   }
 }
 
@@ -480,777 +507,129 @@ class _PaperIconButton extends StatelessWidget {
   }
 }
 
-// ──────────────────────────── Hero card
+// ──────────────────────────── Empty-state body
 
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({
-    required this.netBalance,
-    required this.eventTotal,
-    required this.otherBalances,
-    required this.currentPid,
-    required this.participants,
-    required this.onAddExpense,
-    required this.onSettleUp,
-  });
-
-  final Decimal netBalance;
-  final Decimal eventTotal;
-  final List<UserBalance> otherBalances;
-  final String? currentPid;
-  final List<Participant> participants;
-  final VoidCallback onAddExpense;
-  final VoidCallback onSettleUp;
+class _EmptyStateBody extends StatelessWidget {
+  const _EmptyStateBody();
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isPositive = netBalance > Decimal.zero;
-    final isNegative = netBalance < Decimal.zero;
-    final tone = isPositive
-        ? AmountTone.sage
-        : isNegative
-        ? AmountTone.rust
-        : AmountTone.ink;
-
-    final othersOwed = otherBalances
-        .where((b) => b.netBalance < Decimal.zero)
-        .length;
-    final caption = isPositive
-        ? 'Net — $othersOwed friend${othersOwed == 1 ? '' : 's'} owe you · trip total'
-        : isNegative
-        ? 'Net — you owe · trip total'
-        : 'All settled · trip total';
-
-    final topBars = otherBalances.take(3).toList();
-    final maxAbs = topBars.fold<Decimal>(
-      Decimal.zero,
-      (m, b) => b.netBalance.abs() > m ? b.netBalance.abs() : m,
-    );
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: context.shadows.raised,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Your tally on this trip',
-                        style: AppTypography.display(
-                          fontSize: 14,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'OMR',
-                      style: AppTypography.mono(
-                        fontSize: 9,
-                        color: colors.textSecondary,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                RAmount(
-                  value: netBalance,
-                  size: 48,
-                  sign: netBalance != Decimal.zero,
-                  tone: tone,
-                  weight: FontWeight.w500,
-                  showCurrency: false,
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 6,
-                  children: [
-                    Text(
-                      caption,
-                      style: AppTypography.sans(
-                        fontSize: 13,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    RAmount(
-                      value: eventTotal,
-                      size: 13,
-                      weight: FontWeight.w600,
-                      tone: AmountTone.ink,
-                      showCurrency: false,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (topBars.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
-              child: Column(
-                children: [
-                  for (final b in topBars)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _PersonBar(
-                        name: b.displayName ?? 'Member',
-                        balance: b.netBalance,
-                        maxAbs: maxAbs,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          // CTA strip
-          Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: colors.rule, width: 1)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Material(
-                    color: colors.textPrimary,
-                    child: InkWell(
-                      onTap: onAddExpense,
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Iconsax.add,
-                              size: 16,
-                              color: colors.scaffoldBackground,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Add expense',
-                              style: AppTypography.sans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: colors.scaffoldBackground,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Container(width: 1, height: 48, color: colors.rule),
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: onSettleUp,
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Settle up',
-                          style: AppTypography.sans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PersonBar extends StatelessWidget {
-  const _PersonBar({
-    required this.name,
-    required this.balance,
-    required this.maxAbs,
-  });
-
-  final String name;
-  final Decimal balance;
-  final Decimal maxAbs;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    // Wireframe shows "they owe you" perspective — invert sign for display so
-    // a positive bar = they owe the user.
-    final showSign = -balance;
-    final isPositive = showSign > Decimal.zero;
-    final magnitude = showSign.abs();
-    final fraction = maxAbs == Decimal.zero
-        ? 0.0
-        : (magnitude.toDouble() / maxAbs.toDouble()).clamp(0.0, 1.0);
-
-    return Row(
-      children: [
-        RAvatar(name: name, size: 22),
-        const SizedBox(width: 10),
-        Expanded(
-          child: SizedBox(
-            height: 4,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.rule,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-                FractionallySizedBox(
-                  widthFactor: fraction,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isPositive ? colors.success : colors.error,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        RAmount(
-          value: showSign,
-          size: 12,
-          sign: showSign != Decimal.zero,
-          weight: FontWeight.w500,
-          showCurrency: false,
-        ),
-      ],
-    );
-  }
-}
-
-// ──────────────────────────── Category strip
-
-class _CategoryStrip extends StatelessWidget {
-  const _CategoryStrip({
-    required this.total,
-    required this.active,
-    required this.onChange,
-    required this.expenses,
-  });
-
-  final int total;
-  final int? active;
-  final ValueChanged<int?> onChange;
-  final List<Expense> expenses;
-
-  @override
-  Widget build(BuildContext context) {
-    final present = <int>{};
-    for (final e in expenses) {
-      present.add(_categoryBucket(e.categoryName));
-    }
-    // Stable display order matching the wireframe's chip set.
-    const order = [1, 2, 3, 4, 5, 6];
-    final available = order.where(present.contains).toList(growable: false);
-
-    return SizedBox(
-      height: 36,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
-        children: [
-          _Chip(
-            label: 'All · $total',
-            active: active == null,
-            dot: null,
-            onTap: () => onChange(null),
-          ),
-          const SizedBox(width: 8),
-          for (final cat in available) ...[
-            _Chip(
-              label: _categoryName(cat),
-              active: active == cat,
-              dot: _categoryColor(context.colors, cat),
-              onTap: () => onChange(cat),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.label,
-    required this.active,
-    required this.onTap,
-    this.dot,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  final Color? dot;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      onTap: () {
-        HapticService.selection();
-        onTap();
-      },
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? colors.textPrimary : colors.cardSoft,
-          borderRadius: BorderRadius.circular(9999),
-          border: Border.all(
-            color: active ? colors.textPrimary : colors.rule,
-            width: 0.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (dot != null) ...[
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: AppTypography.sans(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: active ? colors.scaffoldBackground : colors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────────────────── Day section
-
-class _DaySection extends StatelessWidget {
-  const _DaySection({
-    required this.label,
-    required this.items,
-    required this.participants,
-    required this.currentPid,
-    required this.onExpenseTap,
-  });
-
-  final String label;
-  final List<_TimelineItem> items;
-  final List<Participant> participants;
-  final String? currentPid;
-  final ValueChanged<Expense> onExpenseTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            label,
-            style: AppTypography.display(
-              fontSize: 18,
-              color: colors.textPrimary,
-              letterSpacing: -0.2,
-            ),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: colors.cardSurface,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: context.shadows.raised,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: [
-              for (var i = 0; i < items.length; i++)
-                _buildRow(context, items[i], i < items.length - 1),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRow(BuildContext context, _TimelineItem item, bool divider) {
-    return switch (item) {
-      _ExpenseItem(:final expense) => _ExpenseRow(
-        key: LedgerKeys.expenseCard(expense.id),
-        expense: expense,
-        divider: divider,
-        participants: participants,
-        currentPid: currentPid,
-        onTap: () => onExpenseTap(expense),
-      ),
-      _SettlementItem(:final settlement) => _SettlementRow(
-        settlement: settlement,
-        divider: divider,
-      ),
-    };
-  }
-}
-
-// ──────────────────────────── Expense row
-
-class _ExpenseRow extends StatelessWidget {
-  const _ExpenseRow({
-    super.key,
-    required this.expense,
-    required this.divider,
-    required this.participants,
-    required this.currentPid,
-    required this.onTap,
-  });
-
-  final Expense expense;
-  final bool divider;
-  final List<Participant> participants;
-  final String? currentPid;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final bucket = _categoryBucket(expense.categoryName);
-    final isPayer = expense.payerParticipantId == currentPid;
-    final payerName = isPayer
-        ? 'You'
-        : expense.payerName ??
-              participants
-                  .where((p) => p.id == expense.payerParticipantId)
-                  .map((p) => p.displayName ?? 'Member')
-                  .firstOrNull ??
-              'Member';
-    final splitIds = expense.customSplitParticipants;
-    final splitCount = splitIds != null ? splitIds.length : participants.length;
-    final share = _userShare(expense);
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _CategoryIcon(bucket: bucket),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        expense.description ?? 'Expense',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$payerName paid · split $splitCount way${splitCount == 1 ? '' : 's'}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    RAmount(
-                      value: expense.amount,
-                      size: 14,
-                      showCurrency: false,
-                    ),
-                    if (share != Decimal.zero) ...[
-                      const SizedBox(height: 2),
-                      RAmount(
-                        value: share,
-                        size: 11,
-                        sign: true,
-                        weight: FontWeight.w500,
-                        showCurrency: false,
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-            if (divider) ...[
-              const SizedBox(height: 12),
-              Container(height: 0.5, color: colors.rule),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Decimal _userShare(Expense expense) {
-    final count = participants.length;
-    if (count == 0 || currentPid == null) return Decimal.zero;
-    final isPayer = expense.payerParticipantId == currentPid;
-    final splitIds = expense.customSplitParticipants;
-    final isInSplit = splitIds != null ? splitIds.contains(currentPid) : true;
-    final splitCount = splitIds != null ? splitIds.length : count;
-    if (splitCount == 0) return Decimal.zero;
-    final share = (expense.amount / Decimal.fromInt(splitCount)).toDecimal(
-      scaleOnInfinitePrecision: 3,
-    );
-    if (isPayer && isInSplit) return expense.amount - share;
-    if (isPayer && !isInSplit) return expense.amount;
-    if (!isPayer && isInSplit) return -share;
-    return Decimal.zero;
-  }
-}
-
-class _SettlementRow extends StatelessWidget {
-  const _SettlementRow({required this.settlement, required this.divider});
-  final Settlement settlement;
-  final bool divider;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final payer = settlement.payerName ?? 'Someone';
-    final recipient = settlement.recipientName ?? 'someone';
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.fromLTRB(32, 16, 32, 8),
       child: Column(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: colors.cardSoft,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: colors.rule, width: 0.5),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  Iconsax.arrow_right_3,
-                  size: 18,
-                  color: colors.success,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: payer,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' paid ',
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                      TextSpan(
-                        text: recipient,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              RAmount(value: settlement.amount, size: 14, showCurrency: false),
-            ],
+          CustomPaint(
+            size: const Size(120, 116),
+            painter: _JournalPagePainter(colors: colors),
           ),
-          if (divider) ...[
-            const SizedBox(height: 12),
-            Container(height: 0.5, color: colors.rule),
-          ],
+          const SizedBox(height: 12),
+          Text(
+            'An empty page, ready to be written.',
+            textAlign: TextAlign.center,
+            style: AppTypography.display(
+              fontSize: 22,
+              color: colors.textPrimary,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'The first OMR you log will set the trip total. '
+            "We'll split it equally between everyone on the trip.",
+            textAlign: TextAlign.center,
+            style: AppTypography.sans(
+              fontSize: 13,
+              color: colors.textSecondary,
+              height: 1.5,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _CategoryIcon extends StatelessWidget {
-  const _CategoryIcon({required this.bucket});
-  final int bucket;
+/// Sketched journal-page illustration for the empty state — rounded
+/// rectangle outline, dashed ruled lines, and a saffron plus-circle in
+/// the top-right corner. Lightweight Flutter mirror of the V5R SVG.
+class _JournalPagePainter extends CustomPainter {
+  _JournalPagePainter({required this.colors});
+  final AppColorTokens colors;
 
   @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final fg = _categoryColor(colors, bucket);
-    final icon = switch (bucket) {
-      1 => Iconsax.coffee,
-      2 => Iconsax.house_2,
-      3 => Iconsax.car,
-      4 => Iconsax.shopping_cart,
-      5 => Iconsax.star,
-      _ => Iconsax.box,
-    };
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: colors.cardSoft,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.rule, width: 0.5),
-      ),
-      alignment: Alignment.center,
-      child: Icon(icon, size: 18, color: fg),
+  void paint(Canvas canvas, Size size) {
+    final pagePaint = Paint()
+      ..color = colors.cardSurface
+      ..style = PaintingStyle.fill;
+    final pageStroke = Paint()
+      ..color = colors.textSecondary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    final ruleStroke = Paint()
+      ..color = colors.rule2
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+
+    final pageRect = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(18, 14, 84, 92),
+      const Radius.circular(6),
     );
-  }
-}
+    canvas.drawRRect(pageRect, pagePaint);
+    canvas.drawRRect(pageRect, pageStroke);
 
-// ──────────────────────────── Day grouping
-
-class _DayGroup {
-  const _DayGroup({required this.label, required this.items});
-  final String label;
-  final List<_TimelineItem> items;
-}
-
-List<_DayGroup> _groupByDay(List<_TimelineItem> items, DateTime now) {
-  final today = DateTime(now.year, now.month, now.day);
-  final groups = <String, List<_TimelineItem>>{};
-  final order = <String>[];
-  for (final item in items) {
-    final ts = item.date;
-    final day = DateTime(ts.year, ts.month, ts.day);
-    final diff = today.difference(day).inDays;
-    final label = diff == 0
-        ? 'Today · ${_monthShort(ts.month)} ${ts.day}'
-        : diff == 1
-        ? 'Yesterday · ${_monthShort(ts.month)} ${ts.day}'
-        : '${_monthShort(ts.month)} ${ts.day}';
-    if (!groups.containsKey(label)) {
-      groups[label] = [];
-      order.add(label);
+    final lines = <(double, double, double)>[
+      (30, 36, 90),
+      (30, 50, 90),
+      (30, 64, 70),
+      (30, 78, 84),
+      (30, 92, 62),
+    ];
+    for (final (sx, y, ex) in lines) {
+      _dashedHLine(canvas, sx, ex, y, ruleStroke, dash: 2, gap: 4);
     }
-    groups[label]!.add(item);
+
+    final saffronTintPaint = Paint()..color = colors.saffronTint;
+    final saffronStroke = Paint()
+      ..color = colors.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    canvas.drawCircle(const Offset(98, 14), 14, saffronTintPaint);
+    canvas.drawCircle(const Offset(98, 14), 14, saffronStroke);
+    final plusPaint = Paint()
+      ..color = colors.primaryDark
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(const Offset(92, 14), const Offset(104, 14), plusPaint);
+    canvas.drawLine(const Offset(98, 8), const Offset(98, 20), plusPaint);
   }
-  return [
-    for (final label in order) _DayGroup(label: label, items: groups[label]!),
-  ];
+
+  void _dashedHLine(
+    Canvas canvas,
+    double x0,
+    double x1,
+    double y,
+    Paint paint, {
+    required double dash,
+    required double gap,
+  }) {
+    var x = x0;
+    final step = dash + gap;
+    while (x < x1) {
+      final next = (x + dash).clamp(x0, x1);
+      canvas.drawLine(Offset(x, y), Offset(next, y), paint);
+      x += step;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _JournalPagePainter old) =>
+      old.colors != colors;
 }
 
-// ──────────────────────────── Helpers
-
-int _categoryBucket(String? name) {
-  if (name == null) return 6;
-  final lower = name.toLowerCase();
-  bool any(List<String> needles) => needles.any(lower.contains);
-  if (any(const ['food', 'rest', 'din', 'meal'])) return 1;
-  if (any(const ['lodg', 'hotel', 'accom', 'stay'])) return 2;
-  if (any(const ['trans', 'taxi', 'flight', 'uber', 'train'])) return 3;
-  if (any(const ['groc', 'supermark'])) return 4;
-  if (any(const ['activ', 'entertain', 'tour', 'ticket'])) return 5;
-  return 6;
-}
-
-String _categoryName(int bucket) {
-  return switch (bucket) {
-    1 => 'Food',
-    2 => 'Lodging',
-    3 => 'Transit',
-    4 => 'Groceries',
-    5 => 'Activities',
-    _ => 'Other',
-  };
-}
-
-Color _categoryColor(AppColorTokens colors, int bucket) {
-  return switch (bucket) {
-    1 => colors.cat1,
-    2 => colors.cat2,
-    3 => colors.cat3,
-    4 => colors.cat4,
-    5 => colors.cat5,
-    _ => colors.cat6,
-  };
-}
-
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-String _monthShort(int m) => _months[m - 1];
-
-// ──────────────────────────── States
+// ──────────────────────────── State views
 
 class _LoadingState extends StatelessWidget {
   const _LoadingState();
@@ -1295,8 +674,7 @@ class _ErrorState extends StatelessWidget {
 }
 
 class _DataErrorState extends StatelessWidget {
-  const _DataErrorState({required this.event, required this.onRetry});
-  final Event event;
+  const _DataErrorState({required this.onRetry});
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) {
@@ -1306,7 +684,7 @@ class _DataErrorState extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
-            title: "Couldn't load ledger",
+            title: 'Couldn\'t load ledger',
             message: 'Check your connection and try again.',
             actionLabel: 'Reload',
             onAction: onRetry,
