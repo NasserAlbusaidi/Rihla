@@ -171,7 +171,29 @@ void main() {
     });
 
     testWidgets('settle up CTA navigates to settle-up route', (tester) async {
-      await tester.pumpWidget(buildLedger());
+      // V5R disables Settle up when balance is zero (nothing to settle).
+      // Seed a 2-person event with an unsettled expense so it stays tappable.
+      final twoMemberEvent = event.copyWith(
+        participantIds: const ['uid-creator', 'uid-other'],
+        participantNames: const {
+          'uid-creator': 'Alice',
+          'uid-other': 'Bob',
+        },
+      );
+      final expenses = [
+        Expense(
+          id: 'expense-1',
+          tripId: eventId,
+          payerParticipantId: 'uid-creator',
+          amount: Decimal.parse('3.000'),
+          description: 'Coffee',
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026, 1, 10),
+        ),
+      ];
+      await tester.pumpWidget(
+        buildLedger(eventOverride: twoMemberEvent, expenses: expenses),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Settle up'));
@@ -263,7 +285,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Net — you owe · trip total'), findsOneWidget);
+      // V5R hero prose: "You owe −OMR 1.500 to 1 person." rendered as
+      // Text.rich with an inline WidgetSpan for the money, so assert the
+      // prose halves via findRichText.
+      expect(
+        find.textContaining('You owe', findRichText: true),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('to 1 person', findRichText: true),
+        findsOneWidget,
+      );
       expect(find.text('Mona paid · split 2 ways'), findsOneWidget);
     });
   });
