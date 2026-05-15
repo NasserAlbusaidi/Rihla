@@ -123,11 +123,11 @@ jobs:
         run: |
           flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation
 
-      - name: 🚀 Upload to Play Store (Closed Alpha)
+      - name: 🚀 Upload to Play Store (Closed Testing — "first" track)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
           packageName: com.safar.safar
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: alpha # Google Play Closed Testing
+          track: first # Custom closed-testing track in Play Console
           status: completed
