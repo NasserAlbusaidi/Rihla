@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
@@ -29,13 +30,17 @@ GoRouter _buildRouter() {
     initialLocation: '/recover',
     routes: [
       GoRoute(
+        path: '/home',
+        builder: (_, _) => const Scaffold(body: Text('HOME')),
+      ),
+      GoRoute(
         path: '/recover',
         builder: (_, _) => const RecoverScreen(),
         routes: [
           GoRoute(
             path: 'pending',
             builder: (_, state) =>
-                _PendingScreen(email: state.extra as String? ?? ''),
+                _PendingScreen(email: state.uri.queryParameters['email'] ?? ''),
           ),
         ],
       ),
@@ -62,13 +67,13 @@ Widget _wrap({
 }
 
 Group _stubGroup(String id) => Group(
-      id: id,
-      name: 'Group $id',
-      inviteCode: 'INV',
-      createdBy: 'someone',
-      memberIds: const ['someone'],
-      createdAt: DateTime(2026, 1, 1),
-    );
+  id: id,
+  name: 'Group $id',
+  inviteCode: 'INV',
+  createdBy: 'someone',
+  memberIds: const ['someone'],
+  createdAt: DateTime(2026, 1, 1),
+);
 
 Future<void> _typeAndSubmit(WidgetTester tester, String email) async {
   await tester.enterText(find.byKey(const Key('recover.email')), email);
@@ -99,7 +104,21 @@ void main() {
     verifyNever(() => service.sendRecoveryLink(any()));
   });
 
-  testWidgets('happy path on a fresh device sends and routes to pending', (tester) async {
+  testWidgets('direct entry back button routes home', (tester) async {
+    await tester.pumpWidget(
+      _wrap(service: service, firebaseAuth: firebaseAuth, groups: []),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Iconsax.arrow_left_2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('HOME'), findsOneWidget);
+  });
+
+  testWidgets('happy path on a fresh device sends and routes to pending', (
+    tester,
+  ) async {
     when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
 
     await tester.pumpWidget(
@@ -114,8 +133,9 @@ void main() {
     verifyNever(() => firebaseAuth.signOut());
   });
 
-  testWidgets('on a populated device, cancelling the dialog blocks the send',
-      (tester) async {
+  testWidgets('on a populated device, cancelling the dialog blocks the send', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(
         service: service,
@@ -140,8 +160,9 @@ void main() {
     verifyNever(() => firebaseAuth.signOut());
   });
 
-  testWidgets('on a populated device, confirming signs out then proceeds',
-      (tester) async {
+  testWidgets('on a populated device, confirming signs out then proceeds', (
+    tester,
+  ) async {
     when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
 
     await tester.pumpWidget(
@@ -169,9 +190,9 @@ void main() {
   });
 
   testWidgets('user-not-found surfaces the FR-REC-5 message', (tester) async {
-    when(() => service.sendRecoveryLink(any())).thenThrow(
-      firebase_auth.FirebaseAuthException(code: 'user-not-found'),
-    );
+    when(
+      () => service.sendRecoveryLink(any()),
+    ).thenThrow(firebase_auth.FirebaseAuthException(code: 'user-not-found'));
 
     await tester.pumpWidget(
       _wrap(service: service, firebaseAuth: firebaseAuth, groups: []),

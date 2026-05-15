@@ -1,0 +1,189 @@
+import 'package:decimal/decimal.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
+import 'package:safar/features/groups/models/group_member_model.dart';
+import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/groups/screens/group_detail_screen.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  const groupId = 'group-1';
+
+  final testGroup = Group(
+    id: groupId,
+    name: 'Adventure Crew',
+    inviteCode: 'ABC123',
+    createdBy: 'uid-creator',
+    memberIds: const ['uid-creator', 'uid-member'],
+    createdAt: DateTime(2026, 1, 1),
+  );
+
+  final members = [
+    GroupMember(
+      id: 'member-1',
+      groupId: groupId,
+      userId: 'uid-creator',
+      displayName: 'Alice',
+      role: 'CREATOR',
+      joinedAt: DateTime(2026, 1, 1),
+    ),
+    GroupMember(
+      id: 'member-2',
+      groupId: groupId,
+      userId: 'uid-member',
+      displayName: 'Bob',
+      role: 'MEMBER',
+      joinedAt: DateTime(2026, 1, 2),
+    ),
+  ];
+
+  final balances = (
+    balances: <UserBalance>[
+      UserBalance(
+        participantId: 'uid-creator',
+        displayName: 'Alice',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
+      UserBalance(
+        participantId: 'uid-member',
+        displayName: 'Bob',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
+    ],
+    totalSpent: Decimal.zero,
+    eventCount: 0,
+    perEventBreakdown: <String, Map<String, Decimal>>{},
+    memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  );
+
+  Future<void> pumpGroupDetail(WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({'device_name': 'Alice'});
+    final prefs = await SharedPreferences.getInstance();
+    final router = GoRouter(
+      initialLocation: '/group/$groupId',
+      routes: [
+        GoRoute(
+          path: '/group/:gid',
+          builder: (_, state) =>
+              GroupDetailScreen(groupId: state.pathParameters['gid']!),
+          routes: [
+            GoRoute(
+              path: 'create-event',
+              builder: (_, state) => Scaffold(
+                body: Text('CreateEvent:${state.pathParameters['gid']}'),
+              ),
+            ),
+            GoRoute(
+              path: 'settle-up',
+              builder: (_, state) => Scaffold(
+                body: Text('GroupSettleUp:${state.pathParameters['gid']}'),
+              ),
+            ),
+            GoRoute(
+              path: 'settings',
+              builder: (_, state) => Scaffold(
+                body: Text('GroupSettings:${state.pathParameters['gid']}'),
+              ),
+            ),
+            GoRoute(
+              path: 'activity',
+              builder: (_, state) => Scaffold(
+                body: Text('GroupActivity:${state.pathParameters['gid']}'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          currentUserIdProvider.overrideWithValue('uid-creator'),
+          groupDetailProvider(
+            groupId,
+          ).overrideWith((ref) => Stream.value(testGroup)),
+          groupMembersProvider(
+            groupId,
+          ).overrideWith((ref) => Stream.value(members)),
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((ref) => Stream.value(const [])),
+          groupBalancesProvider(
+            groupId,
+          ).overrideWith((ref) => AsyncValue.data(balances)),
+          groupActivityProvider(
+            groupId,
+          ).overrideWith((ref) => Stream.value(const [])),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  group('GroupDetailScreen navigation', () {
+    testWidgets('events header action routes to create-event', (tester) async {
+      await pumpGroupDetail(tester);
+
+      final cta = find.text('New event').first;
+      await tester.tap(cta);
+      await tester.pumpAndSettle();
+
+      expect(find.text('CreateEvent:$groupId'), findsOneWidget);
+    });
+
+    testWidgets('settle-up CTA routes to group settle-up', (tester) async {
+      await pumpGroupDetail(tester);
+
+      await tester.tap(find.byKey(GroupKeys.settleUpCta));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupSettleUp:$groupId'), findsOneWidget);
+    });
+
+    testWidgets('overflow settings item routes to group settings', (
+      tester,
+    ) async {
+      await pumpGroupDetail(tester);
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Group settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupSettings:$groupId'), findsOneWidget);
+    });
+
+    testWidgets('overflow activity item routes to group activity', (
+      tester,
+    ) async {
+      await pumpGroupDetail(tester);
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Activity'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupActivity:$groupId'), findsOneWidget);
+    });
+  });
+}

@@ -21,19 +21,16 @@ import '../../features/ledger/screens/edit_expense_screen.dart';
 import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
 import '../../features/activity/screens/activity_feed_screen.dart';
-import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/auth/screens/link_email_screen.dart';
 import '../../features/auth/screens/link_email_sent_screen.dart';
 import '../../features/auth/screens/recover_pending_screen.dart';
 import '../../features/auth/screens/recover_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
-import '../providers/settings_provider.dart';
 import '../screens/splash_screen.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
   static const String splash = '/';
-  static const String onboarding = '/onboarding';
   static const String home = '/home';
   static const String profile = '/profile';
   // Account recovery (P3 + P4)
@@ -66,6 +63,19 @@ class AppRoutes {
   static const String activity = '/activity';
 }
 
+@visibleForTesting
+String? appRouteRedirect(String matchedLocation) {
+  if (matchedLocation == AppRoutes.splash) {
+    return AppRoutes.home;
+  }
+
+  return null;
+}
+
+String _emailFromRouteState(GoRouterState state) {
+  return state.uri.queryParameters['email'] ?? '';
+}
+
 /// Shared axis page transition used by all route-level screens.
 ///
 /// Uses the Material 3 SharedAxisTransition pattern for fluid spatial navigation.
@@ -84,48 +94,20 @@ Widget _sharedAxisTransition(
   );
 }
 
-/// Router provider — redirects splash to `/onboarding` on first launch and
-/// `/home` thereafter. Onboarding state is read from [settingsProvider]
-/// (backed by SharedPreferences) which is hydrated synchronously at boot.
+/// Router provider — redirects splash to `/home`.
+///
+/// The shippable v1 surface intentionally keeps onboarding out of the route
+/// tree so invite links and recovery links cannot be blocked on first launch.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: kDebugMode,
-    redirect: (context, state) {
-      final onboardingComplete = ref.read(
-        settingsProvider.select((s) => s.onboardingComplete),
-      );
-      final location = state.matchedLocation;
-
-      if (location == AppRoutes.splash) {
-        return onboardingComplete ? AppRoutes.home : AppRoutes.onboarding;
-      }
-
-      // Hard gate: until onboarding is complete, every non-onboarding route
-      // redirects back to /onboarding so deep links can't bypass setup.
-      if (!onboardingComplete && location != AppRoutes.onboarding) {
-        return AppRoutes.onboarding;
-      }
-
-      return null;
-    },
+    redirect: (context, state) => appRouteRedirect(state.matchedLocation),
     routes: [
-      // Splash - auto-redirects to /onboarding or /home
+      // Splash - auto-redirects to /home
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
-      ),
-
-      // Onboarding - 3-page first-launch flow.
-      GoRoute(
-        path: AppRoutes.onboarding,
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const OnboardingScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
       ),
 
       // Home / Trip List
@@ -394,9 +376,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'sent',
                 pageBuilder: (context, state) {
-                  final email = state.extra is String
-                      ? state.extra as String
-                      : '';
+                  final email = _emailFromRouteState(state);
                   return CustomTransitionPage(
                     key: state.pageKey,
                     child: LinkEmailSentScreen(email: email),
@@ -431,7 +411,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'pending',
             pageBuilder: (context, state) {
-              final email = state.extra is String ? state.extra as String : '';
+              final email = _emailFromRouteState(state);
               return CustomTransitionPage(
                 key: state.pageKey,
                 child: RecoverPendingScreen(email: email),

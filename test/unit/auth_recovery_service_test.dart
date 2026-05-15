@@ -27,6 +27,7 @@ void main() {
 
   late _MockFirebaseAuth auth;
   late _MockUser anonUser;
+  late _MockFirestore defaultFirestore;
   late SharedPreferences prefs;
 
   setUp(() async {
@@ -35,8 +36,11 @@ void main() {
     auth = _MockFirebaseAuth();
     anonUser = _MockUser();
     when(() => auth.currentUser).thenReturn(anonUser);
+    when(() => auth.signOut()).thenAnswer((_) async {});
     when(() => anonUser.uid).thenReturn('anon-uid-123');
     when(() => anonUser.email).thenReturn(null);
+    defaultFirestore = _MockFirestore();
+    when(defaultFirestore.waitForPendingWrites).thenAnswer((_) async {});
   });
 
   AuthRecoveryService buildService({
@@ -46,20 +50,23 @@ void main() {
     return AuthRecoveryService(
       auth: auth,
       prefs: prefs,
-      firestore: firestore,
+      firestore: firestore ?? defaultFirestore,
       anonymousSessionFactory: anonymousSessionFactory ?? () async {},
     );
   }
 
   group('pending email storage', () {
-    test('setPendingEmail trims and persists, readPendingEmail returns it', () async {
-      final service = buildService();
+    test(
+      'setPendingEmail trims and persists, readPendingEmail returns it',
+      () async {
+        final service = buildService();
 
-      await service.setPendingEmail('  foo@example.com  ');
+        await service.setPendingEmail('  foo@example.com  ');
 
-      expect(service.readPendingEmail(), 'foo@example.com');
-      expect(prefs.getString('auth.pendingLinkEmail'), 'foo@example.com');
-    });
+        expect(service.readPendingEmail(), 'foo@example.com');
+        expect(prefs.getString('auth.pendingLinkEmail'), 'foo@example.com');
+      },
+    );
 
     test('setPendingEmail rejects empty / whitespace-only input', () async {
       final service = buildService();
@@ -174,55 +181,116 @@ void main() {
       );
     });
 
-    test('leaves pending email intact when linkWithCredential throws', () async {
-      when(
-        () => anonUser.linkWithCredential(any()),
-      ).thenThrow(FirebaseAuthException(code: 'credential-already-in-use'));
-      final service = buildService();
-      await service.setPendingEmail('foo@example.com');
+    test(
+      'leaves pending email intact when linkWithCredential throws',
+      () async {
+        when(
+          () => anonUser.linkWithCredential(any()),
+        ).thenThrow(FirebaseAuthException(code: 'credential-already-in-use'));
+        final service = buildService();
+        await service.setPendingEmail('foo@example.com');
 
-      await expectLater(
-        () => service.completeEmailLink(link),
-        throwsA(isA<FirebaseAuthException>()),
-      );
-      expect(service.readPendingEmail(), 'foo@example.com');
-    });
+        await expectLater(
+          () => service.completeEmailLink(link),
+          throwsA(isA<FirebaseAuthException>()),
+        );
+        expect(service.readPendingEmail(), 'foo@example.com');
+      },
+    );
   });
 
   group('completeRecovery', () {
     const link =
         'https://rihla-safar.firebaseapp.com/__/auth/links/continue?mode=signIn&oobCode=abc';
 
-    test('calls signInWithEmailLink with the persisted email and clears it', () async {
+    test(
+      'calls signInWithEmailLink with the persisted email and clears it',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async => credential);
+        final service = buildService();
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeRecovery(link);
+
+        expect(result, same(credential));
+        verify(
+          () => auth.signInWithEmailLink(
+            email: 'foo@example.com',
+            emailLink: link,
+          ),
+        ).called(1);
+        expect(service.readPendingEmail(), isNull);
+      },
+    );
+
+    test(
+      'drains pending writes and signs out anon UID before recovery',
+      () async {
+        final credential = _MockUserCredential();
+        final firestore = _MockFirestore();
+        when(firestore.waitForPendingWrites).thenAnswer((_) async {});
+        when(() => auth.signOut()).thenAnswer((_) async {});
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async => credential);
+        final service = buildService(firestore: firestore);
+        await service.setPendingEmail('foo@example.com');
+
+        await service.completeRecovery(link);
+
+        verifyInOrder([
+          firestore.waitForPendingWrites,
+          () => auth.signOut(),
+          () => auth.signInWithEmailLink(
+            email: 'foo@example.com',
+            emailLink: link,
+          ),
+        ]);
+      },
+    );
+
+    test('continues recovery when pending writes exceed the timeout', () async {
       final credential = _MockUserCredential();
+      final firestore = _MockFirestore();
+      when(
+        firestore.waitForPendingWrites,
+      ).thenAnswer((_) => Completer<void>().future);
+      when(() => auth.signOut()).thenAnswer((_) async {});
       when(
         () => auth.signInWithEmailLink(
           email: any(named: 'email'),
           emailLink: any(named: 'emailLink'),
         ),
       ).thenAnswer((_) async => credential);
-      final service = buildService();
+      final service = buildService(firestore: firestore);
       await service.setPendingEmail('foo@example.com');
 
-      final result = await service.completeRecovery(link);
+      final result = await service.completeRecovery(
+        link,
+        pendingWritesTimeout: const Duration(milliseconds: 50),
+      );
 
       expect(result, same(credential));
+      verify(() => auth.signOut()).called(1);
       verify(
-        () => auth.signInWithEmailLink(
-          email: 'foo@example.com',
-          emailLink: link,
-        ),
+        () =>
+            auth.signInWithEmailLink(email: 'foo@example.com', emailLink: link),
       ).called(1);
-      expect(service.readPendingEmail(), isNull);
     });
 
     test('throws StateError when no email is available', () async {
       final service = buildService();
 
-      await expectLater(
-        () => service.completeRecovery(link),
-        throwsStateError,
-      );
+      await expectLater(() => service.completeRecovery(link), throwsStateError);
     });
   });
 
@@ -231,10 +299,7 @@ void main() {
       when(() => anonUser.email).thenReturn(null);
       final service = buildService();
 
-      await expectLater(
-        service.signOutCurrentDevice,
-        throwsStateError,
-      );
+      await expectLater(service.signOutCurrentDevice, throwsStateError);
       verifyNever(() => auth.signOut());
     });
 

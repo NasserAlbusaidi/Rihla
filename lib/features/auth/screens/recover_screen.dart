@@ -69,7 +69,12 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
     try {
       await ref.read(authRecoveryServiceProvider).sendRecoveryLink(email);
       if (!mounted) return;
-      context.go(AppRoutes.recoverPending, extra: email);
+      context.go(
+        Uri(
+          path: AppRoutes.recoverPending,
+          queryParameters: {'email': email},
+        ).toString(),
+      );
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       setState(() => _serverError = _humanizeError(error));
@@ -99,6 +104,23 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
     }
   }
 
+  void _back() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go(AppRoutes.home);
+      }
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Watching the provider ensures it's subscribed so _confirmIfDevicePopulated
@@ -113,7 +135,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Iconsax.arrow_left_2),
-          onPressed: () => context.pop(),
+          onPressed: _back,
         ),
         title: Text(
           'Restore from email',

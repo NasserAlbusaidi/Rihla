@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 /// Shared GoRouter factory for widget tests.
 ///
-/// Registers stub routes matching the app's full route tree (D-02 + D-07)
+/// Registers stub routes matching the app's shippable route tree
 /// so that `context.push('/group/:gid/event/:eid/ledger')` resolves to a
 /// simple Scaffold with identifying text — no real screen constructors needed.
 ///
@@ -41,10 +41,14 @@ GoRouter testRouter({
         builder: (context, _) => const Scaffold(body: Text('JoinGroup')),
       ),
       GoRoute(
+        path: '/join/:code',
+        builder: (_, state) =>
+            Scaffold(body: Text('JoinInvite:${state.pathParameters['code']}')),
+      ),
+      GoRoute(
         path: '/group/:gid',
-        builder: (_, state) => Scaffold(
-          body: Text('GroupDetail:${state.pathParameters['gid']}'),
-        ),
+        builder: (_, state) =>
+            Scaffold(body: Text('GroupDetail:${state.pathParameters['gid']}')),
         routes: [
           GoRoute(
             path: 'settings',
@@ -78,9 +82,8 @@ GoRouter testRouter({
           ),
           GoRoute(
             path: 'event/:eid',
-            builder: (_, state) => Scaffold(
-              body: Text('EventHub:${state.pathParameters['eid']}'),
-            ),
+            builder: (_, state) =>
+                Scaffold(body: Text('EventHub:${state.pathParameters['eid']}')),
             routes: [
               GoRoute(
                 path: 'ledger',
@@ -98,47 +101,16 @@ GoRouter testRouter({
                     path: 'edit/:expId',
                     builder: (_, state) => Scaffold(
                       body: Text(
-                          'EditExpense:${state.pathParameters['expId']}'),
+                        'EditExpense:${state.pathParameters['expId']}',
+                      ),
                     ),
                   ),
                   GoRoute(
                     path: 'settle-up',
                     builder: (_, state) => Scaffold(
                       body: Text(
-                          'EventSettleUp:${state.pathParameters['eid']}'),
-                    ),
-                  ),
-                ],
-              ),
-              GoRoute(
-                path: 'gear',
-                builder: (_, state) => Scaffold(
-                  body: Text('Gear:${state.pathParameters['eid']}'),
-                ),
-              ),
-              GoRoute(
-                path: 'logistics',
-                builder: (_, state) => Scaffold(
-                  body: Text('Logistics:${state.pathParameters['eid']}'),
-                ),
-              ),
-              GoRoute(
-                path: 'vault',
-                builder: (_, state) => Scaffold(
-                  body: Text('Vault:${state.pathParameters['eid']}'),
-                ),
-              ),
-              GoRoute(
-                path: 'memories',
-                builder: (_, state) => Scaffold(
-                  body: Text('Memories:${state.pathParameters['eid']}'),
-                ),
-                routes: [
-                  GoRoute(
-                    path: ':memId',
-                    builder: (_, state) => Scaffold(
-                      body: Text(
-                          'MemoryDetail:${state.pathParameters['memId']}'),
+                        'EventSettleUp:${state.pathParameters['eid']}',
+                      ),
                     ),
                   ),
                 ],
@@ -149,7 +121,28 @@ GoRouter testRouter({
                   body: Text('EventActivity:${state.pathParameters['eid']}'),
                 ),
               ),
+              GoRoute(
+                path: 'settings',
+                builder: (_, state) => Scaffold(
+                  body: Text('EventSettings:${state.pathParameters['eid']}'),
+                ),
+              ),
             ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/activity',
+        builder: (context, _) => const Scaffold(body: Text('Activity')),
+      ),
+      GoRoute(
+        path: '/recover',
+        builder: (context, _) => const Scaffold(body: Text('Recover')),
+        routes: [
+          GoRoute(
+            path: 'pending',
+            builder: (context, _) =>
+                const Scaffold(body: Text('RecoverPending')),
           ),
         ],
       ),

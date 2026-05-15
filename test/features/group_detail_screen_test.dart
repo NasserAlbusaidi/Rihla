@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -155,6 +156,53 @@ Widget _wrap(
   );
 }
 
+Widget _wrapWithRouter({
+  required SharedPreferences prefs,
+  required String initialLocation,
+}) {
+  final router = GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (_, _) => const Scaffold(body: Text('HomeRoute')),
+      ),
+      GoRoute(
+        path: '/group/:gid',
+        builder: (_, state) => GroupDetailScreen(
+          groupId: state.pathParameters['gid']!,
+        ),
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      currentUserIdProvider.overrideWithValue('uid-creator'),
+      groupDetailProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+      groupMembersProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupEventsProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(const [])),
+      groupBalancesProvider(
+        _groupId,
+      ).overrideWith((ref) => const AsyncValue.loading()),
+      groupActivityProvider(
+        _groupId,
+      ).overrideWith((ref) => Stream.value(const [])),
+    ],
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      routerConfig: router,
+    ),
+  );
+}
+
 Finder _textContaining(String value) {
   return find.byWidgetPredicate((widget) {
     if (widget is! Text) return false;
@@ -204,6 +252,26 @@ void main() {
       expect(_textContaining('15.000'), findsWidgets);
       expect(find.text('they owe you'), findsOneWidget);
       expect(find.byKey(GroupKeys.settleUpCta), findsOneWidget);
+    });
+
+    testWidgets('direct entry back button routes home when no stack exists', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrapWithRouter(
+          prefs: prefs,
+          initialLocation: '/group/$_groupId',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);
+
+      await tester.tap(find.byIcon(Iconsax.arrow_left).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('HomeRoute'), findsOneWidget);
+      expect(find.byKey(GroupKeys.detailScreen), findsNothing);
     });
 
     testWidgets('zero balance shows all-settled state and settle-up path', (

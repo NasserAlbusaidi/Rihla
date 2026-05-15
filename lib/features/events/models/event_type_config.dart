@@ -60,31 +60,31 @@ class EventTypeConfig {
   /// Pass `context.colors` from a `BuildContext` to get a color that flips
   /// between light and dark automatically.
   Color resolveColor(AppColorTokens tokens) => switch (colorRole) {
-        EventTypeColorRole.primary => tokens.primary,
-        EventTypeColorRole.success => tokens.successText,
-        EventTypeColorRole.secondary => tokens.textSecondary,
-        EventTypeColorRole.warning => tokens.warning,
-      };
+    EventTypeColorRole.primary => tokens.primary,
+    EventTypeColorRole.success => tokens.successText,
+    EventTypeColorRole.secondary => tokens.textSecondary,
+    EventTypeColorRole.warning => tokens.warning,
+  };
 
   static const Map<EventType, EventTypeConfig> _configs = {
     EventType.trip: EventTypeConfig._(
       type: EventType.trip,
       label: 'Trip',
-      description: 'Full travel experience with all modules',
+      description: 'Plan a shared trip with expenses and activity',
       icon: Iconsax.airplane,
       colorRole: EventTypeColorRole.primary,
     ),
     EventType.camping: EventTypeConfig._(
       type: EventType.camping,
       label: 'Camping',
-      description: 'Outdoor adventure with gear tracking',
+      description: 'Outdoor trip with shared expense tracking',
       icon: Iconsax.tree,
       colorRole: EventTypeColorRole.success,
     ),
     EventType.travel: EventTypeConfig._(
       type: EventType.travel,
       label: 'Travel',
-      description: 'Journey with logistics and documents',
+      description: 'Journey with group expenses and activity',
       icon: Iconsax.car,
       colorRole: EventTypeColorRole.secondary,
     ),
@@ -98,7 +98,7 @@ class EventTypeConfig {
     EventType.custom: EventTypeConfig._(
       type: EventType.custom,
       label: 'Custom',
-      description: 'Pick your own modules',
+      description: 'Start from a flexible event setup',
       icon: Iconsax.element_3,
       colorRole: EventTypeColorRole.warning,
     ),

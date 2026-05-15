@@ -125,7 +125,30 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (error.contains('Already a member')) {
       return "You're already in this group.";
     }
+    if (error.contains('Too many attempts')) {
+      return 'Too many attempts. Try again later.';
+    }
+    if (error.contains('Please sign in')) {
+      return 'Please sign in and try again.';
+    }
     return "Couldn't join the group. Check your connection and try again.";
+  }
+
+  void _close() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go('/home');
+      }
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
   }
 
   @override
@@ -148,7 +171,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _JoinGroupTopBar(onClose: () => Navigator.of(context).pop()),
+            _JoinGroupTopBar(onClose: _close),
             Expanded(
               child: SingleChildScrollView(
                 keyboardDismissBehavior:

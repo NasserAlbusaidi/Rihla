@@ -17,10 +17,16 @@ class _MockRecoveryService extends Mock implements AuthRecoveryService {}
 class _MockUserCredential extends Mock implements UserCredential {}
 
 Uri _validAuthLink() => Uri.parse(
-      'https://${AuthEmailLinkConfig.hostingDomain}'
-      '${AuthEmailLinkConfig.continuePath}'
-      '?mode=signIn&oobCode=ABC123',
-    );
+  'https://${AuthEmailLinkConfig.hostingDomain}'
+  '${AuthEmailLinkConfig.continuePath}'
+  '?mode=signIn&oobCode=ABC123',
+);
+
+Uri _customSchemeFallbackLink() => Uri(
+  scheme: 'rihla',
+  host: 'auth-link',
+  queryParameters: {'link': _validAuthLink().toString()},
+);
 
 void main() {
   late _MockAppLinks appLinks;
@@ -33,6 +39,7 @@ void main() {
     service = _MockRecoveryService();
     uriStream = StreamController<Uri>.broadcast();
     when(() => appLinks.uriLinkStream).thenAnswer((_) => uriStream.stream);
+    when(() => appLinks.getInitialLink()).thenAnswer((_) async => null);
 
     container = ProviderContainer(
       overrides: [
@@ -54,8 +61,9 @@ void main() {
   test('opLink in pendingOp routes to completeEmailLink', () async {
     when(() => service.readPendingEmail()).thenReturn('foo@example.com');
     when(() => service.readInFlightOp()).thenReturn(AuthRecoveryService.opLink);
-    when(() => service.completeEmailLink(any()))
-        .thenAnswer((_) async => _MockUserCredential());
+    when(
+      () => service.completeEmailLink(any()),
+    ).thenAnswer((_) async => _MockUserCredential());
     await attach();
 
     uriStream.add(_validAuthLink());
@@ -67,10 +75,12 @@ void main() {
 
   test('opRecover in pendingOp routes to completeRecovery', () async {
     when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-    when(() => service.readInFlightOp())
-        .thenReturn(AuthRecoveryService.opRecover);
-    when(() => service.completeRecovery(any()))
-        .thenAnswer((_) async => _MockUserCredential());
+    when(
+      () => service.readInFlightOp(),
+    ).thenReturn(AuthRecoveryService.opRecover);
+    when(
+      () => service.completeRecovery(any()),
+    ).thenAnswer((_) async => _MockUserCredential());
     await attach();
 
     uriStream.add(_validAuthLink());
@@ -80,39 +90,44 @@ void main() {
     verifyNever(() => service.completeEmailLink(any()));
   });
 
-  test('null inFlightOp defaults to completeEmailLink (legacy/pre-P4)',
-      () async {
+  test(
+    'null inFlightOp defaults to completeEmailLink (legacy/pre-P4)',
+    () async {
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(() => service.readInFlightOp()).thenReturn(null);
+      when(
+        () => service.completeEmailLink(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+      await attach();
+
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      verify(() => service.completeEmailLink(any())).called(1);
+    },
+  );
+
+  test(
+    'missing pending email surfaces the link via pendingEmailLinkProvider',
+    () async {
+      when(() => service.readPendingEmail()).thenReturn(null);
+      await attach();
+
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      expect(container.read(pendingEmailLinkProvider), isNotNull);
+      verifyNever(() => service.completeEmailLink(any()));
+      verifyNever(() => service.completeRecovery(any()));
+    },
+  );
+
+  test('successful completion clears pendingEmailLinkProvider', () async {
     when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-    when(() => service.readInFlightOp()).thenReturn(null);
-    when(() => service.completeEmailLink(any()))
-        .thenAnswer((_) async => _MockUserCredential());
-    await attach();
-
-    uriStream.add(_validAuthLink());
-    await pumpEventQueue();
-
-    verify(() => service.completeEmailLink(any())).called(1);
-  });
-
-  test('missing pending email surfaces the link via pendingEmailLinkProvider',
-      () async {
-    when(() => service.readPendingEmail()).thenReturn(null);
-    await attach();
-
-    uriStream.add(_validAuthLink());
-    await pumpEventQueue();
-
-    expect(container.read(pendingEmailLinkProvider), isNotNull);
-    verifyNever(() => service.completeEmailLink(any()));
-    verifyNever(() => service.completeRecovery(any()));
-  });
-
-test('successful completion clears pendingEmailLinkProvider', () async {
-    when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-    when(() => service.readInFlightOp())
-        .thenReturn(AuthRecoveryService.opLink);
-    when(() => service.completeEmailLink(any()))
-        .thenAnswer((_) async => _MockUserCredential());
+    when(() => service.readInFlightOp()).thenReturn(AuthRecoveryService.opLink);
+    when(
+      () => service.completeEmailLink(any()),
+    ).thenAnswer((_) async => _MockUserCredential());
     await attach();
 
     container.read(pendingEmailLinkProvider.notifier).state =
@@ -123,26 +138,68 @@ test('successful completion clears pendingEmailLinkProvider', () async {
     expect(container.read(pendingEmailLinkProvider), isNull);
   });
 
-  test('FirebaseAuthException during completion does not crash the stream',
-      () async {
+  test('cold-start initial link routes to completeRecovery', () async {
+    when(
+      () => appLinks.getInitialLink(),
+    ).thenAnswer((_) async => _validAuthLink());
     when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-    when(() => service.readInFlightOp())
-        .thenReturn(AuthRecoveryService.opRecover);
-    when(() => service.completeRecovery(any())).thenThrow(
-      FirebaseAuthException(code: 'invalid-action-code'),
-    );
+    when(
+      () => service.readInFlightOp(),
+    ).thenReturn(AuthRecoveryService.opRecover);
+    when(
+      () => service.completeRecovery(any()),
+    ).thenAnswer((_) async => _MockUserCredential());
+
+    await attach();
+    await pumpEventQueue();
+
+    verify(() => service.completeRecovery(any())).called(1);
+    verifyNever(() => service.completeEmailLink(any()));
+  });
+
+  test('custom-scheme fallback link routes to completeRecovery', () async {
+    when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+    when(
+      () => service.readInFlightOp(),
+    ).thenReturn(AuthRecoveryService.opRecover);
+    when(
+      () => service.completeRecovery(any()),
+    ).thenAnswer((_) async => _MockUserCredential());
     await attach();
 
-    uriStream.add(_validAuthLink());
+    uriStream.add(_customSchemeFallbackLink());
     await pumpEventQueue();
 
-    // A second link should still be processed — the listener must not
-    // collapse on first error.
-    when(() => service.completeRecovery(any()))
-        .thenAnswer((_) async => _MockUserCredential());
-    uriStream.add(_validAuthLink());
-    await pumpEventQueue();
-
-    verify(() => service.completeRecovery(any())).called(2);
+    verify(
+      () => service.completeRecovery(_validAuthLink().toString()),
+    ).called(1);
+    verifyNever(() => service.completeEmailLink(any()));
   });
+
+  test(
+    'FirebaseAuthException during completion does not crash the stream',
+    () async {
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(
+        () => service.readInFlightOp(),
+      ).thenReturn(AuthRecoveryService.opRecover);
+      when(
+        () => service.completeRecovery(any()),
+      ).thenThrow(FirebaseAuthException(code: 'invalid-action-code'));
+      await attach();
+
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      // A second link should still be processed — the listener must not
+      // collapse on first error.
+      when(
+        () => service.completeRecovery(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      verify(() => service.completeRecovery(any())).called(2);
+    },
+  );
 }

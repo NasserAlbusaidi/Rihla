@@ -162,7 +162,7 @@ flutter analyze
 | Directory | What's covered |
 |-----------|---------------|
 | `test/unit/` | Pure logic — BalanceCalculator, formatters, services, providers, models |
-| `test/features/` | Widget tests for screens — groups, events, ledger, gear, logistics, vault, memories |
+| `test/features/` | Widget tests for current screens — groups, events, ledger, profile, auth, and shared flows |
 | `test/integration/` | Happy path, offline scenarios, Firebase auth, money round-trips |
 
 Tests use `mocktail` for mocking, `fake_cloud_firestore` and `firebase_auth_mocks` to avoid real Firebase calls. Provider overrides replace `sharedPreferencesProvider` and other async dependencies in test scope — no real device or network is required.

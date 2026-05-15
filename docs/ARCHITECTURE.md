@@ -429,9 +429,10 @@ Payment processing is out of scope for the shippable v1 surface. Ledger settleme
 | `go_router` | `^13.2.0` | Declarative routing, deep links |
 | `cloud_firestore` | `^6.2.0` | Primary data store with offline persistence |
 | `firebase_auth` | `^6.3.0` | Anonymous authentication |
-| `firebase_storage` | `^13.2.0` | Protected storage gateway support |
+| `firebase_app_check` | `^0.4.3` | App Check tokens for callable/backend protection |
 | `firebase_messaging` | `^16.1.3` | Push notifications (FCM) |
 | `firebase_core` | `^4.6.0` | Firebase SDK initialisation |
+| `app_links` | `^7.0.0` | Deep-link and email-link handling |
 | `sqflite` | `^2.4.2` | Local SQLite cache (`safar_cache.db`) |
 | `decimal` | `^3.2.4` | Precise money arithmetic — no floating point |
 | `google_fonts` | `^8.0.2` | Plus Jakarta Sans typeface |
@@ -440,12 +441,10 @@ Payment processing is out of scope for the shippable v1 surface. Ledger settleme
 | `shimmer` | `^3.0.0` | Skeleton loading shimmer effect |
 | `sentry_flutter` | `^9.0.0` | Error monitoring and performance tracing |
 | `shared_preferences` | `^2.5.4` | Settings persistence (device name, theme, etc.) |
-| `thawani_payment` | `^1.2.4+1` | Omani payment processing |
-| `image_picker` | `^1.2.1` | Camera and gallery access for memories |
-| `file_picker` | `^10.3.8` | Document selection for vault |
+| `qr_flutter` | `^4.1.0` | Invite-code QR rendering |
+| `url_launcher` | `^6.3.2` | External links and settings/help actions |
 | `pdf` / `csv` | `^3.11.1` / `^6.0.0` | Ledger export |
 | `share_plus` | `^10.1.4` | Native share sheet |
-| `cached_network_image` | `^3.3.1` | Image caching with placeholder |
 | `timeago` | `^3.6.1` | Relative timestamps |
 | `uuid` | `^4.3.3` | UUID generation for Firestore document IDs |
 | `intl` | `^0.20.2` | Date/number formatting, localisation |

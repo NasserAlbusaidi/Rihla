@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Checks whether this machine is ready to run the physical-device release QA
-# matrix in docs/REAL-DEVICE-QA.md. This does not run the app or touch Firebase.
+# Checks whether this machine can run physical-device release QA and whether
+# the matrix in docs/REAL-DEVICE-QA.md is complete. This does not run the app or
+# touch Firebase.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -26,6 +27,55 @@ require_cmd() {
     fail "Missing required command: $1"
     return 1
   fi
+}
+
+check_matrix_results() {
+  awk -F'|' '
+    function trim(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value);
+      return value;
+    }
+
+    function is_placeholder(value) {
+      return value == "Group ID or screenshot" \
+        || value == "Invite code and joined member name" \
+        || value == "Group no longer appears on both devices" \
+        || value == "Screenshots from both devices" \
+        || value == "Keyboard screenshot and saved amount" \
+        || value == "Before/after screenshots" \
+        || value == "`fcm_tokens/{uid}` exists" \
+        || value == "`fcm_tokens/{uid}` removed";
+    }
+
+    /^\| RD-[0-9][0-9] \|/ {
+      total += 1;
+      id = trim($2);
+      ios = trim($4);
+      android = trim($5);
+      evidence = trim($6);
+
+      if (ios !~ /^Pass([[:space:]]|[-:(]|$)/) {
+        print "DETAIL: " id " iOS result is not marked Pass in docs/REAL-DEVICE-QA.md";
+        failures += 1;
+      }
+      if (android !~ /^Pass([[:space:]]|[-:(]|$)/) {
+        print "DETAIL: " id " Android result is not marked Pass in docs/REAL-DEVICE-QA.md";
+        failures += 1;
+      }
+      if (evidence == "" || is_placeholder(evidence)) {
+        print "DETAIL: " id " evidence is missing or still a placeholder in docs/REAL-DEVICE-QA.md";
+        failures += 1;
+      }
+    }
+
+    END {
+      if (total != 8) {
+        print "DETAIL: Expected 8 real-device QA matrix rows, found " total;
+        failures += 1;
+      }
+      exit failures > 0 ? 1 : 0;
+    }
+  ' docs/REAL-DEVICE-QA.md
 }
 
 cd "$ROOT_DIR"
@@ -91,6 +141,12 @@ if [ -f ios/Runner/GoogleService-Info.plist ]; then
   pass "iOS Firebase config exists"
 else
   fail "Missing ios/Runner/GoogleService-Info.plist"
+fi
+
+if check_matrix_results; then
+  pass "Real-device QA matrix is complete"
+else
+  fail "Real-device QA matrix is incomplete"
 fi
 
 if [ "$FAILURES" -ne 0 ]; then

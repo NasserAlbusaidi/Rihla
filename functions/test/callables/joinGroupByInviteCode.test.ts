@@ -96,6 +96,40 @@ describe('joinGroupByInviteCode', () => {
     });
   });
 
+  test('missing display name falls back to Anonymous', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123' },
+      auth: { uid: 'anon' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const memberSnap = await getFirestore().doc('groups/g1/members/anon').get();
+    expect(memberSnap.data()?.displayName).toBe('Anonymous');
+  });
+
+  test('display name length mirrors Firestore rules limit', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'A'.repeat(33) },
+      auth: { uid: 'long-name' },
+    } as any)).rejects.toMatchObject({ code: 'invalid-argument' });
+
+    const memberSnap = await getFirestore()
+      .doc('groups/g1/members/long-name')
+      .get();
+    expect(memberSnap.exists).toBe(false);
+  });
+
+  test('display name rejects control characters before Admin SDK writes', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Eve\nMallory' },
+      auth: { uid: 'bad-name' },
+    } as any)).rejects.toMatchObject({ code: 'invalid-argument' });
+
+    const memberSnap = await getFirestore()
+      .doc('groups/g1/members/bad-name')
+      .get();
+    expect(memberSnap.exists).toBe(false);
+  });
+
   test('successful join clears previous failed attempt counter', async () => {
     for (let i = 0; i < 4; i += 1) {
       await expect(wrapped({
@@ -149,5 +183,38 @@ describe('joinGroupByInviteCode', () => {
     expect(second).toEqual({ groupId: 'g1' });
     const members = await getFirestore().collection('groups/g1/members').listDocuments();
     expect(members.map((doc) => doc.id).sort()).toEqual(['alice', 'owner']);
+  });
+
+  test('already-member join heals a missing member document', async () => {
+    const db = getFirestore();
+    await db.doc('groups/g1').update({ memberIds: ['owner', 'orphan'] });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Orphan' },
+      auth: { uid: 'orphan' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const memberSnap = await db.doc('groups/g1/members/orphan').get();
+    expect(memberSnap.exists).toBe(true);
+    expect(memberSnap.data()).toMatchObject({
+      id: 'orphan',
+      userId: 'orphan',
+      displayName: 'Orphan',
+      role: 'MEMBER',
+      isShadow: false,
+    });
+  });
+
+  test('malformed memberIds is rejected before writing membership', async () => {
+    const db = getFirestore();
+    await db.doc('groups/g1').update({ memberIds: 'owner' });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Mallory' },
+      auth: { uid: 'mallory' },
+    } as any)).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    const memberSnap = await db.doc('groups/g1/members/mallory').get();
+    expect(memberSnap.exists).toBe(false);
   });
 });

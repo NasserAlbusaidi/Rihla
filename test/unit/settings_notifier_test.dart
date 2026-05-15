@@ -41,6 +41,44 @@ void main() {
       expect(container.read(settingsProvider).deviceName, equals('Alice'));
     });
 
+    test(
+      'setDeviceName normalizes valid display names before persisting',
+      () async {
+        final container = await makeContainer();
+        final notifier = container.read(settingsProvider.notifier);
+        final prefs = container.read(sharedPreferencesProvider);
+
+        await notifier.setDeviceName('  Alice   Al Said  ');
+
+        expect(
+          container.read(settingsProvider).deviceName,
+          equals('Alice Al Said'),
+        );
+        expect(
+          prefs.getString('settings_device_name'),
+          equals('Alice Al Said'),
+        );
+      },
+    );
+
+    test('setDeviceName rejects invalid Firestore display names', () async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Alice'});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(settingsProvider.notifier);
+
+      await expectLater(
+        notifier.setDeviceName('Eve\nMallory'),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      expect(container.read(settingsProvider).deviceName, equals('Alice'));
+      expect(prefs.getString('settings_device_name'), equals('Alice'));
+    });
+
     test('setCurrency updates currencyCode in state', () async {
       final container = await makeContainer();
       final notifier = container.read(settingsProvider.notifier);
@@ -98,6 +136,20 @@ void main() {
         expect(settings.deviceName, equals('Bob'));
       },
     );
+
+    test('loadSettings drops invalid persisted deviceName', () async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'A' * 33,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      final settings = container.read(settingsProvider);
+      expect(settings.deviceName, equals(''));
+    });
 
     test('AppSettings.theme returns ThemeMode.dark for dark mode', () {
       const settings = AppSettings(themeMode: AppThemeMode.dark);

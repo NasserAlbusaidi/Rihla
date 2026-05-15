@@ -21,6 +21,13 @@ void main() {
     );
   });
 
+  test('account recovery continue page falls back to the app scheme', () {
+    final page = File('hosting/__/auth/links/continue.html').readAsStringSync();
+
+    expect(page, contains('rihla://auth-link'));
+    expect(page, contains('encodeURIComponent(window.location.href)'));
+  });
+
   test('Digital Asset Links file matches the Android package', () {
     final statements =
         jsonDecode(
@@ -64,9 +71,11 @@ void main() {
 
     expect(firstApp['appIDs'], contains('GC6NXQSRUU.com.safar.safar'));
     expect(firstApp['components'].toString(), contains('/__/auth/links/*'));
+    expect(firstApp['components'].toString(), contains('/join/*'));
+    expect(firstApp['components'].toString(), contains('/join'));
   });
 
-  test('Android manifest declares a verified App Link for auth links', () {
+  test('Android manifest declares verified App Links for auth and invites', () {
     final manifest = File(
       'android/app/src/main/AndroidManifest.xml',
     ).readAsStringSync();
@@ -74,14 +83,65 @@ void main() {
     expect(manifest, contains('android:autoVerify="true"'));
     expect(manifest, contains('android:host="rihla-safar.firebaseapp.com"'));
     expect(manifest, contains('android:pathPrefix="/__/auth/links"'));
+    expect(manifest, contains('android:host="rihla-safar.web.app"'));
+    expect(manifest, contains('android:pathPrefix="/join"'));
   });
 
-  test('iOS entitlements declare Universal Links for auth links', () {
+  test('iOS entitlements declare Universal Links for auth and invites', () {
     final entitlements = File(
       'ios/Runner/Runner.entitlements',
     ).readAsStringSync();
 
     expect(entitlements, contains('com.apple.developer.associated-domains'));
     expect(entitlements, contains('applinks:rihla-safar.firebaseapp.com'));
+    expect(entitlements, contains('applinks:rihla-safar.web.app'));
+  });
+
+  test('Firebase Hosting rewrites invite links to a browser fallback', () {
+    final firebaseJson =
+        jsonDecode(File('firebase.json').readAsStringSync())
+            as Map<String, Object?>;
+    final hosting = firebaseJson['hosting'] as Map<String, Object?>;
+
+    expect(hosting['rewrites'].toString(), contains('/join'));
+    expect(hosting['rewrites'].toString(), contains('/join/**'));
+    expect(
+      File('hosting/join.html').readAsStringSync(),
+      contains('rihla://join'),
+    );
+  });
+
+  test('production-state check verifies both Firebase Hosting domains', () {
+    final script = File('tool/check_firebase_prod_state.sh').readAsStringSync();
+
+    expect(script, contains(r'check_hosting_domain "$hosting_web_base"'));
+    expect(
+      script,
+      contains(r'check_hosting_domain "$hosting_firebaseapp_base"'),
+    );
+    expect(script, contains('/join/ABC123'));
+    expect(script, contains('/.well-known/apple-app-site-association'));
+    expect(script, contains('/.well-known/assetlinks.json'));
+    expect(script, contains('/__/auth/links/continue'));
+    expect(script, contains('rihla://auth-link'));
+  });
+
+  test('public Hosting copy matches opt-in email recovery behavior', () {
+    final publicPages = [
+      'hosting/index.html',
+      'hosting/help.html',
+      'hosting/privacy.html',
+      'hosting/delete-data.html',
+      'hosting/terms.html',
+    ].map((path) => File(path).readAsStringSync()).join('\n');
+
+    expect(publicPages, contains('link an email'));
+    expect(publicPages, contains('recovery email'));
+    expect(
+      publicPages,
+      isNot(contains('Account recovery via email link is on the roadmap')),
+    );
+    expect(publicPages, isNot(contains('No account, no email')));
+    expect(publicPages, isNot(contains('We cannot recover lost sessions')));
   });
 }

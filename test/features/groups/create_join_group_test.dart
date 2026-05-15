@@ -1,7 +1,10 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -39,6 +42,37 @@ void main() {
         child: MaterialApp(
           theme: AppTheme.lightTheme,
           home: const CreateGroupScreen(),
+        ),
+      );
+    }
+
+    Future<Widget> buildCreateRoute() async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'Test User',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final router = GoRouter(
+        initialLocation: '/create-group',
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const Scaffold(body: Text('Home')),
+          ),
+          GoRoute(
+            path: '/create-group',
+            builder: (context, state) => const CreateGroupScreen(),
+          ),
+        ],
+      );
+      return ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          groupLoadingProvider.overrideWith((ref) => false),
+          groupErrorProvider.overrideWith((ref) => null),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
         ),
       );
     }
@@ -172,6 +206,19 @@ void main() {
       expect(find.byType(CloseButton), findsOneWidget);
     });
 
+    testWidgets(
+      'direct create close routes home when there is no stack to pop',
+      (tester) async {
+        await tester.pumpWidget(await buildCreateRoute());
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byType(CloseButton));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Home'), findsOneWidget);
+      },
+    );
+
     testWidgets('renders form with TextFormFields', (tester) async {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
@@ -215,11 +262,57 @@ void main() {
       );
     }
 
+    Future<Widget> buildJoinInviteRoute() async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'Test User',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final router = GoRouter(
+        initialLocation: '/join/ABC123',
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const Scaffold(body: Text('Home')),
+          ),
+          GoRoute(
+            path: '/join/:code',
+            builder: (context, state) => JoinGroupScreen(
+              initialInviteCode: state.pathParameters['code'],
+            ),
+          ),
+        ],
+      );
+      return ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          groupLoadingProvider.overrideWith((ref) => false),
+          groupErrorProvider.overrideWith((ref) => null),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+        ),
+      );
+    }
+
     testWidgets('renders AppBar with Join a Group title', (tester) async {
       await tester.pumpWidget(await buildJoinScreen());
       await tester.pump();
       expect(find.text('Join a Group'), findsOneWidget);
     });
+
+    testWidgets(
+      'direct invite close routes home when there is no stack to pop',
+      (tester) async {
+        await tester.pumpWidget(await buildJoinInviteRoute());
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byType(BackButton));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Home'), findsOneWidget);
+      },
+    );
 
     testWidgets('renders Your name label', (tester) async {
       await tester.pumpWidget(await buildJoinScreen());
@@ -310,6 +403,54 @@ void main() {
       await tester.pump();
 
       expect(find.text('ABC12'), findsOneWidget);
+    });
+
+    testWidgets('rate-limited join shows the callable message', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'Joiner',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final fakeDb = FakeFirebaseFirestore();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupLoadingProvider.overrideWith((ref) => false),
+            groupErrorProvider.overrideWith((ref) => null),
+            groupServiceProvider.overrideWith(
+              (ref) => GroupService.withFirestore(
+                ref,
+                fakeDb,
+                currentUserId: 'uid-joiner',
+                joinGroupCallableOverride:
+                    ({required inviteCode, required displayName}) async {
+                      throw FirebaseFunctionsException(
+                        code: 'resource-exhausted',
+                        message: 'Too many attempts. Try again later.',
+                      );
+                    },
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const JoinGroupScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextFormField).last, 'ABC123');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Too many attempts. Try again later.'), findsOneWidget);
+      expect(
+        find.text(
+          "Couldn't join the group. Check your connection and try again.",
+        ),
+        findsNothing,
+      );
     });
   });
 

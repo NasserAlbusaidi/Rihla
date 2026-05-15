@@ -217,4 +217,12 @@ The GitHub Actions workflow at `.github/workflows/release_android.yml` handles A
 | `CONFIG_JSON` | Full contents of `config.json` with production values |
 | `GOOGLE_PLAY_JSON_KEY` | Google Play service account JSON for the upload-google-play action |
 
-The CI pipeline runs `flutter analyze`, tests with 80% coverage enforcement, a hardcoded color lint, then builds the AAB and uploads to the Play Store Closed Testing (alpha track).
+Required repository variables:
+
+| Variable | Required value | Purpose |
+|----------|----------------|---------|
+| `RIHLA_BACKEND_RELEASE_READY` | `yes` | Confirms Firebase backend and Hosting production-state checks passed before Play upload |
+| `RIHLA_APP_CHECK_READY` | `yes` | Confirms Android and iOS apps are enrolled in Firebase App Check before deploying enforced callables |
+| `RIHLA_REAL_DEVICE_QA_READY` | `yes` | Confirms the physical-device QA matrix passed |
+
+The CI pipeline refuses to upload unless those variables are set, then runs `flutter analyze`, tests with temporary 70% raw coverage enforcement, a hardcoded color lint, builds the AAB, and uploads to the Play Store Closed Testing (alpha track). Ratchet the gate back to 80% after the auth/profile/settings coverage backlog is closed.

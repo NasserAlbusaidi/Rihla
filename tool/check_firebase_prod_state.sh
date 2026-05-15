@@ -37,6 +37,45 @@ firebase_cli() {
   npx --yes "firebase-tools@${FIREBASE_TOOLS_VERSION}" "$@"
 }
 
+check_url_contains() {
+  local url="$1"
+  local needle="$2"
+  local label="$3"
+  local output_file="$TMP_DIR/$(printf '%s' "$label" | tr -c 'A-Za-z0-9' '_')"
+
+  if curl -fsS "$url" >"$output_file"; then
+    if grep -Fq "$needle" "$output_file"; then
+      pass "$label"
+    else
+      fail "$label did not contain expected marker: ${needle}"
+    fi
+  else
+    fail "Unable to fetch ${label} (${url})"
+  fi
+}
+
+check_hosting_domain() {
+  local base_url="$1"
+  local label="$2"
+
+  check_url_contains \
+    "${base_url}/join/ABC123" \
+    "rihla://join" \
+    "${label} invite fallback is deployed"
+  check_url_contains \
+    "${base_url}/.well-known/apple-app-site-association" \
+    "/join/*" \
+    "${label} Apple App Site Association includes invite links"
+  check_url_contains \
+    "${base_url}/.well-known/assetlinks.json" \
+    "com.safar.safar" \
+    "${label} Digital Asset Links matches Android package"
+  check_url_contains \
+    "${base_url}/__/auth/links/continue" \
+    "rihla://auth-link" \
+    "${label} auth continue page is deployed"
+}
+
 normalize_indexes() {
   jq '
     .indexes |= sort_by(.collectionGroup)
@@ -189,6 +228,11 @@ if firebase_cli functions:list --project "$PROJECT_ID" --json >"$functions_json"
 else
   fail "Unable to list deployed Functions"
 fi
+
+hosting_web_base="https://${PROJECT_ID}.web.app"
+hosting_firebaseapp_base="https://${PROJECT_ID}.firebaseapp.com"
+check_hosting_domain "$hosting_web_base" "Firebase Hosting web.app"
+check_hosting_domain "$hosting_firebaseapp_base" "Firebase Hosting firebaseapp.com"
 
 if [ "$FAILURES" -ne 0 ]; then
   echo "Firebase production state check FAILED (${FAILURES} issue(s))" >&2

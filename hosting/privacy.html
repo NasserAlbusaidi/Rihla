@@ -25,13 +25,13 @@
       listed at the bottom of this page.
     </p>
 
-    <h2>1. No accounts</h2>
+    <h2>1. Anonymous by default, optional recovery email</h2>
     <p>
       Rihla does not require an email address, password, phone number, or any
-      other identifier. When you first open the app it creates an anonymous
-      session in Firebase Authentication. That session is tied to your device
-      only — there is no way to log back in from another device, and no way for
-      anyone (including us) to attribute the session to you personally.
+      other identifier on first launch. The app creates an anonymous session in
+      Firebase Authentication. If you choose to link an email in Settings, that
+      email is attached to the same Firebase user only so you can recover the
+      same Rihla identity on a new or reset device.
     </p>
 
     <h2>2. What we collect</h2>
@@ -40,6 +40,12 @@
         <strong>Anonymous user ID.</strong> A random identifier issued by
         Firebase Authentication when the app first runs. Stored on your device
         and on our backend so we can fetch your groups and expenses.
+      </li>
+      <li>
+        <strong>Optional recovery email.</strong> If you choose to link an
+        email, Firebase Authentication stores it so email-link recovery can
+        return you to the same anonymous UID. Rihla does not use it for
+        marketing.
       </li>
       <li>
         <strong>Display name.</strong> The name you enter when creating or
@@ -75,9 +81,9 @@
     <h2>3. How data is used</h2>
     <p>
       Group and expense data is used only to operate the app — keeping your
-      groups in sync across the people you share them with. We do not sell any
-      data. We do not run ads. We do not use your data to train machine
-      learning models.
+      groups in sync across the people you share them with. A linked email is
+      used only to send and complete recovery links. We do not sell any data. We
+      do not run ads. We do not use your data to train machine learning models.
     </p>
 
     <h2>4. Where data is stored</h2>
@@ -94,8 +100,9 @@
     <p>
       Group, event, and expense data is kept for as long as the group exists.
       Soft-deleted records (expenses you removed inside a group) are retained
-      so other members can see the history. If you want everything attached to
-      your anonymous session removed, see <a href="/delete-data">Delete your data</a>.
+      so other members can see the history. A linked recovery email is kept
+      until the Firebase user is deleted. If you want everything attached to
+      your Rihla identity removed, see <a href="/delete-data">Delete your data</a>.
     </p>
 
     <h2>6. Children</h2>

@@ -1,7 +1,7 @@
 # Rihla — Product Specification
 
 > Source-of-truth product description for the v1 launch build.
-> Generated 2026-05-02 from the live codebase on `codex/publish-readiness-fixes`.
+> Last reconciled 2026-05-15 from the live codebase.
 > Every behaviour below is grounded in actual screens/services — no aspirational features.
 
 ---
@@ -20,12 +20,12 @@ Rihla ("journey" in Arabic) is a Splitwise-style group expense splitter organise
 
 ## 2. Identity & Auth
 
-There is no sign-up screen, no email, no password.
+There is no sign-up screen and no password. The app is anonymous-by-default, with optional email-link recovery available from Profile.
 
-- On first launch, `FirebaseConfig.ensureAnonymousSession()` creates an anonymous Firebase user. The UID is the only identity that exists.
+- On first launch, `FirebaseConfig.ensureAnonymousSession()` creates an anonymous Firebase user. The UID is the primary identity.
 - The user picks a **display name** when they create or join their first group. The name lives on each `GroupMember` row (`displayName`) and is also cached in `SharedPreferences` as `deviceName`.
 - The same anonymous UID can be a `CREATOR` in some groups and a `MEMBER` in others. There is no account, no profile across groups; the display name can be different per group.
-- Identity recovery is not supported in v1 — uninstalling the app loses access. (Documented limitation.)
+- Users may link an email from Profile and later restore access through `/recover` using Firebase email-link sign-in. If they never link an email, uninstalling or clearing app data still loses access for that device.
 
 ---
 
@@ -336,10 +336,10 @@ The Firestore schema and SQLite cache still tolerate legacy keys for these featu
 
 ## 13. Known Limitations (v1)
 
-- **No identity recovery.** Anonymous Firebase auth — uninstall = data loss for that device.
+- **Recovery is opt-in.** Users who never link an email still lose access if they uninstall or clear app data.
 - **No iOS CI.** Android-only release pipeline. iOS builds are manual.
-- **No multi-device sync** for the same user. Anonymous UIDs are device-bound.
-- **Soft-delete only** for expenses, settlements, gear — they remain in Firestore forever.
+- **No general multi-device account workflow.** Anonymous UIDs are device-bound unless the user has linked and restored through email-link recovery.
+- **Soft-delete only** for expenses, events, groups, and settlements where supported — they remain in Firestore until retention tooling exists.
 - **OMR-only.** Group currency field exists in the schema but the UI hardcodes display formatting to OMR.
 
 ---

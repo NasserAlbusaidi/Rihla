@@ -93,6 +93,23 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     );
   }
 
+  void _close() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go('/home');
+      }
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(groupLoadingProvider);
@@ -114,7 +131,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
             children: [
               _CreateGroupTopBar(
                 isLoading: isLoading,
-                onClose: () => Navigator.of(context).pop(),
+                onClose: _close,
                 onCreate: _createGroup,
               ),
               Expanded(

@@ -15,9 +15,8 @@ import '../providers/auth_provider.dart';
 ///
 /// Plan §P3 + spec risk row 3 (deliverability): a 60-second resend cooldown
 /// keeps the user from spamming the daily quota while their email client
-/// catches up. The address is passed via `extra` from [LinkEmailScreen]; if
-/// missing (e.g. deep link landed here directly) we fall back to whatever
-/// is in `AuthRecoveryService.readPendingEmail()`.
+/// catches up. The address is carried in the route query so the interstitial
+/// can be restored without relying on GoRouter `extra` state.
 class LinkEmailSentScreen extends ConsumerStatefulWidget {
   const LinkEmailSentScreen({super.key, required this.email});
   final String email;
@@ -81,9 +80,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
       _startCooldown();
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
-      setState(
-        () => _errorMessage = "Couldn't resend (${error.code}).",
-      );
+      setState(() => _errorMessage = "Couldn't resend (${error.code}).");
     } catch (_) {
       if (!mounted) return;
       setState(() => _errorMessage = "Couldn't resend. Try again in a bit.");
@@ -192,10 +189,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
                 Text(
                   _errorMessage!,
                   key: const Key('linkEmailSent.error'),
-                  style: AppTypography.sans(
-                    fontSize: 13,
-                    color: colors.error,
-                  ),
+                  style: AppTypography.sans(fontSize: 13, color: colors.error),
                 ),
               ],
               const Spacer(),

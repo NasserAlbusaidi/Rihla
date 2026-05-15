@@ -10,8 +10,15 @@ class AppLinks {
   static const String helpUrl = 'https://rihla-safar.web.app/help';
   static const String termsUrl = 'https://rihla-safar.web.app/terms';
   static const String privacyUrl = 'https://rihla-safar.web.app/privacy';
-  static const String deleteDataUrl =
-      'https://rihla-safar.web.app/delete-data';
+  static const String deleteDataUrl = 'https://rihla-safar.web.app/delete-data';
+  static const String inviteLinkHost = 'rihla-safar.web.app';
+
+  static Uri inviteUrl(String inviteCode) {
+    return Uri.https(
+      inviteLinkHost,
+      '/join/${inviteCode.trim().toUpperCase()}',
+    );
+  }
 
   static const String feedbackEmail = 'nasserbusaidi@gmail.com';
 

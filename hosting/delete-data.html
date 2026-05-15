@@ -20,10 +20,10 @@
     <p class="subtitle">How to remove your data from Rihla — and what gets removed.</p>
 
     <p>
-      Rihla does not use email accounts. Your data is tied to an anonymous
-      session created on your device when you first opened the app. That makes
-      deletion a two-part process: data that lives on your device, and data
-      that lives on our backend.
+      Rihla starts with an anonymous session created on your device. If you
+      linked an email for recovery, that email is attached to the same Firebase
+      user. Deletion is a two-part process: data that lives on your device, and
+      data that lives on our backend.
     </p>
 
     <div class="callout warn">
@@ -41,7 +41,8 @@
     </p>
     <p>
       If you reinstall the app afterwards, you will start with a fresh
-      anonymous session and will not see your previous groups.
+      anonymous session and will not see your previous groups unless you restore
+      with a linked recovery email.
     </p>
 
     <h2>2. Delete server data (email request)</h2>
@@ -71,6 +72,9 @@
 
     <h2>What we delete</h2>
     <ul>
+      <li>
+        Your linked recovery email, if one is attached to your Firebase user.
+      </li>
       <li>
         Your push-notification token from our backend.
       </li>

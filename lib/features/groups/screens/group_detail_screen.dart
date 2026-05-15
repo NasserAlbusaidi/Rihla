@@ -260,8 +260,11 @@ class _CoverHeader extends StatelessWidget {
                   icon: Iconsax.arrow_left,
                   onTap: () {
                     HapticService.lightClick();
-                    if (GoRouter.of(context).canPop()) {
-                      GoRouter.of(context).pop();
+                    final router = GoRouter.of(context);
+                    if (router.canPop()) {
+                      router.pop();
+                    } else {
+                      router.go('/home');
                     }
                   },
                 ),

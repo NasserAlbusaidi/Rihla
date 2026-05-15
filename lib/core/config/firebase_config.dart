@@ -2,6 +2,7 @@ import 'dart:developer' as dev;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -29,9 +30,20 @@ class FirebaseConfig {
   ///
   /// Firestore settings MUST be applied before any other Firestore call
   /// (per Firebase SDK requirement — settings cannot be changed after use).
-  static Future<void> initialize() async {
+  static Future<void> initialize({
+    bool useDebugAppCheck = !kReleaseMode,
+  }) async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    await FirebaseAppCheck.instance.activate(
+      providerAndroid: useDebugAppCheck
+          ? const AndroidDebugProvider()
+          : const AndroidPlayIntegrityProvider(),
+      providerApple: useDebugAppCheck
+          ? const AppleDebugProvider()
+          : const AppleAppAttestWithDeviceCheckFallbackProvider(),
     );
 
     // Configure Firestore offline persistence. Must be set before any

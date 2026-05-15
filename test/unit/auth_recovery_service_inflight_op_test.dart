@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -9,6 +10,8 @@ class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 class _MockUser extends Mock implements User {}
 
 class _MockUserCredential extends Mock implements UserCredential {}
+
+class _MockFirestore extends Mock implements FirebaseFirestore {}
 
 class _FakeActionCodeSettings extends Fake implements ActionCodeSettings {}
 
@@ -22,6 +25,7 @@ void main() {
 
   late _MockFirebaseAuth auth;
   late _MockUser anonUser;
+  late _MockFirestore firestore;
   late SharedPreferences prefs;
 
   setUp(() async {
@@ -29,9 +33,12 @@ void main() {
     prefs = await SharedPreferences.getInstance();
     auth = _MockFirebaseAuth();
     anonUser = _MockUser();
+    firestore = _MockFirestore();
     when(() => auth.currentUser).thenReturn(anonUser);
+    when(() => auth.signOut()).thenAnswer((_) async {});
     when(() => anonUser.uid).thenReturn('anon-uid');
     when(() => anonUser.email).thenReturn(null);
+    when(firestore.waitForPendingWrites).thenAnswer((_) async {});
     when(
       () => auth.sendSignInLinkToEmail(
         email: any(named: 'email'),
@@ -41,7 +48,7 @@ void main() {
   });
 
   AuthRecoveryService buildService() =>
-      AuthRecoveryService(auth: auth, prefs: prefs);
+      AuthRecoveryService(auth: auth, prefs: prefs, firestore: firestore);
 
   group('inFlightOp tracking', () {
     test('starts as null', () {
