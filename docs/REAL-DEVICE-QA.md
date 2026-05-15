@@ -8,6 +8,28 @@ production Firebase project unless a test explicitly says otherwise. The gate
 script fails until the matrix rows are recorded as passing for both platforms
 with concrete evidence.
 
+## v1.2 Android-Only Soft Defer
+
+v1.2 launches Android-only on Google Play. iOS is soft-deferred to follow
+within weeks of Android Production. To run the matrix in Android-only mode,
+export `RIHLA_SKIP_IOS_QA=yes` before invoking the gate script:
+
+```bash
+RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
+```
+
+Under that flag:
+
+- The gate accepts iOS device absence as INFO instead of FAIL.
+- Matrix iOS cells must read `Pass ...` or `Deferred ...` — empty cells
+  still fail.
+- "Two devices" tests (RD-04 in particular) are exercised with two physical
+  Android devices in Android-only mode.
+
+To reactivate the full iOS gate when iOS ships, unset `RIHLA_SKIP_IOS_QA`
+and replace `Deferred ...` cells with `Pass ...` plus concrete iOS
+evidence.
+
 ## Device Gate
 
 Start here:
@@ -16,7 +38,7 @@ Start here:
 bash tool/check_real_device_qa_gate.sh
 ```
 
-Pass criteria:
+Pass criteria (default — full iOS + Android gate):
 
 - At least one physical iOS device is listed.
 - At least one physical Android device is listed.
@@ -28,8 +50,18 @@ Pass criteria:
   an Android result starting with `Pass`, and evidence that replaces the
   placeholder text.
 
-Current local status from 2026-05-15: blocked. The gate sees an iOS simulator,
-but no physical iOS or Android device, and the matrix has not been completed.
+Pass criteria (with `RIHLA_SKIP_IOS_QA=yes` — v1.2 Android-only):
+
+- At least one physical Android device is listed.
+- iOS device absence reported as INFO.
+- `config.json` and Firebase platform files as above.
+- Every RD-01 through RD-08 row has an Android result starting with `Pass`,
+  an iOS result starting with `Pass` or `Deferred`, and concrete Android
+  evidence in the Evidence cell.
+
+Current local status from 2026-05-15: blocked for Android. The matrix is
+filled with `Deferred — v1.2 Android-only` for iOS; the Android column and
+evidence still need a real run on a connected Android device.
 
 For raw device details, run:
 
@@ -59,14 +91,14 @@ a group ID, invite code, screenshot filename, or Firestore document path.
 
 | ID | Area | iOS | Android | Evidence |
 |---|---|---|---|---|
-| RD-01 | Create group |  |  | Group ID or screenshot |
-| RD-02 | Join group by invite code |  |  | Invite code and joined member name |
-| RD-03 | Delete group |  |  | Group no longer appears on both devices |
-| RD-04 | Two-device ledger identity |  |  | Screenshots from both devices |
-| RD-05 | Decimal expense input |  |  | Keyboard screenshot and saved amount |
-| RD-06 | Offline and reconnect |  |  | Before/after screenshots |
-| RD-07 | Notification opt-in |  |  | `fcm_tokens/{uid}` exists |
-| RD-08 | Notification opt-out |  |  | `fcm_tokens/{uid}` removed |
+| RD-01 | Create group | Deferred — v1.2 Android-only |  | Group ID or screenshot |
+| RD-02 | Join group by invite code | Deferred — v1.2 Android-only |  | Invite code and joined member name |
+| RD-03 | Delete group | Deferred — v1.2 Android-only |  | Group no longer appears on both devices |
+| RD-04 | Two-device ledger identity | Deferred — v1.2 Android-only |  | Screenshots from both devices |
+| RD-05 | Decimal expense input | Deferred — v1.2 Android-only |  | Keyboard screenshot and saved amount |
+| RD-06 | Offline and reconnect | Deferred — v1.2 Android-only |  | Before/after screenshots |
+| RD-07 | Notification opt-in | Deferred — v1.2 Android-only |  | `fcm_tokens/{uid}` exists |
+| RD-08 | Notification opt-out | Deferred — v1.2 Android-only |  | `fcm_tokens/{uid}` removed |
 
 ## RD-01: Create Group
 

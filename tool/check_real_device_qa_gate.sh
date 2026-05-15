@@ -2,11 +2,23 @@
 # Checks whether this machine can run physical-device release QA and whether
 # the matrix in docs/REAL-DEVICE-QA.md is complete. This does not run the app or
 # touch Firebase.
+#
+# Env vars:
+#   RIHLA_SKIP_IOS_QA=yes  Soft-defer iOS for the v1.2 Android-only launch.
+#                          iOS device absence is downgraded to INFO and matrix
+#                          iOS cells must read "Deferred ..." or "Pass ...".
+#                          Unset (the default) re-enables the strict iOS+Android
+#                          gate for when iOS ships.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_FILE="$(mktemp)"
 FAILURES=0
+SKIP_IOS_QA="${RIHLA_SKIP_IOS_QA:-}"
+
+if [ "$SKIP_IOS_QA" = "yes" ]; then
+  echo "INFO: RIHLA_SKIP_IOS_QA=yes — running in Android-only mode (iOS soft-deferred for v1.2)."
+fi
 
 cleanup() {
   rm -f "$TMP_FILE"
@@ -30,7 +42,7 @@ require_cmd() {
 }
 
 check_matrix_results() {
-  awk -F'|' '
+  awk -F'|' -v skip_ios="${SKIP_IOS_QA:-}" '
     function trim(value) {
       gsub(/^[[:space:]]+|[[:space:]]+$/, "", value);
       return value;
@@ -54,9 +66,16 @@ check_matrix_results() {
       android = trim($5);
       evidence = trim($6);
 
-      if (ios !~ /^Pass([[:space:]]|[-:(]|$)/) {
-        print "DETAIL: " id " iOS result is not marked Pass in docs/REAL-DEVICE-QA.md";
-        failures += 1;
+      if (skip_ios == "yes") {
+        if (ios !~ /^(Pass|Deferred)([[:space:]]|[-:(]|$)/) {
+          print "DETAIL: " id " iOS result must be \"Pass ...\" or \"Deferred ...\" in docs/REAL-DEVICE-QA.md (RIHLA_SKIP_IOS_QA=yes)";
+          failures += 1;
+        }
+      } else {
+        if (ios !~ /^Pass([[:space:]]|[-:(]|$)/) {
+          print "DETAIL: " id " iOS result is not marked Pass in docs/REAL-DEVICE-QA.md";
+          failures += 1;
+        }
       }
       if (android !~ /^Pass([[:space:]]|[-:(]|$)/) {
         print "DETAIL: " id " Android result is not marked Pass in docs/REAL-DEVICE-QA.md";
@@ -106,6 +125,8 @@ if flutter devices --machine >"$TMP_FILE"; then
 
   if [ -n "$ios_devices" ]; then
     pass "Physical iOS device detected: ${ios_devices//$'\n'/, }"
+  elif [ "$SKIP_IOS_QA" = "yes" ]; then
+    echo "INFO: No physical iOS device — skipped (RIHLA_SKIP_IOS_QA=yes)"
   else
     fail "No physical iOS device detected"
   fi
