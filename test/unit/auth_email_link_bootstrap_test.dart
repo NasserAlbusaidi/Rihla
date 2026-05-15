@@ -202,4 +202,123 @@ void main() {
       verify(() => service.completeRecovery(any())).called(2);
     },
   );
+
+  group('link → recover auto-fallback', () {
+    for (final code in const [
+      'email-already-in-use',
+      'credential-already-in-use',
+      'provider-already-linked',
+    ]) {
+      test('opLink failing with $code falls back to completeRecovery', () async {
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opLink);
+        when(
+          () => service.completeEmailLink(any()),
+        ).thenThrow(FirebaseAuthException(code: code));
+        when(
+          () => service.completeRecovery(any()),
+        ).thenAnswer((_) async => _MockUserCredential());
+        await attach();
+
+        uriStream.add(_validAuthLink());
+        await pumpEventQueue();
+
+        verify(() => service.completeEmailLink(any())).called(1);
+        verify(
+          () => service.completeRecovery(_validAuthLink().toString()),
+        ).called(1);
+      });
+    }
+
+    test('successful fallback clears pendingEmailLinkProvider', () async {
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(
+        () => service.readInFlightOp(),
+      ).thenReturn(AuthRecoveryService.opLink);
+      when(
+        () => service.completeEmailLink(any()),
+      ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
+      when(
+        () => service.completeRecovery(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+      await attach();
+
+      container.read(pendingEmailLinkProvider.notifier).state =
+          'https://stale-link';
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      expect(container.read(pendingEmailLinkProvider), isNull);
+    });
+
+    test(
+      'opLink failing with non-fallback code does NOT call completeRecovery',
+      () async {
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opLink);
+        when(
+          () => service.completeEmailLink(any()),
+        ).thenThrow(FirebaseAuthException(code: 'invalid-action-code'));
+        await attach();
+
+        uriStream.add(_validAuthLink());
+        await pumpEventQueue();
+
+        verify(() => service.completeEmailLink(any())).called(1);
+        verifyNever(() => service.completeRecovery(any()));
+      },
+    );
+
+    test(
+      'opRecover failing with email-already-in-use does NOT re-fallback',
+      () async {
+        // Recover failures must not trigger another recover attempt — only
+        // link → recover is auto-fallback territory.
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opRecover);
+        when(
+          () => service.completeRecovery(any()),
+        ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
+        await attach();
+
+        uriStream.add(_validAuthLink());
+        await pumpEventQueue();
+
+        verify(() => service.completeRecovery(any())).called(1);
+        verifyNever(() => service.completeEmailLink(any()));
+      },
+    );
+
+    test('fallback recover failure does not crash the stream', () async {
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(
+        () => service.readInFlightOp(),
+      ).thenReturn(AuthRecoveryService.opLink);
+      when(
+        () => service.completeEmailLink(any()),
+      ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
+      when(
+        () => service.completeRecovery(any()),
+      ).thenThrow(FirebaseAuthException(code: 'invalid-action-code'));
+      await attach();
+
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      // Listener still alive — a second event should still be dispatched.
+      when(
+        () => service.completeEmailLink(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      verify(() => service.completeEmailLink(any())).called(2);
+    });
+  });
 }
