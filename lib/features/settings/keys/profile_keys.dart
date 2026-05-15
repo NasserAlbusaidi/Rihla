@@ -32,4 +32,8 @@ abstract final class ProfileKeys {
 
   // P6 — in-app account deletion (always visible)
   static const deleteAccountTile = Key('profile_delete_account_tile');
+
+  // Settings cleanup pass — display section + pending recovery banner
+  static const displaySection = Key('profile_display_section');
+  static const pendingRecoveryBanner = Key('profile_pending_recovery_banner');
 }
