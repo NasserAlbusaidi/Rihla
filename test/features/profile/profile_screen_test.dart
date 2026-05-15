@@ -1,6 +1,6 @@
 // Widget tests for ProfileScreen — covers IDENT-01, IDENT-02, STATS-01, STATS-02,
 // STATS-03. Tests are written first (RED) before implementing the widgets.
-// Phase 26 tests cover NOTIF-01, NOTIF-02, INFO-01, INFO-02, INFO-03, SUPP-01.
+// Phase 26 tests cover NOTIF-01, NOTIF-02, INFO-01, INFO-02, INFO-03.
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +16,7 @@ import 'package:safar/core/config/app_metadata.dart';
 import 'package:safar/core/providers/app_bootstrap_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_service.dart';
+import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 import 'package:safar/features/settings/screens/profile_screen.dart';
@@ -576,34 +577,46 @@ void main() {
     });
   });
 
-  group('ProfileScreen -- SUPP-01', () {
-    testWidgets(
-      'shows sign out row and displays session persistence SnackBar',
-      (tester) async {
-        SharedPreferences.setMockInitialValues({
-          'settings_device_name': 'TestUser',
-        });
-        final prefs = await SharedPreferences.getInstance();
+  group('ProfileScreen -- pending recovery banner', () {
+    testWidgets('hidden when pendingEmailLinkProvider is null', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+      });
+      final prefs = await SharedPreferences.getInstance();
 
-        await tester.pumpWidget(
-          _buildTestApp(
-            const ProfileScreen(),
-            overrides: _phase26Overrides(prefs: prefs),
-          ),
-        );
-        await _pumpWithAnimations(tester);
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(prefs: prefs),
+        ),
+      );
+      await _pumpWithAnimations(tester);
 
-        expect(find.text('Sign out'), findsOneWidget);
-        await tester.ensureVisible(find.text('Sign out'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Sign out'));
-        await tester.pump();
+      expect(find.byKey(ProfileKeys.pendingRecoveryBanner), findsNothing);
+      expect(find.text('Finish account recovery'), findsNothing);
+    });
 
-        expect(
-          find.text('Anonymous sessions persist across launches'),
-          findsOneWidget,
-        );
-      },
-    );
+    testWidgets('shown when pendingEmailLinkProvider is set', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: [
+            ..._phase26Overrides(prefs: prefs),
+            pendingEmailLinkProvider.overrideWith(
+              (ref) => 'https://example.com/__/auth/links?oobCode=ABC',
+            ),
+          ],
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byKey(ProfileKeys.pendingRecoveryBanner), findsOneWidget);
+      expect(find.text('Finish account recovery'), findsOneWidget);
+    });
   });
 }

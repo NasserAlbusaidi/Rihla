@@ -19,6 +19,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/data_deletion_service.dart';
 import '../../auth/widgets/delete_account_dialog.dart';
@@ -30,6 +31,7 @@ import '../widgets/default_split_picker_sheet.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/legal_links_sheet.dart';
+import '../widgets/profile_display_section.dart';
 import '../widgets/profile_qr_sheet.dart';
 
 /// Profile tab — saffron travel-journal direction.
@@ -37,12 +39,16 @@ import '../widgets/profile_qr_sheet.dart';
 /// Wireframe ref: `Wireframes/Rihla/hifi/screens-shell.jsx` → `Hi_Profile()`.
 /// Layout top-to-bottom:
 ///   1. Top bar — settings (or back) · "Profile" title · share
-///   2. Identity card — decorative corner flourish, 84dp avatar, italic name,
+///   2. Optional pending-recovery banner (when `pendingEmailLinkProvider` is
+///      set — i.e. a magic link arrived but no pending email was primed)
+///   3. Identity card — decorative corner flourish, 84dp avatar, italic name,
 ///      tagline, two action chips
-///   3. 3-column stats grid (Journeys / Groups / Spent)
-///   4. Preferences card (Notifications / Currency / Language / Default split)
-///   5. About card (Help / Feedback / Terms / Sign out)
-///   6. Version stamp
+///   4. 3-column stats grid (Journeys / Groups / Spent)
+///   5. Preferences card (Notifications / Currency / Language / Default split)
+///   6. Display section (theme picker)
+///   7. Account card (linked email, sign out, delete)
+///   8. About card (Help / Feedback / Terms)
+///   9. Version stamp
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key, this.showBack = false});
 
@@ -65,6 +71,7 @@ class ProfileScreen extends ConsumerWidget {
                 padding: const EdgeInsets.only(bottom: 32),
                 child: Column(
                   children: [
+                    const _PendingRecoveryBanner(),
                     const SizedBox(height: 4),
                     _IdentityCard(
                           name: settings.deviceName,
@@ -86,6 +93,12 @@ class ProfileScreen extends ConsumerWidget {
                       delay: 260.ms,
                       duration: 400.ms,
                     ),
+                    const SizedBox(height: 18),
+                    const Padding(
+                      key: ProfileKeys.displaySection,
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: ProfileDisplaySection(),
+                    ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
                     const SizedBox(height: 18),
                     const _SectionLabel(label: 'Account'),
                     const SizedBox(height: 8),
@@ -215,6 +228,77 @@ class _GhostIcon extends StatelessWidget {
         width: 44,
         height: 44,
         child: Icon(icon, size: 20, color: colors.textPrimary),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────── Pending recovery banner
+
+/// Renders only when `pendingEmailLinkProvider` holds a magic-link URL the
+/// bootstrap could not auto-complete (no pending email was primed — e.g. the
+/// link was opened on a fresh install or different device). Routes to
+/// `/recover` so the user can enter the email and finish the flow.
+class _PendingRecoveryBanner extends ConsumerWidget {
+  const _PendingRecoveryBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pendingLink = ref.watch(pendingEmailLinkProvider);
+    if (pendingLink == null) return const SizedBox.shrink();
+
+    final colors = context.colors;
+    return Padding(
+      key: ProfileKeys.pendingRecoveryBanner,
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+      child: Material(
+        color: colors.cardSoft,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            HapticService.selection();
+            context.push('/recover');
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Iconsax.sms_tracking, size: 18, color: colors.textPrimary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Finish account recovery',
+                        style: AppTypography.sans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'A recovery link is waiting. Enter the email it was sent to.',
+                        style: AppTypography.sans(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Iconsax.arrow_right_3,
+                  size: 16,
+                  color: colors.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -641,21 +725,6 @@ class _AboutCard extends ConsumerWidget {
               color: colors.textSecondary,
             ),
             onTap: () => LegalLinksSheet.show(context),
-          ),
-          _PrefRow(
-            label: 'Sign out',
-            trailing: Text(
-              'End session',
-              style: AppTypography.sans(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.error,
-              ),
-            ),
-            onTap: () => _showSnack(
-              context,
-              'Anonymous sessions persist across launches',
-            ),
             divider: false,
           ),
         ],
