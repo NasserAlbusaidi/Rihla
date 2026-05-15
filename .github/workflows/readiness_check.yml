@@ -55,11 +55,7 @@ jobs:
         run: bash tool/check_theme_purity.sh
 
       - name: Firebase emulator rules and Functions tests
-        run: |
-          npx --yes firebase-tools@15.8.0 emulators:exec \
-            --project rihla-safar-test \
-            --only auth,firestore,storage \
-            "cd functions && npx --yes node@20 node_modules/jest/bin/jest.js --runInBand"
+        run: npm --prefix functions run test:emulator
 
       - name: Flutter tests with coverage
         run: |

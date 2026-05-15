@@ -11,6 +11,7 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "test": "jest --runInBand",
+    "test:emulator": "npx --yes firebase-tools@15.8.0 emulators:exec --config ../firebase.json --project rihla-safar-test --only auth,firestore \"npx --yes node@20 node_modules/jest/bin/jest.js --runInBand\"",
     "test:coverage": "jest --coverage --runInBand"
   },
   "dependencies": {

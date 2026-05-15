@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Join a Rihla group</title>
+  <meta name="description" content="Open a Rihla group invite.">
+  <link rel="stylesheet" href="/_styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="brand">
+      <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
+        <span class="logo">R</span>
+        <span class="name">Rihla</span>
+      </a>
+    </header>
+
+    <h1>Join a Rihla group</h1>
+    <p class="subtitle">Open this invite on the phone where Rihla is installed.</p>
+
+    <p id="invite-copy">
+      If the app does not open automatically, use the button below or enter the
+      invite code manually in Rihla.
+    </p>
+
+    <p><strong>Invite code:</strong> <code id="invite-code">Not found</code></p>
+    <p><a id="open-rihla" href="rihla://join">Open in Rihla</a></p>
+
+    <footer class="nav">
+      <a href="/">Home</a>
+      <span class="sep">.</span>
+      <a href="/help">Help</a>
+      <div class="copyright">&copy; 2026 Rihla. All rights reserved.</div>
+    </footer>
+  </main>
+  <script>
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const pathCode = pathParts[0] === 'join' && pathParts.length > 1
+      ? pathParts[1]
+      : null;
+    const queryCode = new URLSearchParams(window.location.search).get('code');
+    const code = (pathCode || queryCode || '').trim().toUpperCase();
+    const valid = /^[A-Z0-9]{6}$/.test(code);
+    const codeNode = document.getElementById('invite-code');
+    const link = document.getElementById('open-rihla');
+
+    if (valid) {
+      codeNode.textContent = code;
+      link.href = `rihla://join/${code}`;
+      window.setTimeout(() => {
+        window.location.href = link.href;
+      }, 300);
+    } else {
+      document.getElementById('invite-copy').textContent =
+        'This invite link is missing a valid 6-character code.';
+      link.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

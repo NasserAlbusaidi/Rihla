@@ -15,7 +15,8 @@ import '../providers/auth_provider.dart';
 /// Account-recovery spec §4.1 + plan §P3. The user enters an email twice
 /// (typo guard per §10 risk register), the app calls
 /// [AuthRecoveryService.linkEmailToCurrentUser], and on success routes to
-/// the "check your inbox" screen with the email passed as `extra`.
+/// the "check your inbox" screen with the email in the URL query so the
+/// confirmation page survives restoration and deep-link entry.
 class LinkEmailScreen extends ConsumerStatefulWidget {
   const LinkEmailScreen({super.key});
 
@@ -40,8 +41,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
   String? _validateConfirm(String? input) {
     final formatError = validateEmail(input);
     if (formatError != null) return formatError;
-    if (normalizeEmail(input ?? '') !=
-        normalizeEmail(_emailController.text)) {
+    if (normalizeEmail(input ?? '') != normalizeEmail(_emailController.text)) {
       return "Emails don't match.";
     }
     return null;
@@ -54,11 +54,14 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
     final email = normalizeEmail(_emailController.text);
     setState(() => _sending = true);
     try {
-      await ref
-          .read(authRecoveryServiceProvider)
-          .linkEmailToCurrentUser(email);
+      await ref.read(authRecoveryServiceProvider).linkEmailToCurrentUser(email);
       if (!mounted) return;
-      context.go(AppRoutes.linkEmailSent, extra: email);
+      context.go(
+        Uri(
+          path: AppRoutes.linkEmailSent,
+          queryParameters: {'email': email},
+        ).toString(),
+      );
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       setState(() => _serverError = _humanizeError(error));
@@ -91,6 +94,23 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
     }
   }
 
+  void _back() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go(AppRoutes.profile);
+      }
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -101,7 +121,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Iconsax.arrow_left_2),
-          onPressed: () => context.pop(),
+          onPressed: _back,
         ),
         title: Text(
           'Link your email',
@@ -160,9 +180,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                 enableSuggestions: false,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm email',
-                ),
+                decoration: const InputDecoration(labelText: 'Confirm email'),
                 validator: _validateConfirm,
                 onFieldSubmitted: (_) => _send(),
               ),

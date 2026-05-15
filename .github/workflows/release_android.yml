@@ -33,6 +33,25 @@ jobs:
           cache: 'npm'
           cache-dependency-path: functions/package-lock.json
 
+      - name: Release readiness confirmations
+        env:
+          RIHLA_BACKEND_RELEASE_READY: ${{ vars.RIHLA_BACKEND_RELEASE_READY }}
+          RIHLA_APP_CHECK_READY: ${{ vars.RIHLA_APP_CHECK_READY }}
+          RIHLA_REAL_DEVICE_QA_READY: ${{ vars.RIHLA_REAL_DEVICE_QA_READY }}
+        run: |
+          if [ "$RIHLA_BACKEND_RELEASE_READY" != "yes" ]; then
+            echo "::error::Set repository variable RIHLA_BACKEND_RELEASE_READY=yes only after Firebase backend and Hosting production checks pass."
+            exit 1
+          fi
+          if [ "$RIHLA_APP_CHECK_READY" != "yes" ]; then
+            echo "::error::Set repository variable RIHLA_APP_CHECK_READY=yes only after Android and iOS App Check are enrolled in Firebase Console."
+            exit 1
+          fi
+          if [ "$RIHLA_REAL_DEVICE_QA_READY" != "yes" ]; then
+            echo "::error::Set repository variable RIHLA_REAL_DEVICE_QA_READY=yes only after the physical-device QA matrix passes."
+            exit 1
+          fi
+
       - name: 🔐 Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
@@ -66,11 +85,7 @@ jobs:
         run: bash tool/check_theme_purity.sh
 
       - name: Firebase backend emulator tests
-        run: |
-          npx --yes firebase-tools@15.8.0 emulators:exec \
-            --project rihla-safar-test \
-            --only auth,firestore,storage \
-            "npm --prefix functions test"
+        run: npm --prefix functions run test:emulator
 
       - name: Run Tests with Coverage
         run: |

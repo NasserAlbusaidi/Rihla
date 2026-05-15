@@ -7,7 +7,7 @@
 
 ## router/
 
-- **app_router.dart**: GoRouter declarative routing. Route constants in `AppRoutes` class. Routes: splash (`/`), onboarding, home, profile, activity, create-group, join-group, group detail with nested event routes (settings, settle-up, activity, create-event), event hub with module subroutes (ledger, gear, logistics, vault, memories, activity, settings). Ledger has nested add/edit/settle-up. Provider: `routerProvider`, `onboardingCompleteProvider`. All pages use `CustomTransitionPage` with `_slideRightTransition` (slide-right, `Offset(1,0)` to zero, `Curves.easeOutCubic`).
+- **app_router.dart**: GoRouter declarative routing. Route constants in `AppRoutes` class. Routes: splash (`/`, redirects to `/home`), home, profile, account recovery, activity, create-group, join-group, invite join (`/join/:code`), group detail with nested settings, settle-up, activity, and create-event routes, plus event hub routes for ledger, activity, and settings. Ledger has nested add/edit/settle-up. Provider: `routerProvider`. Pages use `CustomTransitionPage` with shared-axis or route-specific transitions.
 
 ## theme/
 

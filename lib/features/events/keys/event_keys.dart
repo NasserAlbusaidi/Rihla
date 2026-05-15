@@ -11,10 +11,6 @@ abstract final class EventKeys {
 
   // Module cards — unique key per card (no duplicate keys in tree)
   static const ledgerCard = Key('event_ledger_card');
-  static const gearCard = Key('event_gear_card');
-  static const logisticsCard = Key('event_logistics_card');
-  static const vaultCard = Key('event_vault_card');
-  static const memoriesCard = Key('event_memories_card');
   static const activityCard = Key('event_activity_card');
 
   // Actions
@@ -39,10 +35,6 @@ abstract final class EventKeys {
 
   // Module toggle row keys (CreateEventScreen Custom type)
   static const moduleLedgerToggle = Key('event_module_ledger_toggle');
-  static const moduleGearToggle = Key('event_module_gear_toggle');
-  static const moduleLogisticsToggle = Key('event_module_logistics_toggle');
-  static const moduleVaultToggle = Key('event_module_vault_toggle');
-  static const moduleMemoriesToggle = Key('event_module_memories_toggle');
 
   // Parameterized keys for event list items
   static Key eventCard(String eventId) => Key('event_card_$eventId');
@@ -60,5 +52,5 @@ abstract final class EventKeys {
   static const deleteEventTile = Key('event_delete_tile');
   static const deleteEventDialog = Key('event_delete_dialog');
   static const deleteEventConfirmButton = Key('event_delete_confirm_button');
-  static const settingsGearIcon = Key('event_settings_gear_icon');
+  static const settingsButton = Key('event_settings_button');
 }

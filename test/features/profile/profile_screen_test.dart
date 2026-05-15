@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -116,6 +117,42 @@ List<Override> _phase26Overrides({
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('direct profile back button routes home when showBack is true', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'settings_device_name': 'Alice'});
+    final prefs = await SharedPreferences.getInstance();
+    final router = GoRouter(
+      initialLocation: '/profile',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (ctx, state) => const Scaffold(body: Text('Home')),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (ctx, state) => const ProfileScreen(showBack: true),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _phase26Overrides(prefs: prefs),
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+        ),
+      ),
+    );
+    await _pumpWithAnimations(tester);
+
+    await tester.tap(find.byIcon(Iconsax.arrow_left));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home'), findsOneWidget);
   });
 
   group('ProfileScreen — IDENT-01', () {
@@ -228,6 +265,36 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(ProfileKeys.nameTextField), findsOneWidget);
+    });
+
+    testWidgets('edit name sheet rejects names outside Firestore rules', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Alice'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            profileStatsProvider.overrideWith((ref) => _statsData()),
+          ],
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      await tester.tap(find.byKey(ProfileKeys.displayName));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(ProfileKeys.nameTextField),
+        'A' * 33,
+      );
+      await tester.tap(find.byKey(ProfileKeys.saveNameButton));
+      await tester.pump();
+
+      expect(find.text('Keep it to 32 characters or fewer.'), findsOneWidget);
+      expect(prefs.getString('settings_device_name'), 'Alice');
     });
   });
 

@@ -17,11 +17,23 @@ void main() {
 
     test('normalizes universal link path join links', () {
       expect(parse('https://rihla.app/join/ABC123'), Uri(path: '/join/ABC123'));
+      expect(
+        parse('https://rihla-safar.web.app/join/ABC123'),
+        Uri(path: '/join/ABC123'),
+      );
+      expect(
+        parse('https://rihla-safar.firebaseapp.com/join/ABC123'),
+        Uri(path: '/join/ABC123'),
+      );
     });
 
     test('normalizes universal link query join links', () {
       expect(
         parse('https://rihla.app/join?code=ABC123'),
+        Uri(path: '/join/ABC123'),
+      );
+      expect(
+        parse('https://rihla-safar.web.app/join?code=ABC123'),
         Uri(path: '/join/ABC123'),
       );
     });
@@ -47,6 +59,18 @@ void main() {
         );
       },
     );
+
+    test('accepts trailing slashes from browser-normalized invite links', () {
+      expect(
+        parse('https://rihla-safar.web.app/join/ABC123/'),
+        Uri(path: '/join/ABC123'),
+      );
+      expect(
+        parse('https://rihla-safar.web.app/join/?code=abc123'),
+        Uri(path: '/join/ABC123'),
+      );
+      expect(parse('rihla://join/abc123/'), Uri(path: '/join/ABC123'));
+    });
 
     test('rejects non-join links', () {
       expect(parse('safar://join?code=ABC123'), isNull);

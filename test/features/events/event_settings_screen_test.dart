@@ -10,6 +10,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/event_settings_screen.dart';
@@ -160,6 +161,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Beach Getaway'), findsOneWidget);
+    });
+
+    testWidgets('direct route back button returns to event hub', (
+      tester,
+    ) async {
+      final event = _makeEvent();
+      await tester.pumpWidget(_wrapSettings(event: event));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(EventKeys.settingsBackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EventHub'), findsOneWidget);
     });
 
     testWidgets('Save Changes button is present', (tester) async {

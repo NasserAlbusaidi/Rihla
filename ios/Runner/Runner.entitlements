@@ -5,6 +5,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:rihla-safar.firebaseapp.com</string>
+		<string>applinks:rihla-safar.web.app</string>
 		<string>applinks:rihla.app</string>
 	</array>
 </dict>

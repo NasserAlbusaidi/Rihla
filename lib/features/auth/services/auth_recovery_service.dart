@@ -139,9 +139,7 @@ class AuthRecoveryService {
     final result = await user.linkWithCredential(credential);
     await clearPendingEmail();
     await clearInFlightOp();
-    FirebaseConfig.log(
-      'Recovery: linked email to uid ${result.user?.uid}',
-    );
+    FirebaseConfig.log('Recovery: linked email to uid ${result.user?.uid}');
     return result;
   }
 
@@ -153,6 +151,7 @@ class AuthRecoveryService {
   Future<UserCredential> completeRecovery(
     String emailLink, {
     String? overrideEmail,
+    Duration pendingWritesTimeout = const Duration(seconds: 5),
   }) async {
     final email = (overrideEmail ?? readPendingEmail())?.trim();
     if (email == null || email.isEmpty) {
@@ -161,15 +160,23 @@ class AuthRecoveryService {
         'setPendingEmail first or pass overrideEmail',
       );
     }
+    try {
+      final firestore = _firestore ?? FirebaseFirestore.instance;
+      await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
+    } on TimeoutException {
+      FirebaseConfig.log(
+        'Recovery: waitForPendingWrites timed out after '
+        '${pendingWritesTimeout.inSeconds}s — continuing recovery',
+      );
+    }
+    await _auth.signOut();
     final result = await _auth.signInWithEmailLink(
       email: email,
       emailLink: emailLink,
     );
     await clearPendingEmail();
     await clearInFlightOp();
-    FirebaseConfig.log(
-      'Recovery: recovered uid ${result.user?.uid}',
-    );
+    FirebaseConfig.log('Recovery: recovered uid ${result.user?.uid}');
     return result;
   }
 

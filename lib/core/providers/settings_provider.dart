@@ -7,6 +7,7 @@ import '../config/firebase_config.dart';
 import '../models/app_settings_model.dart';
 import '../models/split_mode.dart';
 import '../services/settings_service.dart';
+import '../utils/name_validators.dart';
 
 /// Provider for SharedPreferences instance
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -50,9 +51,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(weeklyDigestEnabled: enabled);
   }
 
-  /// Marks the post-install onboarding flow as complete. The router redirect
-  /// uses this flag to decide whether to send the user to `/onboarding` or
-  /// straight to `/home` on launch.
+  /// Persists the legacy onboarding-complete flag.
+  ///
+  /// The shippable v1 router no longer gates launch on this flag, but it is
+  /// retained so existing installs and the archived onboarding screen can read
+  /// their previous state without a settings migration.
   Future<void> setOnboardingComplete(bool complete) async {
     await _service.saveOnboardingComplete(complete);
     state = state.copyWith(onboardingComplete: complete);
@@ -73,9 +76,20 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   /// SharedPreferences write is awaited (D-16: local-first).
   /// Firestore propagation is unawaited with a try/catch (D-15: silent fail).
   Future<void> setDeviceName(String name) async {
-    await _service.saveDeviceName(name); // SharedPreferences first (D-16)
-    state = state.copyWith(deviceName: name); // Update state immediately
-    unawaited(propagateDisplayName(name)); // Fire-and-forget Firestore (D-15)
+    final normalized = name.trim().isEmpty ? '' : normalizeDisplayName(name);
+    if (name.trim().isNotEmpty) {
+      final error = validateDisplayName(name);
+      if (error != null) {
+        throw ArgumentError.value(name, 'name', error);
+      }
+    }
+
+    await _service.saveDeviceName(normalized); // SharedPreferences first (D-16)
+    state = state.copyWith(deviceName: normalized); // Update state immediately
+    if (normalized.isNotEmpty) {
+      // Fire-and-forget Firestore (D-15)
+      unawaited(propagateDisplayName(normalized));
+    }
   }
 
   /// Propagates the new display name to all group participant records in

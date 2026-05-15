@@ -16,7 +16,7 @@ import '../services/activity_service.dart';
 /// Event activity feed — saffron travel-journal direction.
 ///
 /// Chronological day-grouped feed of event-scoped activity logs (expense
-/// creation/edits, gear changes, document uploads).
+/// creation/edits, member actions, and settlement changes).
 ///
 /// Layout, top to bottom:
 ///   1. Top bar — back · italic event name · "ACTIVITY" mono caption

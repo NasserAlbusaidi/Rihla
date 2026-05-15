@@ -43,7 +43,9 @@ void main() async {
     },
     appRunner: () async {
       // Initialize Firebase (includes Firestore offline persistence settings)
-      await FirebaseConfig.initialize();
+      await FirebaseConfig.initialize(
+        useDebugAppCheck: !kReleaseMode || _useFirebaseEmulator,
+      );
 
       // Emulator hookup MUST run AFTER Firebase.initializeApp and BEFORE any
       // service construction or auth call (Pitfall 2 in 38-RESEARCH.md).

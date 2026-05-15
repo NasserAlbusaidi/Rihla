@@ -9,6 +9,14 @@
           {
             "/": "/__/auth/links/*",
             "comment": "Firebase Auth email-link continue URLs for Rihla account recovery."
+          },
+          {
+            "/": "/join/*",
+            "comment": "Group invite links with a path invite code."
+          },
+          {
+            "/": "/join",
+            "comment": "Group invite links with a query invite code."
           }
         ]
       }

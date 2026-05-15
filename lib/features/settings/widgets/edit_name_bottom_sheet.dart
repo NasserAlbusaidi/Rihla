@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/name_validators.dart';
 import '../keys/profile_keys.dart';
 
 /// Bottom sheet for editing the user's display name.
@@ -33,6 +34,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
   bool _isSaving = false;
   bool _showCheck = false;
   int _selectedInitialsStyle = 0;
+  String? _errorText;
 
   @override
   void initState() {
@@ -47,14 +49,18 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
   }
 
   Future<void> _handleSave() async {
-    final trimmed = _controller.text.trim();
-    if (trimmed.isEmpty) return;
+    final error = validateDisplayName(_controller.text);
+    if (error != null) {
+      setState(() => _errorText = error);
+      return;
+    }
+    final displayName = normalizeDisplayName(_controller.text);
 
     setState(() => _isSaving = true);
     HapticService.medium();
 
     final stopwatch = Stopwatch()..start();
-    await widget.onSave(trimmed);
+    await widget.onSave(displayName);
     final elapsed = stopwatch.elapsedMilliseconds;
 
     if (elapsed < 600) {
@@ -147,7 +153,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                   key: ProfileKeys.nameTextField,
                   controller: _controller,
                   textCapitalization: TextCapitalization.words,
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (_) => setState(() => _errorText = null),
                   style: AppTypography.sans(
                     fontSize: 15,
                     color: colors.textPrimary,
@@ -156,6 +162,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                   decoration: InputDecoration(
                     labelText: 'Display name',
                     hintText: 'Your name',
+                    errorText: _errorText,
                     filled: true,
                     fillColor: colors.inputFillWarm,
                     enabledBorder: OutlineInputBorder(

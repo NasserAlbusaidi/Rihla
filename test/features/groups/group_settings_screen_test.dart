@@ -220,6 +220,43 @@ Widget _wrapDeleteNavigationTest({
   );
 }
 
+Widget _wrapBackNavigationTest({required SharedPreferences prefs}) {
+  final router = GoRouter(
+    initialLocation: '/group/group-1/settings',
+    routes: [
+      GoRoute(
+        path: '/group/:gid',
+        builder: (context, state) =>
+            Scaffold(body: Text('GroupDetail:${state.pathParameters['gid']}')),
+        routes: [
+          GoRoute(
+            path: 'settings',
+            builder: (context, state) =>
+                GroupSettingsScreen(groupId: state.pathParameters['gid']!),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      currentUserIdProvider.overrideWithValue('uid-creator'),
+      groupDetailProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+      groupMembersProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupBalancesProvider(
+        'group-1',
+      ).overrideWith((ref) => AsyncValue.data(_zeroBalances)),
+    ],
+    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+  );
+}
+
 class _RouteInvalidatingDeleteService extends GroupService {
   _RouteInvalidatingDeleteService(Ref ref, {required this.onDelete})
     : super.withFirestore(ref, FakeFirebaseFirestore());
@@ -253,6 +290,18 @@ void main() {
 
       expect(find.byKey(GroupKeys.settingsBackButton), findsOneWidget);
       expect(find.byType(AppBar), findsNothing);
+    });
+
+    testWidgets('direct route back button returns to group detail', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrapBackNavigationTest(prefs: prefs));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settingsBackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupDetail:group-1'), findsOneWidget);
     });
 
     testWidgets('renders GroupInfoSection', (tester) async {

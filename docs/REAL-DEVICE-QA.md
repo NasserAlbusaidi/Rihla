@@ -1,10 +1,12 @@
 # Real-Device QA
 
-Last prepared: 2026-05-11
+Last prepared: 2026-05-15
 
 This checklist covers the release QA that cannot be proven by unit, widget, or
 emulator tests. Run it on physical iOS and Android devices against the
-production Firebase project unless a test explicitly says otherwise.
+production Firebase project unless a test explicitly says otherwise. The gate
+script fails until the matrix rows are recorded as passing for both platforms
+with concrete evidence.
 
 ## Device Gate
 
@@ -22,10 +24,12 @@ Pass criteria:
 - Firebase platform files are present:
   - `android/app/google-services.json`
   - `ios/Runner/GoogleService-Info.plist`
+- Every RD-01 through RD-08 row below has an iOS result starting with `Pass`,
+  an Android result starting with `Pass`, and evidence that replaces the
+  placeholder text.
 
-Current local status from 2026-05-11: blocked. Flutter sees iOS simulators,
-macOS, and Chrome, but no physical iOS or Android device. The known iPhones are
-not reachable for wireless debugging.
+Current local status from 2026-05-15: blocked. The gate sees an iOS simulator,
+but no physical iOS or Android device, and the matrix has not been completed.
 
 For raw device details, run:
 
@@ -49,7 +53,9 @@ path was used.
 ## Test Matrix
 
 Record each result as Pass, Fail, or Blocked with the device model, OS version,
-build source, and Firebase project.
+build source, and Firebase project. For release, both iOS and Android cells must
+start with `Pass` and the Evidence cell must contain a concrete artifact such as
+a group ID, invite code, screenshot filename, or Firestore document path.
 
 | ID | Area | iOS | Android | Evidence |
 |---|---|---|---|---|

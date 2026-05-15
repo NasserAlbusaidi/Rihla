@@ -20,9 +20,9 @@ import 'event_expense_hero.dart';
 /// Per-event hub — saffron direction.
 ///
 /// The wireframe set goes directly from Group Detail → Ledger and has no
-/// dedicated command center. We retain a thin event hub here so that the
-/// non-money modules (Gear, Logistics, Vault, Memories) stay reachable; the
-/// expense flow still primarily lives in the Ledger.
+/// dedicated command center. We retain a thin event hub here for the shippable
+/// Ledger + Activity surface; the expense flow still primarily lives in the
+/// Ledger.
 ///
 /// Layout, top to bottom:
 ///   1. Cover header (124px + status bar) — `CoverArt.forEventType`, dark
@@ -197,7 +197,7 @@ class _CoverHeader extends StatelessWidget {
                   },
                 ),
                 _PaperIconButton(
-                  key: EventKeys.settingsGearIcon,
+                  key: EventKeys.settingsButton,
                   icon: Iconsax.setting_2,
                   onTap: onSettings,
                 ),

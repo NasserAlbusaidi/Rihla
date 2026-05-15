@@ -79,11 +79,7 @@ class EventDangerSection extends ConsumerWidget {
   Widget _buildSectionHeader(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          Iconsax.warning_2,
-          size: 16,
-          color: context.colors.errorText,
-        ),
+        Icon(Iconsax.warning_2, size: 16, color: context.colors.errorText),
         const SizedBox(width: 6),
         Text(
           'DANGER ZONE',
@@ -103,11 +99,7 @@ class EventDangerSection extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          Icon(
-            Iconsax.warning_2,
-            size: 16,
-            color: context.colors.warning,
-          ),
+          Icon(Iconsax.warning_2, size: 16, color: context.colors.warning),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -179,11 +171,11 @@ class EventDangerSection extends ConsumerWidget {
   ) {
     final body = hasUnsettled
         ? 'This will permanently delete the event and all its expenses, '
-            'gear items, and documents. This cannot be undone.\n\n'
-            'This event has unsettled balances. Settle up before deleting, '
-            'or proceed anyway.'
+              'settlements, and activity. This cannot be undone.\n\n'
+              'This event has unsettled balances. Settle up before deleting, '
+              'or proceed anyway.'
         : 'This will permanently delete the event and all its expenses, '
-            'gear items, and documents. This cannot be undone.';
+              'settlements, and activity. This cannot be undone.';
 
     showDialog<void>(
       context: context,
@@ -241,7 +233,9 @@ class EventDangerSection extends ConsumerWidget {
       final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
           ? ref.read(settingsProvider).deviceName
           : 'Someone';
-      ref.read(groupActivityServiceProvider).logGroupEvent(
+      ref
+          .read(groupActivityServiceProvider)
+          .logGroupEvent(
             groupId: groupId,
             type: 'event_deleted',
             actorId: actorId,
@@ -253,18 +247,17 @@ class EventDangerSection extends ConsumerWidget {
     }
 
     try {
-      await ref.read(eventServiceProvider).deleteEvent(
-            groupId: groupId,
-            eventId: eventId,
-          );
+      await ref
+          .read(eventServiceProvider)
+          .deleteEvent(groupId: groupId, eventId: eventId);
       if (context.mounted) {
         context.go('/group/$groupId');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete event: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete event: $e')));
       }
     }
   }

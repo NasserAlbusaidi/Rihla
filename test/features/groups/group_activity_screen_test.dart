@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -121,6 +122,42 @@ Widget _buildActivityScreen({
   );
 }
 
+Widget _buildActivityRoute({
+  required String groupId,
+  required FakeFirebaseFirestore fakeDb,
+  SharedPreferences? prefs,
+}) {
+  final activityService = GroupActivityService.withFirestore(fakeDb);
+  final router = GoRouter(
+    initialLocation: '/group/$groupId/activity',
+    routes: [
+      GoRoute(
+        path: '/group/:gid',
+        builder: (context, state) =>
+            Scaffold(body: Text('GroupDetail:${state.pathParameters['gid']}')),
+        routes: [
+          GoRoute(
+            path: 'activity',
+            builder: (context, state) =>
+                GroupActivityScreen(groupId: state.pathParameters['gid']!),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
+      groupActivityServiceProvider.overrideWith((ref) => activityService),
+      groupDetailProvider(
+        groupId,
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+    ],
+    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+  );
+}
+
 Finder _richTextContaining(String text) {
   return find.byWidgetPredicate((widget) {
     if (widget is! Text) return false;
@@ -204,6 +241,27 @@ void main() {
 
       expect(find.byKey(GroupKeys.activityBackButton), findsOneWidget);
       expect(find.byTooltip('Back'), findsOneWidget);
+    });
+
+    testWidgets('direct route back button returns to group detail', (
+      tester,
+    ) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        _buildActivityRoute(
+          groupId: 'grp-test',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.activityBackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupDetail:grp-test'), findsOneWidget);
     });
 
     testWidgets('renders SafeArea inside Scaffold body', (tester) async {

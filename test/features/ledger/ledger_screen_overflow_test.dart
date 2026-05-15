@@ -60,6 +60,14 @@ void main() {
                           const Scaffold(body: Text('Add expense route')),
                     ),
                     GoRoute(
+                      path: 'edit/:expId',
+                      builder: (context, state) => Scaffold(
+                        body: Text(
+                          'Edit expense route:${state.pathParameters['expId']}',
+                        ),
+                      ),
+                    ),
+                    GoRoute(
                       path: 'settle-up',
                       builder: (context, state) =>
                           const Scaffold(body: Text('Settle up route')),
@@ -113,6 +121,18 @@ void main() {
       expect(find.byType(PopupMenuButton<String>), findsNothing);
     });
 
+    testWidgets('direct entry back button returns to event route', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildLedger());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Event'), findsOneWidget);
+    });
+
     testWidgets('search button opens the ledger search sheet', (
       tester,
     ) async {
@@ -158,6 +178,61 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Settle up route'), findsOneWidget);
+    });
+
+    testWidgets('expense row tap navigates to edit expense route', (
+      tester,
+    ) async {
+      final expenses = [
+        Expense(
+          id: 'expense-1',
+          tripId: eventId,
+          payerParticipantId: 'uid-creator',
+          amount: Decimal.parse('3.000'),
+          description: 'Coffee',
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026, 1, 10),
+        ),
+      ];
+
+      await tester.pumpWidget(buildLedger(expenses: expenses));
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(LedgerKeys.expenseCard('expense-1'));
+      await tester.ensureVisible(row);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit expense route:expense-1'), findsOneWidget);
+    });
+
+    testWidgets('search result tap navigates to edit expense route', (
+      tester,
+    ) async {
+      final expenses = [
+        Expense(
+          id: 'expense-1',
+          tripId: eventId,
+          payerParticipantId: 'uid-creator',
+          amount: Decimal.parse('3.000'),
+          description: 'Coffee',
+          categoryName: 'Food',
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026, 1, 10),
+        ),
+      ];
+
+      await tester.pumpWidget(buildLedger(expenses: expenses));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Search expenses'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(LedgerKeys.searchField), 'Coffee');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Coffee').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit expense route:expense-1'), findsOneWidget);
     });
 
     testWidgets('uses the signed-in member for the event balance', (

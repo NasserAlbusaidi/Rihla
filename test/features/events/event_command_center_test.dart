@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
@@ -50,6 +52,154 @@ void main() {
     expect(find.byKey(EventKeys.dayBadge), findsOneWidget);
     expect(find.text('Day 3 of 7'), findsOneWidget);
   });
+
+  testWidgets('ledger module card routes to the event ledger path', (
+    tester,
+  ) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+    );
+
+    await _pumpEventHubRouter(tester, event);
+
+    await tester.tap(find.byKey(EventKeys.ledgerCard));
+    await tester.pumpAndSettle();
+
+    expect(find.text('LedgerRoute:event-1'), findsOneWidget);
+  });
+
+  testWidgets('direct route back button returns to group route', (
+    tester,
+  ) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+    );
+
+    await _pumpEventHubRouter(tester, event);
+
+    await tester.tap(find.byIcon(Iconsax.arrow_left));
+    await tester.pumpAndSettle();
+
+    expect(find.text('GroupRoute:group-1'), findsOneWidget);
+  });
+
+  testWidgets('expense hero routes to the event ledger path', (tester) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+    );
+
+    await _pumpEventHubRouter(tester, event);
+
+    await tester.tap(find.byKey(EventKeys.addExpenseChip));
+    await tester.pumpAndSettle();
+
+    expect(find.text('LedgerRoute:event-1'), findsOneWidget);
+  });
+
+  testWidgets('activity module card routes to the event activity path', (
+    tester,
+  ) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+    );
+
+    await _pumpEventHubRouter(tester, event);
+
+    await tester.tap(find.byKey(EventKeys.activityCard));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ActivityRoute:event-1'), findsOneWidget);
+  });
+
+  testWidgets('settings button routes to the event settings path', (
+    tester,
+  ) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+    );
+
+    await _pumpEventHubRouter(tester, event);
+
+    await tester.tap(find.byKey(EventKeys.settingsButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SettingsRoute:event-1'), findsOneWidget);
+  });
+}
+
+Future<void> _pumpEventHubRouter(WidgetTester tester, Event event) async {
+  final router = GoRouter(
+    initialLocation: '/group/group-1/event/event-1',
+    routes: [
+      GoRoute(
+        path: '/group/:gid',
+        builder: (_, state) =>
+            Scaffold(body: Text('GroupRoute:${state.pathParameters['gid']}')),
+        routes: [
+          GoRoute(
+            path: 'event/:eid',
+            builder: (_, state) => EventCommandCenter(
+              groupId: state.pathParameters['gid']!,
+              eventId: state.pathParameters['eid']!,
+            ),
+            routes: [
+              GoRoute(
+                path: 'ledger',
+                builder: (_, state) => Scaffold(
+                  body: Text('LedgerRoute:${state.pathParameters['eid']}'),
+                ),
+              ),
+              GoRoute(
+                path: 'activity',
+                builder: (_, state) => Scaffold(
+                  body: Text('ActivityRoute:${state.pathParameters['eid']}'),
+                ),
+              ),
+              GoRoute(
+                path: 'settings',
+                builder: (_, state) => Scaffold(
+                  body: Text('SettingsRoute:${state.pathParameters['eid']}'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        eventDetailProvider((
+          groupId: 'group-1',
+          eventId: 'event-1',
+        )).overrideWith((_) => Stream<Event?>.value(event)),
+        groupDetailProvider(
+          'group-1',
+        ).overrideWith((_) => Stream<Group?>.value(_group)),
+        eventExpensesProvider((
+          groupId: 'group-1',
+          eventId: 'event-1',
+        )).overrideWith((_) => Stream.value(const [])),
+        eventSettlementsProvider((
+          groupId: 'group-1',
+          eventId: 'event-1',
+        )).overrideWith((_) => Stream.value(const [])),
+      ],
+      child: MaterialApp.router(
+        theme: AppTheme.lightTheme,
+        routerConfig: router,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 Event _event({required DateTime startDate, required DateTime endDate}) {

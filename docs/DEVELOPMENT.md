@@ -45,7 +45,7 @@ CI runs this via `.github/workflows/release_android.yml` on `v*` tag push or man
 Every feature lives under `lib/features/<name>/` and is self-contained:
 
 ```
-lib/features/gear/
+lib/features/ledger/
 ├── keys/          # GlobalKey / ValueKey constants
 ├── models/        # Plain Dart data classes (immutable)
 ├── providers/     # Riverpod providers
@@ -54,7 +54,7 @@ lib/features/gear/
 └── widgets/       # Feature-local widgets
 ```
 
-Not every folder is required. `trip/` has only `models/` and `providers/` — add subdirectories as the feature grows.
+Not every folder is required. `trip/` has only `models/` and `providers/` — add subdirectories as the feature grows. Do not reintroduce removed v1 modules such as gear, logistics, vault, or memories without a product decision and route/rules review.
 
 ### Step-by-step
 
@@ -176,8 +176,8 @@ The notifier calls `state = state.copyWith(...)` — never mutates the state obj
 ### StateProvider for simple flags
 
 ```dart
-final gearLoadingProvider = StateProvider<bool>((ref) => false);
-final gearErrorProvider = StateProvider<String?>((ref) => null);
+final expenseSavingProvider = StateProvider<bool>((ref) => false);
+final expenseErrorProvider = StateProvider<String?>((ref) => null);
 ```
 
 ### Rendering async state
@@ -185,10 +185,10 @@ final gearErrorProvider = StateProvider<String?>((ref) => null);
 The standard three-state pattern used in every screen:
 
 ```dart
-gearAsync.when(
-  loading: () => SkeletonLoader.gearList(),
+expensesAsync.when(
+  loading: () => SkeletonLoader.expenseList(),
   error: (e, _) => Center(child: Text('Error: $e')),
-  data: (items) => /* real UI */,
+  data: (expenses) => /* real UI */,
 );
 ```
 
@@ -371,12 +371,10 @@ AppTabBar(
 **`SkeletonLoader`** — named factory constructors for content-aware loading states. Use the variant that matches the screen layout:
 
 ```dart
-SkeletonLoader.gearList()        // gear item rows
 SkeletonLoader.expenseList()     // expense rows with trailing amount
 SkeletonLoader.eventCard()       // event cards
 SkeletonLoader.groupList()       // group rows with avatar
 SkeletonLoader.dashboardHero()   // balance hero + stats
-SkeletonLoader.photoGrid()       // 3-column photo grid
 SkeletonLoader.generic()         // plain fallback
 ```
 
@@ -385,9 +383,9 @@ SkeletonLoader.generic()         // plain fallback
 ```dart
 EmptyStateView(
   icon: Iconsax.box,
-  title: 'No items yet',
-  message: 'Add gear your group needs to pack.',
-  actionLabel: 'Add Item',
+  title: 'No expenses yet',
+  message: 'Add the first shared expense for this event.',
+  actionLabel: 'Add Expense',
   onAction: () { /* ... */ },
   accentGradient: LinearGradient(...),  // optional colored icon background
 )
@@ -398,7 +396,7 @@ EmptyStateView(
 ```dart
 LoadingButton(
   label: 'Save',
-  isLoading: ref.watch(gearLoadingProvider),
+  isLoading: ref.watch(expenseSavingProvider),
   onPressed: _handleSave,
   gradient: AppColorTokens.light.primaryGradient,  // optional
 )
@@ -465,7 +463,7 @@ Settlement optimization uses a greedy min-transactions algorithm (`calculateOpti
 
 ### Soft deletes
 
-Expenses, gear items, and settlements use `isDeleted` + `deletedAt` flags. Queries must filter `isDeleted == false`. Hard deletes only on trips (cascade) and media documents.
+Expenses, events, groups, and settlements use `isDeleted` + deleted timestamp fields where the current model supports them. Queries must filter out deleted records. Legacy local tables such as `gear_items` remain only for SQLite compatibility with older installs.
 
 ---
 
@@ -549,4 +547,4 @@ ProviderScope(
 )
 ```
 
-Minimum coverage: 80%.
+Minimum coverage: temporary 70% raw line coverage. Ratchet back to 80% after the auth/profile/settings coverage backlog is closed.

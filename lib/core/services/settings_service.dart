@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings_model.dart';
 import '../models/split_mode.dart';
+import '../utils/name_validators.dart';
 
 class SettingsService {
   static const String _themeKey = 'settings_theme';
@@ -28,11 +29,12 @@ class SettingsService {
     final pushNotificationsEnabled =
         _prefs.getBool(_pushNotificationsKey) ?? false;
     final weeklyDigestEnabled = _prefs.getBool(_weeklyDigestKey) ?? false;
-    final deviceName = _prefs.getString(_deviceNameKey) ?? '';
-    final onboardingComplete =
-        _prefs.getBool(_onboardingCompleteKey) ?? false;
-    final defaultSplitMode =
-        splitModeFromStorage(_prefs.getString(_defaultSplitModeKey));
+    final rawDeviceName = _prefs.getString(_deviceNameKey) ?? '';
+    final deviceName = _sanitizePersistedDeviceName(rawDeviceName);
+    final onboardingComplete = _prefs.getBool(_onboardingCompleteKey) ?? false;
+    final defaultSplitMode = splitModeFromStorage(
+      _prefs.getString(_defaultSplitModeKey),
+    );
 
     return AppSettings(
       themeMode: themeMode,
@@ -77,5 +79,12 @@ class SettingsService {
 
   Future<void> saveDefaultSplitMode(SplitMode mode) async {
     await _prefs.setString(_defaultSplitModeKey, mode.storageKey);
+  }
+
+  String _sanitizePersistedDeviceName(String value) {
+    if (value.trim().isEmpty) return '';
+    return validateDisplayName(value) == null
+        ? normalizeDisplayName(value)
+        : '';
   }
 }

@@ -9,6 +9,11 @@ class DeepLinkService {
 
   static final DeepLinkService instance = DeepLinkService._(AppLinks());
   static final RegExp _inviteCodePattern = RegExp(r'^[A-Z0-9]{6}$');
+  static const Set<String> _universalJoinHosts = {
+    'rihla.app',
+    'rihla-safar.web.app',
+    'rihla-safar.firebaseapp.com',
+  };
 
   final AppLinks _appLinks;
   // ignore: cancel_subscriptions, process-lifetime singleton listener
@@ -64,7 +69,7 @@ class DeepLinkService {
   String? _customSchemeInviteCode(Uri uri) {
     if (uri.host.toLowerCase() != 'join') return null;
 
-    final segments = uri.pathSegments;
+    final segments = _nonEmptyPathSegments(uri);
     if (segments.length == 1) return segments.first;
     if (segments.isEmpty) return uri.queryParameters['code'];
 
@@ -72,9 +77,9 @@ class DeepLinkService {
   }
 
   String? _universalLinkInviteCode(Uri uri) {
-    if (uri.host.toLowerCase() != 'rihla.app') return null;
+    if (!_universalJoinHosts.contains(uri.host.toLowerCase())) return null;
 
-    final segments = uri.pathSegments;
+    final segments = _nonEmptyPathSegments(uri);
     if (segments.length == 2 && segments.first.toLowerCase() == 'join') {
       return segments[1];
     }
@@ -83,6 +88,10 @@ class DeepLinkService {
     }
 
     return null;
+  }
+
+  List<String> _nonEmptyPathSegments(Uri uri) {
+    return uri.pathSegments.where((segment) => segment.isNotEmpty).toList();
   }
 
   Uri? _normalizeJoinCode(String? code) {

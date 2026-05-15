@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/config/app_links.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -12,8 +13,8 @@ import '../models/group_model.dart';
 
 /// T3.J — group invite QR sheet.
 ///
-/// Encodes `https://rihla.app/join/<code>` (universal link; the routing
-/// landed in T3.J's deep-link plumbing). Falls back gracefully to the
+/// Encodes a Firebase-hosted universal link until the custom `rihla.app`
+/// domain is wired to Hosting. Falls back gracefully to the
 /// 6-char code displayed in monospace for manual entry.
 Future<void> showGroupInviteQrSheet(
   BuildContext context, {
@@ -35,7 +36,7 @@ class _QrInviteSheet extends StatelessWidget {
 
   final Group group;
 
-  Uri get _inviteUri => Uri.parse('https://rihla.app/join/${group.inviteCode}');
+  Uri get _inviteUri => AppLinks.inviteUrl(group.inviteCode);
 
   @override
   Widget build(BuildContext context) {

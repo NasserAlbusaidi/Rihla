@@ -137,6 +137,23 @@ class _TopBar extends StatelessWidget {
   const _TopBar({required this.canPop});
   final bool canPop;
 
+  void _back(BuildContext context) {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go(AppRoutes.home);
+      }
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -154,7 +171,7 @@ class _TopBar extends StatelessWidget {
                   icon: Iconsax.arrow_left,
                   onTap: () {
                     HapticService.lightClick();
-                    GoRouter.of(context).pop();
+                    _back(context);
                   },
                 ),
               ),
@@ -656,8 +673,7 @@ class _AccountCard extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await DeleteAccountDialog.show(context);
     if (confirmed != true) return;
-    final result =
-        await ref.read(dataDeletionServiceProvider).deleteAccount();
+    final result = await ref.read(dataDeletionServiceProvider).deleteAccount();
     final message = switch (result) {
       DeletionResult.ok => 'Account deleted.',
       DeletionResult.requiresRecentLogin =>
@@ -674,8 +690,7 @@ class _AccountCard extends ConsumerWidget {
     String email,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed =
-        await SignOutConfirmDialog.show(context, email: email);
+    final confirmed = await SignOutConfirmDialog.show(context, email: email);
     if (confirmed != true) return;
     try {
       await ref.read(authRecoveryServiceProvider).signOutCurrentDevice();
@@ -728,9 +743,7 @@ class _AccountCard extends ConsumerWidget {
                       ),
                     ],
                   ),
-            onTap: isLinked
-                ? null
-                : () => context.push(AppRoutes.linkEmail),
+            onTap: isLinked ? null : () => context.push(AppRoutes.linkEmail),
             divider: isLinked,
           ),
           if (isLinked)
