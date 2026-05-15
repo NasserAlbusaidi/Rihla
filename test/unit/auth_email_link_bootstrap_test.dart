@@ -16,10 +16,10 @@ class _MockRecoveryService extends Mock implements AuthRecoveryService {}
 
 class _MockUserCredential extends Mock implements UserCredential {}
 
-Uri _validAuthLink() => Uri.parse(
+Uri _validAuthLink({String oobCode = 'ABC123'}) => Uri.parse(
   'https://${AuthEmailLinkConfig.hostingDomain}'
   '${AuthEmailLinkConfig.continuePath}'
-  '?mode=signIn&oobCode=ABC123',
+  '?mode=signIn&oobCode=$oobCode',
 );
 
 Uri _customSchemeFallbackLink() => Uri(
@@ -191,12 +191,13 @@ void main() {
       uriStream.add(_validAuthLink());
       await pumpEventQueue();
 
-      // A second link should still be processed — the listener must not
-      // collapse on first error.
+      // A second, distinct link should still be processed — the listener
+      // must not collapse on first error. (Same oobCode would be dedupe-
+      // suppressed; that's by design and covered in its own test.)
       when(
         () => service.completeRecovery(any()),
       ).thenAnswer((_) async => _MockUserCredential());
-      uriStream.add(_validAuthLink());
+      uriStream.add(_validAuthLink(oobCode: 'NEXT001'));
       await pumpEventQueue();
 
       verify(() => service.completeRecovery(any())).called(2);
@@ -295,6 +296,56 @@ void main() {
       },
     );
 
+    test('same link emitted by initial + stream is handled only once', () async {
+      // app_links emits the cold-start URL through BOTH getInitialLink() and
+      // uriLinkStream on the same launch. Without dedupe, the second pass
+      // clobbers the first's success path with a "no pending email" error
+      // (prefs got cleared by the first completion).
+      when(
+        () => appLinks.getInitialLink(),
+      ).thenAnswer((_) async => _validAuthLink());
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(
+        () => service.readInFlightOp(),
+      ).thenReturn(AuthRecoveryService.opRecover);
+      when(
+        () => service.completeRecovery(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+
+      await attach();
+      await pumpEventQueue();
+
+      // Re-emit the same URL via the stream — must be ignored.
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      verify(() => service.completeRecovery(any())).called(1);
+    });
+
+    test('different oobCodes are processed independently', () async {
+      // A second, distinct link in the same session must still be handled.
+      final secondLink = Uri.parse(
+        'https://${AuthEmailLinkConfig.hostingDomain}'
+        '${AuthEmailLinkConfig.continuePath}'
+        '?mode=signIn&oobCode=XYZ789',
+      );
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(
+        () => service.readInFlightOp(),
+      ).thenReturn(AuthRecoveryService.opRecover);
+      when(
+        () => service.completeRecovery(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+      await attach();
+
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+      uriStream.add(secondLink);
+      await pumpEventQueue();
+
+      verify(() => service.completeRecovery(any())).called(2);
+    });
+
     test('fallback recover failure does not crash the stream', () async {
       when(() => service.readPendingEmail()).thenReturn('foo@example.com');
       when(
@@ -311,11 +362,12 @@ void main() {
       uriStream.add(_validAuthLink());
       await pumpEventQueue();
 
-      // Listener still alive — a second event should still be dispatched.
+      // Listener still alive — a second, distinct event should still be
+      // dispatched. (Repeating the same oobCode is dedupe-suppressed.)
       when(
         () => service.completeEmailLink(any()),
       ).thenAnswer((_) async => _MockUserCredential());
-      uriStream.add(_validAuthLink());
+      uriStream.add(_validAuthLink(oobCode: 'NEXT002'));
       await pumpEventQueue();
 
       verify(() => service.completeEmailLink(any())).called(2);

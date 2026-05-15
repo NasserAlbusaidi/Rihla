@@ -20,6 +20,15 @@ final appLinksProvider = Provider<AppLinks>((ref) => AppLinks());
 /// phases reads this to surface a "Confirm your email" prompt.
 final pendingEmailLinkProvider = StateProvider<String?>((ref) => null);
 
+/// Canonical key for deduping repeated emissions of the same Firebase
+/// email-auth link. Prefers `oobCode` (single-use, server-bound) and falls
+/// back to the full URL string when the param is absent (e.g. malformed or
+/// already-unwrapped links — still better than reprocessing blindly).
+String _dedupeKey(String link) {
+  final code = Uri.tryParse(link)?.queryParameters['oobCode'];
+  return (code != null && code.isNotEmpty) ? 'oob:$code' : 'url:$link';
+}
+
 String? _emailLinkFromUri(Uri uri) {
   final scheme = uri.scheme.toLowerCase();
 
@@ -92,12 +101,27 @@ String _humanize(FirebaseAuthException error) {
 final authEmailLinkBootstrapProvider = Provider<void>((ref) {
   final appLinks = ref.watch(appLinksProvider);
 
+  // Per-provider dedupe set. `app_links` can emit the same URI through both
+  // `getInitialLink()` and `uriLinkStream` on the same cold start — without
+  // this guard, the second handler call clobbers the success SnackBar with
+  // the "no pending email" error path (prefs were cleared by the first call).
+  final seenKeys = <String>{};
+
   Future<void> handleUri(Uri uri) async {
     final link = _emailLinkFromUri(uri);
     if (link == null) return;
 
     if (!AuthEmailLinkConfig.looksLikeEmailAuthLink(link) &&
         !FirebaseConfig.auth.isSignInWithEmailLink(link)) {
+      return;
+    }
+
+    final key = _dedupeKey(link);
+    if (!seenKeys.add(key)) {
+      FirebaseConfig.log(
+        'Recovery: duplicate email-link emission ignored '
+        '(${AuthEmailLinkConfig.redactForLogging(link)})',
+      );
       return;
     }
 
