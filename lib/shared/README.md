@@ -1,21 +1,27 @@
 ## shared/ — Reusable UI Components
 
 ### widgets/
-- **animated_currency_text.dart**: Animated number display with currency
-- **app_tab_bar.dart**: Themed tab bar widget
-- **dot_step_indicator.dart**: Step progress dots
-- **empty_state_view.dart**: Placeholder for empty lists
-- **grain_overlay.dart**: Subtle noise texture overlay
-- **initials_circle.dart**: Avatar circle with initials
-- **loading_button.dart**: Button with loading state
-- **module_header.dart**: Module top bar (title + back + action icons)
-- **offline_banner.dart**: Connectivity banner
-- **search_filter_bar.dart**: Search + filter combo
-- **skeleton_loader.dart**: Shimmer placeholder layout
-- **skeleton_primitives.dart**: Reusable skeleton shapes
-- **smart_module_card.dart**: Context-aware module card
+- **cover_art.dart**: Procedural ticket-stub illustration used as the cover for events and group cards. Layout-aware (generates a stable composition from id + type).
+- **r_amount.dart**: Money display with Geist Mono tabular figures and currency-aware decimal places. Reach for this before raw `Text` for any monetary value.
+- **r_avatar.dart**: Initials avatar with a stable per-id slot colour (FNV-like hash → `cat1`–`cat6` palette).
+- **wordmark_logo.dart**: Rihla wordmark for splash + brand surfaces.
+- **module_header.dart**: Gradient module top bar (back + title + action icons).
+- **section_header.dart**: Italic Instrument Serif section heading.
+- **app_tab_bar.dart**: Themed tab bar with pill indicator.
+- **offline_banner.dart**: Connectivity banner (watches `connectivityProvider`).
+- **empty_state_view.dart**: Placeholder for empty lists with optional CTA.
+- **smart_module_card.dart**: Context-aware module card (used by EventCommandCenter).
+- **search_filter_bar.dart**: Search input + filter chips.
+- **animated_currency_text.dart**: Animated number display with currency change transitions.
+- **loading_button.dart**: Button with loading spinner state.
+- **skeleton_loader.dart**: Named-factory skeleton layouts (`expenseList`, `eventCard`, `groupList`, `dashboardHero`, `generic`, …).
+- **skeleton_primitives.dart**: Reusable skeleton shapes used by the loaders above.
+- **grain_overlay.dart**: Subtle noise texture overlay (`assets/textures/grain.png`).
+- **dot_step_indicator.dart**: Step / page dots for onboarding.
+- **initials_circle.dart**: Legacy avatar circle (prefer `RAvatar` for new code).
 
 ### animations/
-- **fade_in_list.dart**: Staggered fade-in for list items
-- **staggered_grid.dart**: Staggered grid animation
-- **tap_bounce.dart**: Tap feedback bounce
+- **fade_in_list.dart**: Staggered fade-in for list items.
+- **staggered_grid.dart**: Staggered grid animation.
+- **tap_bounce.dart**: Tap feedback bounce.
+- **animations.dart**: Barrel export.
