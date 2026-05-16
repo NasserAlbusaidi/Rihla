@@ -165,3 +165,19 @@ Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PL
 iOS builds are manual — no iOS CI pipeline.
 
 See `docs/PRODUCTION-READINESS.md` for the current Firebase deployment and real-device QA checklist.
+
+### Play Store listing edits
+
+The store listing (icon, screenshots, title, descriptions) is managed from the repo via `fastlane supply`:
+
+```bash
+export PATH="/opt/homebrew/opt/ruby/bin:$PATH"   # Homebrew Ruby 3.x (system 2.6 too old)
+bundle install
+
+# Edit fastlane/metadata/android/en-US/ then:
+bundle exec fastlane android icon        # icon + feature graphic only
+bundle exec fastlane android listing     # full listing push
+bundle exec fastlane android pull        # re-sync from live Play state
+```
+
+Both push lanes are AAB-safe — they never touch the binary or release notes, so listing edits are independent of the release pipeline. See `fastlane/README.md`.

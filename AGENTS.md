@@ -194,6 +194,8 @@ Two GitHub Actions workflows:
 - `.github/workflows/release_android.yml` — manual dispatch or `v*` tag push. Runs analyze + tests + AAB build, uploads to Google Play alpha. Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`.
 - `.github/workflows/readiness_check.yml` — runs on `main` pushes and PRs. Analyze + hardcoded-color lint + tests with coverage threshold.
 
+**Play Store listing edits** (icon, screenshots, text) are not in CI — use `fastlane supply` locally. See `fastlane/README.md`. Lanes: `fastlane android icon`, `fastlane android listing`, `fastlane android pull`. All AAB-safe.
+
 **Coverage gate**: temporarily **70%** in both workflows while auth/profile/settings suites catch up (local raw coverage is ~80%+). Ratchet back to 80% once the TODOs in both workflows are cleared.
 
 No iOS CI — iOS builds are manual. Toolchain: Java 17 for the Android build, Java 21 for Firebase emulator tests in `functions/`. AGP 8.9.1, Kotlin 2.1.0.

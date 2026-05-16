@@ -16,6 +16,7 @@ Guidance for Claude Code sessions working in this repo. Read top-to-bottom on fi
 | Onboarding a new feature | [Where Things Live](#where-things-live) + [Conventions](#conventions--anti-patterns) |
 | Hitting an unfamiliar bug | [Common Gotchas](#common-gotchas) before debugging |
 | Cutting a release | `docs/PRODUCTION-READINESS.md` + `tool/check_release_readiness.sh` |
+| Editing the Play Store listing (icon, screenshots, text) | `fastlane/README.md` → `bundle exec fastlane android <lane>` |
 
 Also load: `MEMORY.md` (auto-memory index, always in context) and `docs/PRODUCT.md` for product framing.
 
@@ -327,12 +328,16 @@ Quick file index for orientation:
 | Hardcoded-color lint | `tool/check_no_hardcoded_colors.dart` |
 | Android signing & keystore | `android/key.properties` (gitignored) |
 | Firebase platform config | `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist` (gitignored) |
+| Play Store listing assets | `fastlane/metadata/android/en-US/` |
+| Play Store lanes (icon / listing / pull) | `fastlane/Fastfile` |
+| Play service-account key | `secrets/play-key.json` (gitignored — same JSON as CI's `GOOGLE_PLAY_JSON_KEY`) |
 
 ---
 
 ## CI / CD
 
 - `.github/workflows/release_android.yml` — manual dispatch or `v*` tag push. Analyze + tests + AAB build (`--obfuscate --split-debug-info`) + Play Store alpha upload. Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`. Gated on repo vars: `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`.
+- **Play Store listing edits** are decoupled from CI — use `bundle exec fastlane android icon` (icon + feature graphic only) or `bundle exec fastlane android listing` (everything). Both AAB-safe; won't disturb an in-flight release review. Requires Homebrew Ruby 3.x (`export PATH="/opt/homebrew/opt/ruby/bin:$PATH"`) — system Ruby 2.6 is too old. See `fastlane/README.md`.
 - `.github/workflows/readiness_check.yml` — runs on `main` pushes and PRs. Local non-deploy gates: analyze, hardcoded-color lint, tests at 70% coverage. **Does not deploy.**
 
 No iOS CI — iOS builds are manual. Toolchain: Java 17 (Android), Java 21 (Firebase emulator). AGP 8.9.1, Kotlin 2.1.0, Flutter SDK ^3.10.1.

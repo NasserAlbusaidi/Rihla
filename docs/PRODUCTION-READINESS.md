@@ -212,6 +212,27 @@ npx --yes firebase-tools@15.8.0 deploy \
   --only firestore:rules,firestore:indexes,functions,hosting
 ```
 
+### Updating the Play Store listing
+
+Listing assets (icon, feature graphic, screenshots, title, descriptions) are
+managed via `fastlane supply` and live under `fastlane/metadata/android/en-US/`.
+Listing edits are **decoupled from the AAB release pipeline** — they don't
+touch the binary, don't trigger an AAB re-review, and are safe to push while
+an Android Release workflow is in flight.
+
+```bash
+export PATH="/opt/homebrew/opt/ruby/bin:$PATH"   # Homebrew Ruby 3.x required
+bundle install
+
+# Edit fastlane/metadata/android/en-US/<file>, then:
+bundle exec fastlane android icon        # icon + feature graphic only
+bundle exec fastlane android listing     # icon + screenshots + text (full)
+bundle exec fastlane android pull        # re-sync local repo from live Play
+```
+
+The service-account key at `secrets/play-key.json` (gitignored) is the same
+JSON used by CI as `GOOGLE_PLAY_JSON_KEY`.
+
 Then confirm production state:
 
 ```bash
