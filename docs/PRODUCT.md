@@ -1,7 +1,7 @@
 # Rihla — Product Specification
 
 > Source-of-truth product description for the v1 launch build.
-> Last reconciled 2026-05-15 from the live codebase.
+> Last reconciled 2026-05-16 from the live codebase (v1.2.0+15).
 > Every behaviour below is grounded in actual screens/services — no aspirational features.
 
 ---
@@ -14,7 +14,7 @@ Rihla ("journey" in Arabic) is a Splitwise-style group expense splitter organise
 
 **Target market:** Oman / GCC first, then global. Default currency is OMR (Omani Rial, 3-decimal precision). Money math uses the `Decimal` package — no floats anywhere.
 
-**Tech footprint:** Flutter mobile app (`safar` package, Android `com.safar.safar`), Firebase backend (Firestore + Auth + FCM + Storage), SQLite local cache, offline-first with a sync queue.
+**Tech footprint:** Flutter mobile app (`safar` package, Android `com.safar.safar`), Firebase backend (Firestore + Auth + Cloud Functions + FCM — **no Storage SDK use**), SQLite local cache for fast reads, Firestore offline persistence for write replay.
 
 ---
 
@@ -97,21 +97,28 @@ The role check pattern used throughout the app: `currentUserId == group.createdB
 The app uses GoRouter. Every route is declarative; deep links work without preloaded state. See `lib/core/router/app_router.dart`.
 
 ```
-/  (splash)                         → auto-redirect to /home
+/  (splash)                         → /home if onboarded, else /onboarding
+/onboarding                         (3-page first-launch flow)
 /home                               (HomeScreen, wrapped in BottomNavShell)
 /profile                            (ProfileScreen)
+   /link-email                      (LinkEmailScreen — opt-in account recovery)
+      /sent                         (LinkEmailSentScreen)
 /activity                           (CrossGroupActivityScreen, also tab 1)
+
+/recover                            (RecoverScreen — Home empty-state CTA)
+   /pending                         (RecoverPendingScreen — ?email=)
 
 /create-group                       (CreateGroupScreen)
 /join-group                         (JoinGroupScreen)
+/join/:code                         (deep-link entry into JoinGroupScreen)
 
 /group/:gid                         (GroupDetailScreen)
    /settings                        (GroupSettingsScreen)
-   /settle-up                       (GroupSettleUpScreen)
+   /settle-up                       (GroupSettleUpScreen, ?memberId=)
    /activity                        (GroupActivityScreen)
    /create-event                    (EventTypePickerScreen)
    /create-event/:type              (CreateEventScreen)
-   /event/:eid                      (EventCommandCenter — kept in router but bypassed by UI)
+   /event/:eid                      (EventCommandCenter — reachable but UI bypasses to /ledger)
       /ledger                       (LedgerScreen)        ← landing page when tapping an event card
          /add                       (AddExpenseScreen)
          /edit/:expId               (EditExpenseScreen)
@@ -120,7 +127,7 @@ The app uses GoRouter. Every route is declarative; deep links work without prelo
       /settings                     (EventSettingsScreen)
 ```
 
-Page transitions: most module routes use a slide-right transition; `/home`, `/profile`, and `/activity` fade; `/create-group` and `/join-group` slide up.
+Page transitions: module routes use Material 3 `SharedAxisTransition` (horizontal); `/onboarding`, `/home`, `/profile`, and `/activity` fade; `/create-group` and `/join-group` slide up.
 
 > Note: `/event/:eid` (EventCommandCenter) is reachable in the router but the UI never navigates to it — event cards now jump straight to `/event/:eid/ledger`. This was intentional after Phase 39 reduced events to a single module. EventCommandCenter remains as dead-but-not-orphaned code.
 
@@ -145,7 +152,7 @@ There are 17 screens in the app. They fall into five clusters.
 ### 7.1 Entry & Shell
 
 #### Splash (`/`)
-Brand-coloured warm-sand frame shown for the duration of Firebase + SharedPreferences hydration, then auto-redirects to `/home`. No user interaction.
+Brand-coloured warm-sand frame shown for the duration of Firebase + SharedPreferences hydration. `_AuthGate` (`main.dart`) ensures a Firebase anonymous session before render and retries on `internal-error` for corrupted restored sessions. The router then redirects to `/onboarding` if `onboardingComplete` is false in `AppSettings`, otherwise to `/home`. No user interaction.
 
 #### Home Dashboard (`/home`, tab 0)
 The core landing screen. Sections (top → bottom):
@@ -270,14 +277,14 @@ The same optimiser runs at both event scope (`/...ledger/settle-up`) and group s
 
 ## 9. Offline-First Behaviour
 
-The user can launch the app, create groups, add expenses, and settle up while completely offline. The flow:
+The user can launch the app, create groups, add expenses, and settle up while completely offline. The mechanics:
 
-- **Reads** — every provider reads from a SQLite stream (`OfflineRepository.watch*()`) first. The first online fetch hydrates SQLite; subsequent reads serve cache and refresh in the background.
-- **Writes** — `OfflineRepository.save*()` writes to SQLite immediately (UI updates) and enqueues a `sync_queue` row. `SyncService` drains the queue when connectivity returns, with up to 5 retries and exponential backoff.
-- **Connectivity** — `ConnectivityNotifier` polls `auth.refreshSession()` every 60s. The offline → online transition triggers `SyncController.fullSync()`.
-- **Seed-on-entry** — opening an event eagerly downloads its full data (expenses, settlements, participants) via a `FutureProvider.family` so the ledger is hot.
+- **Reads** — every provider reads from a Firestore `StreamProvider`. Firestore's local persistence (`persistenceEnabled: true`, `cacheSizeBytes: CACHE_SIZE_UNLIMITED`, configured in `FirebaseConfig.initialize()` before any read/write) serves the last snapshot when offline. Selected streams (`eventExpensesProvider`, `eventSettlementsProvider`, etc.) `asyncMap` snapshots into SQLite cache repositories under `lib/core/services/cache/` for fast local random-access reads by `BalanceCalculator`.
+- **Writes** — service methods call Firestore directly. The Firestore SDK persists pending mutations locally and replays them automatically on reconnect — there is no custom sync queue in this codebase.
+- **Connectivity** — `ConnectivityNotifier` (`lib/core/providers/connectivity_provider.dart`) checks reachability every 60 seconds with a `Source.server` read against `inviteCodes` (a publicly-readable collection). State transitions between `online`, `offline`, and `syncing`.
+- **Seed-on-entry** — opening an event eagerly subscribes to its full data (expenses, settlements, participants) so the Ledger lands hot.
 
-The user sees an **`OfflineBanner`** at the top of every data-bound screen when connectivity is down.
+The user sees an **`OfflineBanner`** at the top of every data-bound screen when `connectivityProvider` reports `offline`.
 
 ---
 
@@ -325,22 +332,22 @@ The following were intentionally removed in Phase 39 ("Strip to Shippable") and 
 - Vault module (document upload per event)
 - Logistics module (sub-groups, transport tracking)
 - Gear module (packing lists)
-- Onboarding tour (3-page PageView)
 - Multi-currency conversion (per-event currency, FX rates)
 - Payment processing
 - Chat / messaging tab
 
-The Firestore schema and SQLite cache still tolerate legacy keys for these features (silent fromMap ignore) so existing user data does not break, but no UI exposes them.
+The Firestore schema and SQLite cache still tolerate legacy keys for these features (silent `fromMap` ignore) so existing user data does not break, but no UI exposes them. The 3-page first-launch onboarding flow (gated by `onboardingComplete` in `AppSettings`) shipped separately and *is* part of v1.
 
 ---
 
 ## 13. Known Limitations (v1)
 
 - **Recovery is opt-in.** Users who never link an email still lose access if they uninstall or clear app data.
-- **No iOS CI.** Android-only release pipeline. iOS builds are manual.
+- **No iOS CI.** Android-only release pipeline. iOS builds are manual; iOS launch soft-deferred ~weeks behind Android Production.
 - **No general multi-device account workflow.** Anonymous UIDs are device-bound unless the user has linked and restored through email-link recovery.
 - **Soft-delete only** for expenses, events, groups, and settlements where supported — they remain in Firestore until retention tooling exists.
-- **OMR-only.** Group currency field exists in the schema but the UI hardcodes display formatting to OMR.
+- **OMR-only.** Group `currency` field exists in the schema and the spec is locked (`docs/design/group-currency.md`), but the UI still hardcodes display formatting to OMR pending implementation.
+- **Orphan anon-UID cleanup is partial.** After email-link recovery, `cleanupAnonUidArtifacts` (added in v1.2.0+15) removes most artifacts from the abandoned anon UID, but UIDs with downstream references in `memberIds` / `participantIds` remain in Firestore and require a future server-side reconciliation pass.
 
 ---
 
@@ -355,7 +362,6 @@ The Firestore schema and SQLite cache still tolerate legacy keys for these featu
 | **Member** | Any user in a group who isn't the creator. |
 | **Net balance** | `paid − owed + settlement_adjustment` for a participant within a scope. Positive = others owe you. |
 | **Settle up** | Record one or more payments that bring net balances closer to zero. |
-| **Sync queue** | The local list of writes pending upload to Firestore. Drained automatically when online. |
 | **Soft delete** | `is_deleted = true` flag instead of row removal; preserves audit trail. |
 
 ---

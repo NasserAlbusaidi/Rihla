@@ -204,7 +204,7 @@ expensesAsync.when(
 static const String myNewScreen = '/group/:gid/event/:eid/my-screen';
 ```
 
-2. Add a `GoRoute` entry. Use `_slideRightTransition` for all module-level screens:
+2. Add a `GoRoute` entry. Use `_sharedAxisTransition` for all module-level screens:
 
 ```dart
 GoRoute(
@@ -215,26 +215,30 @@ GoRoute(
       groupId: state.pathParameters['gid']!,
       eventId: state.pathParameters['eid']!,
     ),
-    transitionsBuilder: _slideRightTransition,
+    transitionsBuilder: _sharedAxisTransition,
   ),
 ),
 ```
 
 Nest it inside the appropriate parent `GoRoute` — event module routes go under `event/:eid`.
 
-3. Navigate with `context.push('/group/$gid/event/$eid/my-screen')` or `context.go(...)` for root-level replacements.
+3. Navigate with `context.push('/group/$gid/event/$eid/my-screen')` or `context.go(...)` for root-level replacements. **Use path strings, not `context.goNamed(...)`** — the readiness check greps for `goNamed` and will fail the build.
 
 ### Transition rules
 
 | Route type | Transition |
 |---|---|
-| Module screens (most routes) | `_slideRightTransition` — slide from right (Offset(1,0) → zero, `Curves.easeOutCubic`) |
-| `/home`, `/profile`, `/activity` | `FadeTransition` |
+| Module screens (most routes) | `_sharedAxisTransition` — Material 3 horizontal SharedAxisTransition |
+| `/onboarding`, `/home`, `/profile`, `/activity` | `FadeTransition` |
 | `/create-group`, `/join-group` | Slide-up (Offset(0,1) → zero) |
 
-### No `state.extra`
+### No `state.extra`, no `goNamed`, no `Navigator.push`
 
-Screens never receive data objects through `state.extra`. They always accept string IDs and fetch data inside `build` via `ref.watch`. This ensures deep links work without pre-loaded objects.
+Screens never receive data objects through `state.extra`. They always accept string IDs and fetch data inside `build` via `ref.watch`. This ensures deep links work without pre-loaded objects. The readiness check greps for `Navigator.push`, `state.extra`, and `goNamed` and will fail the build on any match in production code.
+
+### Direct-entry back guards
+
+Any screen openable via deep link (e.g. `/recover`, `/profile/link-email`, `/group/:gid`, `/join/:code`) must check `context.canPop()` and fall back to a root route (`/home` or `/profile`) when the stack is fresh. Tests under `test/features/.../direct_entry_*` enforce this.
 
 ### Query parameters
 
@@ -273,7 +277,7 @@ const OfflineBanner(),  // from lib/shared/widgets/offline_banner.dart
 
 3. **Balance calculations:** If your feature feeds `BalanceCalculator`, add a `cacheExpenses` / `cacheSettlements` call via `asyncMap` in the stream provider (see expense provider pattern above).
 
-4. **LocalDatabase schema:** If you need a new SQLite table for balance caching, add it in `LocalDatabase._onCreate` and `_onUpgrade`, and bump `_databaseVersion`. Current version is 6.
+4. **LocalDatabase schema:** If you need a new SQLite table for balance caching, add it in `LocalDatabase._onCreate` and `_onUpgrade`, and bump `_databaseVersion`. Current version is **8**.
 
 ### LocalDatabase tables
 
@@ -301,26 +305,39 @@ AppShadowTokens.standard   // lib/core/theme/tokens/shadow_tokens.dart
 
 These are accessed as static singletons — no `Theme.of(context).extension<>()` needed in practice, though the ThemeExtension infrastructure is there for future dark theme support.
 
-### Color tokens
+### Color tokens (Saffron palette, v2.0)
 
-Key tokens for new screens:
+Key tokens for new screens. Exact hex lives in `lib/core/theme/tokens/color_tokens.dart` — do not duplicate values in widgets. Hardcoded `Color(0xFF...)` literals outside the token definitions fail CI (`tool/check_no_hardcoded_colors.dart`).
 
-| Token | Hex | Use |
+| Token | Approx | Use |
 |---|---|---|
-| `primary` | `#0D7B74` | Buttons, FABs, focused inputs, ledger accent |
-| `textPrimary` | `#111827` | Body text, headings |
-| `textSecondary` | `#6B7280` | Supporting labels, secondary info |
-| `textMuted` | `#9CA3AF` | Decorative only — never for functional text or amounts |
-| `cardSurface` | `#F8F9FA` | Card backgrounds |
-| `inputFill` | `#F3F4F6` | Text field fill |
-| `border` | `#E5E7EB` | Dividers, borders |
-| `error` / `errorText` | `#EF4444` / `#B91C1C` | Error states (use `errorText` for text) |
-| `success` / `successText` | `#10B981` / `#047857` | Success states (use `successText` for text) |
-| `warning` | `#F59E0B` | Warning badges, offline indicator |
+| `primary` | saffron `#D17B2C` | Buttons, FABs, focused inputs, ledger accent |
+| `primaryDark` | `#B5641A` | CTA gradient end |
+| `scaffoldBackground` | paper `#F6F1E6` | Page background |
+| `cardSurface` | `#FFFFFF` | Card backgrounds |
+| `paperDeep` | `#EFE8D7` | Layered surfaces, secondary paper |
+| `textPrimary` | ink `#1B1A17` | Body text, headings |
+| `success` | sage `#5C7A57` | Positive surface ("owed to you") |
+| `error` | rust `#A84B33` | Negative surface ("you owe") |
+| `saffronTint` | `#FBEED5` | Selected chip / item background |
+| `saffronSoft` | `#F4DDB8` | Saffron chip backgrounds, journey-glyph fills |
+| `moduleLedger` | saffron `#D17B2C` | Ledger module accent (the only colored module) |
 
-Module accent colors: Ledger = `moduleLedger` (#0D7B74 teal). Other module accents should use neutral tokens unless a new semantic token is intentionally added.
+Module accent: Ledger uses `moduleLedger`. Other modules use neutral tokens per the locked Saffron direction.
 
-`textMuted` fails WCAG AA at 2.86:1 on white — never use it for readable labels, amounts, or status text.
+### Typography
+
+Use `AppTypographyTokens` rather than `GoogleFonts` directly.
+
+| Family | Use |
+|---|---|
+| **Geist** (`sans`) | Default UI text, labels, buttons |
+| **Geist Mono** (`mono`) | All money amounts, dates, codes (tabular figures, slashed zero) |
+| **Instrument Serif** italic | Display + section headers |
+
+### Stitch-to-Flutter workflow
+
+Google Stitch is a **visual oracle only** — design exploration. Never commit Stitch-generated code. Implement from scratch using tokens. See CLAUDE.md § Design System for the full prompt/spec/post-gen checklist; design prompts live under `docs/design/prompts/`.
 
 ### Spacing tokens
 

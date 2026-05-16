@@ -1,6 +1,6 @@
 # Production Readiness
 
-Last verified: 2026-05-15
+Last verified: 2026-05-16 (v1.2.0+15)
 
 This checklist tracks the remaining launch gates for the Firebase project
 `rihla-safar` and the mobile apps. Treat checked items as verified from the
@@ -13,7 +13,7 @@ RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
 ```
 
 Backend deployment, App Check Console enrolment, and the Firebase production-
-state audit are complete as of 2026-05-15. v1.2 launches Android-only on
+state audit are complete as of 2026-05-16 (v1.2.0+15 functions deployed). v1.2 launches Android-only on
 Google Play; iOS is soft-deferred to follow within weeks of Android
 Production. The remaining release gates are Android-only physical-device QA
 (`docs/REAL-DEVICE-QA.md` with `RIHLA_SKIP_IOS_QA=yes`) and the three CI
@@ -37,8 +37,8 @@ starts a new run.
   - Command: `flutter analyze --no-fatal-infos`
 - [x] Non-golden Flutter test suite passes with raw coverage over the temporary 70% gate.
   - Command: `flutter test --coverage test/architecture test/core test/features test/helpers test/integration test/shared test/unit test/widget_test.dart`
-  - Result: 1028 passed, 3 skipped
-  - Coverage: 74.0% raw line coverage from `coverage/lcov.info` (9866 of 13333 lines)
+  - Result: 1207 passed (verified 2026-05-16 on `fix/post-launch-qa-v1.2` post-merge)
+  - Coverage: 74.0% raw line coverage (last recorded; re-measure when ratcheting back)
   - Note: CI and `tool/check_release_readiness.sh` currently enforce 70%; ratchet back to 80% after the auth/profile/settings test backlog is closed.
 - [x] Navigation smoke tests cover the shippable route tree and invite links.
   - Command: `flutter test test/unit/app_router_test.dart test/helpers/navigation_test.dart test/unit/deep_link_service_test.dart test/unit/auth_link_hosting_files_test.dart test/features/activity/activity_feed_screen_test.dart test/features/groups/qr_invite_sheet_test.dart test/features/groups/group_detail_navigation_test.dart test/features/events/event_command_center_test.dart test/features/ledger/ledger_screen_overflow_test.dart`
@@ -94,9 +94,11 @@ starts a new run.
   - Evidence: Cloud Functions are deployed (see below), which requires `cloudbuild.googleapis.com` and `artifactregistry.googleapis.com` — both gated on Blaze.
 - [x] Firebase production-state audit passes.
   - Command: `bash tool/check_firebase_prod_state.sh rihla-safar`
-  - Latest result (2026-05-15): 12 checks PASS, exit 0.
+  - Latest result (2026-05-15): 12 checks PASS, exit 0. Re-verified 2026-05-16 after v1.2.0+15 functions deploy.
 - [x] Firebase Functions are deployed in production.
-  - Evidence: production-state audit confirms expected functions are deployed (`joinGroupByInviteCode`).
+  - Evidence: production-state audit confirms expected functions are deployed (`joinGroupByInviteCode`, `cleanupAnonUidArtifacts`, account-deletion cascade, FCM token cleanup).
+  - v1.2.0+15 changes: `joinGroupByInviteCode` now fans the joiner into existing event `participantIds` server-side (Gap 1); new `cleanupAnonUidArtifacts` callable scrubs FCM tokens + joinAttempts for the abandoned anon UID after email-link recovery (Gap 3, fire-and-forget — failures land in Sentry breadcrumbs).
+  - Backfill: `tool/backfill_join_event_sync.js` was run against `rihla-safar` on 2026-05-16 to reconcile historical event participant discrepancies.
 - [x] Firestore production rules match `security/firestore.rules`.
   - Evidence: production-state audit diffs the active ruleset against the repo and reports PASS.
 - [x] Firestore production indexes match `firestore.indexes.json`.
@@ -116,6 +118,7 @@ starts a new run.
     RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
     ```
   - Latest gate result (2026-05-15): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty.
+  - v1.2.0+15 carry-over: post-launch bugs found on +14 (group-detail back button, event settlement names, `currentUserIdProvider` reactivity, App Check on join callable, join-event-sync, anon-UID cleanup) are all resolved on `main` and documented in `docs/REAL-DEVICE-QA.md` § "Resolved on fix/post-launch-qa-v1.2".
   - Required Android matrix (RD-01..08):
     - Create group, join group by invite code, delete group.
     - Two-device ledger identity (two Android devices in one group; one pays an expense and each device shows the correct payer/ower identity).
@@ -148,7 +151,7 @@ These actions cannot be completed from this repo and remain before release:
    RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
    ```
 
-Historical external actions completed on or before 2026-05-15:
+Historical external actions completed on or before 2026-05-16:
 
 - Upgraded `rihla-safar` to Blaze plan.
 - Deployed Firestore rules, indexes, Functions, and Hosting via
@@ -157,6 +160,23 @@ Historical external actions completed on or before 2026-05-15:
   DeviceCheck fallback for iOS).
 - Re-ran `bash tool/check_firebase_prod_state.sh rihla-safar` — 12 checks
   PASS.
+- 2026-05-16: deployed v1.2.0+15 functions (`joinGroupByInviteCode` event
+  fan-out + new `cleanupAnonUidArtifacts` callable); ran
+  `tool/backfill_join_event_sync.js` against `rihla-safar`; tagged
+  `v1.2.0-b15` and triggered Android Release workflow to Play "first" track.
+
+## Follow-ups for v1.2.0+16
+
+- **Orphan anon-UID reconciliation.** Five orphan anon UIDs in production
+  have downstream references (`memberIds` / `participantIds` /
+  `groups/{gid}/members/{uid}` docs) and cannot be safely auto-pruned by
+  the fire-and-forget `cleanupAnonUidArtifacts` callable. Build a
+  server-side reconciliation tool (or expand the callable to traverse
+  references) before the next batch of recoveries lands. Inspection tool:
+  `tool/inspect_orphan_anon_uids.js`.
+- **Complete the Android RD-QA matrix.** RD-01..08 cells in
+  `docs/REAL-DEVICE-QA.md` are still empty; gate command above will block
+  the next release tag until they're filled with concrete evidence.
 
 ## Deployment Commands
 
