@@ -207,3 +207,33 @@ Pass criteria:
 - The in-app toggle stays disabled.
 - The token document for the current anonymous UID is removed.
 - Reopening the app does not recreate the token while the setting is off.
+
+## Resolved on `fix/post-launch-qa-v1.2`
+
+Three bugs found in the v1.2.0+14 closed-test session on 2026-05-16. All fixed and confirmed on a debug build (Pixel 9 Pro XL, Android 16) before being committed. Branch not yet shipped to Play.
+
+### 1. Group detail back button does nothing on Android — RESOLVED
+
+**Symptom:** Tapping the on-screen ← arrow on `/group/:gid` had no effect on Android; user was stranded on the group screen. iOS Simulator unaffected. Hit-test math wasn't off (button visually present, gap clear), but the live Android build was specifically broken — likely Android 15+ edge-to-edge / predictive-back interaction with the small `_PaperIconButton` (36×36 below Material 48dp).
+
+**Fix (commit `7f76ff3`):** Wrapped `_PaperIconButton` in a 48×48 hit-target while keeping the 36×36 visual circle. Wrapped `GroupDetailScreen` in `PopScope(canPop: false, ...)` so Android system back / predictive back always routes via `router.canPop() ? pop() : go('/home')`. Tests assert both the PopScope fallback and the 48dp tap region.
+
+### 2. Event-level settlements showed "Someone paid Someone" — RESOLVED
+
+**Root cause:** `SettlementService.addSettlement` wrote participant IDs but not `payerName` / `recipientName`. The UI fell back to `settlement.payerName ?? 'Someone'`. Group-level settlements worked because `GroupSettlementService.addGroupSettlement` persists the names.
+
+**Fix (commit `7f76ff3`):** Added optional `payerName` / `recipientName` params to `addSettlement` and persisted them to Firestore (mirroring the group service shape). Event settle-up screen threads `fromName` / `toName` from `_handleSettlement` through `_recordSettlement` to the service. Settlements written before the fix continue to render "Someone" via the model fallback — no backfill.
+
+### 3. Post-recovery: "Could not identify your participant record" — RESOLVED
+
+**Symptom:** After completing email-link recovery (Firebase Auth swapped from temp anonymous UID to email-linked UID), attempting to create an expense in any group/event surfaced "Could not identify your participant record." Force-stopping the app and reopening worked around it.
+
+**Root cause:** `currentUserIdProvider` was a plain Riverpod `Provider` that read `FirebaseConfig.currentUser?.uid` once and cached. With no `ref.watch` dependency, it never re-evaluated when Firebase Auth swapped users. `UidChangeListener` wiped SQLite but Riverpod state retained the pre-swap UID. Downstream `currentEventParticipantProvider` looked up the stale UID against the new `event.participantIds`, missed, and surfaced the generic "no participant" error.
+
+**Fix (commit `b793eb6`):** `currentUserIdProvider` now does `ref.watch(authStateProvider).valueOrNull?.uid`, so the UID follows every Firebase Auth state change. Regression test in `test/unit/current_user_id_provider_test.dart` simulates the recovery swap (anon → recovered) explicitly.
+
+## Adjacent gaps to watch (not blockers)
+
+- **Join-doesn't-sync-events:** `joinGroupByInviteCode` adds a UID to `group.memberIds` but does not append it to any existing event's `participantIds`. Users who join after an event was created can read the event but not participate in expenses. Surfaced via the "Meow" group (event "Dad" excludes the joiner). Defer until needed.
+- **Stale `participantNames`:** Event docs cache display names at creation time and don't refresh when a member renames themselves. Observed on "Janel shams" where the user's name reads "Mohammed" instead of "Nasser". Cosmetic; defer.
+- **Orphan anonymous Firebase Auth users:** Pre-email-link anonymous UIDs that created groups remain as the document `createdBy` even after the human recovered and is now using a new email-auth UID. Causes "two of me" appearance in member lists when both share a display name. Cleanup would require auth user → owner reassignment; defer.

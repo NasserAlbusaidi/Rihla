@@ -50,9 +50,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           child: Column(
             children: [
               _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
-              const Expanded(
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              const Expanded(child: Center(child: CircularProgressIndicator())),
             ],
           ),
         ),
@@ -155,8 +153,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                         ),
                   );
                 },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -241,6 +238,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       context,
       fromUserId: fromUserId,
       toUserId: toUserId,
+      fromName: fromName,
+      toName: toName,
       amount: editedAmount,
       note: noteText,
       currency: currency,
@@ -251,6 +250,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     BuildContext context, {
     required String fromUserId,
     required String toUserId,
+    required String fromName,
+    required String toName,
     required Decimal amount,
     required String currency,
     String? note,
@@ -270,6 +271,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             eventId: widget.eventId,
             payerParticipantId: fromUserId,
             recipientParticipantId: toUserId,
+            payerName: fromName,
+            recipientName: toName,
             amount: amount,
             currency: currency,
             createdBy: currentUid,

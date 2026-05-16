@@ -2,10 +2,18 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/services/firebase_functions_service.dart';
 import 'auth_email_link_config.dart';
+
+typedef RecoveryCleanupFailureRecorder =
+    void Function({
+      required String message,
+      required Map<String, Object?> data,
+    });
 
 /// Orchestrates the email-link account recovery flows from spec §4.
 ///
@@ -25,19 +33,46 @@ class AuthRecoveryService {
     required SharedPreferences prefs,
     FirebaseFirestore? firestore,
     Future<void> Function()? anonymousSessionFactory,
+    Future<void> Function(String oldUid)? cleanupAnonUidArtifacts,
+    RecoveryCleanupFailureRecorder? recoveryCleanupFailureRecorder,
   }) : _auth = auth,
        _prefs = prefs,
        _firestore = firestore,
        _anonymousSessionFactory =
-           anonymousSessionFactory ?? FirebaseConfig.ensureAnonymousSession;
+           anonymousSessionFactory ?? FirebaseConfig.ensureAnonymousSession,
+       _cleanupAnonUidArtifacts =
+           cleanupAnonUidArtifacts ??
+           ((oldUid) => FirebaseFunctionsService().cleanupAnonUidArtifacts(
+             oldUid: oldUid,
+           )),
+       _recoveryCleanupFailureRecorder =
+           recoveryCleanupFailureRecorder ?? _recordCleanupFailureBreadcrumb;
 
   final FirebaseAuth _auth;
   final SharedPreferences _prefs;
   final FirebaseFirestore? _firestore;
   final Future<void> Function() _anonymousSessionFactory;
+  final Future<void> Function(String oldUid) _cleanupAnonUidArtifacts;
+  final RecoveryCleanupFailureRecorder _recoveryCleanupFailureRecorder;
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = 'auth.inFlightOp';
+
+  static void _recordCleanupFailureBreadcrumb({
+    required String message,
+    required Map<String, Object?> data,
+  }) {
+    unawaited(
+      Sentry.addBreadcrumb(
+        Breadcrumb(
+          message: message,
+          category: 'auth.recovery.cleanup',
+          level: SentryLevel.warning,
+          data: Map<String, dynamic>.from(data),
+        ),
+      ),
+    );
+  }
 
   /// In-flight email-link operation kind. `'link'` attaches to the current
   /// anon UID via [User.linkWithCredential]; `'recover'` swaps to the
@@ -160,6 +195,10 @@ class AuthRecoveryService {
         'setPendingEmail first or pass overrideEmail',
       );
     }
+    final retiringUser = _auth.currentUser;
+    final oldUid = retiringUser != null && retiringUser.isAnonymous
+        ? retiringUser.uid
+        : null;
     try {
       final firestore = _firestore ?? FirebaseFirestore.instance;
       await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
@@ -177,6 +216,24 @@ class AuthRecoveryService {
     await clearPendingEmail();
     await clearInFlightOp();
     FirebaseConfig.log('Recovery: recovered uid ${result.user?.uid}');
+    if (oldUid != null && oldUid.isNotEmpty && result.user?.uid != oldUid) {
+      unawaited(
+        _cleanupAnonUidArtifacts(oldUid)
+            .then((_) {
+              FirebaseConfig.log('Recovery: anon uid cleanup completed');
+            })
+            .catchError((Object error, StackTrace stackTrace) {
+              _recoveryCleanupFailureRecorder(
+                message: 'Recovery anon uid cleanup failed',
+                data: {'errorType': error.runtimeType.toString()},
+              );
+              FirebaseConfig.log(
+                'Recovery: anon uid cleanup failed (${error.runtimeType})',
+                stackTrace: stackTrace,
+              );
+            }),
+      );
+    }
     return result;
   }
 

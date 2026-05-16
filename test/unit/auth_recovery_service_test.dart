@@ -39,6 +39,7 @@ void main() {
     when(() => auth.signOut()).thenAnswer((_) async {});
     when(() => anonUser.uid).thenReturn('anon-uid-123');
     when(() => anonUser.email).thenReturn(null);
+    when(() => anonUser.isAnonymous).thenReturn(true);
     defaultFirestore = _MockFirestore();
     when(defaultFirestore.waitForPendingWrites).thenAnswer((_) async {});
   });
@@ -46,12 +47,20 @@ void main() {
   AuthRecoveryService buildService({
     FirebaseFirestore? firestore,
     Future<void> Function()? anonymousSessionFactory,
+    Future<void> Function(String oldUid)? cleanupAnonUidArtifacts,
+    void Function({
+      required String message,
+      required Map<String, Object?> data,
+    })?
+    recoveryCleanupFailureRecorder,
   }) {
     return AuthRecoveryService(
       auth: auth,
       prefs: prefs,
       firestore: firestore ?? defaultFirestore,
       anonymousSessionFactory: anonymousSessionFactory ?? () async {},
+      cleanupAnonUidArtifacts: cleanupAnonUidArtifacts ?? (_) async {},
+      recoveryCleanupFailureRecorder: recoveryCleanupFailureRecorder,
     );
   }
 
@@ -257,6 +266,98 @@ void main() {
         ]);
       },
     );
+
+    test(
+      'invokes cleanup callable after signInWithEmailLink with captured anon UID',
+      () async {
+        final credential = _MockUserCredential();
+        final calls = <String>[];
+        when(defaultFirestore.waitForPendingWrites).thenAnswer((_) async {
+          calls.add('waitForPendingWrites');
+        });
+        when(() => auth.signOut()).thenAnswer((_) async {
+          calls.add('signOut');
+        });
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async {
+          calls.add('signInWithEmailLink');
+          return credential;
+        });
+        final service = buildService(
+          cleanupAnonUidArtifacts: (oldUid) async {
+            calls.add('cleanup:$oldUid');
+          },
+        );
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeRecovery(link);
+
+        expect(result, same(credential));
+        expect(calls, [
+          'waitForPendingWrites',
+          'signOut',
+          'signInWithEmailLink',
+          'cleanup:anon-uid-123',
+        ]);
+      },
+    );
+
+    test('recovery succeeds when cleanup callable throws', () async {
+      final credential = _MockUserCredential();
+      when(
+        () => auth.signInWithEmailLink(
+          email: any(named: 'email'),
+          emailLink: any(named: 'emailLink'),
+        ),
+      ).thenAnswer((_) async => credential);
+      final breadcrumbs = <Map<String, Object?>>[];
+      final service = buildService(
+        cleanupAnonUidArtifacts: (_) async {
+          throw StateError('cleanup failed for foo@example.com');
+        },
+        recoveryCleanupFailureRecorder: ({required message, required data}) {
+          breadcrumbs.add({'message': message, ...data});
+        },
+      );
+      await service.setPendingEmail('foo@example.com');
+
+      final result = await service.completeRecovery(link);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(result, same(credential));
+      expect(breadcrumbs, hasLength(1));
+    });
+
+    test('cleanup failure breadcrumb excludes email PII', () async {
+      final credential = _MockUserCredential();
+      when(
+        () => auth.signInWithEmailLink(
+          email: any(named: 'email'),
+          emailLink: any(named: 'emailLink'),
+        ),
+      ).thenAnswer((_) async => credential);
+      final breadcrumbs = <Map<String, Object?>>[];
+      final service = buildService(
+        cleanupAnonUidArtifacts: (_) async {
+          throw StateError('cleanup failed for foo@example.com');
+        },
+        recoveryCleanupFailureRecorder: ({required message, required data}) {
+          breadcrumbs.add({'message': message, ...data});
+        },
+      );
+      await service.setPendingEmail('foo@example.com');
+
+      await service.completeRecovery(link);
+      await Future<void>.delayed(Duration.zero);
+
+      final serialized = breadcrumbs.single.toString();
+      expect(serialized, isNot(contains('foo@example.com')));
+      expect(serialized, contains('StateError'));
+    });
 
     test('continues recovery when pending writes exceed the timeout', () async {
       final credential = _MockUserCredential();

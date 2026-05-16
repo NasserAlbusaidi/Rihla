@@ -1,7 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/config/firebase_config.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../ledger/models/expense_model.dart';
@@ -270,15 +270,13 @@ Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
 
 /// Provides the current Firebase user's UID, or null if not authenticated.
 ///
-/// Using a Provider instead of reading [FirebaseConfig.currentUser] directly
-/// makes [crossGroupBalanceProvider] testable via Riverpod overrides without
-/// requiring a real Firebase Auth instance.
+/// Watches [authStateProvider] so consumers re-render when Firebase Auth swaps
+/// users — critical for the email-link recovery flow, which switches the
+/// anonymous session to the linked account. A plain Provider that read
+/// `FirebaseConfig.currentUser?.uid` would cache the pre-recovery UID and
+/// strand every participant lookup until the app was force-stopped.
 final currentUserIdProvider = Provider<String?>((ref) {
-  try {
-    return FirebaseConfig.currentUser?.uid;
-  } catch (_) {
-    return null;
-  }
+  return ref.watch(authStateProvider).valueOrNull?.uid;
 });
 
 // ---------------------------------------------------------------------------

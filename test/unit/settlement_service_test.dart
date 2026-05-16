@@ -48,38 +48,35 @@ void main() {
         },
       );
 
-      test(
-        'uses MoneySerializer.toSubunits to store amountFils',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
+      test('uses MoneySerializer.toSubunits to store amountFils', () async {
+        const groupId = 'g1';
+        const eventId = 'e1';
 
-          // OMR 10.500 = 10500 fils
-          final settlement = await service.addSettlement(
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('10.500'),
-          );
+        // OMR 10.500 = 10500 fils
+        final settlement = await service.addSettlement(
+          createdBy: 'test-uid',
+          groupId: groupId,
+          eventId: eventId,
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amount: Decimal.parse('10.500'),
+        );
 
-          final snap = await fakeDb
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('settlements')
-              .doc(settlement.id)
-              .get();
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('settlements')
+            .doc(settlement.id)
+            .get();
 
-          expect(snap.data()!['amountFils'], equals(10500));
-          expect(snap.data()!['currency'], equals('OMR'));
+        expect(snap.data()!['amountFils'], equals(10500));
+        expect(snap.data()!['currency'], equals('OMR'));
 
-          // Verify round-trip
-          expect(settlement.amount, equals(Decimal.parse('10.500')));
-        },
-      );
+        // Verify round-trip
+        expect(settlement.amount, equals(Decimal.parse('10.500')));
+      });
     });
 
     group('watchSettlements', () {
@@ -108,6 +105,30 @@ void main() {
           expect(settlements.first.amount, equals(Decimal.parse('5.000')));
         },
       );
+
+      test('round-trips payer and recipient names through Firestore', () async {
+        const groupId = 'g1';
+        const eventId = 'e1';
+
+        await service.addSettlement(
+          createdBy: 'test-uid',
+          groupId: groupId,
+          eventId: eventId,
+          payerParticipantId: 'uid-ali',
+          recipientParticipantId: 'uid-sara',
+          payerName: 'Ali',
+          recipientName: 'Sara',
+          amount: Decimal.parse('7.250'),
+        );
+
+        final settlements = await service
+            .watchSettlements(groupId, eventId)
+            .first;
+
+        expect(settlements, hasLength(1));
+        expect(settlements.first.payerName, equals('Ali'));
+        expect(settlements.first.recipientName, equals('Sara'));
+      });
 
       test(
         'filters out legacy soft-deleted settlements (isDeleted=true)',
