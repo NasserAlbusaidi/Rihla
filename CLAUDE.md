@@ -17,6 +17,7 @@ Guidance for Claude Code sessions working in this repo. Read top-to-bottom on fi
 | Hitting an unfamiliar bug | [Common Gotchas](#common-gotchas) before debugging |
 | Cutting a release | `docs/PRODUCTION-READINESS.md` + `tool/check_release_readiness.sh` |
 | Editing the Play Store listing (icon, screenshots, text) | `fastlane/README.md` → `bundle exec fastlane android <lane>` |
+| Writing or signing off on a plan / spec / design doc | [Verifying Plans and Specs](#verifying-plans-and-specs) — non-negotiable checklist |
 
 Also load: `MEMORY.md` (auto-memory index, always in context) and `docs/PRODUCT.md` for product framing.
 
@@ -359,6 +360,20 @@ Pre-release blockers tracked in `docs/PRODUCTION-READINESS.md`. Physical-device 
 - `docs/design/` — design specs (`account-recovery.md`, `e2-sqlite-encryption.md`, `wireframe-gaps.md`)
 - `docs/setup/push-notifications.md` — FCM setup
 - `docs/plans/`, `docs/research/` — planning + research artifacts
+
+---
+
+## Verifying Plans and Specs
+
+Before declaring any plan, spec, or design doc ready — especially anything being handed off (codex-delegate, a worktree, another session) — run this checklist. These are the gaps a fresh reviewer catches that an embedded one misses. **The point is to catch them in the first pass, not on review.**
+
+- **Verify every concrete claim against code, not docs.** File paths, route constants, field names, test directories, npm/dart scripts. Docs drift; code is ground truth. CLAUDE.md, MEMORY.md, and inline comments are starting points, never citations. If a claim is load-bearing, `grep` or `Read` to confirm in the moment.
+- **Trace one read-path for every write-path.** Any data-shape mutation has consumers. "Who reads this after it changes?" must have an answer in the spec. Example: rewriting `groups/{gid}.memberIds` requires checking `groupMembersProvider` → `groupBalancesProvider` still resolves.
+- **Enumerate fields from the type, not from memory.** When listing fields to scrub, migrate, or validate, open the model file and list them exhaustively. Recall is not a substitute.
+- **Adversarial pass before sign-off.** Re-read the spec as if you'd just been handed it cold, with no commitment to the direction. What's vague? What's an assumption? What path doesn't exist?
+- **Distrust your own earlier claims in the same session.** The deeper a session runs, the more layered the assumptions. Re-verify load-bearing claims in the moment, not on recall.
+
+Convergence pressure — sycophancy, momentum, prior approval — is the failure mode this checklist is meant to interrupt. A plan that "looks done" is not the same as a plan that holds up under independent review. See also: [[feedback-spec-verification]] in memory.
 
 ---
 
