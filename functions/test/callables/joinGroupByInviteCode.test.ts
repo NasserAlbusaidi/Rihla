@@ -33,6 +33,28 @@ async function seedInviteGroup(): Promise<void> {
   });
 }
 
+async function seedEvent(
+  eventId: string,
+  data: Record<string, unknown> = {},
+  groupId = 'g1',
+): Promise<void> {
+  const db = getFirestore();
+  await db.doc(`groups/${groupId}/events/${eventId}`).set({
+    id: eventId,
+    groupId,
+    name: `Event ${eventId}`,
+    type: 'trip',
+    createdBy: 'owner',
+    participantIds: ['owner'],
+    participantNames: { owner: 'Owner' },
+    modules: { ledger: true },
+    isDeleted: false,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: 'stable',
+    ...data,
+  });
+}
+
 beforeEach(async () => {
   await clearFirestore();
   await seedInviteGroup();
@@ -94,6 +116,162 @@ describe('joinGroupByInviteCode', () => {
       role: 'MEMBER',
       isShadow: false,
     });
+  });
+
+  test('new join with no events does not create event writes', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'No Events' },
+      auth: { uid: 'no-events' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const eventsSnap = await getFirestore().collection('groups/g1/events').get();
+    expect(eventsSnap.empty).toBe(true);
+  });
+
+  test('new join fans out uid and normalized display name to every event', async () => {
+    const db = getFirestore();
+    await seedEvent('e1');
+    await seedEvent('e2', {
+      participantIds: ['owner', 'existing'],
+      participantNames: { owner: 'Owner', existing: 'Existing' },
+    });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: '  Alice Example  ' },
+      auth: { uid: 'alice' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const e1 = await db.doc('groups/g1/events/e1').get();
+    const e2 = await db.doc('groups/g1/events/e2').get();
+    expect(e1.data()?.participantIds).toEqual(['owner', 'alice']);
+    expect(e2.data()?.participantIds).toEqual(['owner', 'existing', 'alice']);
+    expect(e1.data()?.participantNames).toMatchObject({
+      owner: 'Owner',
+      alice: 'Alice Example',
+    });
+    expect(e2.data()?.participantNames).toMatchObject({
+      owner: 'Owner',
+      existing: 'Existing',
+      alice: 'Alice Example',
+    });
+    expect(e1.data()?.updatedAt).not.toBe('stable');
+    expect(e2.data()?.updatedAt).not.toBe('stable');
+  });
+
+  test('new join skips soft-deleted events', async () => {
+    const db = getFirestore();
+    await seedEvent('active');
+    await seedEvent('deleted', { isDeleted: true });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const active = await db.doc('groups/g1/events/active').get();
+    const deleted = await db.doc('groups/g1/events/deleted').get();
+    expect(active.data()?.participantIds).toContain('alice');
+    expect(deleted.data()?.participantIds).toEqual(['owner']);
+    expect(deleted.data()?.participantNames).toEqual({ owner: 'Owner' });
+    expect(deleted.data()?.updatedAt).toBe('stable');
+  });
+
+  test('already-member re-join heals stale event participantIds', async () => {
+    const db = getFirestore();
+    await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
+    await db.doc('groups/g1/members/alice').set({
+      id: 'alice',
+      userId: 'alice',
+      displayName: 'Alice',
+      role: 'MEMBER',
+      joinedAt: new Date(),
+      isShadow: false,
+    });
+    await seedEvent('stale', { participantIds: ['owner'], participantNames: { owner: 'Owner' } });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const event = await db.doc('groups/g1/events/stale').get();
+    expect(event.data()?.participantIds).toEqual(['owner', 'alice']);
+    expect(event.data()?.participantNames).toMatchObject({ alice: 'Alice' });
+  });
+
+  test('already-member re-join leaves synced events untouched', async () => {
+    const db = getFirestore();
+    await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
+    await db.doc('groups/g1/members/alice').set({
+      id: 'alice',
+      userId: 'alice',
+      displayName: 'Alice',
+      role: 'MEMBER',
+      joinedAt: new Date(),
+      isShadow: false,
+    });
+    await seedEvent('synced', {
+      participantIds: ['owner', 'alice'],
+      participantNames: { owner: 'Owner', alice: 'Alice' },
+    });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const event = await db.doc('groups/g1/events/synced').get();
+    expect(event.data()?.participantIds).toEqual(['owner', 'alice']);
+    expect(event.data()?.participantNames).toEqual({ owner: 'Owner', alice: 'Alice' });
+    expect(event.data()?.updatedAt).toBe('stable');
+  });
+
+  test('malformed event participantIds rejects without partial writes', async () => {
+    const db = getFirestore();
+    await seedEvent('good');
+    await seedEvent('bad', { participantIds: 'owner' });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Mallory' },
+      auth: { uid: 'mallory' },
+    } as any)).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    const group = await db.doc('groups/g1').get();
+    const member = await db.doc('groups/g1/members/mallory').get();
+    const good = await db.doc('groups/g1/events/good').get();
+    expect(group.data()?.memberIds).not.toContain('mallory');
+    expect(member.exists).toBe(false);
+    expect(good.data()?.participantIds).toEqual(['owner']);
+    expect(good.data()?.participantNames).toEqual({ owner: 'Owner' });
+    expect(good.data()?.updatedAt).toBe('stable');
+  });
+
+  test('new join does not touch events in other groups', async () => {
+    const db = getFirestore();
+    await db.doc('groups/g2').set({
+      id: 'g2',
+      name: 'Other Crew',
+      inviteCode: 'DEF456',
+      createdBy: 'owner',
+      memberIds: ['owner'],
+      currency: 'OMR',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await seedEvent('other', {}, 'g2');
+    await seedEvent('target');
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const target = await db.doc('groups/g1/events/target').get();
+    const other = await db.doc('groups/g2/events/other').get();
+    expect(target.data()?.participantIds).toContain('alice');
+    expect(other.data()?.participantIds).toEqual(['owner']);
+    expect(other.data()?.participantNames).toEqual({ owner: 'Owner' });
+    expect(other.data()?.updatedAt).toBe('stable');
   });
 
   test('missing display name falls back to Anonymous', async () => {
