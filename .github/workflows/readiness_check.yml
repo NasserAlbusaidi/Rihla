@@ -74,8 +74,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y lcov
 
       - name: Check raw coverage threshold
-        # TODO: ratchet back to 80% once auth/profile/settings tests catch up.
-        # Current raw coverage sits at ~72%; 70% is a temporary release gate.
         run: |
           SUMMARY=$(lcov --summary coverage/lcov.info 2>&1)
           echo "$SUMMARY"
@@ -86,8 +84,8 @@ jobs:
             exit 1
           fi
           echo "Raw coverage: ${COVERAGE}%"
-          if ! awk -v coverage="$COVERAGE" 'BEGIN { exit (coverage >= 70.0) ? 0 : 1 }'; then
-            echo "::error::Raw coverage ${COVERAGE}% is below 70% threshold"
+          if ! awk -v coverage="$COVERAGE" 'BEGIN { exit (coverage >= 80.0) ? 0 : 1 }'; then
+            echo "::error::Raw coverage ${COVERAGE}% is below 80% threshold"
             exit 1
           fi
-          echo "Raw coverage ${COVERAGE}% meets 70% threshold"
+          echo "Raw coverage ${COVERAGE}% meets 80% threshold"
