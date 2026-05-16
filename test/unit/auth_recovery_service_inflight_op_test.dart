@@ -38,6 +38,7 @@ void main() {
     when(() => auth.signOut()).thenAnswer((_) async {});
     when(() => anonUser.uid).thenReturn('anon-uid');
     when(() => anonUser.email).thenReturn(null);
+    when(() => anonUser.isAnonymous).thenReturn(true);
     when(firestore.waitForPendingWrites).thenAnswer((_) async {});
     when(
       () => auth.sendSignInLinkToEmail(
@@ -47,8 +48,12 @@ void main() {
     ).thenAnswer((_) async {});
   });
 
-  AuthRecoveryService buildService() =>
-      AuthRecoveryService(auth: auth, prefs: prefs, firestore: firestore);
+  AuthRecoveryService buildService() => AuthRecoveryService(
+    auth: auth,
+    prefs: prefs,
+    firestore: firestore,
+    cleanupAnonUidArtifacts: (_) async {},
+  );
 
   group('inFlightOp tracking', () {
     test('starts as null', () {
@@ -82,22 +87,26 @@ void main() {
       expect(buildService().readInFlightOp(), isNull);
     });
 
-    test('completeEmailLink clears both pending email and inFlightOp', () async {
-      final service = buildService();
-      await service.linkEmailToCurrentUser('foo@example.com');
-      expect(service.readPendingEmail(), 'foo@example.com');
-      expect(service.readInFlightOp(), AuthRecoveryService.opLink);
+    test(
+      'completeEmailLink clears both pending email and inFlightOp',
+      () async {
+        final service = buildService();
+        await service.linkEmailToCurrentUser('foo@example.com');
+        expect(service.readPendingEmail(), 'foo@example.com');
+        expect(service.readInFlightOp(), AuthRecoveryService.opLink);
 
-      final cred = _MockUserCredential();
-      when(() => anonUser.linkWithCredential(any()))
-          .thenAnswer((_) async => cred);
-      when(() => cred.user).thenReturn(anonUser);
+        final cred = _MockUserCredential();
+        when(
+          () => anonUser.linkWithCredential(any()),
+        ).thenAnswer((_) async => cred);
+        when(() => cred.user).thenReturn(anonUser);
 
-      await service.completeEmailLink('https://example/link');
+        await service.completeEmailLink('https://example/link');
 
-      expect(service.readPendingEmail(), isNull);
-      expect(service.readInFlightOp(), isNull);
-    });
+        expect(service.readPendingEmail(), isNull);
+        expect(service.readInFlightOp(), isNull);
+      },
+    );
 
     test('completeRecovery clears both pending email and inFlightOp', () async {
       final service = buildService();
