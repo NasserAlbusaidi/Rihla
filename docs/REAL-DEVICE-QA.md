@@ -208,42 +208,32 @@ Pass criteria:
 - The token document for the current anonymous UID is removed.
 - Reopening the app does not recreate the token while the setting is off.
 
-## Known issues — verify next real-device session
+## Resolved on `fix/post-launch-qa-v1.2`
 
-### Group detail back button does nothing (reported 2026-05-16, v1.2.0+14)
+Three bugs found in the v1.2.0+14 closed-test session on 2026-05-16. All fixed and confirmed on a debug build (Pixel 9 Pro XL, Android 16) before being committed. Branch not yet shipped to Play.
 
-**Symptom:** On `/group/:gid` (`GroupDetailScreen`), tapping the on-screen ← arrow in the top-left of the cover header has no effect — user is stuck on the group screen and has to force-close the app to escape. System back gesture not separately confirmed. Found on Play closed-test ("first" track) install on Android.
+### 1. Group detail back button does nothing on Android — RESOLVED
 
-**Platform-specific:** Reproduces on Android (Play closed-test build, v1.2.0+14). **Does NOT reproduce on iOS Simulator** — back button works as expected there. This rules out hit-test math, widget-tree structure, and generic Flutter rendering issues. Points toward Android-specific causes: edge-to-edge / system inset handling (Android 15+ default edge-to-edge), Android predictive back / edge-swipe gesture conflict, R8/obfuscation behavior in release builds, or Android-specific `Material` + `InkResponse` interaction inside the Positioned cover header.
+**Symptom:** Tapping the on-screen ← arrow on `/group/:gid` had no effect on Android; user was stranded on the group screen. iOS Simulator unaffected. Hit-test math wasn't off (button visually present, gap clear), but the live Android build was specifically broken — likely Android 15+ edge-to-edge / predictive-back interaction with the small `_PaperIconButton` (36×36 below Material 48dp).
 
-**Code path:** Back button is `_PaperIconButton` at `lib/features/groups/screens/group_detail_screen.dart:259`, defined at line 311. Wrapped in `Positioned(top: statusBar + 8, left: 12, right: 12)` inside the cover `Stack`. `onTap` calls `HapticService.lightClick()` then `router.canPop() ? router.pop() : router.go('/home')`.
+**Fix (commit `7f76ff3`):** Wrapped `_PaperIconButton` in a 48×48 hit-target while keeping the 36×36 visual circle. Wrapped `GroupDetailScreen` in `PopScope(canPop: false, ...)` so Android system back / predictive back always routes via `router.canPop() ? pop() : go('/home')`. Tests assert both the PopScope fallback and the 48dp tap region.
 
-**Static analysis findings (no root cause identified):**
-- No `PopScope` / `WillPopScope` anywhere in the app intercepts back.
-- Title block (`Positioned` at `top: statusBar + 56`) does not visually overlap the back button rect (gap ~12px).
-- Entry stack should be `[/home, /group/{id}]` after `push('/join-group')` → `pushReplacement('/group/${id}')`, so `canPop()` should return true.
+### 2. Event-level settlements showed "Someone paid Someone" — RESOLVED
 
-**Suspects to verify on device:**
-1. Hit-target too small — `_PaperIconButton` SizedBox is 36×36 (below Material 48dp); user may be missing the actual hit zone.
-2. `onTap` fires but navigation silently no-ops — add a Sentry breadcrumb or `debugPrint` to confirm.
-3. Cover header scrolls and back button moves out of expected position before tap.
+**Root cause:** `SettlementService.addSettlement` wrote participant IDs but not `payerName` / `recipientName`. The UI fell back to `settlement.payerName ?? 'Someone'`. Group-level settlements worked because `GroupSettlementService.addGroupSettlement` persists the names.
 
-**Proposed fix (deferred):**
-- Wrap `_PaperIconButton` in a `SizedBox(width: 48, height: 48)` hit-target.
-- Wrap `GroupDetailScreen` in a `PopScope(canPop: false, onPopInvokedWithResult: ...)` that routes system back to `/home` as a safety net.
-- Consider migrating the cover header back button to a pinned `SliverAppBar.leading` for reliable hit-testing.
+**Fix (commit `7f76ff3`):** Added optional `payerName` / `recipientName` params to `addSettlement` and persisted them to Firestore (mirroring the group service shape). Event settle-up screen threads `fromName` / `toName` from `_handleSettlement` through `_recordSettlement` to the service. Settlements written before the fix continue to render "Someone" via the model fallback — no backfill.
 
-### Event-level settlements display "Someone paid Someone" (reported 2026-05-16, v1.2.0+14)
+### 3. Post-recovery: "Could not identify your participant record" — RESOLVED
 
-**Symptom:** In the event ledger and recorded-settlements section, settlement rows show "Someone paid Someone" instead of real participant names. Group-level settlements (group settle-up flow) display the correct names — only event-scoped settlements are affected.
+**Symptom:** After completing email-link recovery (Firebase Auth swapped from temp anonymous UID to email-linked UID), attempting to create an expense in any group/event surfaced "Could not identify your participant record." Force-stopping the app and reopening worked around it.
 
-**Root cause:** `SettlementService.addSettlement` (`lib/features/ledger/services/settlement_service.dart:54`) writes `payerParticipantId` / `recipientParticipantId` but does **not** persist `payerName` / `recipientName` to Firestore. The `Settlement` model has these optional fields (`lib/features/ledger/models/settlement_model.dart:13-14`), and the UI renders `settlement.payerName ?? 'Someone'` (see `lib/features/ledger/widgets/ledger_day_card.dart:150,344` and `lib/features/ledger/widgets/ledger_search_sheet.dart:439-440`). Because event settlements never write the names, the fallback "Someone" is rendered for both sides.
+**Root cause:** `currentUserIdProvider` was a plain Riverpod `Provider` that read `FirebaseConfig.currentUser?.uid` once and cached. With no `ref.watch` dependency, it never re-evaluated when Firebase Auth swapped users. `UidChangeListener` wiped SQLite but Riverpod state retained the pre-swap UID. Downstream `currentEventParticipantProvider` looked up the stale UID against the new `event.participantIds`, missed, and surfaced the generic "no participant" error.
 
-Group settlements work correctly because `GroupSettlementService.addGroupSettlement` (`lib/features/groups/services/group_settlement_service.dart:86-87`) does write `payerName` and `recipientName` from the call site in `group_settle_up_screen.dart:339-340`.
+**Fix (commit `b793eb6`):** `currentUserIdProvider` now does `ref.watch(authStateProvider).valueOrNull?.uid`, so the UID follows every Firebase Auth state change. Regression test in `test/unit/current_user_id_provider_test.dart` simulates the recovery swap (anon → recovered) explicitly.
 
-**Proposed fix (3 spots):**
-1. `lib/features/ledger/services/settlement_service.dart` — add `String? payerName` and `String? recipientName` params to `addSettlement`, include them in the Firestore data map.
-2. `lib/features/ledger/screens/settle_up_screen.dart` — thread `fromName` / `toName` from `_handleSettlement` through `_recordSettlement` to the `addSettlement` call.
-3. Optional: mirror the group flow and call `groupActivityServiceProvider.logGroupEvent` (or an event-scoped equivalent) so a settlement also produces an activity-feed row with a real description like "settled X with Y", matching group-level behavior.
+## Adjacent gaps to watch (not blockers)
 
-**Backfill note:** existing event settlements written before the fix will still display "Someone paid Someone" because their Firestore docs lack the name fields. Either accept the legacy display, or write a one-off migration that resolves names from `groups/{gid}/members` using the stored participant IDs.
+- **Join-doesn't-sync-events:** `joinGroupByInviteCode` adds a UID to `group.memberIds` but does not append it to any existing event's `participantIds`. Users who join after an event was created can read the event but not participate in expenses. Surfaced via the "Meow" group (event "Dad" excludes the joiner). Defer until needed.
+- **Stale `participantNames`:** Event docs cache display names at creation time and don't refresh when a member renames themselves. Observed on "Janel shams" where the user's name reads "Mohammed" instead of "Nasser". Cosmetic; defer.
+- **Orphan anonymous Firebase Auth users:** Pre-email-link anonymous UIDs that created groups remain as the document `createdBy` even after the human recovered and is now using a new email-auth UID. Causes "two of me" appearance in member lists when both share a display name. Cleanup would require auth user → owner reassignment; defer.
