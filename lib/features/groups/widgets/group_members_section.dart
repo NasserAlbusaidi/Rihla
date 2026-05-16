@@ -79,7 +79,8 @@ class GroupMembersSection extends ConsumerWidget {
     final canRemove =
         isCurrentUserCreator &&
         currentUserId != null &&
-        member.userId != currentUserId;
+        member.userId != currentUserId &&
+        !member.isTombstone;
 
     return Padding(
       key: GroupKeys.memberTile(member.id),

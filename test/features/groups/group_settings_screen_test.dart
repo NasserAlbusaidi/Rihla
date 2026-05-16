@@ -105,7 +105,11 @@ final _nonZeroBalances = (
 // ---------------------------------------------------------------------------
 
 /// Wrap with creator view — currentUserIdProvider = 'uid-creator'.
-Widget _wrapCreatorView(Widget child, SharedPreferences prefs) {
+Widget _wrapCreatorView(
+  Widget child,
+  SharedPreferences prefs, {
+  List<GroupMember>? members,
+}) {
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
@@ -115,7 +119,7 @@ Widget _wrapCreatorView(Widget child, SharedPreferences prefs) {
       ).overrideWith((ref) => Stream.value(_testGroup)),
       groupMembersProvider(
         'group-1',
-      ).overrideWith((ref) => Stream.value(_testMembers)),
+      ).overrideWith((ref) => Stream.value(members ?? _testMembers)),
       groupBalancesProvider(
         'group-1',
       ).overrideWith((ref) => AsyncValue.data(_zeroBalances)),
@@ -388,6 +392,40 @@ void main() {
       expect(find.byKey(GroupKeys.removeMemberButton('mem-2')), findsOneWidget);
       // Creator should NOT see remove button for themselves
       expect(find.byKey(GroupKeys.removeMemberButton('mem-1')), findsNothing);
+    });
+
+    testWidgets('creator cannot remove tombstone members', (tester) async {
+      final members = [
+        ..._testMembers,
+        GroupMember(
+          id: 'deleted-a1b2c3d4',
+          groupId: 'group-1',
+          userId: 'deleted-a1b2c3d4',
+          displayName: 'Deleted member',
+          role: 'MEMBER',
+          isTombstone: true,
+          joinedAt: DateTime(2026, 1, 3),
+        ),
+      ];
+
+      await tester.pumpWidget(
+        _wrapCreatorView(
+          const GroupSettingsScreen(groupId: 'group-1'),
+          prefs,
+          members: members,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(GroupKeys.memberTile('deleted-a1b2c3d4')),
+        findsOneWidget,
+      );
+      expect(find.text('Deleted member'), findsOneWidget);
+      expect(
+        find.byKey(GroupKeys.removeMemberButton('deleted-a1b2c3d4')),
+        findsNothing,
+      );
     });
 
     testWidgets('non-creator does not see remove buttons', (tester) async {

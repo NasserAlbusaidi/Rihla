@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/features/groups/models/group_model.dart';
@@ -53,21 +55,24 @@ void main() {
         expect(group.updatedAt, isNull);
       });
 
-      test('round-trip: Group -> toMap -> fromMap returns equivalent Group', () {
-        final map = baseGroup.toMap();
-        final restored = Group.fromMap(map);
+      test(
+        'round-trip: Group -> toMap -> fromMap returns equivalent Group',
+        () {
+          final map = baseGroup.toMap();
+          final restored = Group.fromMap(map);
 
-        expect(restored.id, equals(baseGroup.id));
-        expect(restored.name, equals(baseGroup.name));
-        expect(restored.inviteCode, equals(baseGroup.inviteCode));
-        expect(restored.createdBy, equals(baseGroup.createdBy));
-        expect(restored.memberIds, equals(baseGroup.memberIds));
-        expect(restored.currency, equals(baseGroup.currency));
-        expect(
-          restored.createdAt.toIso8601String(),
-          equals(baseGroup.createdAt.toIso8601String()),
-        );
-      });
+          expect(restored.id, equals(baseGroup.id));
+          expect(restored.name, equals(baseGroup.name));
+          expect(restored.inviteCode, equals(baseGroup.inviteCode));
+          expect(restored.createdBy, equals(baseGroup.createdBy));
+          expect(restored.memberIds, equals(baseGroup.memberIds));
+          expect(restored.currency, equals(baseGroup.currency));
+          expect(
+            restored.createdAt.toIso8601String(),
+            equals(baseGroup.createdAt.toIso8601String()),
+          );
+        },
+      );
 
       test('memberIds is List<String> not Map (per D-14)', () {
         expect(baseGroup.memberIds, isA<List<String>>());
@@ -150,6 +155,7 @@ void main() {
         expect(map['display_name'], equals('Nasser'));
         expect(map['role'], equals('CREATOR'));
         expect(map['is_shadow'], equals(0));
+        expect(map['is_tombstone'], equals(0));
         expect(map['joined_at'], isA<String>());
       });
 
@@ -161,6 +167,7 @@ void main() {
           'display_name': 'Nasser',
           'role': 'CREATOR',
           'is_shadow': 0,
+          'is_tombstone': 0,
           'joined_at': '2026-03-01T12:00:00.000',
           'synced_at': null,
         };
@@ -172,16 +179,49 @@ void main() {
         expect(member.displayName, equals('Nasser'));
         expect(member.role, equals('CREATOR'));
         expect(member.isShadow, isFalse);
+        expect(member.isTombstone, isFalse);
       });
 
-      test('isShadow stored as int (0/1) in toMap and restored from fromMap', () {
-        final shadow = baseMember.copyWith(isShadow: true);
-        final map = shadow.toMap();
-        expect(map['is_shadow'], equals(1));
+      test('fromDoc reads tombstone flag from Firestore', () async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.doc('groups/g1/members/deleted-a1b2c3d4');
+        await ref.set({
+          'userId': 'deleted-a1b2c3d4',
+          'displayName': 'Deleted member',
+          'role': 'MEMBER',
+          'isShadow': false,
+          'isTombstone': true,
+          'joinedAt': Timestamp.fromDate(DateTime(2026, 3, 2, 12, 0, 0)),
+        });
 
-        final restored = GroupMember.fromMap(map);
-        expect(restored.isShadow, isTrue);
+        final member = GroupMember.fromDoc(await ref.get(), 'g1');
+
+        expect(member.isTombstone, isTrue);
       });
+
+      test(
+        'isShadow stored as int (0/1) in toMap and restored from fromMap',
+        () {
+          final shadow = baseMember.copyWith(isShadow: true);
+          final map = shadow.toMap();
+          expect(map['is_shadow'], equals(1));
+
+          final restored = GroupMember.fromMap(map);
+          expect(restored.isShadow, isTrue);
+        },
+      );
+
+      test(
+        'isTombstone stored as int (0/1) in toMap and restored from fromMap',
+        () {
+          final tombstone = baseMember.copyWith(isTombstone: true);
+          final map = tombstone.toMap();
+          expect(map['is_tombstone'], equals(1));
+
+          final restored = GroupMember.fromMap(map);
+          expect(restored.isTombstone, isTrue);
+        },
+      );
 
       test('role is String not enum — accepts CREATOR and MEMBER', () {
         final creator = baseMember.copyWith(role: 'CREATOR');
@@ -192,17 +232,21 @@ void main() {
         expect(creator.role, isA<String>());
       });
 
-      test('round-trip: GroupMember -> toMap -> fromMap returns equivalent', () {
-        final map = baseMember.toMap();
-        final restored = GroupMember.fromMap(map);
+      test(
+        'round-trip: GroupMember -> toMap -> fromMap returns equivalent',
+        () {
+          final map = baseMember.toMap();
+          final restored = GroupMember.fromMap(map);
 
-        expect(restored.id, equals(baseMember.id));
-        expect(restored.groupId, equals(baseMember.groupId));
-        expect(restored.userId, equals(baseMember.userId));
-        expect(restored.displayName, equals(baseMember.displayName));
-        expect(restored.role, equals(baseMember.role));
-        expect(restored.isShadow, equals(baseMember.isShadow));
-      });
+          expect(restored.id, equals(baseMember.id));
+          expect(restored.groupId, equals(baseMember.groupId));
+          expect(restored.userId, equals(baseMember.userId));
+          expect(restored.displayName, equals(baseMember.displayName));
+          expect(restored.role, equals(baseMember.role));
+          expect(restored.isShadow, equals(baseMember.isShadow));
+          expect(restored.isTombstone, equals(baseMember.isTombstone));
+        },
+      );
     });
 
     test('isCreator returns true for CREATOR role', () {
