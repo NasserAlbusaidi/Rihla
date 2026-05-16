@@ -105,7 +105,7 @@ Screens receive `groupId`/`eventId` as strings from GoRouter path parameters. Ev
 
 Data flow: Firestore streams/providers fetch live data, cache repositories persist snapshots into SQLite for fast local reads, and Firestore's SDK handles offline write replay.
 
-- `LocalDatabase` (sqflite): `safar_cache.db` **version 8** with tables for trips, expenses, settlements, participants, activity_logs, categories, groups, group_members, and group_ledger. Writes use a delete-all-then-batch-insert pattern (ghost-row-free).
+- `LocalDatabase` (sqflite): `safar_cache.db` **version 9** with tables for trips, expenses, settlements, participants, activity_logs, categories, groups, group_members, and group_ledger. Writes use a delete-all-then-batch-insert pattern (ghost-row-free).
 - Cache repositories live under `lib/core/services/cache/` and are instance-based Riverpod providers. Each owns SQLite I/O for one domain.
 - `FirestoreRepository` is the shared base for Firestore services and exposes `eventSubcollection(groupId, eventId, module)` plus a `withFirestore` test-injection constructor.
 - `ConnectivityNotifier` checks online status every 60 seconds with a `Source.server` read against `inviteCodes`.

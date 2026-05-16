@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -49,6 +51,7 @@ void main() {
       expect(columnNames, contains('display_name'));
       expect(columnNames, contains('role'));
       expect(columnNames, contains('is_shadow'));
+      expect(columnNames, contains('is_tombstone'));
       expect(columnNames, contains('joined_at'));
       expect(columnNames, contains('synced_at'));
     });
@@ -98,6 +101,46 @@ void main() {
       final names = result.map((row) => row['name'] as String).toSet();
       expect(names, containsAll({'groups', 'group_members', 'group_ledger'}));
     });
+
+    test(
+      'v9 migration adds is_tombstone to existing group_members table',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'rihla-local-db-migration-',
+        );
+        final legacy = await databaseFactoryFfi.openDatabase(
+          '${tempDir.path}/legacy.db',
+          options: OpenDatabaseOptions(
+            version: 8,
+            onCreate: (db, version) async {
+              await db.execute('''
+              CREATE TABLE group_members (
+                id TEXT PRIMARY KEY,
+                group_id TEXT NOT NULL,
+                user_id TEXT,
+                display_name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'MEMBER',
+                is_shadow INTEGER NOT NULL DEFAULT 0,
+                joined_at TEXT NOT NULL,
+                synced_at TEXT
+              )
+            ''');
+            },
+            onUpgrade: _onUpgrade,
+          ),
+        );
+
+        await _onUpgrade(legacy, 8, 9);
+
+        final result = await legacy.rawQuery(
+          'PRAGMA table_info(group_members)',
+        );
+        final columnNames = result.map((row) => row['name'] as String).toList();
+        expect(columnNames, contains('is_tombstone'));
+        await legacy.close();
+        await tempDir.delete(recursive: true);
+      },
+    );
   });
 }
 
@@ -178,6 +221,7 @@ Future<void> _createTables(Database db, int version) async {
       display_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'MEMBER',
       is_shadow INTEGER NOT NULL DEFAULT 0,
+      is_tombstone INTEGER NOT NULL DEFAULT 0,
       joined_at TEXT NOT NULL,
       synced_at TEXT,
       FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
@@ -224,6 +268,7 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
         display_name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'MEMBER',
         is_shadow INTEGER NOT NULL DEFAULT 0,
+        is_tombstone INTEGER NOT NULL DEFAULT 0,
         joined_at TEXT NOT NULL,
         synced_at TEXT,
         FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
@@ -243,5 +288,15 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
         FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
       )
     ''');
+  }
+
+  if (oldVersion < 9) {
+    try {
+      await db.execute(
+        'ALTER TABLE group_members ADD COLUMN is_tombstone INTEGER NOT NULL DEFAULT 0',
+      );
+    } catch (_) {
+      // Column already exists from current-schema creation paths.
+    }
   }
 }

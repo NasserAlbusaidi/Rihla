@@ -9,7 +9,7 @@ class LocalDatabase {
   static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
   static const int _databaseVersion =
-      8; // T4.N split mode + split distribution columns on expenses
+      9; // T4.N expense splits + tombstone group members
   static String? _databasePathOverride;
 
   /// Get database instance (safe for concurrent access).
@@ -174,6 +174,7 @@ class LocalDatabase {
         display_name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'MEMBER',
         is_shadow INTEGER NOT NULL DEFAULT 0,
+        is_tombstone INTEGER NOT NULL DEFAULT 0,
         joined_at TEXT NOT NULL,
         synced_at TEXT,
         FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
@@ -409,6 +410,7 @@ class LocalDatabase {
           display_name TEXT NOT NULL,
           role TEXT NOT NULL DEFAULT 'MEMBER',
           is_shadow INTEGER NOT NULL DEFAULT 0,
+          is_tombstone INTEGER NOT NULL DEFAULT 0,
           joined_at TEXT NOT NULL,
           synced_at TEXT,
           FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
@@ -478,6 +480,17 @@ class LocalDatabase {
         );
       } catch (_) {
         // Column already exists from a previous migration — safe to ignore.
+      }
+    }
+
+    if (oldVersion < 9) {
+      try {
+        await db.execute(
+          'ALTER TABLE group_members ADD COLUMN is_tombstone INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (_) {
+        // Column exists when upgrading from a path that already recreated
+        // group_members with the current schema.
       }
     }
   }

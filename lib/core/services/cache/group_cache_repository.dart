@@ -16,7 +16,7 @@ final groupCacheRepositoryProvider = Provider<GroupCacheRepository>(
 
 /// SQLite cache repository for [Group] and [GroupMember] records.
 ///
-/// Owned tables: `groups`, `group_members` (schema version 6).
+/// Owned tables: `groups`, `group_members` (schema version 9).
 class GroupCacheRepository {
   /// Persist [group] to SQLite (insert or replace by PK).
   Future<void> cacheGroup(Group group) async {

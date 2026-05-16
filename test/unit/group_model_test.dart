@@ -155,6 +155,7 @@ void main() {
         expect(map['display_name'], equals('Nasser'));
         expect(map['role'], equals('CREATOR'));
         expect(map['is_shadow'], equals(0));
+        expect(map['is_tombstone'], equals(0));
         expect(map['joined_at'], isA<String>());
       });
 
@@ -166,6 +167,7 @@ void main() {
           'display_name': 'Nasser',
           'role': 'CREATOR',
           'is_shadow': 0,
+          'is_tombstone': 0,
           'joined_at': '2026-03-01T12:00:00.000',
           'synced_at': null,
         };
@@ -177,6 +179,7 @@ void main() {
         expect(member.displayName, equals('Nasser'));
         expect(member.role, equals('CREATOR'));
         expect(member.isShadow, isFalse);
+        expect(member.isTombstone, isFalse);
       });
 
       test('fromDoc reads tombstone flag from Firestore', () async {
@@ -208,6 +211,18 @@ void main() {
         },
       );
 
+      test(
+        'isTombstone stored as int (0/1) in toMap and restored from fromMap',
+        () {
+          final tombstone = baseMember.copyWith(isTombstone: true);
+          final map = tombstone.toMap();
+          expect(map['is_tombstone'], equals(1));
+
+          final restored = GroupMember.fromMap(map);
+          expect(restored.isTombstone, isTrue);
+        },
+      );
+
       test('role is String not enum — accepts CREATOR and MEMBER', () {
         final creator = baseMember.copyWith(role: 'CREATOR');
         final member = baseMember.copyWith(role: 'MEMBER');
@@ -229,6 +244,7 @@ void main() {
           expect(restored.displayName, equals(baseMember.displayName));
           expect(restored.role, equals(baseMember.role));
           expect(restored.isShadow, equals(baseMember.isShadow));
+          expect(restored.isTombstone, equals(baseMember.isTombstone));
         },
       );
     });

@@ -65,6 +65,7 @@ class GroupMember {
       'display_name': displayName,
       'role': role,
       'is_shadow': isShadow ? 1 : 0,
+      'is_tombstone': isTombstone ? 1 : 0,
       'joined_at': joinedAt.toIso8601String(),
       'synced_at': DateTime.now().toIso8601String(),
     };

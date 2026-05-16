@@ -31,7 +31,7 @@
 ## services/
 
 - **firestore_repository.dart**: `FirestoreRepository` — abstract base for all Firestore services. Production constructor uses `FirebaseConfig.firestore`; test constructor accepts `FakeFirebaseFirestore`. Helper: `eventSubcollection(groupId, eventId, module)` returns `groups/{groupId}/events/{eventId}/{module}`.
-- **local_database.dart**: `LocalDatabase` — SQLite offline cache via sqflite. DB: `safar_cache.db`, **version 8**. Tables: `trips`, `expenses`, `settlements`, `gear_items` (legacy, retained for SQLite compatibility), `participants`, `sub_groups`, `sub_group_members`, `activity_logs`, `categories`, `groups`, `group_members`, `group_ledger`. Singleton with `Completer`-guarded initialization.
+- **local_database.dart**: `LocalDatabase` — SQLite offline cache via sqflite. DB: `safar_cache.db`, **version 9**. Tables: `trips`, `expenses`, `settlements`, `gear_items` (legacy, retained for SQLite compatibility), `participants`, `sub_groups`, `sub_group_members`, `activity_logs`, `categories`, `groups`, `group_members`, `group_ledger`. Singleton with `Completer`-guarded initialization.
 ### Domain Cache Repositories (`services/cache/`)
 
 Each file owns SQLite I/O for one domain of the local cache (`safar_cache.db` v8). Instance-based, provided via Riverpod.

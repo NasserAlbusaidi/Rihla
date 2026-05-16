@@ -12,6 +12,9 @@ import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
 
+// Server-side account deletion cascade. This synchronously scrubs Firestore
+// identity/PII references at current Rihla scale. Future upload flows should
+// add receipt Storage object deletion or a resumable cleanup job here.
 const deletedMemberName = 'Deleted member';
 const deletedUserSentinel = 'deleted-user';
 const batchLimit = 450;
@@ -285,7 +288,7 @@ function activityUpdates(
       updates[field] = rewritten;
       touched = true;
     } else if (actorMatched && typeof data[field] === 'string') {
-      updates[field] = eventScoped ? `${deletedMemberName} activity` : `${deletedMemberName} activity`;
+      updates[field] = `${deletedMemberName} activity`;
     }
   }
 
