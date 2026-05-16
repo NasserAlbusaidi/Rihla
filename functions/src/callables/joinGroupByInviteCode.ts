@@ -143,9 +143,7 @@ export const joinGroupByInviteCode = onCall<
   JoinGroupByInviteCodeInput,
   Promise<JoinGroupByInviteCodeOutput>
 >(
-  // TEMP: App Check disabled while Play App Signing SHA-256 is registered in
-  // Firebase. Re-enable once Play Integrity can attest closed-test installs.
-  { enforceAppCheck: false },
+  { enforceAppCheck: true },
   async (request: CallableRequest<JoinGroupByInviteCodeInput>) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign-in required.');
