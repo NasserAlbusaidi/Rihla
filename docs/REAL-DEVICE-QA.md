@@ -207,3 +207,43 @@ Pass criteria:
 - The in-app toggle stays disabled.
 - The token document for the current anonymous UID is removed.
 - Reopening the app does not recreate the token while the setting is off.
+
+## Known issues — verify next real-device session
+
+### Group detail back button does nothing (reported 2026-05-16, v1.2.0+14)
+
+**Symptom:** On `/group/:gid` (`GroupDetailScreen`), tapping the on-screen ← arrow in the top-left of the cover header has no effect — user is stuck on the group screen and has to force-close the app to escape. System back gesture not separately confirmed. Found on Play closed-test ("first" track) install on Android.
+
+**Platform-specific:** Reproduces on Android (Play closed-test build, v1.2.0+14). **Does NOT reproduce on iOS Simulator** — back button works as expected there. This rules out hit-test math, widget-tree structure, and generic Flutter rendering issues. Points toward Android-specific causes: edge-to-edge / system inset handling (Android 15+ default edge-to-edge), Android predictive back / edge-swipe gesture conflict, R8/obfuscation behavior in release builds, or Android-specific `Material` + `InkResponse` interaction inside the Positioned cover header.
+
+**Code path:** Back button is `_PaperIconButton` at `lib/features/groups/screens/group_detail_screen.dart:259`, defined at line 311. Wrapped in `Positioned(top: statusBar + 8, left: 12, right: 12)` inside the cover `Stack`. `onTap` calls `HapticService.lightClick()` then `router.canPop() ? router.pop() : router.go('/home')`.
+
+**Static analysis findings (no root cause identified):**
+- No `PopScope` / `WillPopScope` anywhere in the app intercepts back.
+- Title block (`Positioned` at `top: statusBar + 56`) does not visually overlap the back button rect (gap ~12px).
+- Entry stack should be `[/home, /group/{id}]` after `push('/join-group')` → `pushReplacement('/group/${id}')`, so `canPop()` should return true.
+
+**Suspects to verify on device:**
+1. Hit-target too small — `_PaperIconButton` SizedBox is 36×36 (below Material 48dp); user may be missing the actual hit zone.
+2. `onTap` fires but navigation silently no-ops — add a Sentry breadcrumb or `debugPrint` to confirm.
+3. Cover header scrolls and back button moves out of expected position before tap.
+
+**Proposed fix (deferred):**
+- Wrap `_PaperIconButton` in a `SizedBox(width: 48, height: 48)` hit-target.
+- Wrap `GroupDetailScreen` in a `PopScope(canPop: false, onPopInvokedWithResult: ...)` that routes system back to `/home` as a safety net.
+- Consider migrating the cover header back button to a pinned `SliverAppBar.leading` for reliable hit-testing.
+
+### Event-level settlements display "Someone paid Someone" (reported 2026-05-16, v1.2.0+14)
+
+**Symptom:** In the event ledger and recorded-settlements section, settlement rows show "Someone paid Someone" instead of real participant names. Group-level settlements (group settle-up flow) display the correct names — only event-scoped settlements are affected.
+
+**Root cause:** `SettlementService.addSettlement` (`lib/features/ledger/services/settlement_service.dart:54`) writes `payerParticipantId` / `recipientParticipantId` but does **not** persist `payerName` / `recipientName` to Firestore. The `Settlement` model has these optional fields (`lib/features/ledger/models/settlement_model.dart:13-14`), and the UI renders `settlement.payerName ?? 'Someone'` (see `lib/features/ledger/widgets/ledger_day_card.dart:150,344` and `lib/features/ledger/widgets/ledger_search_sheet.dart:439-440`). Because event settlements never write the names, the fallback "Someone" is rendered for both sides.
+
+Group settlements work correctly because `GroupSettlementService.addGroupSettlement` (`lib/features/groups/services/group_settlement_service.dart:86-87`) does write `payerName` and `recipientName` from the call site in `group_settle_up_screen.dart:339-340`.
+
+**Proposed fix (3 spots):**
+1. `lib/features/ledger/services/settlement_service.dart` — add `String? payerName` and `String? recipientName` params to `addSettlement`, include them in the Firestore data map.
+2. `lib/features/ledger/screens/settle_up_screen.dart` — thread `fromName` / `toName` from `_handleSettlement` through `_recordSettlement` to the `addSettlement` call.
+3. Optional: mirror the group flow and call `groupActivityServiceProvider.logGroupEvent` (or an event-scoped equivalent) so a settlement also produces an activity-feed row with a real description like "settled X with Y", matching group-level behavior.
+
+**Backfill note:** existing event settlements written before the fix will still display "Someone paid Someone" because their Firestore docs lack the name fields. Either accept the legacy display, or write a one-off migration that resolves names from `groups/{gid}/members` using the stored participant IDs.
