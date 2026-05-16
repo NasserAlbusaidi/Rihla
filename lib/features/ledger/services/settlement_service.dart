@@ -59,6 +59,8 @@ class SettlementService extends FirestoreRepository {
     required Decimal amount,
     required String createdBy,
     String currency = 'OMR',
+    String? payerName,
+    String? recipientName,
     String? note,
   }) async {
     if (createdBy.isEmpty) {
@@ -76,6 +78,9 @@ class SettlementService extends FirestoreRepository {
       'eventId': eventId,
       'payerParticipantId': payerParticipantId,
       'recipientParticipantId': recipientParticipantId,
+      // Fields absent on pre-2026-05-16 docs render as 'Someone' via the model fallback.
+      'payerName': payerName,
+      'recipientName': recipientName,
       'amountFils': MoneySerializer.toSubunits(amount, currency),
       'currency': currency,
       'note': note,
@@ -85,9 +90,17 @@ class SettlementService extends FirestoreRepository {
       'createdBy': createdBy,
     };
     try {
-      await eventSubcollection(groupId, eventId, 'settlements').doc(id).set(data);
+      await eventSubcollection(
+        groupId,
+        eventId,
+        'settlements',
+      ).doc(id).set(data);
     } on FirebaseException catch (e) {
-      if (kDebugMode) debugPrint('SettlementService.addSettlement failed: ${e.code} ${e.message}');
+      if (kDebugMode) {
+        debugPrint(
+          'SettlementService.addSettlement failed: ${e.code} ${e.message}',
+        );
+      }
       rethrow;
     }
     return Settlement.fromFirestore(data);

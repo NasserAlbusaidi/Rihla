@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -69,12 +70,19 @@ void main() {
     memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
   );
 
-  Future<void> pumpGroupDetail(WidgetTester tester) async {
+  Future<GoRouter> pumpGroupDetail(
+    WidgetTester tester, {
+    String? initialLocation,
+  }) async {
     SharedPreferences.setMockInitialValues({'device_name': 'Alice'});
     final prefs = await SharedPreferences.getInstance();
     final router = GoRouter(
-      initialLocation: '/group/$groupId',
+      initialLocation: initialLocation ?? '/group/$groupId',
       routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('Home')),
+        ),
         GoRoute(
           path: '/group/:gid',
           builder: (_, state) =>
@@ -138,6 +146,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    return router;
   }
 
   group('GroupDetailScreen navigation', () {
@@ -184,6 +193,86 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('GroupActivity:$groupId'), findsOneWidget);
+    });
+
+    testWidgets('blocked system pop from direct entry routes home', (
+      tester,
+    ) async {
+      await pumpGroupDetail(tester);
+
+      expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);
+
+      final popScope = tester.widget<PopScope>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult!(false, null);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.byKey(GroupKeys.detailScreen), findsNothing);
+    });
+
+    testWidgets('blocked system pop from pushed group detail pops to home', (
+      tester,
+    ) async {
+      final router = await pumpGroupDetail(tester, initialLocation: '/home');
+
+      router.push('/group/$groupId');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);
+
+      final popScope = tester.widget<PopScope>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult!(false, null);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.byKey(GroupKeys.detailScreen), findsNothing);
+    });
+
+    testWidgets('cover back button pops to home from pushed group detail', (
+      tester,
+    ) async {
+      final router = await pumpGroupDetail(tester, initialLocation: '/home');
+
+      router.push('/group/$groupId');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);
+
+      await tester.tap(find.byIcon(Iconsax.arrow_left).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.byKey(GroupKeys.detailScreen), findsNothing);
+    });
+
+    testWidgets('cover header controls expose 48dp hit targets', (
+      tester,
+    ) async {
+      await pumpGroupDetail(tester);
+
+      final backTargets = find.ancestor(
+        of: find.byIcon(Iconsax.arrow_left).first,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is SizedBox && widget.width == 48 && widget.height == 48,
+        ),
+      );
+      final overflowTargets = find.ancestor(
+        of: find.byTooltip('More'),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is SizedBox && widget.width == 48 && widget.height == 48,
+        ),
+      );
+
+      expect(backTargets, findsAtLeastNWidgets(1));
+      expect(overflowTargets, findsAtLeastNWidgets(1));
+      expect(tester.getSize(backTargets.first), const Size(48, 48));
+      expect(tester.getSize(overflowTargets.first), const Size(48, 48));
     });
   });
 }

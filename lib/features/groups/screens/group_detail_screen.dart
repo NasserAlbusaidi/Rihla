@@ -46,17 +46,29 @@ class GroupDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
-    return Scaffold(
-      key: GroupKeys.detailScreen,
-      backgroundColor: context.colors.scaffoldBackground,
-      body: groupAsync.when(
-        data: (group) {
-          if (group == null) return _NotFoundState(groupId: groupId);
-          return _Content(group: group);
-        },
-        loading: () => const _LoadingState(),
-        error: (_, _) => _ErrorState(
-          onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final router = GoRouter.of(context);
+        if (router.canPop()) {
+          router.pop();
+        } else {
+          router.go('/home');
+        }
+      },
+      child: Scaffold(
+        key: GroupKeys.detailScreen,
+        backgroundColor: context.colors.scaffoldBackground,
+        body: groupAsync.when(
+          data: (group) {
+            if (group == null) return _NotFoundState(groupId: groupId);
+            return _Content(group: group);
+          },
+          loading: () => const _LoadingState(),
+          error: (_, _) => _ErrorState(
+            onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
+          ),
         ),
       ),
     );
@@ -316,18 +328,28 @@ class _PaperIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: colors.cardSurface.withValues(alpha: 0.94),
-      shape: const CircleBorder(),
-      elevation: 1,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 22,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(icon, size: 18, color: colors.textPrimary),
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkResponse(
+          onTap: onTap,
+          radius: 24,
+          customBorder: const CircleBorder(),
+          child: Center(
+            child: Material(
+              color: colors.cardSurface.withValues(alpha: 0.94),
+              shape: const CircleBorder(),
+              elevation: 1,
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: Icon(icon, size: 18, color: colors.textPrimary),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -342,48 +364,63 @@ class _OverflowMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final spacing = context.spacing;
-    return Material(
-      color: colors.cardSurface.withValues(alpha: 0.94),
-      shape: const CircleBorder(),
-      elevation: 1,
-      child: PopupMenuButton<String>(
-        tooltip: 'More',
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(spacing.radiusLarge),
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: PopupMenuButton<String>(
+          tooltip: 'More',
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(spacing.radiusLarge),
+          ),
+          offset: const Offset(0, 44),
+          borderRadius: const BorderRadius.all(Radius.circular(24)),
+          splashRadius: 24,
+          onSelected: (key) {
+            switch (key) {
+              case 'settings':
+                GoRouter.of(context).push('/group/$groupId/settings');
+              case 'activity':
+                GoRouter.of(context).push('/group/$groupId/activity');
+            }
+          },
+          child: Center(
+            child: Material(
+              color: colors.cardSurface.withValues(alpha: 0.94),
+              shape: const CircleBorder(),
+              elevation: 1,
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: Icon(Iconsax.more, size: 18, color: colors.textPrimary),
+              ),
+            ),
+          ),
+          itemBuilder: (ctx) => [
+            PopupMenuItem(
+              value: 'settings',
+              child: Row(
+                children: [
+                  Icon(Iconsax.setting_2, size: 16, color: colors.textPrimary),
+                  const SizedBox(width: 10),
+                  const Text('Group settings'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'activity',
+              child: Row(
+                children: [
+                  Icon(Iconsax.activity, size: 16, color: colors.textPrimary),
+                  const SizedBox(width: 10),
+                  const Text('Activity'),
+                ],
+              ),
+            ),
+          ],
         ),
-        offset: const Offset(0, 44),
-        icon: Icon(Iconsax.more, size: 18, color: colors.textPrimary),
-        padding: EdgeInsets.zero,
-        onSelected: (key) {
-          switch (key) {
-            case 'settings':
-              GoRouter.of(context).push('/group/$groupId/settings');
-            case 'activity':
-              GoRouter.of(context).push('/group/$groupId/activity');
-          }
-        },
-        itemBuilder: (ctx) => [
-          PopupMenuItem(
-            value: 'settings',
-            child: Row(
-              children: [
-                Icon(Iconsax.setting_2, size: 16, color: colors.textPrimary),
-                const SizedBox(width: 10),
-                const Text('Group settings'),
-              ],
-            ),
-          ),
-          PopupMenuItem(
-            value: 'activity',
-            child: Row(
-              children: [
-                Icon(Iconsax.activity, size: 16, color: colors.textPrimary),
-                const SizedBox(width: 10),
-                const Text('Activity'),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
