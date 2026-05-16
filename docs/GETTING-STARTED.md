@@ -40,7 +40,7 @@ flutter pub get
 
 ## 3. Firebase Setup
 
-Firebase powers auth, Firestore, Storage, and push notifications. Three artifacts are required — two are gitignored and must be obtained from the Firebase Console, one is already committed.
+Firebase powers auth, Firestore, Cloud Functions, and FCM push notifications (no Storage SDK use). Three artifacts are required — two are gitignored and must be obtained from the Firebase Console, one is already committed.
 
 ### 3a. google-services.json (Android)
 

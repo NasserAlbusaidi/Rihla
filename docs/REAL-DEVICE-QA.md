@@ -1,6 +1,6 @@
 # Real-Device QA
 
-Last prepared: 2026-05-15
+Last prepared: 2026-05-16 (v1.2.0+15)
 
 This checklist covers the release QA that cannot be proven by unit, widget, or
 emulator tests. Run it on physical iOS and Android devices against the

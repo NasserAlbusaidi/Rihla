@@ -60,7 +60,7 @@ const bool _useFirebaseEmulator = bool.fromEnvironment(
 
 ## 3. Firebase Configuration
 
-Firebase powers auth, Firestore, FCM, and Storage. It requires three configuration artifacts.
+Firebase powers auth, Firestore, Cloud Functions, FCM, and App Check (no Storage SDK use — protected media, when needed, routes through Cloud Functions). It requires three configuration artifacts.
 
 ### 3a. google-services.json (Android)
 

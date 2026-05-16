@@ -37,8 +37,12 @@ identified — rollback the active track to the previous build.
 
 ### T2 — Cloud Functions error rate above 5% (rolling 15m)
 
-Symptom: Firebase Console → Functions → `joinGroupByInviteCode` (or any
-deployed function) shows >5% errors over 15 minutes. **First check:** open
+Symptom: Firebase Console → Functions → `joinGroupByInviteCode`,
+`cleanupAnonUidArtifacts`, account-deletion cascade, or FCM token cleanup
+shows >5% errors over 15 minutes. Note that `cleanupAnonUidArtifacts`
+runs fire-and-forget after email-link recovery — failures land in Sentry
+breadcrumbs rather than blocking the user, so watch the Sentry channel
+for cleanup-callable errors specifically. **First check:** open
 the Function's logs in the Firebase Console for the same window. Filter by
 `severity=ERROR`. If errors share a code (`PERMISSION_DENIED`,
 `FAILED_PRECONDITION`, `RESOURCE_EXHAUSTED`), that is the cluster.

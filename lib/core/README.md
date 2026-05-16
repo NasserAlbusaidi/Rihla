@@ -11,8 +11,8 @@
 
 ## theme/
 
-- **app_theme.dart**: Material 3 `ThemeData` (light mode). Font: Plus Jakarta Sans via `google_fonts`. Registers `AppColorTokens`, `AppSpacingTokens`, `AppShadowTokens` as `ThemeExtension`s. Class: `AppTheme`.
-- **tokens/color_tokens.dart**: `AppColorTokens extends ThemeExtension<AppColorTokens>` — neutrals, teal primary, success/error/disabled/focus states, per-module accent colors (ledger, gear, logistics, vault, activity, memories), header gradient colors. Singleton: `AppColorTokens.light`.
+- **app_theme.dart**: Material 3 `ThemeData` (light mode). Typography: Geist (sans), Geist Mono (tabular figures, money), Instrument Serif italic (display + section headers) via `google_fonts`. Registers `AppColorTokens`, `AppSpacingTokens`, `AppShadowTokens` as `ThemeExtension`s. Class: `AppTheme`.
+- **tokens/color_tokens.dart**: `AppColorTokens extends ThemeExtension<AppColorTokens>` — Saffron palette: paper background, saffron primary, sage success, rust error, success/error/disabled/focus states, `moduleLedger` accent (the only colored module post-Phase 39), category + avatar slot colours, header gradient colors. Singleton: `AppColorTokens.light`.
 - **tokens/spacing_tokens.dart**: `AppSpacingTokens extends ThemeExtension<AppSpacingTokens>` — `space4` through `space32`, border radii (`radiusSmall`, `radiusMedium`, `radiusLarge`), `buttonHeight`. Singleton: `AppSpacingTokens.standard`.
 - **tokens/shadow_tokens.dart**: `AppShadowTokens extends ThemeExtension<AppShadowTokens>` — three elevation levels: `flat` (none), `raised` (subtle), `floating` (modal). Gray-900 base. Singleton: `AppShadowTokens.standard`.
 - **tokens/domain_aliases.dart**: `BuildContext` extension methods for terse token access: `context.colors`, `context.spacing`, `context.shadows`. Uses `Theme.of(this).extension<T>()!`.
@@ -31,10 +31,10 @@
 ## services/
 
 - **firestore_repository.dart**: `FirestoreRepository` — abstract base for all Firestore services. Production constructor uses `FirebaseConfig.firestore`; test constructor accepts `FakeFirebaseFirestore`. Helper: `eventSubcollection(groupId, eventId, module)` returns `groups/{groupId}/events/{eventId}/{module}`.
-- **local_database.dart**: `LocalDatabase` — SQLite offline cache via sqflite. DB: `safar_cache.db`, version 6. Tables: `trips`, `expenses`, `settlements`, `gear_items`, `participants`, `sub_groups`, `sub_group_members`, `activity_logs`, `categories`, `sync_queue`. Singleton with `Completer`-guarded initialization.
+- **local_database.dart**: `LocalDatabase` — SQLite offline cache via sqflite. DB: `safar_cache.db`, **version 8**. Tables: `trips`, `expenses`, `settlements`, `gear_items` (legacy, retained for SQLite compatibility), `participants`, `sub_groups`, `sub_group_members`, `activity_logs`, `categories`, `groups`, `group_members`, `group_ledger`. Singleton with `Completer`-guarded initialization.
 ### Domain Cache Repositories (`services/cache/`)
 
-Each file owns SQLite I/O for one domain of the local cache (`safar_cache.db` v6). Instance-based, provided via Riverpod.
+Each file owns SQLite I/O for one domain of the local cache (`safar_cache.db` v8). Instance-based, provided via Riverpod.
 
 - **expense_cache_repository.dart**: `ExpenseCacheRepository` — ghost-row-free write via delete-all-for-event + batch insert. Consumed by `eventExpensesProvider.asyncMap` side-write (D-15).
 - **settlement_cache_repository.dart**: `SettlementCacheRepository` — same delete-then-insert pattern as expenses.

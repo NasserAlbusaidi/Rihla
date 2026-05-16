@@ -4,7 +4,48 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] — 2026-05-14
+## [1.2.0+15] — 2026-05-16
+
+Post-launch QA hardening. Two new server-side capabilities address data
+integrity issues surfaced after the +12 Play ship.
+
+### Added
+- **Server-side event fan-out on join.** `joinGroupByInviteCode` now
+  appends the joining UID to existing event `participantIds` and snapshots
+  their display name into `participantNames` — joiners no longer have to
+  be manually re-added per event by the creator.
+- **`cleanupAnonUidArtifacts` callable.** Fire-and-forget post-recovery
+  cleanup: scrubs FCM tokens, `joinAttempts`, and other anon-UID-keyed
+  docs left over from the abandoned anonymous session. Failures surface
+  as Sentry breadcrumbs. Some UIDs with downstream references in
+  `memberIds` / `participantIds` still require a future server-side
+  reconciliation pass (queued for +16).
+- **Backfill tooling.** `tool/backfill_join_event_sync.js` reconciles
+  historical event participant discrepancies; run against `rihla-safar`
+  on 2026-05-16.
+
+## [1.2.0+14] — 2026-05-16
+
+Post-launch QA fixes for bugs reported on the +12/+13 Play tracks.
+
+### Fixed
+- **GroupDetailScreen back button** no longer fails to pop when opened
+  via direct route entry.
+- **Event settlement names** correctly resolve display names instead of
+  showing "Someone paid Someone".
+- **`currentUserIdProvider` reactivity.** Provider now follows Firebase
+  Auth UID swaps (regression introduced in +12 broke account-recovery
+  flows downstream of the provider).
+- **App Check re-enabled** on the `joinGroupByInviteCode` callable
+  (accidentally disabled in +13).
+
+## [1.2.0+13] — 2026-05-16
+
+Re-cut to clear a Play upload-rejected version code (+12 succeeded on
+build but Play rejected the upload; +13 was burned by another upload
+failure — Play registers AAB version codes even on failed uploads).
+
+## [1.2.0] — 2026-05-14 (Play build 1.2.0+12)
 
 First Play Store release. Adds account recovery, hardens backend rules,
 ships the Sprint 1/2 UI surfaces, and finishes pre-launch polish.
