@@ -13,6 +13,7 @@ class GroupMember {
   /// Role string: 'CREATOR' for the group creator, 'MEMBER' for everyone else.
   final String role;
   final bool isShadow;
+  final bool isTombstone;
   final DateTime joinedAt;
 
   const GroupMember({
@@ -22,6 +23,7 @@ class GroupMember {
     required this.displayName,
     required this.role,
     this.isShadow = false,
+    this.isTombstone = false,
     required this.joinedAt,
   });
 
@@ -35,6 +37,7 @@ class GroupMember {
       displayName: data['displayName'] as String,
       role: data['role'] as String,
       isShadow: data['isShadow'] as bool? ?? false,
+      isTombstone: data['isTombstone'] as bool? ?? false,
       joinedAt: (data['joinedAt'] as Timestamp).toDate(),
     );
   }
@@ -48,6 +51,7 @@ class GroupMember {
       displayName: map['display_name'] as String,
       role: map['role'] as String? ?? 'MEMBER',
       isShadow: (map['is_shadow'] as int?) == 1,
+      isTombstone: (map['is_tombstone'] as int?) == 1,
       joinedAt: DateTime.parse(map['joined_at'] as String),
     );
   }
@@ -74,6 +78,7 @@ class GroupMember {
     String? displayName,
     String? role,
     bool? isShadow,
+    bool? isTombstone,
     DateTime? joinedAt,
   }) {
     return GroupMember(
@@ -83,6 +88,7 @@ class GroupMember {
       displayName: displayName ?? this.displayName,
       role: role ?? this.role,
       isShadow: isShadow ?? this.isShadow,
+      isTombstone: isTombstone ?? this.isTombstone,
       joinedAt: joinedAt ?? this.joinedAt,
     );
   }

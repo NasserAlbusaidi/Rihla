@@ -24,43 +24,83 @@ void main() {
     expect(await service.deleteAccount(), DeletionResult.noUser);
   });
 
-  test('returns ok when user.delete() succeeds', () async {
+  test('calls callable, wipes local cache, and signs out on success', () async {
+    final calls = <String>[];
     when(() => auth.currentUser).thenReturn(user);
-    when(() => user.delete()).thenAnswer((_) async {});
-    final service = DataDeletionService(auth: auth);
+    when(() => auth.signOut()).thenAnswer((_) async {
+      calls.add('signOut');
+    });
+    final service = DataDeletionService(
+      auth: auth,
+      deleteAccountCallable: () async {
+        calls.add('callable');
+      },
+      wipeLocalCache: () async {
+        calls.add('wipe');
+      },
+    );
 
     expect(await service.deleteAccount(), DeletionResult.ok);
-    verify(() => user.delete()).called(1);
+    expect(calls, ['callable', 'wipe', 'signOut']);
+    verify(() => auth.signOut()).called(1);
   });
 
-  test('maps requires-recent-login to its own enum case', () async {
+  test('returns error when the callable fails', () async {
+    final calls = <String>[];
     when(() => auth.currentUser).thenReturn(user);
-    when(() => user.delete()).thenThrow(
-      FirebaseAuthException(code: 'requires-recent-login'),
+    final service = DataDeletionService(
+      auth: auth,
+      deleteAccountCallable: () async {
+        calls.add('callable');
+        throw StateError('boom');
+      },
+      wipeLocalCache: () async {
+        calls.add('wipe');
+      },
     );
-    final service = DataDeletionService(auth: auth);
-
-    expect(
-      await service.deleteAccount(),
-      DeletionResult.requiresRecentLogin,
-    );
-  });
-
-  test('returns error for any other FirebaseAuthException', () async {
-    when(() => auth.currentUser).thenReturn(user);
-    when(() => user.delete()).thenThrow(
-      FirebaseAuthException(code: 'network-request-failed'),
-    );
-    final service = DataDeletionService(auth: auth);
 
     expect(await service.deleteAccount(), DeletionResult.error);
+    expect(calls, ['callable']);
+    verifyNever(() => auth.signOut());
   });
 
-  test('returns error for unexpected throwables', () async {
+  test('returns error when local cache wipe fails', () async {
+    final calls = <String>[];
     when(() => auth.currentUser).thenReturn(user);
-    when(() => user.delete()).thenThrow(StateError('boom'));
-    final service = DataDeletionService(auth: auth);
+    final service = DataDeletionService(
+      auth: auth,
+      deleteAccountCallable: () async {
+        calls.add('callable');
+      },
+      wipeLocalCache: () async {
+        calls.add('wipe');
+        throw StateError('wipe failed');
+      },
+    );
 
     expect(await service.deleteAccount(), DeletionResult.error);
+    expect(calls, ['callable', 'wipe']);
+    verifyNever(() => auth.signOut());
+  });
+
+  test('returns error when signOut fails', () async {
+    final calls = <String>[];
+    when(() => auth.currentUser).thenReturn(user);
+    when(() => auth.signOut()).thenAnswer((_) async {
+      calls.add('signOut');
+      throw StateError('signOut failed');
+    });
+    final service = DataDeletionService(
+      auth: auth,
+      deleteAccountCallable: () async {
+        calls.add('callable');
+      },
+      wipeLocalCache: () async {
+        calls.add('wipe');
+      },
+    );
+
+    expect(await service.deleteAccount(), DeletionResult.error);
+    expect(calls, ['callable', 'wipe', 'signOut']);
   });
 }

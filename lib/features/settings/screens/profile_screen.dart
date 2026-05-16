@@ -745,12 +745,13 @@ class _AccountCard extends ConsumerWidget {
     final result = await ref.read(dataDeletionServiceProvider).deleteAccount();
     final message = switch (result) {
       DeletionResult.ok => 'Account deleted.',
-      DeletionResult.requiresRecentLogin =>
-        'Sign out and back in via your linked email, then try again.',
       DeletionResult.noUser => 'No active account to delete.',
       DeletionResult.error => "Couldn't delete the account. Try again.",
     };
     messenger.showSnackBar(SnackBar(content: Text(message)));
+    if (result == DeletionResult.ok && context.mounted) {
+      context.go(AppRoutes.home);
+    }
   }
 
   Future<void> _signOut(

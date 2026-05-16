@@ -30,9 +30,7 @@ Future<Widget> _wrap({
   required _MockDeletionService service,
   required String? email,
 }) async {
-  SharedPreferences.setMockInitialValues({
-    'settings_device_name': 'Test User',
-  });
+  SharedPreferences.setMockInitialValues({'settings_device_name': 'Test User'});
   final prefs = await SharedPreferences.getInstance();
   final user = email == null ? null : _userWithEmail(email);
 
@@ -44,9 +42,11 @@ Future<Widget> _wrap({
         (ref) => Stream<firebase_auth.User?>.value(user),
       ),
       profile_stats.profileStatsProvider.overrideWith(
-        (ref) => AsyncValue<profile_stats.ProfileStats>.data(
-          (groupCount: 0, eventCount: 0, totalSpent: Decimal.zero),
-        ),
+        (ref) => AsyncValue<profile_stats.ProfileStats>.data((
+          groupCount: 0,
+          eventCount: 0,
+          totalSpent: Decimal.zero,
+        )),
       ),
     ],
     child: MaterialApp.router(
@@ -55,9 +55,11 @@ Future<Widget> _wrap({
         initialLocation: '/profile',
         routes: [
           GoRoute(
-            path: '/profile',
-            builder: (_, _) => const ProfileScreen(),
+            path: '/home',
+            builder: (_, _) =>
+                const Scaffold(body: SizedBox(key: Key('deleteAccount.home'))),
           ),
+          GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
         ],
       ),
     ),
@@ -78,8 +80,9 @@ void main() {
     service = _MockDeletionService();
   });
 
-  testWidgets('delete tile is visible for both anonymous and linked users',
-      (tester) async {
+  testWidgets('delete tile is visible for both anonymous and linked users', (
+    tester,
+  ) async {
     await tester.pumpWidget(await _wrap(service: service, email: null));
     await tester.pumpAndSettle();
     expect(find.byKey(ProfileKeys.deleteAccountTile), findsOneWidget);
@@ -102,9 +105,12 @@ void main() {
     verifyNever(() => service.deleteAccount());
   });
 
-  testWidgets('successful deletion shows the success snack', (tester) async {
-    when(() => service.deleteAccount())
-        .thenAnswer((_) async => DeletionResult.ok);
+  testWidgets('successful deletion shows the success snack and goes home', (
+    tester,
+  ) async {
+    when(
+      () => service.deleteAccount(),
+    ).thenAnswer((_) async => DeletionResult.ok);
 
     await tester.pumpWidget(await _wrap(service: service, email: null));
     await tester.pumpAndSettle();
@@ -115,12 +121,13 @@ void main() {
 
     verify(() => service.deleteAccount()).called(1);
     expect(find.text('Account deleted.'), findsOneWidget);
+    expect(find.byKey(const Key('deleteAccount.home')), findsOneWidget);
   });
 
-  testWidgets('requires-recent-login surfaces the re-auth instruction',
-      (tester) async {
-    when(() => service.deleteAccount())
-        .thenAnswer((_) async => DeletionResult.requiresRecentLogin);
+  testWidgets('deletion errors show the retry snack', (tester) async {
+    when(
+      () => service.deleteAccount(),
+    ).thenAnswer((_) async => DeletionResult.error);
 
     await tester.pumpWidget(
       await _wrap(service: service, email: 'foo@example.com'),
@@ -132,10 +139,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text(
-        'Sign out and back in via your linked email, then try again.',
-      ),
+      find.text("Couldn't delete the account. Try again."),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('deleteAccount.home')), findsNothing);
   });
 }

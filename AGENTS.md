@@ -159,7 +159,7 @@ All money math uses the `decimal` package (not `double`). Default currency is OM
 - **Event modules**: `EventModules` only carries `ledger` after Phase 39. Legacy keys (gear/logistics/vault/memories) are silently ignored from existing data.
 - **Group join**: routed through the `joinGroupByInviteCode` Cloud Function (`functions/src/callables/`) — atomic, validated, rate-limited (5 attempts/hour per UID), idempotent on re-join.
 - **Account recovery (v1.2)**: Optional email-link recovery via Firebase Auth. `AuthRecoveryService` (`lib/features/auth/services/auth_recovery_service.dart`) orchestrates link/send/recover. `UidChangeListener` wipes the local SQLite cache on UID swap. App Links + Universal Links route the magic link back into the app. Linked email is permanent in v1.2.
-- **Account deletion**: server-side cascade via `data_deletion_service.dart` — Firebase Auth user + Firestore + FCM tokens. Sentry breadcrumbs redact email PII.
+- **Account deletion**: `DataDeletionService` calls the `deleteAccount` Cloud Function. The function scrubs Firestore identity/PII references, preserves ledger rows with tombstone members, deletes FCM/join-attempt docs, then deletes the Firebase Auth user. The client wipes SQLite with `LocalDatabase.wipeAndReinitialize()` and signs out.
 - **Onboarding**: 3-page first-launch flow gated by `AppSettings.onboardingComplete` (SharedPreferences). Router hard-redirects every non-onboarding route to `/onboarding` until complete. Restored in v1.2.
 - **Multi-currency**: Expenses support currency metadata and Decimal math. Convert to integer subunits only at Firestore read/write boundaries via `MoneySerializer`.
 - **Push notifications**: Firebase Cloud Messaging (FCM). Token storage at `fcm_tokens/{uid}`. Opt-in only.

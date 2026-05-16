@@ -2,27 +2,36 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/services/firebase_functions_service.dart';
+import '../../../core/services/local_database.dart';
 import '../providers/auth_provider.dart';
 
-/// Outcome of an in-app deletion attempt. The UI maps each case to a
-/// different snack/dialog. `requiresRecentLogin` is the only branch the
-/// user can recover from without contacting support — they sign out, sign
-/// back in via the linked email, and retry.
-enum DeletionResult { ok, requiresRecentLogin, noUser, error }
+typedef DeleteAccountCallable = Future<void> Function();
+typedef LocalCacheWipe = Future<void> Function();
 
-/// Best-effort in-app account deletion (account-recovery spec §6.2 +
-/// plan §P6).
+/// Outcome of an in-app deletion attempt. The UI maps each case to a
+/// different snack/dialog.
+enum DeletionResult { ok, noUser, error }
+
+/// Server-side account deletion.
 ///
-/// v1.2 scope: deletes the Firebase Auth user record. Cascading the
-/// user's Firestore data (participant docs, authored expenses) is best
-/// handled by an `auth.user.onDelete()` Cloud Function — wired in a
-/// follow-up sprint. Until then, the auth deletion alone makes the data
-/// unreachable from any app session because Firestore rules treat
-/// `auth.uid` as the membership key.
+/// The Cloud Function performs the privileged Firestore/Auth cascade. The
+/// client only starts the callable, clears its per-UID SQLite cache, and signs
+/// out the now-deleted local Firebase session.
 class DataDeletionService {
-  DataDeletionService({required FirebaseAuth auth}) : _auth = auth;
+  DataDeletionService({
+    required FirebaseAuth auth,
+    DeleteAccountCallable? deleteAccountCallable,
+    LocalCacheWipe? wipeLocalCache,
+  }) : _auth = auth,
+       _deleteAccountCallable =
+           deleteAccountCallable ??
+           (() => FirebaseFunctionsService().deleteAccount()),
+       _wipeLocalCache = wipeLocalCache ?? LocalDatabase.wipeAndReinitialize;
 
   final FirebaseAuth _auth;
+  final DeleteAccountCallable _deleteAccountCallable;
+  final LocalCacheWipe _wipeLocalCache;
 
   Future<DeletionResult> deleteAccount() async {
     final user = _auth.currentUser;
@@ -31,23 +40,14 @@ class DataDeletionService {
       return DeletionResult.noUser;
     }
     try {
-      await user.delete();
-      FirebaseConfig.log('Deletion: auth user deleted');
+      await _deleteAccountCallable();
+      await _wipeLocalCache();
+      await _auth.signOut();
+      FirebaseConfig.log('Deletion: server cascade completed');
       return DeletionResult.ok;
-    } on FirebaseAuthException catch (error, stack) {
-      if (error.code == 'requires-recent-login') {
-        FirebaseConfig.log('Deletion: requires-recent-login');
-        return DeletionResult.requiresRecentLogin;
-      }
-      FirebaseConfig.log(
-        'Deletion: FirebaseAuthException ${error.code}',
-        error: error,
-        stackTrace: stack,
-      );
-      return DeletionResult.error;
     } catch (error, stack) {
       FirebaseConfig.log(
-        'Deletion: unexpected failure',
+        'Deletion: server cascade failed',
         error: error,
         stackTrace: stack,
       );

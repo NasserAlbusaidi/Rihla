@@ -13,4 +13,8 @@ class FirebaseFunctionsService {
       'oldUid': oldUid,
     });
   }
+
+  Future<void> deleteAccount() async {
+    await _functions.httpsCallable('deleteAccount').call(<String, dynamic>{});
+  }
 }
