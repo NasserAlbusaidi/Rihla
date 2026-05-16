@@ -80,3 +80,9 @@ analyze_output*.txt
 .paperclip/logs/
 .planning/
 audit-reports/
+secrets/
+vendor/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+.bundle/

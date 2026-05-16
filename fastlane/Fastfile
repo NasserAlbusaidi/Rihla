@@ -1,0 +1,40 @@
+default_platform(:android)
+
+PLAY_KEY = "secrets/play-key.json"
+PACKAGE  = "com.safar.safar"
+TRACK    = "first"
+
+platform :android do
+  desc "Pull the current Play listing into fastlane/metadata/android/"
+  lane :pull do
+    supply(
+      json_key: PLAY_KEY,
+      package_name: PACKAGE,
+      action: "init",
+    )
+  end
+
+  desc "Push listing assets (icon, feature graphic, screenshots, text). Never touches the AAB or release notes."
+  lane :listing do
+    supply(
+      json_key: PLAY_KEY,
+      package_name: PACKAGE,
+      track: TRACK,
+      skip_upload_aab: true,
+      skip_upload_changelogs: true,
+    )
+  end
+
+  desc "Push only the icon + feature graphic. Leaves screenshots and text alone."
+  lane :icon do
+    supply(
+      json_key: PLAY_KEY,
+      package_name: PACKAGE,
+      track: TRACK,
+      skip_upload_aab: true,
+      skip_upload_changelogs: true,
+      skip_upload_metadata: true,
+      skip_upload_screenshots: true,
+    )
+  end
+end
