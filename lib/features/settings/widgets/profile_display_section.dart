@@ -6,6 +6,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/app_settings_model.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import 'theme_picker_sheet.dart';
 
 /// Display section widget for ProfileScreen (D-05 / Phase 37).
@@ -113,7 +114,7 @@ class ProfileDisplaySection extends ConsumerWidget {
               ),
             ),
             SizedBox(width: context.spacing.space8),
-            Icon(
+            DirectionalIcon(
               Iconsax.arrow_right_3,
               size: 16,
               color: context.colors.textSecondary,

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/config/app_metadata.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../keys/profile_keys.dart';
 
 /// About section widget for ProfileScreen.
@@ -63,7 +64,7 @@ class ProfileAboutSection extends ConsumerWidget {
                 tileKey: ProfileKeys.feedbackTile,
                 icon: Iconsax.message_question,
                 title: l10n.profileAboutSendFeedback,
-                trailing: Icon(
+                trailing: DirectionalIcon(
                   Iconsax.arrow_right_3,
                   size: 16,
                   color: context.colors.textSecondary,
@@ -77,7 +78,7 @@ class ProfileAboutSection extends ConsumerWidget {
                 tileKey: ProfileKeys.licensesTile,
                 icon: Iconsax.document_text,
                 title: l10n.profileAboutLicenses,
-                trailing: Icon(
+                trailing: DirectionalIcon(
                   Iconsax.arrow_right_3,
                   size: 16,
                   color: context.colors.textSecondary,

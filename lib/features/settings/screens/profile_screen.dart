@@ -18,6 +18,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/split_mode_display_name.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
@@ -184,6 +185,7 @@ class _TopBar extends StatelessWidget {
                 alignment: AlignmentDirectional.centerStart,
                 child: _GhostIcon(
                   icon: Iconsax.arrow_left,
+                  matchTextDirection: true,
                   onTap: () {
                     HapticService.lightClick();
                     _back(context);
@@ -216,9 +218,14 @@ class _TopBar extends StatelessWidget {
 }
 
 class _GhostIcon extends StatelessWidget {
-  const _GhostIcon({required this.icon, required this.onTap});
+  const _GhostIcon({
+    required this.icon,
+    required this.onTap,
+    this.matchTextDirection = false,
+  });
   final IconData icon;
   final VoidCallback onTap;
+  final bool matchTextDirection;
 
   @override
   Widget build(BuildContext context) {
@@ -229,7 +236,9 @@ class _GhostIcon extends StatelessWidget {
       child: SizedBox(
         width: 44,
         height: 44,
-        child: Icon(icon, size: 20, color: colors.textPrimary),
+        child: matchTextDirection
+            ? DirectionalIcon(icon, size: 20, color: colors.textPrimary)
+            : Icon(icon, size: 20, color: colors.textPrimary),
       ),
     );
   }
@@ -292,7 +301,7 @@ class _PendingRecoveryBanner extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
+                DirectionalIcon(
                   Iconsax.arrow_right_3,
                   size: 16,
                   color: colors.textSecondary,
@@ -705,7 +714,7 @@ class _AboutCard extends ConsumerWidget {
         rows: [
           _PrefRow(
             label: context.l10n.profileAboutHelpCenter,
-            trailing: Icon(
+            trailing: DirectionalIcon(
               Iconsax.arrow_right_3,
               size: 16,
               color: colors.textSecondary,
@@ -715,7 +724,7 @@ class _AboutCard extends ConsumerWidget {
           _PrefRow(
             tileKey: ProfileKeys.feedbackTile,
             label: context.l10n.profileAboutSendFeedbackRow,
-            trailing: Icon(
+            trailing: DirectionalIcon(
               Iconsax.arrow_right_3,
               size: 16,
               color: colors.textSecondary,
@@ -725,7 +734,7 @@ class _AboutCard extends ConsumerWidget {
           _PrefRow(
             tileKey: ProfileKeys.licensesTile,
             label: context.l10n.profileAboutTermsPrivacy,
-            trailing: Icon(
+            trailing: DirectionalIcon(
               Iconsax.arrow_right_3,
               size: 16,
               color: colors.textSecondary,
@@ -815,7 +824,7 @@ class _AccountCard extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Icon(
+                      DirectionalIcon(
                         Iconsax.arrow_right_3,
                         size: 16,
                         color: colors.textSecondary,
@@ -830,7 +839,7 @@ class _AccountCard extends ConsumerWidget {
               tileKey: ProfileKeys.signOutDeviceTile,
               leading: _PrefIcon(icon: Iconsax.logout, bg: colors.cardSoft),
               label: context.l10n.profileAccountSignOut,
-              trailing: Icon(
+              trailing: DirectionalIcon(
                 Iconsax.arrow_right_3,
                 size: 16,
                 color: colors.error,

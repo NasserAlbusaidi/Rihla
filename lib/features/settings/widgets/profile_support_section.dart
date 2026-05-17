@@ -6,6 +6,7 @@ import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../keys/profile_keys.dart';
 
 /// Support section widget for ProfileScreen.
@@ -108,7 +109,7 @@ class ProfileSupportSection extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(
+            DirectionalIcon(
               Iconsax.arrow_right_3,
               size: 16,
               color: context.colors.textSecondary,
