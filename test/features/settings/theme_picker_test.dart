@@ -7,6 +7,7 @@ import 'package:safar/core/models/app_settings_model.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/settings/widgets/theme_picker_sheet.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   setUp(() {
@@ -20,6 +21,8 @@ void main() {
         overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (ctx) => Scaffold(
               body: Center(
@@ -74,6 +77,8 @@ void main() {
         overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Consumer(
             builder: (ctx, ref, _) {
               capturedContainer = ProviderScope.containerOf(ctx);

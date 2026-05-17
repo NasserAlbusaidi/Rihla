@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/currency_display_name.dart';
 import '../../../core/utils/formatters.dart';
 
 /// Bottom sheet for picking the default currency used when creating new trips.
@@ -15,15 +17,6 @@ class CurrencyPickerSheet extends ConsumerWidget {
 
   /// Order shown in the picker. OMR first since the app is GCC-focused.
   static const _orderedCodes = ['OMR', 'AED', 'SAR', 'USD', 'EUR', 'GBP'];
-
-  static const _displayNames = {
-    'OMR': 'Omani rial',
-    'AED': 'UAE dirham',
-    'SAR': 'Saudi riyal',
-    'USD': 'US dollar',
-    'EUR': 'Euro',
-    'GBP': 'British pound',
-  };
 
   static Future<void> show(BuildContext context) {
     return showModalBottomSheet<void>(
@@ -41,6 +34,7 @@ class CurrencyPickerSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(settingsProvider.select((s) => s.currencyCode));
     final colors = context.colors;
+    final l10n = context.l10n;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -49,10 +43,13 @@ class CurrencyPickerSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Currency', style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              l10n.currencySheetTitle,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             SizedBox(height: context.spacing.space4),
             Text(
-              'Default for new trips. Existing trips keep their currency.',
+              l10n.currencySheetSubtitle,
               style: TextStyle(color: colors.textSecondary, fontSize: 13),
             ),
             SizedBox(height: context.spacing.space16),
@@ -72,7 +69,7 @@ class CurrencyPickerSheet extends ConsumerWidget {
                   for (final code in _orderedCodes)
                     RadioListTile<String>(
                       value: code,
-                      title: Text(_displayNames[code] ?? code),
+                      title: Text(currencyDisplayName(code, l10n)),
                       subtitle: Text(
                         '$code · ${AppFormatters.currencyConfig[code]?.symbol ?? ''}',
                         style: TextStyle(color: colors.textSecondary),
