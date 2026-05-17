@@ -2,8 +2,9 @@
 //
 // Mirror of golden_path_test.dart but boots the app in Arabic locale by
 // pre-seeding SharedPreferences. Catches RTL render exceptions, missing
-// ARB key fallbacks, and broken transition layouts in ar without unlocking
-// the user-facing toggle (still "Coming soon" in PR1).
+// ARB key fallbacks, and broken transition layouts in ar. PR2a unlocked
+// the user-facing toggle and translated Settings/Profile, so this test
+// now also asserts that the Profile tab renders Arabic content.
 //
 // Run with:
 //   firebase emulators:start --only auth,firestore,functions  # other terminal
@@ -18,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:safar/core/services/settings_service.dart';
+import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/main.dart' as app;
 
 void main() {
@@ -109,6 +111,37 @@ void main() {
       reason: 'English wordmark still visible after Arabic boot — '
           'WordmarkLogo locale branch did not flip',
     );
+
+    // PR2a Profile-translation assertion (codex round 1 P1-A): jump to the
+    // Profile tab and assert one of its translated section labels renders in
+    // Arabic. This proves the full chain end-to-end — locale wiring, ARB key
+    // resolution, and the actual widget consuming context.l10n.
+    final profileTab = find.byKey(HomeKeys.bottomNavProfile);
+    expect(
+      profileTab,
+      findsOneWidget,
+      reason: 'home_bottom_nav_profile missing on Home after skeleton clear (ar)',
+    );
+    await tester.tap(profileTab);
+    await _settle(tester);
+
+    expect(
+      find.text('التفضيلات'),
+      findsOneWidget,
+      reason: 'Profile screen "Preferences" section not translated to ar — '
+          'check localeProvider chain + ARB key profileSectionPreferences',
+    );
+
+    // Return to the Groups tab (the default landing surface) for the rest
+    // of the smoke test — the create-group FAB lives there.
+    final groupsTab = find.byKey(HomeKeys.bottomNavGroups);
+    expect(
+      groupsTab,
+      findsOneWidget,
+      reason: 'home_bottom_nav_groups missing after Profile detour (ar)',
+    );
+    await tester.tap(groupsTab);
+    await _settle(tester);
 
     final fab = find.byKey(const Key('home_create_group_fab'));
     expect(fab, findsOneWidget,
