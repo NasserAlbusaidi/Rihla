@@ -1,4 +1,128 @@
 {
   "@@locale": "ar",
-  "offlineBannerMessage": "أنت غير متصل — ستتم مزامنة التغييرات لاحقًا"
+
+  "offlineBannerMessage": "أنت غير متصل — ستتم مزامنة التغييرات لاحقًا",
+
+  "commonCancel": "إلغاء",
+  "commonSave": "حفظ",
+  "commonDelete": "حذف",
+  "commonOK": "موافق",
+
+  "currencyOMR": "ريال عُماني",
+  "currencyAED": "درهم إماراتي",
+  "currencySAR": "ريال سعودي",
+  "currencyUSD": "دولار أمريكي",
+  "currencyEUR": "يورو",
+  "currencyGBP": "جنيه إسترليني",
+  "currencyQAR": "ريال قطري",
+  "currencyKWD": "دينار كويتي",
+  "currencyBHD": "دينار بحريني",
+  "currencyJPY": "ين ياباني",
+
+  "languageSheetTitle": "اللغة",
+  "languageEnglish": "English",
+  "languageArabic": "العربية",
+
+  "currencySheetTitle": "العملة",
+  "currencySheetSubtitle": "الافتراضية للرحلات الجديدة. تحتفظ الرحلات الحالية بعملتها.",
+
+  "themeSheetTitle": "المظهر",
+  "themeSystem": "النظام",
+  "themeSystemDescription": "اتباع إعدادات الجهاز",
+  "themeLight": "فاتح",
+  "themeLightDescription": "فاتح دائمًا",
+  "themeDark": "داكن",
+  "themeDarkDescription": "داكن دائمًا",
+
+  "defaultSplitSheetTitle": "التقسيم الافتراضي",
+  "defaultSplitSheetSubtitle": "يُطبَّق على المصاريف الجديدة. يمكنك تغيير التقسيم لكل مصروف.",
+
+  "splitModeEqually": "بالتساوي",
+  "splitModeShares": "حصص",
+  "splitModeExact": "مبالغ محدّدة",
+  "splitModePercent": "نسبة مئوية",
+
+  "editNameTitle": "بماذا نناديك؟",
+  "editNameHelper": "هذا ما سيراه أصدقاؤك في المجموعات.",
+  "editNameFieldLabel": "اسم العرض",
+  "editNameFieldHint": "اسمك",
+  "editNameInitialsCaption": "الأحرف الأولى تظهر عند غياب الصورة",
+
+  "legalSheetTitle": "الشروط القانونية",
+  "legalTermsOfService": "شروط الخدمة",
+  "legalPrivacyPolicy": "سياسة الخصوصية",
+  "legalDeleteMyData": "حذف بياناتي",
+
+  "qrSheetTitle": "رمزي",
+  "qrSemanticsLabel": "رمز QR للملف الشخصي",
+  "qrCopyHandle": "نسخ المعرّف",
+  "qrHandleCopied": "تم نسخ المعرّف",
+
+  "profileSectionPreferences": "التفضيلات",
+  "profileSectionAccount": "الحساب",
+  "profileSectionAbout": "حول التطبيق",
+  "profileSectionDisplay": "العرض",
+  "profileSectionJourney": "رحلتك",
+
+  "profileStatsGroups": "مجموعات",
+  "profileStatsEvents": "فعاليات",
+  "profileStatsSpent": "المنفق",
+  "profileStatsJourneysLabel": "رحلات",
+  "profileStatsGroupsLabel": "مجموعات",
+  "profileStatsSpentLabel": "المنفق",
+
+  "profileNotificationsSectionLabel": "الإشعارات",
+  "profileNotificationsTitle": "إشعارات الدفع",
+  "profileNotificationsEnabled": "مُفعّل",
+  "profileNotificationsDisabledHint": "فعّل من إعدادات الجهاز",
+  "profileNotificationsSubtitle": "النشاط والتسويات",
+
+  "profileAboutVersion": "الإصدار",
+  "profileAboutSendFeedback": "إرسال ملاحظات",
+  "profileAboutSendFeedbackRow": "إرسال ملاحظات",
+  "profileAboutLicenses": "التراخيص مفتوحة المصدر",
+  "profileAboutFallbackEmail": "البريد: {email}",
+  "profileAboutHelpCenter": "مركز المساعدة",
+  "profileAboutTermsPrivacy": "الشروط والخصوصية",
+
+  "profileDisplayTheme": "المظهر",
+  "profileDisplayThemeSystemValue": "النظام • اتباع الجهاز",
+  "profileDisplayThemeLightValue": "فاتح",
+  "profileDisplayThemeDarkValue": "داكن",
+
+  "profileSupportSectionLabel": "الدعم",
+  "profileSupportCoffeeTile": "ادعمني بكوب قهوة",
+  "profileSupportPaypalFailed": "تعذّر فتح PayPal",
+
+  "profileTitle": "الملف الشخصي",
+  "profileAnonymousTraveller": "مسافر مجهول",
+  "profileSetYourName": "عيّن اسمك",
+  "profileFinishRecovery": "أكمل استعادة الحساب",
+  "profileRecoverySubtitle": "يوجد رابط استعادة قيد الانتظار. أدخل البريد الذي أُرسل إليه.",
+
+  "profilePreferencesCurrency": "العملة",
+  "profilePreferencesLanguage": "اللغة",
+  "profilePreferencesDefaultSplit": "التقسيم الافتراضي",
+
+  "profileAccountLinkedEmail": "البريد المربوط",
+  "profileAccountNotSet": "غير محدّد",
+  "profileAccountSignOut": "تسجيل الخروج من هذا الجهاز",
+  "profileAccountDelete": "حذف الحساب",
+  "profileAccountDeletePermanent": "دائم",
+
+  "profileStatsAllTime": "كل الوقت",
+  "profileStatsActive": "نشطة",
+  "profileStatsLifetime": "الإجمالي",
+
+  "profileShareMessage": "أقسم مصاريف الرحلات مع رحلة. جرّبها.",
+
+  "profileSnackHandleCopied": "تم نسخ المعرّف",
+  "profileSnackSignedOut": "تم تسجيل الخروج",
+  "profileSnackSignOutFailed": "تعذّر تسجيل الخروج. أعد المحاولة.",
+  "profileSnackOpenLinkFailed": "تعذّر فتح الرابط",
+  "profileSnackNoEmailApp": "لا يوجد تطبيق بريد إلكتروني متاح",
+
+  "profileDeletionOk": "تم حذف الحساب.",
+  "profileDeletionNoUser": "لا يوجد حساب نشط للحذف.",
+  "profileDeletionError": "تعذّر حذف الحساب. أعد المحاولة."
 }
