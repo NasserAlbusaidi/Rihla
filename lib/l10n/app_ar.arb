@@ -111,6 +111,15 @@
   "profileAccountDelete": "حذف الحساب",
   "profileAccountDeletePermanent": "دائم",
 
+  "deleteAccountTitle": "حذف حسابك؟",
+  "deleteAccountContent": "سيؤدي هذا إلى حذف حسابك في رحلة نهائيًا. سيُحرَّر بريدك الإلكتروني المرتبط (إن وُجد) ليُتاح استخدامه مجددًا. ستصبح الرحلات والنفقات والأرصدة المرتبطة بحسابك غير قابلة للوصول. لا يمكن التراجع.",
+  "deleteAccountConfirm": "حذف الحساب",
+
+  "signOutTitle": "تسجيل الخروج من هذا الجهاز؟",
+  "signOutContentPrefix": "بياناتك محفوظة في السحابة. للاستعادة، أدخل ",
+  "signOutContentSuffix": " على أي جهاز.",
+  "signOutConfirm": "تسجيل الخروج",
+
   "profileStatsAllTime": "كل الوقت",
   "profileStatsActive": "نشطة",
   "profileStatsLifetime": "الإجمالي",

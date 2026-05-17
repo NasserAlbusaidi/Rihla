@@ -285,6 +285,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileAccountDeletePermanent => 'Permanent';
 
   @override
+  String get deleteAccountTitle => 'Delete your account?';
+
+  @override
+  String get deleteAccountContent =>
+      'This permanently deletes your Rihla account. Your linked email (if any) will be released so it can be reused. Trips, expenses, and balances tied to your account become unreachable. There\'s no undo.';
+
+  @override
+  String get deleteAccountConfirm => 'Delete account';
+
+  @override
+  String get signOutTitle => 'Sign out of this device?';
+
+  @override
+  String get signOutContentPrefix =>
+      'Your data stays in the cloud. To restore, enter ';
+
+  @override
+  String get signOutContentSuffix => ' on any device.';
+
+  @override
+  String get signOutConfirm => 'Sign out';
+
+  @override
   String get profileStatsAllTime => 'all-time';
 
   @override

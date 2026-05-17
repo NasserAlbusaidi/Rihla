@@ -638,6 +638,48 @@ abstract class AppLocalizations {
   /// **'Permanent'**
   String get profileAccountDeletePermanent;
 
+  /// Title of the DeleteAccountDialog confirming destructive account deletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get deleteAccountTitle;
+
+  /// Body copy of the DeleteAccountDialog spelling out what deletion means.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes your Rihla account. Your linked email (if any) will be released so it can be reused. Trips, expenses, and balances tied to your account become unreachable. There\'s no undo.'**
+  String get deleteAccountContent;
+
+  /// Destructive confirm button on the DeleteAccountDialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountConfirm;
+
+  /// Title of the SignOutConfirmDialog confirming local sign-out.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of this device?'**
+  String get signOutTitle;
+
+  /// First text run of the SignOutConfirmDialog content, ending just before the bold email address.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data stays in the cloud. To restore, enter '**
+  String get signOutContentPrefix;
+
+  /// Trailing text run of the SignOutConfirmDialog content, immediately after the bold email address.
+  ///
+  /// In en, this message translates to:
+  /// **' on any device.'**
+  String get signOutContentSuffix;
+
+  /// Confirm button on the SignOutConfirmDialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get signOutConfirm;
+
   /// Subtitle on the Journeys stat card.
   ///
   /// In en, this message translates to:

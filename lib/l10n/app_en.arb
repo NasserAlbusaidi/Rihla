@@ -387,6 +387,36 @@
     "description": "Trailing label on the Delete account row warning the action is permanent."
   },
 
+  "deleteAccountTitle": "Delete your account?",
+  "@deleteAccountTitle": {
+    "description": "Title of the DeleteAccountDialog confirming destructive account deletion."
+  },
+  "deleteAccountContent": "This permanently deletes your Rihla account. Your linked email (if any) will be released so it can be reused. Trips, expenses, and balances tied to your account become unreachable. There's no undo.",
+  "@deleteAccountContent": {
+    "description": "Body copy of the DeleteAccountDialog spelling out what deletion means."
+  },
+  "deleteAccountConfirm": "Delete account",
+  "@deleteAccountConfirm": {
+    "description": "Destructive confirm button on the DeleteAccountDialog."
+  },
+
+  "signOutTitle": "Sign out of this device?",
+  "@signOutTitle": {
+    "description": "Title of the SignOutConfirmDialog confirming local sign-out."
+  },
+  "signOutContentPrefix": "Your data stays in the cloud. To restore, enter ",
+  "@signOutContentPrefix": {
+    "description": "First text run of the SignOutConfirmDialog content, ending just before the bold email address."
+  },
+  "signOutContentSuffix": " on any device.",
+  "@signOutContentSuffix": {
+    "description": "Trailing text run of the SignOutConfirmDialog content, immediately after the bold email address."
+  },
+  "signOutConfirm": "Sign out",
+  "@signOutConfirm": {
+    "description": "Confirm button on the SignOutConfirmDialog."
+  },
+
   "profileStatsAllTime": "all-time",
   "@profileStatsAllTime": {
     "description": "Subtitle on the Journeys stat card."

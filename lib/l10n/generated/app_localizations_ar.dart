@@ -285,6 +285,29 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileAccountDeletePermanent => 'دائم';
 
   @override
+  String get deleteAccountTitle => 'حذف حسابك؟';
+
+  @override
+  String get deleteAccountContent =>
+      'سيؤدي هذا إلى حذف حسابك في رحلة نهائيًا. سيُحرَّر بريدك الإلكتروني المرتبط (إن وُجد) ليُتاح استخدامه مجددًا. ستصبح الرحلات والنفقات والأرصدة المرتبطة بحسابك غير قابلة للوصول. لا يمكن التراجع.';
+
+  @override
+  String get deleteAccountConfirm => 'حذف الحساب';
+
+  @override
+  String get signOutTitle => 'تسجيل الخروج من هذا الجهاز؟';
+
+  @override
+  String get signOutContentPrefix =>
+      'بياناتك محفوظة في السحابة. للاستعادة، أدخل ';
+
+  @override
+  String get signOutContentSuffix => ' على أي جهاز.';
+
+  @override
+  String get signOutConfirm => 'تسجيل الخروج';
+
+  @override
   String get profileStatsAllTime => 'كل الوقت';
 
   @override

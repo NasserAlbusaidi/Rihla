@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
@@ -21,11 +22,12 @@ class DeleteAccountDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     return AlertDialog(
       backgroundColor: colors.cardSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(
-        'Delete your account?',
+        l10n.deleteAccountTitle,
         style: AppTypography.sans(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -33,10 +35,7 @@ class DeleteAccountDialog extends StatelessWidget {
         ),
       ),
       content: Text(
-        'This permanently deletes your Rihla account. Your linked email '
-        '(if any) will be released so it can be reused. Trips, expenses, '
-        'and balances tied to your account become unreachable. '
-        "There's no undo.",
+        l10n.deleteAccountContent,
         style: AppTypography.sans(
           fontSize: 14,
           color: colors.textSecondary,
@@ -47,13 +46,13 @@ class DeleteAccountDialog extends StatelessWidget {
         TextButton(
           key: const Key('deleteAccount.cancel'),
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         FilledButton(
           key: const Key('deleteAccount.confirm'),
           style: FilledButton.styleFrom(backgroundColor: colors.error),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Delete account'),
+          child: Text(l10n.deleteAccountConfirm),
         ),
       ],
     );

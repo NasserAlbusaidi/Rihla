@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
@@ -22,11 +23,12 @@ class SignOutConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     return AlertDialog(
       backgroundColor: colors.cardSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(
-        'Sign out of this device?',
+        l10n.signOutTitle,
         style: AppTypography.sans(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -41,9 +43,7 @@ class SignOutConfirmDialog extends StatelessWidget {
             height: 1.4,
           ),
           children: [
-            const TextSpan(
-              text: 'Your data stays in the cloud. To restore, enter ',
-            ),
+            TextSpan(text: l10n.signOutContentPrefix),
             TextSpan(
               text: email,
               style: AppTypography.sans(
@@ -52,7 +52,7 @@ class SignOutConfirmDialog extends StatelessWidget {
                 color: colors.textPrimary,
               ),
             ),
-            const TextSpan(text: ' on any device.'),
+            TextSpan(text: l10n.signOutContentSuffix),
           ],
         ),
       ),
@@ -60,13 +60,13 @@ class SignOutConfirmDialog extends StatelessWidget {
         TextButton(
           key: const Key('signOutConfirm.cancel'),
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         FilledButton(
           key: const Key('signOutConfirm.confirm'),
           style: FilledButton.styleFrom(backgroundColor: colors.error),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Sign out'),
+          child: Text(l10n.signOutConfirm),
         ),
       ],
     );
