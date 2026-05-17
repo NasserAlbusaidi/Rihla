@@ -261,25 +261,23 @@ class AppRoutes {
 ### SQLite (`LocalDatabase`)
 
 File: `lib/core/services/local_database.dart`
-Database: `safar_cache.db`, schema **version 8** (T4.N split mode + split distribution columns on expenses)
+Database: `safar_cache.db`, schema **version 9** (T4.N split mode + split distribution columns on expenses, tombstone group members)
 
 Tables:
 
 | Table | Purpose |
 |-------|---------|
-| `trips` | Legacy trip cache (event data pre-Firestore migration) |
+| `trips` | FK target for active cache tables (`expenses`, `settlements`, `participants`, `activity_logs`, `categories` cascade on `trip_id`); no write surface |
 | `expenses` | Expense cache — keyed by `trip_id` (= Firestore event ID) |
 | `settlements` | Settlement cache |
-| `gear_items` | Legacy table retained for SQLite compatibility (no UI surface post-Phase 39) |
 | `participants` | Participant cache |
-| `sub_groups` / `sub_group_members` | Sub-group membership cache (legacy) |
 | `activity_logs` | Activity log cache |
 | `categories` | Expense category cache |
 | `groups` | Group cache |
 | `group_members` | Group member cache |
 | `group_ledger` | Group-level balance cache |
 
-All `expenses`, legacy `gear_items`, and `settlements` rows include `is_deleted` and `deleted_at` for soft-delete support. `LocalDatabase` handles versioned migrations via `_onUpgrade`.
+All `expenses` and `settlements` rows include `is_deleted` and `deleted_at` for soft-delete support. `LocalDatabase` handles versioned migrations via `_onUpgrade`.
 
 ### Cache repositories (`lib/core/services/cache/`)
 

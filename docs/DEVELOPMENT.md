@@ -277,17 +277,17 @@ const OfflineBanner(),  // from lib/shared/widgets/offline_banner.dart
 
 3. **Balance calculations:** If your feature feeds `BalanceCalculator`, add a `cacheExpenses` / `cacheSettlements` call via `asyncMap` in the stream provider (see expense provider pattern above).
 
-4. **LocalDatabase schema:** If you need a new SQLite table for balance caching, add it in `LocalDatabase._onCreate` and `_onUpgrade`, and bump `_databaseVersion`. Current version is **8**.
+4. **LocalDatabase schema:** If you need a new SQLite table for balance caching, add it in `LocalDatabase._onCreate` and `_onUpgrade`, and bump `_databaseVersion`. Current version is **9**.
 
 ### LocalDatabase tables
 
 ```
-trips, expenses, settlements, gear_items, participants,
-sub_groups, sub_group_members, activity_logs, categories,
+trips, expenses, settlements, participants,
+activity_logs, categories,
 groups, group_members, group_ledger
 ```
 
-All monetary amounts are stored as `TEXT` (Decimal string representation). Soft-delete columns (`is_deleted INTEGER`, `deleted_at TEXT`) on expenses, gear_items, and settlements.
+All monetary amounts are stored as `TEXT` (Decimal string representation). Soft-delete columns (`is_deleted INTEGER`, `deleted_at TEXT`) on expenses and settlements.
 
 ---
 
@@ -480,7 +480,7 @@ Settlement optimization uses a greedy min-transactions algorithm (`calculateOpti
 
 ### Soft deletes
 
-Expenses, events, groups, and settlements use `isDeleted` + deleted timestamp fields where the current model supports them. Queries must filter out deleted records. Legacy local tables such as `gear_items` remain only for SQLite compatibility with older installs.
+Expenses, events, groups, and settlements use `isDeleted` + deleted timestamp fields where the current model supports them. Queries must filter out deleted records.
 
 ---
 

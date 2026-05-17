@@ -31,14 +31,13 @@
 ## services/
 
 - **firestore_repository.dart**: `FirestoreRepository` — abstract base for all Firestore services. Production constructor uses `FirebaseConfig.firestore`; test constructor accepts `FakeFirebaseFirestore`. Helper: `eventSubcollection(groupId, eventId, module)` returns `groups/{groupId}/events/{eventId}/{module}`.
-- **local_database.dart**: `LocalDatabase` — SQLite offline cache via sqflite. DB: `safar_cache.db`, **version 9**. Tables: `trips`, `expenses`, `settlements`, `gear_items` (legacy, retained for SQLite compatibility), `participants`, `sub_groups`, `sub_group_members`, `activity_logs`, `categories`, `groups`, `group_members`, `group_ledger`. Singleton with `Completer`-guarded initialization.
+- **local_database.dart**: `LocalDatabase` — SQLite offline cache via sqflite. DB: `safar_cache.db`, **version 9**. Tables: `trips` (FK target for active cache tables; no write surface), `expenses`, `settlements`, `participants`, `activity_logs`, `categories`, `groups`, `group_members`, `group_ledger`. Singleton with `Completer`-guarded initialization.
 ### Domain Cache Repositories (`services/cache/`)
 
-Each file owns SQLite I/O for one domain of the local cache (`safar_cache.db` v8). Instance-based, provided via Riverpod.
+Each file owns SQLite I/O for one domain of the local cache (`safar_cache.db` v9). Instance-based, provided via Riverpod.
 
 - **expense_cache_repository.dart**: `ExpenseCacheRepository` — ghost-row-free write via delete-all-for-event + batch insert. Consumed by `eventExpensesProvider.asyncMap` side-write (D-15).
 - **settlement_cache_repository.dart**: `SettlementCacheRepository` — same delete-then-insert pattern as expenses.
-- **trip_cache_repository.dart**: `TripCacheRepository` — upsert + cascading delete across 9 related tables in one transaction.
 - **participant_cache_repository.dart**: `ParticipantCacheRepository` — delete-all + batch-insert.
 - **activity_log_cache_repository.dart**: `ActivityLogCacheRepository` — delete-all + batch-insert, 50-row read cap.
 - **category_cache_repository.dart**: `CategoryCacheRepository` — delete-all + batch-insert.
