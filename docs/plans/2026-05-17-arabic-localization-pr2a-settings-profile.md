@@ -120,8 +120,30 @@ All new keys land in Task 1. **Naming convention:** screen-prefixed for screen-s
 
 ## Tasks
 
-### Task 1: Bulk-add ARB keys
-Add every key from inventory to `lib/l10n/app_en.arb` + `lib/l10n/app_ar.arb` with `@<key>` metadata in en. Verify with `dart run tool/check_arb_completeness.dart`. **Commit:** `feat(l10n): add Settings/Profile ARB keys (en + ar)`
+### Task 1: Bulk-add ARB keys + regenerate l10n
+
+**Step 1: Add keys.** Add every key from inventory to `lib/l10n/app_en.arb` + `lib/l10n/app_ar.arb` with `@<key>` metadata in en (description, plus `placeholders` for parameterized keys).
+
+Parameterized keys in PR2a need `placeholders` blocks (codex round 3 P1). Example for `profileAboutFallbackEmail`:
+
+```json
+"profileAboutFallbackEmail": "Email: {email}",
+"@profileAboutFallbackEmail": {
+  "description": "Fallback SnackBar when mailto: launch fails. The email value is a literal ASCII address; Arabic locale wraps it with bidi defaults.",
+  "placeholders": {
+    "email": { "type": "String", "example": "feedback@rihla.app" }
+  }
+}
+```
+
+**Step 2: Trigger codegen.** Run `flutter pub get` — `pubspec.yaml`'s `flutter.generate: true` (set in PR1) makes the build pipeline auto-run `gen-l10n` on pub-get. Inspect `lib/l10n/generated/app_localizations*.dart` — every new key should appear as a getter on `AppLocalizations` and be implemented in both `app_localizations_en.dart` and `app_localizations_ar.dart`. Parameterized getters appear as methods (e.g. `String profileAboutFallbackEmail(String email)`).
+
+**Step 3: Verify.**
+- `dart run tool/check_arb_completeness.dart` → OK (~92 keys).
+- `flutter analyze` → clean (no missing getters in any consumer; though no consumer wires the new keys yet — analyzer just confirms the codegen output compiles).
+- Skim `lib/l10n/generated/app_localizations_en.dart` — every parameterized key is a method, every plain key is a getter.
+
+**Commit:** `feat(l10n): add Settings/Profile ARB keys + regenerate l10n bindings` (stages both `lib/l10n/*.arb` and the regenerated `lib/l10n/generated/*.dart`).
 
 ### Task 2: Currency + SplitMode display name helpers
 TDD. Two parallel helpers in the same task:
@@ -199,7 +221,7 @@ All 5: display, notifications, about, support, stats.
 - `profile_stats_section.dart`: hardcoded `'YOUR JOURNEY'` literal at line 36 (no `.toUpperCase()` call — Arabic key renders verbatim). Translate the 6 stat labels (Groups/Events/Spent x2 — stats card pair).
 - `profile_support_section.dart` (codex round 1 P1-B — round 0 missed all three): translate `'SUPPORT'` (line 46), `'Buy me a coffee'` (line 101), and the `"Couldn't open PayPal"` SnackBar text (line 70).
 - `profile_notifications_section.dart` (codex round 2 P1): translate hardcoded `'NOTIFICATIONS'` section label at line 53 → `context.l10n.profileNotificationsSectionLabel`; rest of the widget per inventory.
-- `profile_about_section.dart` (codex round 2 P1): translate the `Email: feedback@rihla.app` SnackBar at line 188 → `context.l10n.profileAboutFallbackEmail(metadata.email)` (parameterized — the email address itself doesn't translate, only the "Email:" prefix). Rest per inventory.
+- `profile_about_section.dart` (codex round 2 P1 + round 3 P2): translate the `Email: feedback@rihla.app` SnackBar at line 188 → `context.l10n.profileAboutFallbackEmail('feedback@rihla.app')`. The email address is hardcoded as a literal at lines 177 + 188 (no `AppMetadata.email` field exists; AppMetadata has only appName/packageName/version/buildNumber). Optional cleanup: extract the address to an `AppLinks.feedbackEmail` constant if the same literal is reused elsewhere — out-of-scope for PR2a otherwise. Rest per inventory.
 
 **Commit:** `feat(l10n): translate profile section widgets`
 
@@ -289,6 +311,14 @@ Both P1s applied; P2 wording clarification applied.
 - **R2-P1 #1 (inventory still incomplete)** — Three more strings missed by round 1's expansion: `'NOTIFICATIONS'` section label at `profile_notifications_section.dart:53`, the `"Couldn't open link"` failure SnackBar at `legal_links_sheet.dart:123`, and the `'Email: feedback@rihla.app'` fallback SnackBar at `profile_about_section.dart:188`. Fixes: added `profileNotificationsSectionLabel` + `profileAboutFallbackEmail(String email)` parameterized key; the legal failure snack dedupes with the existing `profileSnackOpenLinkFailed` key (same text). Inventory total: ~92 keys.
 - **R2-P1 #2 (test harness migration was unplanned)** — Six existing test files use bare `MaterialApp` without localization delegates and assert on English literals that will be translated. Tasks 4, 5, 7 now explicitly migrate them in the same commit as the widget change (mirrors PR1 Task 7's pattern; see `[[pump-rihla-app-test-contracts]]` memory). Files: `currency_picker_sheet_test.dart`, `default_split_picker_sheet_test.dart`, `theme_picker_test.dart`, `legal_links_sheet_test.dart`, `profile_qr_sheet_test.dart`, `profile_screen_test.dart`. Task 6 has no existing tests on the section widgets so nothing to migrate there.
 - **R2-P2 (helper scope clarification)** — Task 2's "callers migrate to the helper" wording was over-broad. `ExpenseEditorBody` at `lib/features/ledger/widgets/expense_editor_body.dart:1173-1175` also reads `mode.label`, but ledger is deferred to PR2b. Plan now explicitly excludes that call site from PR2a; re-flag in PR2b.
+
+### Round 3 — FAIL (1 P1, 1 P2, 1 P3), same session resumed
+
+P1 + P2 applied; P3 noted but not blocking.
+
+- **R3-P1 (codegen + placeholders)** — Task 1 said "with `@<key>` metadata" and ran `tool/check_arb_completeness.dart` (which only checks key presence, not metadata/placeholders). Parameterized keys need explicit `placeholders` blocks in the en ARB, and `gen_l10n` must regenerate `lib/l10n/generated/*.dart` before any downstream task tries to use `context.l10n.<newKey>`. Plan now: Task 1 has three steps (add keys with placeholders, run `flutter pub get` to trigger codegen, verify the regenerated bindings expose every key as a getter/method), and the commit stages both ARBs and the regenerated files.
+- **R3-P2 (wrong field)** — Task 6 said `context.l10n.profileAboutFallbackEmail(metadata.email)`, but `AppMetadata` has no `email` field (only appName/packageName/version/buildNumber per `lib/core/config/app_metadata.dart:5-15`). The address is hardcoded as a literal at `profile_about_section.dart:177` + `:188`. Plan now passes the literal: `context.l10n.profileAboutFallbackEmail('feedback@rihla.app')`.
+- **R3-P3 (RTL/LTR snack rendering, noted only)** — Codex flagged that the Arabic-locale `Email: {email}` snack mixes RTL prefix with LTR ASCII email body and could render with awkward punctuation. Unicode bidi defaults handle this correctly in practice; Arabic ARB value can use natural phrasing without explicit LRM characters. If real-device QA on PR4 shows visible weirdness, refine the Arabic ARB string then.
 
 ## Notes on the Q2 unlock decision
 
