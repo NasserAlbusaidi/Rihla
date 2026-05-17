@@ -91,6 +91,7 @@ All new keys land in Task 1. **Naming convention:** screen-prefixed for screen-s
 - `legalTermsOfService` — "Terms of service" (was `legalTerms` in round 0; replaced)
 - `legalPrivacyPolicy` — "Privacy policy"
 - `legalDeleteMyData` — "Delete my data"
+- (the `"Couldn't open link"` failure SnackBar at `legal_links_sheet.dart:123` reuses `profileSnackOpenLinkFailed` from the Profile screen group — same text, single key — per codex round 2 dedup)
 
 ### QR sheet
 - `qrSheetTitle`, `qrSemanticsLabel`, `qrCopyHandle`, `qrHandleCopied` (4)
@@ -98,8 +99,8 @@ All new keys land in Task 1. **Naming convention:** screen-prefixed for screen-s
 ### profile_*_section widgets
 - Sections: `profileSectionPreferences / Account / About / Display / Journey` (5)
 - Stats: `profileStatsGroups / Events / Spent` (3 — singular for stats cards, `profileStatsJourneysLabel / GroupsLabel / SpentLabel` for ALLCAPS variants — 6 total)
-- Notifications: `profileNotificationsTitle`, `profileNotificationsEnabled`, `profileNotificationsDisabledHint` (3)
-- About: `profileAboutVersion`, `profileAboutSendFeedback`, `profileAboutLicenses` (3)
+- Notifications: `profileNotificationsSectionLabel` ("NOTIFICATIONS" — codex round 2 P1), `profileNotificationsTitle`, `profileNotificationsEnabled`, `profileNotificationsDisabledHint` (4)
+- About: `profileAboutVersion`, `profileAboutSendFeedback`, `profileAboutLicenses`, `profileAboutFallbackEmail(String email)` ("Email: {email}" parameterized — codex round 2 P1; for the launchUrl-fails snack at `profile_about_section.dart:188`) (4)
 - Display: `profileDisplayTheme`, `profileDisplayThemeSystemValue`, `profileDisplayThemeLightValue`, `profileDisplayThemeDarkValue` (4 — three concrete value keys, not the parameterized form proposed in round 0; codex round 1 P1-D)
 - Support (codex round 1 P1-B — round 0 missed three): `profileSupportSectionLabel` ("SUPPORT"), `profileSupportCoffeeTile` ("Buy me a coffee"), `profileSupportPaypalFailed` ("Couldn't open PayPal")
 
@@ -129,9 +130,11 @@ TDD. Two parallel helpers in the same task:
 
 **2b. SplitMode (codex round 1 P1-C).** Create `lib/core/utils/split_mode_display_name.dart` + `test/unit/split_mode_display_name_test.dart`. Signature: `String splitModeDisplayName(SplitMode mode, AppLocalizations l10n)`. Switch on the enum → `l10n.splitModeEqually / Shares / Exact / Percent`. The existing English-only `SplitModeX.label` extension in `lib/core/models/split_mode.dart:18-24` stays untouched (callers migrate to the helper instead — this keeps `split_mode.dart` independent of `AppLocalizations`).
 
-Call sites to migrate (Task 4 + Task 7 handle these):
+Call sites to migrate **in PR2a** (Task 4 + Task 7 handle these):
 - `lib/features/settings/widgets/default_split_picker_sheet.dart:65` — picker option title
 - `lib/features/settings/screens/profile_screen.dart:678` — preferences row `trailingText`
+
+**Stays on `SplitModeX.label` until PR2b (codex round 2 P2 clarification):** `lib/features/ledger/widgets/expense_editor_body.dart:1173-1175` reads `mode.label` in the add-expense split card. Ledger is deferred to PR2b per Non-goals — this call site doesn't migrate in PR2a. Re-flag in PR2b.
 
 **Commit:** `feat(l10n): add currencyDisplayName + splitModeDisplayName helpers`
 
@@ -165,14 +168,27 @@ Modify `currency_picker_sheet.dart`, `theme_picker_sheet.dart`, `default_split_p
 - `theme_picker_sheet.dart`: replace 'System', 'Light', 'Dark' + their descriptions via `context.l10n.themeSheetTitle` / `themeSystem` / etc.
 - `default_split_picker_sheet.dart:65`: replace `Text(mode.label)` with `Text(splitModeDisplayName(mode, context.l10n))` (Task 2b). Translate sheet title + subtitle.
 
+**Test harness migration in same commit (codex round 2 P1):** PR1 added `AppLocalizations.localizationsDelegates` + `supportedLocales` to the test helpers that wrap a `MaterialApp` directly. Three settings-widget tests still wrap bare `MaterialApp` and assert English literals that will be translated:
+- `test/features/settings/widgets/currency_picker_sheet_test.dart` (lines 15-27 wrapper, :43-64 + :97 literals like 'Currency', 'Omani rial')
+- `test/features/settings/widgets/default_split_picker_sheet_test.dart` (lines 16-29 wrapper, :43-56 + :90 literals like 'Equal', 'Shares', 'Default split')
+- `test/features/settings/theme_picker_test.dart` (lines 21-33 wrapper, :43-60 literals like 'System', 'Light', 'Always light')
+
+For each: add `localizationsDelegates: AppLocalizations.localizationsDelegates` + `supportedLocales: AppLocalizations.supportedLocales` to the test's `MaterialApp(...)`; replace English literal assertions with the ARB en value (still English in test default-en path) so the assertion semantics don't change. If a test asserts on a translated string that came from `SplitMode.label`/etc., migrate to the helper's en output.
+
 **Commit:** `feat(l10n): translate Currency/Theme/DefaultSplit picker sheets`
 
 ### Task 5: Translate `edit_name_bottom_sheet.dart` + small sheets
 Modify `edit_name_bottom_sheet.dart`, `legal_links_sheet.dart`, `profile_qr_sheet.dart`.
 
-- `legal_links_sheet.dart` (codex round 1 P1-B — round 0 missed 3 of 4 strings): translate `'Legal'` header (line 61) + all three `_LegalRow.label` props at lines 74, 80, 86. Use `legalSheetTitle`, `legalTermsOfService`, `legalPrivacyPolicy`, `legalDeleteMyData`. The icons and URLs stay put — only the labels change.
+- `legal_links_sheet.dart` (codex round 1 P1-B + round 2 P1): translate `'Legal'` header (line 61) + all three `_LegalRow.label` props at lines 74, 80, 86. Use `legalSheetTitle`, `legalTermsOfService`, `legalPrivacyPolicy`, `legalDeleteMyData`. Also translate the `"Couldn't open link"` snack at line 123 → `context.l10n.profileSnackOpenLinkFailed` (shared key with profile_screen — same text). Icons and URLs stay put.
 - `edit_name_bottom_sheet.dart`: translate heading, helper, labels, button text.
 - `profile_qr_sheet.dart`: QR snack uses `qrHandleCopied` (alias of `profileSnackHandleCopied`).
+
+**Test harness migration in same commit (codex round 2 P1):** Two test files break when the widgets switch to `context.l10n`:
+- `test/features/settings/widgets/legal_links_sheet_test.dart` (lines 34-46 wrapper, :55-90 literals like 'Legal', 'Terms of service')
+- `test/features/settings/profile_qr_sheet_test.dart` (lines 12-28 wrapper, :38 literals like 'My QR', 'Profile QR code')
+
+Add `localizationsDelegates` + `supportedLocales` to each `MaterialApp(...)`; literal assertions stay as-is (they'll match the en ARB values, which equal the prior hardcoded strings).
 
 **Commit:** `feat(l10n): translate edit-name + legal-links + QR sheets`
 
@@ -182,7 +198,8 @@ All 5: display, notifications, about, support, stats.
 - `profile_display_section.dart` (codex round 1 P1-D refinement): the `switch (mode)` at lines 24-28 currently returns English literals (`'System • Following device'`, `'Light'`, `'Dark'`). Replace with `context.l10n.profileDisplayThemeSystemValue` / `profileDisplayThemeLightValue` / `profileDisplayThemeDarkValue` (three concrete value keys — drops the originally-proposed `profileThemeSystemValue(themeName)` parameterization because the system case is a compound phrase and English-themed parameterization would still leak source text into Arabic context).
 - `profile_stats_section.dart`: hardcoded `'YOUR JOURNEY'` literal at line 36 (no `.toUpperCase()` call — Arabic key renders verbatim). Translate the 6 stat labels (Groups/Events/Spent x2 — stats card pair).
 - `profile_support_section.dart` (codex round 1 P1-B — round 0 missed all three): translate `'SUPPORT'` (line 46), `'Buy me a coffee'` (line 101), and the `"Couldn't open PayPal"` SnackBar text (line 70).
-- `profile_notifications_section.dart`, `profile_about_section.dart`: translate per inventory.
+- `profile_notifications_section.dart` (codex round 2 P1): translate hardcoded `'NOTIFICATIONS'` section label at line 53 → `context.l10n.profileNotificationsSectionLabel`; rest of the widget per inventory.
+- `profile_about_section.dart` (codex round 2 P1): translate the `Email: feedback@rihla.app` SnackBar at line 188 → `context.l10n.profileAboutFallbackEmail(metadata.email)` (parameterized — the email address itself doesn't translate, only the "Email:" prefix). Rest per inventory.
 
 **Commit:** `feat(l10n): translate profile section widgets`
 
@@ -200,6 +217,10 @@ All 5: display, notifications, about, support, stats.
 - Lines 868-869: `'RIHLA · BUILT FOR JOURNEYS'` tagline.
 - Line 1138: `'subject': 'Rihla feedback · v$versionLabel'` (mailto subject — seen by support, not user).
 - Line 1120: `Share.share`'s `subject: 'Rihla'` parameter (brand mark).
+
+**Test harness migration in same commit (codex round 2 P1):** `test/features/profile/profile_screen_test.dart` is the largest existing test on this surface and breaks at multiple lines:
+- Wrapper at :34-43 needs `localizationsDelegates` + `supportedLocales`.
+- Literal assertions at :197, :449, :556, :576, :619 reference English strings that will be translated (`'Set your name'`, `'Anonymous traveller'`, `'Sign out of this device'`, etc.). Replace with the same English strings sourced from the en ARB if you want to avoid hardcoded literals, OR keep the hardcoded literal — the assertion semantics are identical for the en default path. Recommended: keep hardcoded literals to keep the diff minimal; the test still validates user-visible text on the en path.
 
 **Commit:** `feat(l10n): translate profile screen (sections, snacks, account actions)`
 
@@ -248,9 +269,11 @@ Same gate set as PR1 Task 12:
 
 ---
 
-## Codex round 1 findings applied
+## Codex review history
 
-Run 2026-05-17, session `019e36be-65c2-7801-96c1-7f2d9b61305a`. Verdict: FAIL (4 P1, 2 P2). All four P1s applied; P2-A applied (re-aimed to Task 7); P2-B documented as known cosmetic.
+### Round 1 — FAIL (4 P1, 2 P2), session `019e36be-…`
+
+All four P1s applied; P2-A applied (re-aimed to Task 7); P2-B documented as known cosmetic.
 
 - **P1-A** — Task 9's `Key('home_profile_tab')` was a hallucination. Real key is `HomeKeys.bottomNavProfile = Key('home_bottom_nav_profile')` (`lib/features/home/keys/home_keys.dart:30`, attached at `lib/features/home/widgets/bottom_nav_shell.dart:120-123`). Plan rewired + skip fallback dropped.
 - **P1-B** — ARB inventory missed 12 strings: legal sheet rows (3), support section (3), profile_screen recovery subtitle (1), stat subtitles (3), share copy body (1), legal sheet title (1). All added.
@@ -258,6 +281,14 @@ Run 2026-05-17, session `019e36be-65c2-7801-96c1-7f2d9b61305a`. Verdict: FAIL (4
 - **P1-D** — Parameterized `profileThemeSystemValue(String themeName)` was underspecified. The "System" case is a compound ("System • Following device") — parameterization would still leak English. Replaced with three concrete value keys: `profileDisplayThemeSystemValue / LightValue / DarkValue`.
 - **P2-A** — ALLCAPS note re-aimed from Task 6 (profile_stats_section, which has hardcoded literals, not `.toUpperCase()`) to Task 7 (profile_screen.dart's `_SectionLabel` at line 611 actually calls `.toUpperCase()`). Plan now removes the `.toUpperCase()` call in Task 7.
 - **P2-B (deferred)** — Sheet's `Text('Language', ...)` may rebuild as Arabic for one frame before `Navigator.pop()`. Single-frame cosmetic flicker. Documented in Task 3 as known; not fixed in PR2a.
+
+### Round 2 — FAIL (2 P1, 1 P2), same session resumed
+
+Both P1s applied; P2 wording clarification applied.
+
+- **R2-P1 #1 (inventory still incomplete)** — Three more strings missed by round 1's expansion: `'NOTIFICATIONS'` section label at `profile_notifications_section.dart:53`, the `"Couldn't open link"` failure SnackBar at `legal_links_sheet.dart:123`, and the `'Email: feedback@rihla.app'` fallback SnackBar at `profile_about_section.dart:188`. Fixes: added `profileNotificationsSectionLabel` + `profileAboutFallbackEmail(String email)` parameterized key; the legal failure snack dedupes with the existing `profileSnackOpenLinkFailed` key (same text). Inventory total: ~92 keys.
+- **R2-P1 #2 (test harness migration was unplanned)** — Six existing test files use bare `MaterialApp` without localization delegates and assert on English literals that will be translated. Tasks 4, 5, 7 now explicitly migrate them in the same commit as the widget change (mirrors PR1 Task 7's pattern; see `[[pump-rihla-app-test-contracts]]` memory). Files: `currency_picker_sheet_test.dart`, `default_split_picker_sheet_test.dart`, `theme_picker_test.dart`, `legal_links_sheet_test.dart`, `profile_qr_sheet_test.dart`, `profile_screen_test.dart`. Task 6 has no existing tests on the section widgets so nothing to migrate there.
+- **R2-P2 (helper scope clarification)** — Task 2's "callers migrate to the helper" wording was over-broad. `ExpenseEditorBody` at `lib/features/ledger/widgets/expense_editor_body.dart:1173-1175` also reads `mode.label`, but ledger is deferred to PR2b. Plan now explicitly excludes that call site from PR2a; re-flag in PR2b.
 
 ## Notes on the Q2 unlock decision
 
