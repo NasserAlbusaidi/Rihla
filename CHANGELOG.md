@@ -4,6 +4,36 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0+16] — 2026-05-17
+
+Account deletion + ledger identity polish. Closes two of the largest
+remaining post-launch gaps: users can self-delete accounts end-to-end,
+and dormant anon UIDs (post-recovery, post-uninstall) no longer surface
+as cryptic strings in the ledger.
+
+### Added
+- **Server-side account deletion.** Profile → Account → Delete now
+  triggers a Cloud Function that cascades auth removal, Firestore
+  tombstones, and FCM token cleanup. Sentry breadcrumbs redact email
+  PII on the failure path.
+- **Former-member rendering.** Dormant anon-UID creators, payers,
+  and settlement counterparties resolve to `former member` across the
+  ledger, expense card, settlement row, and settle-up surfaces.
+  Pure client-side resolver — no schema changes, no Firestore writes;
+  `firestore.rules` reject any persisted `former member` suffix to
+  prevent leakage.
+
+### Changed
+- **Coverage gate ratcheted back to 80%.** Auth/profile/settings test
+  backlog cleared (recover-pending screen now covered).
+- **CLAUDE.md split.** Operating Contract is now the top section;
+  REFERENCE is lookup. `docs/SPEC-VERIFICATION.md` extracted with the
+  full worked examples behind the verification rules.
+
+### Removed
+- **Orphaned `TripCacheRepository`** — dead since the trip→event
+  rename; deleted with its tests.
+
 ## [1.2.0+15] — 2026-05-16
 
 Post-launch QA hardening. Two new server-side capabilities address data
