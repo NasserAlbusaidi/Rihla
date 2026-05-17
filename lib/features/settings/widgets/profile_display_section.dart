@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/app_settings_model.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -21,10 +22,11 @@ class ProfileDisplaySection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(settingsProvider.select((s) => s.themeMode));
+    final l10n = context.l10n;
     final label = switch (mode) {
-      AppThemeMode.system => 'System • Following device',
-      AppThemeMode.light => 'Light',
-      AppThemeMode.dark => 'Dark',
+      AppThemeMode.system => l10n.profileDisplayThemeSystemValue,
+      AppThemeMode.light => l10n.profileDisplayThemeLightValue,
+      AppThemeMode.dark => l10n.profileDisplayThemeDarkValue,
     };
 
     return Column(
@@ -54,7 +56,7 @@ class ProfileDisplaySection extends ConsumerWidget {
         ),
         const SizedBox(width: 6),
         Text(
-          'DISPLAY',
+          context.l10n.profileSectionDisplay,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -95,7 +97,7 @@ class ProfileDisplaySection extends ConsumerWidget {
             SizedBox(width: context.spacing.space12),
             Expanded(
               child: Text(
-                'Theme',
+                context.l10n.profileDisplayTheme,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,

@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_metadata.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../keys/profile_keys.dart';
 
@@ -18,6 +19,7 @@ class ProfileAboutSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final metadataAsync = ref.watch(appMetadataProvider);
     final metadata = metadataAsync.valueOrNull;
+    final l10n = context.l10n;
 
     final versionText = metadataAsync.when(
       data: (m) => 'v${m.version}',
@@ -44,7 +46,7 @@ class ProfileAboutSection extends ConsumerWidget {
                 context: context,
                 tileKey: ProfileKeys.versionTile,
                 icon: Iconsax.code,
-                title: 'Version',
+                title: l10n.profileAboutVersion,
                 trailing: Text(
                   versionText,
                   style: TextStyle(
@@ -60,7 +62,7 @@ class ProfileAboutSection extends ConsumerWidget {
                 context: context,
                 tileKey: ProfileKeys.feedbackTile,
                 icon: Iconsax.message_question,
-                title: 'Send Feedback',
+                title: l10n.profileAboutSendFeedback,
                 trailing: Icon(
                   Iconsax.arrow_right_3,
                   size: 16,
@@ -74,7 +76,7 @@ class ProfileAboutSection extends ConsumerWidget {
                 context: context,
                 tileKey: ProfileKeys.licensesTile,
                 icon: Iconsax.document_text,
-                title: 'Open-source Licenses',
+                title: l10n.profileAboutLicenses,
                 trailing: Icon(
                   Iconsax.arrow_right_3,
                   size: 16,
@@ -99,7 +101,7 @@ class ProfileAboutSection extends ConsumerWidget {
         ),
         const SizedBox(width: 6),
         Text(
-          'ABOUT',
+          context.l10n.profileSectionAbout,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -171,6 +173,9 @@ class ProfileAboutSection extends ConsumerWidget {
   ) async {
     final resolvedMetadata =
         metadata ?? ref.read(appMetadataProvider).valueOrNull ?? AppMetadata.fallback();
+    final messenger = ScaffoldMessenger.of(context);
+    final fallbackMessage =
+        context.l10n.profileAboutFallbackEmail('feedback@rihla.app');
 
     final uri = Uri(
       scheme: 'mailto',
@@ -184,8 +189,8 @@ class ProfileAboutSection extends ConsumerWidget {
     if (canLaunch) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email: feedback@rihla.app')),
+      messenger.showSnackBar(
+        SnackBar(content: Text(fallbackMessage)),
       );
     }
   }
