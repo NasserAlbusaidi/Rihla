@@ -177,6 +177,7 @@ Widget _wrap(
           eventCount: 0,
           perEventBreakdown: const <String, Map<String, Decimal>>{},
           memberNames: const <String, String>{},
+          memberRawNames: <String, String>{},
         )),
       ),
       groupActivityProvider(
@@ -396,6 +397,7 @@ void main() {
                 eventCount: 0,
                 perEventBreakdown: const <String, Map<String, Decimal>>{},
                 memberNames: const <String, String>{},
+                memberRawNames: <String, String>{},
               )),
             ),
             groupActivityProvider(

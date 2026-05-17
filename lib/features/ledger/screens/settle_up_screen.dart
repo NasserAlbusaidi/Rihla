@@ -10,6 +10,8 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../groups/providers/group_provider.dart';
+import '../../groups/services/member_name_resolver.dart';
 import '../../groups/widgets/record_payment_sheet.dart';
 import '../../groups/widgets/settle_up_page_body.dart';
 import '../../trip/models/trip_model.dart';
@@ -86,14 +88,21 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
     final currentUid = ref.watch(currentUserIdProvider);
+    final groupMembers =
+        ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ?? [];
 
     final participants = event.participantIds.map((id) {
+      final display = MemberNameResolver.resolveEventScoped(
+        uid: id,
+        event: event,
+        members: groupMembers,
+      );
       return Participant(
         id: id,
         tripId: event.id,
         role: ParticipantRole.member,
         joinedAt: event.createdAt,
-        displayName: event.participantNames[id],
+        displayName: MemberNameResolver.format(display),
       );
     }).toList();
 
@@ -115,15 +124,22 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     participants: participants,
                   );
 
-                  final userNames = <String, String>{
-                    for (final p in participants)
-                      p.id: p.displayName ?? 'Unknown',
-                  };
+                  final userDisplayNames = <String, String>{};
+                  final userRawNames = <String, String>{};
+                  for (final uid in event.participantIds) {
+                    final display = MemberNameResolver.resolveEventScoped(
+                      uid: uid,
+                      event: event,
+                      members: groupMembers,
+                    );
+                    userDisplayNames[uid] = MemberNameResolver.format(display);
+                    userRawNames[uid] = display.rawName;
+                  }
 
                   final optimalSettlements =
                       BalanceCalculator.calculateOptimalSettlements(
                         balances: balances,
-                        userNames: userNames,
+                        userNames: userDisplayNames,
                       );
 
                   return SettleUpPageBody(
@@ -131,22 +147,23 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     currency: 'OMR',
                     optimalSettlements: optimalSettlements,
                     balances: balances,
+                    rawNames: userRawNames,
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
                     tileKeys: _tileKeys,
                     onRecord:
                         ({
                           required settlement,
-                          required fromName,
-                          required toName,
+                          required fromRawName,
+                          required toRawName,
                           required fromUserId,
                           required toUserId,
                           required suggestedAmount,
                         }) => _showRecordPaymentSheet(
                           context,
                           settlement: settlement,
-                          fromName: fromName,
-                          toName: toName,
+                          fromRawName: fromRawName,
+                          toRawName: toRawName,
                           fromUserId: fromUserId,
                           toUserId: toUserId,
                           suggestedAmount: suggestedAmount,
@@ -195,19 +212,22 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   Future<void> _showRecordPaymentSheet(
     BuildContext context, {
     required Map<String, dynamic> settlement,
-    required String fromName,
-    required String toName,
+    required String fromRawName,
+    required String toRawName,
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
   }) async {
     const currency = 'OMR';
+    final fromDisplayName =
+        settlement['fromUserName'] as String? ?? fromRawName;
+    final toDisplayName = settlement['toUserName'] as String? ?? toRawName;
 
     final result = await showRecordPaymentSheet(
       context,
       currency: currency,
-      fromName: fromName,
-      toName: toName,
+      fromName: fromDisplayName,
+      toName: toDisplayName,
       suggestedAmount: suggestedAmount,
     );
 
@@ -238,8 +258,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       context,
       fromUserId: fromUserId,
       toUserId: toUserId,
-      fromName: fromName,
-      toName: toName,
+      fromName: fromRawName,
+      toName: toRawName,
       amount: editedAmount,
       note: noteText,
       currency: currency,

@@ -13,7 +13,10 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
+import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../groups/providers/group_provider.dart';
+import '../../groups/services/member_name_resolver.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
@@ -43,11 +46,7 @@ import '../widgets/ledger_sticky_cta.dart';
 ///   8. Sticky bottom CTA bar — ink "Add expense" + ghost "Settle up"
 ///      (dimmed when settled).
 class LedgerScreen extends ConsumerStatefulWidget {
-  const LedgerScreen({
-    super.key,
-    required this.groupId,
-    required this.eventId,
-  });
+  const LedgerScreen({super.key, required this.groupId, required this.eventId});
 
   final String groupId;
   final String eventId;
@@ -84,18 +83,19 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               },
             );
           }
-          final expenses = (expensesAsync.valueOrNull ?? <Expense>[]).map((e) {
-            final name = event.participantNames[e.payerParticipantId];
-            return name != null ? e.copyWith(payerName: name) : e;
-          }).toList();
+          final expenses = expensesAsync.valueOrNull ?? <Expense>[];
           final settlements = settlementsAsync.valueOrNull ?? <Settlement>[];
           final currentUserId = ref.watch(currentUserIdProvider);
+          final groupMembers =
+              ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ??
+              const <GroupMember>[];
           return _Body(
             groupId: widget.groupId,
             eventId: widget.eventId,
             event: event,
             expenses: expenses,
             settlements: settlements,
+            groupMembers: groupMembers,
             currentUserId: currentUserId,
             categoryFilter: _categoryFilter,
             onCategoryFilter: (cat) => setState(() => _categoryFilter = cat),
@@ -113,6 +113,7 @@ class _Body extends StatelessWidget {
     required this.event,
     required this.expenses,
     required this.settlements,
+    required this.groupMembers,
     required this.currentUserId,
     required this.categoryFilter,
     required this.onCategoryFilter,
@@ -123,25 +124,30 @@ class _Body extends StatelessWidget {
   final Event event;
   final List<Expense> expenses;
   final List<Settlement> settlements;
+  final List<GroupMember> groupMembers;
   final String? currentUserId;
   final int? categoryFilter;
   final ValueChanged<int?> onCategoryFilter;
 
   @override
   Widget build(BuildContext context) {
-    final participants = event.participantIds
-        .map(
-          (id) => Participant(
-            id: id,
-            tripId: event.id,
-            role: ParticipantRole.member,
-            joinedAt: event.createdAt,
-            displayName: event.participantNames[id],
-          ),
-        )
-        .toList();
-    final currentPid =
-        event.participantIds.contains(currentUserId) ? currentUserId : null;
+    final participants = event.participantIds.map((id) {
+      final display = MemberNameResolver.resolveEventScoped(
+        uid: id,
+        event: event,
+        members: groupMembers,
+      );
+      return Participant(
+        id: id,
+        tripId: event.id,
+        role: ParticipantRole.member,
+        joinedAt: event.createdAt,
+        displayName: MemberNameResolver.format(display),
+      );
+    }).toList();
+    final currentPid = event.participantIds.contains(currentUserId)
+        ? currentUserId
+        : null;
 
     final balances = BalanceCalculator.calculateBalances(
       expenses: expenses,
@@ -168,7 +174,9 @@ class _Body extends StatelessWidget {
               ),
             )
             .toList()
-          ..sort((a, b) => b.signedAmount.abs().compareTo(a.signedAmount.abs()));
+          ..sort(
+            (a, b) => b.signedAmount.abs().compareTo(a.signedAmount.abs()),
+          );
 
     final hasExpenses = expenses.isNotEmpty;
     final isSettled = hasExpenses && myBalance.netBalance == Decimal.zero;
@@ -191,7 +199,9 @@ class _Body extends StatelessWidget {
     final filteredExpenses = categoryFilter == null
         ? expenses
         : expenses
-              .where((e) => ledgerCategoryBucket(e.categoryName) == categoryFilter)
+              .where(
+                (e) => ledgerCategoryBucket(e.categoryName) == categoryFilter,
+              )
               .toList();
     final filteredSettlements = categoryFilter == null
         ? settlements
@@ -201,6 +211,43 @@ class _Body extends StatelessWidget {
       ...filteredSettlements.map(LedgerSettlementItem.new),
     ]..sort((a, b) => b.date.compareTo(a.date));
     final days = groupTimelineByDay(timeline, DateTime.now());
+    final expensePayerDisplayNames = <String, String>{
+      for (final expense in expenses)
+        expense.id: MemberNameResolver.format(
+          MemberNameResolver.resolveEventScoped(
+            uid: expense.payerParticipantId,
+            event: event,
+            members: groupMembers,
+            fallbackName: expense.payerName,
+          ),
+        ),
+    };
+    final settlementDisplayNames =
+        <String, ({String payerName, String recipientName})>{
+          for (final settlement in settlements)
+            settlement.id: (
+              payerName: settlement.payerParticipantId == null
+                  ? settlement.payerName ?? 'Someone'
+                  : MemberNameResolver.format(
+                      MemberNameResolver.resolveEventScoped(
+                        uid: settlement.payerParticipantId!,
+                        event: event,
+                        members: groupMembers,
+                        fallbackName: settlement.payerName,
+                      ),
+                    ),
+              recipientName: settlement.recipientParticipantId == null
+                  ? settlement.recipientName ?? 'someone'
+                  : MemberNameResolver.format(
+                      MemberNameResolver.resolveEventScoped(
+                        uid: settlement.recipientParticipantId!,
+                        event: event,
+                        members: groupMembers,
+                        fallbackName: settlement.recipientName,
+                      ),
+                    ),
+            ),
+        };
 
     return Column(
       children: [
@@ -218,6 +265,8 @@ class _Body extends StatelessWidget {
                     context,
                     expenses: expenses,
                     settlements: settlements,
+                    expensePayerDisplayNames: expensePayerDisplayNames,
+                    settlementDisplayNames: settlementDisplayNames,
                     groupId: groupId,
                     eventId: eventId,
                   ),
@@ -260,9 +309,7 @@ class _Body extends StatelessWidget {
                   ),
                 )
               else
-                const SliverToBoxAdapter(
-                  child: LedgerCategoryStripEmpty(),
-                ),
+                const SliverToBoxAdapter(child: LedgerCategoryStripEmpty()),
               const SliverToBoxAdapter(child: SizedBox(height: 6)),
               if (timeline.isEmpty)
                 SliverPadding(
@@ -293,6 +340,8 @@ class _Body extends StatelessWidget {
                         items: day.items,
                         currentParticipantId: currentPid,
                         participantCount: participants.length,
+                        expensePayerDisplayNames: expensePayerDisplayNames,
+                        settlementDisplayNames: settlementDisplayNames,
                         onExpenseTap: (expense) => GoRouter.of(context).push(
                           '/group/$groupId/event/$eventId/ledger/'
                           'edit/${expense.id}',
@@ -625,8 +674,7 @@ class _JournalPagePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _JournalPagePainter old) =>
-      old.colors != colors;
+  bool shouldRepaint(covariant _JournalPagePainter old) => old.colors != colors;
 }
 
 // ──────────────────────────── State views

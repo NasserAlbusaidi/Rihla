@@ -93,6 +93,8 @@ class LedgerDayCard extends StatelessWidget {
     required this.items,
     required this.currentParticipantId,
     required this.participantCount,
+    required this.expensePayerDisplayNames,
+    required this.settlementDisplayNames,
     required this.onExpenseTap,
   });
 
@@ -101,6 +103,9 @@ class LedgerDayCard extends StatelessWidget {
   final List<LedgerTimelineItem> items;
   final String? currentParticipantId;
   final int participantCount;
+  final Map<String, String> expensePayerDisplayNames;
+  final Map<String, ({String payerName, String recipientName})>
+  settlementDisplayNames;
   final ValueChanged<Expense> onExpenseTap;
 
   @override
@@ -144,11 +149,21 @@ class LedgerDayCard extends StatelessWidget {
         divider: index < total - 1,
         currentParticipantId: currentParticipantId,
         participantCount: participantCount,
+        payerDisplayName:
+            expensePayerDisplayNames[expense.id] ??
+            expense.payerName ??
+            'Member',
         onTap: () => onExpenseTap(expense),
       ),
       LedgerSettlementItem(:final settlement) => LedgerSettleRow(
-        payerName: settlement.payerName ?? 'Someone',
-        recipientName: settlement.recipientName ?? 'someone',
+        payerName:
+            settlementDisplayNames[settlement.id]?.payerName ??
+            settlement.payerName ??
+            'Someone',
+        recipientName:
+            settlementDisplayNames[settlement.id]?.recipientName ??
+            settlement.recipientName ??
+            'someone',
         amount: settlement.amount,
         note: settlement.note,
       ),
@@ -163,6 +178,7 @@ class _ExpenseRow extends StatelessWidget {
     required this.divider,
     required this.currentParticipantId,
     required this.participantCount,
+    required this.payerDisplayName,
     required this.onTap,
   });
 
@@ -170,6 +186,7 @@ class _ExpenseRow extends StatelessWidget {
   final bool divider;
   final String? currentParticipantId;
   final int participantCount;
+  final String payerDisplayName;
   final VoidCallback onTap;
 
   @override
@@ -177,7 +194,7 @@ class _ExpenseRow extends StatelessWidget {
     final colors = context.colors;
     final bucket = ledgerCategoryBucket(expense.categoryName);
     final isPayer = expense.payerParticipantId == currentParticipantId;
-    final payerName = isPayer ? 'You' : (expense.payerName ?? 'Member');
+    final payerName = isPayer ? 'You' : payerDisplayName;
     final splitIds = expense.customSplitParticipants;
     final splitCount = splitIds?.length ?? participantCount;
     final share = _userShare(expense);
@@ -213,7 +230,7 @@ class _ExpenseRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         '$payerName paid · split $splitCount '
-                            'way${splitCount == 1 ? '' : 's'}',
+                        'way${splitCount == 1 ? '' : 's'}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.sans(
@@ -267,8 +284,9 @@ class _ExpenseRow extends StatelessWidget {
     final isInSplit = splitIds?.contains(currentParticipantId) ?? true;
     final splitCount = splitIds?.length ?? participantCount;
     if (splitCount == 0) return Decimal.zero;
-    final share = (expense.amount / Decimal.fromInt(splitCount))
-        .toDecimal(scaleOnInfinitePrecision: 3);
+    final share = (expense.amount / Decimal.fromInt(splitCount)).toDecimal(
+      scaleOnInfinitePrecision: 3,
+    );
     if (isPayer && isInSplit) return expense.amount - share;
     if (isPayer && !isInSplit) return expense.amount;
     if (!isPayer && isInSplit) return -share;

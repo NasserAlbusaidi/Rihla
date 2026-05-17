@@ -33,6 +33,7 @@ GroupBalances _makeGroupBalances({required List<UserBalance> balances}) {
     eventCount: 0,
     perEventBreakdown: const {},
     memberNames: const {},
+    memberRawNames: <String, String>{},
   );
 }
 

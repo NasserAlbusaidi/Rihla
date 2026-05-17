@@ -9,6 +9,9 @@ library;
 
 const int kDisplayNameMinLength = 1;
 const int kDisplayNameMaxLength = 32;
+const String _reservedFormerMemberSuffix =
+    ' (former '
+    'member)';
 
 /// True if [s] contains any C0 control character (U+0000–U+001F) or DEL
 /// (U+007F). Allowing these in display names lets attackers smuggle
@@ -37,6 +40,9 @@ String? validateDisplayName(String? input) {
   }
   if (_hasControlChar(raw)) {
     return 'Remove line breaks or special characters.';
+  }
+  if (trimmed.endsWith(_reservedFormerMemberSuffix)) {
+    return 'That name uses reserved wording.';
   }
   return null;
 }

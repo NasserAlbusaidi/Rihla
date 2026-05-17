@@ -33,9 +33,7 @@ void main() {
     test('returns zero stats when there are no groups', () async {
       final container = ProviderContainer(
         overrides: [
-          userGroupsProvider.overrideWith(
-            (ref) => Stream.value(<Group>[]),
-          ),
+          userGroupsProvider.overrideWith((ref) => Stream.value(<Group>[])),
         ],
       );
       addTearDown(container.dispose);
@@ -54,100 +52,100 @@ void main() {
       expect(value.totalSpent, equals(Decimal.zero));
     });
 
-    test('aggregates group count, event count, and total spending across groups',
-        () async {
-      final group1 = Group(
-        id: 'g1',
-        name: 'Group 1',
-        inviteCode: 'ABC123',
-        createdBy: 'uid0',
-        memberIds: ['uid0'],
-        currency: 'OMR',
-        createdAt: DateTime(2026, 1, 1),
-      );
-      final group2 = Group(
-        id: 'g2',
-        name: 'Group 2',
-        inviteCode: 'DEF456',
-        createdBy: 'uid0',
-        memberIds: ['uid0'],
-        currency: 'OMR',
-        createdAt: DateTime(2026, 1, 2),
-      );
+    test(
+      'aggregates group count, event count, and total spending across groups',
+      () async {
+        final group1 = Group(
+          id: 'g1',
+          name: 'Group 1',
+          inviteCode: 'ABC123',
+          createdBy: 'uid0',
+          memberIds: ['uid0'],
+          currency: 'OMR',
+          createdAt: DateTime(2026, 1, 1),
+        );
+        final group2 = Group(
+          id: 'g2',
+          name: 'Group 2',
+          inviteCode: 'DEF456',
+          createdBy: 'uid0',
+          memberIds: ['uid0'],
+          currency: 'OMR',
+          createdAt: DateTime(2026, 1, 2),
+        );
 
-      Event makeEvent(String id, String gid) => Event(
-            id: id,
-            name: 'Event $id',
-            type: EventType.custom,
-            groupId: gid,
-            createdBy: 'uid0',
-            participantIds: ['uid0'],
-            participantNames: {'uid0': 'Alice'},
-            modules: EventModules.forType(EventType.custom),
-            createdAt: DateTime(2026, 1, 1),
-          );
+        Event makeEvent(String id, String gid) => Event(
+          id: id,
+          name: 'Event $id',
+          type: EventType.custom,
+          groupId: gid,
+          createdBy: 'uid0',
+          participantIds: ['uid0'],
+          participantNames: {'uid0': 'Alice'},
+          modules: EventModules.forType(EventType.custom),
+          createdAt: DateTime(2026, 1, 1),
+        );
 
-      final g1Events = [
-        makeEvent('e1', 'g1'),
-        makeEvent('e2', 'g1'),
-        makeEvent('e3', 'g1'),
-      ];
-      final g2Events = [
-        makeEvent('e4', 'g2'),
-        makeEvent('e5', 'g2'),
-        makeEvent('e6', 'g2'),
-      ];
+        final g1Events = [
+          makeEvent('e1', 'g1'),
+          makeEvent('e2', 'g1'),
+          makeEvent('e3', 'g1'),
+        ];
+        final g2Events = [
+          makeEvent('e4', 'g2'),
+          makeEvent('e5', 'g2'),
+          makeEvent('e6', 'g2'),
+        ];
 
-      final g1Balances = AsyncValue<GroupBalances>.data((
-        balances: [],
-        totalSpent: Decimal.parse('10.000'),
-        eventCount: 3,
-        perEventBreakdown: {},
-        memberNames: {'uid0': 'Alice'},
-      ));
+        final g1Balances = AsyncValue<GroupBalances>.data((
+          balances: [],
+          totalSpent: Decimal.parse('10.000'),
+          eventCount: 3,
+          perEventBreakdown: {},
+          memberNames: {'uid0': 'Alice'},
+          memberRawNames: <String, String>{},
+        ));
 
-      final g2Balances = AsyncValue<GroupBalances>.data((
-        balances: [],
-        totalSpent: Decimal.parse('10.000'),
-        eventCount: 3,
-        perEventBreakdown: {},
-        memberNames: {'uid0': 'Alice'},
-      ));
+        final g2Balances = AsyncValue<GroupBalances>.data((
+          balances: [],
+          totalSpent: Decimal.parse('10.000'),
+          eventCount: 3,
+          perEventBreakdown: {},
+          memberNames: {'uid0': 'Alice'},
+          memberRawNames: <String, String>{},
+        ));
 
-      final container = ProviderContainer(
-        overrides: [
-          userGroupsProvider.overrideWith(
-            (ref) => Stream.value([group1, group2]),
-          ),
-          groupEventsProvider('g1').overrideWith(
-            (ref) => Stream.value(g1Events),
-          ),
-          groupEventsProvider('g2').overrideWith(
-            (ref) => Stream.value(g2Events),
-          ),
-          groupBalancesProvider('g1').overrideWith(
-            (ref) => g1Balances,
-          ),
-          groupBalancesProvider('g2').overrideWith(
-            (ref) => g2Balances,
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
+        final container = ProviderContainer(
+          overrides: [
+            userGroupsProvider.overrideWith(
+              (ref) => Stream.value([group1, group2]),
+            ),
+            groupEventsProvider(
+              'g1',
+            ).overrideWith((ref) => Stream.value(g1Events)),
+            groupEventsProvider(
+              'g2',
+            ).overrideWith((ref) => Stream.value(g2Events)),
+            groupBalancesProvider('g1').overrideWith((ref) => g1Balances),
+            groupBalancesProvider('g2').overrideWith((ref) => g2Balances),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      // Subscribe to start computation, then await the upstream StreamProviders
-      container.read(profileStatsProvider);
-      await container.read(userGroupsProvider.future);
-      await container.read(groupEventsProvider('g1').future);
-      await container.read(groupEventsProvider('g2').future);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        // Subscribe to start computation, then await the upstream StreamProviders
+        container.read(profileStatsProvider);
+        await container.read(userGroupsProvider.future);
+        await container.read(groupEventsProvider('g1').future);
+        await container.read(groupEventsProvider('g2').future);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      final stats = container.read(profileStatsProvider);
-      expect(stats.hasValue, isTrue);
-      final value = stats.requireValue;
-      expect(value.groupCount, equals(2));
-      expect(value.eventCount, equals(6));
-      expect(value.totalSpent, equals(Decimal.parse('20.000')));
-    });
+        final stats = container.read(profileStatsProvider);
+        expect(stats.hasValue, isTrue);
+        final value = stats.requireValue;
+        expect(value.groupCount, equals(2));
+        expect(value.eventCount, equals(6));
+        expect(value.totalSpent, equals(Decimal.parse('20.000')));
+      },
+    );
   });
 }

@@ -71,6 +71,7 @@ final _balancesOwed = (
     'uid-bob': {'event-1': Decimal.parse('-7.750')},
   },
   memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+  memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
 /// All-settled GroupBalances.
@@ -95,6 +96,7 @@ final _balancesSettled = (
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
   memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+  memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
 final _testSettlement1 = Settlement(

@@ -72,6 +72,7 @@ final _zeroBalances = (
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  memberRawNames: <String, String>{},
 );
 
 final _nonZeroBalances = (
@@ -98,6 +99,7 @@ final _nonZeroBalances = (
     'uid-member': {'evt-1': Decimal.parse('-15.000')},
   },
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  memberRawNames: <String, String>{},
 );
 
 // ---------------------------------------------------------------------------

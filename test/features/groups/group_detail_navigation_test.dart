@@ -68,6 +68,7 @@ void main() {
     eventCount: 0,
     perEventBreakdown: <String, Map<String, Decimal>>{},
     memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+    memberRawNames: <String, String>{},
   );
 
   Future<GoRouter> pumpGroupDetail(
