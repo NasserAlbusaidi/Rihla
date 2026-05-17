@@ -114,7 +114,7 @@ All new keys land in Task 1. **Naming convention:** screen-prefixed for screen-s
 - Snacks: `profileSnackHandleCopied / SignedOut / SignOutFailed / OpenLinkFailed / NoEmailApp` (5)
 - Deletion: `profileDeletionOk / NoUser / Error` (3)
 
-**Estimated total: ~90 unique keys (up from ~75 after codex round 1).**
+**Estimated total: ~96 unique keys (up from ~75 after round 1; ~92 after round 2; codex round 4 P3 recount).** Three `common*` keys (`commonSave`, `commonDelete`, `commonOK`) are intentional pre-adds for PR2b/PR3 reuse — no PR2a call site wires them.
 
 ---
 
@@ -319,6 +319,17 @@ P1 + P2 applied; P3 noted but not blocking.
 - **R3-P1 (codegen + placeholders)** — Task 1 said "with `@<key>` metadata" and ran `tool/check_arb_completeness.dart` (which only checks key presence, not metadata/placeholders). Parameterized keys need explicit `placeholders` blocks in the en ARB, and `gen_l10n` must regenerate `lib/l10n/generated/*.dart` before any downstream task tries to use `context.l10n.<newKey>`. Plan now: Task 1 has three steps (add keys with placeholders, run `flutter pub get` to trigger codegen, verify the regenerated bindings expose every key as a getter/method), and the commit stages both ARBs and the regenerated files.
 - **R3-P2 (wrong field)** — Task 6 said `context.l10n.profileAboutFallbackEmail(metadata.email)`, but `AppMetadata` has no `email` field (only appName/packageName/version/buildNumber per `lib/core/config/app_metadata.dart:5-15`). The address is hardcoded as a literal at `profile_about_section.dart:177` + `:188`. Plan now passes the literal: `context.l10n.profileAboutFallbackEmail('feedback@rihla.app')`.
 - **R3-P3 (RTL/LTR snack rendering, noted only)** — Codex flagged that the Arabic-locale `Email: {email}` snack mixes RTL prefix with LTR ASCII email body and could render with awkward punctuation. Unicode bidi defaults handle this correctly in practice; Arabic ARB value can use natural phrasing without explicit LRM characters. If real-device QA on PR4 shows visible weirdness, refine the Arabic ARB string then.
+
+### Round 4 — **PASS**, same session resumed
+
+No P1, no P2. Two P3 nits applied:
+
+- **R4-P3 #1** — Inventory total bumped to ~96 (was ~92 after round 2; recount).
+- **R4-P3 #2** — `commonSave`/`commonDelete`/`commonOK` pre-adds confirmed intentional for PR2b/PR3 reuse; not wired in PR2a but kept in the inventory.
+
+Re-verified clean: codegen step now precedes any consumer task; `profileAboutFallbackEmail` placeholder syntax valid; Task 6 passes the literal email (no `AppMetadata.email` field); test migration contracts (`SharedPreferences.setMockInitialValues`, no `pumpAndSettle` post-helper, `localizationsDelegates` on direct `MaterialApp` wrappers) explicit across Tasks 3/4/5/7.
+
+**Cleared to execute.** Convergence took 4 rounds; round 1 inventory miss cascaded into rounds 2-3 chasing the consequences. The Operating Contract guideline "~2 rounds typical; 3 means the spec was over-scoped" held — the inventory-completeness pass should have happened earlier in plan authoring, not during the gate.
 
 ## Notes on the Q2 unlock decision
 
