@@ -48,7 +48,7 @@ void main() {
       (tester) async {
     await _pumpOfflineBanner(tester, locale: const Locale('ar'));
     expect(
-      find.text("أنت غير متصل — ستتم مزامنة التغييرات لاحقًا"),
+      find.text('أنت غير متصل — ستتم مزامنة التغييرات لاحقًا'),
       findsOneWidget,
     );
   });

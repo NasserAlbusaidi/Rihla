@@ -35,6 +35,6 @@ void main() {
       ),
       locale: const Locale('ar'),
     );
-    expect(captured, "أنت غير متصل — ستتم مزامنة التغييرات لاحقًا");
+    expect(captured, 'أنت غير متصل — ستتم مزامنة التغييرات لاحقًا');
   });
 }
