@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_links.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -27,6 +28,7 @@ class LegalLinksSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final spacing = context.spacing;
+    final l10n = context.l10n;
     return SafeArea(
       child: Container(
         margin: EdgeInsets.fromLTRB(
@@ -58,7 +60,7 @@ class LegalLinksSheet extends StatelessWidget {
               child: Row(
                 children: [
                   Text(
-                    'Legal',
+                    l10n.legalSheetTitle,
                     style: AppTypography.sans(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -69,21 +71,21 @@ class LegalLinksSheet extends StatelessWidget {
               ),
             ),
             SizedBox(height: spacing.space8),
-            const _LegalRow(
+            _LegalRow(
               icon: Iconsax.document_text,
-              label: 'Terms of service',
+              label: l10n.legalTermsOfService,
               url: AppLinks.termsUrl,
             ),
             Divider(height: 1, color: colors.rule),
-            const _LegalRow(
+            _LegalRow(
               icon: Iconsax.shield_tick,
-              label: 'Privacy policy',
+              label: l10n.legalPrivacyPolicy,
               url: AppLinks.privacyUrl,
             ),
             Divider(height: 1, color: colors.rule),
-            const _LegalRow(
+            _LegalRow(
               icon: Iconsax.trash,
-              label: 'Delete my data',
+              label: l10n.legalDeleteMyData,
               url: AppLinks.deleteDataUrl,
             ),
             SizedBox(height: spacing.space8),
@@ -114,13 +116,14 @@ class _LegalRow extends StatelessWidget {
         HapticService.lightClick();
         final messenger = ScaffoldMessenger.of(context);
         final navigator = Navigator.of(context);
+        final openLinkFailed = context.l10n.profileSnackOpenLinkFailed;
         final ok = await launchUrl(
           Uri.parse(url),
           mode: LaunchMode.externalApplication,
         );
         if (!ok) {
           messenger.showSnackBar(
-            const SnackBar(content: Text("Couldn't open link")),
+            SnackBar(content: Text(openLinkFailed)),
           );
         }
         if (navigator.canPop()) navigator.pop();

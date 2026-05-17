@@ -5,12 +5,15 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/widgets/profile_qr_sheet.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   testWidgets('profile QR sheet renders QR and the handle', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => Scaffold(
             body: Center(

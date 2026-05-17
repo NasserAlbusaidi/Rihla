@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -104,6 +105,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
     final isButtonEnabled = trimmed.isNotEmpty && !_isSaving && !_showCheck;
     final colors = context.colors;
     final spacing = context.spacing;
+    final l10n = context.l10n;
     final initials = _initialsOptions(trimmed);
 
     return Padding(
@@ -132,7 +134,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'What should we call you?',
+                  l10n.editNameTitle,
                   style: AppTypography.display(
                     fontSize: 26,
                     color: colors.textPrimary,
@@ -141,7 +143,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'This is how friends will see you in groups.',
+                  l10n.editNameHelper,
                   style: AppTypography.sans(
                     fontSize: 13,
                     color: colors.textSecondary,
@@ -160,8 +162,8 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                     fontWeight: FontWeight.w500,
                   ),
                   decoration: InputDecoration(
-                    labelText: 'Display name',
-                    hintText: 'Your name',
+                    labelText: l10n.editNameFieldLabel,
+                    hintText: l10n.editNameFieldHint,
                     errorText: _errorText,
                     filled: true,
                     fillColor: colors.inputFillWarm,
@@ -180,7 +182,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                 ),
                 SizedBox(height: spacing.space20),
                 Text(
-                  'INITIALS SHOWN WHEN NO PHOTO',
+                  l10n.editNameInitialsCaption,
                   style: AppTypography.sans(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -223,7 +225,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                             ),
                           ),
                           child: Text(
-                            'Cancel',
+                            l10n.commonCancel,
                             style: AppTypography.sans(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -280,7 +282,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
       );
     }
     return Text(
-      'Save',
+      context.l10n.commonSave,
       style: AppTypography.sans(
         fontSize: 15,
         fontWeight: FontWeight.w700,
