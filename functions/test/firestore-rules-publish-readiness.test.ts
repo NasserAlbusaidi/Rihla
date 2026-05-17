@@ -261,6 +261,18 @@ describe('Publish readiness Firestore rules', () => {
         inviteCode: 'THIRTY2',
       }),
     ));
+    await assertSucceeds(owner.doc('groups/group-reserved-prefix').set(
+      validGroup('group-reserved-prefix', {
+        name: '(former member) Aisha',
+        inviteCode: 'PREFX1',
+      }),
+    ));
+    await assertSucceeds(owner.doc('groups/group-reserved-middle').set(
+      validGroup('group-reserved-middle', {
+        name: 'Aisha (former member) Al Busaidi',
+        inviteCode: 'MIDL01',
+      }),
+    ));
   });
 
   test('group create rejects empty, overlong, and control-character names', async () => {
@@ -288,6 +300,12 @@ describe('Publish readiness Firestore rules', () => {
       validGroup('group-null-byte', {
         name: 'Null\x00Byte',
         inviteCode: 'NULLBYT',
+      }),
+    ));
+    await assertFails(owner.doc('groups/group-reserved-suffix').set(
+      validGroup('group-reserved-suffix', {
+        name: 'Aisha (former member)',
+        inviteCode: 'SUFFIX',
       }),
     ));
   });
@@ -438,11 +456,26 @@ describe('Publish readiness Firestore rules', () => {
         participantNames: { owner: 'Owner' },
       }),
     ));
+    await assertSucceeds(owner.doc('groups/g1/events/e-valid-reserved-middle').set(
+      validEvent({
+        name: 'A',
+        createdBy: 'owner',
+        participantIds: ['owner'],
+        participantNames: { owner: '(former member) Owner' },
+      }),
+    ));
   });
 
   test('event create rejects invalid participant display names', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
 
+    await assertFails(owner.doc('groups/g1/events/e-empty-name').set(
+      validEvent({
+        createdBy: 'owner',
+        participantIds: ['owner', 'member'],
+        participantNames: { owner: 'Owner', member: '' },
+      }),
+    ));
     await assertFails(owner.doc('groups/g1/events/e-overlong-name').set(
       validEvent({
         createdBy: 'owner',
@@ -455,6 +488,13 @@ describe('Publish readiness Firestore rules', () => {
         createdBy: 'owner',
         participantIds: ['owner', 'member'],
         participantNames: { owner: 'Owner', member: 'Bad\nName' },
+      }),
+    ));
+    await assertFails(owner.doc('groups/g1/events/e-reserved-suffix-name').set(
+      validEvent({
+        createdBy: 'owner',
+        participantIds: ['owner', 'member'],
+        participantNames: { owner: 'Owner', member: 'Aisha (former member)' },
       }),
     ));
   });

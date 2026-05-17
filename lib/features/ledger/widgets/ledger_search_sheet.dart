@@ -19,6 +19,9 @@ Future<void> showLedgerSearchSheet(
   BuildContext context, {
   required List<Expense> expenses,
   required List<Settlement> settlements,
+  required Map<String, String> expensePayerDisplayNames,
+  required Map<String, ({String payerName, String recipientName})>
+  settlementDisplayNames,
   required String groupId,
   required String eventId,
 }) {
@@ -32,6 +35,8 @@ Future<void> showLedgerSearchSheet(
     builder: (sheetContext) => _LedgerSearchSheet(
       expenses: expenses,
       settlements: settlements,
+      expensePayerDisplayNames: expensePayerDisplayNames,
+      settlementDisplayNames: settlementDisplayNames,
       groupId: groupId,
       eventId: eventId,
     ),
@@ -42,12 +47,17 @@ class _LedgerSearchSheet extends StatefulWidget {
   const _LedgerSearchSheet({
     required this.expenses,
     required this.settlements,
+    required this.expensePayerDisplayNames,
+    required this.settlementDisplayNames,
     required this.groupId,
     required this.eventId,
   });
 
   final List<Expense> expenses;
   final List<Settlement> settlements;
+  final Map<String, String> expensePayerDisplayNames;
+  final Map<String, ({String payerName, String recipientName})>
+  settlementDisplayNames;
   final String groupId;
   final String eventId;
 
@@ -84,7 +94,13 @@ class _LedgerSearchSheetState extends State<_LedgerSearchSheet> {
     final mediaQuery = MediaQuery.of(context);
     final viewInsets = mediaQuery.viewInsets.bottom;
     final maxHeight = mediaQuery.size.height * 0.9;
-    final results = _filter(widget.expenses, widget.settlements, _query);
+    final results = _filter(
+      widget.expenses,
+      widget.settlements,
+      _query,
+      expensePayerDisplayNames: widget.expensePayerDisplayNames,
+      settlementDisplayNames: widget.settlementDisplayNames,
+    );
 
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets),
@@ -343,11 +359,7 @@ class _ResultRow extends StatelessWidget {
 }
 
 class _Hint extends StatelessWidget {
-  const _Hint({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
+  const _Hint({required this.icon, required this.title, required this.message});
 
   final IconData icon;
   final String title;
@@ -401,21 +413,21 @@ sealed class _SearchHit {
 }
 
 final class _ExpenseHit extends _SearchHit {
-  _ExpenseHit(this.expense);
+  _ExpenseHit(this.expense, this.payerDisplay);
   final Expense expense;
+  final String? payerDisplay;
 
   @override
   IconData get leadingIcon => Iconsax.receipt_item;
   @override
-  String get title =>
-      expense.description?.trim().isNotEmpty == true
-          ? expense.description!.trim()
-          : expense.categoryName ?? 'Expense';
+  String get title => expense.description?.trim().isNotEmpty == true
+      ? expense.description!.trim()
+      : expense.categoryName ?? 'Expense';
   @override
   String get subtitle {
     final parts = <String>[
       if (expense.categoryName != null) expense.categoryName!,
-      if (expense.payerName != null) 'Paid by ${expense.payerName}',
+      if (payerDisplay != null) 'Paid by $payerDisplay',
     ];
     return parts.isEmpty ? '—' : parts.join(' · ');
   }
@@ -429,17 +441,15 @@ final class _ExpenseHit extends _SearchHit {
 }
 
 final class _SettlementHit extends _SearchHit {
-  _SettlementHit(this.settlement);
+  _SettlementHit(this.settlement, this.payerDisplay, this.recipientDisplay);
   final Settlement settlement;
+  final String payerDisplay;
+  final String recipientDisplay;
 
   @override
   IconData get leadingIcon => Iconsax.arrow_swap;
   @override
-  String get title {
-    final payer = settlement.payerName ?? 'Someone';
-    final recipient = settlement.recipientName ?? 'Someone';
-    return '$payer → $recipient';
-  }
+  String get title => '$payerDisplay → $recipientDisplay';
 
   @override
   String get subtitle => settlement.note?.trim().isNotEmpty == true
@@ -457,8 +467,12 @@ final class _SettlementHit extends _SearchHit {
 List<_SearchHit> _filter(
   List<Expense> expenses,
   List<Settlement> settlements,
-  String query,
-) {
+  String query, {
+  Map<String, String> expensePayerDisplayNames = const {},
+  Map<String, ({String payerName, String recipientName})>
+      settlementDisplayNames =
+      const {},
+}) {
   if (query.isEmpty) return const [];
   final needle = query.toLowerCase();
 
@@ -467,26 +481,35 @@ List<_SearchHit> _filter(
       e.description,
       e.categoryName,
       e.payerName,
+      expensePayerDisplayNames[e.id],
     ];
-    return haystacks.any(
-      (s) => s != null && s.toLowerCase().contains(needle),
-    );
+    return haystacks.any((s) => s != null && s.toLowerCase().contains(needle));
   }
 
   bool hitsSettlement(Settlement s) {
     final haystacks = [
       s.payerName,
       s.recipientName,
+      settlementDisplayNames[s.id]?.payerName,
+      settlementDisplayNames[s.id]?.recipientName,
       s.note,
     ];
-    return haystacks.any(
-      (v) => v != null && v.toLowerCase().contains(needle),
-    );
+    return haystacks.any((v) => v != null && v.toLowerCase().contains(needle));
   }
 
   final hits = <_SearchHit>[
-    ...expenses.where(hitsExpense).map(_ExpenseHit.new),
-    ...settlements.where(hitsSettlement).map(_SettlementHit.new),
+    for (final expense in expenses.where(hitsExpense))
+      _ExpenseHit(expense, expensePayerDisplayNames[expense.id]),
+    for (final settlement in settlements.where(hitsSettlement))
+      _SettlementHit(
+        settlement,
+        settlementDisplayNames[settlement.id]?.payerName ??
+            settlement.payerName ??
+            'Someone',
+        settlementDisplayNames[settlement.id]?.recipientName ??
+            settlement.recipientName ??
+            'Someone',
+      ),
   ]..sort((a, b) => b.date.compareTo(a.date));
 
   return hits;
@@ -499,9 +522,11 @@ List<Object> debugFilter(
   String query,
 ) {
   return _filter(expenses, settlements, query)
-      .map<Object>((hit) => switch (hit) {
-            _ExpenseHit(:final expense) => expense,
-            _SettlementHit(:final settlement) => settlement,
-          })
+      .map<Object>(
+        (hit) => switch (hit) {
+          _ExpenseHit(:final expense) => expense,
+          _SettlementHit(:final settlement) => settlement,
+        },
+      )
       .toList();
 }

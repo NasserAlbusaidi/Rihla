@@ -13,8 +13,10 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
+import '../../groups/services/member_name_resolver.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
@@ -38,6 +40,9 @@ import '../providers/event_provider.dart';
 ///   4. Recent expenses — 3 rows, or a dashed CTA in the empty state.
 ///   5. Roster strip — horizontal cards with a 6px sage/rust dot beneath
 ///      each person's name (no dot for settled or self).
+///
+/// Kept for deep-link compatibility; current event cards route straight to
+/// the ledger surface.
 class EventCommandCenter extends ConsumerWidget {
   const EventCommandCenter({
     super.key,
@@ -103,9 +108,21 @@ class _Content extends ConsumerWidget {
     final balancesAsync = ref.watch(
       eventBalancesProvider((eventRef: eventRef, event: event)),
     );
+    final groupMembers =
+        ref.watch(groupMembersProvider(groupId)).valueOrNull ?? [];
 
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
     final balances = balancesAsync.valueOrNull ?? const <UserBalance>[];
+    final participantDisplayNames = <String, String>{
+      for (final uid in event.participantIds)
+        uid: MemberNameResolver.format(
+          MemberNameResolver.resolveEventScoped(
+            uid: uid,
+            event: event,
+            members: groupMembers,
+          ),
+        ),
+    };
 
     final total = expenses.fold<Decimal>(
       Decimal.zero,
@@ -114,19 +131,16 @@ class _Content extends ConsumerWidget {
 
     final UserBalance? userBalance = currentUid == null
         ? null
-        : balances
-            .where((b) => b.participantId == currentUid)
-            .firstOrNull;
+        : balances.where((b) => b.participantId == currentUid).firstOrNull;
 
     final state = _resolveState(
       hasExpenses: expenses.isNotEmpty,
       userBalance: userBalance,
     );
 
-    final breakdown =
-        (state == _HubState.youOwed || state == _HubState.youOwe)
-            ? _breakdownFor(currentUid!, balances, event.participantNames)
-            : const <_BreakdownEntry>[];
+    final breakdown = (state == _HubState.youOwed || state == _HubState.youOwe)
+        ? _breakdownFor(currentUid!, balances, participantDisplayNames)
+        : const <_BreakdownEntry>[];
 
     return CustomScrollView(
       slivers: [
@@ -188,7 +202,8 @@ class _Content extends ConsumerWidget {
             child: _RecentExpensesSection(
               expenses: expenses,
               currentUid: currentUid,
-              participantNames: event.participantNames,
+              event: event,
+              groupMembers: groupMembers,
               onSeeAll: () {
                 HapticService.lightClick();
                 GoRouter.of(
@@ -209,6 +224,7 @@ class _Content extends ConsumerWidget {
           sliver: SliverToBoxAdapter(
             child: _RosterStrip(
               event: event,
+              participantDisplayNames: participantDisplayNames,
               balances: balances,
               currentUid: currentUid,
               isEmpty: state == _HubState.empty,
@@ -270,8 +286,7 @@ List<_BreakdownEntry> _breakdownFor(
       entries.add(
         _BreakdownEntry(
           otherUid: from,
-          otherName:
-              (s['fromUserName'] as String?) ?? names[from] ?? 'Someone',
+          otherName: (s['fromUserName'] as String?) ?? names[from] ?? 'Someone',
           amount: amount,
         ),
       );
@@ -446,8 +461,7 @@ class _BalanceQuiet extends StatelessWidget {
                 isSettled ? 'All settled' : 'Nothing to settle yet',
                 style: AppTypography.display(
                   fontSize: 28,
-                  color:
-                      isSettled ? colors.successText : colors.textSecondary,
+                  color: isSettled ? colors.successText : colors.textSecondary,
                   height: 1.05,
                   letterSpacing: -0.4,
                 ),
@@ -462,10 +476,7 @@ class _BalanceQuiet extends StatelessWidget {
           isSettled
               ? 'Everyone is square on this trip.'
               : 'Add the first expense to start splitting.',
-          style: AppTypography.sans(
-            fontSize: 12,
-            color: colors.textSecondary,
-          ),
+          style: AppTypography.sans(fontSize: 12, color: colors.textSecondary),
         ),
       ],
     );
@@ -621,14 +632,16 @@ class _RecentExpensesSection extends StatelessWidget {
   const _RecentExpensesSection({
     required this.expenses,
     required this.currentUid,
-    required this.participantNames,
+    required this.event,
+    required this.groupMembers,
     required this.onSeeAll,
     required this.onAddFirst,
   });
 
   final List<Expense> expenses;
   final String? currentUid;
-  final Map<String, String> participantNames;
+  final Event event;
+  final List<GroupMember> groupMembers;
   final VoidCallback onSeeAll;
   final VoidCallback onAddFirst;
 
@@ -670,7 +683,8 @@ class _RecentExpensesSection extends StatelessWidget {
           _RecentList(
             expenses: expenses.take(3).toList(),
             currentUid: currentUid,
-            participantNames: participantNames,
+            event: event,
+            groupMembers: groupMembers,
           ),
       ],
     );
@@ -681,12 +695,14 @@ class _RecentList extends StatelessWidget {
   const _RecentList({
     required this.expenses,
     required this.currentUid,
-    required this.participantNames,
+    required this.event,
+    required this.groupMembers,
   });
 
   final List<Expense> expenses;
   final String? currentUid;
-  final Map<String, String> participantNames;
+  final Event event;
+  final List<GroupMember> groupMembers;
 
   @override
   Widget build(BuildContext context) {
@@ -705,7 +721,8 @@ class _RecentList extends StatelessWidget {
             _RecentRow(
               expense: expenses[i],
               currentUid: currentUid,
-              participantNames: participantNames,
+              event: event,
+              groupMembers: groupMembers,
               divider: i < expenses.length - 1,
             ),
         ],
@@ -718,13 +735,15 @@ class _RecentRow extends StatelessWidget {
   const _RecentRow({
     required this.expense,
     required this.currentUid,
-    required this.participantNames,
+    required this.event,
+    required this.groupMembers,
     required this.divider,
   });
 
   final Expense expense;
   final String? currentUid;
-  final Map<String, String> participantNames;
+  final Event event;
+  final List<GroupMember> groupMembers;
   final bool divider;
 
   @override
@@ -732,7 +751,7 @@ class _RecentRow extends StatelessWidget {
     final colors = context.colors;
     final payerName = expense.payerParticipantId == currentUid
         ? 'You paid'
-        : '${(participantNames[expense.payerParticipantId] ?? 'Someone').split(' ').first} paid';
+        : '${_compactPayerName()} paid';
 
     return Container(
       decoration: BoxDecoration(
@@ -798,6 +817,19 @@ class _RecentRow extends StatelessWidget {
       ),
     );
   }
+
+  String _compactPayerName() {
+    final display = MemberNameResolver.resolveEventScoped(
+      uid: expense.payerParticipantId,
+      event: event,
+      members: groupMembers,
+      fallbackName: expense.payerName,
+    );
+    if (display.rawName == MemberNameResolver.formerMemberLiteral) {
+      return display.rawName;
+    }
+    return display.rawName.split(' ').first;
+  }
 }
 
 class _AddFirstExpenseCard extends StatelessWidget {
@@ -829,11 +861,7 @@ class _AddFirstExpenseCard extends StatelessWidget {
                     color: colors.selectionFill,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    Iconsax.add,
-                    size: 18,
-                    color: colors.primary,
-                  ),
+                  child: Icon(Iconsax.add, size: 18, color: colors.primary),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -933,6 +961,7 @@ class _DashedBorderPainter extends CustomPainter {
 class _RosterStrip extends StatelessWidget {
   const _RosterStrip({
     required this.event,
+    required this.participantDisplayNames,
     required this.balances,
     required this.currentUid,
     required this.isEmpty,
@@ -940,6 +969,7 @@ class _RosterStrip extends StatelessWidget {
   });
 
   final Event event;
+  final Map<String, String> participantDisplayNames;
   final List<UserBalance> balances;
   final String? currentUid;
   final bool isEmpty;
@@ -953,17 +983,15 @@ class _RosterStrip extends StatelessWidget {
 
     final othersCount =
         currentUid != null && event.participantIds.contains(currentUid)
-            ? count - 1
-            : count;
+        ? count - 1
+        : count;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _Overline(
-            label: '$count ${count == 1 ? 'person' : 'people'}',
-          ),
+          child: _Overline(label: '$count ${count == 1 ? 'person' : 'people'}'),
         ),
         if (isEmpty) ...[
           const SizedBox(height: 6),
@@ -1005,7 +1033,7 @@ class _RosterStrip extends StatelessWidget {
             itemBuilder: (context, i) {
               final uid = event.participantIds[i];
               final isMe = uid == currentUid;
-              final name = event.participantNames[uid] ?? 'Someone';
+              final name = participantDisplayNames[uid] ?? 'Someone';
               final balance = balanceByUid[uid];
               return _RosterPersonCard(
                 name: name,
@@ -1046,8 +1074,8 @@ class _RosterPersonCard extends StatelessWidget {
     final dotColor = isOwed
         ? colors.success
         : owes
-            ? colors.error
-            : null;
+        ? colors.error
+        : null;
 
     return InkWell(
       onTap: onTap,

@@ -82,6 +82,7 @@ final _balancesWithExpenses = (
     'uid-member': {'event-1': Decimal.parse('-15.000')},
   },
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  memberRawNames: <String, String>{},
 );
 
 /// GroupBalances with totalSpent == 0 (no expenses yet).
@@ -106,6 +107,7 @@ final _balancesEmpty = (
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  memberRawNames: <String, String>{},
 );
 
 final _testActivity = [
@@ -169,9 +171,8 @@ Widget _wrapWithRouter({
       ),
       GoRoute(
         path: '/group/:gid',
-        builder: (_, state) => GroupDetailScreen(
-          groupId: state.pathParameters['gid']!,
-        ),
+        builder: (_, state) =>
+            GroupDetailScreen(groupId: state.pathParameters['gid']!),
       ),
     ],
   );
@@ -196,10 +197,7 @@ Widget _wrapWithRouter({
         _groupId,
       ).overrideWith((ref) => Stream.value(const [])),
     ],
-    child: MaterialApp.router(
-      theme: AppTheme.lightTheme,
-      routerConfig: router,
-    ),
+    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
   );
 }
 
@@ -258,10 +256,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrapWithRouter(
-          prefs: prefs,
-          initialLocation: '/group/$_groupId',
-        ),
+        _wrapWithRouter(prefs: prefs, initialLocation: '/group/$_groupId'),
       );
       await tester.pumpAndSettle();
 

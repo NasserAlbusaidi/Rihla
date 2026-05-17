@@ -79,6 +79,7 @@ final _membersWithBalances = (
     'uid-member': {'evt-1': Decimal.parse('-15.000')},
   },
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  memberRawNames: <String, String>{},
 );
 
 /// Balances stub with two zero-balance members (no expenses yet).
@@ -107,6 +108,7 @@ final _membersWithZeroBalance = (
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  memberRawNames: <String, String>{},
 );
 
 /// Wraps a widget in ProviderScope + MaterialApp with shared test overrides.

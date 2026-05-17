@@ -10,6 +10,7 @@ import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
+import '../services/member_name_resolver.dart';
 import '../widgets/group_settlement_summary.dart';
 import 'all_settled_state.dart';
 import 'group_settlement_tile.dart';
@@ -26,6 +27,7 @@ class SettleUpPageBody extends StatelessWidget {
   final String currency;
   final List<Map<String, dynamic>> optimalSettlements;
   final List<UserBalance> balances;
+  final Map<String, String> rawNames;
   final AsyncValue<List<Settlement>> settlementsAsync;
   final String? currentUid;
   final Map<int, GlobalKey> tileKeys;
@@ -35,8 +37,8 @@ class SettleUpPageBody extends StatelessWidget {
 
   final void Function({
     required Map<String, dynamic> settlement,
-    required String fromName,
-    required String toName,
+    required String fromRawName,
+    required String toRawName,
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
@@ -54,6 +56,7 @@ class SettleUpPageBody extends StatelessWidget {
     required this.currency,
     required this.optimalSettlements,
     required this.balances,
+    required this.rawNames,
     required this.settlementsAsync,
     required this.currentUid,
     required this.tileKeys,
@@ -71,6 +74,11 @@ class SettleUpPageBody extends StatelessWidget {
 
     final history = settlementsAsync.valueOrNull ?? const <Settlement>[];
     final allSettled = optimalSettlements.isEmpty && history.isEmpty;
+    final displayNames = <String, String>{
+      for (final balance in balances)
+        if (balance.displayName != null)
+          balance.participantId: balance.displayName!,
+    };
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -99,16 +107,14 @@ class SettleUpPageBody extends StatelessWidget {
           ],
           if (balances.isNotEmpty) ...[
             const SizedBox(height: 24),
-            _NetBalancesSection(
-              balances: balances,
-              currency: currency,
-            ),
+            _NetBalancesSection(balances: balances, currency: currency),
           ],
           if (history.isNotEmpty) ...[
             const SizedBox(height: 24),
             _PaymentHistorySection(
               settlements: history,
               currency: currency,
+              displayNames: displayNames,
             ),
           ],
         ],
@@ -131,14 +137,13 @@ class SettleUpPageBody extends StatelessWidget {
     final isCreditor = currentUid != null && toUserId == currentUid;
     final isHighlighted =
         preSelectedMemberId != null &&
-        (fromUserId == preSelectedMemberId ||
-            toUserId == preSelectedMemberId);
+        (fromUserId == preSelectedMemberId || toUserId == preSelectedMemberId);
 
     final tileKey = GlobalKey();
     tileKeys[index] = tileKey;
 
-    final breakdown = buildBreakdown?.call(fromUserId, toUserId) ??
-        const <String, Decimal>{};
+    final breakdown =
+        buildBreakdown?.call(fromUserId, toUserId) ?? const <String, Decimal>{};
 
     return GroupSettlementTile(
           fromName: fromName,
@@ -151,14 +156,28 @@ class SettleUpPageBody extends StatelessWidget {
           isHighlighted: isHighlighted,
           tileKey: tileKey,
           onRecord: isYourAction
-              ? () => onRecord(
-                  settlement: settlement,
-                  fromName: fromName,
-                  toName: toName,
-                  fromUserId: fromUserId,
-                  toUserId: toUserId,
-                  suggestedAmount: amount,
-                )
+              ? () {
+                  assert(
+                    rawNames.containsKey(fromUserId),
+                    'rawNames must include every settlement participant',
+                  );
+                  assert(
+                    rawNames.containsKey(toUserId),
+                    'rawNames must include every settlement participant',
+                  );
+                  onRecord(
+                    settlement: settlement,
+                    fromRawName:
+                        rawNames[fromUserId] ??
+                        MemberNameResolver.stripFormerSuffix(fromName),
+                    toRawName:
+                        rawNames[toUserId] ??
+                        MemberNameResolver.stripFormerSuffix(toName),
+                    fromUserId: fromUserId,
+                    toUserId: toUserId,
+                    suggestedAmount: amount,
+                  );
+                }
               : null,
         )
         .animate()
@@ -392,10 +411,12 @@ class _PaymentHistorySection extends StatelessWidget {
   const _PaymentHistorySection({
     required this.settlements,
     required this.currency,
+    required this.displayNames,
   });
 
   final List<Settlement> settlements;
   final String currency;
+  final Map<String, String> displayNames;
 
   @override
   Widget build(BuildContext context) {
@@ -408,6 +429,7 @@ class _PaymentHistorySection extends StatelessWidget {
           _HistoryTile(
             settlement: settlements[i],
             currency: currency,
+            displayNames: displayNames,
             index: i,
           ),
       ],
@@ -419,95 +441,105 @@ class _HistoryTile extends StatelessWidget {
   const _HistoryTile({
     required this.settlement,
     required this.currency,
+    required this.displayNames,
     required this.index,
   });
 
   final Settlement settlement;
   final String currency;
+  final Map<String, String> displayNames;
   final int index;
 
   @override
   Widget build(BuildContext context) {
     const spacing = AppSpacingTokens.standard;
-    final payerName = settlement.payerName ?? 'Unknown';
-    final recipientName = settlement.recipientName ?? 'Unknown';
+    final payerId = settlement.payerParticipantId;
+    final recipientId = settlement.recipientParticipantId;
+    final payerName =
+        (payerId == null ? null : displayNames[payerId]) ??
+        settlement.payerName ??
+        'Unknown';
+    final recipientName =
+        (recipientId == null ? null : displayNames[recipientId]) ??
+        settlement.recipientName ??
+        'Unknown';
     final dateStr = DateFormat('MMM d').format(settlement.settledAt);
 
     return Container(
-      margin: EdgeInsets.only(bottom: spacing.space8),
-      decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(spacing.radiusMedium),
-        border: Border.all(color: context.colors.rule),
-        boxShadow: context.shadows.raised,
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: spacing.space16,
-        vertical: spacing.space12,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: context.colors.success.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Iconsax.tick_circle,
-              size: 16,
-              color: context.colors.success,
-            ),
+          margin: EdgeInsets.only(bottom: spacing.space8),
+          decoration: BoxDecoration(
+            color: context.colors.cardSurface,
+            borderRadius: BorderRadius.circular(spacing.radiusMedium),
+            border: Border.all(color: context.colors.rule),
+            boxShadow: context.shadows.raised,
           ),
-          SizedBox(width: spacing.space12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: context.colors.textPrimary,
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.space16,
+            vertical: spacing.space12,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: context.colors.success.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Iconsax.tick_circle,
+                  size: 16,
+                  color: context.colors.success,
+                ),
+              ),
+              SizedBox(width: spacing.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      overflow: TextOverflow.ellipsis,
+                      text: TextSpan(
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: context.colors.textPrimary,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: payerName,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const TextSpan(text: ' paid '),
+                          TextSpan(
+                            text: recipientName,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
                     ),
-                    children: [
-                      TextSpan(
-                        text: payerName,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                    const SizedBox(height: 2),
+                    Text(
+                      dateStr,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: context.colors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const TextSpan(text: ' paid '),
-                      TextSpan(
-                        text: recipientName,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  dateStr,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: context.colors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
+              ),
+              Text(
+                AppFormatters.formatCurrency(settlement.amount, currency),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: context.colors.textPrimary,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Text(
-            AppFormatters.formatCurrency(settlement.amount, currency),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: context.colors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    )
+        )
         .animate()
         .fadeIn(delay: Duration(milliseconds: index * 40))
         .slideY(begin: 0.08, curve: Curves.easeOutCubic);

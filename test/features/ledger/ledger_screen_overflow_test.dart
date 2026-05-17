@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
@@ -36,6 +38,17 @@ void main() {
     String? currentUserId = 'uid-creator',
   }) {
     final effectiveEvent = eventOverride ?? event;
+    final groupMembers = [
+      for (final uid in effectiveEvent.participantIds)
+        GroupMember(
+          id: uid,
+          groupId: groupId,
+          userId: uid,
+          displayName: effectiveEvent.participantNames[uid] ?? uid,
+          role: uid == effectiveEvent.createdBy ? 'CREATOR' : 'MEMBER',
+          joinedAt: effectiveEvent.createdAt,
+        ),
+    ];
     final router = GoRouter(
       initialLocation: '/group/$groupId/event/$eventId/ledger',
       routes: [
@@ -103,6 +116,9 @@ void main() {
         eventSettlementsProvider(
           eventRef,
         ).overrideWith((ref) => Stream.value(const <Settlement>[])),
+        groupMembersProvider(
+          groupId,
+        ).overrideWith((ref) => Stream.value(groupMembers)),
       ],
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
@@ -133,9 +149,7 @@ void main() {
       expect(find.text('Event'), findsOneWidget);
     });
 
-    testWidgets('search button opens the ledger search sheet', (
-      tester,
-    ) async {
+    testWidgets('search button opens the ledger search sheet', (tester) async {
       await tester.pumpWidget(buildLedger());
       await tester.pumpAndSettle();
 
@@ -175,10 +189,7 @@ void main() {
       // Seed a 2-person event with an unsettled expense so it stays tappable.
       final twoMemberEvent = event.copyWith(
         participantIds: const ['uid-creator', 'uid-other'],
-        participantNames: const {
-          'uid-creator': 'Alice',
-          'uid-other': 'Bob',
-        },
+        participantNames: const {'uid-creator': 'Alice', 'uid-other': 'Bob'},
       );
       final expenses = [
         Expense(

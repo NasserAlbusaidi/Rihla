@@ -505,6 +505,7 @@ void main() {
               eventCount: 0,
               perEventBreakdown: <String, Map<String, Decimal>>{},
               memberNames: <String, String>{},
+              memberRawNames: <String, String>{},
             )),
           ),
         ],

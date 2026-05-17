@@ -117,6 +117,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     currency: group.currency,
                     optimalSettlements: optimalSettlements,
                     balances: balancesData.balances,
+                    rawNames: balancesData.memberRawNames,
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
                     tileKeys: _tileKeys,
@@ -124,8 +125,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     onRecord:
                         ({
                           required settlement,
-                          required fromName,
-                          required toName,
+                          required fromRawName,
+                          required toRawName,
                           required fromUserId,
                           required toUserId,
                           required suggestedAmount,
@@ -133,8 +134,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           context,
                           group: group,
                           settlement: settlement,
-                          fromName: fromName,
-                          toName: toName,
+                          fromRawName: fromRawName,
+                          toRawName: toRawName,
                           fromUserId: fromUserId,
                           toUserId: toUserId,
                           suggestedAmount: suggestedAmount,
@@ -242,17 +243,20 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     BuildContext context, {
     required Group group,
     required Map<String, dynamic> settlement,
-    required String fromName,
-    required String toName,
+    required String fromRawName,
+    required String toRawName,
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
   }) async {
+    final fromDisplayName =
+        settlement['fromUserName'] as String? ?? fromRawName;
+    final toDisplayName = settlement['toUserName'] as String? ?? toRawName;
     final result = await showRecordPaymentSheet(
       context,
       currency: group.currency,
-      fromName: fromName,
-      toName: toName,
+      fromName: fromDisplayName,
+      toName: toDisplayName,
       suggestedAmount: suggestedAmount,
     );
 
@@ -288,8 +292,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       group: group,
       fromUserId: fromUserId,
       toUserId: toUserId,
-      fromName: fromName,
-      toName: toName,
+      fromName: fromRawName,
+      toName: toRawName,
       amount: editedAmount,
       note: noteText,
     );

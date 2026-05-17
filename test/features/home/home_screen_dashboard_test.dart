@@ -150,6 +150,7 @@ GroupBalances _testGroupBalances({Decimal? net}) => (
   eventCount: 1,
   perEventBreakdown: {},
   memberNames: {'test-user-id': 'Test User'},
+  memberRawNames: <String, String>{},
 );
 
 // ---------------------------------------------------------------------------
@@ -411,6 +412,7 @@ void main() {
           eventCount: 0,
           perEventBreakdown: <String, Map<String, Decimal>>{},
           memberNames: <String, String>{},
+          memberRawNames: <String, String>{},
         )),
       ),
       groupEventsProvider.overrideWith((ref, groupId) => Stream.value([])),
@@ -543,6 +545,7 @@ void main() {
                 eventCount: 0,
                 perEventBreakdown: <String, Map<String, Decimal>>{},
                 memberNames: <String, String>{},
+                memberRawNames: <String, String>{},
               )),
             ),
             groupEventsProvider.overrideWith(

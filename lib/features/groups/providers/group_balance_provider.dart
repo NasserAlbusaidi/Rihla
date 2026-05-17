@@ -11,6 +11,7 @@ import '../../trip/models/trip_model.dart';
 import '../models/group_activity_log_model.dart';
 import '../services/group_activity_service.dart';
 import '../services/group_settlement_service.dart';
+import '../services/member_name_resolver.dart';
 import 'group_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -72,12 +73,14 @@ final groupActivityProvider =
 /// - [perEventBreakdown]: memberId → eventId → netBalance for that member in
 ///   that event. Used for drill-down UI views.
 /// - [memberNames]: memberId → displayName map for settlement rendering.
+/// - [memberRawNames]: memberId → raw displayName map for settlement writes.
 typedef GroupBalances = ({
   List<UserBalance> balances,
   Decimal totalSpent,
   int eventCount,
   Map<String, Map<String, Decimal>> perEventBreakdown,
   Map<String, String> memberNames,
+  Map<String, String> memberRawNames,
 });
 
 // ---------------------------------------------------------------------------
@@ -95,8 +98,10 @@ typedef GroupBalances = ({
 /// 2. Watch [groupMembersProvider] for unified participant identity (D-04).
 /// 3. For each event, watch [eventExpensesProvider] and [eventSettlementsProvider].
 /// 4. Watch [groupSettlementsProvider] for cross-event settlements (D-07).
-/// 5. Combine all expenses + settlements through [BalanceCalculator].
-/// 6. Build per-event breakdown and member names map for UI.
+/// 5. Run [BalanceCalculator] per event with event-local participants, adding
+///    former financial actors only to the events where they appear.
+/// 6. Sum per-user net balances, apply group-scoped settlement adjustments,
+///    and build formatted/raw member name maps for UI and write paths.
 ///
 /// Returns [AsyncValue.loading] while any required stream has no value yet.
 /// Returns [AsyncValue.error] if the events stream fails.
@@ -124,15 +129,6 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     return const AsyncValue.loading();
   }
   final members = membersAsync.valueOrNull ?? [];
-  if (members.isEmpty) {
-    return AsyncValue.data((
-      balances: <UserBalance>[],
-      totalSpent: Decimal.zero,
-      eventCount: 0,
-      perEventBreakdown: <String, Map<String, Decimal>>{},
-      memberNames: <String, String>{},
-    ));
-  }
 
   // Step 3: Watch group-level settlements (D-07)
   final groupSettlementsAsync = ref.watch(groupSettlementsProvider(groupId));
@@ -162,7 +158,6 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     allEventSettlements.addAll(settlementsAsync.valueOrNull ?? []);
   }
 
-  // Combine event settlements + group settlements (immutable — create new list)
   final allSettlements = <Settlement>[
     ...allEventSettlements,
     ...(groupSettlementsAsync.valueOrNull ?? []),
@@ -172,31 +167,184 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
   // returning AsyncValue.loading() here deadlocks the balance card when
   // new events have zero expenses.
 
-  // Step 5: Build unified participant list from group members (D-04 UID-based identity)
-  final participants = members
-      .map(
-        (m) => Participant(
-          id: m.userId,
-          tripId: groupId, // sentinel — BalanceCalculator does not use tripId
-          role: ParticipantRole.member,
-          joinedAt: m.joinedAt,
-          displayName: m.displayName,
-        ),
-      )
-      .toList();
+  final uidToFallbackName = <String, String>{};
+  for (final event in events) {
+    for (final entry in event.participantNames.entries) {
+      uidToFallbackName.putIfAbsent(entry.key, () => entry.value);
+    }
+  }
+  for (final settlement in allSettlements) {
+    final payerId = settlement.payerParticipantId;
+    final recipientId = settlement.recipientParticipantId;
+    final payerName = settlement.payerName;
+    final recipientName = settlement.recipientName;
+    if (payerId != null && payerName != null) {
+      uidToFallbackName.putIfAbsent(payerId, () => payerName);
+    }
+    if (recipientId != null && recipientName != null) {
+      uidToFallbackName.putIfAbsent(recipientId, () => recipientName);
+    }
+  }
+  for (final expense in allExpenses) {
+    final payerName = expense.payerName;
+    if (payerName != null) {
+      uidToFallbackName.putIfAbsent(
+        expense.payerParticipantId,
+        () => payerName,
+      );
+    }
+  }
 
-  // Step 6: Run BalanceCalculator on combined data (D-05)
-  final balances = BalanceCalculator.calculateBalances(
-    expenses: allExpenses,
-    settlements: allSettlements,
-    participants: participants,
-  );
+  final expensesByEvent = <String, List<Expense>>{
+    for (final event in events) event.id: <Expense>[],
+  };
+  final eventSettlementsByEvent = <String, List<Settlement>>{
+    for (final event in events) event.id: <Settlement>[],
+  };
+  for (final expense in allExpenses) {
+    expensesByEvent[expense.tripId]?.add(expense);
+  }
+  for (final settlement in allEventSettlements) {
+    eventSettlementsByEvent[settlement.tripId]?.add(settlement);
+  }
 
-  // Step 7: Compute per-event breakdown (RESEARCH Pattern 4)
+  final totalPaidPerUid = <String, Decimal>{};
+  final totalOwedPerUid = <String, Decimal>{};
+  final netBalancePerUid = <String, Decimal>{};
+  final allMemberIds = members.map((m) => m.userId).toSet();
+  final liveMemberIds = members
+      .where((m) => !m.isTombstone)
+      .map((m) => m.userId)
+      .toSet();
+  final allFormerFinancialActorsSeen = <String>{};
+
+  for (final event in events) {
+    final eventExpenses = expensesByEvent[event.id] ?? const <Expense>[];
+    final eventSettlements =
+        eventSettlementsByEvent[event.id] ?? const <Settlement>[];
+    final eventFinancialUids = <String>{
+      for (final expense in eventExpenses) expense.payerParticipantId,
+      for (final settlement in eventSettlements) ...[
+        if (settlement.payerParticipantId != null)
+          settlement.payerParticipantId!,
+        if (settlement.recipientParticipantId != null)
+          settlement.recipientParticipantId!,
+      ],
+    };
+    final eventLocalFormerActors = eventFinancialUids.difference(liveMemberIds);
+    allFormerFinancialActorsSeen.addAll(eventLocalFormerActors);
+
+    final eventParticipantUids = <String>{
+      ...event.participantIds,
+      ...eventLocalFormerActors,
+    };
+    if (eventParticipantUids.isEmpty) continue;
+
+    final eventParticipants = eventParticipantUids.map((uid) {
+      final display = MemberNameResolver.resolveGroupScoped(
+        uid: uid,
+        members: members,
+        fallbackName: uidToFallbackName[uid],
+      );
+      return Participant(
+        id: uid,
+        tripId: event.id,
+        role: ParticipantRole.member,
+        joinedAt: event.createdAt,
+        // Formatted for display. Raw names are exposed through memberRawNames
+        // so write paths never persist the former-member suffix.
+        displayName: MemberNameResolver.format(display),
+      );
+    }).toList();
+
+    final eventBalances = BalanceCalculator.calculateBalances(
+      expenses: eventExpenses,
+      settlements: eventSettlements,
+      participants: eventParticipants,
+    );
+
+    for (final balance in eventBalances) {
+      totalPaidPerUid.update(
+        balance.participantId,
+        (value) => value + balance.totalPaid,
+        ifAbsent: () => balance.totalPaid,
+      );
+      totalOwedPerUid.update(
+        balance.participantId,
+        (value) => value + balance.totalOwed,
+        ifAbsent: () => balance.totalOwed,
+      );
+      netBalancePerUid.update(
+        balance.participantId,
+        (value) => value + balance.netBalance,
+        ifAbsent: () => balance.netBalance,
+      );
+    }
+  }
+
+  final groupScopedSettlementAdj = <String, Decimal>{};
+  final groupSettlements = groupSettlementsAsync.valueOrNull ?? const [];
+  for (final settlement in groupSettlements) {
+    final payerId = settlement.payerParticipantId;
+    final recipientId = settlement.recipientParticipantId;
+    if (payerId != null) {
+      groupScopedSettlementAdj.update(
+        payerId,
+        (value) => value + settlement.amount,
+        ifAbsent: () => settlement.amount,
+      );
+    }
+    if (recipientId != null) {
+      groupScopedSettlementAdj.update(
+        recipientId,
+        (value) => value - settlement.amount,
+        ifAbsent: () => -settlement.amount,
+      );
+    }
+  }
+
+  final allUids = <String>{
+    ...allMemberIds,
+    ...allFormerFinancialActorsSeen,
+    ...totalPaidPerUid.keys,
+    ...totalOwedPerUid.keys,
+    ...netBalancePerUid.keys,
+    ...groupScopedSettlementAdj.keys,
+  };
+
+  final balances = allUids.map((uid) {
+    final display = MemberNameResolver.resolveGroupScoped(
+      uid: uid,
+      members: members,
+      fallbackName: uidToFallbackName[uid],
+    );
+    final eventNet = netBalancePerUid[uid] ?? Decimal.zero;
+    final groupSettlementNet = groupScopedSettlementAdj[uid] ?? Decimal.zero;
+    return UserBalance(
+      participantId: uid,
+      displayName: MemberNameResolver.format(display),
+      totalPaid: totalPaidPerUid[uid] ?? Decimal.zero,
+      totalOwed: totalOwedPerUid[uid] ?? Decimal.zero,
+      netBalance: eventNet + groupSettlementNet,
+    );
+  }).toList();
+
+  // Step 7: Compute per-event breakdown (RESEARCH Pattern 4). This drill-down
+  // intentionally keeps using event.participantIds only; aggregate balances
+  // above are the authoritative settle-up participant set.
   final perEventBreakdown = _buildPerEventBreakdown(events, ref, groupId);
 
-  // Step 8: Build member names map for settlement display
-  final memberNames = {for (final m in members) m.userId: m.displayName};
+  final memberNames = <String, String>{};
+  final memberRawNames = <String, String>{};
+  for (final uid in allUids) {
+    final display = MemberNameResolver.resolveGroupScoped(
+      uid: uid,
+      members: members,
+      fallbackName: uidToFallbackName[uid],
+    );
+    memberNames[uid] = MemberNameResolver.format(display);
+    memberRawNames[uid] = display.rawName;
+  }
 
   return AsyncValue.data((
     balances: balances,
@@ -204,6 +352,7 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     eventCount: events.length,
     perEventBreakdown: perEventBreakdown,
     memberNames: memberNames,
+    memberRawNames: memberRawNames,
   ));
 });
 

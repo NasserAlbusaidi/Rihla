@@ -9,7 +9,7 @@ Guidance for Claude Code sessions working in this repo. Read top-to-bottom on fi
 | If you're… | Open this first |
 |---|---|
 | Adding/changing a screen or nav flow | [Routing](#routing-gorouter-declarative) → `lib/core/router/app_router.dart` |
-| Touching money math | [Financial Calculations](#financial-calculations) → `lib/features/ledger/services/balance_calculator.dart` |
+| Touching money math | [Financial Calculations](#financial-calculations) → `BalanceCalculator` in `lib/features/ledger/providers/expense_provider.dart` |
 | Wiring a Firestore stream | [State, Offline, Sync](#state-offline-sync) → `lib/core/services/firestore_repository.dart` |
 | Designing a new screen | [Design System](#design-system) → `lib/core/theme/tokens/`, Stitch workflow |
 | Writing tests | [Testing](#testing) → `test/helpers/`, `flutter_test_config.dart` |
@@ -188,7 +188,7 @@ Google Stitch is a **visual oracle only** — design exploration. Never commit S
 
 All money math uses the `decimal` package — **not `double`**. Default currency is OMR (3 dp); USD/EUR/GBP/SAR/AED/QAR also supported.
 
-- `BalanceCalculator` (`lib/features/ledger/services/`) handles four expense scopes: `global`, `subGroup` (legacy), `personal`, `custom`, and four split modes: `equally`, `shares`, `exact`, `percent`
+- `BalanceCalculator` (defined in `lib/features/ledger/providers/expense_provider.dart`, not a separate file) handles four expense scopes: `global`, `subGroup` (legacy), `personal`, `custom`, and four split modes: `equally`, `shares`, `exact`, `percent`
 - **Rounding remainder goes to the alphabetically-last recipient** so `sum(shares) == amount`
 - Settlement optimization: greedy min-transactions
 - `MoneySerializer` converts `Decimal` ↔ integer subunits **at the Firestore boundary only**. Currency scale map: OMR/KWD/BHD = 1000, USD/EUR/GBP/SAR/AED/QAR = 100, JPY = 1
@@ -318,7 +318,7 @@ Quick file index for orientation:
 | Connectivity poll | `lib/core/providers/connectivity_provider.dart` |
 | Firestore base repo | `lib/core/services/firestore_repository.dart` |
 | SQLite cache repos | `lib/core/services/cache/` |
-| Money math | `lib/features/ledger/services/balance_calculator.dart` |
+| Money math | `BalanceCalculator` class in `lib/features/ledger/providers/expense_provider.dart` |
 | Money serialization | `lib/features/ledger/services/money_serializer.dart` |
 | Design tokens | `lib/core/theme/tokens/` |
 | Bottom nav | `lib/features/home/widgets/bottom_nav_shell.dart` |
@@ -365,13 +365,35 @@ Pre-release blockers tracked in `docs/PRODUCTION-READINESS.md`. Physical-device 
 
 ## Verifying Plans and Specs
 
-Before declaring any plan, spec, or design doc ready — especially anything being handed off (codex-delegate, a worktree, another session) — run this checklist. These are the gaps a fresh reviewer catches that an embedded one misses. **The point is to catch them in the first pass, not on review.**
+Before declaring any plan, spec, or design doc ready — especially anything being handed off (codex-delegate, a worktree, another session) — run this checklist. These are the gaps a fresh reviewer catches that an embedded one misses. **The point is to catch them in the first pass, not on review.** The checklist is non-negotiable; it is also useless when read passively. Every item below is something you **execute and report on**, not something you nod at.
 
-- **Verify every concrete claim against code, not docs.** File paths, route constants, field names, test directories, npm/dart scripts. Docs drift; code is ground truth. CLAUDE.md, MEMORY.md, and inline comments are starting points, never citations. If a claim is load-bearing, `grep` or `Read` to confirm in the moment.
+### When prompting a recon/Explore agent, demand data-flow classification
+
+If the work touches a read-path *and* a write-path for the same data (rename, refactor, schema change, new validation layer), require the agent to classify every cited callsite. The minimal column set:
+
+- **INBOUND** — consumed for display / UI only. No persistence side effects.
+- **OUTBOUND** — feeds a write / persistence / IPC. Format changes here can leak into storage.
+- **BOTH** — receives a value for display *and* feeds it back into a write. These are the highest-risk sites; treat them as OUTBOUND for shape concerns.
+
+Without this column, "render-site enumerations" miss the wire-up points where formatted-for-display strings get persisted unchanged. Worked example: the v1 *former member rendering* spec missed `SettleUpPageBody.onRecord` because the recon agent classified it as a render site. It's BOTH — the same string feeds the tile *and* the Firestore settlement create.
+
+### While writing the spec — run these, report results out loud
+
+Don't write "verified file paths" in your head. State, in the spec or in the conversation, what you checked and what you found. The checklist:
+
+- **Verify every concrete claim against code, not docs.** File paths, route constants, field names, test directories, npm/dart scripts. Docs drift; code is ground truth. CLAUDE.md, MEMORY.md, and inline comments are starting points, never citations. If a claim is load-bearing, `grep` or `Read` to confirm *in the moment* and say "verified" with the command run. Trusting an upstream agent's citation without re-running it is the most common failure here.
 - **Trace one read-path for every write-path.** Any data-shape mutation has consumers. "Who reads this after it changes?" must have an answer in the spec. Example: rewriting `groups/{gid}.memberIds` requires checking `groupMembersProvider` → `groupBalancesProvider` still resolves.
 - **Enumerate fields from the type, not from memory.** When listing fields to scrub, migrate, or validate, open the model file and list them exhaustively. Recall is not a substitute.
-- **Adversarial pass before sign-off.** Re-read the spec as if you'd just been handed it cold, with no commitment to the direction. What's vague? What's an assumption? What path doesn't exist?
-- **Distrust your own earlier claims in the same session.** The deeper a session runs, the more layered the assumptions. Re-verify load-bearing claims in the moment, not on recall.
+- **Spell out data contracts, don't gesture at them.** "Two different shapes for the tile and the callback" is not a spec — it's an intention. The implementer needs the exact map keys, the exact callback signature, the exact prop names. Vague contracts → wrong implementations.
+- **Verify arithmetic decomposition when summing across function calls.** Any time a spec writes `aggregate.X = sum(call.X)` or splits one calculation into N slices, you are asserting that `X` is decomposable across the slicing. Open the function that produces `X` and read its **output-construction lines** (not the algorithm flow) to confirm `X` is built only from inputs that decompose across the slicing. Field names lie — `totalPaid` sounds decomposable, but if settlements are folded into `netBalance` only, then `sum(totalPaid)` silently drops settlement effects. Worked example: the v5 *former-member rendering* spec assumed `sum(eventBalances.totalPaid) - sum(eventBalances.totalOwed) = aggregate net`, but `BalanceCalculator.calculateBalances` at `expense_provider.dart:305` builds `netBalance = (totalPaid + settlementAdj) - totalOwed` — settlement adjustments live only in `netBalance`. Codex caught this as a [P1] in round 5; the in-house checklist missed it because I read the function flow, not the field-construction contract.
+- **Adversarial pass before sign-off — and worked examples must test orthogonal axes.** Re-read the spec as if you'd just been handed it cold, with no commitment to the direction. What's vague? What's an assumption? What path doesn't exist? **Critical:** if the spec is fixing bug X on axis A, the worked example must exercise axis B (or C, or D) — *not* axis A. A worked example on the same axis as the fix only proves the narrow point you already believed; it cannot catch a regression introduced by the fix on a different axis. Worked example of the failure: v5 fixed a participant-set-scope bug (axis A: which UIDs are in the split set). The v5 worked example was "Orphan paid in Event A, Bob paid in Event B — Orphan not charged for Event B." Same axis as the fix. Codex's first move was to construct a worked example on axis B (settlements): "Alice settles $10 → Bob in Event A" — and the new algorithm dropped the settlement. Whenever a fix is in flight, brainstorm the axes the spec touches (split-set, money-flow, settlements, scope, time, identity) and pick the example from the axis you did *not* just modify.
+- **Distrust your own earlier claims in the same session.** The deeper a session runs, the more layered the assumptions. Re-verify load-bearing claims in the moment, not on recall. Iteration rounds (v2 → v3 → v4 → v5) create compounding momentum where each verified piece feels load-bearing for the next round; codex starts each round from zero, which is structurally why it catches what in-session verification misses. Treat each new round as if it were v1.
+
+### Before declaring ready — codex review is non-optional for hand-offs
+
+For any spec destined for a worktree, a codex-delegate execution, or another session, run `/codex` against the spec before implementation, not after. The Explore agent + your synthesis is the *first draft*; codex is the *first reviewer*. Without a fresh-context gap between author and reviewer, the spec ships its own author's blind spots into the implementation. Cost: ~5-10 min and ~1.5M tokens per round. Cost of implementing a broken spec and rewriting: ≥10× that.
+
+Apply codex findings, re-run, and stop when the verdict has no [P1]s. Each round narrows the failure mode (round 1 catches architectural blind spots; round 2 catches specification ambiguity; round 3 onward catches edge cases). Two rounds is usually enough; three signals the spec was probably over-scoped to start.
 
 Convergence pressure — sycophancy, momentum, prior approval — is the failure mode this checklist is meant to interrupt. A plan that "looks done" is not the same as a plan that holds up under independent review. See also: [[feedback-spec-verification]] in memory.
 

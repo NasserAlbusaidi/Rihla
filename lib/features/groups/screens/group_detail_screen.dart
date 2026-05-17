@@ -830,7 +830,7 @@ class _MembersCard extends StatelessWidget {
               name:
                   balances[i].displayName ??
                   data.memberNames[balances[i].participantId] ??
-                  'Member',
+                  'Former member',
               role: _roleFor(
                 participantId: balances[i].participantId,
                 creatorId: group.createdBy,
