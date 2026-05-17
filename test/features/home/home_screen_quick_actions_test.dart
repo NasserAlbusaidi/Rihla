@@ -15,6 +15,7 @@ import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 Group _makeGroup(String id, String name) => Group(
   id: id,
@@ -96,7 +97,12 @@ Widget _buildTestApp({
       sharedPreferencesProvider.overrideWithValue(prefs),
       ...overrides,
     ],
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      routerConfig: router,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 

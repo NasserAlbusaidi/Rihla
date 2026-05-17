@@ -17,6 +17,7 @@ import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
 import 'package:safar/features/home/widgets/weekly_spending_card.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_avatar.dart';
 
 void main() {
@@ -298,6 +299,8 @@ void main() {
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
           routerConfig: router,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
         ),
       );
     }

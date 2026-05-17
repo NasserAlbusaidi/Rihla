@@ -13,6 +13,7 @@ import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart'
     as profile_stats;
 import 'package:safar/features/settings/screens/profile_screen.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockDeletionService extends Mock implements DataDeletionService {}
@@ -51,6 +52,8 @@ Future<Widget> _wrap({
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: GoRouter(
         initialLocation: '/profile',
         routes: [
