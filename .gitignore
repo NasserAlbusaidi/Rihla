@@ -47,6 +47,8 @@ app.*.map.json
 # Environment variables (contains secrets)
 .env
 /config.json
+/config.test.json
+/qa-findings-*.md
 
 # Firebase config files
 android/app/google-services.json
