@@ -258,6 +258,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'يوجد رابط استعادة قيد الانتظار. أدخل البريد الذي أُرسل إليه.';
 
   @override
+  String get profilePreferencesNotifications => 'الإشعارات';
+
+  @override
   String get profilePreferencesCurrency => 'العملة';
 
   @override

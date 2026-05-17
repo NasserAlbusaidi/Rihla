@@ -20,6 +20,7 @@ import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 import 'package:safar/features/settings/screens/profile_screen.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Phase 26 mock classes
@@ -39,7 +40,12 @@ Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
 
   return ProviderScope(
     overrides: overrides,
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      routerConfig: router,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 
@@ -145,6 +151,8 @@ void main() {
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
           routerConfig: router,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
         ),
       ),
     );

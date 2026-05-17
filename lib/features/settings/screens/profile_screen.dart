@@ -9,7 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/config/app_metadata.dart';
-import '../../../core/models/split_mode.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/services/haptic_service.dart';
@@ -17,6 +17,7 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
@@ -58,6 +59,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final statsAsync = ref.watch(profileStatsProvider);
+    final l10n = context.l10n;
 
     return Scaffold(
       key: ProfileKeys.screen,
@@ -87,7 +89,7 @@ class ProfileScreen extends ConsumerWidget {
                         .fadeIn(delay: 160.ms, duration: 400.ms)
                         .slideY(begin: 0.08),
                     const SizedBox(height: 18),
-                    const _SectionLabel(label: 'Preferences'),
+                    _SectionLabel(label: l10n.profileSectionPreferences),
                     const SizedBox(height: 8),
                     const _PreferencesCard().animate().fadeIn(
                       delay: 260.ms,
@@ -100,14 +102,14 @@ class ProfileScreen extends ConsumerWidget {
                       child: ProfileDisplaySection(),
                     ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
                     const SizedBox(height: 18),
-                    const _SectionLabel(label: 'Account'),
+                    _SectionLabel(label: l10n.profileSectionAccount),
                     const SizedBox(height: 8),
                     const _AccountCard().animate().fadeIn(
                       delay: 320.ms,
                       duration: 400.ms,
                     ),
                     const SizedBox(height: 18),
-                    const _SectionLabel(label: 'About'),
+                    _SectionLabel(label: l10n.profileSectionAbout),
                     const SizedBox(height: 8),
                     const _AboutCard().animate().fadeIn(
                       delay: 380.ms,
@@ -189,7 +191,7 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
             Text(
-              'Profile',
+              context.l10n.profileTitle,
               style: AppTypography.sans(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -202,7 +204,7 @@ class _TopBar extends StatelessWidget {
                 icon: Iconsax.export_1,
                 onTap: () {
                   HapticService.lightClick();
-                  _shareApp();
+                  _shareApp(context);
                 },
               ),
             ),
@@ -271,7 +273,7 @@ class _PendingRecoveryBanner extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Finish account recovery',
+                        context.l10n.profileFinishRecovery,
                         style: AppTypography.sans(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -280,7 +282,7 @@ class _PendingRecoveryBanner extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'A recovery link is waiting. Enter the email it was sent to.',
+                        context.l10n.profileRecoverySubtitle,
                         style: AppTypography.sans(
                           fontSize: 12,
                           color: colors.textSecondary,
@@ -314,8 +316,9 @@ class _IdentityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     final hasName = name.trim().isNotEmpty;
-    final displayName = hasName ? name : 'Set your name';
+    final displayName = hasName ? name : l10n.profileSetYourName;
     final handle = hasName ? '@${_slug(name)}' : '@traveller';
 
     return Padding(
@@ -384,7 +387,7 @@ class _IdentityCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Anonymous traveller',
+                    l10n.profileAnonymousTraveller,
                     style: AppTypography.sans(
                       fontSize: 13,
                       color: colors.textSecondary,
@@ -408,9 +411,10 @@ class _IdentityCard extends StatelessWidget {
                         leadingIcon: Iconsax.copy,
                         label: handle,
                         onTap: () async {
+                          final handleCopied = l10n.profileSnackHandleCopied;
                           await Clipboard.setData(ClipboardData(text: handle));
                           if (!context.mounted) return;
-                          _showSnack(context, 'Handle copied');
+                          _showSnack(context, handleCopied);
                         },
                       ),
                     ],
@@ -482,6 +486,7 @@ class _StatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stats = statsAsync.valueOrNull;
+    final l10n = context.l10n;
     return Padding(
       key: ProfileKeys.statsSection,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -490,25 +495,25 @@ class _StatsGrid extends StatelessWidget {
           Expanded(
             child: _StatCard(
               statKey: ProfileKeys.statEvents,
-              keyLabel: 'JOURNEYS',
+              keyLabel: l10n.profileStatsJourneysLabel,
               value: stats == null ? '—' : '${stats.eventCount}',
-              sub: 'all-time',
+              sub: l10n.profileStatsAllTime,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: _StatCard(
               statKey: ProfileKeys.statGroups,
-              keyLabel: 'GROUPS',
+              keyLabel: l10n.profileStatsGroupsLabel,
               value: stats == null ? '—' : '${stats.groupCount}',
-              sub: 'active',
+              sub: l10n.profileStatsActive,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: _StatCard(
               statKey: ProfileKeys.statSpent,
-              keyLabel: 'SPENT',
+              keyLabel: l10n.profileStatsSpentLabel,
               valueWidget: stats == null
                   ? null
                   : RAmount(
@@ -518,7 +523,7 @@ class _StatsGrid extends StatelessWidget {
                       size: 24,
                     ),
               value: stats == null ? '—' : null,
-              sub: 'lifetime',
+              sub: l10n.profileStatsLifetime,
             ),
           ),
         ],
@@ -608,7 +613,7 @@ class _SectionLabel extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            label.toUpperCase(),
+            label,
             style: AppTypography.mono(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -659,13 +664,13 @@ class _PreferencesCard extends ConsumerWidget {
           ),
           _PrefRow(
             leading: _PrefIcon(icon: Iconsax.global, bg: colors.cardSoft),
-            label: 'Currency',
+            label: context.l10n.profilePreferencesCurrency,
             trailingText: _currencyTrailing(settings.currencyCode),
             onTap: () => CurrencyPickerSheet.show(context),
           ),
           _PrefRow(
             leading: _PrefIconLetter(letter: 'Aa', bg: colors.saffronTint),
-            label: 'Language',
+            label: context.l10n.profilePreferencesLanguage,
             trailingText: _languageTrailing(settings.languageCode),
             onTap: () => LanguagePickerSheet.show(context),
           ),
@@ -674,8 +679,9 @@ class _PreferencesCard extends ConsumerWidget {
               icon: Iconsax.percentage_square,
               bg: colors.cardSoft,
             ),
-            label: 'Default split',
-            trailingText: settings.defaultSplitMode.label,
+            label: context.l10n.profilePreferencesDefaultSplit,
+            trailingText:
+                splitModeDisplayName(settings.defaultSplitMode, context.l10n),
             onTap: () => DefaultSplitPickerSheet.show(context),
             divider: false,
           ),
@@ -698,7 +704,7 @@ class _AboutCard extends ConsumerWidget {
       child: _RowsCard(
         rows: [
           _PrefRow(
-            label: 'Help center',
+            label: context.l10n.profileAboutHelpCenter,
             trailing: Icon(
               Iconsax.arrow_right_3,
               size: 16,
@@ -708,7 +714,7 @@ class _AboutCard extends ConsumerWidget {
           ),
           _PrefRow(
             tileKey: ProfileKeys.feedbackTile,
-            label: 'Send feedback',
+            label: context.l10n.profileAboutSendFeedbackRow,
             trailing: Icon(
               Iconsax.arrow_right_3,
               size: 16,
@@ -718,7 +724,7 @@ class _AboutCard extends ConsumerWidget {
           ),
           _PrefRow(
             tileKey: ProfileKeys.licensesTile,
-            label: 'Terms & privacy',
+            label: context.l10n.profileAboutTermsPrivacy,
             trailing: Icon(
               Iconsax.arrow_right_3,
               size: 16,
@@ -740,13 +746,14 @@ class _AccountCard extends ConsumerWidget {
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final confirmed = await DeleteAccountDialog.show(context);
     if (confirmed != true) return;
     final result = await ref.read(dataDeletionServiceProvider).deleteAccount();
     final message = switch (result) {
-      DeletionResult.ok => 'Account deleted.',
-      DeletionResult.noUser => 'No active account to delete.',
-      DeletionResult.error => "Couldn't delete the account. Try again.",
+      DeletionResult.ok => l10n.profileDeletionOk,
+      DeletionResult.noUser => l10n.profileDeletionNoUser,
+      DeletionResult.error => l10n.profileDeletionError,
     };
     messenger.showSnackBar(SnackBar(content: Text(message)));
     if (result == DeletionResult.ok && context.mounted) {
@@ -760,14 +767,16 @@ class _AccountCard extends ConsumerWidget {
     String email,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final signedOut = context.l10n.profileSnackSignedOut;
+    final signOutFailed = context.l10n.profileSnackSignOutFailed;
     final confirmed = await SignOutConfirmDialog.show(context, email: email);
     if (confirmed != true) return;
     try {
       await ref.read(authRecoveryServiceProvider).signOutCurrentDevice();
-      messenger.showSnackBar(const SnackBar(content: Text('Signed out')));
+      messenger.showSnackBar(SnackBar(content: Text(signedOut)));
     } catch (_) {
       messenger.showSnackBar(
-        const SnackBar(content: Text("Couldn't sign out. Try again.")),
+        SnackBar(content: Text(signOutFailed)),
       );
     }
   }
@@ -785,7 +794,7 @@ class _AccountCard extends ConsumerWidget {
           _PrefRow(
             tileKey: ProfileKeys.linkedEmailTile,
             leading: _PrefIcon(icon: Iconsax.sms, bg: colors.cardSoft),
-            label: 'Linked email',
+            label: context.l10n.profileAccountLinkedEmail,
             trailing: isLinked
                 ? Text(
                     linkedEmail,
@@ -799,7 +808,7 @@ class _AccountCard extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Not set',
+                        context.l10n.profileAccountNotSet,
                         style: AppTypography.sans(
                           fontSize: 13,
                           color: colors.textSecondary,
@@ -820,7 +829,7 @@ class _AccountCard extends ConsumerWidget {
             _PrefRow(
               tileKey: ProfileKeys.signOutDeviceTile,
               leading: _PrefIcon(icon: Iconsax.logout, bg: colors.cardSoft),
-              label: 'Sign out of this device',
+              label: context.l10n.profileAccountSignOut,
               trailing: Icon(
                 Iconsax.arrow_right_3,
                 size: 16,
@@ -832,9 +841,9 @@ class _AccountCard extends ConsumerWidget {
           _PrefRow(
             tileKey: ProfileKeys.deleteAccountTile,
             leading: _PrefIcon(icon: Iconsax.trash, bg: colors.cardSoft),
-            label: 'Delete account',
+            label: context.l10n.profileAccountDelete,
             trailing: Text(
-              'Permanent',
+              context.l10n.profileAccountDeletePermanent,
               style: AppTypography.sans(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -931,7 +940,7 @@ class _NotificationPrefRow extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Notifications',
+                        context.l10n.profilePreferencesNotifications,
                         style: AppTypography.sans(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -941,8 +950,8 @@ class _NotificationPrefRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         disabled
-                            ? 'Enable in device Settings'
-                            : 'Activity & settles',
+                            ? context.l10n.profileNotificationsDisabledHint
+                            : context.l10n.profileNotificationsSubtitle,
                         style: AppTypography.sans(
                           fontSize: 12,
                           color: colors.textSecondary,
@@ -1114,24 +1123,26 @@ void _showSnack(BuildContext context, String message) {
 
 // ──────────────────────────── Outbound action helpers
 
-void _shareApp() {
+void _shareApp(BuildContext context) {
   Share.share(
-    "I'm splitting trip expenses with Rihla. Give it a try.",
+    context.l10n.profileShareMessage,
     subject: 'Rihla',
   );
 }
 
 Future<void> _openExternalUrl(BuildContext context, String url) async {
+  final openLinkFailed = context.l10n.profileSnackOpenLinkFailed;
   final uri = Uri.parse(url);
   final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (!ok && context.mounted) {
-    _showSnack(context, "Couldn't open link");
+    _showSnack(context, openLinkFailed);
   }
 }
 
 Future<void> _sendFeedback(BuildContext context, WidgetRef ref) async {
   final metadata = ref.read(appMetadataProvider).valueOrNull;
   final versionLabel = metadata?.versionLabel ?? 'Unknown';
+  final noEmailApp = context.l10n.profileSnackNoEmailApp;
   final uri = Uri(
     scheme: 'mailto',
     path: AppLinks.feedbackEmail,
@@ -1139,6 +1150,6 @@ Future<void> _sendFeedback(BuildContext context, WidgetRef ref) async {
   );
   final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (!ok && context.mounted) {
-    _showSnack(context, 'No email app available');
+    _showSnack(context, noEmailApp);
   }
 }

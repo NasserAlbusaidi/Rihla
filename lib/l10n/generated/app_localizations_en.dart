@@ -258,6 +258,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'A recovery link is waiting. Enter the email it was sent to.';
 
   @override
+  String get profilePreferencesNotifications => 'Notifications';
+
+  @override
   String get profilePreferencesCurrency => 'Currency';
 
   @override

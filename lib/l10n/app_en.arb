@@ -349,6 +349,10 @@
     "description": "Subtitle under the pending-recovery banner explaining what to do next."
   },
 
+  "profilePreferencesNotifications": "Notifications",
+  "@profilePreferencesNotifications": {
+    "description": "Row label for the notifications toggle in the Preferences card (the live preferences-row label; the dead ProfileNotificationsSection widget uses profileNotificationsTitle = 'Push Notifications' instead)."
+  },
   "profilePreferencesCurrency": "Currency",
   "@profilePreferencesCurrency": {
     "description": "Row label for the currency preference in the Preferences card."

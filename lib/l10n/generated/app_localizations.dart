@@ -584,6 +584,12 @@ abstract class AppLocalizations {
   /// **'A recovery link is waiting. Enter the email it was sent to.'**
   String get profileRecoverySubtitle;
 
+  /// Row label for the notifications toggle in the Preferences card (the live preferences-row label; the dead ProfileNotificationsSection widget uses profileNotificationsTitle = 'Push Notifications' instead).
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get profilePreferencesNotifications;
+
   /// Row label for the currency preference in the Preferences card.
   ///
   /// In en, this message translates to:
