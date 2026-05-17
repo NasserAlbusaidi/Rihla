@@ -54,6 +54,9 @@ jobs:
       - name: Theme purity check
         run: bash tool/check_theme_purity.sh
 
+      - name: ARB completeness check
+        run: dart run tool/check_arb_completeness.dart
+
       - name: Firebase emulator rules and Functions tests
         run: npm --prefix functions run test:emulator
 

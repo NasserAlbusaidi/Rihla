@@ -15,6 +15,7 @@ import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/animated_currency_text.dart';
 import 'package:safar/shared/widgets/app_tab_bar.dart';
 import 'package:safar/shared/widgets/dot_step_indicator.dart';
@@ -45,6 +46,8 @@ Widget _wrap(Widget child, {required ThemeMode mode}) {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: mode,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(body: child),
     ),
   );

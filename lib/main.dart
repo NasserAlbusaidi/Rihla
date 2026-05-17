@@ -21,6 +21,7 @@ import 'core/providers/settings_provider.dart';
 import 'core/theme/tokens/color_tokens.dart';
 import 'core/services/app_messenger.dart';
 import 'core/services/deep_link_service.dart';
+import 'l10n/generated/app_localizations.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
 ///
@@ -182,6 +183,9 @@ class _SafarAppState extends ConsumerState<SafarApp> {
         title: 'Rihla',
         debugShowCheckedModeBanner: false,
         scaffoldMessengerKey: appMessengerKey,
+        locale: ref.watch(localeProvider),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: settings.themeMode.toMaterialThemeMode(),

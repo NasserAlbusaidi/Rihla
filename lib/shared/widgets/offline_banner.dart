@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/extensions/build_context_l10n.dart';
 import '../../core/keys/shared_keys.dart';
 import '../../core/providers/connectivity_provider.dart';
 import '../../core/theme/tokens/domain_aliases.dart';
@@ -35,7 +36,7 @@ class OfflineBanner extends ConsumerWidget {
                   ),
                   SizedBox(width: context.spacing.space8),
                   Text(
-                    "You're offline \u2014 changes will sync later",
+                    context.l10n.offlineBannerMessage,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

@@ -36,28 +36,39 @@ class WordmarkLogo extends StatelessWidget {
     final ink = color ?? colors.textPrimary;
     final saffron = accentColor ?? colors.primary;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Rihla',
-          style: AppTypography.display(
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final wordmarkText = isArabic ? 'رحلة' : 'Rihla';
+    final wordmarkStyle = isArabic
+        ? AppTypography.arabicDisplay(
             fontSize: size,
             color: ink,
             letterSpacing: size > 60 ? -3 : -1.5,
             height: 1.0,
-          ),
-        ),
-        if (flourish)
-          Padding(
-            padding: EdgeInsets.only(top: size * 0.08),
-            child: CustomPaint(
-              size: Size(size * 1.6, size * 0.32),
-              painter: _FlourishPainter(color: saffron),
+          )
+        : AppTypography.display(
+            fontSize: size,
+            color: ink,
+            letterSpacing: size > 60 ? -3 : -1.5,
+            height: 1.0,
+          );
+
+    return Semantics(
+      label: 'Rihla',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(wordmarkText, style: wordmarkStyle),
+          if (flourish)
+            Padding(
+              padding: EdgeInsets.only(top: size * 0.08),
+              child: CustomPaint(
+                size: Size(size * 1.6, size * 0.32),
+                painter: _FlourishPainter(color: saffron),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

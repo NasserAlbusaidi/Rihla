@@ -251,6 +251,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton.icon(
+                  key: HomeKeys.createGroupFab,
                   onPressed: () => context.push('/create-group'),
                   icon: const Icon(Iconsax.add),
                   label: const Text('Create Group'),

@@ -4,6 +4,7 @@
 // when running the full test suite.
 
 import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -179,6 +180,29 @@ void main() {
       await notifier.setDeviceName('NewName');
       expect(container.read(settingsProvider).deviceName, equals('NewName'));
       // propagateDisplayName fires unawaited — the silent catch ensures no throw
+    });
+  });
+
+  group('localeProvider', () {
+    test('returns Locale("en") when languageCode is "en"', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+      expect(container.read(localeProvider), const Locale('en'));
+    });
+
+    test('returns Locale("ar") after setLanguage("ar")', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+      await container.read(settingsProvider.notifier).setLanguage('ar');
+      expect(container.read(localeProvider), const Locale('ar'));
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -138,4 +139,15 @@ final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((
 ) {
   final service = ref.watch(settingsServiceProvider);
   return SettingsNotifier(service);
+});
+
+/// Locale derived from [settingsProvider]'s `languageCode`.
+///
+/// Pass into `MaterialApp.locale`. Reuses the existing `languageCode` field on
+/// [AppSettings] — there is no separate `localeCode`.
+final localeProvider = Provider<Locale>((ref) {
+  final code = ref.watch(
+    settingsProvider.select((s) => s.languageCode),
+  );
+  return Locale(code);
 });
