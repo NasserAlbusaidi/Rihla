@@ -1,410 +1,158 @@
 # CLAUDE.md
 
-Guidance for Claude Code sessions working in this repo. Read top-to-bottom on first load; use the **Quick Nav** below as a jump table after that.
-
----
+Rihla — Flutter group expense splitter. Solo-dev. **The Operating Contract is the top section and overrides convenience. Everything under `# REFERENCE` is lookup only.** Read the contract every session.
 
 ## Quick Nav
 
-| If you're… | Open this first |
+| Doing… | Open |
 |---|---|
-| Adding/changing a screen or nav flow | [Routing](#routing-gorouter-declarative) → `lib/core/router/app_router.dart` |
-| Touching money math | [Financial Calculations](#financial-calculations) → `BalanceCalculator` in `lib/features/ledger/providers/expense_provider.dart` |
-| Wiring a Firestore stream | [State, Offline, Sync](#state-offline-sync) → `lib/core/services/firestore_repository.dart` |
-| Designing a new screen | [Design System](#design-system) → `lib/core/theme/tokens/`, Stitch workflow |
-| Writing tests | [Testing](#testing) → `test/helpers/`, `flutter_test_config.dart` |
-| Onboarding a new feature | [Where Things Live](#where-things-live) + [Conventions](#conventions--anti-patterns) |
-| Hitting an unfamiliar bug | [Common Gotchas](#common-gotchas) before debugging |
-| Cutting a release | `docs/PRODUCTION-READINESS.md` + `tool/check_release_readiness.sh` |
-| Editing the Play Store listing (icon, screenshots, text) | `fastlane/README.md` → `bundle exec fastlane android <lane>` |
-| Writing or signing off on a plan / spec / design doc | [Verifying Plans and Specs](#verifying-plans-and-specs) — non-negotiable checklist |
+| Anything multi-file, money, routing, schema | **Operating Contract** (below) — non-negotiable |
+| Screen / nav flow | `lib/core/router/app_router.dart` + Do/Don't |
+| Money math | `BalanceCalculator` in `lib/features/ledger/providers/expense_provider.dart` |
+| Firestore stream | `lib/core/services/firestore_repository.dart` |
+| New screen design | `docs/design/` + tokens in `lib/core/theme/tokens/` |
+| Tests | `test/helpers/`, `flutter_test_config.dart` |
+| Release | `docs/PRODUCTION-READINESS.md` + `tool/check_release_readiness.sh` |
+| Play Store listing | `fastlane/README.md` |
+| Deeper system picture | `docs/ARCHITECTURE.md` |
+| Spec-verification worked examples | `docs/SPEC-VERIFICATION.md` |
 
-Also load: `MEMORY.md` (auto-memory index, always in context) and `docs/PRODUCT.md` for product framing.
+Also always in context: `MEMORY.md`. Product framing: `docs/PRODUCT.md`.
 
 ---
+
+# OPERATING CONTRACT
+
+If this conflicts with anything under REFERENCE, this wins.
+
+## Response style — with one exception
+
+Terse, action-first, no trailing summaries, don't re-explain what the code already shows. **Exception: plan/spec verification output is not "over-explaining."** When verifying (see The Gate), state what you checked, the exact command you ran, and what you found — explicitly, out loud. Terseness never suppresses verification reporting. These two rules do not compete; this carve-out is the tiebreak.
+
+## Memory — one rule, no ambiguity
+
+`MEMORY.md` / auto-memory exists so you don't re-ask the user things already settled (preferences, prior decisions). It is **never a citation.** Any claim sourced from memory, CLAUDE.md, or a code comment that touches a write path, money math, routing, or schema must be re-confirmed against code (`grep`/`Read`) before it enters a plan or spec. Memory orients; code decides. Do not resolve this toward "trust memory" because re-checking is friction — re-checking is the job.
+
+## The Gate — fresh-context review before implementation
+
+A plan/spec authored in-session ships its author's blind spots into the implementation. The in-session checklist below does not catch this on its own: every worked example in `docs/SPEC-VERIFICATION.md` is a logged case where the embedded check missed it and an independent fresh-context reviewer caught it. The checklist is the reviewer's rubric, not a substitute for the reviewer.
+
+**Mandatory before writing code — NOT only for hand-offs — when the change touches ANY of:**
+
+- `BalanceCalculator` / money math / `MoneySerializer`
+- `security/firestore.rules` or Cloud Functions auth/validation
+- routing (`app_router.dart`, route tree, deep links, back guards)
+- a data-shape / schema / field-name change with both a read-path and a write-path
+
+→ Run `/codex` (or a fresh-context Claude instance with zero session history) against the spec **before implementation**. Apply findings, re-run, stop when the verdict has no [P1]s. ~2 rounds typical; 3 means the spec was over-scoped to start. This gate is unconditional for the categories above. "It's not being handed off" is **not** an exemption — the disasters happen in-session too. Convergence pressure (sycophancy, momentum, prior approval) is exactly what this interrupts.
+
+Outside those categories (describable as a one-sentence diff, no money/route/schema/rules surface): skip the gate, just do it.
+
+## Verification principles
+
+Run while writing the spec; report results out loud. Full reasoning + worked examples: `docs/SPEC-VERIFICATION.md`.
+
+1. **Classify every callsite on a shared read/write path** — INBOUND (display only) / OUTBOUND (feeds a write) / BOTH (treat as OUTBOUND). Skipping this is how display-formatted strings get persisted unchanged.
+2. **Verify every concrete claim against code, not docs.** Paths, route constants, field names, scripts. Re-run the grep in the moment; an upstream agent's citation is not proof.
+3. **Trace one read-path per write-path.** "Who reads this after it changes?" must have a named answer.
+4. **Enumerate fields from the type, not memory.** Open the model file; list exhaustively.
+5. **Spell out data contracts, don't gesture at them.** Exact map keys, exact callback signatures, exact prop names. "Two different shapes" is an intention, not a spec.
+6. **Verify arithmetic decomposition.** `aggregate = sum(slices)` asserts the field decomposes across the slicing — read the field-construction lines, not the algorithm flow. (`netBalance` folds settlements; `totalPaid` does not.)
+7. **Adversarial pass on an orthogonal axis.** If the fix is on axis A, the worked example must exercise axis B (settlements / money-flow / scope / time / identity). Same-axis examples only re-prove what you already believed. Distrust your own earlier in-session claims; treat each iteration round as v1.
+
+## Workflow
+
+- Plan before multi-file work; capture it as a doc/task list before touching code.
+- Bug fix = failing regression test first (RED) → fix (GREEN) → re-run failing test → full suite. No fix ships without a test that would have caught it.
+- `flutter analyze` clean before you call anything done; run the relevant tests after.
+- Commits: conventional (`feat(scope):` …); match `git log --oneline -20`.
+- PRs: review the whole branch diff (`git diff main...HEAD`), not the last commit.
+- In doubt about scope: smaller change + follow-up, don't bundle.
+
+---
+
+# REFERENCE
+
+Lookup material. Does not override the contract.
 
 ## Project Overview
 
-Rihla ("Journey") is a Flutter mobile app for group and event coordination — a Splitwise-style group expense splitter organised around persistent groups and the events inside them. Package name is `safar`, Android ID is `com.safar.safar`. Current version: **1.2.0+12** (verify in `pubspec.yaml`).
-
-Backend is **Firebase only**: Firestore, Firebase Auth, Cloud Functions (Node 20 / TypeScript), and FCM. No Firebase Storage SDK use — protected media (when needed) goes through Cloud Functions. The app keeps SQLite caches for fast local reads while relying on Firestore offline persistence for queued writes. Anonymous auth on first launch, with optional email-link account recovery.
-
-Solo-dev project. Keep responses terse, action-first, no trailing summaries. Don't over-explain things the codebase already shows.
-
----
+Rihla ("Journey") — Splitwise-style group expense splitter: persistent groups → events → ledger. Package `safar`, Android `com.safar.safar`, version per `pubspec.yaml`. Backend **Firebase only**: Firestore, Auth, Cloud Functions (Node 20/TS), FCM. No Firebase Storage SDK — protected media via Functions. SQLite is local read cache only; Firestore offline persistence handles queued writes. Anon auth on first launch + optional email-link recovery. Supabase migration is **complete — do not add Supabase keys**.
 
 ## Essential Commands
 
 ```bash
 flutter pub get
-
-# Run the app (config.json at root is required)
-flutter run --dart-define-from-file=config.json
-
-# Static analysis — must be clean before commit
-flutter analyze
-
-# Tests
-flutter test                                  # full suite
-flutter test test/unit/                       # fast loop during active work
-flutter test test/features/ledger/            # one feature
-flutter test test/unit/balance_calculations_test.dart  # one file
-
-# Release Android (uses Java 17, configured in CI)
+flutter run --dart-define-from-file=config.json     # config.json at root required
+flutter analyze                                      # must be clean before commit
+flutter test                                         # full; or test/unit/ , test/features/ledger/ , one file
 flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json
-
-# Pre-release audit (read-only; checks Firebase deploy state + App Check + QA gates)
-RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
+RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh   # read-only pre-release audit
 ```
 
-Compile-time config is injected via `--dart-define-from-file=config.json` and read with `const String.fromEnvironment(...)` / `bool.fromEnvironment(...)`. Supported keys: `SENTRY_DSN`, optional `USE_FIREBASE_EMULATOR`. **Do not add Supabase keys** — the migration to Firebase is complete.
+Config injected via `--dart-define-from-file=config.json`, read with `const String.fromEnvironment`. Keys: `SENTRY_DSN`, optional `USE_FIREBASE_EMULATOR`. Platform config (`google-services.json`, `GoogleService-Info.plist`) gitignored, project `rihla-safar`. `lib/firebase_options.dart` is generated by `flutterfire configure` and committed — don't hand-edit.
 
-Firebase platform config files: `android/app/google-services.json` and `ios/Runner/GoogleService-Info.plist` (both gitignored, project `rihla-safar`). `lib/firebase_options.dart` is auto-generated by `flutterfire configure` and committed.
+## Bootstrap Order
 
----
-
-## App Bootstrap Order
-
-`main()` initializes in this order inside `SentryFlutter.init`: Firebase → optional Firebase emulator wiring → SharedPreferences → `runApp`. `_AuthGate` then ensures a Firebase anonymous auth session (with restored-session recovery on `internal-error`) before rendering `SafarApp`. The `sharedPreferencesProvider` throws by default and is overridden with the real instance in `ProviderScope.overrides` — this same pattern is used in tests.
-
----
+`main()` inside `SentryFlutter.init`: Firebase → optional emulator → SharedPreferences → `runApp`. `_AuthGate` ensures anon session (retries on `internal-error` for corrupted restored sessions) before `SafarApp`. `sharedPreferencesProvider` throws by default; overridden in `ProviderScope.overrides` and in tests.
 
 ## Architecture
 
-### Feature-First Structure
+Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widgets/ keys/`). Active: activity, auth, events, groups, home, ledger, onboarding, profile, settings, + legacy trip compat. **Gear/logistics/vault/memories stripped in Phase 39 — do not reintroduce** (related Functions/StorageGateway are dead code). Shared Firestore access via `FirestoreRepository` base or existing feature services — **no new global repositories**. State: Riverpod 2.x, no codegen (`StreamProvider(.family)` for Firestore/auth, `StateNotifierProvider` for complex state, `FutureProvider` one-shot, `Provider.family` for services). Streams side-write snapshots into SQLite via `asyncMap`; **the Firestore SDK replays offline writes — do not build a custom sync queue.** Deeper picture: `docs/ARCHITECTURE.md`.
 
-Each feature under `lib/features/` is self-contained with `models/`, `providers/`, `screens/`, `services/`, optional `widgets/`, and optional `keys/` for test-stable widget keys. Shared Firestore access goes through `FirestoreRepository` (base class) or existing feature services — **do not add new global repositories**.
+## Do / Don't
 
-Active features: `activity`, `auth` (anon session + email-link recovery), `events`, `groups`, `home`, `ledger`, `onboarding`, `profile`, `settings`, and legacy `trip` compatibility models/providers. Gear, logistics, vault, and memories were stripped from the shippable v1 surface in Phase 39 — **do not reintroduce**.
+**Do:** `context.colors|spacing|shadows` for all styling; `RAmount` for money, `RAvatar` for people, shared widgets (`lib/shared/widgets/`) before custom; route params via path/query not `extra`; soft-delete `isDeleted`+`deletedAt` (settlements append-only); validate names with `isValidDisplayName` (1–32, no control chars) kept aligned with `firestore.rules`; mock with `mocktail` + `FakeFirebaseFirestore` + `firebase_auth_mocks`; override `sharedPreferencesProvider` in every app-booting test; await Firebase init before auth-dependent writes.
 
-### State Management: Riverpod 2.x (no codegen)
+**Don't:**
+- ❌ `Navigator.push` for app nav — use `context.go`/`context.push` (readiness greps for it)
+- ❌ `state.extra` for required nav data (readiness greps for it) — deep links must work cold
+- ❌ `context.goNamed` — path strings only (readiness greps for `goNamed`)
+- ❌ Hardcoded `Color(0xFF…)` outside `lib/core/theme/tokens/` (fails CI)
+- ❌ `double` for money — `Decimal` only
+- ❌ Reintroduce Memories/Vault/Gear/Logistics (Phase 39)
+- ❌ Supabase config or Storage SDK
+- ❌ Custom sync queue (SDK replays offline writes)
+- ❌ New global repositories — extend `FirestoreRepository`
+- ❌ Hand-edit `lib/firebase_options.dart` — regenerate
+- ❌ Hard-delete user-visible records — soft-delete
 
-- `StreamProvider` / `StreamProvider.family` for Firestore snapshots and Firebase auth state
-- `StateNotifierProvider` for complex state (settings, connectivity)
-- `FutureProvider` for one-shot async reads
-- `Provider.family` for services and derived state
+## Financial Calculations — landmines
 
-Financial and activity streams side-write successful Firestore snapshots into SQLite cache repositories via `asyncMap`. Firestore's SDK handles offline write replay automatically; **do not recreate a custom sync queue**.
-
----
-
-## Routing: GoRouter (Declarative)
-
-All navigation uses GoRouter 13.x declarative routing. **No imperative `Navigator.push` flows for normal app navigation** — readiness tests grep for `Navigator.push`, `state.extra`, and named GoRouter calls and will fail the build.
-
-Current route tree:
-
-```
-/ (splash — redirects to /home if onboarded, else /onboarding)
-/onboarding                       (FadeTransition)
-/home                             (FadeTransition — BottomNavShell wraps Groups/Activity/Profile)
-/activity                         (CrossGroupActivityScreen — also nav tab 1)
-/profile                          (ProfileScreen — also nav tab 2)
-   /link-email                    (LinkEmailScreen)
-      /sent                       (LinkEmailSentScreen)
-/recover                          (RecoverScreen — from Home empty-state CTA)
-   /pending                       (RecoverPendingScreen — extra: email)
-/create-group                     (slide-up)
-/join-group                       (slide-up)
-/join/:code                       (deep-link entry into JoinGroupScreen)
-/group/:gid                       (GroupDetailScreen)
-   /settings                      (GroupSettingsScreen)
-   /settle-up                     (GroupSettleUpScreen, optional ?memberId)
-   /activity                      (GroupActivityScreen)
-   /create-event                  (EventTypePickerScreen)
-   /create-event/:type            (CreateEventScreen)
-   /event/:eid                    (EventCommandCenter — reachable but UI bypasses to /ledger)
-      /ledger                     (LedgerScreen)
-         /add                     (AddExpenseScreen)
-         /edit/:expId             (EditExpenseScreen)
-         /settle-up               (SettleUpScreen)
-      /activity                   (ActivityFeedScreen — event-scoped)
-      /settings                   (EventSettingsScreen)
-```
-
-Module-level routes use Material 3 `SharedAxisTransition` (horizontal) via the shared `_sharedAxisTransition` builder in `lib/core/router/app_router.dart`. `/onboarding`, `/home`, `/profile`, `/activity` use `FadeTransition`; `/create-group` and `/join-group` use slide-up.
-
-Screens receive `groupId`/`eventId` as strings from GoRouter path parameters. Event-scoped providers use the `EventRef` record type `typedef EventRef = ({String groupId, String eventId})`. **Avoid `state.extra` for required data** — deep links must work without pre-loaded objects, and pass values like recovery email through query strings instead.
-
-**Direct-entry back guards**: any screen reachable as a direct route (deep links, recovery flows) must guard its back button — `canPop()` is false on a fresh stack. Pattern: if `!context.canPop()` go to `/home` (or appropriate root). Tests in `test/features/.../direct_entry_*` cover this.
-
-> Note: `/group/:gid/event/:eid` (EventCommandCenter) is in the router but the UI never navigates to it — event cards jump straight to `/event/:eid/ledger` after Phase 39 reduced events to a single visible module. EventCommandCenter is dead-but-not-orphaned (kept for the V5R-dots experiment).
-
-### Bottom Navigation
-
-`BottomNavShell` (`lib/features/home/widgets/bottom_nav_shell.dart`) wraps the home tab and renders three tabs by stacking screens with `AnimatedOpacity` + `IgnorePointer` (state-preserving, **not** GoRouter-driven):
-
-| Idx | Tab      | Screen                        |
-|----:|----------|-------------------------------|
-| 0   | Groups   | `HomeScreen` (dashboard)      |
-| 1   | Activity | `CrossGroupActivityScreen`    |
-| 2   | Profile  | `ProfileScreen`               |
-
----
-
-## State, Offline, Sync
-
-Data flow: Firestore streams → providers → UI; cache repositories side-write Firestore snapshots into SQLite for fast local reads; Firestore SDK handles offline write replay.
-
-- **Firestore offline persistence** enabled in `FirebaseConfig.initialize()` via `FirebaseFirestore.instance.settings` (`persistenceEnabled: true`, `cacheSizeBytes: CACHE_SIZE_UNLIMITED`) before any read/write
-- `LocalDatabase` (sqflite): `safar_cache.db` **version 8** — backs domain caches for trips, expenses, settlements, participants, activity logs, categories, groups, group members, group ledger
-- Cache repositories live under `lib/core/services/cache/`. Pattern: instance-based Riverpod services, **delete-all-then-batch-insert** (ghost-row-free)
-- `FirestoreRepository` is the shared base for Firestore services; exposes `eventSubcollection(groupId, eventId, module)` and a `withFirestore` test-injection constructor
-- `ConnectivityNotifier` (`lib/core/providers/connectivity_provider.dart`) checks online status every 60s with a `Source.server` read against `inviteCodes`
-- `UidChangeListener` (`auth/services/uid_change_listener.dart`) wipes the local SQLite cache when Firebase Auth swaps to a different UID (after account recovery) so cross-UID data cannot leak
-
----
-
-## Design System
-
-### Tokens (`lib/core/theme/`)
-
-`ThemeExtension` classes registered in `AppTheme`:
-- `AppColorTokens` — Saffron palette: paper background, saffron primary, sage success, rust error, slot colours for avatars/categories (`tokens/color_tokens.dart`)
-- `AppSpacingTokens` — 4dp grid (`tokens/spacing_tokens.dart`)
-- `AppShadowTokens` (`tokens/shadow_tokens.dart`)
-
-Access via `context.colors`, `context.spacing`, `context.shadows` (extensions in `tokens/domain_aliases.dart`). **Hardcoded `Color(0xFF...)` literals outside token definitions fail CI** (`tool/check_no_hardcoded_colors.dart`).
-
-Typography: **Geist** (sans), **Geist Mono** (tabular figures for money), **Instrument Serif** italic (display + section headers) — all via `google_fonts`.
-
-### Shared Widgets (`lib/shared/widgets/`)
-
-`CoverArt`, `RAmount`, `RAvatar`, `WordmarkLogo`, `RouteMark`, `ModuleHeader`, `SectionHeader`, `AppTabBar`, `OfflineBanner`, `EmptyStateView`, `SearchFilterBar`, `SmartModuleCard`, `AnimatedCurrencyText`, `LoadingButton`, `SkeletonLoader`, `SkeletonPrimitives`, `GrainOverlay`, `DotStepIndicator`. Reuse before reinventing.
-
-### Stitch-to-Flutter Workflow
-
-Google Stitch is a **visual oracle only** — design exploration. Never commit Stitch-generated code. Implement from scratch using tokens.
-
-1. Prepare prompt in `docs/design/prompts/` (palette hex from `AppColorTokens.light`, spacing scale, typography, widget inventory, ~390px constraint)
-2. Run Stitch, review, store images externally
-3. Apply post-gen checklist: token mapping, 4dp grid, shared widget reuse, WCAG AA pairs, 48dp touch targets
-4. Write `docs/design/{screen}-spec.md` with token mapping table, hierarchy, spacing, interactions, all 4 states
-5. Snap Stitch colours to nearest existing token; only add new tokens for structural gaps
-
----
-
-## Financial Calculations
-
-All money math uses the `decimal` package — **not `double`**. Default currency is OMR (3 dp); USD/EUR/GBP/SAR/AED/QAR also supported.
-
-- `BalanceCalculator` (defined in `lib/features/ledger/providers/expense_provider.dart`, not a separate file) handles four expense scopes: `global`, `subGroup` (legacy), `personal`, `custom`, and four split modes: `equally`, `shares`, `exact`, `percent`
-- **Rounding remainder goes to the alphabetically-last recipient** so `sum(shares) == amount`
-- Settlement optimization: greedy min-transactions
-- `MoneySerializer` converts `Decimal` ↔ integer subunits **at the Firestore boundary only**. Currency scale map: OMR/KWD/BHD = 1000, USD/EUR/GBP/SAR/AED/QAR = 100, JPY = 1
-
----
-
-## Conventions & Anti-Patterns
-
-### Do
-
-- Use `context.colors` / `context.spacing` / `context.shadows` for all styling
-- Use `RAmount` for money, `RAvatar` for people, shared widgets before custom ones
-- Pass route params through path/query, not `extra`
-- Soft-delete with `isDeleted` + `deletedAt` (expenses, events, groups); settlements are append-only
-- Validate display names with `isValidDisplayName` (1–32 chars, no control chars) — keep client and `security/firestore.rules` aligned
-- Mock with `mocktail`; use `FakeFirebaseFirestore` and `firebase_auth_mocks` for Firebase
-- Override `sharedPreferencesProvider` in every test that boots the app
-- For Firestore writes that depend on auth state, await Firebase init before writing
-
-### Don't
-
-- ❌ `Navigator.push` for app navigation — use `context.go` / `context.push`
-- ❌ `state.extra` for required navigation data — readiness check greps for it
-- ❌ Named GoRouter calls (`context.goNamed`) — use path strings; readiness check greps for `goNamed`
-- ❌ Hardcoded `Color(0xFF...)` outside `lib/core/theme/tokens/`
-- ❌ `double` for money — use `Decimal`
-- ❌ Reintroduce Memories / Vault / Gear / Logistics / Documents — dropped in Phase 39, related Functions + StorageGateway are dead code
-- ❌ Add Supabase config or Storage SDK use
-- ❌ Build a custom sync queue — Firestore SDK already replays offline writes
-- ❌ Add new global repositories — extend `FirestoreRepository` or existing feature service
-- ❌ Edit `lib/firebase_options.dart` by hand — regenerate with `flutterfire configure`
-- ❌ Hard-delete user-visible records — soft-delete unless it's truly transient
-
----
-
-## Common Gotchas
-
-Distilled from real incidents. Check here when something looks wrong.
-
-- **`prefer_const_constructors` lint** fails CI — mark every const-eligible widget literal `const`. Cheap to fix, easy to miss in PRs.
-- **Stale UI assertions in widget tests** — when removing a UI element (e.g. Sign Out from About card), grep tests for the removed label/group name (`SUPP-01`, `'Sign Out'`) and delete the obsolete assertions, don't just patch them.
-- **Email-link bootstrap double-fire** — `AuthEmailLinkBootstrap` was firing twice on cold start. If you touch the bootstrap or auth deep-link flow, regression-test with `test/features/auth/`.
-- **RenderFlex overflow in horizontal strips** — `LedgerRosterStrip` and category strips need `SingleChildScrollView` or `Flexible` wrappers; tests in `test/features/ledger/ledger_screen_overflow_test.dart` will catch this.
-- **Direct-entry back button no-ops** — any screen openable via deep link must check `context.canPop()` and fall back to a root route. See PRODUCTION-READINESS § "Direct route close/back controls".
-- **Currency rounding drift** — `sum(shares) != amount` happens when remainder logic moves. The contract: leftover subunits go to the alphabetically-last recipient. Don't change this without updating `balance_calculations_test.dart`.
-- **`MoneySerializer` boundary** — convert `Decimal` ↔ subunits only when reading/writing Firestore. Inside the app, work in `Decimal`. JPY scale is 1 (not 100) — easy to forget.
-- **Tests reference old labels** — `'SPENDING'` not `'TREASURY'`, `'Ledger'` not `'Audit Log'`. The labels changed; the test fixtures sometimes didn't.
-- **App Check ready flag** — `RIHLA_APP_CHECK_READY` repo variable gates release CI; `RIHLA_CONFIRM_APP_CHECK_READY=yes` env gates the local readiness script. Both are required before release.
-- **Java version split** — Android build uses Java 17; Firebase emulator + Functions tests in `functions/` use Java 21. CI handles this; local devs need both.
-- **Goldens are macOS-only** — generated on Apple Silicon, excluded from CI coverage. Don't regenerate on Linux.
-
----
-
-## Testing
-
-- `test/unit/` — pure logic, model, service tests with `FakeFirebaseFirestore`
-- `test/features/<feature>/` — widget tests, organised by feature
-- `test/integration/` — happy path, offline scenarios, Firebase auth, money round-trips
-- `test/goldens/` — dark theme golden baselines (macOS-generated; CI excludes from coverage)
-- `test/helpers/` — shared test utilities, `navigation_test.dart` covers route invariants
-- `test/flutter_test_config.dart` — global setup (font loading, etc.)
-
-### Test boot pattern
-
-Integration and widget tests need `sharedPreferencesProvider` overridden — the provider throws by default. Look at `test/helpers/` for the established boot helper before rolling your own.
-
-### Coverage gate
-
-CI enforces **80%** raw line coverage in `release_android.yml` and `readiness_check.yml`. Local raw coverage sits ~82%.
-
-### Bug-fix workflow
-
-Bug → regression test first (RED) → fix (GREEN) → re-run the failing test → run full suite. Don't ship a fix without a test that would catch the regression.
-
----
-
-## Database
-
-Firestore is the source of truth. SQLite (`safar_cache.db`) is local cache only — **no SQL migrations for server state**.
-
-Core paths:
-- `groups/{gid}` — group doc
-- `groups/{gid}/members/{uid}` — per-group display name + role
-- `groups/{gid}/events/{eid}` — event doc
-- `groups/{gid}/events/{eid}/expenses/{xid}` — expense (soft-deletable)
-- `groups/{gid}/events/{eid}/settlements/{sid}` — event-scoped settlements (append-only)
-- `groups/{gid}/settlements/{sid}` — group-scoped (cross-event) settlements
-- `groups/{gid}/activityLogs/{aid}`, `groups/{gid}/events/{eid}/activityLogs/{aid}` — activity feeds
-- `inviteCodes/{code}` — public-readable code → group resolver
-- `fcm_tokens/{uid}` — owner-only FCM token doc
-- `joinAttempts/{uid}` — rate-limit doc for join callable
-
-Security rules: `security/firestore.rules` — display-name validation, C-Hierarchy event mutation policy, invite codes server-only, expense `createdBy` immutability, append-only settlements.
-
-Functions: `functions/src/` (TypeScript, Node 20). Tests use Jest under Java 21 + Firebase emulator.
-
----
+`decimal` package, never `double`. Default OMR (3dp); also USD/EUR/GBP/SAR/AED/QAR. `BalanceCalculator` lives in `lib/features/ledger/providers/expense_provider.dart` (**not** a separate file — people hunt for a `balance_calculator.dart` that doesn't exist). Scopes: global/subGroup(legacy)/personal/custom. Splits: equally/shares/exact/percent. **Rounding remainder → alphabetically-last recipient** so `sum(shares)==amount` — don't move without updating `balance_calculations_test.dart`. Settlement opt: greedy min-transactions. `MoneySerializer` converts `Decimal`↔integer subunits **only at the Firestore boundary**; inside the app stay in `Decimal`. Scale: OMR/KWD/BHD=1000, USD/EUR/GBP/SAR/AED/QAR=100, **JPY=1** (easy to forget).
 
 ## Key Invariants
 
-- **Soft deletes**: expenses use `isDeleted` + `deletedAt`. Settlements are **append-only** (B3 — corrections create a new offsetting row). Events and groups also support soft-delete.
-- **Ownership (B1)**: `createdBy` is immutable on expenses and settlements; only the creator can edit or soft-delete their own rows. Enforced client-side and in `firestore.rules`.
-- **Name-based members**: creator adds member names during creation and picks which name is theirs. Joiners enter invite code then pick an unclaimed name. Names live on `groups/{gid}/members/{uid}`, mirrored from `settingsProvider.deviceName`.
-- **Event modules**: `EventModules` only carries `ledger: true` after Phase 39. The model silently ignores legacy keys (gear/logistics/vault/memories) for existing data compatibility.
-- **Group join**: routes through the `joinGroupByInviteCode` Cloud Function — atomic, validated, rate-limited (5 attempts/hour per UID), idempotent on re-join.
-- **Account recovery (v1.2)**: optional email-link recovery. `AuthRecoveryService` orchestrates link/send/recover; `UidChangeListener` wipes local cache on UID swap; App Links + Universal Links route the magic link back into the app. Linked email is permanent in v1.2.
-- **In-app account deletion**: Profile → Account → Delete triggers the server-side cascade (auth user, Firestore, FCM tokens). Sentry breadcrumbs redact email PII.
-- **Onboarding**: 3-page first-launch flow gated by `onboardingComplete` in `AppSettings` (SharedPreferences). Router hard-redirects every non-onboarding route to `/onboarding` until complete.
-- **Push notifications**: FCM. Token storage at `fcm_tokens/{uid}` with `user_id`, `token`, `platform`, `updated_at`. Opt-in only.
-- **Auth**: Firebase anonymous sign-in. No login screen — `_AuthGate` retries on `internal-error` for corrupted restored sessions.
-- **Deep links**: `rihla.app/join/<code>` opens join with code pre-filled. Email-link recovery URLs route via App Links / Universal Links.
-- **Legal pages**: `rihla.app/privacy`, `/terms`, `/delete-data` linked from Profile via `legal_links_sheet.dart`.
+- Soft delete: expenses `isDeleted`+`deletedAt`; settlements **append-only** (B3 — corrections = new offsetting row); events/groups soft-delete too.
+- Ownership (B1): `createdBy` immutable on expenses/settlements; only creator edits/soft-deletes own rows. Client + `firestore.rules`.
+- Name-based members: creator adds names + picks own; joiner enters invite code + picks unclaimed name. Lives on `groups/{gid}/members/{uid}`, mirrored from `settingsProvider.deviceName`.
+- Event modules: only `ledger: true` after Phase 39; model silently ignores legacy keys for compat.
+- Group join: via `joinGroupByInviteCode` Function — atomic, validated, rate-limited 5/hr/UID, idempotent.
+- Account recovery (v1.2): optional email-link; `AuthRecoveryService` orchestrates; `UidChangeListener` wipes local SQLite on UID swap (prevents cross-UID leak); linked email permanent.
+- Account deletion: Profile→Account→Delete → server cascade (auth, Firestore, FCM); Sentry redacts email PII.
+- Onboarding: 3-page, gated by `onboardingComplete` in `AppSettings`; router hard-redirects all non-onboarding routes until complete.
+- Auth: anon sign-in, no login screen. Deep links: `rihla.app/join/<code>` pre-fills code; recovery via App/Universal Links. Legal: `rihla.app/privacy|terms|delete-data`.
+- Routing landmines: GoRouter 13 declarative; direct-entry screens (deep links, recovery) must guard back — `if (!context.canPop()) go('/home')`; covered by `test/features/.../direct_entry_*`. `EventCommandCenter` (`/group/:gid/event/:eid`) is dead-but-kept (V5R-dots experiment) — UI jumps straight to `/event/:eid/ledger`. `BottomNavShell` stacks 3 tabs via `AnimatedOpacity`+`IgnorePointer`, **not** GoRouter-driven. Full tree: `app_router.dart`.
 
----
+## Common Gotchas
 
-## Where Things Live
+- `prefer_const_constructors` fails CI — mark const-eligible literals `const`.
+- Removing a UI element: grep tests for the removed label/key and delete obsolete assertions, don't patch them.
+- `AuthEmailLinkBootstrap` double-fire on cold start — regression-test `test/features/auth/` if you touch auth deep-link/bootstrap.
+- Horizontal strips (`LedgerRosterStrip`, category) need `SingleChildScrollView`/`Flexible` — `ledger_screen_overflow_test.dart` catches RenderFlex.
+- Currency rounding drift = remainder logic moved; contract is alphabetically-last.
+- Test fixtures lag label changes: `'SPENDING'` not `'TREASURY'`, `'Ledger'` not `'Audit Log'`.
+- App Check: `RIHLA_APP_CHECK_READY` repo var gates release CI; `RIHLA_CONFIRM_APP_CHECK_READY=yes` gates the local script. Both required.
+- Java split: Android = 17, Firebase emulator/Functions = 21. Goldens are macOS-only — don't regenerate on Linux.
 
-Quick file index for orientation:
+## Testing
 
-| Concern | File / Dir |
-|---|---|
-| App entry, bootstrap | `lib/main.dart` |
-| Router & route tree | `lib/core/router/app_router.dart` |
-| Firebase init, App Check | `lib/core/config/firebase_config.dart` |
-| Anon auth + recovery | `lib/features/auth/services/` |
-| UID change cache wipe | `lib/features/auth/services/uid_change_listener.dart` |
-| Connectivity poll | `lib/core/providers/connectivity_provider.dart` |
-| Firestore base repo | `lib/core/services/firestore_repository.dart` |
-| SQLite cache repos | `lib/core/services/cache/` |
-| Money math | `BalanceCalculator` class in `lib/features/ledger/providers/expense_provider.dart` |
-| Money serialization | `lib/features/ledger/services/money_serializer.dart` |
-| Design tokens | `lib/core/theme/tokens/` |
-| Bottom nav | `lib/features/home/widgets/bottom_nav_shell.dart` |
-| Settings model | `lib/features/settings/models/app_settings.dart` |
-| Firestore rules | `security/firestore.rules` |
-| Cloud Functions | `functions/src/callables/` |
-| Release readiness script | `tool/check_release_readiness.sh` |
-| Hardcoded-color lint | `tool/check_no_hardcoded_colors.dart` |
-| Android signing & keystore | `android/key.properties` (gitignored) |
-| Firebase platform config | `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist` (gitignored) |
-| Play Store listing assets | `fastlane/metadata/android/en-US/` |
-| Play Store lanes (icon / listing / pull) | `fastlane/Fastfile` |
-| Play service-account key | `secrets/play-key.json` (gitignored — same JSON as CI's `GOOGLE_PLAY_JSON_KEY`) |
+`test/unit/` pure logic (FakeFirebaseFirestore), `test/features/<f>/` widget, `test/integration/` happy/offline/auth/money round-trips, `test/goldens/` dark baselines (macOS, CI-excluded), `test/helpers/` utils — use the existing boot helper (`sharedPreferencesProvider` throws by default and must be overridden in every app-booting test). CI enforces **80%** raw line coverage (`release_android.yml`, `readiness_check.yml`); local ~82%.
 
----
+## Database
 
-## CI / CD
+Firestore is source of truth; SQLite `safar_cache.db` **v8** is cache only — no SQL migrations for server state; cache repos under `lib/core/services/cache/`, delete-all-then-batch-insert (ghost-row-free). Paths + security model: `security/firestore.rules` + `docs/ARCHITECTURE.md`. Functions: `functions/src/` (TS, Node 20), Jest under Java 21 + emulator.
 
-- `.github/workflows/release_android.yml` — manual dispatch or `v*` tag push. Analyze + tests + AAB build (`--obfuscate --split-debug-info`) + Play Store alpha upload. Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`. Gated on repo vars: `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`.
-- **Play Store listing edits** are decoupled from CI — use `bundle exec fastlane android icon` (icon + feature graphic only) or `bundle exec fastlane android listing` (everything). Both AAB-safe; won't disturb an in-flight release review. Requires Homebrew Ruby 3.x (`export PATH="/opt/homebrew/opt/ruby/bin:$PATH"`) — system Ruby 2.6 is too old. See `fastlane/README.md`.
-- `.github/workflows/readiness_check.yml` — runs on `main` pushes and PRs. Local non-deploy gates: analyze, hardcoded-color lint, tests at 80% coverage. **Does not deploy.**
+## CI/CD & Docs
 
-No iOS CI — iOS builds are manual. Toolchain: Java 17 (Android), Java 21 (Firebase emulator). AGP 8.9.1, Kotlin 2.1.0, Flutter SDK ^3.10.1.
-
-Pre-release blockers tracked in `docs/PRODUCTION-READINESS.md`. Physical-device QA matrix RD-01–RD-08 in `docs/REAL-DEVICE-QA.md`.
-
----
-
-## Docs Index
-
-- `docs/GETTING-STARTED.md` — first-time setup
-- `docs/DEVELOPMENT.md` — day-to-day workflow
-- `docs/CONFIGURATION.md` — env, config.json, Firebase wiring
-- `docs/ARCHITECTURE.md` — deeper system picture
-- `docs/PRODUCT.md` — product framing, scope decisions
-- `docs/TESTING.md` — testing playbook
-- `docs/PRODUCTION-READINESS.md` — launch gates + verified evidence
-- `docs/REAL-DEVICE-QA.md` — physical-device QA matrix
-- `docs/design/` — design specs (`account-recovery.md`, `e2-sqlite-encryption.md`, `wireframe-gaps.md`)
-- `docs/setup/push-notifications.md` — FCM setup
-- `docs/plans/`, `docs/research/` — planning + research artifacts
-
----
-
-## Verifying Plans and Specs
-
-Before declaring any plan, spec, or design doc ready — especially anything being handed off (codex-delegate, a worktree, another session) — run this checklist. These are the gaps a fresh reviewer catches that an embedded one misses. **The point is to catch them in the first pass, not on review.** The checklist is non-negotiable; it is also useless when read passively. Every item below is something you **execute and report on**, not something you nod at.
-
-### When prompting a recon/Explore agent, demand data-flow classification
-
-If the work touches a read-path *and* a write-path for the same data (rename, refactor, schema change, new validation layer), require the agent to classify every cited callsite. The minimal column set:
-
-- **INBOUND** — consumed for display / UI only. No persistence side effects.
-- **OUTBOUND** — feeds a write / persistence / IPC. Format changes here can leak into storage.
-- **BOTH** — receives a value for display *and* feeds it back into a write. These are the highest-risk sites; treat them as OUTBOUND for shape concerns.
-
-Without this column, "render-site enumerations" miss the wire-up points where formatted-for-display strings get persisted unchanged. Worked example: the v1 *former member rendering* spec missed `SettleUpPageBody.onRecord` because the recon agent classified it as a render site. It's BOTH — the same string feeds the tile *and* the Firestore settlement create.
-
-### While writing the spec — run these, report results out loud
-
-Don't write "verified file paths" in your head. State, in the spec or in the conversation, what you checked and what you found. The checklist:
-
-- **Verify every concrete claim against code, not docs.** File paths, route constants, field names, test directories, npm/dart scripts. Docs drift; code is ground truth. CLAUDE.md, MEMORY.md, and inline comments are starting points, never citations. If a claim is load-bearing, `grep` or `Read` to confirm *in the moment* and say "verified" with the command run. Trusting an upstream agent's citation without re-running it is the most common failure here.
-- **Trace one read-path for every write-path.** Any data-shape mutation has consumers. "Who reads this after it changes?" must have an answer in the spec. Example: rewriting `groups/{gid}.memberIds` requires checking `groupMembersProvider` → `groupBalancesProvider` still resolves.
-- **Enumerate fields from the type, not from memory.** When listing fields to scrub, migrate, or validate, open the model file and list them exhaustively. Recall is not a substitute.
-- **Spell out data contracts, don't gesture at them.** "Two different shapes for the tile and the callback" is not a spec — it's an intention. The implementer needs the exact map keys, the exact callback signature, the exact prop names. Vague contracts → wrong implementations.
-- **Verify arithmetic decomposition when summing across function calls.** Any time a spec writes `aggregate.X = sum(call.X)` or splits one calculation into N slices, you are asserting that `X` is decomposable across the slicing. Open the function that produces `X` and read its **output-construction lines** (not the algorithm flow) to confirm `X` is built only from inputs that decompose across the slicing. Field names lie — `totalPaid` sounds decomposable, but if settlements are folded into `netBalance` only, then `sum(totalPaid)` silently drops settlement effects. Worked example: the v5 *former-member rendering* spec assumed `sum(eventBalances.totalPaid) - sum(eventBalances.totalOwed) = aggregate net`, but `BalanceCalculator.calculateBalances` at `expense_provider.dart:305` builds `netBalance = (totalPaid + settlementAdj) - totalOwed` — settlement adjustments live only in `netBalance`. Codex caught this as a [P1] in round 5; the in-house checklist missed it because I read the function flow, not the field-construction contract.
-- **Adversarial pass before sign-off — and worked examples must test orthogonal axes.** Re-read the spec as if you'd just been handed it cold, with no commitment to the direction. What's vague? What's an assumption? What path doesn't exist? **Critical:** if the spec is fixing bug X on axis A, the worked example must exercise axis B (or C, or D) — *not* axis A. A worked example on the same axis as the fix only proves the narrow point you already believed; it cannot catch a regression introduced by the fix on a different axis. Worked example of the failure: v5 fixed a participant-set-scope bug (axis A: which UIDs are in the split set). The v5 worked example was "Orphan paid in Event A, Bob paid in Event B — Orphan not charged for Event B." Same axis as the fix. Codex's first move was to construct a worked example on axis B (settlements): "Alice settles $10 → Bob in Event A" — and the new algorithm dropped the settlement. Whenever a fix is in flight, brainstorm the axes the spec touches (split-set, money-flow, settlements, scope, time, identity) and pick the example from the axis you did *not* just modify.
-- **Distrust your own earlier claims in the same session.** The deeper a session runs, the more layered the assumptions. Re-verify load-bearing claims in the moment, not on recall. Iteration rounds (v2 → v3 → v4 → v5) create compounding momentum where each verified piece feels load-bearing for the next round; codex starts each round from zero, which is structurally why it catches what in-session verification misses. Treat each new round as if it were v1.
-
-### Before declaring ready — codex review is non-optional for hand-offs
-
-For any spec destined for a worktree, a codex-delegate execution, or another session, run `/codex` against the spec before implementation, not after. The Explore agent + your synthesis is the *first draft*; codex is the *first reviewer*. Without a fresh-context gap between author and reviewer, the spec ships its own author's blind spots into the implementation. Cost: ~5-10 min and ~1.5M tokens per round. Cost of implementing a broken spec and rewriting: ≥10× that.
-
-Apply codex findings, re-run, and stop when the verdict has no [P1]s. Each round narrows the failure mode (round 1 catches architectural blind spots; round 2 catches specification ambiguity; round 3 onward catches edge cases). Two rounds is usually enough; three signals the spec was probably over-scoped to start.
-
-Convergence pressure — sycophancy, momentum, prior approval — is the failure mode this checklist is meant to interrupt. A plan that "looks done" is not the same as a plan that holds up under independent review. See also: [[feedback-spec-verification]] in memory.
-
----
-
-## Working in this Repo
-
-- Make a plan before multi-file work; capture it as a doc or task list before touching code.
-- Bug fixes always start with a failing regression test.
-- Run `flutter analyze` before claiming a change is done. Run the relevant tests after.
-- Commits follow conventional format: `feat(scope): …`, `fix(scope): …`, `chore(scope): …`, etc. Match the style of recent commits (`git log --oneline -20`).
-- PRs: analyze the full commit history (`git diff main...HEAD`), not just the latest commit.
-- When in doubt about scope: ship a smaller change with a follow-up, don't bundle.
-- Auto-memory at `~/.claude/projects/-Users-nasseralbusaidi-Desktop-Personal-Rihla/memory/` captures recurring context; consult `MEMORY.md` before re-asking questions you might have already answered.
+`release_android.yml` (manual / `v*` tag): analyze + test + obfuscated AAB + Play alpha; secrets `KEYSTORE_BASE64 KEY_PROPERTIES CONFIG_JSON GOOGLE_PLAY_JSON_KEY`; gated on `RIHLA_BACKEND_RELEASE_READY` + `RIHLA_APP_CHECK_READY`. `readiness_check.yml` (main/PR): analyze + color lint + 80% tests, **no deploy**. Play listing decoupled: `bundle exec fastlane android icon|listing` (needs Homebrew Ruby 3.x). No iOS CI. Toolchain: Flutter ^3.10.1, AGP 8.9.1, Kotlin 2.1.0. Docs under `docs/`: `GETTING-STARTED DEVELOPMENT CONFIGURATION ARCHITECTURE PRODUCT TESTING PRODUCTION-READINESS REAL-DEVICE-QA`; design specs `docs/design/`; plans/research `docs/plans/ docs/research/`.
