@@ -37,7 +37,7 @@ void main() {
       );
     });
 
-    test('lib/core/services/cache/ directory has exactly 7 repository files',
+    test('lib/core/services/cache/ directory has exactly 6 repository files',
         () {
       const cacheDir = 'lib/core/services/cache';
       final dir = Directory(cacheDir);
@@ -55,11 +55,12 @@ void main() {
 
       expect(
         dartFiles.length,
-        equals(7),
+        equals(6),
         reason:
-            'Expected exactly 7 domain repository files under '
-            'lib/core/services/cache/ after Phase 39 strip dropped the gear '
-            'and sub_group repositories. Found: '
+            'Expected exactly 6 domain repository files under '
+            'lib/core/services/cache/ after the orphaned '
+            'TripCacheRepository was removed (it had zero callers and a '
+            'broken deleteTrip() referencing tables dropped in v7). Found: '
             '${dartFiles.map((f) => f.uri.pathSegments.last).toList()}',
       );
     });
