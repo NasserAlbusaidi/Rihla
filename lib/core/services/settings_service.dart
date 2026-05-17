@@ -5,7 +5,7 @@ import '../utils/name_validators.dart';
 
 class SettingsService {
   static const String _themeKey = 'settings_theme';
-  static const String _languageKey = 'settings_language';
+  static const String languageKey = 'settings_language';
   static const String _currencyKey = 'settings_currency';
   static const String _pushNotificationsKey = 'settings_push_notifications';
   static const String _weeklyDigestKey = 'settings_weekly_digest';
@@ -24,7 +24,7 @@ class SettingsService {
         ? AppThemeMode.values[themeIndex]
         : AppThemeMode.system;
 
-    final languageCode = _prefs.getString(_languageKey) ?? 'en';
+    final languageCode = _prefs.getString(languageKey) ?? 'en';
     final currencyCode = _prefs.getString(_currencyKey) ?? 'OMR';
     final pushNotificationsEnabled =
         _prefs.getBool(_pushNotificationsKey) ?? false;
@@ -54,7 +54,7 @@ class SettingsService {
   }
 
   Future<void> saveLanguage(String languageCode) async {
-    await _prefs.setString(_languageKey, languageCode);
+    await _prefs.setString(languageKey, languageCode);
   }
 
   Future<void> saveCurrency(String currencyCode) async {

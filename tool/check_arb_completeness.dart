@@ -31,8 +31,8 @@ CompareResult compare({
 }
 
 Future<void> main(List<String> args) async {
-  final enPath = 'lib/l10n/app_en.arb';
-  final arPath = 'lib/l10n/app_ar.arb';
+  const enPath = 'lib/l10n/app_en.arb';
+  const arPath = 'lib/l10n/app_ar.arb';
   final enJson =
       jsonDecode(await File(enPath).readAsString()) as Map<String, dynamic>;
   final arJson =
