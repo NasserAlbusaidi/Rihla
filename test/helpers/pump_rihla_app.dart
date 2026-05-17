@@ -52,5 +52,16 @@ Future<void> pumpRihlaApp(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  // Two pumps: first to mount + locale-delegate resolution, second to let
+  // any 300ms implicit animation (e.g. AnimatedSize in OfflineBanner) reach
+  // a frame `find.*` matchers can interrogate.
+  //
+  // Intentionally NOT `pumpAndSettle()` — widgets that wire a periodic
+  // `Timer.periodic` in their notifier constructor (the real
+  // `ConnectivityNotifier`) cause `pumpAndSettle` to wait for its default
+  // 10-minute timeout. `find.text` reads the widget tree, not painted
+  // pixels, so two bounded pumps are enough for assertions used in PR1.
+  // Callers that need animation completion should pump explicitly.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
 }
