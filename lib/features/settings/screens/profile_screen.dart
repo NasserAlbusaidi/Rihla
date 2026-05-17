@@ -181,7 +181,7 @@ class _TopBar extends StatelessWidget {
           children: [
             if (canPop)
               Align(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: _GhostIcon(
                   icon: Iconsax.arrow_left,
                   onTap: () {
@@ -199,7 +199,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
             Align(
-              alignment: Alignment.centerRight,
+              alignment: AlignmentDirectional.centerEnd,
               child: _GhostIcon(
                 icon: Iconsax.export_1,
                 onTap: () {
