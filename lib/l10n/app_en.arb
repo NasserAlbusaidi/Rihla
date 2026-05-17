@@ -1,0 +1,7 @@
+{
+  "@@locale": "en",
+  "offlineBannerMessage": "You're offline — changes will sync later",
+  "@offlineBannerMessage": {
+    "description": "Banner shown when device is offline; reassures user that pending writes will be sent on reconnect."
+  }
+}
