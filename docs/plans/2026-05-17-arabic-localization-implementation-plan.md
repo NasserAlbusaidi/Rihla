@@ -41,6 +41,19 @@
 - **Don't** unlock the `LanguagePickerSheet` "Coming soon" radio. PR2.
 - **Don't** add unused `common*` ARB keys. Add lazily in the PR that first consumes them.
 - **Don't** introduce digit grouping (`NumberFormat('#,##0.000')`) in `RAmount`. That's a separate non-localization concern the design doc bundled by mistake.
+- **Don't** translate the `_AuthGate` splash/error `MaterialApp`s at `lib/main.dart:132-136` (loading splash) and `:143-147` (error splash). Both stay LTR English; the first `AppLocalizations`-aware tree starts at `SafarApp.MaterialApp.router`. PR2 unlock revisits only if splash strings get translated.
+
+## PR1 No-User-Visible-Delta Claim — caveat
+
+The "no user-visible delta on `main`" claim in this plan and the eventual PR description assumes `AppSettings.languageCode == 'en'` in production. **Reachable asymmetry:** if a user has `'ar'` seeded in `SharedPreferences` (test crosstalk, dev override, or direct on-disk prefs manipulation), Task 7 (`OfflineBanner`) and Task 8 (`WordmarkLogo`) will swap to Arabic while every other surface (Home tab labels, Settings rows, Profile, Activity, etc.) stays English — the "half-Arabic" state. There is no production code path that writes `'ar'`: the only writer is `LanguagePickerSheet.setLanguage`, which is locked in PR1 per grill Q8. The UI-only lock therefore prevents this state from being reachable through the app UI. The path requires direct `SharedPreferences` manipulation by the user, the Task 11 integration test (intentional), or a future dev menu (not in PR1). PR2 unlock removes the asymmetry by translating the rest of the surfaces.
+
+## Rejected gate findings (codex round 1)
+
+- **Codex [P1]: "Arabic lock is UI-only, half-Arabic state can ship — add a runtime gate in `localeProvider` that clamps to `'en'` until a feature flag flips."** Rejected on grill Q8 grounds plus cost-benefit. Rationale:
+  1. Only writer for `AppSettings.languageCode` is `LanguagePickerSheet.setLanguage('ar')` (verify: `grep -rn 'setLanguage' lib/`). The UI lock at `language_picker_sheet.dart:42–73` prevents that writer from firing in production.
+  2. A runtime gate would require Task 11's integration test to also flip the feature flag, inverting the test's purpose (it exists to prove the locale chain actually works end-to-end; bypassing the gate via test override means the gate is the only thing under test, not the locale chain).
+  3. PR2 has to undo the gate either way; UI-only lock has lower PR1→PR2 churn (zero deletions vs ~10 lines + a test).
+  4. The stale-state path requires direct `SharedPreferences` manipulation outside the app UI. Documented in the caveat section above so it isn't a silent assumption.
 
 ## Coverage Gate
 
@@ -639,16 +652,72 @@ import '../../core/extensions/build_context_l10n.dart';
 Run: `flutter test test/shared/widgets/offline_banner_test.dart`
 Expected: PASS.
 
-**Step 6: Run full analyze + suite**
+**Step 6: Migrate existing `OfflineBanner` harnesses (codex round 1 [P1])**
+
+Once `OfflineBanner` calls `context.l10n.offlineBannerMessage`, every existing test that mounts the widget in a `MaterialApp` without localization delegates will crash at `AppLocalizations.of(context)` — the `nullable-getter: false` setting in `l10n.yaml` makes this a hard throw, not a null deref. Verified pre-existing harnesses:
+
+- `test/unit/widget_coverage_test.dart:692-724` — two `testWidgets` blocks ("shows banner text when offline" and "hides banner when online"), each mounting `MaterialApp` + `home: Scaffold(body: OfflineBanner())` with no delegates.
+- `test/features/shared_widgets/shared_widgets_theme_test.dart:35-49` — the shared `_wrap` helper mounts `MaterialApp` without delegates. Used by the generic widget-sweep test that includes `OfflineBanner` in its widget set around line 132.
+
+**Fix in place (minimum diff)** — add the two localization properties to each existing `MaterialApp` instance. Do NOT migrate these to `pumpRihlaApp`; the existing harnesses are tightly coupled to their broader widget sweeps and the delegate-add is a behavioral no-op for everything else they cover.
+
+In `test/unit/widget_coverage_test.dart`, change both `MaterialApp` blocks from:
+
+```dart
+MaterialApp(
+  theme: AppTheme.lightTheme,
+  home: const Scaffold(body: OfflineBanner()),
+)
+```
+
+to:
+
+```dart
+MaterialApp(
+  theme: AppTheme.lightTheme,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: const Scaffold(body: OfflineBanner()),
+)
+```
+
+In `test/features/shared_widgets/shared_widgets_theme_test.dart`, edit the `_wrap` helper around line 43-49 to add the same two properties:
+
+```dart
+child: MaterialApp(
+  theme: AppTheme.lightTheme,
+  darkTheme: AppTheme.darkTheme,
+  themeMode: mode,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(body: child),
+),
+```
+
+Add to the imports at the top of each file:
+
+```dart
+import 'package:safar/l10n/generated/app_localizations.dart';
+```
+
+Run:
+
+```bash
+flutter test test/unit/widget_coverage_test.dart test/features/shared_widgets/shared_widgets_theme_test.dart
+```
+
+Expected: PASS — both files green.
+
+**Step 7: Run full analyze + suite**
 
 Run: `flutter analyze && flutter test`
 Expected: Clean + all green.
 
-**Step 7: Commit**
+**Step 8: Commit**
 
 ```bash
-git add lib/shared/widgets/offline_banner.dart test/shared/widgets/offline_banner_test.dart
-git commit -m "feat(l10n): translate OfflineBanner via context.l10n.offlineBannerMessage"
+git add lib/shared/widgets/offline_banner.dart test/shared/widgets/offline_banner_test.dart test/unit/widget_coverage_test.dart test/features/shared_widgets/shared_widgets_theme_test.dart
+git commit -m "feat(l10n): translate OfflineBanner + migrate existing harnesses"
 ```
 
 ---
@@ -669,7 +738,7 @@ Run: `grep -r "ReemKufi\|reem_kufi" lib/ pubspec.yaml 2>/dev/null`
 
 Expected: No existing usage. We'll be the first caller.
 
-`google_fonts ^8.0.2` supports Reem Kufi via `GoogleFonts.reemKufi()`. No `pubspec.yaml` asset declaration needed — the package fetches at runtime in production. In tests, `test/flutter_test_config.dart:21` already disables runtime fetching (`GoogleFonts.config.allowRuntimeFetching = false`), so the test will fall back to the platform default Arabic font. That's correct test behavior — we're testing the locale-switch logic, not the font glyphs themselves.
+`google_fonts ^8.0.2` supports Reem Kufi via `GoogleFonts.reemKufi()`. No `pubspec.yaml` asset declaration needed — the package fetches at runtime in production. In tests, `test/flutter_test_config.dart:20` already disables runtime fetching (`GoogleFonts.config.allowRuntimeFetching = false`), so the test will fall back to the platform default Arabic font. That's correct test behavior — we're testing the locale-switch logic, not the font glyphs themselves.
 
 **Step 2: Write failing typography test**
 
@@ -947,7 +1016,13 @@ Future<void> main(List<String> args) async {
       jsonDecode(await File(arPath).readAsString()) as Map<String, dynamic>;
   final result = compare(en: enJson, ar: arJson);
   if (result.ok) {
-    stdout.writeln('ARB completeness: OK (${enJson.length - 1} keys matched)');
+    // Count user-facing keys only — `@@locale` and `@<key>` metadata don't
+    // count. `enJson.length - 1` looks right (subtract `@@locale`) but
+    // double-counts every `@key` metadata entry. Filter through the same
+    // metadata predicate `compare` uses.
+    final matchedCount =
+        enJson.keys.where((k) => !_isMetadata(k)).length;
+    stdout.writeln('ARB completeness: OK ($matchedCount keys matched)');
     exit(0);
   }
   if (result.missingInAr.isNotEmpty) {
@@ -974,7 +1049,7 @@ Expected: PASS.
 **Step 5: Run the script against current ARB**
 
 Run: `dart run tool/check_arb_completeness.dart`
-Expected: `ARB completeness: OK (1 keys matched)` (one key: `offlineBannerMessage`).
+Expected: `ARB completeness: OK (1 keys matched)` (one user-facing key: `offlineBannerMessage`; `@@locale` and `@offlineBannerMessage` are filtered out as metadata via `_isMetadata`).
 
 **Step 6: Commit**
 
@@ -1143,6 +1218,27 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 1500));
 
+    // Positive locale signal (codex round 1 [P1]) — proves the full chain:
+    //   SharedPreferences.languageCode='ar' -> settingsProvider -> localeProvider
+    //   -> MaterialApp.router(locale='ar') -> Localizations.localeOf
+    //   -> WordmarkLogo Arabic branch.
+    // Without this assertion the test passes whether locale wiring works or
+    // not. WordmarkLogo is rendered on the home screen (verified at
+    // lib/features/home/screens/home_screen.dart:415).
+    expect(
+      find.text('رحلة'),
+      findsOneWidget,
+      reason: 'WordmarkLogo did not swap to Arabic glyph on home — '
+          'locale chain (settings.languageCode -> localeProvider -> '
+          'MaterialApp.locale) is broken',
+    );
+    expect(
+      find.text('Rihla'),
+      findsNothing,
+      reason: 'English wordmark still visible after Arabic boot — '
+          'WordmarkLogo locale branch did not flip',
+    );
+
     final fab = find.byKey(const Key('home_create_group_fab'));
     expect(fab, findsOneWidget,
         reason: 'home_create_group_fab missing after skeleton clear (ar)');
@@ -1233,7 +1329,7 @@ kill $EMU_PID
 
 Expected: PASS — app boots in ar, home renders, FAB is reachable, create-group route mounts.
 
-**Smoke check the seed actually took effect:** before the FAB tap, the `OfflineBanner` either renders the Arabic string (if the test device is offline at boot — unlikely in CI) or doesn't render at all. The most robust positive signal in this test is that the test PASSES end-to-end while `SettingsService.languageKey` is seeded to `'ar'` AND the `pump_rihla_app_test.dart` ar-locale assertion in Task 6 is green — together those prove the boot path picked up the seed and that Arabic glyphs render. If either fails, the seed didn't take.
+**Positive locale signal:** the `find.text('رحلة')` / `find.text('Rihla') findsNothing` assertion pair around line 1150 of this plan is the direct proof that the boot path picked up the SharedPreferences seed and propagated through `settingsProvider → localeProvider → MaterialApp.router(locale) → Localizations.localeOf → WordmarkLogo locale branch`. **Scope of this proof (codex round 2 [P2]):** the assertion runs after `pumpAndSettle` + a 1500ms post-skeleton pump, so it covers the *settled* locale state. It does NOT guarantee no first-frame English flash — if one frame renders `'Rihla'` before the locale watch fires and re-renders `'رحلة'`, this assertion still passes. PR1 is not promising no-flash; if real-device QA in PR4 surfaces an English-first flicker, that's a separate fix on the WordmarkLogo render path, not a flaw in the locale chain. If WordmarkLogo's English path renders instead (or both render — they can't, but the second assertion catches that anyway), the locale chain is broken somewhere. Check: (a) `setUp` actually ran before `app.main()` (binding ordering); (b) `lib/main.dart`'s `MaterialApp.router` watches `localeProvider`, not a hardcoded locale; (c) `settingsProvider` actually reads `SettingsService.languageKey` on boot (not a different key). The `pump_rihla_app_test.dart` ar-locale assertion from Task 6 covers the smaller "MaterialApp ↔ Localizations" leg of the chain in isolation; this integration test covers the SharedPreferences → settings boot path that pump-tests can't reach.
 
 **Step 5: Commit**
 
