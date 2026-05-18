@@ -8,6 +8,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/localized_decimal_input.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -233,7 +234,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
 
     if (!context.mounted || result == null) return;
 
-    final editedAmount = Decimal.tryParse(result.amount) ?? suggestedAmount;
+    final editedAmount =
+        Decimal.tryParse(normalizeLocalizedDecimalInput(result.amount)) ??
+        suggestedAmount;
     final noteText = result.note.isEmpty ? null : result.note;
 
     if (editedAmount <= Decimal.zero) {

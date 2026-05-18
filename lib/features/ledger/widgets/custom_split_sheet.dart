@@ -1,6 +1,5 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
@@ -8,6 +7,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/r_amount.dart';
 
@@ -749,6 +749,7 @@ class _Editor extends StatelessWidget {
           key: Key('split_exact_$participantId'),
           controller: exactCtrl!,
           suffix: currency,
+          decimalDigits: AppFormatters.currencyConfig[currency]?.decimals ?? 3,
           onChanged: onAmountChanged,
         );
       case SplitMode.percent:
@@ -756,6 +757,7 @@ class _Editor extends StatelessWidget {
           key: Key('split_percent_$participantId'),
           controller: percentCtrl!,
           suffix: '%',
+          decimalDigits: 3,
           onChanged: onAmountChanged,
         );
     }
@@ -897,11 +899,13 @@ class _NumberInput extends StatelessWidget {
     super.key,
     required this.controller,
     required this.suffix,
+    required this.decimalDigits,
     required this.onChanged,
   });
 
   final TextEditingController controller;
   final String suffix;
+  final int decimalDigits;
   final VoidCallback onChanged;
 
   @override
@@ -913,7 +917,9 @@ class _NumberInput extends StatelessWidget {
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.right,
-        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+        inputFormatters: [
+          LocalizedDecimalTextInputFormatter(decimalDigits: decimalDigits),
+        ],
         style: AppTypography.mono(
           fontSize: 14,
           fontWeight: FontWeight.w600,

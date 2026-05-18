@@ -1,12 +1,12 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/localized_decimal_input.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../keys/group_keys.dart';
 
@@ -435,7 +435,10 @@ class _PayeeCard extends StatelessWidget {
                 decimal: true,
               ),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+                LocalizedDecimalTextInputFormatter(
+                  decimalDigits:
+                      AppFormatters.currencyConfig[currency]?.decimals ?? 3,
+                ),
               ],
               style: AppTypography.mono(
                 fontSize: 15,
