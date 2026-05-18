@@ -19,7 +19,7 @@
 
 **ARB key writing:** Every new key lands in BOTH `lib/l10n/app_en.arb` and `lib/l10n/app_ar.arb` in the same commit. `tool/check_arb_completeness.dart` (CI) fails if en/ar drift. After editing ARB files, run `flutter gen-l10n` (or `flutter pub get` which triggers gen) — generated bindings land at `lib/l10n/generated/app_localizations*.dart`.
 
-**Consuming a key in Dart:** Add `import 'package:safar/l10n/generated/app_localizations.dart';` if not present (most files already have `context.l10n` extension available via a different import — grep the file first). Replace `'English text'` with `context.l10n.keyName`. For placeholder keys: `context.l10n.editorFailedToAddExpense(errorString)`.
+**Consuming a key in Dart:** The `context.l10n` extension lives at `lib/core/extensions/build_context_l10n.dart` — add `import 'package:safar/core/extensions/build_context_l10n.dart';` if not present (codex round 1 catch — earlier draft pointed at the generated file, which is wrong). Replace `'English text'` with `context.l10n.keyName`. For placeholder keys: `context.l10n.editorFailedToAddExpense(errorString)`. For plural keys: `context.l10n.ledgerPeopleCount(participantCount)` — the plural value already embeds the count via `#`, so DO NOT prefix `'$count '` at the callsite.
 
 **RTL fix patterns:**
 - `Alignment.centerLeft` → `AlignmentDirectional.centerStart`
@@ -30,11 +30,11 @@
 - `Positioned(left: N, …)` → `PositionedDirectional(start: N, …)`
 
 **Widget-translation template (Waves 1-6):** For each widget file:
-1. Grep current strings: `grep -nE "'[A-Z][a-zA-Z][a-zA-Z 0-9',.!?:-]+'" <file>`
+1. Grep current strings: `grep -nE "'[A-Z][a-zA-Z][a-zA-Z 0-9',.!?:-]+'" <file>` (and also for any `semanticLabel:`, `tooltip:`, `helperText:`, `hintText:` properties — they hide user-visible strings outside the simple `Text(...)` pattern)
 2. Add en+ar ARB pairs to both files for each user-visible string
 3. Apply RTL fixes if listed for the file
 4. Replace each hardcoded string with `context.l10n.<key>`
-5. Update widget tests that assert on the English string (use `pumpRihlaApp` with default locale = en; tests stay English-assertions because PR2a's harness uses en by default)
+5. Update widget tests that assert on the English string (use `pumpRihlaApp(tester, child, locale: ..., overrides: ...)` per the helper's actual signature at `test/helpers/pump_rihla_app.dart:33-38`; tests stay English-assertions by default because the helper's `locale` defaults to `const Locale('en')`)
 6. Run `flutter analyze <file>` — must be clean
 7. Run the file's widget tests — must pass
 
@@ -59,15 +59,29 @@ Goal: ARB keys exist; helpers + refactor in place; full app still renders Englis
 Use the prefix buckets from the design doc Section "ARB key inventory":
 - `ledger*` (~22), `editor*` (~42), `customSplit*` (~10), `categoryPicker*` (~5), `category*` (6 — `categoryFood/Transport/Accommodation/Activities/Shopping/Other`), `settleUp*` (~25), `expenseSuccess*` (~6), `timeline*` (3 — `timelineToday/timelineYesterday/timelineRangeSeparator`), `common*` (5 new — `commonApply/commonRetry/commonBack/commonClose/commonGoHome`).
 
-Plural key (first in codebase):
+Plural keys (two in PR2b — first plurals in codebase). Both embed the count INSIDE the value using ICU `#` so callsites stop concatenating `'$count '` separately (codex round 1 catch):
+
 ```json
-"ledgerPeopleCount": "{count, plural, =1{PERSON} other{PEOPLE}}",
-"@ledgerPeopleCount": { "placeholders": { "count": { "type": "int" } } }
+"ledgerPeopleCount": "{count, plural, =1{1 PERSON} other{# PEOPLE}}",
+"@ledgerPeopleCount": { "placeholders": { "count": { "type": "int" } } },
+
+"settleUpSummaryTransfers": "{count, plural, =1{1 transfer} other{# transfers}}",
+"@settleUpSummaryTransfers": { "placeholders": { "count": { "type": "int" } } }
 ```
 
-Arabic counterpart in `app_ar.arb`:
+Arabic counterparts in `app_ar.arb`:
 ```json
-"ledgerPeopleCount": "{count, plural, =1{شخص} other{أشخاص}}"
+"ledgerPeopleCount": "{count, plural, =1{شخص واحد} other{# أشخاص}}",
+"settleUpSummaryTransfers": "{count, plural, =1{تحويل واحد} other{# تحويلًا}}"
+```
+
+Callsite shape after refactor:
+```dart
+// ledger_screen.dart — drop the '$participantCount ' prefix
+context.l10n.ledgerPeopleCount(participantCount),
+
+// group_settlement_summary.dart:32 — same pattern
+label: context.l10n.settleUpSummaryTransfers(transferCount),
 ```
 
 Verb-interpolation keys (en):
@@ -274,11 +288,12 @@ Expected: PASS — all 5 tests green.
 
 ---
 
-### Task 0.4: Refactor `ledger_categories.dart` (TDD)
+### Task 0.4: Add `AppLocalizations` param to `ledgerCategoryName` (TDD, minimal — codex round 1 rescope)
 
 **Files:**
-- Modify: `lib/features/ledger/utils/ledger_categories.dart`
+- Modify: `lib/features/ledger/utils/ledger_categories.dart` (signature change to `ledgerCategoryName` only — `ledgerCategoryBucket` is unchanged)
 - Modify: `test/unit/ledger_categories_test.dart` (or create if it doesn't exist — grep first)
+- Compile-fix callsite patches at `lib/features/ledger/widgets/ledger_category_strip.dart:142` and `lib/features/ledger/widgets/ledger_day_card.dart` (any callsite using the old name-only signature)
 
 **Step 1: Confirm test file location**
 
@@ -292,123 +307,185 @@ Run: `find test -name "ledger_categories_test.dart"`
 // test/unit/ledger_categories_test.dart (full skeleton — extend existing if present)
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/features/ledger/utils/ledger_categories.dart';
-import 'package:safar/l10n/generated/app_localizations_ar.dart';
-import 'package:safar/l10n/generated/app_localizations_en.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
-  group('ledgerCategoryBucket — exact-match against seed names', () {
-    test('exact seed names return their bucket', () {
-      expect(ledgerCategoryBucket('Food & Dining'),   0);
-      expect(ledgerCategoryBucket('Transport'),       1);
-      expect(ledgerCategoryBucket('Accommodation'),   2);
-      expect(ledgerCategoryBucket('Activities'),      3);
-      expect(ledgerCategoryBucket('Shopping'),        4);
-      expect(ledgerCategoryBucket('Other'),           5);
-    });
-
-    test('case/whitespace variants still bucket correctly', () {
-      expect(ledgerCategoryBucket('food & dining'),     0);
-      expect(ledgerCategoryBucket('  Transport  '),     1);
-      expect(ledgerCategoryBucket('ACCOMMODATION'),     2);
-    });
-
-    test('unknown names bucket to Other (5)', () {
-      expect(ledgerCategoryBucket('Concert tickets'),   5);
-      expect(ledgerCategoryBucket('سفر'),               5);  // Arabic free text
-      expect(ledgerCategoryBucket(null),                5);
-      expect(ledgerCategoryBucket(''),                  5);
-    });
-  });
-
   group('ledgerCategoryName(bucket, l10n) returns localized name', () {
-    test('English bucket names', () {
-      final l10n = AppLocalizationsEn();
-      expect(ledgerCategoryName(0, l10n), l10n.categoryFood);
-      expect(ledgerCategoryName(1, l10n), l10n.categoryTransport);
-      expect(ledgerCategoryName(2, l10n), l10n.categoryAccommodation);
-      expect(ledgerCategoryName(3, l10n), l10n.categoryActivities);
-      expect(ledgerCategoryName(4, l10n), l10n.categoryShopping);
-      expect(ledgerCategoryName(5, l10n), l10n.categoryOther);
+    test('English bucket names match l10n keys 1..6', () async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(ledgerCategoryName(1, l10n), l10n.ledgerBucketFood);
+      expect(ledgerCategoryName(2, l10n), l10n.ledgerBucketLodging);
+      expect(ledgerCategoryName(3, l10n), l10n.ledgerBucketTransit);
+      expect(ledgerCategoryName(4, l10n), l10n.ledgerBucketGroceries);
+      expect(ledgerCategoryName(5, l10n), l10n.ledgerBucketActivities);
+      expect(ledgerCategoryName(6, l10n), l10n.ledgerBucketOther);
     });
 
-    test('Arabic bucket names are non-empty', () {
-      final l10n = AppLocalizationsAr();
-      for (var i = 0; i < 6; i++) {
-        expect(ledgerCategoryName(i, l10n), isNotEmpty);
+    test('Arabic bucket names are non-empty AND distinct from English', () async {
+      final ar = await AppLocalizations.delegate.load(const Locale('ar'));
+      final en = await AppLocalizations.delegate.load(const Locale('en'));
+      for (var i = 1; i <= 6; i++) {
+        expect(ledgerCategoryName(i, ar), isNotEmpty);
+        expect(ledgerCategoryName(i, ar), isNot(ledgerCategoryName(i, en))); // catches wrong-locale fallback
       }
     });
 
-    test('out-of-range bucket falls back to Other', () {
-      final l10n = AppLocalizationsEn();
-      expect(ledgerCategoryName(99, l10n), l10n.categoryOther);
+    test('out-of-range bucket falls back to Other', () async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(ledgerCategoryName(99, l10n), l10n.ledgerBucketOther);
+      expect(ledgerCategoryName(0,  l10n), l10n.ledgerBucketOther); // historical bucket-1-based, 0 is invalid
     });
   });
+
+  // ledgerCategoryBucket is NOT refactored in PR2b — see follow-up #8.
+  // Existing tests for it (if any) should still pass without modification.
 }
 ```
 
 **Step 3: Verify tests fail**
 
 Run: `flutter test test/unit/ledger_categories_test.dart`
-Expected: FAIL — `ledgerCategoryName` signature mismatch (currently takes only `int`); exact-match tests fail because current impl is substring-based and matches loosely.
+Expected: FAIL — `ledgerCategoryName` currently takes only `int`, and `l10n.ledgerBucket*` getters do not exist yet (Wave 0 Task 0.1 adds those ARB keys; this Task 0.4 runs after Task 0.1).
 
-**Step 4: Refactor the implementation**
+**Step 4: Modify the implementation (minimal)**
 
 ```dart
 // lib/features/ledger/utils/ledger_categories.dart
-import '../../../l10n/generated/app_localizations.dart';
+import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 
-/// Stable seed-name → bucket index mapping. Mirrors the 6 default categories
-/// seeded in `category_provider.dart`. Case-insensitive trim match.
-const _seedNameToBucket = <String, int>{
-  'food & dining': 0,
-  'transport':     1,
-  'accommodation': 2,
-  'activities':    3,
-  'shopping':      4,
-  'other':         5,
-};
+import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Maps a free-text expense category name onto one of six stable buckets.
 ///
-/// Exact-match (case-insensitive, trimmed) against the 6 seed names. Unknown
-/// names bucket to 5 (Other) — including Arabic free-text since the dead
-/// custom-CRUD pre-PR2b never produced Arabic seed names.
+/// Unchanged from PR2a baseline — substring matching against `name`.
+/// Pre-existing bug: Firestore-loaded expenses have `categoryName: null`
+/// (`expense_model.dart:185-205` reads only `categoryId`), so every real
+/// expense buckets to 6 (Other). Follow-up #8 will switch this to take
+/// `categoryId` and direct-map the 6 seed ids.
 int ledgerCategoryBucket(String? name) {
-  if (name == null) return 5;
-  return _seedNameToBucket[name.trim().toLowerCase()] ?? 5;
+  if (name == null) return 6;
+  final lower = name.toLowerCase();
+  bool any(List<String> needles) => needles.any(lower.contains);
+  if (any(const ['food', 'rest', 'din', 'meal'])) return 1;
+  if (any(const ['lodg', 'hotel', 'accom', 'stay'])) return 2;
+  if (any(const ['trans', 'taxi', 'flight', 'uber', 'train'])) return 3;
+  if (any(const ['groc', 'supermark'])) return 4;
+  if (any(const ['activ', 'entertain', 'tour', 'ticket'])) return 5;
+  return 6;
 }
 
-/// Returns the localized display name for a bucket index.
+/// Returns the localized display name for a bucket index 1..6.
+/// Default branch (any other int) returns the Other label.
 String ledgerCategoryName(int bucket, AppLocalizations l10n) => switch (bucket) {
-  0 => l10n.categoryFood,
-  1 => l10n.categoryTransport,
-  2 => l10n.categoryAccommodation,
-  3 => l10n.categoryActivities,
-  4 => l10n.categoryShopping,
-  _ => l10n.categoryOther,
+  1 => l10n.ledgerBucketFood,
+  2 => l10n.ledgerBucketLodging,
+  3 => l10n.ledgerBucketTransit,
+  4 => l10n.ledgerBucketGroceries,
+  5 => l10n.ledgerBucketActivities,
+  _ => l10n.ledgerBucketOther,
+};
+
+Color ledgerCategoryColor(AppColorTokens colors, int bucket) => switch (bucket) {
+  1 => colors.cat1,
+  2 => colors.cat2,
+  3 => colors.cat3,
+  4 => colors.cat4,
+  5 => colors.cat5,
+  _ => colors.cat6,
+};
+
+IconData ledgerCategoryIcon(int bucket) => switch (bucket) {
+  1 => Iconsax.coffee,
+  2 => Iconsax.house_2,
+  3 => Iconsax.car,
+  4 => Iconsax.shopping_cart,
+  5 => Iconsax.star,
+  _ => Iconsax.box,
 };
 ```
 
 **Step 5: Verify tests pass**
 
 Run: `flutter test test/unit/ledger_categories_test.dart`
-Expected: PASS — all groups green.
+Expected: PASS.
 
-**Step 6: Verify callsites still compile**
+**Step 6: Compile-fix all callsites in same Wave 0 commit**
 
-The `ledgerCategoryName(bucket, l10n)` signature change breaks existing callsite at `lib/features/ledger/widgets/ledger_category_strip.dart:142`. That callsite gets fixed in Wave 2 (the strip widget). Until then, the file won't compile.
+The `ledgerCategoryName(int)` → `ledgerCategoryName(int, AppLocalizations)` signature change breaks every existing callsite. Grep first:
 
-Workaround for clean Wave 0 commit: temporarily patch the callsite to pass `context.l10n`:
+Run: `grep -rn "ledgerCategoryName(" lib/`
+Expected callsites: `ledger_category_strip.dart:142`. (`ledger_day_card.dart:195` calls `ledgerCategoryBucket`, NOT `ledgerCategoryName` — leave alone.)
 
+At `ledger_category_strip.dart:142`, change:
 ```dart
-// lib/features/ledger/widgets/ledger_category_strip.dart:142 — temporary, finalised in Wave 2
-ledgerCategoryName(bucket, context.l10n),
+ledgerCategoryName(bucket),  // OLD
+ledgerCategoryName(bucket, context.l10n),  // NEW — minimum-change compile patch
 ```
 
-Wave 2 will fully translate this widget; this is just the minimum compilation fix.
+Wave 2 will fully translate `ledger_category_strip.dart`; this is just the minimum compilation fix.
 
 Run: `flutter analyze`
 Expected: clean.
+
+---
+
+### Task 0.5: `formatShortMonthDay` gains a locale param (codex round 1 — P1 #7)
+
+**Files:**
+- Modify: `lib/core/utils/formatters.dart` (replace hardcoded `_monthAbbr` list with `intl` `DateFormat.MMMd`)
+- Compile-fix every callsite of `formatShortMonthDay` to pass a locale tag
+
+**Step 1: Find every callsite**
+
+Run: `grep -rn "formatShortMonthDay\|AppFormatters\.formatShortMonthDay" lib/ test/`
+Expected: `lib/features/ledger/widgets/expense_editor_body.dart:1215` plus any others surfaced by the grep.
+
+**Step 2: Modify `formatters.dart`**
+
+```dart
+// lib/core/utils/formatters.dart — replace the existing hardcoded path
+import 'package:intl/intl.dart';
+
+// (delete the const _monthAbbr list entirely)
+
+static String formatShortMonthDay(DateTime date, String localeTag) {
+  return DateFormat.MMMd(localeTag).format(date);
+}
+```
+
+**Step 3: Compile-fix every callsite to pass a locale tag**
+
+At each callsite found in Step 1, change `AppFormatters.formatShortMonthDay(date)` to `AppFormatters.formatShortMonthDay(date, Localizations.localeOf(context).toLanguageTag())`. If the callsite has no `BuildContext` in scope, that's a refactor signal — but `expense_editor_body.dart:1215` does have context.
+
+**Step 4: Verify analyze + tests**
+
+Run: `flutter analyze`
+Expected: clean.
+
+Run: `flutter test test/`
+Expected: existing tests still green; any test asserting on a specific month abbreviation may need a `localeTag` update.
+
+---
+
+### Task 0.6: Localize `DateFormat('MMM d')` callsite in groups widget (codex round 1 — P1 #7 continued)
+
+**File:** `lib/features/groups/widgets/settle_up_page_body.dart`
+
+**Change at L466:**
+```dart
+// BEFORE
+final dateStr = DateFormat('MMM d').format(settlement.settledAt);
+// AFTER
+final dateStr = DateFormat.MMMd(Localizations.localeOf(context).toLanguageTag()).format(settlement.settledAt);
+```
+
+Verify with `flutter analyze`. (Wave 5 fully translates this widget; this is a Wave 0 compile-fix to avoid leaving an English-baked DateFormat call after the formatters refactor.)
+
+Alternative if a broader audit during implementation finds many `DateFormat('MMM d')` callsites: introduce a `localizedShortMonthDay(BuildContext, DateTime)` helper in `formatters.dart` so callsites stay one-line.
+
+---
 
 **Step 7: Commit Wave 0**
 
@@ -417,13 +494,16 @@ git add lib/l10n/app_en.arb \
         lib/l10n/app_ar.arb \
         lib/l10n/generated/ \
         lib/core/utils/expense_scope_display_name.dart \
+        lib/core/utils/formatters.dart \
         lib/features/ledger/utils/localized_category_name.dart \
         lib/features/ledger/utils/ledger_categories.dart \
         lib/features/ledger/widgets/ledger_category_strip.dart \
+        lib/features/ledger/widgets/expense_editor_body.dart \
+        lib/features/groups/widgets/settle_up_page_body.dart \
         test/unit/expense_scope_display_name_test.dart \
         test/unit/localized_category_name_test.dart \
         test/unit/ledger_categories_test.dart
-git commit -m "feat(l10n): PR2b/wave-0 — ARB keys, helpers, ledger_categories refactor"
+git commit -m "feat(l10n): PR2b/wave-0 — ARB keys, helpers, l10n-ready ledger_categories + formatters"
 ```
 
 Expected: commit succeeds. `git status` clean afterward.
@@ -448,12 +528,12 @@ Commit: `feat(l10n): PR2b/wave-1 — small ledger widgets`
 | `lib/features/ledger/widgets/ledger_sticky_cta.dart` | 2 | — |
 | `lib/features/ledger/widgets/ledger_roster_strip.dart` | 2 | — |
 | `lib/features/ledger/widgets/category_selection_step.dart` | 1 | — |
-| `lib/features/ledger/widgets/amount_input_section.dart` | 2 | — |
+| `lib/features/ledger/widgets/amount_input_section.dart` | 4 | Includes `semanticLabel: 'Backspace'` at L88 and `semanticLabel: 'Decimal point'` at L97 — translate via `commonSemanticBackspace` / `commonSemanticDecimalPoint` ARB keys. (codex round 1 catch) |
 | `lib/features/ledger/widgets/receipt_picker_section.dart` | 5 | — |
 
 **End-of-wave checks:**
 - `flutter analyze` → clean
-- `flutter test test/features/ledger/widgets/` → all green
+- `flutter test test/features/ledger/` → all green (note: `test/features/ledger/widgets/` does not exist as a separate directory — tests live directly under `test/features/ledger/`)
 - `dart run tool/check_arb_completeness.dart` → exit 0
 
 ---
@@ -503,6 +583,7 @@ Commit: `feat(l10n): PR2b/wave-4 — expense editor body + thin shells + scope s
 | `lib/features/ledger/screens/add_expense_screen.dart` | 2 | — |
 | `lib/features/ledger/screens/edit_expense_screen.dart` | 11 | Includes delete snackbar + dialog title; uses `commonDelete` (PR2a key) and `commonCancel` for the inline `AlertDialog` at L222-235 of editor body via the dialog wrapper here. |
 | `lib/features/ledger/widgets/split_scope_selector.dart` | 9 | Consumes `expenseScopeDisplayName` for scope labels. |
+| `lib/features/ledger/widgets/category_selection_step.dart` | 2 | **codex round 1 catch:** L115 renders `category.name` directly — replace with `localizedCategoryName(id: category.id, fallbackName: category.name, l10n: context.l10n)`. Plus any chrome strings (title/subtitle) found by string-grep at implementation time. |
 
 **Special handling — `expense_editor_body.dart:1004` `'EVENT DEFAULT'`:**
 Open question per design — verify whether this is user-facing badge or internal sentinel before translating. Grep render path:
@@ -525,12 +606,12 @@ Commit: `feat(l10n): PR2b/wave-5 — settle-up screen + shared groups widgets`
 
 | File | Strings | RTL fixes / notes |
 |---|---|---|
-| `lib/features/ledger/screens/settle_up_screen.dart` | ~12 | SnackBars at L241, L283-307, L319 — drop `const` after localization. |
-| `lib/features/groups/widgets/settle_up_page_body.dart` | 15 | **L393**: `EdgeInsets.only(left: 4)` → `EdgeInsetsDirectional.only(start: 4)`. |
-| `lib/features/groups/widgets/record_payment_sheet.dart` | 11 | **L469**: `Alignment.centerLeft` → `AlignmentDirectional.centerStart`. |
+| `lib/features/ledger/screens/settle_up_screen.dart` | ~12 | SnackBars at L241, L283-307, L319 — drop `const` after localization. **L349 RTL:** `Alignment.centerLeft` → `AlignmentDirectional.centerStart` (codex round 1 catch). |
+| `lib/features/groups/widgets/settle_up_page_body.dart` | 15 | **L393 RTL:** `EdgeInsets.only(left: 4)` → `EdgeInsetsDirectional.only(start: 4)`. L466 `DateFormat('MMM d')` already fixed in Wave 0 Task 0.6. |
+| `lib/features/groups/widgets/record_payment_sheet.dart` | 11 | **L469 RTL:** `Alignment.centerLeft` → `AlignmentDirectional.centerStart`. |
 | `lib/features/groups/widgets/group_settlement_tile.dart` | 1 | — |
 | `lib/features/groups/widgets/all_settled_state.dart` | 2 | — |
-| `lib/features/groups/widgets/group_settlement_summary.dart` | 0 | RTL audit only — no string changes; confirm via grep. |
+| `lib/features/groups/widgets/group_settlement_summary.dart` | **2 strings + 1 plural** (codex round 1 correction — original "0" was wrong) | L32: `'$count transfer(s)'` → `context.l10n.settleUpSummaryTransfers(count)`. L36: `'... total'` suffix → either `settleUpSummaryTotal` with `{amount}` placeholder, or split into `settleUpSummaryTotalSuffix` (returned as a separate `Text` next to the formatted amount). |
 
 **Const SnackBar lint mitigation (R5):**
 
@@ -604,19 +685,26 @@ Expected: all green (some tests may need locale tag updates).
 
 **Strings to translate:** ~18 — empty states, error states, tooltips, plus the plural at **L426**.
 
-**Step 1: Plural replacement at L426**
+**Step 1: Plural replacement at L423-426** (codex round 1 catch — count was being dropped in the original draft)
 
-Before:
+Before (actual code, L423-426):
 ```dart
-Text('${participantCount == 1 ? 'PERSON' : 'PEOPLE'}')
+final captionParts = <String>[
+  ?dateRange,
+  '$participantCount '
+      '${participantCount == 1 ? 'PERSON' : 'PEOPLE'}',
+];
 ```
 
-After:
+After — drop the `'$participantCount '` prefix since the plural value already embeds `#`:
 ```dart
-Text(context.l10n.ledgerPeopleCount(participantCount))
+final captionParts = <String>[
+  ?dateRange,
+  context.l10n.ledgerPeopleCount(participantCount),
+];
 ```
 
-The generated `AppLocalizations.ledgerPeopleCount(int count)` method handles the plural form selection.
+The generated `AppLocalizations.ledgerPeopleCount(int count)` returns `"1 PERSON"` / `"3 PEOPLE"` / `"شخص واحد"` / `"3 أشخاص"` depending on locale and count. The ICU `#` token inside the plural value is the count.
 
 **Step 2: Translate remaining strings + handle empty-state prose carefully (open question)**
 
@@ -632,50 +720,57 @@ Boot the app in English with `participantCount = 1` and `participantCount = 3`; 
 
 ## Wave 7 — Tests + gate clearance
 
-Commit: `feat(l10n): PR2b/wave-7 — Arabic golden-path integration test + final clearance`
+Commit: `feat(l10n): PR2b/wave-7 — extend Arabic golden-path with ledger walk + final clearance`
 
-### Task 7.1: New integration test
+### Task 7.1: EXTEND the existing `integration_test/golden_path_arabic_test.dart` (codex round 1 — P1 #5 + #8)
 
-**File:** Create `test/integration/locale_arabic_ledger_test.dart`
+**Key facts the original draft got wrong:**
+- The Arabic golden-path test ALREADY EXISTS at `integration_test/golden_path_arabic_test.dart` (PR1 Task 11 shipped — my original "does not exist" claim was a directory miss; the file lives under Flutter's `integration_test/` runner, not `test/integration/`).
+- `pumpRihlaApp` does NOT have a `settings:` parameter. Its actual signature at `test/helpers/pump_rihla_app.dart:33-38` is `pumpRihlaApp(WidgetTester tester, Widget child, {Locale locale, List<Override> overrides})`. It is also NOT router-aware (the helper's doc comment says so).
+- The existing integration test does NOT use `pumpRihlaApp`. It boots the real app via `app.main()` after seeding `SharedPreferences.setMockInitialValues({SettingsService.languageKey: 'ar'})` — that's the right pattern for end-to-end ledger navigation.
 
-**Step 1: Write the test**
+**File:** Modify `integration_test/golden_path_arabic_test.dart` (add a ledger walk; don't create new).
+
+**Step 1: Read the existing file to understand its conventions**
+
+Run: `cat integration_test/golden_path_arabic_test.dart`
+Expected: Sees `IntegrationTestWidgetsFlutterBinding.ensureInitialized()`, the SharedPreferences seed in `setUp`, `app.main()` invocation, `_waitFor` / `_settle` / `_log` helpers. Match those conventions.
+
+**Step 2: Extend the existing test (one of two options)**
+
+Either:
+(a) Add a second `testWidgets('Arabic ledger walks end-to-end', ...)` block inside the same `void main()`, sharing the SharedPreferences `setUp` seed, OR
+(b) Extend the existing `'cold boot in ar → home → create group'` test to continue from the home screen into the ledger.
+
+Recommended: (b) for minimum file churn. After the existing assertions land on `home_screen`, continue:
 
 ```dart
-// test/integration/locale_arabic_ledger_test.dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-// + Riverpod, mocktail, FakeFirebaseFirestore imports as in existing integration tests
-// + import pumpRihlaApp helper
-// + import AppLocalizationsAr for expected-string assertions
+// Continue from home: navigate into a seeded group → event → ledger.
+// Use whatever group/event seeding the existing test uses (likely a
+// Firebase emulator with a fixture). If no seeded group exists, the
+// "empty home" path applies — assert one of the home-screen Arabic
+// strings PR2a translated (e.g. find.text(AppLocalizationsAr().<key>)).
 
-void main() {
-  // Pattern: tester.runAsync wraps the test to allow GoogleFonts async load
-  testWidgets('Arabic locale walks ledger end-to-end', (tester) async {
-    await tester.runAsync(() async {
-      // Boot with languageCode: 'ar' via pumpRihlaApp settings override
-      await pumpRihlaApp(tester, settings: AppSettings(languageCode: 'ar'));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+// Once data is present (or path adjusted):
+//   - Tap into a group's event ledger
+//   - Verify Arabic plural visible: find.text(matching ledgerPeopleCount)
+//   - Tap settle-up CTA, verify Arabic settleUp* string visible
 
-      // Navigate Home → group → event → ledger
-      // (use ledgerKeys.* / event keys to tap into the flow)
-
-      // Assert at least one Arabic ledger string is visible
-      expect(find.text(AppLocalizationsAr().ledgerEmptyStateTitle), findsOneWidget);
-      // OR (if data is seeded): assert plural rendering
-      // expect(find.text(AppLocalizationsAr().ledgerPeopleCount(2)), findsOneWidget);
-
-      // Tap "Settle up"
-      // Assert at least one Arabic settle-up string visible
-    });
-  });
-}
+// To get the Arabic string for assertion at runtime:
+final l10n = await AppLocalizations.delegate.load(const Locale('ar'));
+expect(find.text(l10n.ledgerPeopleCount(2)), findsOneWidget);
 ```
 
-**Step 2: Run integration test**
+**Step 3: Run the integration test (separate runner from `test/`)**
 
-Run: `flutter test test/integration/locale_arabic_ledger_test.dart`
-Expected: PASS. If GoogleFonts async fails the test zone, the `tester.runAsync` wrapper catches it (R7 mitigation).
+Run: `flutter test integration_test/golden_path_arabic_test.dart -d <sim-id> --dart-define-from-file=config.test.json`
+
+(Optional during development) Start Firebase emulator first if the test depends on seeded backend:
+```
+firebase emulators:start --only auth,firestore,functions
+```
+
+Expected: PASS. If GoogleFonts async fails the test zone, follow the existing test's pattern — it already runs against `app.main()` and has handled font loading historically.
 
 ### Task 7.2: Final clearance
 
@@ -702,8 +797,8 @@ Expected: empty output. If any of these files appear → STOP, investigate, reve
 **Step 5: Commit Wave 7**
 
 ```bash
-git add test/integration/locale_arabic_ledger_test.dart
-git commit -m "feat(l10n): PR2b/wave-7 — Arabic golden-path integration test"
+git add integration_test/golden_path_arabic_test.dart
+git commit -m "feat(l10n): PR2b/wave-7 — extend Arabic golden-path with ledger walk"
 ```
 
 ### Task 7.3: Open PR
