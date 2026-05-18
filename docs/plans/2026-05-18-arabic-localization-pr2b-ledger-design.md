@@ -57,7 +57,7 @@ Translate the entire Ledger surface to Arabic, including the shared settle-up wi
 | Q5 (revised after codex round 1) | **Extend the existing `integration_test/golden_path_arabic_test.dart`** with a ledger walk | Codex round 1 found PR1 Task 11 DID ship — at `integration_test/golden_path_arabic_test.dart` (Flutter's `integration_test` runner, separate from `test/`). My original "doesn't exist" claim was a directory miss. Widen what exists, don't duplicate. |
 | Q6 | Reuse `splitModeDisplayName` from PR2a; accept the 'Equally' → 'Equal' wording change in `custom_split_sheet.dart` | PR2a established 'Equal' as canonical. Shorter, chip-friendly. YAGNI on a separate `customSplitModeEqually` key. |
 | Q7 | New `expenseScopeDisplayName(scope, l10n)` helper at `lib/core/utils/`; keys under `editor*` prefix | Mirror of `splitModeDisplayName` shape. `ExpenseScope` is editor-specific, not a `common*` cross-screen concern. |
-| Q8 | `localizedCategoryName({String? id, String? fallbackName, required AppLocalizations l10n})` | id-keyed switch (matches Q4 unify direction). `ExpenseModel.categoryId` already exists at `expense_model.dart:39` — id is first-class. Fallback name covers legacy/custom data. |
+| Q8 | `localizedCategoryName({String? id, String? fallbackName, required AppLocalizations l10n})` | id-keyed switch. `ExpenseModel.categoryId` already exists at `expense_model.dart:39` — id is first-class for the picker + selection-step paths where an `ExpenseCategory` is in scope. Fallback name covers legacy/custom data. (Used for the picker side only; the filter strip uses `ledgerCategoryName(bucket, l10n)` via the unchanged bucketer.) |
 | Q9 | Verb-interpolation policy: separate ARB keys per verb, no runtime composition | `expense_editor_body.dart:201` `'Failed to $verb expense: $e'` splits into `editorFailedToAddExpense` / `editorFailedToUpdateExpense` with `{error}` placeholder. Sets codebase-wide convention. |
 | Q10 | `currencyDisplayName` stays in PR2a's picker boundary; not pulled into settle-up | Settle-up renders currency codes, not display names. Pulling the helper in needlessly crosses the hardcoded-OMR bug boundary. |
 
@@ -151,7 +151,7 @@ Callsites become:
 label: context.l10n.settleUpSummaryTransfers(transferCount),
 ```
 
-Arabic plural uses CLDR's 6 forms (`zero/one/two/few/many/other`). `app_ar.arb` supplies `=1` (explicit one) and `other`; codegen handles the rest. If Arabic needs different forms for `two/few/many`, codegen surfaces the gap at build time.
+Arabic plural uses CLDR's 6 forms (`zero/one/two/few/many/other`). `app_ar.arb` supplies `=1` (explicit one) and `other`; ICU's plural selector falls back to `other` for any unsupplied CLDR category. **The codegen does NOT enforce all 6 forms — it accepts `=1` + `other` and compiles fine, even if Arabic plural grammar wants distinct `two`/`few`/`many` forms.** If natural-Arabic plural quality matters for these two cases, a Wave 6 implementation TODO is to test counts of 2, 3, 10, 11, 99 in Arabic, observe whether `# أشخاص` reads naturally for each, and add explicit `two`/`few`/`many` branches if needed. Translator/native-speaker review required for this judgment, not codegen.
 
 ### Verb-interpolation policy
 
@@ -237,7 +237,7 @@ Each wave is one (or two) atomic commits. ARB completeness lint stays green afte
 - Add `lib/features/ledger/utils/localized_category_name.dart` + unit test (covers all 6 known ids, null id, unknown id, empty fallback, populated fallback; asserts ARABIC values for known-id cases, not just `isNotEmpty`).
 - Modify `lib/features/ledger/utils/ledger_categories.dart`: `ledgerCategoryName(int bucket)` gains `AppLocalizations l10n` param and returns `l10n.ledgerBucket*`. `ledgerCategoryBucket` body UNCHANGED. Extend `ledger_categories_test.dart` to assert the new signature returns expected Arabic values for buckets 1..6.
 - Modify `lib/core/utils/formatters.dart`: `formatShortMonthDay` gains `String localeTag` param and delegates to `intl` `DateFormat.MMMd(localeTag)`. Update any existing `formatters_test.dart` if present; otherwise add minimal test.
-- **Compile-fix patches in same Wave 0 commit** (since signatures change but the surface widgets are translated in later waves): pass `context.l10n` to `ledgerCategoryName` at `ledger_category_strip.dart:142` and `ledger_day_card.dart:195`; pass `Localizations.localeOf(context).toLanguageTag()` to `formatShortMonthDay` at `expense_editor_body.dart:1215` (and any other callsite found at Wave 0 time). These are minimum-change compile patches; full translation of those widgets happens at their later wave.
+- **Compile-fix patches in same Wave 0 commit** (since signatures change but the surface widgets are translated in later waves): pass `context.l10n` to `ledgerCategoryName` at `ledger_category_strip.dart:142` (this is the only callsite of `ledgerCategoryName` — `ledger_day_card.dart:195` calls `ledgerCategoryBucket`, NOT `ledgerCategoryName`, so it does not need a Wave 0 patch). Pass `Localizations.localeOf(context).toLanguageTag()` to `formatShortMonthDay` at `expense_editor_body.dart:1215` (and any other callsite found at Wave 0 time). These are minimum-change compile patches; full translation of those widgets happens at their later wave.
 
 ### Wave 1 — Small ledger widgets (low blast radius)
 
@@ -298,9 +298,9 @@ One commit per wave. Conventional: `feat(l10n): PR2b/wave-N — <scope>`. 8 comm
 
 | Layer | Where | What |
 |---|---|---|
-| Unit | `test/unit/` | `expense_scope_display_name_test.dart`, `localized_category_name_test.dart`, extended `ledger_categories_test.dart` (exact-match refactor + ARB-returning `ledgerCategoryName`) |
-| Widget | `test/features/ledger/`, `test/features/groups/` | Per translated surface, Arabic harness asserts ≥1 Arabic string. Uses `pumpRihlaApp` with `languageCode: 'ar'` override per `feedback_pump_rihla_app_contracts` |
-| Integration | `test/integration/locale_arabic_ledger_test.dart` | Fresh file. Boots Arabic; walks ledger flows; uses `tester.runAsync` for fonts |
+| Unit | `test/unit/` | `expense_scope_display_name_test.dart`, `localized_category_name_test.dart`, extended `ledger_categories_test.dart` (ARB-returning `ledgerCategoryName(bucket, l10n)` only — `ledgerCategoryBucket` unchanged) |
+| Widget | `test/features/ledger/`, `test/features/groups/` | Per translated surface, Arabic harness asserts ≥1 Arabic string. Uses `pumpRihlaApp(tester, child, locale: const Locale('ar'), overrides: ...)` per the helper's actual signature at `test/helpers/pump_rihla_app.dart:33-38` (NOT `settings:` — that param does not exist) |
+| Integration | **Extend** `integration_test/golden_path_arabic_test.dart` (the existing PR1 Task 11 file — codex round 1 confirmed it exists). Do NOT create a new test. Runs via `flutter test integration_test/...` against `app.main()` with seeded `SharedPreferences` | Adds a ledger walk after the existing home/create-group flow. Reuses the test's own group-creation path for data seeding — no external Firestore fixture required. Test asserts at least one Arabic ledger string visible (e.g. `find.text(l10n.ledgerPeopleCount(2))` after the create-group flow lands on a screen showing participant count) |
 | Lint | `tool/check_arb_completeness.dart` (CI) | Already wired in `readiness_check.yml:58`. Stays green every commit |
 | Money | `test/integration/firebase_money_roundtrip_test.dart` | Existing test — must stay green; proves l10n changes don't touch persistence |
 
@@ -312,11 +312,11 @@ One commit per wave. Conventional: `feat(l10n): PR2b/wave-N — <scope>`. 8 comm
 |---|---|---|---|
 | R1 | Missing strings in deep branches of 1567-LOC editor body | `expense_editor_body.dart` | Post-wave-4 grep audit |
 | R2 | Widget tests asserting `'Equally'` break when helper returns `'Equal'` | `custom_split_sheet.dart` tests | Pre-flight grep `test/` for `'Equally'\|'Shares'\|'Exact'\|'Percent'` before Wave 3 |
-| R3 | `ledgerCategoryBucket` exact-match misbuckets legacy data with case/whitespace variants | `ledger_categories.dart` refactor | Case-insensitive `.trim().toLowerCase()` in matcher; widen unit tests with variant inputs |
+| R3 | A test still asserts a `ledgerCategoryName` return value as a hardcoded English string (PR2a-shipped tests, or extended round-1 test draft) | `test/unit/ledger_categories_test.dart` plus any widget tests | Pre-flight grep `test/` for `'Food'\|'Lodging'\|'Transit'\|'Groceries'\|'Activities'` before Wave 0 lands. Update assertions to compare against `l10n.ledgerBucket*` getters, not literal strings. |
 | R4 | First ARB plural — missing Arabic CLDR forms | `ledger_screen.dart:426` plural | Codegen surfaces gaps; verify `app_ar.arb` supplies all needed forms or `other`-collapses |
 | R5 | `prefer_const_constructors` lint fail when SnackBar loses `const` | `settle_up_screen.dart:241` | `flutter analyze` immediately after Wave 5 |
 | R6 | `intl DateFormat.MMM('ar')` data missing in CI environment | `ledger_timeline.dart` | `flutter_localizations` bundles ICU data; verify by running integration test in CI before merging Wave 6 |
-| R7 | Integration test flakes on GoogleFonts async load | New `locale_arabic_ledger_test.dart` | `tester.runAsync` pattern per `feedback_googlefonts_runasync` |
+| R7 | Integration test flakes on GoogleFonts async load | Extended `integration_test/golden_path_arabic_test.dart` | Existing PR1 test already handles font loading via the `app.main()` path; mirror its `_waitFor` / `_settle` helpers for the ledger walk |
 | R8 | Translation tone mismatch between PR2a and PR2b | New 126 ARB Arabic values | Same translator/voice as PR2a; review formality before commit |
 | R9 | Shared widget cascade translates Groups settle-up view ahead of rest of Groups surface | `group_settle_up_screen.dart` | Acknowledged design-time; documented in PR body |
 | R10 | Someone pulls `currencyDisplayName` into settle-up during implementation | `record_payment_sheet.dart` | Codex gate item + this design doc explicitly forbid |
@@ -327,7 +327,7 @@ One commit per wave. Conventional: `feat(l10n): PR2b/wave-N — <scope>`. 8 comm
 
 - **`'EVENT DEFAULT'`** at `expense_editor_body.dart:1004` reads like a sentinel/badge label. Confirm user-facing before translating. If internal-only, leave English.
 - **Empty-state prose** at `ledger_screen.dart:577,587-588` ("An empty page, ready to be written.", "The first OMR you log will set the trip total…") needs voice-matched Arabic translation, not literal machine output. Flag to translator.
-- **Legacy `categoryName` variants** in Firestore — case/whitespace permutations from old custom-CRUD data. If sample shows variants beyond case/whitespace, the exact-match fallback bucket is "Other" per helper.
+- **Legacy `categoryName` variants** in Firestore — moot for PR2b since the bucketer is unchanged. Becomes relevant at follow-up #8 when the bucketer migrates to `categoryId`; sample Firestore data then for cleanup needs.
 - **`intl.DateFormat.MMM('ar')` output** — Arabic month names from ICU (`يناير, فبراير…`) vs Latin-Arabic mix? Verify rendered output at Wave 6.
 
 ---
@@ -341,7 +341,7 @@ PR2b is shippable when:
 - [ ] `flutter analyze` clean (zero new warnings vs baseline on `main` @ edfd385).
 - [ ] `flutter test` exit 0 — full suite including new unit tests for helpers + new integration test.
 - [ ] Coverage ≥80% per `readiness_check.yml`.
-- [ ] `test/integration/locale_arabic_ledger_test.dart` passes.
+- [ ] Extended `integration_test/golden_path_arabic_test.dart` passes (run separately via `flutter test integration_test/...`, not under `test/`).
 - [ ] `git diff main...HEAD` shows **no changes** in: `lib/features/ledger/providers/expense_provider.dart`, `lib/core/services/money_serializer.dart`, `lib/shared/widgets/r_amount.dart`, `security/firestore.rules`, `functions/`, `lib/core/router/app_router.dart`, `lib/firebase_options.dart`.
 - [ ] Codex gate concluded with no [P1] findings; round count ≤3.
 - [ ] Branch `feat/l10n-pr2b-ledger` off `main` at edfd385.

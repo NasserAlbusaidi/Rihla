@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Design rationale: `docs/plans/2026-05-18-arabic-localization-pr2b-ledger-design.md`.
 
-**Goal:** Translate the entire Ledger surface to Arabic (33 files, ~126 new ARB keys), unify the two category-naming systems, and ship a new Arabic golden-path integration test — without altering any money-math or persistence behaviour.
+**Goal:** Translate the entire Ledger surface to Arabic (~34 files, ~130 new ARB keys) and extend the existing Arabic golden-path integration test with a ledger walk — without altering any money-math, persistence, or bucketing-logic behaviour.
 
-**Architecture:** Display-only translation. ARB keys land en+ar paired (CI completeness lint stays green every commit). Three new helpers at `lib/core/utils/` and `lib/features/ledger/utils/`; one small refactor of `ledger_categories.dart` (substring → exact-match). Each wave is one atomic commit. Codex gate runs against this plan + the design doc BEFORE Wave 0.
+**Architecture:** Display-only translation. ARB keys land en+ar paired (CI completeness lint stays green every commit). Two new helpers (`expense_scope_display_name.dart`, `localized_category_name.dart`); one minimal API change to `ledger_categories.dart` (`ledgerCategoryName` gains `AppLocalizations` param) and one to `formatters.dart` (`formatShortMonthDay` gains `String localeTag`). `ledgerCategoryBucket` substring-matching logic is UNCHANGED — pre-existing brokenness for Firestore expenses stays; behavioural fix is follow-up #8. Each wave is one atomic commit. Codex gate runs against this plan + the design doc BEFORE Wave 0.
 
 **Tech Stack:** Flutter `^3.10.1`, gen-l10n ARB pipeline, Riverpod 2.x, `intl` for date formatting, `mocktail` + `FakeFirebaseFirestore` for tests, `pumpRihlaApp` test helper.
 
@@ -125,27 +125,32 @@ Do not commit yet — Wave 0 lands as one commit after Tasks 0.2–0.4.
 
 ```dart
 // test/unit/expense_scope_display_name_test.dart
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/utils/expense_scope_display_name.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
-import 'package:safar/l10n/generated/app_localizations_ar.dart';
-import 'package:safar/l10n/generated/app_localizations_en.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('expenseScopeDisplayName', () {
-    test('returns English labels for each ExpenseScope', () {
-      final l10n = AppLocalizationsEn();
+    test('returns English labels for each ExpenseScope', () async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       expect(expenseScopeDisplayName(ExpenseScope.global,   l10n), 'Equally');
       expect(expenseScopeDisplayName(ExpenseScope.subGroup, l10n), 'Group split');
       expect(expenseScopeDisplayName(ExpenseScope.custom,   l10n), 'Custom');
       expect(expenseScopeDisplayName(ExpenseScope.personal, l10n), 'Personal');
     });
 
-    test('returns Arabic labels for each ExpenseScope', () {
-      final l10n = AppLocalizationsAr();
+    test('returns Arabic labels — distinct from English, asserts wrong-locale fallback would fail', () async {
+      final ar = await AppLocalizations.delegate.load(const Locale('ar'));
+      final en = await AppLocalizations.delegate.load(const Locale('en'));
       for (final scope in ExpenseScope.values) {
-        expect(expenseScopeDisplayName(scope, l10n), isNotEmpty);
+        expect(expenseScopeDisplayName(scope, ar), isNotEmpty);
+        // Distinctness assertion catches a bug where the Arabic delegate
+        // accidentally falls back to English (codex round 1 P2 strengthening).
+        expect(expenseScopeDisplayName(scope, ar), isNot(expenseScopeDisplayName(scope, en)));
       }
     });
   });
@@ -197,46 +202,52 @@ Expected: PASS — both groups green.
 
 ```dart
 // test/unit/localized_category_name_test.dart
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/features/ledger/utils/localized_category_name.dart';
-import 'package:safar/l10n/generated/app_localizations_en.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
-  group('localizedCategoryName', () {
-    final l10n = AppLocalizationsEn();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    test('returns Arabic-key value for each known id', () {
+  group('localizedCategoryName', () {
+    test('returns the English ARB value for each known id', () async {
+      final en = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(localizedCategoryName(id: 'food',          l10n: en), en.categoryFood);
+      expect(localizedCategoryName(id: 'transport',     l10n: en), en.categoryTransport);
+      expect(localizedCategoryName(id: 'accommodation', l10n: en), en.categoryAccommodation);
+      expect(localizedCategoryName(id: 'activities',    l10n: en), en.categoryActivities);
+      expect(localizedCategoryName(id: 'shopping',      l10n: en), en.categoryShopping);
+      expect(localizedCategoryName(id: 'other',         l10n: en), en.categoryOther);
+    });
+
+    test('returns the Arabic ARB value for each known id — distinct from English', () async {
+      final ar = await AppLocalizations.delegate.load(const Locale('ar'));
+      final en = await AppLocalizations.delegate.load(const Locale('en'));
       for (final id in const ['food','transport','accommodation','activities','shopping','other']) {
-        expect(localizedCategoryName(id: id, l10n: l10n), isNotEmpty);
+        expect(localizedCategoryName(id: id, l10n: ar), isNotEmpty);
+        expect(localizedCategoryName(id: id, l10n: ar), isNot(localizedCategoryName(id: id, l10n: en)));
       }
     });
 
-    test('returns fallbackName when id is null and fallbackName is set', () {
-      expect(
-        localizedCategoryName(id: null, fallbackName: 'Concert tickets', l10n: l10n),
-        'Concert tickets',
-      );
+    test('returns fallbackName when id is null and fallbackName is set', () async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(localizedCategoryName(id: null, fallbackName: 'Concert tickets', l10n: l10n), 'Concert tickets');
     });
 
-    test('returns fallbackName when id is unknown', () {
-      expect(
-        localizedCategoryName(id: 'wibble', fallbackName: 'Concert tickets', l10n: l10n),
-        'Concert tickets',
-      );
+    test('returns fallbackName when id is unknown', () async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(localizedCategoryName(id: 'wibble', fallbackName: 'Concert tickets', l10n: l10n), 'Concert tickets');
     });
 
-    test('returns categoryOther when both id and fallbackName are missing', () {
-      expect(
-        localizedCategoryName(id: null, fallbackName: null, l10n: l10n),
-        l10n.categoryOther,
-      );
+    test('returns categoryOther when both id and fallbackName are missing', () async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(localizedCategoryName(id: null, fallbackName: null, l10n: l10n), l10n.categoryOther);
     });
 
-    test('returns categoryOther when fallbackName is empty', () {
-      expect(
-        localizedCategoryName(id: 'wibble', fallbackName: '', l10n: l10n),
-        l10n.categoryOther,
-      );
+    test('returns categoryOther when fallbackName is empty', () async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(localizedCategoryName(id: 'wibble', fallbackName: '', l10n: l10n), l10n.categoryOther);
     });
   });
 }
@@ -527,7 +538,6 @@ Commit: `feat(l10n): PR2b/wave-1 — small ledger widgets`
 | `lib/features/ledger/widgets/recent_expenses_section.dart` | 3 | — |
 | `lib/features/ledger/widgets/ledger_sticky_cta.dart` | 2 | — |
 | `lib/features/ledger/widgets/ledger_roster_strip.dart` | 2 | — |
-| `lib/features/ledger/widgets/category_selection_step.dart` | 1 | — |
 | `lib/features/ledger/widgets/amount_input_section.dart` | 4 | Includes `semanticLabel: 'Backspace'` at L88 and `semanticLabel: 'Decimal point'` at L97 — translate via `commonSemanticBackspace` / `commonSemanticDecimalPoint` ARB keys. (codex round 1 catch) |
 | `lib/features/ledger/widgets/receipt_picker_section.dart` | 5 | — |
 
@@ -583,7 +593,7 @@ Commit: `feat(l10n): PR2b/wave-4 — expense editor body + thin shells + scope s
 | `lib/features/ledger/screens/add_expense_screen.dart` | 2 | — |
 | `lib/features/ledger/screens/edit_expense_screen.dart` | 11 | Includes delete snackbar + dialog title; uses `commonDelete` (PR2a key) and `commonCancel` for the inline `AlertDialog` at L222-235 of editor body via the dialog wrapper here. |
 | `lib/features/ledger/widgets/split_scope_selector.dart` | 9 | Consumes `expenseScopeDisplayName` for scope labels. |
-| `lib/features/ledger/widgets/category_selection_step.dart` | 2 | **codex round 1 catch:** L115 renders `category.name` directly — replace with `localizedCategoryName(id: category.id, fallbackName: category.name, l10n: context.l10n)`. Plus any chrome strings (title/subtitle) found by string-grep at implementation time. |
+| `lib/features/ledger/widgets/category_selection_step.dart` | 2 | Lives in Wave 4 (NOT Wave 1, despite the earlier table — codex round 2 ambiguity fix). L115 renders `category.name` directly — replace with `localizedCategoryName(id: category.id, fallbackName: category.name, l10n: context.l10n)`. Plus any chrome strings (title/subtitle) found by string-grep at implementation time. |
 
 **Special handling — `expense_editor_body.dart:1004` `'EVENT DEFAULT'`:**
 Open question per design — verify whether this is user-facing badge or internal sentinel before translating. Grep render path:
@@ -736,30 +746,51 @@ Commit: `feat(l10n): PR2b/wave-7 — extend Arabic golden-path with ledger walk 
 Run: `cat integration_test/golden_path_arabic_test.dart`
 Expected: Sees `IntegrationTestWidgetsFlutterBinding.ensureInitialized()`, the SharedPreferences seed in `setUp`, `app.main()` invocation, `_waitFor` / `_settle` / `_log` helpers. Match those conventions.
 
-**Step 2: Extend the existing test (one of two options)**
+**Step 2: Extend the existing test (concrete path — codex round 2 catch said the original "navigate to seeded group" was hand-wavy with no fixture mechanism)**
 
-Either:
-(a) Add a second `testWidgets('Arabic ledger walks end-to-end', ...)` block inside the same `void main()`, sharing the SharedPreferences `setUp` seed, OR
-(b) Extend the existing `'cold boot in ar → home → create group'` test to continue from the home screen into the ledger.
+The existing test at `integration_test/golden_path_arabic_test.dart:39-173` does `cold boot → home → create group`. PR2b's extension PICKS UP AT THAT POINT — the test has just created a group, so it can navigate into that newly-created group. No external Firestore fixture is needed; the test seeds its own data via the production create-group flow.
 
-Recommended: (b) for minimum file churn. After the existing assertions land on `home_screen`, continue:
+After the existing test's final assertion on the home/group-detail state, append:
 
 ```dart
-// Continue from home: navigate into a seeded group → event → ledger.
-// Use whatever group/event seeding the existing test uses (likely a
-// Firebase emulator with a fixture). If no seeded group exists, the
-// "empty home" path applies — assert one of the home-screen Arabic
-// strings PR2a translated (e.g. find.text(AppLocalizationsAr().<key>)).
-
-// Once data is present (or path adjusted):
-//   - Tap into a group's event ledger
-//   - Verify Arabic plural visible: find.text(matching ledgerPeopleCount)
-//   - Tap settle-up CTA, verify Arabic settleUp* string visible
-
-// To get the Arabic string for assertion at runtime:
+// PR2b extension — load Arabic delegate once for assertion strings.
 final l10n = await AppLocalizations.delegate.load(const Locale('ar'));
-expect(find.text(l10n.ledgerPeopleCount(2)), findsOneWidget);
+
+// Continue from where the create-group flow left off. The existing test
+// lands either on the group-detail screen OR on home with a group visible.
+// Tap into the newly-created group if not already inside.
+// (Inspect actual existing-test final state when implementing — adjust
+//  navigation steps to land on the group's events list.)
+
+// Tap into the group's first/default event ledger.
+// (Group creation may auto-create a default event; if not, the test
+//  needs to walk through event creation too. Verify against the existing
+//  group/event flow in main.)
+await _waitFor(
+  tester,
+  label: 'ledger-empty-state',
+  predicate: () =>
+      find.text(l10n.ledgerEmptyStateTitle).evaluate().isNotEmpty ||
+      find.text(l10n.ledgerEmptyStateFirstExpenseBody).evaluate().isNotEmpty,
+);
+
+// At least one Arabic ledger string is rendered — gate cleared.
+expect(
+  find.text(l10n.ledgerEmptyStateTitle).evaluate().isNotEmpty ||
+      find.text(l10n.ledgerEmptyStateFirstExpenseBody).evaluate().isNotEmpty,
+  isTrue,
+  reason: 'Ledger should render at least one Arabic string in ar locale',
+);
+
+// Stretch goal (drop if it makes the test flaky):
+// Add an expense via the in-test create-expense flow, then verify the
+// Arabic plural count chip: find.text(l10n.ledgerPeopleCount(participantCount)).
+// If add-expense in tests is fragile, leave at empty-state assertion above.
 ```
+
+**Concrete fallback path** if continuing the existing test proves fragile during implementation:
+
+Add a SECOND `testWidgets` block inside the same `main()` named `'Arabic ledger empty-state renders without exceptions'`. It also boots `app.main()` with the same seed, but does not create a group — instead walks past the onboarding-or-home assertion, taps the (Arabic-labeled) "Create group" CTA, follows the in-app group-creation flow to completion, and asserts the empty ledger state shows Arabic copy. Either path is acceptable; pick the one that doesn't fight existing fixtures.
 
 **Step 3: Run the integration test (separate runner from `test/`)**
 
@@ -813,7 +844,7 @@ Run: `git push -u origin feat/l10n-pr2b-ledger`
 gh pr create --title "feat(l10n): PR2b — Ledger surface Arabic translation" --body "$(cat <<'EOF'
 ## Summary
 - Translate the entire Ledger surface to Arabic (33 files, ~126 new ARB keys)
-- Unify the two category-naming systems (substring → exact-match) — fixes silent Arabic-bucketing bug
+- Add `AppLocalizations` param to `ledgerCategoryName` so the filter strip's bucket labels render in Arabic. **`ledgerCategoryBucket` substring-matching unchanged**; pre-existing brokenness for Firestore expenses (categoryName is null) deferred to follow-up #8.
 - Ship the first Arabic golden-path integration test (closes PR1 Task 11 debt)
 
 Design doc: `docs/plans/2026-05-18-arabic-localization-pr2b-ledger-design.md`
@@ -838,7 +869,7 @@ Cleared on the design doc + this plan before Wave 0 implementation. No [P1] find
 - [ ] `flutter analyze` clean
 - [ ] `flutter test` exit 0
 - [ ] `dart run tool/check_arb_completeness.dart` exit 0
-- [ ] New `test/integration/locale_arabic_ledger_test.dart` passes
+- [ ] Extended `integration_test/golden_path_arabic_test.dart` passes (run via `flutter test integration_test/...`, not under `test/`)
 - [ ] Coverage ≥80%
 - [ ] No diff in BalanceCalculator / MoneySerializer / RAmount / app_router / firestore.rules / Cloud Functions
 EOF
