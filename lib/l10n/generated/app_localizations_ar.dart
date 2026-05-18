@@ -632,6 +632,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ledgerPaymentDue => 'دفعة مستحقة';
 
   @override
+  String get ledgerYouAreOwed => 'مستحق لك';
+
+  @override
+  String get ledgerYouOwe => 'عليك دفع';
+
+  @override
+  String get ledgerTripTotalPending => 'إجمالي المعلّق في الرحلة';
+
+  @override
+  String get ledgerTotalPaidByYou => 'إجمالي ما دفعته';
+
+  @override
+  String get ledgerGeneralCategory => 'عام';
+
+  @override
   String ledgerOwedToYou(Object currency, Object amount) {
     return 'مستحق لك $currency $amount';
   }

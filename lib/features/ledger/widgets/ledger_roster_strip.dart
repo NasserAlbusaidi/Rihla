@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_avatar.dart';
@@ -99,7 +100,7 @@ class _YouAnchor extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    'You',
+                    context.l10n.ledgerYou,
                     style: AppTypography.sans(
                       fontSize: 8,
                       color: colors.scaffoldBackground,
@@ -113,7 +114,7 @@ class _YouAnchor extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'You',
+          context.l10n.ledgerYou,
           style: AppTypography.sans(
             fontSize: 11,
             color: colors.ink2,
@@ -137,11 +138,7 @@ class _YouAnchor extends StatelessWidget {
 }
 
 class _RosterTile extends StatelessWidget {
-  const _RosterTile({
-    required this.person,
-    required this.state,
-    this.onTap,
-  });
+  const _RosterTile({required this.person, required this.state, this.onTap});
 
   final LedgerRosterPerson person;
   final LedgerRosterState state;
@@ -239,7 +236,7 @@ class _Chip extends StatelessWidget {
           borderRadius: BorderRadius.circular(9999),
         ),
         child: Text(
-          'EVEN',
+          context.l10n.ledgerEven,
           style: AppTypography.mono(
             fontSize: 9.5,
             color: colors.textSecondary,

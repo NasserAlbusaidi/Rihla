@@ -595,6 +595,11 @@
   "ledgerRecentExpenses": "RECENT EXPENSES",
   "ledgerRecordedHistory": "RECORDED HISTORY",
   "ledgerPaymentDue": "PAYMENT DUE",
+  "ledgerYouAreOwed": "YOU ARE OWED",
+  "ledgerYouOwe": "YOU OWE",
+  "ledgerTripTotalPending": "Trip Total Pending",
+  "ledgerTotalPaidByYou": "Total Paid by You",
+  "ledgerGeneralCategory": "General",
   "ledgerOwedToYou": "Owed to you {currency} {amount}",
   "@ledgerOwedToYou": {
     "placeholders": {

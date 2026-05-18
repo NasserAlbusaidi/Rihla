@@ -2,9 +2,10 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Premium bento-style summary card for the Settle Up screen.
 /// Displays the current user's net balance, total pending, and total paid.
@@ -29,7 +30,9 @@ class SettlementSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = netBalance >= Decimal.zero;
-    final accentColor = isPositive ? context.colors.success : context.colors.error;
+    final accentColor = isPositive
+        ? context.colors.success
+        : context.colors.error;
 
     return Container(
       width: double.infinity,
@@ -57,7 +60,9 @@ class SettlementSummaryCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isPositive ? 'YOU ARE OWED' : 'YOU OWE',
+                    isPositive
+                        ? context.l10n.ledgerYouAreOwed
+                        : context.l10n.ledgerYouOwe,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
@@ -71,7 +76,10 @@ class SettlementSummaryCard extends StatelessWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        AppFormatters.formatCurrency(netBalance.abs(), currency),
+                        AppFormatters.formatCurrency(
+                          netBalance.abs(),
+                          currency,
+                        ),
                         style: TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.w900,
@@ -104,14 +112,14 @@ class SettlementSummaryCard extends StatelessWidget {
             children: [
               _buildSummaryMiniItem(
                 context,
-                'Trip Total Pending',
+                context.l10n.ledgerTripTotalPending,
                 AppFormatters.formatCurrency(totalPending, currency),
                 Iconsax.status_up,
               ),
               const SizedBox(width: 32),
               _buildSummaryMiniItem(
                 context,
-                'Total Paid by You',
+                context.l10n.ledgerTotalPaidByYou,
                 AppFormatters.formatCurrency(myBalance.totalPaid, currency),
                 Iconsax.wallet_check,
               ),
@@ -136,7 +144,7 @@ class SettlementSummaryCard extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: myDebts.isNotEmpty ? onSettleUp : null,
                   icon: const Icon(Iconsax.tick_circle, size: 18),
-                  label: const Text('SETTLE UP'),
+                  label: Text(context.l10n.ledgerSettleUp),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.black,
@@ -155,7 +163,12 @@ class SettlementSummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryMiniItem(BuildContext context, String label, String value, IconData icon) {
+  Widget _buildSummaryMiniItem(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Expanded(
       child: Row(
         children: [

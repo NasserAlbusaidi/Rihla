@@ -6,12 +6,15 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/widgets/amount_input_section.dart';
 import 'package:safar/features/ledger/widgets/category_selection_step.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   Widget wrap(Widget child, {Size size = const Size(390, 844)}) {
     return ProviderScope(
       child: MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: MediaQuery(
           data: MediaQueryData(size: size),
           child: Scaffold(body: Center(child: child)),

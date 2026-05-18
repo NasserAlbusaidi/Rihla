@@ -613,6 +613,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerPaymentDue => 'PAYMENT DUE';
 
   @override
+  String get ledgerYouAreOwed => 'YOU ARE OWED';
+
+  @override
+  String get ledgerYouOwe => 'YOU OWE';
+
+  @override
+  String get ledgerTripTotalPending => 'Trip Total Pending';
+
+  @override
+  String get ledgerTotalPaidByYou => 'Total Paid by You';
+
+  @override
+  String get ledgerGeneralCategory => 'General';
+
+  @override
   String ledgerOwedToYou(Object currency, Object amount) {
     return 'Owed to you $currency $amount';
   }

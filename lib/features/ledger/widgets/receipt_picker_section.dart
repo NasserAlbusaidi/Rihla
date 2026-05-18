@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 
@@ -25,7 +27,7 @@ class ReceiptPickerSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'RECEIPT (OPTIONAL)',
+          context.l10n.editorReceiptOptional,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
@@ -49,26 +51,23 @@ class ReceiptPickerSection extends StatelessWidget {
               ),
             ),
             child: receiptPath != null
-                ? _ReceiptPreview(
-                    receiptPath: receiptPath!,
-                    onRemove: onRemove,
-                  )
-                : _ReceiptPlaceholder(),
+                ? _ReceiptPreview(receiptPath: receiptPath!, onRemove: onRemove)
+                : const _ReceiptPlaceholder(),
           ),
         ),
         if (isUploading)
-          const Padding(
-            padding: EdgeInsets.only(top: 12),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                SizedBox(width: 8),
-                Text('Uploading receipt...'),
+                const SizedBox(width: 8),
+                Text(context.l10n.editorReceiptUploading),
               ],
             ),
           ),
@@ -81,10 +80,7 @@ class _ReceiptPreview extends StatelessWidget {
   final String receiptPath;
   final VoidCallback onRemove;
 
-  const _ReceiptPreview({
-    required this.receiptPath,
-    required this.onRemove,
-  });
+  const _ReceiptPreview({required this.receiptPath, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -105,14 +101,14 @@ class _ReceiptPreview extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Receipt attached',
+                context.l10n.editorReceiptAttached,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: context.colors.textPrimary,
                 ),
               ),
               Text(
-                'Tap to change',
+                context.l10n.editorReceiptTapToChange,
                 style: TextStyle(
                   fontSize: 12,
                   color: context.colors.textSecondary,
@@ -132,11 +128,7 @@ class _ReceiptPreview extends StatelessWidget {
               color: context.colors.error.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              Iconsax.trash,
-              size: 18,
-              color: context.colors.error,
-            ),
+            child: Icon(Iconsax.trash, size: 18, color: context.colors.error),
           ),
         ),
       ],
@@ -145,6 +137,8 @@ class _ReceiptPreview extends StatelessWidget {
 }
 
 class _ReceiptPlaceholder extends StatelessWidget {
+  const _ReceiptPlaceholder();
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -164,7 +158,7 @@ class _ReceiptPlaceholder extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Text(
-          'Add a receipt photo',
+          context.l10n.editorReceiptAddPhoto,
           style: TextStyle(
             color: context.colors.textSecondary,
             fontWeight: FontWeight.w500,

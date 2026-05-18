@@ -1172,6 +1172,36 @@ abstract class AppLocalizations {
   /// **'PAYMENT DUE'**
   String get ledgerPaymentDue;
 
+  /// No description provided for @ledgerYouAreOwed.
+  ///
+  /// In en, this message translates to:
+  /// **'YOU ARE OWED'**
+  String get ledgerYouAreOwed;
+
+  /// No description provided for @ledgerYouOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'YOU OWE'**
+  String get ledgerYouOwe;
+
+  /// No description provided for @ledgerTripTotalPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip Total Pending'**
+  String get ledgerTripTotalPending;
+
+  /// No description provided for @ledgerTotalPaidByYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Paid by You'**
+  String get ledgerTotalPaidByYou;
+
+  /// No description provided for @ledgerGeneralCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get ledgerGeneralCategory;
+
   /// No description provided for @ledgerOwedToYou.
   ///
   /// In en, this message translates to:

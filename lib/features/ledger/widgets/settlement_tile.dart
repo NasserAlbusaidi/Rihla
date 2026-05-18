@@ -2,8 +2,9 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/utils/formatters.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/formatters.dart';
 
 /// A card containing a group of settlement tiles.
 /// Renders pending settlements for a specific category (e.g., "Your Actions").
@@ -90,11 +91,18 @@ class SettlementTile extends StatelessWidget {
                   height: 32,
                   child: Stack(
                     children: [
-                      Positioned(
-                        left: 0,
-                        child: _buildSmallAvatar(context, fromName, isPayer: true),
+                      PositionedDirectional(
+                        start: 0,
+                        child: _buildSmallAvatar(
+                          context,
+                          fromName,
+                          isPayer: true,
+                        ),
                       ),
-                      Positioned(left: 20, child: _buildSmallAvatar(context, toName)),
+                      PositionedDirectional(
+                        start: 20,
+                        child: _buildSmallAvatar(context, toName),
+                      ),
                     ],
                   ),
                 ),
@@ -142,7 +150,9 @@ class SettlementTile extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
-                              color: isUrgent ? context.colors.error : context.colors.primary,
+                              color: isUrgent
+                                  ? context.colors.error
+                                  : context.colors.primary,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -153,11 +163,13 @@ class SettlementTile extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: context.colors.error.withValues(alpha: 0.1),
+                                color: context.colors.error.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                'PAYMENT DUE',
+                                context.l10n.ledgerPaymentDue,
                                 style: TextStyle(
                                   fontSize: 8,
                                   fontWeight: FontWeight.w900,
@@ -193,7 +205,11 @@ class SettlementTile extends StatelessWidget {
     );
   }
 
-  Widget _buildSmallAvatar(BuildContext context, String name, {bool isPayer = false}) {
+  Widget _buildSmallAvatar(
+    BuildContext context,
+    String name, {
+    bool isPayer = false,
+  }) {
     return Container(
       width: 32,
       height: 32,
@@ -212,7 +228,9 @@ class SettlementTile extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: isPayer ? context.colors.textPrimary : context.colors.textSecondary,
+            color: isPayer
+                ? context.colors.textPrimary
+                : context.colors.textSecondary,
           ),
         ),
       ),

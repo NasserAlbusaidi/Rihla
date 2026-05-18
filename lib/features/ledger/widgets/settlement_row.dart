@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/settlement_model.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Inline settlement entry for the Ledger timeline.
 ///
@@ -27,8 +28,9 @@ class SettlementRow extends StatelessWidget {
     final decimals = config?.decimals ?? 3;
     final amountStr = settlement.amount.toStringAsFixed(decimals);
     final dateStr = AppFormatters.formatRelativeDate(settlement.settledAt);
-    final payerLabel = settlement.payerName ?? 'Unknown';
-    final recipientLabel = settlement.recipientName ?? 'Unknown';
+    final payerLabel = settlement.payerName ?? context.l10n.ledgerUnknown;
+    final recipientLabel =
+        settlement.recipientName ?? context.l10n.ledgerUnknown;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
