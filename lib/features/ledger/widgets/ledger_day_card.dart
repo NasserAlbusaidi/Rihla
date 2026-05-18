@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
@@ -152,18 +153,18 @@ class LedgerDayCard extends StatelessWidget {
         payerDisplayName:
             expensePayerDisplayNames[expense.id] ??
             expense.payerName ??
-            'Member',
+            context.l10n.ledgerMemberFallback,
         onTap: () => onExpenseTap(expense),
       ),
       LedgerSettlementItem(:final settlement) => LedgerSettleRow(
         payerName:
             settlementDisplayNames[settlement.id]?.payerName ??
             settlement.payerName ??
-            'Someone',
+            context.l10n.ledgerSomeone,
         recipientName:
             settlementDisplayNames[settlement.id]?.recipientName ??
             settlement.recipientName ??
-            'someone',
+            context.l10n.ledgerSomeoneLower,
         amount: settlement.amount,
         note: settlement.note,
       ),
@@ -194,7 +195,8 @@ class _ExpenseRow extends StatelessWidget {
     final colors = context.colors;
     final bucket = ledgerCategoryBucket(expense.categoryName);
     final isPayer = expense.payerParticipantId == currentParticipantId;
-    final payerName = isPayer ? 'You' : payerDisplayName;
+    final l10n = context.l10n;
+    final payerName = isPayer ? l10n.ledgerYou : payerDisplayName;
     final splitIds = expense.customSplitParticipants;
     final splitCount = splitIds?.length ?? participantCount;
     final share = _userShare(expense);
@@ -218,7 +220,7 @@ class _ExpenseRow extends StatelessWidget {
                       Text(
                         (expense.description?.isNotEmpty ?? false)
                             ? expense.description!
-                            : 'Expense',
+                            : l10n.ledgerExpenseFallback,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.sans(
@@ -229,8 +231,8 @@ class _ExpenseRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$payerName paid · split $splitCount '
-                        'way${splitCount == 1 ? '' : 's'}',
+                        '$payerName ${l10n.ledgerPaidConnector} · '
+                        '${l10n.ledgerSplitWays(splitCount)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.sans(
@@ -359,7 +361,8 @@ class LedgerSettleRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '$payerName paid $recipientName',
+                    '$payerName ${context.l10n.ledgerPaidConnector} '
+                    '$recipientName',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.sans(
@@ -434,12 +437,12 @@ class _Overline extends StatelessWidget {
       fontWeight: FontWeight.w700,
     );
     if (note == null || note!.isEmpty) {
-      return Text('SETTLEMENT', style: base);
+      return Text(context.l10n.ledgerSettlementLabel, style: base);
     }
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: 'SETTLEMENT', style: base),
+          TextSpan(text: context.l10n.ledgerSettlementLabel, style: base),
           TextSpan(
             text: ' · ${note!}',
             style: AppTypography.mono(

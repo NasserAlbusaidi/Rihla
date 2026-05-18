@@ -905,7 +905,7 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerPeopleCount.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 PERSON} other{# PEOPLE}}'**
+  /// **'{count, plural, =1{1 PERSON} other{{count} PEOPLE}}'**
   String ledgerPeopleCount(int count);
 
   /// No description provided for @ledgerAllFilter.
@@ -995,7 +995,7 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerHeroPositiveTail.
   ///
   /// In en, this message translates to:
-  /// **'across {count, plural, =1{1 person} other{# people}}.'**
+  /// **'across {count, plural, =1{1 person} other{{count} people}}.'**
   String ledgerHeroPositiveTail(int count);
 
   /// No description provided for @ledgerHeroNegativePrefix.
@@ -1007,7 +1007,7 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerHeroNegativeTail.
   ///
   /// In en, this message translates to:
-  /// **'to {count, plural, =1{1 person} other{# people}}.'**
+  /// **'to {count, plural, =1{1 person} other{{count} people}}.'**
   String ledgerHeroNegativeTail(int count);
 
   /// No description provided for @ledgerHeroEmptyPrefix.
@@ -1043,13 +1043,13 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerExpenseCount.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 expense} other{# expenses}}'**
+  /// **'{count, plural, =1{1 expense} other{{count} expenses}}'**
   String ledgerExpenseCount(int count);
 
   /// No description provided for @ledgerSettledCount.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 settled} other{# settled}}'**
+  /// **'{count, plural, =1{1 settled} other{{count} settled}}'**
   String ledgerSettledCount(int count);
 
   /// No description provided for @ledgerYou.
@@ -1121,7 +1121,7 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerSplitWays.
   ///
   /// In en, this message translates to:
-  /// **'split {count, plural, =1{1 way} other{# ways}}'**
+  /// **'split {count, plural, =1{1 way} other{{count} ways}}'**
   String ledgerSplitWays(int count);
 
   /// No description provided for @ledgerSearchHint.
@@ -1223,7 +1223,7 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerPeople.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 person} other{# people}}'**
+  /// **'{count, plural, =1{1 person} other{{count} people}}'**
   String ledgerPeople(int count);
 
   /// No description provided for @ledgerGroup.
@@ -1427,7 +1427,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorSplitSummary.
   ///
   /// In en, this message translates to:
-  /// **'{scope} · {count, plural, =1{1 way} other{# ways}}'**
+  /// **'{scope} · {count, plural, =1{1 way} other{{count} ways}}'**
   String editorSplitSummary(Object scope, int count);
 
   /// No description provided for @editorEachAmount.
@@ -1445,7 +1445,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorSplitEvenly.
   ///
   /// In en, this message translates to:
-  /// **'Split evenly across {count, plural, =1{1 way} other{# ways}}.'**
+  /// **'Split evenly across {count, plural, =1{1 way} other{{count} ways}}.'**
   String editorSplitEvenly(int count);
 
   /// No description provided for @editorWeightedByShares.
@@ -1721,7 +1721,7 @@ abstract class AppLocalizations {
   /// No description provided for @settleUpTransfersHeadline.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{One transfer,\neveryone\'s even.} other{# transfers,\neveryone\'s even.}}'**
+  /// **'{count, plural, =1{One transfer,\neveryone\'s even.} other{{count} transfers,\neveryone\'s even.}}'**
   String settleUpTransfersHeadline(int count);
 
   /// No description provided for @settleUpNoOptimizedPayments.
@@ -1739,7 +1739,7 @@ abstract class AppLocalizations {
   /// No description provided for @settleUpSummaryTransfers.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 transfer} other{# transfers}}'**
+  /// **'{count, plural, =1{1 transfer} other{{count} transfers}}'**
   String settleUpSummaryTransfers(int count);
 
   /// No description provided for @settleUpSummaryTotal.

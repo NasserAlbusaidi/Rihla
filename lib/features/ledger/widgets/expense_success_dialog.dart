@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../core/utils/formatters.dart';
-import '../models/expense_model.dart';
+
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/formatters.dart';
+import '../utils/localized_category_name.dart';
+import '../models/expense_model.dart';
 
 /// Success dialog shown after saving an expense.
 class ExpenseSuccessDialog extends StatelessWidget {
@@ -33,7 +36,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
             children: [
               // Close button
               Align(
-                alignment: Alignment.topRight,
+                alignment: AlignmentDirectional.topEnd,
                 child: IconButton(
                   icon: Icon(Icons.close, color: context.colors.textSecondary),
                   onPressed: onDone,
@@ -62,7 +65,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
               const SizedBox(height: 16),
 
               Text(
-                'Expense Saved',
+                context.l10n.expenseSuccessTitle,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
 
@@ -89,9 +92,9 @@ class ExpenseSuccessDialog extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Text(
-                      'SYNCED TO CLOUD',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.expenseSuccessSyncedToCloud,
+                      style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
@@ -120,15 +123,15 @@ class ExpenseSuccessDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Done',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        context.l10n.expenseSuccessDone,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      SizedBox(width: 8),
-                      Icon(Iconsax.tick_circle, size: 18),
+                      const SizedBox(width: 8),
+                      const Icon(Iconsax.tick_circle, size: 18),
                     ],
                   ),
                 ),
@@ -139,12 +142,12 @@ class ExpenseSuccessDialog extends StatelessWidget {
               // Add Another
               TextButton(
                 onPressed: onAddAnother,
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Iconsax.add, size: 18),
-                    SizedBox(width: 8),
-                    Text('Add Another'),
+                    const Icon(Iconsax.add, size: 18),
+                    const SizedBox(width: 8),
+                    Text(context.l10n.expenseSuccessAddAnother),
                   ],
                 ),
               ),
@@ -173,7 +176,10 @@ class _ExpenseSummaryCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text('TOTAL AMOUNT', style: Theme.of(context).textTheme.labelSmall),
+          Text(
+            context.l10n.expenseSuccessTotalAmount,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
           const SizedBox(height: 4),
           Text(
             AppFormatters.formatCurrency(expense.amount, currency),
@@ -182,7 +188,7 @@ class _ExpenseSummaryCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Category row
-          if (expense.categoryName != null)
+          if (expense.categoryId != null || expense.categoryName != null)
             Row(
               children: [
                 Container(
@@ -202,11 +208,15 @@ class _ExpenseSummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'CATEGORY',
+                      context.l10n.expenseSuccessCategory,
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                     Text(
-                      expense.categoryName!,
+                      localizedCategoryName(
+                        id: expense.categoryId,
+                        fallbackName: expense.categoryName,
+                        l10n: context.l10n,
+                      ),
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],

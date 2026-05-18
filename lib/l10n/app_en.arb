@@ -498,7 +498,7 @@
   "ledgerBackTooltip": "Back",
   "ledgerSearchExpensesTooltip": "Search expenses",
   "ledgerEventSettingsTooltip": "Event settings",
-  "ledgerPeopleCount": "{count, plural, =1{1 PERSON} other{# PEOPLE}}",
+  "ledgerPeopleCount": "{count, plural, =1{1 PERSON} other{{count} PEOPLE}}",
   "@ledgerPeopleCount": {
     "placeholders": {
       "count": {
@@ -520,7 +520,7 @@
   "ledgerEventNotFoundMessage": "It may have been deleted, or the link is incorrect.",
   "ledgerReload": "Reload",
   "ledgerHeroPositivePrefix": "You're up",
-  "ledgerHeroPositiveTail": "across {count, plural, =1{1 person} other{# people}}.",
+  "ledgerHeroPositiveTail": "across {count, plural, =1{1 person} other{{count} people}}.",
   "@ledgerHeroPositiveTail": {
     "placeholders": {
       "count": {
@@ -529,7 +529,7 @@
     }
   },
   "ledgerHeroNegativePrefix": "You owe",
-  "ledgerHeroNegativeTail": "to {count, plural, =1{1 person} other{# people}}.",
+  "ledgerHeroNegativeTail": "to {count, plural, =1{1 person} other{{count} people}}.",
   "@ledgerHeroNegativeTail": {
     "placeholders": {
       "count": {
@@ -542,7 +542,7 @@
   "ledgerAllSquare": "All square.",
   "ledgerSettledBadge": "SETTLED",
   "ledgerTripTotal": "TRIP TOTAL",
-  "ledgerExpenseCount": "{count, plural, =1{1 expense} other{# expenses}}",
+  "ledgerExpenseCount": "{count, plural, =1{1 expense} other{{count} expenses}}",
   "@ledgerExpenseCount": {
     "placeholders": {
       "count": {
@@ -550,7 +550,7 @@
       }
     }
   },
-  "ledgerSettledCount": "{count, plural, =1{1 settled} other{# settled}}",
+  "ledgerSettledCount": "{count, plural, =1{1 settled} other{{count} settled}}",
   "@ledgerSettledCount": {
     "placeholders": {
       "count": {
@@ -574,7 +574,7 @@
       "name": {}
     }
   },
-  "ledgerSplitWays": "split {count, plural, =1{1 way} other{# ways}}",
+  "ledgerSplitWays": "split {count, plural, =1{1 way} other{{count} ways}}",
   "@ledgerSplitWays": {
     "placeholders": {
       "count": {
@@ -615,7 +615,7 @@
     }
   },
   "ledgerSettled": "Settled",
-  "ledgerPeople": "{count, plural, =1{1 person} other{# people}}",
+  "ledgerPeople": "{count, plural, =1{1 person} other{{count} people}}",
   "@ledgerPeople": {
     "placeholders": {
       "count": {
@@ -681,7 +681,7 @@
   "editorSelectedPaidFullAmount": "Selected · paid the full amount",
   "editorEventDefault": "EVENT DEFAULT",
   "editorTapCustomiseSplit": "Tap Customise to pick who splits this.",
-  "editorSplitSummary": "{scope} · {count, plural, =1{1 way} other{# ways}}",
+  "editorSplitSummary": "{scope} · {count, plural, =1{1 way} other{{count} ways}}",
   "@editorSplitSummary": {
     "placeholders": {
       "scope": {},
@@ -697,7 +697,7 @@
     }
   },
   "editorPickAtLeastTwoToSplit": "Pick at least two people to split.",
-  "editorSplitEvenly": "Split evenly across {count, plural, =1{1 way} other{# ways}}.",
+  "editorSplitEvenly": "Split evenly across {count, plural, =1{1 way} other{{count} ways}}.",
   "@editorSplitEvenly": {
     "placeholders": {
       "count": {
@@ -758,7 +758,7 @@
   "settleUpRecorded": "Settlement recorded.",
   "settleUpRecordFailed": "Couldn't record settlement. Check your connection and try again.",
   "settleUpEveryoneEvenHeadline": "Everyone's even.",
-  "settleUpTransfersHeadline": "{count, plural, =1{One transfer,\neveryone's even.} other{# transfers,\neveryone's even.}}",
+  "settleUpTransfersHeadline": "{count, plural, =1{One transfer,\neveryone's even.} other{{count} transfers,\neveryone's even.}}",
   "@settleUpTransfersHeadline": {
     "placeholders": {
       "count": {
@@ -778,7 +778,7 @@
       "subjectName": {}
     }
   },
-  "settleUpSummaryTransfers": "{count, plural, =1{1 transfer} other{# transfers}}",
+  "settleUpSummaryTransfers": "{count, plural, =1{1 transfer} other{{count} transfers}}",
   "@settleUpSummaryTransfers": {
     "placeholders": {
       "count": {

@@ -424,7 +424,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# PEOPLE',
+      other: '$count PEOPLE',
       one: '1 PERSON',
     );
     return '$_temp0';
@@ -481,7 +481,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# people',
+      other: '$count people',
       one: '1 person',
     );
     return 'across $_temp0.';
@@ -495,7 +495,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# people',
+      other: '$count people',
       one: '1 person',
     );
     return 'to $_temp0.';
@@ -522,7 +522,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# expenses',
+      other: '$count expenses',
       one: '1 expense',
     );
     return '$_temp0';
@@ -533,7 +533,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# settled',
+      other: '$count settled',
       one: '1 settled',
     );
     return '$_temp0';
@@ -579,7 +579,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# ways',
+      other: '$count ways',
       one: '1 way',
     );
     return 'split $_temp0';
@@ -645,7 +645,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# people',
+      other: '$count people',
       one: '1 person',
     );
     return '$_temp0';
@@ -767,7 +767,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# ways',
+      other: '$count ways',
       one: '1 way',
     );
     return '$scope · $_temp0';
@@ -787,7 +787,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# ways',
+      other: '$count ways',
       one: '1 way',
     );
     return 'Split evenly across $_temp0.';
@@ -939,7 +939,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# transfers,\neveryone\'s even.',
+      other: '$count transfers,\neveryone\'s even.',
       one: 'One transfer,\neveryone\'s even.',
     );
     return '$_temp0';
@@ -960,7 +960,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# transfers',
+      other: '$count transfers',
       one: '1 transfer',
     );
     return '$_temp0';

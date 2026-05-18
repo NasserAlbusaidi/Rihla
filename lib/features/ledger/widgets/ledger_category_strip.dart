@@ -86,7 +86,7 @@ class _AllChip extends StatelessWidget {
           ),
         ),
         child: Text(
-          'All · $count',
+          '${context.l10n.ledgerAllFilter} · $count',
           style: AppTypography.sans(
             fontSize: 12.5,
             fontWeight: FontWeight.w500,
@@ -174,7 +174,7 @@ class LedgerCategoryStripEmpty extends StatelessWidget {
               border: Border.all(color: colors.rule2, width: 1),
             ),
             child: Text(
-              'All · 0',
+              '${context.l10n.ledgerAllFilter} · 0',
               style: AppTypography.sans(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
@@ -185,7 +185,7 @@ class LedgerCategoryStripEmpty extends StatelessWidget {
           const SizedBox(width: 10),
           Flexible(
             child: Text(
-              'categories appear as you log them',
+              context.l10n.ledgerCategoriesAppear,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.display(

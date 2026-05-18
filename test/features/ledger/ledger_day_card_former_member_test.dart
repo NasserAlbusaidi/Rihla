@@ -5,6 +5,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/utils/ledger_timeline.dart';
 import 'package:safar/features/ledger/widgets/ledger_day_card.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   testWidgets('renders former-member payer display name', (tester) async {
@@ -21,6 +22,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: LedgerDayCard(
             dayLabel: 'Today',
