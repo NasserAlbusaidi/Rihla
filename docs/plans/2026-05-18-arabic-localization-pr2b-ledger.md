@@ -54,7 +54,7 @@ Goal: ARB keys exist; helpers + refactor in place; full app still renders Englis
 - Modify: `lib/l10n/app_en.arb`
 - Modify: `lib/l10n/app_ar.arb`
 
-**Step 1: Add the ~126 new key pairs to both files**
+**Step 1: Add the ~130 new key pairs to both files**
 
 Use the prefix buckets from the design doc Section "ARB key inventory":
 - `ledger*` (~22), `editor*` (~42), `customSplit*` (~10), `categoryPicker*` (~5), `category*` (6 — `categoryFood/Transport/Accommodation/Activities/Shopping/Other`), `settleUp*` (~25), `expenseSuccess*` (~6), `timeline*` (3 — `timelineToday/timelineYesterday/timelineRangeSeparator`), `common*` (5 new — `commonApply/commonRetry/commonBack/commonClose/commonGoHome`).
@@ -746,35 +746,66 @@ Commit: `feat(l10n): PR2b/wave-7 — extend Arabic golden-path with ledger walk 
 Run: `cat integration_test/golden_path_arabic_test.dart`
 Expected: Sees `IntegrationTestWidgetsFlutterBinding.ensureInitialized()`, the SharedPreferences seed in `setUp`, `app.main()` invocation, `_waitFor` / `_settle` / `_log` helpers. Match those conventions.
 
-**Step 2: Extend the existing test (concrete path — codex round 2 catch said the original "navigate to seeded group" was hand-wavy with no fixture mechanism)**
+**Step 2: Extend the existing test with the full create-group → ledger walk (codex round 3 fix)**
 
-The existing test at `integration_test/golden_path_arabic_test.dart:39-173` does `cold boot → home → create group`. PR2b's extension PICKS UP AT THAT POINT — the test has just created a group, so it can navigate into that newly-created group. No external Firestore fixture is needed; the test seeds its own data via the production create-group flow.
+**Current state of the Arabic integration test:** `integration_test/golden_path_arabic_test.dart:39-173` stops at `Key('group_create_screen')` without entering a name or tapping the create button. The Arabic test does NOT actually create a group today. PR2b's extension must complete the create-group flow first, then navigate into the ledger.
 
-After the existing test's final assertion on the home/group-detail state, append:
+**Reference for the full create-group flow:** see the English sibling test `integration_test/golden_path_test.dart:127-148`, which fills `group_name_input` and `group_device_name_input` then taps `group_create_button`. PR2b's extension mirrors that pattern.
+
+After the existing assertion on `group_create_screen` (around L172), continue:
 
 ```dart
 // PR2b extension — load Arabic delegate once for assertion strings.
+// SynchronousFuture via the generated delegate; safe with binding init.
 final l10n = await AppLocalizations.delegate.load(const Locale('ar'));
 
-// Continue from where the create-group flow left off. The existing test
-// lands either on the group-detail screen OR on home with a group visible.
-// Tap into the newly-created group if not already inside.
-// (Inspect actual existing-test final state when implementing — adjust
-//  navigation steps to land on the group's events list.)
+// Complete the create-group flow that the existing test only opened.
+// Keys come from lib/features/groups/keys/group_keys.dart.
+await tester.enterText(
+  find.byKey(const Key('group_name_input')),
+  'رحلة الاختبار',
+);
+await _settle(tester);
+await tester.enterText(
+  find.byKey(const Key('group_device_name_input')),
+  'مختبِر',
+);
+await _settle(tester);
+await tester.tap(find.byKey(const Key('group_create_button')));
+await _settle(tester);
 
-// Tap into the group's first/default event ledger.
-// (Group creation may auto-create a default event; if not, the test
-//  needs to walk through event creation too. Verify against the existing
-//  group/event flow in main.)
+// After create, the app navigates to the group's detail/events screen.
+// Find and tap into the group's first event ledger. Adjust the predicate
+// to match the actual key/text rendered after group creation lands —
+// likely a Key('event_card') or similar from features/events/keys/.
 await _waitFor(
   tester,
-  label: 'ledger-empty-state',
+  label: 'group_detail_after_create',
+  predicate: () =>
+      find.byKey(const Key('group_screen')).evaluate().isNotEmpty ||
+      find.byType(EventListTile).evaluate().isNotEmpty,
+);
+
+// Tap the first event to enter the ledger. If no default event auto-creates,
+// the test will need to walk through event creation first — verify against
+// the actual app flow at implementation time. The Arabic plan ships even if
+// this step needs an extra create-event tap; the goal is just to land in
+// the ledger and assert one Arabic string.
+final eventFinder = find.byKey(const Key('event_card')).first;
+if (eventFinder.evaluate().isNotEmpty) {
+  await tester.tap(eventFinder);
+  await _settle(tester);
+}
+
+// Wait for the ledger empty-state to render and assert an Arabic string.
+await _waitFor(
+  tester,
+  label: 'arabic-ledger-empty-state',
   predicate: () =>
       find.text(l10n.ledgerEmptyStateTitle).evaluate().isNotEmpty ||
       find.text(l10n.ledgerEmptyStateFirstExpenseBody).evaluate().isNotEmpty,
 );
 
-// At least one Arabic ledger string is rendered — gate cleared.
 expect(
   find.text(l10n.ledgerEmptyStateTitle).evaluate().isNotEmpty ||
       find.text(l10n.ledgerEmptyStateFirstExpenseBody).evaluate().isNotEmpty,
@@ -782,15 +813,12 @@ expect(
   reason: 'Ledger should render at least one Arabic string in ar locale',
 );
 
-// Stretch goal (drop if it makes the test flaky):
-// Add an expense via the in-test create-expense flow, then verify the
-// Arabic plural count chip: find.text(l10n.ledgerPeopleCount(participantCount)).
-// If add-expense in tests is fragile, leave at empty-state assertion above.
+_log('--- PR2b LEDGER WALK PASSED (locale=ar) ---');
 ```
 
-**Concrete fallback path** if continuing the existing test proves fragile during implementation:
+**Important:** the exact widget keys (`group_screen`, `event_card`, `EventListTile`) are placeholders — confirm against `lib/features/groups/keys/` and `lib/features/events/keys/` at implementation time. The plan-level test text `'رحلة الاختبار'` ('Test journey') and `'مختبِر'` ('Tester') are example Arabic strings; final wording is a small implementation detail.
 
-Add a SECOND `testWidgets` block inside the same `main()` named `'Arabic ledger empty-state renders without exceptions'`. It also boots `app.main()` with the same seed, but does not create a group — instead walks past the onboarding-or-home assertion, taps the (Arabic-labeled) "Create group" CTA, follows the in-app group-creation flow to completion, and asserts the empty ledger state shows Arabic copy. Either path is acceptable; pick the one that doesn't fight existing fixtures.
+**Concrete fallback if the create-group flow in `ar` proves fragile:** scope the assertion down to verifying the `group_create_screen` itself renders Arabic copy. Add an Arabic-locale assertion on whatever PR2b/PR3 translates on that screen (or if it stays English in PR2b scope, then assert against an Arabic Settings/Profile string via deep-link or another navigation path that doesn't require new data). The fallback is acceptance-grade if the create-group flow keeps breaking but the Arabic localization is otherwise demonstrably wired.
 
 **Step 3: Run the integration test (separate runner from `test/`)**
 
@@ -843,7 +871,7 @@ Run: `git push -u origin feat/l10n-pr2b-ledger`
 ```bash
 gh pr create --title "feat(l10n): PR2b — Ledger surface Arabic translation" --body "$(cat <<'EOF'
 ## Summary
-- Translate the entire Ledger surface to Arabic (33 files, ~126 new ARB keys)
+- Translate the entire Ledger surface to Arabic (~34 files, ~130 new ARB keys)
 - Add `AppLocalizations` param to `ledgerCategoryName` so the filter strip's bucket labels render in Arabic. **`ledgerCategoryBucket` substring-matching unchanged**; pre-existing brokenness for Firestore expenses (categoryName is null) deferred to follow-up #8.
 - Ship the first Arabic golden-path integration test (closes PR1 Task 11 debt)
 

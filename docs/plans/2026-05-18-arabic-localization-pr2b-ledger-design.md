@@ -243,7 +243,7 @@ Each wave is one (or two) atomic commits. ARB completeness lint stays green afte
 
 - `settlement_row.dart`, `settlement_tile.dart` (+ RTL: `Positioned(left: 20)` → `PositionedDirectional(start: 20)` at L97).
 - `settlement_summary_card.dart`, `recorded_settlements_section.dart`, `recent_expenses_section.dart`.
-- `ledger_sticky_cta.dart`, `ledger_roster_strip.dart`, `category_selection_step.dart`.
+- `ledger_sticky_cta.dart`, `ledger_roster_strip.dart`. (`category_selection_step.dart` moved to Wave 4 — it consumes `localizedCategoryName` which is best landed alongside the editor cluster that owns category selection.)
 - `amount_input_section.dart`, `receipt_picker_section.dart`.
 
 ### Wave 2 — Hero/list visual widgets
@@ -313,7 +313,7 @@ One commit per wave. Conventional: `feat(l10n): PR2b/wave-N — <scope>`. 8 comm
 | R1 | Missing strings in deep branches of 1567-LOC editor body | `expense_editor_body.dart` | Post-wave-4 grep audit |
 | R2 | Widget tests asserting `'Equally'` break when helper returns `'Equal'` | `custom_split_sheet.dart` tests | Pre-flight grep `test/` for `'Equally'\|'Shares'\|'Exact'\|'Percent'` before Wave 3 |
 | R3 | A test still asserts a `ledgerCategoryName` return value as a hardcoded English string (PR2a-shipped tests, or extended round-1 test draft) | `test/unit/ledger_categories_test.dart` plus any widget tests | Pre-flight grep `test/` for `'Food'\|'Lodging'\|'Transit'\|'Groceries'\|'Activities'` before Wave 0 lands. Update assertions to compare against `l10n.ledgerBucket*` getters, not literal strings. |
-| R4 | First ARB plural — missing Arabic CLDR forms | `ledger_screen.dart:426` plural | Codegen surfaces gaps; verify `app_ar.arb` supplies all needed forms or `other`-collapses |
+| R4 | Arabic plural reads unnatural for two/few/many counts even though `=1` + `other` compile cleanly | Both PR2b plurals (`ledgerPeopleCount`, `settleUpSummaryTransfers`) | Codegen does NOT enforce CLDR's full 6 forms; ICU falls back to `other`. Translator/native-speaker review at counts 2, 3, 10, 11, 99 in Arabic; add explicit `two`/`few`/`many` branches in `app_ar.arb` if the `other` form reads wrong at any of those counts |
 | R5 | `prefer_const_constructors` lint fail when SnackBar loses `const` | `settle_up_screen.dart:241` | `flutter analyze` immediately after Wave 5 |
 | R6 | `intl DateFormat.MMM('ar')` data missing in CI environment | `ledger_timeline.dart` | `flutter_localizations` bundles ICU data; verify by running integration test in CI before merging Wave 6 |
 | R7 | Integration test flakes on GoogleFonts async load | Extended `integration_test/golden_path_arabic_test.dart` | Existing PR1 test already handles font loading via the `app.main()` path; mirror its `_waitFor` / `_settle` helpers for the ledger walk |
@@ -336,7 +336,7 @@ One commit per wave. Conventional: `feat(l10n): PR2b/wave-N — <scope>`. 8 comm
 
 PR2b is shippable when:
 
-- [ ] All in-scope files (33 listed above) no longer render user-visible English strings, except: brand strings, raw currency codes, and the 4 known hardcoded-OMR bugs (explicitly deferred).
+- [ ] All in-scope files (~34 listed above) no longer render user-visible English strings, except: brand strings, raw currency codes, and the 4 known hardcoded-OMR bugs (explicitly deferred).
 - [ ] `dart run tool/check_arb_completeness.dart` exit 0.
 - [ ] `flutter analyze` clean (zero new warnings vs baseline on `main` @ edfd385).
 - [ ] `flutter test` exit 0 — full suite including new unit tests for helpers + new integration test.
