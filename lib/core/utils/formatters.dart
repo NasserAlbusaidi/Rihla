@@ -1,4 +1,5 @@
 import 'package:decimal/decimal.dart';
+import 'package:intl/intl.dart';
 
 /// Configuration for a currency (symbol and decimal places).
 class CurrencyConfig {
@@ -32,18 +33,12 @@ class AppFormatters {
     return '$symbol ${amount.toStringAsFixed(decimals)}';
   }
 
-  /// Month abbreviations for [formatShortMonthDay].
-  static const _monthAbbr = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
   /// Format a date as "Mar 15" (short month abbreviation + day, no year).
   ///
   /// Used in GroupSettleUpScreen per-event breakdown labels (D-04).
   /// Day is not zero-padded: June 3 renders as "Jun 3", not "Jun 03".
-  static String formatShortMonthDay(DateTime date) {
-    return '${_monthAbbr[date.month - 1]} ${date.day}';
+  static String formatShortMonthDay(DateTime date, String localeTag) {
+    return DateFormat.MMMd(localeTag).format(date);
   }
 
   /// Format date for display (Relative formatting)

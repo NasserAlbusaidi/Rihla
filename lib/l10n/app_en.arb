@@ -467,5 +467,397 @@
   "profileDeletionError": "Couldn't delete the account. Try again.",
   "@profileDeletionError": {
     "description": "SnackBar shown when account deletion fails."
-  }
+  },
+
+  "commonApply": "Apply",
+  "commonRetry": "Retry",
+  "commonBack": "Back",
+  "commonClose": "Close",
+  "commonGoHome": "Go Home",
+  "commonSemanticBackspace": "Backspace",
+  "commonSemanticDecimalPoint": "Decimal point",
+
+  "timelineToday": "Today",
+  "timelineYesterday": "Yesterday",
+  "timelineRangeSeparator": "—",
+
+  "ledgerBucketFood": "Food",
+  "ledgerBucketLodging": "Lodging",
+  "ledgerBucketTransit": "Transit",
+  "ledgerBucketGroceries": "Groceries",
+  "ledgerBucketActivities": "Activities",
+  "ledgerBucketOther": "Other",
+
+  "categoryFood": "Food & Dining",
+  "categoryTransport": "Transport",
+  "categoryAccommodation": "Accommodation",
+  "categoryActivities": "Activities",
+  "categoryShopping": "Shopping",
+  "categoryOther": "Other",
+
+  "ledgerBackTooltip": "Back",
+  "ledgerSearchExpensesTooltip": "Search expenses",
+  "ledgerEventSettingsTooltip": "Event settings",
+  "ledgerPeopleCount": "{count, plural, =1{1 PERSON} other{# PEOPLE}}",
+  "@ledgerPeopleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ledgerAllFilter": "All",
+  "ledgerCategoriesAppear": "categories appear as you log them",
+  "ledgerNothingInCategoryTitle": "Nothing in this category",
+  "ledgerNothingInCategoryMessage": "Try a different category, or switch back to All.",
+  "ledgerEndOfLedger": "END OF LEDGER",
+  "ledgerEmptyStateTitle": "An empty page, ready to be written.",
+  "ledgerEmptyStateFirstExpenseBody": "The first OMR you log will set the trip total. We'll split it equally between everyone on the trip.",
+  "ledgerCouldNotLoadEventTitle": "Could not load event",
+  "ledgerCouldNotLoadLedgerTitle": "Couldn't load ledger",
+  "ledgerEventNotFoundTitle": "Event not found",
+  "ledgerConnectionRetryMessage": "Check your connection and try again.",
+  "ledgerEventNotFoundMessage": "It may have been deleted, or the link is incorrect.",
+  "ledgerReload": "Reload",
+  "ledgerHeroPositivePrefix": "You're up",
+  "ledgerHeroPositiveTail": "across {count, plural, =1{1 person} other{# people}}.",
+  "@ledgerHeroPositiveTail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ledgerHeroNegativePrefix": "You owe",
+  "ledgerHeroNegativeTail": "to {count, plural, =1{1 person} other{# people}}.",
+  "@ledgerHeroNegativeTail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ledgerHeroEmptyPrefix": "Nothing logged yet",
+  "ledgerHeroEmptyTail": "add the first expense and we'll start the math.",
+  "ledgerAllSquare": "All square.",
+  "ledgerSettledBadge": "SETTLED",
+  "ledgerTripTotal": "TRIP TOTAL",
+  "ledgerExpenseCount": "{count, plural, =1{1 expense} other{# expenses}}",
+  "@ledgerExpenseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ledgerSettledCount": "{count, plural, =1{1 settled} other{# settled}}",
+  "@ledgerSettledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ledgerYou": "You",
+  "ledgerEven": "EVEN",
+  "ledgerMemberFallback": "Member",
+  "ledgerSomeone": "Someone",
+  "ledgerSomeoneLower": "someone",
+  "ledgerUnknown": "Unknown",
+  "ledgerExpenseFallback": "Expense",
+  "ledgerSettlementFallback": "Settlement",
+  "ledgerSettlementLabel": "SETTLEMENT",
+  "ledgerPaidConnector": "paid",
+  "ledgerPaidBy": "Paid by {name}",
+  "@ledgerPaidBy": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "ledgerSplitWays": "split {count, plural, =1{1 way} other{# ways}}",
+  "@ledgerSplitWays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ledgerSearchHint": "Search expenses",
+  "ledgerSearchTitle": "Search expenses",
+  "ledgerSearchPromptMessage": "Type to find by description, category, payer, recipient or note.",
+  "ledgerSearchNoMatchesTitle": "No matches",
+  "ledgerSearchNoMatchesMessage": "Nothing in this event matches \"{query}\".",
+  "@ledgerSearchNoMatchesMessage": {
+    "placeholders": {
+      "query": {}
+    }
+  },
+  "ledgerRecentExpenses": "RECENT EXPENSES",
+  "ledgerRecordedHistory": "RECORDED HISTORY",
+  "ledgerPaymentDue": "PAYMENT DUE",
+  "ledgerOwedToYou": "Owed to you {currency} {amount}",
+  "@ledgerOwedToYou": {
+    "placeholders": {
+      "currency": {},
+      "amount": {}
+    }
+  },
+  "ledgerYouOweAmount": "You owe {currency} {amount}",
+  "@ledgerYouOweAmount": {
+    "placeholders": {
+      "currency": {},
+      "amount": {}
+    }
+  },
+  "ledgerSettled": "Settled",
+  "ledgerPeople": "{count, plural, =1{1 person} other{# people}}",
+  "@ledgerPeople": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ledgerGroup": "group",
+  "ledgerAddExpense": "Add expense",
+  "ledgerSettleUp": "Settle up",
+
+  "editorTitleAddExpense": "Add expense",
+  "editorTitleEditExpense": "Edit expense",
+  "editorTitleNewExpense": "New expense",
+  "editorActionAdd": "Add",
+  "editorActionSave": "Save",
+  "editorCategory": "Category",
+  "editorPaidBy": "Paid by",
+  "editorSplitBetween": "Split between",
+  "editorHow": "How",
+  "editorWhere": "Where",
+  "editorCustomise": "Customise",
+  "editorAmountLabel": "AMOUNT · {currency}",
+  "@editorAmountLabel": {
+    "placeholders": {
+      "currency": {}
+    }
+  },
+  "editorDescriptionLabel": "Description",
+  "editorDescriptionHint": "What was it for?",
+  "editorPleaseEnterValidAmount": "Please enter a valid amount",
+  "editorAmountGreaterThanZero": "Amount must be greater than zero",
+  "editorCouldNotIdentifyParticipant": "Could not identify your participant record.",
+  "editorFailedToAddExpense": "Failed to add expense: {error}",
+  "@editorFailedToAddExpense": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editorFailedToUpdateExpense": "Failed to update expense: {error}",
+  "@editorFailedToUpdateExpense": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editorDeleteExpenseTitle": "Delete expense?",
+  "editorDeleteExpenseBody": "Removing it updates everyone's balances for this event.",
+  "editorDeleteExpenseFailed": "Failed to delete expense: {error}",
+  "@editorDeleteExpenseFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "editorPickAtLeastTwoPeople": "Pick at least two people in \"Split between\" first.",
+  "editorCouldNotLoadCategories": "Could not load categories.",
+  "editorMemberFallback": "Member",
+  "editorPaidRole": "Paid",
+  "editorSelectedPayer": "Selected payer",
+  "editorSelectedPaidFullAmount": "Selected · paid the full amount",
+  "editorEventDefault": "EVENT DEFAULT",
+  "editorTapCustomiseSplit": "Tap Customise to pick who splits this.",
+  "editorSplitSummary": "{scope} · {count, plural, =1{1 way} other{# ways}}",
+  "@editorSplitSummary": {
+    "placeholders": {
+      "scope": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorEachAmount": "{amount} each",
+  "@editorEachAmount": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "editorPickAtLeastTwoToSplit": "Pick at least two people to split.",
+  "editorSplitEvenly": "Split evenly across {count, plural, =1{1 way} other{# ways}}.",
+  "@editorSplitEvenly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorWeightedByShares": "Weighted by shares.",
+  "editorPerPersonAmounts": "Per-person amounts.",
+  "editorPerPersonPercents": "Per-person percents.",
+  "editorEvent": "Event",
+  "editorDate": "Date",
+  "editorDeleteThisExpense": "Delete this expense",
+  "editorDeleteThisExpenseBody": "Removes for everyone in this event.",
+  "editorCustomiseSplit": "Customise split",
+  "editorScopeGlobal": "Equally",
+  "editorScopeSubGroup": "Group split",
+  "editorScopeCustom": "Custom",
+  "editorScopePersonal": "Personal",
+  "editorReceiptOptional": "RECEIPT (OPTIONAL)",
+  "editorReceiptUploading": "Uploading receipt...",
+  "editorReceiptAttached": "Receipt attached",
+  "editorReceiptTapToChange": "Tap to change",
+  "editorReceiptAddPhoto": "Add a receipt photo",
+
+  "customSplitTitle": "Customise split",
+  "customSplitCancel": "Cancel",
+  "customSplitApply": "Apply",
+  "customSplitHow": "Split how?",
+  "customSplitTotal": "TOTAL",
+  "customSplitModeEqually": "Equally",
+  "customSplitModeShares": "Shares",
+  "customSplitModeExact": "Exact",
+  "customSplitModePercent": "Percent",
+
+  "categoryPickerTitle": "What's this for?",
+  "categoryPickerCouldNotLoad": "Could not load categories.",
+  "categoryPickerRestaurantsBarsCafes": "Restaurants, bars, cafes",
+  "categoryPickerHotelsRentals": "Hotels, rentals",
+  "categoryPickerTaxiTrainFuel": "Taxi, train, fuel",
+  "categoryPickerMarketsSupplies": "Markets, supplies",
+  "categoryPickerToursTickets": "Tours, tickets",
+  "categoryPickerPetrolCharging": "Petrol, charging",
+  "categoryPickerEquipmentSupplies": "Equipment, supplies",
+  "categoryPickerAnythingElse": "Anything else",
+
+  "settleUpTitle": "Settle Up",
+  "settleUpEventMissingTitle": "This event no longer exists",
+  "settleUpEventMissingMessage": "It may have been deleted. Tap below to go back to your groups.",
+  "settleUpCouldNotLoadBalances": "Couldn't load balances.",
+  "settleUpAmountGreaterThanZero": "Amount must be greater than zero",
+  "settleUpAmountExceedsOutstanding": "Amount cannot exceed the outstanding balance of {amount}",
+  "@settleUpAmountExceedsOutstanding": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "settleUpRecorded": "Settlement recorded.",
+  "settleUpRecordFailed": "Couldn't record settlement. Check your connection and try again.",
+  "settleUpEveryoneEvenHeadline": "Everyone's even.",
+  "settleUpTransfersHeadline": "{count, plural, =1{One transfer,\neveryone's even.} other{# transfers,\neveryone's even.}}",
+  "@settleUpTransfersHeadline": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settleUpNoOptimizedPayments": "No optimized payments are needed across {subjectName}.",
+  "@settleUpNoOptimizedPayments": {
+    "placeholders": {
+      "subjectName": {}
+    }
+  },
+  "settleUpOptimizedPayments": "Optimized to minimise the number of payments across {subjectName}.",
+  "@settleUpOptimizedPayments": {
+    "placeholders": {
+      "subjectName": {}
+    }
+  },
+  "settleUpSummaryTransfers": "{count, plural, =1{1 transfer} other{# transfers}}",
+  "@settleUpSummaryTransfers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settleUpSummaryTotal": "{amount} total",
+  "@settleUpSummaryTotal": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "settleUpEachPersonNet": "Each person's net",
+  "settleUpPaymentHistory": "Payment history",
+  "settleUpUnknown": "Unknown",
+  "settleUpPaidConnector": "paid",
+  "settleUpMarkThisPaidTitle": "Mark this paid?",
+  "settleUpMarkThisPaidBody": "We'll close out the balance between {fromName} and {toName}.",
+  "@settleUpMarkThisPaidBody": {
+    "placeholders": {
+      "fromName": {},
+      "toName": {}
+    }
+  },
+  "settleUpNoteHint": "Add a note (optional)",
+  "settleUpNotifyToConfirm": "{name} will be notified to confirm.",
+  "@settleUpNotifyToConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settleUpNotYet": "Not yet",
+  "settleUpMarkPaid": "Mark paid",
+  "settleUpPays": "{fromName} pays {toName}",
+  "@settleUpPays": {
+    "placeholders": {
+      "fromName": {},
+      "toName": {}
+    }
+  },
+  "settleUpHideAmountEditor": "Hide amount editor",
+  "settleUpTapToEditAmount": "Tap to edit amount",
+  "settleUpAmountLabel": "Amount ({currency})",
+  "@settleUpAmountLabel": {
+    "placeholders": {
+      "currency": {}
+    }
+  },
+  "settleUpSuggestedAmount": "Suggested: {amount}",
+  "@settleUpSuggestedAmount": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "settleUpMethodCash": "Cash",
+  "settleUpMethodBank": "Bank",
+  "settleUpMethodOther": "Other",
+  "settleUpAllSettledTitle": "All settled up",
+  "settleUpAllSettledMessage": "Everyone is square. No outstanding amounts.",
+  "settleUpYouOwe": "You owe {name}",
+  "@settleUpYouOwe": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settleUpOwesYou": "{name} owes you",
+  "@settleUpOwesYou": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settleUpOwes": "{fromName} owes {toName}",
+  "@settleUpOwes": {
+    "placeholders": {
+      "fromName": {},
+      "toName": {}
+    }
+  },
+
+  "expenseSuccessTitle": "Expense Saved",
+  "expenseSuccessSyncedToCloud": "SYNCED TO CLOUD",
+  "expenseSuccessDone": "Done",
+  "expenseSuccessAddAnother": "Add Another",
+  "expenseSuccessTotalAmount": "TOTAL AMOUNT",
+  "expenseSuccessCategory": "CATEGORY"
 }

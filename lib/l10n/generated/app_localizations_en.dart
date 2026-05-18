@@ -343,4 +343,720 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileDeletionError => 'Couldn\'t delete the account. Try again.';
+
+  @override
+  String get commonApply => 'Apply';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
+  String get commonBack => 'Back';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
+  String get commonGoHome => 'Go Home';
+
+  @override
+  String get commonSemanticBackspace => 'Backspace';
+
+  @override
+  String get commonSemanticDecimalPoint => 'Decimal point';
+
+  @override
+  String get timelineToday => 'Today';
+
+  @override
+  String get timelineYesterday => 'Yesterday';
+
+  @override
+  String get timelineRangeSeparator => '—';
+
+  @override
+  String get ledgerBucketFood => 'Food';
+
+  @override
+  String get ledgerBucketLodging => 'Lodging';
+
+  @override
+  String get ledgerBucketTransit => 'Transit';
+
+  @override
+  String get ledgerBucketGroceries => 'Groceries';
+
+  @override
+  String get ledgerBucketActivities => 'Activities';
+
+  @override
+  String get ledgerBucketOther => 'Other';
+
+  @override
+  String get categoryFood => 'Food & Dining';
+
+  @override
+  String get categoryTransport => 'Transport';
+
+  @override
+  String get categoryAccommodation => 'Accommodation';
+
+  @override
+  String get categoryActivities => 'Activities';
+
+  @override
+  String get categoryShopping => 'Shopping';
+
+  @override
+  String get categoryOther => 'Other';
+
+  @override
+  String get ledgerBackTooltip => 'Back';
+
+  @override
+  String get ledgerSearchExpensesTooltip => 'Search expenses';
+
+  @override
+  String get ledgerEventSettingsTooltip => 'Event settings';
+
+  @override
+  String ledgerPeopleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# PEOPLE',
+      one: '1 PERSON',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ledgerAllFilter => 'All';
+
+  @override
+  String get ledgerCategoriesAppear => 'categories appear as you log them';
+
+  @override
+  String get ledgerNothingInCategoryTitle => 'Nothing in this category';
+
+  @override
+  String get ledgerNothingInCategoryMessage =>
+      'Try a different category, or switch back to All.';
+
+  @override
+  String get ledgerEndOfLedger => 'END OF LEDGER';
+
+  @override
+  String get ledgerEmptyStateTitle => 'An empty page, ready to be written.';
+
+  @override
+  String get ledgerEmptyStateFirstExpenseBody =>
+      'The first OMR you log will set the trip total. We\'ll split it equally between everyone on the trip.';
+
+  @override
+  String get ledgerCouldNotLoadEventTitle => 'Could not load event';
+
+  @override
+  String get ledgerCouldNotLoadLedgerTitle => 'Couldn\'t load ledger';
+
+  @override
+  String get ledgerEventNotFoundTitle => 'Event not found';
+
+  @override
+  String get ledgerConnectionRetryMessage =>
+      'Check your connection and try again.';
+
+  @override
+  String get ledgerEventNotFoundMessage =>
+      'It may have been deleted, or the link is incorrect.';
+
+  @override
+  String get ledgerReload => 'Reload';
+
+  @override
+  String get ledgerHeroPositivePrefix => 'You\'re up';
+
+  @override
+  String ledgerHeroPositiveTail(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# people',
+      one: '1 person',
+    );
+    return 'across $_temp0.';
+  }
+
+  @override
+  String get ledgerHeroNegativePrefix => 'You owe';
+
+  @override
+  String ledgerHeroNegativeTail(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# people',
+      one: '1 person',
+    );
+    return 'to $_temp0.';
+  }
+
+  @override
+  String get ledgerHeroEmptyPrefix => 'Nothing logged yet';
+
+  @override
+  String get ledgerHeroEmptyTail =>
+      'add the first expense and we\'ll start the math.';
+
+  @override
+  String get ledgerAllSquare => 'All square.';
+
+  @override
+  String get ledgerSettledBadge => 'SETTLED';
+
+  @override
+  String get ledgerTripTotal => 'TRIP TOTAL';
+
+  @override
+  String ledgerExpenseCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# expenses',
+      one: '1 expense',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String ledgerSettledCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# settled',
+      one: '1 settled',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ledgerYou => 'You';
+
+  @override
+  String get ledgerEven => 'EVEN';
+
+  @override
+  String get ledgerMemberFallback => 'Member';
+
+  @override
+  String get ledgerSomeone => 'Someone';
+
+  @override
+  String get ledgerSomeoneLower => 'someone';
+
+  @override
+  String get ledgerUnknown => 'Unknown';
+
+  @override
+  String get ledgerExpenseFallback => 'Expense';
+
+  @override
+  String get ledgerSettlementFallback => 'Settlement';
+
+  @override
+  String get ledgerSettlementLabel => 'SETTLEMENT';
+
+  @override
+  String get ledgerPaidConnector => 'paid';
+
+  @override
+  String ledgerPaidBy(Object name) {
+    return 'Paid by $name';
+  }
+
+  @override
+  String ledgerSplitWays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# ways',
+      one: '1 way',
+    );
+    return 'split $_temp0';
+  }
+
+  @override
+  String get ledgerSearchHint => 'Search expenses';
+
+  @override
+  String get ledgerSearchTitle => 'Search expenses';
+
+  @override
+  String get ledgerSearchPromptMessage =>
+      'Type to find by description, category, payer, recipient or note.';
+
+  @override
+  String get ledgerSearchNoMatchesTitle => 'No matches';
+
+  @override
+  String ledgerSearchNoMatchesMessage(Object query) {
+    return 'Nothing in this event matches \"$query\".';
+  }
+
+  @override
+  String get ledgerRecentExpenses => 'RECENT EXPENSES';
+
+  @override
+  String get ledgerRecordedHistory => 'RECORDED HISTORY';
+
+  @override
+  String get ledgerPaymentDue => 'PAYMENT DUE';
+
+  @override
+  String ledgerOwedToYou(Object currency, Object amount) {
+    return 'Owed to you $currency $amount';
+  }
+
+  @override
+  String ledgerYouOweAmount(Object currency, Object amount) {
+    return 'You owe $currency $amount';
+  }
+
+  @override
+  String get ledgerSettled => 'Settled';
+
+  @override
+  String ledgerPeople(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# people',
+      one: '1 person',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ledgerGroup => 'group';
+
+  @override
+  String get ledgerAddExpense => 'Add expense';
+
+  @override
+  String get ledgerSettleUp => 'Settle up';
+
+  @override
+  String get editorTitleAddExpense => 'Add expense';
+
+  @override
+  String get editorTitleEditExpense => 'Edit expense';
+
+  @override
+  String get editorTitleNewExpense => 'New expense';
+
+  @override
+  String get editorActionAdd => 'Add';
+
+  @override
+  String get editorActionSave => 'Save';
+
+  @override
+  String get editorCategory => 'Category';
+
+  @override
+  String get editorPaidBy => 'Paid by';
+
+  @override
+  String get editorSplitBetween => 'Split between';
+
+  @override
+  String get editorHow => 'How';
+
+  @override
+  String get editorWhere => 'Where';
+
+  @override
+  String get editorCustomise => 'Customise';
+
+  @override
+  String editorAmountLabel(Object currency) {
+    return 'AMOUNT · $currency';
+  }
+
+  @override
+  String get editorDescriptionLabel => 'Description';
+
+  @override
+  String get editorDescriptionHint => 'What was it for?';
+
+  @override
+  String get editorPleaseEnterValidAmount => 'Please enter a valid amount';
+
+  @override
+  String get editorAmountGreaterThanZero => 'Amount must be greater than zero';
+
+  @override
+  String get editorCouldNotIdentifyParticipant =>
+      'Could not identify your participant record.';
+
+  @override
+  String editorFailedToAddExpense(String error) {
+    return 'Failed to add expense: $error';
+  }
+
+  @override
+  String editorFailedToUpdateExpense(String error) {
+    return 'Failed to update expense: $error';
+  }
+
+  @override
+  String get editorDeleteExpenseTitle => 'Delete expense?';
+
+  @override
+  String get editorDeleteExpenseBody =>
+      'Removing it updates everyone\'s balances for this event.';
+
+  @override
+  String editorDeleteExpenseFailed(Object error) {
+    return 'Failed to delete expense: $error';
+  }
+
+  @override
+  String get editorPickAtLeastTwoPeople =>
+      'Pick at least two people in \"Split between\" first.';
+
+  @override
+  String get editorCouldNotLoadCategories => 'Could not load categories.';
+
+  @override
+  String get editorMemberFallback => 'Member';
+
+  @override
+  String get editorPaidRole => 'Paid';
+
+  @override
+  String get editorSelectedPayer => 'Selected payer';
+
+  @override
+  String get editorSelectedPaidFullAmount => 'Selected · paid the full amount';
+
+  @override
+  String get editorEventDefault => 'EVENT DEFAULT';
+
+  @override
+  String get editorTapCustomiseSplit =>
+      'Tap Customise to pick who splits this.';
+
+  @override
+  String editorSplitSummary(Object scope, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# ways',
+      one: '1 way',
+    );
+    return '$scope · $_temp0';
+  }
+
+  @override
+  String editorEachAmount(Object amount) {
+    return '$amount each';
+  }
+
+  @override
+  String get editorPickAtLeastTwoToSplit =>
+      'Pick at least two people to split.';
+
+  @override
+  String editorSplitEvenly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# ways',
+      one: '1 way',
+    );
+    return 'Split evenly across $_temp0.';
+  }
+
+  @override
+  String get editorWeightedByShares => 'Weighted by shares.';
+
+  @override
+  String get editorPerPersonAmounts => 'Per-person amounts.';
+
+  @override
+  String get editorPerPersonPercents => 'Per-person percents.';
+
+  @override
+  String get editorEvent => 'Event';
+
+  @override
+  String get editorDate => 'Date';
+
+  @override
+  String get editorDeleteThisExpense => 'Delete this expense';
+
+  @override
+  String get editorDeleteThisExpenseBody =>
+      'Removes for everyone in this event.';
+
+  @override
+  String get editorCustomiseSplit => 'Customise split';
+
+  @override
+  String get editorScopeGlobal => 'Equally';
+
+  @override
+  String get editorScopeSubGroup => 'Group split';
+
+  @override
+  String get editorScopeCustom => 'Custom';
+
+  @override
+  String get editorScopePersonal => 'Personal';
+
+  @override
+  String get editorReceiptOptional => 'RECEIPT (OPTIONAL)';
+
+  @override
+  String get editorReceiptUploading => 'Uploading receipt...';
+
+  @override
+  String get editorReceiptAttached => 'Receipt attached';
+
+  @override
+  String get editorReceiptTapToChange => 'Tap to change';
+
+  @override
+  String get editorReceiptAddPhoto => 'Add a receipt photo';
+
+  @override
+  String get customSplitTitle => 'Customise split';
+
+  @override
+  String get customSplitCancel => 'Cancel';
+
+  @override
+  String get customSplitApply => 'Apply';
+
+  @override
+  String get customSplitHow => 'Split how?';
+
+  @override
+  String get customSplitTotal => 'TOTAL';
+
+  @override
+  String get customSplitModeEqually => 'Equally';
+
+  @override
+  String get customSplitModeShares => 'Shares';
+
+  @override
+  String get customSplitModeExact => 'Exact';
+
+  @override
+  String get customSplitModePercent => 'Percent';
+
+  @override
+  String get categoryPickerTitle => 'What\'s this for?';
+
+  @override
+  String get categoryPickerCouldNotLoad => 'Could not load categories.';
+
+  @override
+  String get categoryPickerRestaurantsBarsCafes => 'Restaurants, bars, cafes';
+
+  @override
+  String get categoryPickerHotelsRentals => 'Hotels, rentals';
+
+  @override
+  String get categoryPickerTaxiTrainFuel => 'Taxi, train, fuel';
+
+  @override
+  String get categoryPickerMarketsSupplies => 'Markets, supplies';
+
+  @override
+  String get categoryPickerToursTickets => 'Tours, tickets';
+
+  @override
+  String get categoryPickerPetrolCharging => 'Petrol, charging';
+
+  @override
+  String get categoryPickerEquipmentSupplies => 'Equipment, supplies';
+
+  @override
+  String get categoryPickerAnythingElse => 'Anything else';
+
+  @override
+  String get settleUpTitle => 'Settle Up';
+
+  @override
+  String get settleUpEventMissingTitle => 'This event no longer exists';
+
+  @override
+  String get settleUpEventMissingMessage =>
+      'It may have been deleted. Tap below to go back to your groups.';
+
+  @override
+  String get settleUpCouldNotLoadBalances => 'Couldn\'t load balances.';
+
+  @override
+  String get settleUpAmountGreaterThanZero =>
+      'Amount must be greater than zero';
+
+  @override
+  String settleUpAmountExceedsOutstanding(Object amount) {
+    return 'Amount cannot exceed the outstanding balance of $amount';
+  }
+
+  @override
+  String get settleUpRecorded => 'Settlement recorded.';
+
+  @override
+  String get settleUpRecordFailed =>
+      'Couldn\'t record settlement. Check your connection and try again.';
+
+  @override
+  String get settleUpEveryoneEvenHeadline => 'Everyone\'s even.';
+
+  @override
+  String settleUpTransfersHeadline(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# transfers,\neveryone\'s even.',
+      one: 'One transfer,\neveryone\'s even.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpNoOptimizedPayments(Object subjectName) {
+    return 'No optimized payments are needed across $subjectName.';
+  }
+
+  @override
+  String settleUpOptimizedPayments(Object subjectName) {
+    return 'Optimized to minimise the number of payments across $subjectName.';
+  }
+
+  @override
+  String settleUpSummaryTransfers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# transfers',
+      one: '1 transfer',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSummaryTotal(Object amount) {
+    return '$amount total';
+  }
+
+  @override
+  String get settleUpEachPersonNet => 'Each person\'s net';
+
+  @override
+  String get settleUpPaymentHistory => 'Payment history';
+
+  @override
+  String get settleUpUnknown => 'Unknown';
+
+  @override
+  String get settleUpPaidConnector => 'paid';
+
+  @override
+  String get settleUpMarkThisPaidTitle => 'Mark this paid?';
+
+  @override
+  String settleUpMarkThisPaidBody(Object fromName, Object toName) {
+    return 'We\'ll close out the balance between $fromName and $toName.';
+  }
+
+  @override
+  String get settleUpNoteHint => 'Add a note (optional)';
+
+  @override
+  String settleUpNotifyToConfirm(Object name) {
+    return '$name will be notified to confirm.';
+  }
+
+  @override
+  String get settleUpNotYet => 'Not yet';
+
+  @override
+  String get settleUpMarkPaid => 'Mark paid';
+
+  @override
+  String settleUpPays(Object fromName, Object toName) {
+    return '$fromName pays $toName';
+  }
+
+  @override
+  String get settleUpHideAmountEditor => 'Hide amount editor';
+
+  @override
+  String get settleUpTapToEditAmount => 'Tap to edit amount';
+
+  @override
+  String settleUpAmountLabel(Object currency) {
+    return 'Amount ($currency)';
+  }
+
+  @override
+  String settleUpSuggestedAmount(Object amount) {
+    return 'Suggested: $amount';
+  }
+
+  @override
+  String get settleUpMethodCash => 'Cash';
+
+  @override
+  String get settleUpMethodBank => 'Bank';
+
+  @override
+  String get settleUpMethodOther => 'Other';
+
+  @override
+  String get settleUpAllSettledTitle => 'All settled up';
+
+  @override
+  String get settleUpAllSettledMessage =>
+      'Everyone is square. No outstanding amounts.';
+
+  @override
+  String settleUpYouOwe(Object name) {
+    return 'You owe $name';
+  }
+
+  @override
+  String settleUpOwesYou(Object name) {
+    return '$name owes you';
+  }
+
+  @override
+  String settleUpOwes(Object fromName, Object toName) {
+    return '$fromName owes $toName';
+  }
+
+  @override
+  String get expenseSuccessTitle => 'Expense Saved';
+
+  @override
+  String get expenseSuccessSyncedToCloud => 'SYNCED TO CLOUD';
+
+  @override
+  String get expenseSuccessDone => 'Done';
+
+  @override
+  String get expenseSuccessAddAnother => 'Add Another';
+
+  @override
+  String get expenseSuccessTotalAmount => 'TOTAL AMOUNT';
+
+  @override
+  String get expenseSuccessCategory => 'CATEGORY';
 }

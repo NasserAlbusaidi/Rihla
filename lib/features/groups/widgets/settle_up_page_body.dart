@@ -463,7 +463,9 @@ class _HistoryTile extends StatelessWidget {
         (recipientId == null ? null : displayNames[recipientId]) ??
         settlement.recipientName ??
         'Unknown';
-    final dateStr = DateFormat('MMM d').format(settlement.settledAt);
+    final dateStr = DateFormat.MMMd(
+      Localizations.localeOf(context).toLanguageTag(),
+    ).format(settlement.settledAt);
 
     return Container(
           margin: EdgeInsets.only(bottom: spacing.space8),

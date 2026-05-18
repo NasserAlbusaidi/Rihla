@@ -232,7 +232,10 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: TextStyle(color: context.colors.error)),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: context.colors.error),
+            ),
           ),
         ],
       ),
@@ -268,29 +271,32 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
           initialScope: _scope,
           initialCustomSplit: _customSplitParticipants,
           initialPayerId: _selectedPayerId,
-          onApply: ({
-            required ExpenseScope scope,
-            required Set<String> custom,
-            required String? payerId,
-          }) {
-            setState(() {
-              final scopeChanged = scope != _scope;
-              final customChanged =
-                  !_setEquals(custom, _customSplitParticipants);
-              _scope = scope;
-              _customSplitParticipants
-                ..clear()
-                ..addAll(custom);
-              _selectedPayerId = payerId;
-              // Distribution is keyed by participant id; if the participant
-              // set changed, the stored distribution is stale and would
-              // confuse the balance calculator. Reset to equal in that case.
-              if (scopeChanged || customChanged) {
-                _splitMode = SplitMode.equally;
-                _splitDistribution = null;
-              }
-            });
-          },
+          onApply:
+              ({
+                required ExpenseScope scope,
+                required Set<String> custom,
+                required String? payerId,
+              }) {
+                setState(() {
+                  final scopeChanged = scope != _scope;
+                  final customChanged = !_setEquals(
+                    custom,
+                    _customSplitParticipants,
+                  );
+                  _scope = scope;
+                  _customSplitParticipants
+                    ..clear()
+                    ..addAll(custom);
+                  _selectedPayerId = payerId;
+                  // Distribution is keyed by participant id; if the participant
+                  // set changed, the stored distribution is stale and would
+                  // confuse the balance calculator. Reset to equal in that case.
+                  if (scopeChanged || customChanged) {
+                    _splitMode = SplitMode.equally;
+                    _splitDistribution = null;
+                  }
+                });
+              },
         );
       },
     );
@@ -1034,8 +1040,7 @@ class _SplitPreviewCard extends StatelessWidget {
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final id = ids[index];
-                    final name =
-                        event.participantNames[id] ?? 'Member';
+                    final name = event.participantNames[id] ?? 'Member';
                     final firstName = name.split(' ').first;
                     return _ParticipantSplitTile(
                       name: name,
@@ -1088,9 +1093,7 @@ class _ParticipantSplitTile extends StatelessWidget {
         color: colors.cardSoft,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isPayer
-              ? colors.primary.withValues(alpha: 0.55)
-              : colors.rule,
+          color: isPayer ? colors.primary.withValues(alpha: 0.55) : colors.rule,
         ),
       ),
       child: Column(
@@ -1140,7 +1143,8 @@ class _SplitModeCard extends StatelessWidget {
     final subtitle = disabled
         ? 'Pick at least two people to split.'
         : switch (mode) {
-            SplitMode.equally => 'Split evenly across $eligibleCount way${eligibleCount == 1 ? '' : 's'}.',
+            SplitMode.equally =>
+              'Split evenly across $eligibleCount way${eligibleCount == 1 ? '' : 's'}.',
             SplitMode.shares => 'Weighted by shares.',
             SplitMode.exact => 'Per-person amounts.',
             SplitMode.percent => 'Per-person percents.',
@@ -1212,7 +1216,10 @@ class _WhereCard extends StatelessWidget {
             _InfoRow(title: 'Event', trailingText: event.name, dense: true),
             _InfoRow(
               title: 'Date',
-              trailingText: AppFormatters.formatShortMonthDay(date),
+              trailingText: AppFormatters.formatShortMonthDay(
+                date,
+                Localizations.localeOf(context).toLanguageTag(),
+              ),
               dense: true,
             ),
           ],
@@ -1485,9 +1492,7 @@ class _SplitCustomiseSheetState extends State<_SplitCustomiseSheet> {
         return Container(
           decoration: BoxDecoration(
             color: colors.scaffoldBackground,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
