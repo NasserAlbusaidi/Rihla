@@ -16,6 +16,12 @@ Rihla — Flutter group expense splitter. Solo-dev. **The Operating Contract is 
 | Play Store listing | `fastlane/README.md` |
 | Deeper system picture | `docs/ARCHITECTURE.md` |
 | Spec-verification worked examples | `docs/SPEC-VERIFICATION.md` |
+| Localization (ARB / RTL / `context.l10n`) | `docs/LOCALIZATION.md` + `docs/HOWTO-TRANSLATE.md` |
+| Cloud Functions (3 callables) | `docs/CLOUD-FUNCTIONS.md` |
+| Firestore security rules (by collection) | `docs/SECURITY-RULES.md` |
+| Anon auth + email-link recovery rationale | `docs/ACCOUNT-RECOVERY.md` |
+| First feature walkthrough (newcomers) | `docs/TUTORIAL-FIRST-FEATURE.md` |
+| Shared UI building blocks (`lib/shared/`) | `docs/SHARED-WIDGETS.md` |
 
 Also always in context: `MEMORY.md`. Product framing: `docs/PRODUCT.md`.
 

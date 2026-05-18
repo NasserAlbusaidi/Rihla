@@ -1,0 +1,452 @@
+# Anonymous Auth and Account Recovery
+
+Design rationale for Rihla's identity model. Explains **why** the app
+ships with no sign-up screen, why email-link recovery is opt-in,
+why a UID change wipes the local cache, and why we need a server-side
+`cleanupAnonUidArtifacts` callable.
+
+For the implementation reference (what the callable does, error codes,
+client wrappers), see [CLOUD-FUNCTIONS.md](./CLOUD-FUNCTIONS.md). For
+the product-side behaviour catalog, see
+[PRODUCT.md § Identity & Auth](./PRODUCT.md).
+
+---
+
+## 1. The problem
+
+A group expense splitter needs to identify "who paid for what" to
+calculate balances. Conventional apps solve this with a sign-up screen:
+email + password, OAuth, or magic link. Every conventional approach
+introduces a wall before the first useful interaction.
+
+For Rihla's wedge — friends settling up a trip — the wall is the
+expensive part. The user is already mid-conversation about money.
+Asking them to create an account before they can record a single
+expense is the most common abandonment point in apps of this shape.
+
+We wanted the **time-to-first-expense to be zero seconds**. No
+sign-up, no email confirmation, no password. The first launch should
+just work.
+
+That goal sets up a tension:
+
+- **No sign-up** means we have no durable identifier across devices or
+  reinstalls.
+- **Settling money** means we need *some* persistent identity inside
+  groups, otherwise members can't recover from losing their phone.
+
+The recovery system exists to resolve this tension *for the users who
+need it* without imposing the cost on the users who don't.
+
+---
+
+## 2. The approach
+
+Three layered mechanisms, each opt-in past the previous one:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Layer 1: anonymous Firebase Auth                       │
+│  — First launch creates an anon UID. Persisted on the   │
+│  device. No sign-up. This is the default identity.      │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            │ user opts in via Profile → Link email
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 2: email-link recovery                           │
+│  — Anon UID is linked to an email. The same UID can     │
+│  now be restored on a fresh install via email-link      │
+│  sign-in. No password.                                  │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            │ user lost their phone / reinstalled
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 3: recovery flow                                 │
+│  — On the new device, the user enters their email.      │
+│  Firebase sends a sign-in link. Tapping the link        │
+│  produces a *different* UID than the original anon      │
+│  session ever had. We rebind groups to the recovered    │
+│  UID via the cleanupAnonUidArtifacts callable.          │
+└─────────────────────────────────────────────────────────┘
+```
+
+The opt-in stages map onto a single principle: **start with zero
+friction; let the user buy more durability when they care**. Users who
+never link an email never face a single auth dialog. Users who do link
+get cross-device recovery.
+
+---
+
+## 3. Why anonymous Firebase Auth?
+
+Three options were on the table when this was designed:
+
+1. **No auth at all** — Identify the user by a locally-generated UUID
+   stored in `SharedPreferences`. Cheapest path.
+2. **Anonymous Firebase Auth** — UID assigned by Firebase, persisted
+   in the platform Keychain/Keystore by the SDK.
+3. **Sign-up screen** — Email/password or OAuth on first launch.
+
+We picked **(2)**. The reasoning:
+
+| Concern | (1) Local UUID | (2) Anon Firebase | (3) Sign-up |
+|---------|----------------|-------------------|-------------|
+| Time-to-first-expense | 0s | 0s (silent) | 60s+ |
+| Survives app uninstall | ❌ | ❌ | ✅ |
+| Works with Firestore Security Rules | ❌ (rules need `request.auth.uid`) | ✅ | ✅ |
+| Upgradeable to a linked identity later | Hard | ✅ (linkWithCredential) | n/a |
+| Backend abuse surface | Open | Token-gated | Token-gated |
+
+Option (1) loses immediately because Firestore Security Rules need a
+real `request.auth.uid` to evaluate ownership predicates (B1) and
+group-membership checks. We'd have to either ship a vacuous rule set
+or invent a custom auth layer.
+
+Option (3) loses because the wall before the first interaction is
+exactly the cost we're trying to avoid.
+
+Option (2) gives us the best of both: real `request.auth.uid` for the
+rules, no user-visible friction, and a documented upgrade path
+(`User.linkWithCredential`) when the user later opts into recovery.
+
+The trade-off: a Firebase anon UID is tied to the device's Auth state.
+Wipe the app, reinstall, or move to a new phone, and the UID is gone —
+along with access to any groups it was a member of. **Layer 2 exists
+specifically to fix this for users who care.**
+
+---
+
+## 4. Why email-link, not password?
+
+Firebase supports many sign-in methods. We picked email-link
+specifically and deliberately:
+
+| Method | Pros | Cons |
+|--------|------|------|
+| Email + password | Familiar | Password reset flow, breach surface, 2 forms |
+| **Email link (magic link)** | One field, no password | Requires email round-trip |
+| Phone (SMS) | Fast | SMS costs $, country support varies |
+| Google / Apple OAuth | One tap | Vendor lock-in, account-linking edge cases, app review hurdles |
+
+The argument for email-link:
+
+- **One input.** The user types an email and submits. No password to
+  invent or remember. No "Forgot password?" path to maintain.
+- **Built-in second factor.** Possession of the email account *is*
+  the auth proof. There's no separate password to phish.
+- **Cross-device works for free.** The link in the email is just a
+  URL with a one-time token; tapping it on any device produces a
+  signed-in session.
+- **No SMS cost or geo limitations.**
+- **Firebase ships the primitives** (`sendSignInLinkToEmail`,
+  `signInWithEmailLink`, `linkWithCredential`).
+
+The trade-off: email round-trip latency. Recovery takes minutes, not
+seconds. For the use case — restoring access after a phone is lost or
+replaced — this is fine. We are not on a hot path.
+
+---
+
+## 5. The link/recover distinction
+
+Once an email is involved, there are two distinct flows. They use the
+same Firebase primitive (`sendSignInLinkToEmail`) but the *meaning* of
+tapping the link differs:
+
+| Flow | Trigger | Effect on UID | Implementation |
+|------|---------|---------------|----------------|
+| **Link** | User is signed in (anonymously). They want to attach an email for future recovery. | UID is **preserved** — the anon UID gains an email credential. | `User.linkWithCredential(...)` |
+| **Recover** | User has a new install (no UID yet, or a fresh anon UID they want to discard). They have a previously-linked email. | UID **changes** — sign in as the linked user; the previous anon UID is abandoned. | `FirebaseAuth.signInWithEmailLink(...)` |
+
+The bootstrap listener (`auth_email_link_bootstrap_provider.dart`)
+needs to know which flow the user is in when they tap the link,
+because the same `mailto:` URL would otherwise be ambiguous.
+
+The solution: `AuthRecoveryService` writes the in-flight operation
+kind to `SharedPreferences` at send-time:
+
+```dart
+// lib/features/auth/services/auth_recovery_service.dart
+static const String opLink = 'link';
+static const String opRecover = 'recover';
+```
+
+When the link is tapped, the bootstrap reads the flag and dispatches
+to the correct completion path. The flag is cleared after success.
+
+---
+
+## 6. The UID-change problem and `UidChangeListener`
+
+When the recovery flow runs, the active Firebase UID changes from the
+anon `oldUid` to the recovered `newUid`. Everything in the local
+SQLite cache (`safar_cache.db`) was hydrated from Firestore reads done
+under `oldUid`. If we let the providers keep reading from that cache
+while serving the new user, we'd leak data across UIDs:
+
+> *"User A signs out, user B installs on the same device, signs in
+> with their email. Provider reads stale rows still cached against
+> A's groups. User B sees A's groups."*
+
+This is the **FR-CACHE-1** invariant. The fix is to wipe the SQLite
+file before any provider runs under the new UID.
+
+`lib/features/auth/services/uid_change_listener.dart`:
+
+```dart
+final uidChangeListenerProvider = Provider<void>((ref) {
+  String? lastUid;
+  var seenInitial = false;
+  final wipe = ref.read(cacheWipeFnProvider);
+
+  ref.listen<AsyncValue<firebase_auth.User?>>(
+    authUserChangesProvider,
+    (previous, next) {
+      final newUid = next.valueOrNull?.uid;
+      if (!seenInitial) {
+        seenInitial = true;
+        lastUid = newUid;
+        return;
+      }
+      if (newUid == lastUid) return;
+      // UID actually changed — wipe the cache.
+      // ...
+      unawaited(wipe()...);
+    },
+  );
+});
+```
+
+Three design notes worth calling out:
+
+- **First emission is treated as the cold-start baseline.** The
+  listener records the current UID but does not wipe. Without this,
+  every app launch would wipe the cache (the auth state stream's
+  first emission triggers the listener).
+- **Identical UIDs are ignored.** `linkWithCredential` is a *profile
+  mutation* on the same UID — the auth stream re-emits but the UID
+  hasn't changed. We must not wipe in that case (the user is just
+  attaching an email; their groups are still theirs).
+- **Wipe failure is logged, not raised.** If `LocalDatabase.wipeAndReinitialize`
+  throws, we log to `FirebaseConfig` (which surfaces to Sentry). We
+  don't block the auth transition because the cache failing is less
+  bad than the user being unable to sign in.
+
+The listener is mounted by the app bootstrap and runs for the entire
+session. There is no manual call site — the auth state stream is the
+single source of truth for UID changes.
+
+---
+
+## 7. Why `cleanupAnonUidArtifacts` is a server callable
+
+After recovery, the user's groups still reference `oldUid` in:
+
+- `groups/{gid}.memberIds`
+- `groups/{gid}/members/{oldUid}`
+- `groups/{gid}/events/{eid}.participantIds`
+- `groups/{gid}/events/{eid}.participantNames` (keyed by UID)
+- `groups/{gid}/events/{eid}.createdBy` (where the old user created an event)
+- `groups/{gid}/events/{eid}/expenses/*.createdBy`
+
+We need to rewrite every one of these to point at `newUid`. The
+client cannot do this for three reasons:
+
+1. **Cross-document atomicity.** A single group might have dozens of
+   events and hundreds of expenses. A client batch caps at 500
+   writes; a single transaction can read 10 documents and write 500.
+   A large group would exceed both.
+2. **Security rules wouldn't allow it.** The rules grant a member the
+   ability to update *their own* member doc's display name and to
+   leave the group. They do **not** allow a member to rewrite
+   `memberIds`, `createdBy`, or `participantIds` on every doc in the
+   group. Granting that broadly would weaken the rules across the
+   normal write paths.
+3. **The Auth-side delete needs admin privileges.** The old anon UID
+   should be deleted from Firebase Auth as part of cleanup so it
+   cannot be re-signed-in by anyone holding a stale token. Only the
+   Admin SDK can do that.
+
+So the work moves server-side. `cleanupAnonUidArtifacts` runs under
+the Admin SDK (`functions/src/admin.ts`), which bypasses Firestore
+Security Rules entirely. Per-group transactions stay atomic; auth
+deletion happens after the Firestore scrub.
+
+The trade-off: a Cloud Function is one more deploy surface and one
+more error mode. The runbook (T2 in `docs/RUNBOOK.md`) calls out the
+error-rate tripwire that catches cleanup failures.
+
+The callable is **fire-and-forget** from the client. The recovery
+flow completes immediately on `signInWithEmailLink` returning; the
+cleanup runs in the background. If it fails, the user is still signed
+in and functional — they just appear as two members in their groups
+(the old anon UID is still in `memberIds` alongside the new one)
+until a follow-up cleanup pass runs.
+
+The reference implementation is documented in
+[CLOUD-FUNCTIONS.md § 2](./CLOUD-FUNCTIONS.md#2-cleanupanonuidartifacts).
+
+---
+
+## 8. Why account deletion is its own callable
+
+A reasonable question: if `cleanupAnonUidArtifacts` already rebinds
+UIDs, why not reuse it for deletion (rebind to a sentinel UID)?
+
+The decision (logged 2026-05-16) was to ship `deleteAccount` as a
+separate callable because:
+
+1. **Different identity semantics.** Cleanup transfers identity from
+   old UID to new UID — both are real people. Deletion replaces the
+   identity with a per-group tombstone (`deleted-xxxxxxxx`) so each
+   group cannot correlate one deletion across multiple groups by UID.
+2. **Different PII handling.** Cleanup keeps the user's display name,
+   notes, descriptions — it's the *same person*. Deletion **scrubs**
+   `note`, `description`, `receiptUrl` on every expense the user
+   touched. Different code path.
+3. **Different end state for the auth user.** Cleanup deletes the
+   *old* (anon) UID and keeps the *new* UID alive. Deletion deletes
+   the only UID.
+4. **Audit surface.** A user looking at the activity feed should see
+   "Deleted member activity" for a deleted user, not the same name
+   they always saw. Activity-log rewriting is deletion-specific.
+
+Trying to fold both into one callable produced enough conditional
+branches that the resulting code was harder to review than two
+single-purpose callables. The 2026-05-16 decision picks two callables
+plus a small amount of shared scaffolding (the `processGroup`
+transaction shape, the batch writer).
+
+---
+
+## 9. What we gave up
+
+Honest list of limitations this design accepts:
+
+### "Lose your phone, lose your data" for non-linked users
+
+Users who never link an email and lose their device (or clear app
+data) lose access to their groups. This is the price of zero
+friction on first launch. The Home screen surfaces a recovery CTA so
+the path back exists if they previously linked.
+
+### Account-linking edge cases on the same email
+
+Firebase Auth has subtle behaviour when an email is already linked to
+a different user. We rely on Firebase's built-in handling
+(`completeEmailLink` throws on conflicts), and the recover screen
+surfaces the error to the user. The fallback is the user contacts
+support; we have not built an in-app conflict-resolution UI.
+
+### Cleanup is best-effort
+
+If `cleanupAnonUidArtifacts` fails after recovery, the user functions
+but has duplicate-membership artifacts. A future maintenance pass
+(see "Known Limitations" in `docs/PRODUCT.md`) would reconcile these
+server-side without user action.
+
+### Anon UID quota is unprotected
+
+There is no captcha on `signInAnonymously`. A bot farm could exhaust
+the Firebase anonymous-auth quota for the project. T4 in the runbook
+covers the response if this becomes a real problem.
+
+### Email-link delivery depends on email infrastructure
+
+Spam filters, mail-server outages, and user typos can prevent the
+link from arriving. We don't have a re-send debounce on the send
+button beyond what Firebase enforces server-side. If delivery
+becomes an issue at scale, we'd add per-user send throttling.
+
+---
+
+## 10. The flow end-to-end
+
+For reference, here is the sequence of operations during a successful
+recovery (user has linked an email previously, lost their phone, and
+installed Rihla on a new device):
+
+```
+Day 0 (link path, on original device):
+  Profile → Link email → enters email
+    → AuthRecoveryService.linkEmailToCurrentUser(email)
+      → setPendingEmail(email) [persists to SharedPreferences]
+      → setInFlightOp('link')
+      → Firebase: sendSignInLinkToEmail(email)
+  Email arrives → user taps link
+    → DeepLinkService routes the URL to AuthEmailLinkBootstrap
+      → reads inFlightOp = 'link'
+      → AuthRecoveryService.completeEmailLink(emailLink)
+        → User.linkWithCredential(EmailAuthProvider.credentialWithLink(...))
+        → clearPendingEmail()
+        → clearInFlightOp()
+  UID UNCHANGED (still original anon UID, now with email credential).
+
+Day N (recover path, on new device):
+  First launch creates a fresh anon UID — call it tempUid.
+  Home empty state shows "Restore from email" CTA → /recover
+    → RecoverScreen → enters email
+    → AuthRecoveryService.sendRecoveryLink(email)
+      → setPendingEmail(email)
+      → setInFlightOp('recover')
+      → Firebase: sendSignInLinkToEmail(email)
+  Email arrives → user taps link
+    → DeepLinkService routes the URL
+      → reads inFlightOp = 'recover'
+      → AuthRecoveryService.completeRecovery(emailLink)
+        → waitForPendingWrites(timeout: 5s)
+        → FirebaseAuth.signOut()  -- discards tempUid session
+        → FirebaseAuth.signInWithEmailLink(...)  -- signs in as originalUid
+        → returns UserCredential (uid = originalUid)
+        → unawaited(cleanupAnonUidArtifacts(oldUid: tempUid))
+  UidChangeListener fires on the auth stream:
+    tempUid -> originalUid
+    → LocalDatabase.wipeAndReinitialize()  -- clears safar_cache.db
+  Riverpod providers re-evaluate under originalUid → groups appear.
+  Background:
+    cleanupAnonUidArtifacts callable runs server-side:
+      → For each group containing tempUid (likely none, since tempUid
+        is the fresh install — but the callable is defensive):
+        rewrite memberIds, members docs, event participant refs.
+      → Delete tempUid from Firebase Auth.
+      → Delete fcm_tokens/{tempUid}.
+```
+
+The hand-offs across `SharedPreferences` (`pendingEmail`, `inFlightOp`)
+let the flow survive an app restart between sending the link and
+tapping it — important because real users tap the link in a different
+app (their email client) and only come back to Rihla via the URL
+launcher.
+
+---
+
+## 11. Files at a glance
+
+| File | Role |
+|------|------|
+| `lib/features/auth/services/auth_recovery_service.dart` | Orchestrates link/recover/sign-out. Holds the pending-email + in-flight-op SharedPreferences keys. |
+| `lib/features/auth/services/uid_change_listener.dart` | Wipes the SQLite cache on UID change. |
+| `lib/features/auth/services/data_deletion_service.dart` | Wraps `deleteAccount` callable + cache wipe for the Profile delete flow. |
+| `lib/features/auth/services/auth_email_link_config.dart` | Centralised `ActionCodeSettings` (URL, package name, Play / iOS metadata). |
+| `lib/features/auth/providers/auth_email_link_bootstrap_provider.dart` | Listens for incoming email links, dispatches to link vs recover. |
+| `lib/features/auth/providers/auth_provider.dart` | `authStateProvider`, `currentUserProvider` etc. |
+| `lib/features/auth/screens/link_email_screen.dart` | Profile → Link email form. |
+| `lib/features/auth/screens/link_email_sent_screen.dart` | Post-send "Check your email" screen. |
+| `lib/features/auth/screens/recover_screen.dart` | Home → Recover entry. |
+| `lib/features/auth/screens/recover_pending_screen.dart` | Post-send waiting screen on the recover side. |
+| `lib/main.dart:118` | `_AuthGate.ensureAnonymousSession()` — establishes the first UID. |
+| `functions/src/callables/cleanupAnonUidArtifacts.ts` | Server-side UID migration. |
+| `functions/src/callables/deleteAccount.ts` | Server-side cascade delete. |
+| `security/firestore.rules` | Owner-only and member-only invariants per UID. |
+
+---
+
+## 12. Related docs
+
+- [CLOUD-FUNCTIONS.md](./CLOUD-FUNCTIONS.md) — reference for the two callables this design depends on
+- [SECURITY-RULES.md](./SECURITY-RULES.md) — why the rules can't do the cross-doc rewrites these flows need
+- [ARCHITECTURE.md § 6 Offline](./ARCHITECTURE.md) — how `safar_cache.db` slots into the data flow
+- [PRODUCT.md § Identity & Auth](./PRODUCT.md) — user-facing summary
+- [RUNBOOK.md § T2 Functions error rate](./RUNBOOK.md) — incident response if the cleanup callable starts failing

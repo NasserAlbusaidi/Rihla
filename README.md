@@ -181,3 +181,43 @@ bundle exec fastlane android pull        # re-sync from live Play state
 ```
 
 Both push lanes are AAB-safe — they never touch the binary or release notes, so listing edits are independent of the release pipeline. See `fastlane/README.md`.
+
+---
+
+## Documentation
+
+The `docs/` directory follows the [Diataxis](https://diataxis.fr/)
+framework — tutorials, how-tos, reference, and explanation are kept
+distinct.
+
+**Newcomers start here:**
+
+- [docs/GETTING-STARTED.md](./docs/GETTING-STARTED.md) — clone → running app
+- [docs/TUTORIAL-FIRST-FEATURE.md](./docs/TUTORIAL-FIRST-FEATURE.md) — build your first feature end-to-end
+- [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) — daily developer reference
+
+**Architecture and design:**
+
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — system design, data flow, design tokens
+- [docs/PRODUCT.md](./docs/PRODUCT.md) — product specification (every screen, every behaviour)
+- [docs/ACCOUNT-RECOVERY.md](./docs/ACCOUNT-RECOVERY.md) — why anon auth + email-link recovery
+- [docs/CONFIGURATION.md](./docs/CONFIGURATION.md) — config keys, env setup
+- [docs/SHARED-WIDGETS.md](./docs/SHARED-WIDGETS.md) — `lib/shared/` UI catalog
+
+**Backend reference:**
+
+- [docs/CLOUD-FUNCTIONS.md](./docs/CLOUD-FUNCTIONS.md) — 3 callables (join / cleanup / delete)
+- [docs/SECURITY-RULES.md](./docs/SECURITY-RULES.md) — Firestore rules by collection
+
+**Localization (active rollout):**
+
+- [docs/LOCALIZATION.md](./docs/LOCALIZATION.md) — ARB pipeline, `context.l10n`, RTL helpers
+- [docs/HOWTO-TRANSLATE.md](./docs/HOWTO-TRANSLATE.md) — translate a new screen, add a language
+
+**Testing, release, operations:**
+
+- [docs/TESTING.md](./docs/TESTING.md) — unit / widget / integration patterns
+- [docs/PRODUCTION-READINESS.md](./docs/PRODUCTION-READINESS.md) — pre-deploy checklist
+- [docs/REAL-DEVICE-QA.md](./docs/REAL-DEVICE-QA.md) — physical-device QA matrix
+- [docs/RUNBOOK.md](./docs/RUNBOOK.md) — incident response, tripwires
+- [docs/SPEC-VERIFICATION.md](./docs/SPEC-VERIFICATION.md) — spec-review discipline
