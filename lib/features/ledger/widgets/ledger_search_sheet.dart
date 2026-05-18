@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
+import '../utils/localized_category_name.dart';
 
 /// T3.L — v1 minimal ledger search. Client-side substring filter across
 /// description / category / payer (expenses) and payer / recipient / note
@@ -164,6 +167,7 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -189,11 +193,13 @@ class _SearchBar extends StatelessWidget {
                       controller: controller,
                       focusNode: focusNode,
                       textInputAction: TextInputAction.search,
-                      decoration: const InputDecoration(
-                        hintText: 'Search expenses',
+                      decoration: InputDecoration(
+                        hintText: l10n.ledgerSearchHint,
                         border: InputBorder.none,
                         isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                       ),
                       style: AppTypography.sans(
                         fontSize: 15,
@@ -222,7 +228,7 @@ class _SearchBar extends StatelessWidget {
           TextButton(
             onPressed: onClose,
             child: Text(
-              'Cancel',
+              l10n.commonCancel,
               style: AppTypography.sans(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -251,19 +257,19 @@ class _Results extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (query.isEmpty) {
-      return const _Hint(
+      return _Hint(
         icon: Iconsax.search_normal,
-        title: 'Search expenses',
-        message:
-            'Type to find by description, category, payer, recipient or note.',
+        title: l10n.ledgerSearchTitle,
+        message: l10n.ledgerSearchPromptMessage,
       );
     }
     if (results.isEmpty) {
       return _Hint(
         icon: Iconsax.receipt_minus,
-        title: 'No matches',
-        message: 'Nothing in this event matches "$query".',
+        title: l10n.ledgerSearchNoMatchesTitle,
+        message: l10n.ledgerSearchNoMatchesMessage(query),
       );
     }
     return ListView.separated(
@@ -296,6 +302,7 @@ class _ResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -327,7 +334,7 @@ class _ResultRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    hit.title,
+                    hit.title(l10n),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.sans(
@@ -338,7 +345,7 @@ class _ResultRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    hit.subtitle,
+                    hit.subtitle(l10n),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.sans(
@@ -405,8 +412,8 @@ class _Hint extends StatelessWidget {
 
 sealed class _SearchHit {
   IconData get leadingIcon;
-  String get title;
-  String get subtitle;
+  String title(AppLocalizations l10n);
+  String subtitle(AppLocalizations l10n);
   Decimal get amount;
   String get currency;
   DateTime get date;
@@ -419,15 +426,32 @@ final class _ExpenseHit extends _SearchHit {
 
   @override
   IconData get leadingIcon => Iconsax.receipt_item;
+
   @override
-  String get title => expense.description?.trim().isNotEmpty == true
-      ? expense.description!.trim()
-      : expense.categoryName ?? 'Expense';
+  String title(AppLocalizations l10n) {
+    if (expense.description?.trim().isNotEmpty == true) {
+      return expense.description!.trim();
+    }
+    if (expense.categoryId != null || expense.categoryName != null) {
+      return localizedCategoryName(
+        id: expense.categoryId,
+        fallbackName: expense.categoryName,
+        l10n: l10n,
+      );
+    }
+    return l10n.ledgerExpenseFallback;
+  }
+
   @override
-  String get subtitle {
+  String subtitle(AppLocalizations l10n) {
     final parts = <String>[
-      if (expense.categoryName != null) expense.categoryName!,
-      if (payerDisplay != null) 'Paid by $payerDisplay',
+      if (expense.categoryId != null || expense.categoryName != null)
+        localizedCategoryName(
+          id: expense.categoryId,
+          fallbackName: expense.categoryName,
+          l10n: l10n,
+        ),
+      if (payerDisplay != null) l10n.ledgerPaidBy(payerDisplay!),
     ];
     return parts.isEmpty ? '—' : parts.join(' · ');
   }
@@ -443,18 +467,24 @@ final class _ExpenseHit extends _SearchHit {
 final class _SettlementHit extends _SearchHit {
   _SettlementHit(this.settlement, this.payerDisplay, this.recipientDisplay);
   final Settlement settlement;
-  final String payerDisplay;
-  final String recipientDisplay;
+  final String? payerDisplay;
+  final String? recipientDisplay;
 
   @override
   IconData get leadingIcon => Iconsax.arrow_swap;
-  @override
-  String get title => '$payerDisplay → $recipientDisplay';
 
   @override
-  String get subtitle => settlement.note?.trim().isNotEmpty == true
+  String title(AppLocalizations l10n) {
+    final payer = payerDisplay ?? l10n.ledgerSomeone;
+    final recipient = recipientDisplay ?? l10n.ledgerSomeone;
+    return '$payer → $recipient';
+  }
+
+  @override
+  String subtitle(AppLocalizations l10n) =>
+      settlement.note?.trim().isNotEmpty == true
       ? settlement.note!.trim()
-      : 'Settlement';
+      : l10n.ledgerSettlementFallback;
   @override
   Decimal get amount => settlement.amount;
   @override
@@ -504,11 +534,9 @@ List<_SearchHit> _filter(
       _SettlementHit(
         settlement,
         settlementDisplayNames[settlement.id]?.payerName ??
-            settlement.payerName ??
-            'Someone',
+            settlement.payerName,
         settlementDisplayNames[settlement.id]?.recipientName ??
-            settlement.recipientName ??
-            'Someone',
+            settlement.recipientName,
       ),
   ]..sort((a, b) => b.date.compareTo(a.date));
 

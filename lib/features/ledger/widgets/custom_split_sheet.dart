@@ -2,11 +2,13 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/r_amount.dart';
 
 export '../../../core/models/split_mode.dart' show SplitMode;
@@ -123,8 +125,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
 
   void _initShares() {
     _shares = {
-      for (final p in widget.participants)
-        p.id: _readInitialShare(p.id) ?? 1,
+      for (final p in widget.participants) p.id: _readInitialShare(p.id) ?? 1,
     };
   }
 
@@ -194,8 +195,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     return sum;
   }
 
-  int get _totalShares =>
-      _shares.values.fold(0, (acc, v) => acc + v);
+  int get _totalShares => _shares.values.fold(0, (acc, v) => acc + v);
 
   Decimal get _exactRemainder => widget.total - _exactSum;
 
@@ -240,7 +240,8 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
           mode: SplitMode.exact,
           distribution: {
             for (final p in widget.participants)
-              p.id: Decimal.tryParse(_exactCtrls[p.id]?.text ?? '') ??
+              p.id:
+                  Decimal.tryParse(_exactCtrls[p.id]?.text ?? '') ??
                   Decimal.zero,
           },
         );
@@ -249,7 +250,8 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
           mode: SplitMode.percent,
           distribution: {
             for (final p in widget.participants)
-              p.id: Decimal.tryParse(_percentCtrls[p.id]?.text ?? '') ??
+              p.id:
+                  Decimal.tryParse(_percentCtrls[p.id]?.text ?? '') ??
                   Decimal.zero,
           },
         );
@@ -284,7 +286,11 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
               ),
             ),
             SizedBox(height: spacing.space12),
-            _Header(title: widget.title, total: widget.total, currency: widget.currency),
+            _Header(
+              title: widget.title,
+              total: widget.total,
+              currency: widget.currency,
+            ),
             SizedBox(height: spacing.space16),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: spacing.space24),
@@ -346,7 +352,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
                           ),
                         ),
                         child: Text(
-                          'Cancel',
+                          context.l10n.customSplitCancel,
                           style: AppTypography.sans(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -366,8 +372,9 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colors.primary,
                           foregroundColor: colors.textOnPrimary,
-                          disabledBackgroundColor:
-                              colors.primary.withValues(alpha: 0.35),
+                          disabledBackgroundColor: colors.primary.withValues(
+                            alpha: 0.35,
+                          ),
                           disabledForegroundColor: colors.textOnPrimary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -375,7 +382,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
                           elevation: 0,
                         ),
                         child: Text(
-                          'Apply',
+                          context.l10n.customSplitApply,
                           style: AppTypography.sans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -418,7 +425,7 @@ class _Header extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Split how?',
+            context.l10n.customSplitHow,
             style: AppTypography.display(
               fontSize: 26,
               color: colors.textPrimary,
@@ -484,7 +491,7 @@ class _ModeSegmented extends StatelessWidget {
                     boxShadow: m == mode ? context.shadows.raised : null,
                   ),
                   child: Text(
-                    _label(m),
+                    splitModeDisplayName(m, context.l10n),
                     style: AppTypography.sans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -500,13 +507,6 @@ class _ModeSegmented extends StatelessWidget {
       ),
     );
   }
-
-  String _label(SplitMode m) => switch (m) {
-        SplitMode.equally => 'Equally',
-        SplitMode.shares => 'Shares',
-        SplitMode.exact => 'Exact',
-        SplitMode.percent => 'Percent',
-      };
 }
 
 // ───────────────────────────────────────────────────────────── mode body
@@ -913,9 +913,7 @@ class _NumberInput extends StatelessWidget {
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.right,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-        ],
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
         style: AppTypography.mono(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -929,7 +927,10 @@ class _NumberInput extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 8,
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: colors.rule2),
@@ -988,7 +989,7 @@ class _Footer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'TOTAL',
+            context.l10n.customSplitTotal,
             style: AppTypography.mono(
               fontSize: 10,
               letterSpacing: 1.5,
@@ -1001,13 +1002,15 @@ class _Footer extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _StatusPill(mode: mode, canApply: canApply, exactRemainder: exactRemainder, percentRemainder: percentRemainder, currency: currency),
-                const SizedBox(width: 10),
-                RAmount(
-                  value: _displaySum(),
+                _StatusPill(
+                  mode: mode,
+                  canApply: canApply,
+                  exactRemainder: exactRemainder,
+                  percentRemainder: percentRemainder,
                   currency: currency,
-                  size: 16,
                 ),
+                const SizedBox(width: 10),
+                RAmount(value: _displaySum(), currency: currency, size: 16),
               ],
             ),
           ),
@@ -1077,10 +1080,7 @@ class _StatusPill extends StatelessWidget {
         if (canApply) return ('100 %', colors.success as Color);
         final r = percentRemainder;
         final sign = r > Decimal.zero ? '−' : '+';
-        return (
-          '$sign${r.abs().toString()} %',
-          colors.error as Color,
-        );
+        return ('$sign${r.abs().toString()} %', colors.error as Color);
     }
   }
 }

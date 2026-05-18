@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/ledger/widgets/custom_split_sheet.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// Hosts the sheet, drives the supplied [interactions], and returns the
 /// captured [SplitResult].
@@ -20,6 +21,8 @@ Future<SplitResult?> _runSheet(
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
         builder: (context) => Scaffold(
           body: Center(
@@ -119,6 +122,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: Center(
@@ -163,6 +168,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: Center(
@@ -183,7 +190,7 @@ void main() {
       );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Exact'));
+      await tester.tap(find.text('Exact amounts'));
       await tester.pumpAndSettle();
 
       // Fill only one row — sum != total — Apply should be disabled.
@@ -211,7 +218,7 @@ void main() {
         total: Decimal.parse('30.000'),
         participants: participants,
         interactions: (t) async {
-          await t.tap(find.text('Exact'));
+          await t.tap(find.text('Exact amounts'));
           await t.pumpAndSettle();
           await t.enterText(find.byKey(const Key('split_exact_a')), '15');
           await t.pump();
@@ -235,6 +242,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: Center(
@@ -302,8 +311,9 @@ void main() {
   });
 
   group('CustomSplitSheet — initial values', () {
-    testWidgets('opens in the requested mode with prefilled shares',
-        (tester) async {
+    testWidgets('opens in the requested mode with prefilled shares', (
+      tester,
+    ) async {
       final result = await _runSheet(
         tester,
         total: Decimal.parse('30.000'),
