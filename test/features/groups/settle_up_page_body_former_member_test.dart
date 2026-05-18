@@ -7,6 +7,7 @@ import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/widgets/settle_up_page_body.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   testWidgets('renders formatted former member but records raw names', (
@@ -20,6 +21,8 @@ void main() {
       ProviderScope(
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MediaQuery(
             data: const MediaQueryData(disableAnimations: true),
             child: Scaffold(

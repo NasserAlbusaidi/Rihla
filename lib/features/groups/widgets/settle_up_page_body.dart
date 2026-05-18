@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -198,8 +199,8 @@ class _SettlementIntro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final headline = transferCount == 0
-        ? "Everyone's even."
-        : "$_countWord transfers,\neveryone's even.";
+        ? context.l10n.settleUpEveryoneEvenHeadline
+        : context.l10n.settleUpTransfersHeadline(transferCount);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,22 +216,10 @@ class _SettlementIntro extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Text.rich(
-          TextSpan(
-            text: transferCount == 0
-                ? 'No optimized payments are needed across '
-                : 'Optimized to minimise the number of payments across ',
-            children: [
-              TextSpan(
-                text: subjectName,
-                style: TextStyle(
-                  color: context.colors.ink2,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const TextSpan(text: '.'),
-            ],
-          ),
+        Text(
+          transferCount == 0
+              ? context.l10n.settleUpNoOptimizedPayments(subjectName)
+              : context.l10n.settleUpOptimizedPayments(subjectName),
           style: TextStyle(
             color: context.colors.textSecondary,
             fontSize: 13,
@@ -240,22 +229,6 @@ class _SettlementIntro extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String get _countWord {
-    const words = {
-      1: 'One',
-      2: 'Two',
-      3: 'Three',
-      4: 'Four',
-      5: 'Five',
-      6: 'Six',
-      7: 'Seven',
-      8: 'Eight',
-      9: 'Nine',
-      10: 'Ten',
-    };
-    return words[transferCount] ?? transferCount.toString();
   }
 }
 
@@ -270,7 +243,7 @@ class _NetBalancesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel(label: "Each person's net"),
+        _SectionLabel(label: context.l10n.settleUpEachPersonNet),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
@@ -308,7 +281,7 @@ class _NetBalanceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = balance.displayName ?? 'Unknown';
+    final name = balance.displayName ?? context.l10n.settleUpUnknown;
     final amountColor = balance.netBalance > Decimal.zero
         ? context.colors.successText
         : balance.netBalance < Decimal.zero
@@ -390,7 +363,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsetsDirectional.only(start: 4),
       child: Text(
         label,
         style: TextStyle(
@@ -423,7 +396,7 @@ class _PaymentHistorySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel(label: 'Payment history'),
+        _SectionLabel(label: context.l10n.settleUpPaymentHistory),
         const SizedBox(height: 10),
         for (var i = 0; i < settlements.length; i++)
           _HistoryTile(
@@ -458,11 +431,11 @@ class _HistoryTile extends StatelessWidget {
     final payerName =
         (payerId == null ? null : displayNames[payerId]) ??
         settlement.payerName ??
-        'Unknown';
+        context.l10n.settleUpUnknown;
     final recipientName =
         (recipientId == null ? null : displayNames[recipientId]) ??
         settlement.recipientName ??
-        'Unknown';
+        context.l10n.settleUpUnknown;
     final dateStr = DateFormat.MMMd(
       Localizations.localeOf(context).toLanguageTag(),
     ).format(settlement.settledAt);
@@ -511,7 +484,9 @@ class _HistoryTile extends StatelessWidget {
                             text: payerName,
                             style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
-                          const TextSpan(text: ' paid '),
+                          TextSpan(
+                            text: ' ${context.l10n.settleUpPaidConnector} ',
+                          ),
                           TextSpan(
                             text: recipientName,
                             style: const TextStyle(fontWeight: FontWeight.w700),

@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
@@ -56,9 +57,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
   }
 
   String get _subLabel {
-    if (widget.isYourAction) return 'You owe ${widget.toName}';
-    if (widget.isCreditor) return '${widget.fromName} owes you';
-    return '${widget.fromName} owes ${widget.toName}';
+    if (widget.isYourAction) return context.l10n.settleUpYouOwe(widget.toName);
+    if (widget.isCreditor) return context.l10n.settleUpOwesYou(widget.fromName);
+    return context.l10n.settleUpOwes(widget.fromName, widget.toName);
   }
 
   @override
@@ -217,9 +218,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           shape: const StadiumBorder(),
                         ),
-                        child: const Text(
-                          'Mark paid',
-                          style: TextStyle(
+                        child: Text(
+                          context.l10n.settleUpMarkPaid,
+                          style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),

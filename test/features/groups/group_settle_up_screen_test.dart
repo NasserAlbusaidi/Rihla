@@ -15,6 +15,7 @@ import 'package:safar/features/groups/widgets/group_stats_grid.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// Widget tests for GroupSettleUpScreen — single-page wireframe layout.
 ///
@@ -148,7 +149,12 @@ Widget _wrap(
     ],
     child: MediaQuery(
       data: const MediaQueryData(disableAnimations: true),
-      child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: child,
+      ),
     ),
   );
 }

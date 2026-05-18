@@ -1,9 +1,10 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Summary chips displayed below the headline on Group Settle-Up.
 ///
@@ -29,11 +30,12 @@ class GroupSettlementSummaryCard extends StatelessWidget {
         _SettlementChip(
           key: GroupKeys.settleUpGroupTotalLabel,
           dotColor: context.colors.textPrimary,
-          label: '$transferCount transfer${transferCount == 1 ? '' : 's'}',
+          label: context.l10n.settleUpSummaryTransfers(transferCount),
         ),
         _SettlementChip(
-          label:
-              '${AppFormatters.formatCurrency(totalPending, currency)} total',
+          label: context.l10n.settleUpSummaryTotal(
+            AppFormatters.formatCurrency(totalPending, currency),
+          ),
           monogram: currency.isNotEmpty ? currency[0] : r'$',
         ),
       ],

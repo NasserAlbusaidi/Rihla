@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/groups/widgets/all_settled_state.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   group('AllSettledState', () {
@@ -12,6 +13,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const Scaffold(body: AllSettledState()),
         ),
       );
