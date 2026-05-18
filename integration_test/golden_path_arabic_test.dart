@@ -12,14 +12,17 @@
 //     -d <ios-sim-id> \
 //     --dart-define-from-file=config.test.json
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:safar/core/services/settings_service.dart';
+import 'package:safar/features/events/keys/event_keys.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
+import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/main.dart' as app;
 
 void main() {
@@ -36,8 +39,7 @@ void main() {
     });
   });
 
-  testWidgets('cold boot in ar → home → create group (no exceptions)',
-      (tester) async {
+  testWidgets('cold boot in ar → home → create group → ledger', (tester) async {
     _log('--- TEST START (locale=ar) ---');
     app.main();
 
@@ -101,14 +103,16 @@ void main() {
     expect(
       find.text('رحلة'),
       findsOneWidget,
-      reason: 'WordmarkLogo did not swap to Arabic glyph on home — '
+      reason:
+          'WordmarkLogo did not swap to Arabic glyph on home — '
           'locale chain (settings.languageCode -> localeProvider -> '
           'MaterialApp.locale) is broken',
     );
     expect(
       find.text('Rihla'),
       findsNothing,
-      reason: 'English wordmark still visible after Arabic boot — '
+      reason:
+          'English wordmark still visible after Arabic boot — '
           'WordmarkLogo locale branch did not flip',
     );
 
@@ -120,7 +124,8 @@ void main() {
     expect(
       profileTab,
       findsOneWidget,
-      reason: 'home_bottom_nav_profile missing on Home after skeleton clear (ar)',
+      reason:
+          'home_bottom_nav_profile missing on Home after skeleton clear (ar)',
     );
     await tester.tap(profileTab);
     await _settle(tester);
@@ -128,7 +133,8 @@ void main() {
     expect(
       find.text('التفضيلات'),
       findsOneWidget,
-      reason: 'Profile screen "Preferences" section not translated to ar — '
+      reason:
+          'Profile screen "Preferences" section not translated to ar — '
           'check localeProvider chain + ARB key profileSectionPreferences',
     );
 
@@ -144,8 +150,11 @@ void main() {
     await _settle(tester);
 
     final fab = find.byKey(const Key('home_create_group_fab'));
-    expect(fab, findsOneWidget,
-        reason: 'home_create_group_fab missing after skeleton clear (ar)');
+    expect(
+      fab,
+      findsOneWidget,
+      reason: 'home_create_group_fab missing after skeleton clear (ar)',
+    );
     await tester.ensureVisible(fab);
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
     await tester.tap(fab);
@@ -165,8 +174,191 @@ void main() {
     await _waitFor(
       tester,
       label: 'group_create_screen',
+      predicate: () => find.byKey(GroupKeys.createScreen).evaluate().isNotEmpty,
+    );
+    _log('CHECKPOINT: create-group screen open (ar)');
+
+    await tester.enterText(
+      find.byKey(GroupKeys.groupNameInput),
+      'QA Arabic Smoke Group',
+    );
+    await _settle(tester);
+
+    await tester.enterText(
+      find.byKey(GroupKeys.deviceNameInput),
+      'QA Arabic Bot',
+    );
+    await _settle(tester);
+
+    _log('CHECKPOINT: submitting create-group form (ar)');
+    await tester.tap(find.byKey(GroupKeys.createGroupButton));
+    await _settle(tester, timeout: const Duration(seconds: 20));
+
+    await _waitFor(
+      tester,
+      label: 'post-create share prompt or group detail',
       predicate: () =>
-          find.byKey(const Key('group_create_screen')).evaluate().isNotEmpty,
+          find.text('Done').evaluate().isNotEmpty ||
+          find.byKey(GroupKeys.detailScreen).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+
+    if (find.byKey(GroupKeys.detailScreen).evaluate().isEmpty) {
+      _log('CHECKPOINT: dismissing share prompt (ar)');
+      await tester.tap(find.text('Done').last);
+      await _settle(tester, timeout: const Duration(seconds: 12));
+    }
+
+    await _waitFor(
+      tester,
+      label: 'group_detail_screen',
+      predicate: () => find.byKey(GroupKeys.detailScreen).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    _log('CHECKPOINT: group detail rendered after create (ar)');
+
+    await _waitFor(
+      tester,
+      label: 'new-event action',
+      predicate: () =>
+          find.text('New event').evaluate().isNotEmpty ||
+          find.text('Create Event').evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    final newEventAction = find.text('New event');
+    if (newEventAction.evaluate().isNotEmpty) {
+      await tester.ensureVisible(newEventAction.first);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(newEventAction.first);
+    } else {
+      final createEventAction = find.text('Create Event').first;
+      await tester.ensureVisible(createEventAction);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(createEventAction);
+    }
+    await _settle(tester, timeout: const Duration(seconds: 12));
+
+    await _waitFor(
+      tester,
+      label: 'event_type_picker_screen',
+      predicate: () =>
+          find.byKey(EventKeys.eventTypePickerScreen).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    _log('CHECKPOINT: event type picker open (ar)');
+
+    final eventContinueButton = find.byKey(EventKeys.createEventButton);
+    await tester.ensureVisible(eventContinueButton);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(eventContinueButton);
+    await _settle(tester, timeout: const Duration(seconds: 12));
+
+    await _waitFor(
+      tester,
+      label: 'create_event_screen',
+      predicate: () =>
+          find.byKey(EventKeys.createEventScreen).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    _log('CHECKPOINT: create-event screen open (ar)');
+
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'QA Arabic Smoke Event',
+    );
+    await _settle(tester);
+
+    final submitEventButton = find.byKey(EventKeys.createEventButton);
+    await tester.ensureVisible(submitEventButton);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(submitEventButton);
+    await _settle(tester, timeout: const Duration(seconds: 20));
+
+    await _waitFor(
+      tester,
+      label: 'event hub or ledger',
+      predicate: () =>
+          find.byKey(EventKeys.screen).evaluate().isNotEmpty ||
+          find.byKey(LedgerKeys.screen).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+
+    if (find.byKey(LedgerKeys.screen).evaluate().isEmpty) {
+      _log('CHECKPOINT: opening ledger from event hub (ar)');
+      if (find.byKey(EventKeys.ledgerCard).evaluate().isEmpty) {
+        _log('CHECKPOINT: empty hub has no ledger card; adding first expense');
+        final addExpenseChip = find.byKey(EventKeys.addExpenseChip);
+        await tester.ensureVisible(addExpenseChip);
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.tap(addExpenseChip);
+        await _settle(tester, timeout: const Duration(seconds: 12));
+
+        await _waitFor(
+          tester,
+          label: 'ledger_add_expense_screen',
+          predicate: () =>
+              find.byKey(LedgerKeys.addExpenseScreen).evaluate().isNotEmpty,
+          timeout: const Duration(seconds: 30),
+        );
+
+        await tester.enterText(find.byType(TextField).first, '12.345');
+        await _settle(tester);
+
+        final addAction = find.widgetWithText(FilledButton, 'إضافة');
+        expect(
+          addAction,
+          findsOneWidget,
+          reason: 'Add expense action did not render in Arabic.',
+        );
+        await tester.tap(addAction);
+        await _settle(tester, timeout: const Duration(seconds: 20));
+
+        await _waitFor(
+          tester,
+          label: 'expense success dialog',
+          predicate: () => find.text('تم').evaluate().isNotEmpty,
+          timeout: const Duration(seconds: 30),
+        );
+        await tester.tap(find.widgetWithText(ElevatedButton, 'تم'));
+        await _settle(tester, timeout: const Duration(seconds: 12));
+
+        await _waitFor(
+          tester,
+          label: 'event hub ledger summary',
+          predicate: () =>
+              find.byKey(EventKeys.ledgerCard).evaluate().isNotEmpty,
+          timeout: const Duration(seconds: 30),
+        );
+      }
+
+      final ledgerCard = find.byKey(EventKeys.ledgerCard);
+      await tester.ensureVisible(ledgerCard);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(ledgerCard);
+      await _settle(tester, timeout: const Duration(seconds: 12));
+    }
+
+    await _waitFor(
+      tester,
+      label: 'ledger_screen',
+      predicate: () => find.byKey(LedgerKeys.screen).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    _log('CHECKPOINT: ledger rendered (ar)');
+
+    await _waitFor(
+      tester,
+      label: 'arabic ledger copy',
+      predicate: () =>
+          find.text('إضافة مصروف').evaluate().isNotEmpty ||
+          find.text('صفحة فارغة جاهزة للكتابة.').evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    expect(
+      find.text('إضافة مصروف'),
+      findsOneWidget,
+      reason:
+          'Ledger sticky CTA did not render the Arabic ledgerAddExpense key.',
     );
 
     _log('--- TEST PASSED (locale=ar) ---');
