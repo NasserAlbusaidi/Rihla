@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -154,7 +155,11 @@ class _Body extends StatelessWidget {
       settlements: settlements,
       participants: participants,
     );
-    final myBalance = _resolveMyBalance(balances, currentPid);
+    final myBalance = _resolveMyBalance(
+      balances,
+      currentPid,
+      context.l10n.ledgerYou,
+    );
     final eventTotal = expenses.fold<Decimal>(
       Decimal.zero,
       (sum, e) => sum + e.amount,
@@ -169,7 +174,7 @@ class _Body extends StatelessWidget {
             .map(
               (b) => LedgerRosterPerson(
                 participantId: b.participantId,
-                displayName: b.displayName ?? 'Member',
+                displayName: b.displayName ?? context.l10n.ledgerMemberFallback,
                 signedAmount: -b.netBalance,
               ),
             )
@@ -210,7 +215,11 @@ class _Body extends StatelessWidget {
       ...filteredExpenses.map(LedgerExpenseItem.new),
       ...filteredSettlements.map(LedgerSettlementItem.new),
     ]..sort((a, b) => b.date.compareTo(a.date));
-    final days = groupTimelineByDay(timeline, DateTime.now());
+    final days = groupTimelineByDay(
+      timeline,
+      DateTime.now(),
+      l10n: context.l10n,
+    );
     final expensePayerDisplayNames = <String, String>{
       for (final expense in expenses)
         expense.id: MemberNameResolver.format(
@@ -227,7 +236,7 @@ class _Body extends StatelessWidget {
           for (final settlement in settlements)
             settlement.id: (
               payerName: settlement.payerParticipantId == null
-                  ? settlement.payerName ?? 'Someone'
+                  ? settlement.payerName ?? context.l10n.ledgerSomeone
                   : MemberNameResolver.format(
                       MemberNameResolver.resolveEventScoped(
                         uid: settlement.payerParticipantId!,
@@ -237,7 +246,7 @@ class _Body extends StatelessWidget {
                       ),
                     ),
               recipientName: settlement.recipientParticipantId == null
-                  ? settlement.recipientName ?? 'someone'
+                  ? settlement.recipientName ?? context.l10n.ledgerSomeoneLower
                   : MemberNameResolver.format(
                       MemberNameResolver.resolveEventScoped(
                         uid: settlement.recipientParticipantId!,
@@ -292,7 +301,8 @@ class _Body extends StatelessWidget {
                 child: LedgerRosterStrip(
                   state: rosterState,
                   others: roster,
-                  currentUserDisplayName: myBalance.displayName ?? 'You',
+                  currentUserDisplayName:
+                      myBalance.displayName ?? context.l10n.ledgerYou,
                   onPersonTap: (p) => GoRouter.of(context).push(
                     '/group/$groupId/event/$eventId/ledger/'
                     'settle-up?memberId=${Uri.encodeComponent(p.participantId)}',
@@ -319,11 +329,11 @@ class _Body extends StatelessWidget {
                   ),
                   sliver: SliverToBoxAdapter(
                     child: hasExpenses
-                        ? const EmptyStateView(
+                        ? EmptyStateView(
                             icon: Iconsax.receipt_item,
-                            title: 'Nothing in this category',
+                            title: context.l10n.ledgerNothingInCategoryTitle,
                             message:
-                                'Try a different category, or switch back to All.',
+                                context.l10n.ledgerNothingInCategoryMessage,
                           )
                         : const _EmptyStateBody(),
                   ),
@@ -356,8 +366,8 @@ class _Body extends StatelessWidget {
                   child: Center(
                     child: Text(
                       isSettled
-                          ? '· END OF LEDGER · 0.000 ·'
-                          : '· END OF LEDGER ·',
+                          ? '· ${context.l10n.ledgerEndOfLedger} · 0.000 ·'
+                          : '· ${context.l10n.ledgerEndOfLedger} ·',
                       style: AppTypography.mono(
                         fontSize: 9,
                         color: context.colors.textSecondary,
@@ -386,12 +396,13 @@ class _Body extends StatelessWidget {
   static UserBalance _resolveMyBalance(
     List<UserBalance> balances,
     String? currentPid,
+    String fallbackDisplayName,
   ) {
     return balances.firstWhere(
       (b) => b.participantId == currentPid,
       orElse: () => UserBalance(
         participantId: currentPid ?? '',
-        displayName: 'You',
+        displayName: fallbackDisplayName,
         totalPaid: Decimal.zero,
         totalOwed: Decimal.zero,
         netBalance: Decimal.zero,
@@ -419,11 +430,14 @@ class _CoverHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final statusBar = MediaQuery.of(context).padding.top;
-    final dateRange = formatEventDateRange(event.startDate, event.endDate);
+    final dateRange = formatEventDateRange(
+      event.startDate,
+      event.endDate,
+      l10n: context.l10n,
+    );
     final captionParts = <String>[
       ?dateRange,
-      '$participantCount '
-          '${participantCount == 1 ? 'PERSON' : 'PEOPLE'}',
+      context.l10n.ledgerPeopleCount(participantCount),
     ];
 
     return SizedBox(
@@ -454,7 +468,7 @@ class _CoverHeader extends StatelessWidget {
               children: [
                 _PaperIconButton(
                   icon: Iconsax.arrow_left,
-                  tooltip: 'Back',
+                  tooltip: context.l10n.ledgerBackTooltip,
                   onTap: () {
                     HapticService.lightClick();
                     if (GoRouter.of(context).canPop()) {
@@ -466,7 +480,7 @@ class _CoverHeader extends StatelessWidget {
                   children: [
                     _PaperIconButton(
                       icon: Iconsax.search_normal,
-                      tooltip: 'Search expenses',
+                      tooltip: context.l10n.ledgerSearchExpensesTooltip,
                       onTap: () {
                         HapticService.lightClick();
                         onSearch();
@@ -475,7 +489,7 @@ class _CoverHeader extends StatelessWidget {
                     const SizedBox(width: 6),
                     _PaperIconButton(
                       icon: Iconsax.setting_2,
-                      tooltip: 'Event settings',
+                      tooltip: context.l10n.ledgerEventSettingsTooltip,
                       onTap: () {
                         HapticService.lightClick();
                         onSettings();
@@ -574,7 +588,7 @@ class _EmptyStateBody extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'An empty page, ready to be written.',
+            context.l10n.ledgerEmptyStateTitle,
             textAlign: TextAlign.center,
             style: AppTypography.display(
               fontSize: 22,
@@ -584,8 +598,7 @@ class _EmptyStateBody extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'The first OMR you log will set the trip total. '
-            "We'll split it equally between everyone on the trip.",
+            context.l10n.ledgerEmptyStateFirstExpenseBody,
             textAlign: TextAlign.center,
             style: AppTypography.sans(
               fontSize: 13,
@@ -710,9 +723,9 @@ class _ErrorState extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
-            title: 'Could not load event',
-            message: 'Check your connection and try again.',
-            actionLabel: 'Retry',
+            title: context.l10n.ledgerCouldNotLoadEventTitle,
+            message: context.l10n.ledgerConnectionRetryMessage,
+            actionLabel: context.l10n.commonRetry,
             onAction: onRetry,
           ),
         ),
@@ -732,9 +745,9 @@ class _DataErrorState extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
-            title: 'Couldn\'t load ledger',
-            message: 'Check your connection and try again.',
-            actionLabel: 'Reload',
+            title: context.l10n.ledgerCouldNotLoadLedgerTitle,
+            message: context.l10n.ledgerConnectionRetryMessage,
+            actionLabel: context.l10n.ledgerReload,
             onAction: onRetry,
           ),
         ),
@@ -753,9 +766,9 @@ class _NotFoundState extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: EmptyStateView(
             icon: Iconsax.box_remove,
-            title: 'Event not found',
-            message: 'It may have been deleted, or the link is incorrect.',
-            actionLabel: 'Go Home',
+            title: context.l10n.ledgerEventNotFoundTitle,
+            message: context.l10n.ledgerEventNotFoundMessage,
+            actionLabel: context.l10n.commonGoHome,
             onAction: () => GoRouter.of(context).go('/home'),
           ),
         ),
