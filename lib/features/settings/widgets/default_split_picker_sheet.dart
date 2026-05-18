@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/split_mode_display_name.dart';
 
 /// Bottom sheet for picking the default split mode used when adding a new
 /// expense.
@@ -28,6 +30,7 @@ class DefaultSplitPickerSheet extends ConsumerWidget {
     final current =
         ref.watch(settingsProvider.select((s) => s.defaultSplitMode));
     final colors = context.colors;
+    final l10n = context.l10n;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -37,12 +40,12 @@ class DefaultSplitPickerSheet extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Default split',
+              l10n.defaultSplitSheetTitle,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             SizedBox(height: context.spacing.space4),
             Text(
-              'Applied to new expenses. You can still change the split per expense.',
+              l10n.defaultSplitSheetSubtitle,
               style: TextStyle(color: colors.textSecondary, fontSize: 13),
             ),
             SizedBox(height: context.spacing.space16),
@@ -62,7 +65,7 @@ class DefaultSplitPickerSheet extends ConsumerWidget {
                   for (final mode in SplitMode.values)
                     RadioListTile<SplitMode>(
                       value: mode,
-                      title: Text(mode.label),
+                      title: Text(splitModeDisplayName(mode, l10n)),
                     ),
                 ],
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -46,6 +47,7 @@ class _ProfileQrSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     return SafeArea(
       top: false,
       child: Padding(
@@ -63,7 +65,7 @@ class _ProfileQrSheet extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'My QR',
+              l10n.qrSheetTitle,
               style: AppTypography.display(
                 fontSize: 22,
                 color: colors.textPrimary,
@@ -101,7 +103,7 @@ class _ProfileQrSheet extends StatelessWidget {
                   dataModuleShape: QrDataModuleShape.square,
                   color: colors.textPrimary,
                 ),
-                semanticsLabel: 'Profile QR code',
+                semanticsLabel: l10n.qrSemanticsLabel,
               ),
             ),
             const SizedBox(height: 20),
@@ -120,18 +122,20 @@ class _ProfileQrSheet extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: () async {
                   HapticService.lightClick();
+                  final messenger = ScaffoldMessenger.of(context);
+                  final handleCopied = l10n.qrHandleCopied;
                   await Clipboard.setData(ClipboardData(text: handle));
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Handle copied'),
-                      duration: Duration(seconds: 2),
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(handleCopied),
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 },
                 icon: Icon(Iconsax.copy, size: 16, color: colors.textPrimary),
                 label: Text(
-                  'Copy handle',
+                  l10n.qrCopyHandle,
                   style: AppTypography.sans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,

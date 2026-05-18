@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/app_settings_model.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -32,6 +33,7 @@ class ThemePickerSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(settingsProvider.select((s) => s.themeMode));
+    final l10n = context.l10n;
 
     return SafeArea(
       child: Padding(
@@ -40,7 +42,10 @@ class ThemePickerSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Theme', style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              l10n.themeSheetTitle,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             SizedBox(height: context.spacing.space16),
             RadioGroup<AppThemeMode>(
               groupValue: current,
@@ -55,11 +60,21 @@ class ThemePickerSheet extends ConsumerWidget {
                   _option(
                     context,
                     AppThemeMode.system,
-                    'System',
-                    'Follow device setting',
+                    l10n.themeSystem,
+                    l10n.themeSystemDescription,
                   ),
-                  _option(context, AppThemeMode.light, 'Light', 'Always light'),
-                  _option(context, AppThemeMode.dark, 'Dark', 'Always dark'),
+                  _option(
+                    context,
+                    AppThemeMode.light,
+                    l10n.themeLight,
+                    l10n.themeLightDescription,
+                  ),
+                  _option(
+                    context,
+                    AppThemeMode.dark,
+                    l10n.themeDark,
+                    l10n.themeDarkDescription,
+                  ),
                 ],
               ),
             ),

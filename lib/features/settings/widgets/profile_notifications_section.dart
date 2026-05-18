@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
@@ -50,7 +51,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
         ),
         const SizedBox(width: 6),
         Text(
-          'NOTIFICATIONS',
+          context.l10n.profileNotificationsSectionLabel,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -105,7 +106,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Push Notifications',
+                    context.l10n.profileNotificationsTitle,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -115,7 +116,7 @@ class ProfileNotificationsSection extends ConsumerWidget {
                   if (isPermDenied) ...[
                     const SizedBox(height: 2),
                     Text(
-                      'Enable in device Settings',
+                      context.l10n.profileNotificationsDisabledHint,
                       style: TextStyle(
                         fontSize: 12,
                         color: context.colors.textSecondary,

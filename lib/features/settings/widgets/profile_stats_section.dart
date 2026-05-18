@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/profile_keys.dart';
@@ -33,7 +34,7 @@ class ProfileStatsSection extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'YOUR JOURNEY',
+              context.l10n.profileSectionJourney,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -53,6 +54,7 @@ class ProfileStatsSection extends StatelessWidget {
   }
 
   List<Widget> _buildStatCards(BuildContext context) {
+    final l10n = context.l10n;
     if (stats.isLoading) {
       // Placeholder cards while loading
       return [
@@ -60,7 +62,7 @@ class ProfileStatsSection extends StatelessWidget {
           context: context,
           key: ProfileKeys.statGroups,
           value: '–',
-          label: 'Groups',
+          label: l10n.profileStatsGroups,
           accent: context.colors.primary,
         ),
         SizedBox(width: context.spacing.space8),
@@ -68,7 +70,7 @@ class ProfileStatsSection extends StatelessWidget {
           context: context,
           key: ProfileKeys.statEvents,
           value: '–',
-          label: 'Events',
+          label: l10n.profileStatsEvents,
           accent: context.colors.successText,
         ),
         SizedBox(width: context.spacing.space8),
@@ -76,7 +78,7 @@ class ProfileStatsSection extends StatelessWidget {
           context: context,
           key: ProfileKeys.statSpent,
           value: '–',
-          label: 'Spent',
+          label: l10n.profileStatsSpent,
           accent: context.colors.primaryDark,
         ),
       ];
@@ -91,7 +93,7 @@ class ProfileStatsSection extends StatelessWidget {
         context: context,
         key: ProfileKeys.statGroups,
         value: data.groupCount.toString(),
-        label: 'Groups',
+        label: l10n.profileStatsGroups,
         accent: context.colors.primary,
       ),
       SizedBox(width: context.spacing.space8),
@@ -99,7 +101,7 @@ class ProfileStatsSection extends StatelessWidget {
         context: context,
         key: ProfileKeys.statEvents,
         value: data.eventCount.toString(),
-        label: 'Events',
+        label: l10n.profileStatsEvents,
         accent: context.colors.successText,
       ),
       SizedBox(width: context.spacing.space8),
@@ -107,7 +109,7 @@ class ProfileStatsSection extends StatelessWidget {
         context: context,
         key: ProfileKeys.statSpent,
         value: AppFormatters.formatCurrency(data.totalSpent, 'OMR'),
-        label: 'Spent',
+        label: l10n.profileStatsSpent,
         accent: context.colors.primaryDark,
       ),
     ];

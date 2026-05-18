@@ -20,6 +20,7 @@ import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/home/widgets/balance_hero_card.dart';
 import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/features/home/widgets/journey_ticket_card.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -112,7 +113,12 @@ Widget _buildTestApp(
       sharedPreferencesProvider.overrideWithValue(prefs),
       ...overrides,
     ],
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      routerConfig: router,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 

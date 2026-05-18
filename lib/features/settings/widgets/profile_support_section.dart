@@ -3,8 +3,10 @@ import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_links.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../keys/profile_keys.dart';
 
 /// Support section widget for ProfileScreen.
@@ -43,7 +45,7 @@ class ProfileSupportSection extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(
-          'SUPPORT',
+          context.l10n.profileSupportSectionLabel,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -61,13 +63,14 @@ class ProfileSupportSection extends StatelessWidget {
       onTap: () async {
         HapticService.lightClick();
         final messenger = ScaffoldMessenger.of(context);
+        final paypalFailed = context.l10n.profileSupportPaypalFailed;
         final ok = await launchUrl(
           Uri.parse(AppLinks.paypalUrl),
           mode: LaunchMode.externalApplication,
         );
         if (!ok) {
           messenger.showSnackBar(
-            const SnackBar(content: Text("Couldn't open PayPal")),
+            SnackBar(content: Text(paypalFailed)),
           );
         }
       },
@@ -98,7 +101,7 @@ class ProfileSupportSection extends StatelessWidget {
             SizedBox(width: context.spacing.space12),
             Expanded(
               child: Text(
-                'Buy me a coffee',
+                context.l10n.profileSupportCoffeeTile,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -106,7 +109,7 @@ class ProfileSupportSection extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(
+            DirectionalIcon(
               Iconsax.arrow_right_3,
               size: 16,
               color: context.colors.textSecondary,

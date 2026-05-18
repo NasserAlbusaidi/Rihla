@@ -7,6 +7,7 @@ import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/settings/widgets/default_split_picker_sheet.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 Future<void> _pumpWithSheet(WidgetTester tester) async {
   final prefs = await SharedPreferences.getInstance();
@@ -15,6 +16,8 @@ Future<void> _pumpWithSheet(WidgetTester tester) async {
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (ctx) => Scaffold(
             body: Center(
@@ -69,6 +72,8 @@ void main() {
         overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Consumer(
             builder: (ctx, ref, _) {
               container = ProviderScope.containerOf(ctx);

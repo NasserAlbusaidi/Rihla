@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/settings/widgets/legal_links_sheet.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   // Stub the url_launcher platform channel so InkWell taps don't throw.
@@ -33,6 +34,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (ctx) => Scaffold(
             body: Center(
