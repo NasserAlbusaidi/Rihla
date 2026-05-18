@@ -699,6 +699,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorActionSave => 'حفظ';
 
   @override
+  String get editorCategoryPrompt => 'ما كان الغرض منه؟';
+
+  @override
   String get editorCategory => 'الفئة';
 
   @override
@@ -843,6 +846,67 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get editorCustomiseSplit => 'تخصيص التقسيم';
+
+  @override
+  String get editorSelectParticipants => 'اختيار المشاركين';
+
+  @override
+  String editorSelectedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count محدد',
+      many: '$count محددًا',
+      few: '$count محددين',
+      two: 'محددان',
+      one: 'محدد واحد',
+      zero: 'لا أحد محدد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get editorUnableToLoadParticipants => 'تعذّر تحميل المشاركين';
+
+  @override
+  String get editorNoOtherParticipants => 'لا يوجد مشاركون آخرون للاختيار';
+
+  @override
+  String get editorUnknownParticipant => 'غير معروف';
+
+  @override
+  String get editorShadowProfile => 'ملف ظل';
+
+  @override
+  String get editorPaidByLabel => 'دفع بواسطة';
+
+  @override
+  String editorParticipantMe(Object name) {
+    return '$name (أنا)';
+  }
+
+  @override
+  String get editorCouldNotLoadExpenseTitle => 'تعذّر تحميل المصروف';
+
+  @override
+  String get editorCouldNotLoadExpenseMessage =>
+      'حدث خطأ ما. حاول مرة أخرى بعد قليل.';
+
+  @override
+  String get editorExpenseNotFoundTitle => 'لم يتم العثور على المصروف';
+
+  @override
+  String get editorExpenseNotFoundMessage => 'ربما تم حذف هذا المصروف.';
+
+  @override
+  String get editorViewOnlyTitle => 'عرض فقط';
+
+  @override
+  String get editorViewOnlyMessage =>
+      'يمكن فقط للشخص الذي أضاف هذا المصروف تعديله أو حذفه.';
+
+  @override
+  String get editorExpenseDeleted => 'تم حذف المصروف';
 
   @override
   String get editorScopeGlobal => 'بالتساوي';

@@ -632,6 +632,7 @@
   "editorTitleNewExpense": "New expense",
   "editorActionAdd": "Add",
   "editorActionSave": "Save",
+  "editorCategoryPrompt": "What was this for?",
   "editorCategory": "Category",
   "editorPaidBy": "Paid by",
   "editorSplitBetween": "Split between",
@@ -713,6 +714,33 @@
   "editorDeleteThisExpense": "Delete this expense",
   "editorDeleteThisExpenseBody": "Removes for everyone in this event.",
   "editorCustomiseSplit": "Customise split",
+  "editorSelectParticipants": "SELECT PARTICIPANTS",
+  "editorSelectedCount": "{count, plural, =1{1 selected} other{{count} selected}}",
+  "@editorSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorUnableToLoadParticipants": "Unable to load participants",
+  "editorNoOtherParticipants": "No other participants to select",
+  "editorUnknownParticipant": "Unknown",
+  "editorShadowProfile": "Shadow Profile",
+  "editorPaidByLabel": "PAID BY",
+  "editorParticipantMe": "{name} (Me)",
+  "@editorParticipantMe": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "editorCouldNotLoadExpenseTitle": "Could not load expense",
+  "editorCouldNotLoadExpenseMessage": "Something went wrong. Try again in a moment.",
+  "editorExpenseNotFoundTitle": "Expense not found",
+  "editorExpenseNotFoundMessage": "This expense may have been deleted.",
+  "editorViewOnlyTitle": "View only",
+  "editorViewOnlyMessage": "Only the person who added this expense can edit or delete it.",
+  "editorExpenseDeleted": "Expense deleted",
   "editorScopeGlobal": "Equally",
   "editorScopeSubGroup": "Group split",
   "editorScopeCustom": "Custom",

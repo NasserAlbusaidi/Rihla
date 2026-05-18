@@ -4,18 +4,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/models/split_mode.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/expense_scope_display_name.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/split_mode_display_name.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
+import '../utils/localized_category_name.dart';
 import 'custom_split_sheet.dart';
 import 'split_scope_selector.dart';
 
@@ -152,12 +155,12 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     try {
       amount = Decimal.parse(_amount);
     } on FormatException {
-      _showSnack('Please enter a valid amount');
+      _showSnack(context.l10n.editorPleaseEnterValidAmount);
       return;
     }
 
     if (amount <= Decimal.zero) {
-      _showSnack('Amount must be greater than zero');
+      _showSnack(context.l10n.editorAmountGreaterThanZero);
       return;
     }
 
@@ -170,7 +173,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
     final payerId = _selectedPayerId ?? currentParticipant?.id;
     if (payerId == null) {
-      _showSnack('Could not identify your participant record.');
+      _showSnack(context.l10n.editorCouldNotIdentifyParticipant);
       return;
     }
 
@@ -197,8 +200,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       );
     } catch (e) {
       if (mounted) {
-        final verb = _isEdit ? 'update' : 'add';
-        _showSnack('Failed to $verb expense: $e');
+        _showSnack(
+          _isEdit
+              ? context.l10n.editorFailedToUpdateExpense(e.toString())
+              : context.l10n.editorFailedToAddExpense(e.toString()),
+        );
       }
     } finally {
       if (mounted) {
@@ -219,21 +225,19 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
           children: [
             Icon(Iconsax.trash, color: context.colors.error),
             const SizedBox(width: 12),
-            const Text('Delete expense?'),
+            Text(context.l10n.editorDeleteExpenseTitle),
           ],
         ),
-        content: const Text(
-          "Removing it updates everyone's balances for this event.",
-        ),
+        content: Text(context.l10n.editorDeleteExpenseBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
-              'Delete',
+              context.l10n.commonDelete,
               style: TextStyle(color: context.colors.error),
             ),
           ),
@@ -247,7 +251,9 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     try {
       await onDelete();
     } catch (e) {
-      if (mounted) _showSnack('Failed to delete expense: $e');
+      if (mounted) {
+        _showSnack(context.l10n.editorDeleteExpenseFailed(e.toString()));
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -307,22 +313,24 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     final amount = Decimal.tryParse(_amount) ?? Decimal.zero;
     final ids = _splitParticipantIds(event);
     if (ids.length < 2) {
-      _showSnack('Pick at least two people in "Split between" first.');
+      _showSnack(context.l10n.editorPickAtLeastTwoPeople);
       return;
     }
     final participants = [
       for (final id in ids)
         SplitParticipant(
           id: id,
-          name: event.participantNames[id] ?? 'Member',
-          role: id == _selectedPayerId ? 'Paid' : null,
+          name: event.participantNames[id] ?? context.l10n.editorMemberFallback,
+          role: id == _selectedPayerId ? context.l10n.editorPaidRole : null,
         ),
     ];
 
     final result = await showCustomSplitSheet(
       context,
       title: _noteController.text.trim().isEmpty
-          ? (_isEdit ? 'Edit expense' : 'New expense')
+          ? (_isEdit
+                ? context.l10n.editorTitleEditExpense
+                : context.l10n.editorTitleNewExpense)
           : _noteController.text.trim(),
       total: amount,
       currency: _tripCurrency,
@@ -381,8 +389,12 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
         child: Column(
           children: [
             _ExpenseTopBar(
-              title: _isEdit ? 'Edit expense' : 'Add expense',
-              actionLabel: _isEdit ? 'Save' : 'Add',
+              title: _isEdit
+                  ? context.l10n.editorTitleEditExpense
+                  : context.l10n.editorTitleAddExpense,
+              actionLabel: _isEdit
+                  ? context.l10n.editorActionSave
+                  : context.l10n.editorActionAdd,
               isLoading: _isSubmitting,
               onClose: () {
                 HapticService.lightClick();
@@ -405,7 +417,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                     ),
                     _DescriptionField(controller: _noteController),
                     _Section(
-                      title: 'Category',
+                      title: context.l10n.editorCategory,
                       child: _CategoryStrip(
                         categoriesAsync: categoriesAsync,
                         selectedCategoryId: _selectedCategoryId,
@@ -417,15 +429,15 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                     ),
                     if (event != null) ...[
                       _Section(
-                        title: 'Paid by',
+                        title: context.l10n.editorPaidBy,
                         child: _PaidByCard(
                           event: event,
                           payerId: _selectedPayerId ?? currentParticipant?.id,
                         ),
                       ),
                       _Section(
-                        title: 'Split between',
-                        action: 'Customise',
+                        title: context.l10n.editorSplitBetween,
+                        action: context.l10n.editorCustomise,
                         onAction: () => _openCustomiseSheet(event),
                         child: _SplitPreviewCard(
                           event: event,
@@ -437,10 +449,10 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         ),
                       ),
                       _Section(
-                        title: 'How',
+                        title: context.l10n.editorHow,
                         action: _splitParticipantIds(event).length < 2
                             ? null
-                            : 'Customise',
+                            : context.l10n.editorCustomise,
                         onAction: _splitParticipantIds(event).length < 2
                             ? null
                             : () => _openSplitModeSheet(event),
@@ -451,7 +463,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         ),
                       ),
                       _Section(
-                        title: 'Where',
+                        title: context.l10n.editorWhere,
                         child: _WhereCard(event: event),
                       ),
                     ] else
@@ -515,9 +527,9 @@ class _ExpenseTopBar extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: IconButton(
-                tooltip: 'Close',
+                tooltip: context.l10n.commonClose,
                 icon: const Icon(Iconsax.close_circle, size: 20),
                 color: context.colors.textPrimary,
                 onPressed: onClose,
@@ -532,7 +544,7 @@ class _ExpenseTopBar extends StatelessWidget {
               ),
             ),
             Align(
-              alignment: Alignment.centerRight,
+              alignment: AlignmentDirectional.centerEnd,
               child: FilledButton(
                 onPressed: isLoading ? null : onAction,
                 style: FilledButton.styleFrom(
@@ -599,7 +611,7 @@ class _AmountHero extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'AMOUNT · $currency',
+                context.l10n.editorAmountLabel(currency),
                 style: AppTypography.mono(
                   fontSize: 10,
                   letterSpacing: 1.6,
@@ -699,8 +711,8 @@ class _DescriptionField extends StatelessWidget {
         controller: controller,
         textInputAction: TextInputAction.done,
         decoration: InputDecoration(
-          labelText: 'Description',
-          hintText: 'What was it for?',
+          labelText: context.l10n.editorDescriptionLabel,
+          hintText: context.l10n.editorDescriptionHint,
           filled: true,
           fillColor: context.colors.scaffoldBackground,
           enabledBorder: UnderlineInputBorder(
@@ -800,7 +812,7 @@ class _CategoryStrip extends StatelessWidget {
       error: (_, _) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Text(
-          'Could not load categories.',
+          context.l10n.editorCouldNotLoadCategories,
           style: TextStyle(color: context.colors.errorText),
         ),
       ),
@@ -839,6 +851,11 @@ class _CategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _categoryColor(context, category.name);
+    final displayName = localizedCategoryName(
+      id: category.id,
+      fallbackName: category.name,
+      l10n: context.l10n,
+    );
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
@@ -874,7 +891,7 @@ class _CategoryChip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              category.name,
+              displayName,
               style: AppTypography.sans(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -900,14 +917,15 @@ class _PaidByCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectivePayerId = payerId ?? event.participantIds.firstOrNull;
     final payerName =
-        event.participantNames[effectivePayerId] ?? 'Selected payer';
+        event.participantNames[effectivePayerId] ??
+        context.l10n.editorSelectedPayer;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: _CardShell(
         child: _InfoRow(
           leading: _Avatar(name: payerName, size: 32),
           title: payerName,
-          subtitle: 'Selected · paid the full amount',
+          subtitle: context.l10n.editorSelectedPaidFullAmount,
           trailing: Container(
             width: 22,
             height: 22,
@@ -969,6 +987,7 @@ class _SplitPreviewCard extends StatelessWidget {
             scaleOnInfinitePrecision: 3,
           );
     final colors = context.colors;
+    final l10n = context.l10n;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -987,7 +1006,10 @@ class _SplitPreviewCard extends StatelessWidget {
                     runSpacing: 2,
                     children: [
                       Text(
-                        '${_scopeLabel(scope)} · $count way${count == 1 ? '' : 's'}',
+                        l10n.editorSplitSummary(
+                          expenseScopeDisplayName(scope, l10n),
+                          count,
+                        ),
                         style: AppTypography.sans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -995,7 +1017,9 @@ class _SplitPreviewCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${AppFormatters.formatCurrency(each, currency)} each',
+                        l10n.editorEachAmount(
+                          AppFormatters.formatCurrency(each, currency),
+                        ),
                         style: AppTypography.sans(
                           fontSize: 12,
                           color: colors.textSecondary,
@@ -1007,7 +1031,7 @@ class _SplitPreviewCard extends StatelessWidget {
                 ),
                 if (scope == ExpenseScope.global)
                   Text(
-                    'EVENT DEFAULT',
+                    l10n.editorEventDefault,
                     style: AppTypography.mono(
                       fontSize: 9,
                       letterSpacing: 1.6,
@@ -1022,7 +1046,7 @@ class _SplitPreviewCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
-                  'Tap Customise to pick who splits this.',
+                  l10n.editorTapCustomiseSplit,
                   style: AppTypography.sans(
                     fontSize: 12,
                     color: colors.textSecondary,
@@ -1040,7 +1064,8 @@ class _SplitPreviewCard extends StatelessWidget {
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final id = ids[index];
-                    final name = event.participantNames[id] ?? 'Member';
+                    final name =
+                        event.participantNames[id] ?? l10n.editorMemberFallback;
                     final firstName = name.split(' ').first;
                     return _ParticipantSplitTile(
                       name: name,
@@ -1056,15 +1081,6 @@ class _SplitPreviewCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _scopeLabel(ExpenseScope scope) {
-    return switch (scope) {
-      ExpenseScope.global => 'Equally',
-      ExpenseScope.subGroup => 'Group split',
-      ExpenseScope.custom => 'Custom',
-      ExpenseScope.personal => 'Personal',
-    };
   }
 }
 
@@ -1140,14 +1156,14 @@ class _SplitModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final disabled = eligibleCount < 2;
+    final l10n = context.l10n;
     final subtitle = disabled
-        ? 'Pick at least two people to split.'
+        ? l10n.editorPickAtLeastTwoToSplit
         : switch (mode) {
-            SplitMode.equally =>
-              'Split evenly across $eligibleCount way${eligibleCount == 1 ? '' : 's'}.',
-            SplitMode.shares => 'Weighted by shares.',
-            SplitMode.exact => 'Per-person amounts.',
-            SplitMode.percent => 'Per-person percents.',
+            SplitMode.equally => l10n.editorSplitEvenly(eligibleCount),
+            SplitMode.shares => l10n.editorWeightedByShares,
+            SplitMode.exact => l10n.editorPerPersonAmounts,
+            SplitMode.percent => l10n.editorPerPersonPercents,
           };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1175,7 +1191,7 @@ class _SplitModeCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    mode.label,
+                    splitModeDisplayName(mode, l10n),
                     style: AppTypography.sans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1213,9 +1229,13 @@ class _WhereCard extends StatelessWidget {
       child: _CardShell(
         child: Column(
           children: [
-            _InfoRow(title: 'Event', trailingText: event.name, dense: true),
             _InfoRow(
-              title: 'Date',
+              title: context.l10n.editorEvent,
+              trailingText: event.name,
+              dense: true,
+            ),
+            _InfoRow(
+              title: context.l10n.editorDate,
               trailingText: AppFormatters.formatShortMonthDay(
                 date,
                 Localizations.localeOf(context).toLanguageTag(),
@@ -1254,7 +1274,7 @@ class _DeleteCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Delete this expense',
+                    context.l10n.editorDeleteThisExpense,
                     style: AppTypography.sans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1263,7 +1283,7 @@ class _DeleteCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Removes for everyone in this event.',
+                    context.l10n.editorDeleteThisExpenseBody,
                     style: AppTypography.sans(
                       fontSize: 12,
                       color: colors.textSecondary,
@@ -1276,7 +1296,7 @@ class _DeleteCard extends StatelessWidget {
             FilledButton.icon(
               onPressed: enabled ? onDelete : null,
               icon: const Icon(Iconsax.trash, size: 14),
-              label: const Text('Delete'),
+              label: Text(context.l10n.commonDelete),
               style: FilledButton.styleFrom(
                 backgroundColor: colors.error,
                 foregroundColor: Colors.white,
@@ -1513,7 +1533,7 @@ class _SplitCustomiseSheetState extends State<_SplitCustomiseSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Customise split',
+                        context.l10n.editorCustomiseSplit,
                         style: AppTypography.sans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -1541,7 +1561,7 @@ class _SplitCustomiseSheetState extends State<_SplitCustomiseSheet> {
                           ),
                         ),
                       ),
-                      child: const Text('Apply'),
+                      child: Text(context.l10n.commonApply),
                     ),
                   ],
                 ),

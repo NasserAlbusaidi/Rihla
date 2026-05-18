@@ -1274,6 +1274,12 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get editorActionSave;
 
+  /// No description provided for @editorCategoryPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What was this for?'**
+  String get editorCategoryPrompt;
+
   /// No description provided for @editorCategory.
   ///
   /// In en, this message translates to:
@@ -1495,6 +1501,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Customise split'**
   String get editorCustomiseSplit;
+
+  /// No description provided for @editorSelectParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'SELECT PARTICIPANTS'**
+  String get editorSelectParticipants;
+
+  /// No description provided for @editorSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 selected} other{{count} selected}}'**
+  String editorSelectedCount(int count);
+
+  /// No description provided for @editorUnableToLoadParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load participants'**
+  String get editorUnableToLoadParticipants;
+
+  /// No description provided for @editorNoOtherParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'No other participants to select'**
+  String get editorNoOtherParticipants;
+
+  /// No description provided for @editorUnknownParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get editorUnknownParticipant;
+
+  /// No description provided for @editorShadowProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Shadow Profile'**
+  String get editorShadowProfile;
+
+  /// No description provided for @editorPaidByLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PAID BY'**
+  String get editorPaidByLabel;
+
+  /// No description provided for @editorParticipantMe.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (Me)'**
+  String editorParticipantMe(Object name);
+
+  /// No description provided for @editorCouldNotLoadExpenseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load expense'**
+  String get editorCouldNotLoadExpenseTitle;
+
+  /// No description provided for @editorCouldNotLoadExpenseMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Try again in a moment.'**
+  String get editorCouldNotLoadExpenseMessage;
+
+  /// No description provided for @editorExpenseNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense not found'**
+  String get editorExpenseNotFoundTitle;
+
+  /// No description provided for @editorExpenseNotFoundMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This expense may have been deleted.'**
+  String get editorExpenseNotFoundMessage;
+
+  /// No description provided for @editorViewOnlyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View only'**
+  String get editorViewOnlyTitle;
+
+  /// No description provided for @editorViewOnlyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the person who added this expense can edit or delete it.'**
+  String get editorViewOnlyMessage;
+
+  /// No description provided for @editorExpenseDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense deleted'**
+  String get editorExpenseDeleted;
 
   /// No description provided for @editorScopeGlobal.
   ///

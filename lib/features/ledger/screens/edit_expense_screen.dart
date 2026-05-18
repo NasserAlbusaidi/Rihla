@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -40,30 +41,28 @@ class EditExpenseScreen extends ConsumerWidget {
         backgroundColor: context.colors.scaffoldBackground,
         body: SafeArea(child: SkeletonLoader.expenseList()),
       ),
-      error: (_, _) => const _ErrorScaffold(
-        title: 'Could not load expense',
-        message: 'Something went wrong. Try again in a moment.',
+      error: (_, _) => _ErrorScaffold(
+        title: context.l10n.editorCouldNotLoadExpenseTitle,
+        message: context.l10n.editorCouldNotLoadExpenseMessage,
       ),
       data: (expenses) {
-        final expense = expenses
-            .where((e) => e.id == expenseId)
-            .firstOrNull;
+        final expense = expenses.where((e) => e.id == expenseId).firstOrNull;
         if (expense == null) {
-          return const _ErrorScaffold(
-            title: 'Expense not found',
-            message: 'This expense may have been deleted.',
+          return _ErrorScaffold(
+            title: context.l10n.editorExpenseNotFoundTitle,
+            message: context.l10n.editorExpenseNotFoundMessage,
           );
         }
         final currentUid = ref.watch(currentUserIdProvider);
         // B1: only the original creator can edit/delete; legacy records with
         // empty createdBy are still editable (no enforcement to migrate from).
-        final isCreator = expense.createdBy.isEmpty ||
+        final isCreator =
+            expense.createdBy.isEmpty ||
             (currentUid != null && currentUid == expense.createdBy);
         if (!isCreator) {
-          return const _ErrorScaffold(
-            title: 'View only',
-            message:
-                'Only the person who added this expense can edit or delete it.',
+          return _ErrorScaffold(
+            title: context.l10n.editorViewOnlyTitle,
+            message: context.l10n.editorViewOnlyMessage,
           );
         }
         return KeyedSubtree(
@@ -86,8 +85,12 @@ class EditExpenseScreen extends ConsumerWidget {
     Expense original,
     ExpenseEditorPayload payload,
   ) async {
-    final splitChanged = payload.splitMode != (original.splitMode ?? SplitMode.equally) ||
-        !_distributionEquals(payload.splitDistribution, original.splitDistribution);
+    final splitChanged =
+        payload.splitMode != (original.splitMode ?? SplitMode.equally) ||
+        !_distributionEquals(
+          payload.splitDistribution,
+          original.splitDistribution,
+        );
     final goingEqual = splitChanged && payload.splitMode == SplitMode.equally;
 
     await ref
@@ -105,8 +108,9 @@ class EditExpenseScreen extends ConsumerWidget {
               ? payload.customSplitParticipants
               : null,
           splitMode: splitChanged && !goingEqual ? payload.splitMode : null,
-          splitDistribution:
-              splitChanged && !goingEqual ? payload.splitDistribution : null,
+          splitDistribution: splitChanged && !goingEqual
+              ? payload.splitDistribution
+              : null,
           clearSplit: goingEqual,
           categoryId: payload.categoryId != original.categoryId
               ? payload.categoryId
@@ -117,19 +121,14 @@ class EditExpenseScreen extends ConsumerWidget {
               : null,
         );
 
-    ref.invalidate(
-      eventExpensesProvider((groupId: groupId, eventId: eventId)),
-    );
+    ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
     HapticService.success();
 
     final ctx = ref.context;
     if (ctx.mounted) ctx.pop();
   }
 
-  bool _distributionEquals(
-    Map<String, dynamic>? a,
-    Map<String, dynamic>? b,
-  ) {
+  bool _distributionEquals(Map<String, dynamic>? a, Map<String, dynamic>? b) {
     if (a == null && b == null) return true;
     if (a == null || b == null) return false;
     if (a.length != b.length) return false;
@@ -152,14 +151,12 @@ class EditExpenseScreen extends ConsumerWidget {
           eventId: eventId,
           expenseId: expense.id,
         );
-    ref.invalidate(
-      eventExpensesProvider((groupId: groupId, eventId: eventId)),
-    );
+    ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
     HapticService.success();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Expense deleted'),
+          content: Text(context.l10n.editorExpenseDeleted),
           backgroundColor: context.colors.success,
         ),
       );
@@ -184,7 +181,7 @@ class _ErrorScaffold extends StatelessWidget {
           icon: Iconsax.warning_2,
           title: title,
           message: message,
-          actionLabel: 'Go back',
+          actionLabel: context.l10n.commonBack,
           onAction: () => context.pop(),
           iconColor: context.colors.textSecondary,
         ),

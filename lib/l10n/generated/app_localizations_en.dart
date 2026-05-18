@@ -676,6 +676,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorActionSave => 'Save';
 
   @override
+  String get editorCategoryPrompt => 'What was this for?';
+
+  @override
   String get editorCategory => 'Category';
 
   @override
@@ -817,6 +820,64 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editorCustomiseSplit => 'Customise split';
+
+  @override
+  String get editorSelectParticipants => 'SELECT PARTICIPANTS';
+
+  @override
+  String editorSelectedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count selected',
+      one: '1 selected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get editorUnableToLoadParticipants => 'Unable to load participants';
+
+  @override
+  String get editorNoOtherParticipants => 'No other participants to select';
+
+  @override
+  String get editorUnknownParticipant => 'Unknown';
+
+  @override
+  String get editorShadowProfile => 'Shadow Profile';
+
+  @override
+  String get editorPaidByLabel => 'PAID BY';
+
+  @override
+  String editorParticipantMe(Object name) {
+    return '$name (Me)';
+  }
+
+  @override
+  String get editorCouldNotLoadExpenseTitle => 'Could not load expense';
+
+  @override
+  String get editorCouldNotLoadExpenseMessage =>
+      'Something went wrong. Try again in a moment.';
+
+  @override
+  String get editorExpenseNotFoundTitle => 'Expense not found';
+
+  @override
+  String get editorExpenseNotFoundMessage =>
+      'This expense may have been deleted.';
+
+  @override
+  String get editorViewOnlyTitle => 'View only';
+
+  @override
+  String get editorViewOnlyMessage =>
+      'Only the person who added this expense can edit or delete it.';
+
+  @override
+  String get editorExpenseDeleted => 'Expense deleted';
 
   @override
   String get editorScopeGlobal => 'Equally';

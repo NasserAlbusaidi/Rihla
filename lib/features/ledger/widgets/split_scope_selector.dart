@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../core/theme/error_widgets.dart';
+
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/error_widgets.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/expense_scope_display_name.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../trip/models/trip_model.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Derive participants directly from event data (logistics provider removed in Phase 39).
 List<Participant> _eventParticipants(Event event) {
@@ -61,19 +64,28 @@ class SplitScopeSelector extends ConsumerWidget {
           child: Row(
             children: [
               _ScopeTab(
-                label: 'Global',
+                label: expenseScopeDisplayName(
+                  ExpenseScope.global,
+                  context.l10n,
+                ),
                 icon: Iconsax.global,
                 isSelected: scope == ExpenseScope.global,
                 onTap: () => _handleScopeChange(ExpenseScope.global),
               ),
               _ScopeTab(
-                label: 'Custom',
+                label: expenseScopeDisplayName(
+                  ExpenseScope.custom,
+                  context.l10n,
+                ),
                 icon: Iconsax.people,
                 isSelected: scope == ExpenseScope.custom,
                 onTap: () => _handleScopeChange(ExpenseScope.custom),
               ),
               _ScopeTab(
-                label: 'Personal',
+                label: expenseScopeDisplayName(
+                  ExpenseScope.personal,
+                  context.l10n,
+                ),
                 icon: Iconsax.user,
                 isSelected: scope == ExpenseScope.personal,
                 onTap: () => _handleScopeChange(ExpenseScope.personal),
@@ -184,7 +196,7 @@ class _CustomParticipantSelector extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'SELECT PARTICIPANTS',
+              context.l10n.editorSelectParticipants,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
@@ -193,7 +205,7 @@ class _CustomParticipantSelector extends ConsumerWidget {
               ),
             ),
             Text(
-              '${customSplitParticipants.length} selected',
+              context.l10n.editorSelectedCount(customSplitParticipants.length),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -214,17 +226,18 @@ class _CustomParticipantSelector extends ConsumerWidget {
           constraints: const BoxConstraints(maxHeight: 200),
           child: participantsAsync.when(
             loading: SkeletonLoader.card,
-            error: (e, _) =>
-                const InlineErrorWidget(message: 'Unable to load participants'),
+            error: (e, _) => InlineErrorWidget(
+              message: context.l10n.editorUnableToLoadParticipants,
+            ),
             data: (participants) {
               final otherParticipants = participants
                   .where((p) => p.id != currentUid)
                   .toList();
 
               if (otherParticipants.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No other participants to select'),
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(context.l10n.editorNoOtherParticipants),
                 );
               }
 
@@ -287,7 +300,9 @@ class _ParticipantTile extends StatelessWidget {
         ),
         child: Center(
           child: Text(
-            (participant.displayName ?? 'U')[0].toUpperCase(),
+            (participant.displayName ??
+                    context.l10n.editorUnknownParticipant)[0]
+                .toUpperCase(),
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: isSelected
@@ -298,7 +313,7 @@ class _ParticipantTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        participant.displayName ?? 'Unknown',
+        participant.displayName ?? context.l10n.editorUnknownParticipant,
         style: TextStyle(
           fontSize: 14,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -307,7 +322,7 @@ class _ParticipantTile extends StatelessWidget {
       ),
       subtitle: participant.isShadow
           ? Text(
-              'Shadow Profile',
+              context.l10n.editorShadowProfile,
               style: TextStyle(
                 fontSize: 11,
                 color: context.colors.textSecondary,
@@ -355,7 +370,7 @@ class _PayerSelector extends ConsumerWidget {
       children: [
         Text(
           key: LedgerKeys.payerSectionLabel,
-          'PAID BY',
+          context.l10n.editorPaidByLabel,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w900,
@@ -390,7 +405,7 @@ class _PayerSelector extends ConsumerWidget {
                         child: Text(
                           (p.displayName?.isNotEmpty == true
                                   ? p.displayName![0]
-                                  : 'U')
+                                  : context.l10n.editorUnknownParticipant[0])
                               .toUpperCase(),
                           style: TextStyle(
                             fontSize: 12,
@@ -403,8 +418,12 @@ class _PayerSelector extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           isMe
-                              ? '${p.displayName ?? 'Unknown'} (Me)'
-                              : p.displayName ?? 'Unknown',
+                              ? context.l10n.editorParticipantMe(
+                                  p.displayName ??
+                                      context.l10n.editorUnknownParticipant,
+                                )
+                              : p.displayName ??
+                                    context.l10n.editorUnknownParticipant,
                           style: TextStyle(
                             fontWeight: isMe
                                 ? FontWeight.bold
