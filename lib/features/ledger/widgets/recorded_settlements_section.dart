@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/settlement_model.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Collapsible history section showing recorded/completed settlements.
 class RecordedSettlementsSection extends StatelessWidget {
@@ -27,7 +28,7 @@ class RecordedSettlementsSection extends StatelessWidget {
         tilePadding: EdgeInsets.zero,
         childrenPadding: EdgeInsets.zero,
         title: Text(
-          'RECORDED HISTORY',
+          context.l10n.ledgerRecordedHistory,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -63,11 +64,17 @@ class RecordedSettlementsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryItem(BuildContext context, Settlement settlement, bool showDivider) {
+  Widget _buildHistoryItem(
+    BuildContext context,
+    Settlement settlement,
+    bool showDivider,
+  ) {
     final payerName =
-        participantNames[settlement.payerParticipantId] ?? 'Unknown';
+        participantNames[settlement.payerParticipantId] ??
+        context.l10n.ledgerUnknown;
     final recipientName =
-        participantNames[settlement.recipientParticipantId] ?? 'Unknown';
+        participantNames[settlement.recipientParticipantId] ??
+        context.l10n.ledgerUnknown;
     return Column(
       children: [
         Padding(
@@ -95,7 +102,7 @@ class RecordedSettlementsSection extends StatelessWidget {
                           color: context.colors.textPrimary,
                         ),
                       ),
-                      const TextSpan(text: ' paid '),
+                      TextSpan(text: ' ${context.l10n.ledgerPaidConnector} '),
                       TextSpan(
                         text: recipientName,
                         style: TextStyle(

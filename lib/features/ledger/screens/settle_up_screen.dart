@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
@@ -71,10 +72,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               Expanded(
                 child: EmptyStateView(
                   icon: Iconsax.warning_2,
-                  title: 'This event no longer exists',
-                  message:
-                      'It may have been deleted. Tap below to go back to your groups.',
-                  actionLabel: 'Go Home',
+                  title: context.l10n.settleUpEventMissingTitle,
+                  message: context.l10n.settleUpEventMissingMessage,
+                  actionLabel: context.l10n.commonGoHome,
                   onAction: () => context.go('/home'),
                   iconColor: context.colors.textSecondary,
                 ),
@@ -184,7 +184,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          "Couldn't load balances.",
+                          context.l10n.settleUpCouldNotLoadBalances,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -195,7 +195,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                         TextButton(
                           onPressed: () =>
                               ref.invalidate(eventExpensesProvider(eventRef)),
-                          child: const Text('Retry'),
+                          child: Text(context.l10n.commonRetry),
                         ),
                       ],
                     ),
@@ -238,7 +238,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
 
     if (editedAmount <= Decimal.zero) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Amount must be greater than zero')),
+        SnackBar(content: Text(context.l10n.settleUpAmountGreaterThanZero)),
       );
       return;
     }
@@ -246,8 +246,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Amount cannot exceed the outstanding balance of '
-            '${AppFormatters.formatCurrency(suggestedAmount, currency)}',
+            context.l10n.settleUpAmountExceedsOutstanding(
+              AppFormatters.formatCurrency(suggestedAmount, currency),
+            ),
           ),
         ),
       );
@@ -302,7 +303,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Settlement recorded.'),
+            content: Text(context.l10n.settleUpRecorded),
             backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -315,9 +316,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              "Couldn't record settlement. Check your connection and try again.",
-            ),
+            content: Text(context.l10n.settleUpRecordFailed),
             backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -346,9 +345,9 @@ class _SettleUpTopBar extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: IconButton(
-                tooltip: 'Back',
+                tooltip: context.l10n.commonBack,
                 icon: const Icon(Iconsax.arrow_left_2, size: 20),
                 color: context.colors.textPrimary,
                 onPressed: () {
@@ -361,7 +360,7 @@ class _SettleUpTopBar extends StatelessWidget {
               ),
             ),
             Text(
-              'Settle Up',
+              context.l10n.settleUpTitle,
               style: TextStyle(
                 color: context.colors.textPrimary,
                 fontSize: 16,

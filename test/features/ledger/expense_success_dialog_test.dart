@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/widgets/expense_success_dialog.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   Expense makeExpense() {
@@ -22,6 +23,8 @@ void main() {
   Widget wrap(Widget child, {Size size = const Size(360, 520)}) {
     return MaterialApp(
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: MediaQuery(
         data: MediaQueryData(size: size),
         child: Scaffold(body: Center(child: child)),

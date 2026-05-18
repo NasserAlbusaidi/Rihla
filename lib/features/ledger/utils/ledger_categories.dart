@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/tokens/color_tokens.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Maps a free-text expense category name onto one of six stable buckets.
 ///
@@ -20,23 +21,25 @@ int ledgerCategoryBucket(String? name) {
   return 6;
 }
 
-String ledgerCategoryName(int bucket) => switch (bucket) {
-  1 => 'Food',
-  2 => 'Lodging',
-  3 => 'Transit',
-  4 => 'Groceries',
-  5 => 'Activities',
-  _ => 'Other',
-};
+String ledgerCategoryName(int bucket, AppLocalizations l10n) =>
+    switch (bucket) {
+      1 => l10n.ledgerBucketFood,
+      2 => l10n.ledgerBucketLodging,
+      3 => l10n.ledgerBucketTransit,
+      4 => l10n.ledgerBucketGroceries,
+      5 => l10n.ledgerBucketActivities,
+      _ => l10n.ledgerBucketOther,
+    };
 
-Color ledgerCategoryColor(AppColorTokens colors, int bucket) => switch (bucket) {
-  1 => colors.cat1,
-  2 => colors.cat2,
-  3 => colors.cat3,
-  4 => colors.cat4,
-  5 => colors.cat5,
-  _ => colors.cat6,
-};
+Color ledgerCategoryColor(AppColorTokens colors, int bucket) =>
+    switch (bucket) {
+      1 => colors.cat1,
+      2 => colors.cat2,
+      3 => colors.cat3,
+      4 => colors.cat4,
+      5 => colors.cat5,
+      _ => colors.cat6,
+    };
 
 IconData ledgerCategoryIcon(int bucket) => switch (bucket) {
   1 => Iconsax.coffee,

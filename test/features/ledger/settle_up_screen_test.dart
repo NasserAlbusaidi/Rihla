@@ -13,6 +13,7 @@ import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   const groupId = 'group-1';
@@ -63,6 +64,8 @@ void main() {
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: const SettleUpScreen(groupId: groupId, eventId: eventId),
       ),
     );

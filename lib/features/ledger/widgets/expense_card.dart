@@ -2,9 +2,10 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Three-line expense card for the Ledger timeline.
 ///
@@ -46,9 +47,15 @@ class ExpenseCard extends StatelessWidget {
     final absStr = userBalance.abs().toStringAsFixed(decimals);
     final cmp = userBalance.compareTo(Decimal.zero);
     return switch (cmp) {
-      > 0 => ('Owed to you $currency $absStr', context.colors.successText),
-      < 0 => ('You owe $currency $absStr', context.colors.errorText),
-      _ => ('Settled', context.colors.textSecondary),
+      > 0 => (
+        context.l10n.ledgerOwedToYou(currency, absStr),
+        context.colors.successText,
+      ),
+      < 0 => (
+        context.l10n.ledgerYouOweAmount(currency, absStr),
+        context.colors.errorText,
+      ),
+      _ => (context.l10n.ledgerSettled, context.colors.textSecondary),
     };
   }
 
@@ -58,11 +65,14 @@ class ExpenseCard extends StatelessWidget {
     final decimals = config?.decimals ?? 3;
     final amountStr = expense.amount.toStringAsFixed(decimals);
     final dateStr = AppFormatters.formatRelativeDate(expense.createdAt);
-    final payerLabel = expense.payerName ?? 'Unknown';
+    final l10n = context.l10n;
+    final payerLabel = expense.payerName ?? l10n.ledgerUnknown;
 
     // Participant count: customSplitParticipants if custom scope, else 0 means global
     final participantCount = expense.customSplitParticipants?.length ?? 0;
-    final peopleStr = participantCount > 0 ? '$participantCount people' : 'group';
+    final peopleStr = participantCount > 0
+        ? l10n.ledgerPeople(participantCount)
+        : l10n.ledgerGroup;
 
     final (statusText, statusColor) = _balanceStatus(context);
     final icon = _categoryIcon(expense.categoryName);
@@ -87,7 +97,7 @@ class ExpenseCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    expense.description ?? 'Expense',
+                    expense.description ?? l10n.ledgerExpenseFallback,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

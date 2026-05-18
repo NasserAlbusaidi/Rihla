@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
@@ -10,10 +11,10 @@ enum LedgerHeroKind { positive, negative, settled, empty }
 /// Italic Instrument Serif statement hero. The money is *inline* with the prose.
 ///
 /// Copy variants:
-///   positive   →  "You're up [+OMR 12.450] across N people."
-///   negative   →  "You owe [−OMR 7.200] to N people."
-///   settled    →  "All square."  (plus inline sage badge)
-///   empty      →  "Nothing logged yet — add the first expense and we'll start the math."
+///   positive   →  localized balance owed to the current user.
+///   negative   →  localized balance owed by the current user.
+///   settled    →  localized settled-state copy plus inline sage badge.
+///   empty      →  localized empty-state copy.
 class LedgerHeroStatement extends StatelessWidget {
   const LedgerHeroStatement({
     super.key,
@@ -29,6 +30,7 @@ class LedgerHeroStatement extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     final double baseSize = kind == LedgerHeroKind.empty ? 28 : 32;
 
     final baseStyle = AppTypography.display(
@@ -63,7 +65,7 @@ class LedgerHeroStatement extends StatelessWidget {
           baseStyle: baseStyle,
           tailStyle: tailStyle,
           children: [
-            const TextSpan(text: "You're up "),
+            TextSpan(text: '${l10n.ledgerHeroPositivePrefix} '),
             _inlineMoney(
               amount,
               sign: '+',
@@ -72,8 +74,7 @@ class LedgerHeroStatement extends StatelessWidget {
               fractionStyle: fractionStyle,
             ),
             TextSpan(
-              text: ' across $peopleCount '
-                  '${peopleCount == 1 ? 'person' : 'people'}.',
+              text: ' ${l10n.ledgerHeroPositiveTail(peopleCount)}',
               style: tailStyle,
             ),
           ],
@@ -82,7 +83,7 @@ class LedgerHeroStatement extends StatelessWidget {
           baseStyle: baseStyle,
           tailStyle: tailStyle,
           children: [
-            const TextSpan(text: 'You owe '),
+            TextSpan(text: '${l10n.ledgerHeroNegativePrefix} '),
             _inlineMoney(
               amount.abs(),
               sign: '−',
@@ -91,8 +92,7 @@ class LedgerHeroStatement extends StatelessWidget {
               fractionStyle: fractionStyle,
             ),
             TextSpan(
-              text: ' to $peopleCount '
-                  '${peopleCount == 1 ? 'person' : 'people'}.',
+              text: ' ${l10n.ledgerHeroNegativeTail(peopleCount)}',
               style: tailStyle,
             ),
           ],
@@ -102,11 +102,8 @@ class LedgerHeroStatement extends StatelessWidget {
           baseStyle: baseStyle,
           tailStyle: tailStyle,
           children: [
-            const TextSpan(text: 'Nothing logged yet — '),
-            TextSpan(
-              text: "add the first expense and we'll start the math.",
-              style: tailStyle,
-            ),
+            TextSpan(text: '${l10n.ledgerHeroEmptyPrefix} — '),
+            TextSpan(text: l10n.ledgerHeroEmptyTail, style: tailStyle),
           ],
         ),
       },
@@ -133,7 +130,7 @@ class LedgerHeroStatement extends StatelessWidget {
         textBaseline: TextBaseline.alphabetic,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 3),
+            padding: const EdgeInsetsDirectional.only(end: 3),
             child: Text('${sign}OMR', style: prefixStyle),
           ),
           Text(whole, style: numStyle),
@@ -170,12 +167,13 @@ class _SettledRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 10,
       runSpacing: 6,
       children: [
-        Text('All square.', style: baseStyle),
+        Text(l10n.ledgerAllSquare, style: baseStyle),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
@@ -184,7 +182,7 @@ class _SettledRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(9999),
           ),
           child: Text(
-            'SETTLED',
+            l10n.ledgerSettledBadge,
             style: AppTypography.mono(
               fontSize: 10,
               color: colors.successText,
@@ -198,26 +196,27 @@ class _SettledRow extends StatelessWidget {
   }
 }
 
-/// Mono one-liner: "TRIP TOTAL · OMR 142.350 · 6 expenses · 2 settled".
-///
-/// Hide in the empty state (caller decision).
+/// Mono one-liner summarizing the trip total, expense count, and settlement
+/// count. Hidden in the empty state by the caller.
 class LedgerTripCaption extends StatelessWidget {
   const LedgerTripCaption({
     super.key,
     required this.total,
     required this.expenseCount,
     required this.settledCount,
-    this.label = 'TRIP TOTAL',
+    this.label,
   });
 
   final Decimal total;
   final int expenseCount;
   final int settledCount;
-  final String label;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
+    final effectiveLabel = label ?? l10n.ledgerTripTotal;
     final labelStyle = AppTypography.mono(
       fontSize: 10,
       color: colors.textSecondary,
@@ -246,9 +245,9 @@ class LedgerTripCaption extends StatelessWidget {
     );
 
     final tail = settledCount > 0 && expenseCount > 0
-        ? '$expenseCount expense${expenseCount == 1 ? '' : 's'} · '
-              '$settledCount settled'
-        : '$expenseCount expense${expenseCount == 1 ? '' : 's'}';
+        ? '${l10n.ledgerExpenseCount(expenseCount)} · '
+              '${l10n.ledgerSettledCount(settledCount)}'
+        : l10n.ledgerExpenseCount(expenseCount);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 6, 24, 4),
@@ -257,7 +256,7 @@ class LedgerTripCaption extends StatelessWidget {
         spacing: 6,
         runSpacing: 2,
         children: [
-          Text(label, style: labelStyle),
+          Text(effectiveLabel, style: labelStyle),
           Text('·', style: dotStyle),
           Text('OMR ${total.toStringAsFixed(3)}', style: amountStyle),
           Text('·', style: dotStyle),

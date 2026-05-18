@@ -1,8 +1,14 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:safar/core/utils/formatters.dart';
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('en');
+    await initializeDateFormatting('ar');
+  });
+
   group('AppFormatters Tests', () {
     test('formatOMR: Should format with 3 decimal places', () {
       expect(AppFormatters.formatOMR(Decimal.parse('10')), '10.000 OMR');
@@ -90,30 +96,44 @@ void main() {
   group('formatShortMonthDay', () {
     test('formats March 15 as "Mar 15"', () {
       expect(
-        AppFormatters.formatShortMonthDay(DateTime(2026, 3, 15)),
+        AppFormatters.formatShortMonthDay(DateTime(2026, 3, 15), 'en'),
         'Mar 15',
       );
     });
 
     test('formats January 1 without leading zero', () {
       expect(
-        AppFormatters.formatShortMonthDay(DateTime(2026, 1, 1)),
+        AppFormatters.formatShortMonthDay(DateTime(2026, 1, 1), 'en'),
         'Jan 1',
       );
     });
 
     test('formats December 31', () {
       expect(
-        AppFormatters.formatShortMonthDay(DateTime(2026, 12, 31)),
+        AppFormatters.formatShortMonthDay(DateTime(2026, 12, 31), 'en'),
         'Dec 31',
       );
     });
 
     test('formats single-digit day without padding', () {
       expect(
-        AppFormatters.formatShortMonthDay(DateTime(2026, 6, 3)),
+        AppFormatters.formatShortMonthDay(DateTime(2026, 6, 3), 'en'),
         'Jun 3',
       );
+    });
+
+    test('uses locale-specific month names', () {
+      final english = AppFormatters.formatShortMonthDay(
+        DateTime(2026, 3, 15),
+        'en',
+      );
+      final arabic = AppFormatters.formatShortMonthDay(
+        DateTime(2026, 3, 15),
+        'ar',
+      );
+
+      expect(arabic, isNotEmpty);
+      expect(arabic, isNot(english));
     });
   });
 }

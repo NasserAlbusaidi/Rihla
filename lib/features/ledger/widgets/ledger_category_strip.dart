@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -85,7 +86,7 @@ class _AllChip extends StatelessWidget {
           ),
         ),
         child: Text(
-          'All · $count',
+          '${context.l10n.ledgerAllFilter} · $count',
           style: AppTypography.sans(
             fontSize: 12.5,
             fontWeight: FontWeight.w500,
@@ -139,7 +140,7 @@ class _CategoryChip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              ledgerCategoryName(bucket),
+              ledgerCategoryName(bucket, context.l10n),
               style: AppTypography.sans(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
@@ -170,13 +171,10 @@ class LedgerCategoryStripEmpty extends StatelessWidget {
             decoration: BoxDecoration(
               color: colors.cardSurface,
               borderRadius: BorderRadius.circular(9999),
-              border: Border.all(
-                color: colors.rule2,
-                width: 1,
-              ),
+              border: Border.all(color: colors.rule2, width: 1),
             ),
             child: Text(
-              'All · 0',
+              '${context.l10n.ledgerAllFilter} · 0',
               style: AppTypography.sans(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
@@ -187,7 +185,7 @@ class LedgerCategoryStripEmpty extends StatelessWidget {
           const SizedBox(width: 10),
           Flexible(
             child: Text(
-              'categories appear as you log them',
+              context.l10n.ledgerCategoriesAppear,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.display(

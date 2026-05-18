@@ -14,6 +14,7 @@ import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/ledger_screen.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   const groupId = 'g1';
@@ -122,6 +123,8 @@ void main() {
       ],
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: router,
       ),
     );

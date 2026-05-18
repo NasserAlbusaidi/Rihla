@@ -8,6 +8,7 @@ import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
 import 'package:safar/features/ledger/screens/add_expense_screen.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -30,6 +31,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const AddExpenseScreen(groupId: 'group-1', eventId: 'event-1'),
         ),
       ),

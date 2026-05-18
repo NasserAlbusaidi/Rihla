@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../models/expense_category_model.dart';
 import '../providers/category_provider.dart';
+import '../utils/localized_category_name.dart';
 
 /// Bottom-sheet category picker matching Hi_Sheet_Category (tier 6).
 ///
@@ -45,6 +48,7 @@ class CategoryPickerSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final spacing = context.spacing;
+    final l10n = context.l10n;
     final categoriesAsync = ref.watch(tripCategoriesProvider(tripId));
 
     return SafeArea(
@@ -67,9 +71,9 @@ class CategoryPickerSheet extends ConsumerWidget {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: spacing.space24),
             child: Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: Text(
-                "What's this for?",
+                l10n.categoryPickerTitle,
                 style: AppTypography.display(
                   fontSize: 26,
                   color: colors.textPrimary,
@@ -95,7 +99,7 @@ class CategoryPickerSheet extends ConsumerWidget {
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 32),
                   child: Text(
-                    'Could not load categories.\n$e',
+                    '${l10n.categoryPickerCouldNotLoad}\n$e',
                     style: AppTypography.sans(
                       fontSize: 13,
                       color: colors.textSecondary,
@@ -161,7 +165,13 @@ class _CategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     final tint = category.resolveColor(colors);
+    final displayName = localizedCategoryName(
+      id: category.id,
+      fallbackName: category.name,
+      l10n: l10n,
+    );
 
     return GestureDetector(
       onTap: onTap,
@@ -187,7 +197,7 @@ class _CategoryRow extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                category.name.isNotEmpty ? category.name[0].toUpperCase() : '·',
+                displayName.isNotEmpty ? displayName[0].toUpperCase() : '·',
                 style: AppTypography.display(fontSize: 18, color: Colors.white),
               ),
             ),
@@ -197,7 +207,7 @@ class _CategoryRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    category.name,
+                    displayName,
                     style: AppTypography.sans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -206,7 +216,7 @@ class _CategoryRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _exampleFor(category.name),
+                    _exampleFor(category.id, category.name, l10n),
                     style: AppTypography.sans(
                       fontSize: 12,
                       color: colors.textSecondary,
@@ -223,37 +233,51 @@ class _CategoryRow extends StatelessWidget {
     );
   }
 
-  String _exampleFor(String name) {
+  String _exampleFor(String id, String name, AppLocalizations l10n) {
+    switch (id) {
+      case 'food':
+        return l10n.categoryPickerRestaurantsBarsCafes;
+      case 'accommodation':
+        return l10n.categoryPickerHotelsRentals;
+      case 'transport':
+        return l10n.categoryPickerTaxiTrainFuel;
+      case 'shopping':
+        return l10n.categoryPickerMarketsSupplies;
+      case 'activities':
+        return l10n.categoryPickerToursTickets;
+      case 'other':
+        return l10n.categoryPickerAnythingElse;
+    }
     final lower = name.toLowerCase();
     if (lower.contains('food') ||
         lower.contains('din') ||
         lower.contains('meal')) {
-      return 'Restaurants, bars, cafés';
+      return l10n.categoryPickerRestaurantsBarsCafes;
     }
     if (lower.contains('lodg') ||
         lower.contains('hotel') ||
         lower.contains('stay')) {
-      return 'Hotels, rentals';
+      return l10n.categoryPickerHotelsRentals;
     }
     if (lower.contains('trans') ||
         lower.contains('taxi') ||
         lower.contains('flight')) {
-      return 'Taxi, train, fuel';
+      return l10n.categoryPickerTaxiTrainFuel;
     }
     if (lower.contains('groc') || lower.contains('market')) {
-      return 'Markets, supplies';
+      return l10n.categoryPickerMarketsSupplies;
     }
     if (lower.contains('activ') ||
         lower.contains('tour') ||
         lower.contains('ticket')) {
-      return 'Tours, tickets';
+      return l10n.categoryPickerToursTickets;
     }
     if (lower.contains('gas') || lower.contains('fuel')) {
-      return 'Petrol, charging';
+      return l10n.categoryPickerPetrolCharging;
     }
     if (lower.contains('gear')) {
-      return 'Equipment, supplies';
+      return l10n.categoryPickerEquipmentSupplies;
     }
-    return 'Anything else';
+    return l10n.categoryPickerAnythingElse;
   }
 }

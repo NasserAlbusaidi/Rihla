@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/error_widgets.dart';
+
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
-import '../models/expense_category_model.dart';
+import '../../../core/theme/error_widgets.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../models/expense_category_model.dart';
+import '../utils/localized_category_name.dart';
 
 /// Category grid for expense classification.
 ///
@@ -28,7 +31,7 @@ class CategorySelectionStep extends StatelessWidget {
         children: [
           const SizedBox(height: 44),
           Text(
-            'What was this for?',
+            context.l10n.editorCategoryPrompt,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,
@@ -112,7 +115,11 @@ class _CategoryTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            category.name,
+            localizedCategoryName(
+              id: category.id,
+              fallbackName: category.name,
+              l10n: context.l10n,
+            ),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

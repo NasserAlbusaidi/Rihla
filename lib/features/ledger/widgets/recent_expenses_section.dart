@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
-import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Collapsible section showing the 5 most recent expenses.
 class RecentExpensesSection extends StatelessWidget {
@@ -27,7 +28,7 @@ class RecentExpensesSection extends StatelessWidget {
         tilePadding: EdgeInsets.zero,
         childrenPadding: EdgeInsets.zero,
         title: Text(
-          'RECENT EXPENSES',
+          context.l10n.ledgerRecentExpenses,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -63,7 +64,11 @@ class RecentExpensesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildExpenseItem(BuildContext context, Expense expense, bool showDivider) {
+  Widget _buildExpenseItem(
+    BuildContext context,
+    Expense expense,
+    bool showDivider,
+  ) {
     return Column(
       children: [
         Padding(
@@ -90,7 +95,7 @@ class RecentExpensesSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      expense.description ?? 'Expense',
+                      expense.description ?? context.l10n.ledgerExpenseFallback,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -100,7 +105,8 @@ class RecentExpensesSection extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      expense.categoryName ?? 'General',
+                      expense.categoryName ??
+                          context.l10n.ledgerGeneralCategory,
                       style: TextStyle(
                         fontSize: 11,
                         color: context.colors.textSecondary,

@@ -3,6 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/theme/tokens/typography_tokens.dart';
 
+T _suppressFontErrors<T>(T Function() body) {
+  final originalOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    if (details.exception.toString().contains('google_fonts')) return;
+    originalOnError?.call(details);
+  };
+  try {
+    return body();
+  } finally {
+    FlutterError.onError = originalOnError;
+  }
+}
+
 /// `arabicDisplay()` calls `GoogleFonts.getFont`, which schedules an async
 /// font load. Under `flutter_test_config.dart` runtime fetching is disabled,
 /// so the load throws AFTER the test completes and pollutes the run with
@@ -15,7 +28,7 @@ void main() {
   group('AppTypography.arabicDisplay', () {
     testWidgets('returns a TextStyle backed by Reem Kufi', (tester) async {
       late TextStyle style;
-      await tester.runAsync(() async {
+      _suppressFontErrors(() {
         style = AppTypography.arabicDisplay(fontSize: 22);
       });
       expect(style.fontSize, 22);
@@ -25,10 +38,11 @@ void main() {
       expect(style.fontStyle, isNot(FontStyle.italic));
     });
 
-    testWidgets('honors color, weight, letterSpacing overrides',
-        (tester) async {
+    testWidgets('honors color, weight, letterSpacing overrides', (
+      tester,
+    ) async {
       late TextStyle style;
-      await tester.runAsync(() async {
+      _suppressFontErrors(() {
         style = AppTypography.arabicDisplay(
           fontSize: 60,
           color: const Color(0xFF112233),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../keys/group_keys.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../keys/group_keys.dart';
 
 /// Empty-state widget displayed when all balances are settled.
 ///
@@ -31,7 +32,7 @@ class AllSettledState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'All settled up',
+            context.l10n.settleUpAllSettledTitle,
             key: GroupKeys.settleUpAllSettledMessage,
             style: TextStyle(
               fontSize: 20,
@@ -42,7 +43,7 @@ class AllSettledState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Everyone is square. No outstanding amounts.',
+            context.l10n.settleUpAllSettledMessage,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,

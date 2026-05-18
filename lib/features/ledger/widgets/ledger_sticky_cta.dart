@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -82,14 +83,10 @@ class _PrimaryCta extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Iconsax.add,
-                size: 16,
-                color: colors.scaffoldBackground,
-              ),
+              Icon(Iconsax.add, size: 16, color: colors.scaffoldBackground),
               const SizedBox(width: 8),
               Text(
-                'Add expense',
+                context.l10n.ledgerAddExpense,
                 style: AppTypography.sans(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w600,
@@ -129,7 +126,7 @@ class _SecondaryCta extends StatelessWidget {
               borderRadius: BorderRadius.circular(9999),
             ),
             child: Text(
-              'Settle up',
+              context.l10n.ledgerSettleUp,
               style: AppTypography.sans(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,

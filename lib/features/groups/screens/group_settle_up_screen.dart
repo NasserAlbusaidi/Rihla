@@ -235,7 +235,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         ? '${rawName.substring(0, 27)}...'
         : rawName;
 
-    final date = AppFormatters.formatShortMonthDay(entry.date);
+    final date = AppFormatters.formatShortMonthDay(
+      entry.date,
+      Localizations.localeOf(context).toLanguageTag(),
+    );
     return '$name — $date';
   }
 

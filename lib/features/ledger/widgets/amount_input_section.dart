@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 
 /// Numeric keypad and amount display for expense entry.
@@ -80,12 +82,13 @@ class _Numpad extends StatelessWidget {
   }
 
   Widget _buildRow(BuildContext context, List<String> keys) {
+    final l10n = context.l10n;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: keys.map((key) {
         if (key == 'back') {
           return _NumpadKey(
-            semanticLabel: 'Backspace',
+            semanticLabel: l10n.commonSemanticBackspace,
             child: Icon(
               Icons.backspace_outlined,
               color: context.colors.textPrimary,
@@ -94,7 +97,7 @@ class _Numpad extends StatelessWidget {
           );
         }
         return _NumpadKey(
-          semanticLabel: key == '.' ? 'Decimal point' : key,
+          semanticLabel: key == '.' ? l10n.commonSemanticDecimalPoint : key,
           child: Text(
             key,
             style: TextStyle(

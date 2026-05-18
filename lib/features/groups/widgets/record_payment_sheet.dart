@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -129,7 +130,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Mark this paid?',
+                      context.l10n.settleUpMarkThisPaidTitle,
                       textAlign: TextAlign.center,
                       key: GroupKeys.settleUpRecordSheetTitle,
                       style: AppTypography.display(
@@ -140,8 +141,10 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "We'll close out the balance between "
-                      '${widget.fromName} and ${widget.toName}.',
+                      context.l10n.settleUpMarkThisPaidBody(
+                        widget.fromName,
+                        widget.toName,
+                      ),
                       textAlign: TextAlign.center,
                       style: AppTypography.sans(
                         fontSize: 13,
@@ -196,7 +199,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     color: colors.textPrimary,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Add a note (optional)',
+                    hintText: context.l10n.settleUpNoteHint,
                     isDense: true,
                     filled: true,
                     fillColor: colors.inputFillWarm,
@@ -244,7 +247,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          '${widget.toName} will be notified to confirm.',
+                          context.l10n.settleUpNotifyToConfirm(widget.toName),
                           style: AppTypography.sans(
                             fontSize: 12,
                             color: colors.primaryDark,
@@ -278,7 +281,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                             ),
                           ),
                           child: Text(
-                            'Not yet',
+                            context.l10n.settleUpNotYet,
                             style: AppTypography.sans(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -307,7 +310,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                           },
                           icon: const Icon(Icons.check_rounded, size: 16),
                           label: Text(
-                            'Mark paid',
+                            context.l10n.settleUpMarkPaid,
                             style: AppTypography.sans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -392,7 +395,7 @@ class _PayeeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$fromName pays $toName',
+                      context.l10n.settleUpPays(fromName, toName),
                       style: AppTypography.sans(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -404,8 +407,8 @@ class _PayeeCard extends StatelessWidget {
                       onTap: onToggleEditor,
                       child: Text(
                         showEditor
-                            ? 'Hide amount editor'
-                            : 'Tap to edit amount',
+                            ? context.l10n.settleUpHideAmountEditor
+                            : context.l10n.settleUpTapToEditAmount,
                         style: AppTypography.sans(
                           fontSize: 12,
                           color: colors.primary,
@@ -440,7 +443,7 @@ class _PayeeCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
               decoration: InputDecoration(
-                labelText: 'Amount ($currency)',
+                labelText: context.l10n.settleUpAmountLabel(currency),
                 filled: true,
                 fillColor: colors.inputFillWarm,
                 contentPadding: const EdgeInsets.symmetric(
@@ -466,9 +469,11 @@ class _PayeeCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: Text(
-                'Suggested: ${AppFormatters.formatCurrency(suggestedAmount, currency)}',
+                context.l10n.settleUpSuggestedAmount(
+                  AppFormatters.formatCurrency(suggestedAmount, currency),
+                ),
                 style: AppTypography.sans(
                   fontSize: 11,
                   color: colors.textSecondary,
@@ -530,7 +535,7 @@ class _MethodChip extends StatelessWidget {
               ],
               Flexible(
                 child: Text(
-                  method.label,
+                  _methodLabel(context, method),
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.sans(
                     fontSize: 12,
@@ -545,17 +550,18 @@ class _MethodChip extends StatelessWidget {
       ),
     );
   }
+
+  String _methodLabel(BuildContext context, PaymentMethod method) {
+    return switch (method) {
+      PaymentMethod.cash => context.l10n.settleUpMethodCash,
+      PaymentMethod.bank => context.l10n.settleUpMethodBank,
+      PaymentMethod.other => context.l10n.settleUpMethodOther,
+    };
+  }
 }
 
 /// Payment methods surfaced on the Mark Paid sheet.
-enum PaymentMethod {
-  cash('Cash'),
-  bank('Bank'),
-  other('Other');
-
-  const PaymentMethod(this.label);
-  final String label;
-}
+enum PaymentMethod { cash, bank, other }
 
 /// Result returned from [showRecordPaymentSheet].
 class RecordPaymentResult {
