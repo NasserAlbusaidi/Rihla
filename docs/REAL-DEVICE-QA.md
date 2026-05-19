@@ -1,6 +1,7 @@
 # Real-Device QA
 
-Last prepared: 2026-05-19 (`codex/release-hardening-1-0`)
+Last prepared: 2026-05-20 (`codex/release-hardening-1-0`,
+PR head `3d3fb32995126734de8f349d3af6642803be3d65`)
 
 This checklist covers the release QA that cannot be proven by unit, widget, or
 emulator tests. Run it on physical iOS and Android devices against the
@@ -60,12 +61,15 @@ Pass criteria (with `RIHLA_SKIP_IOS_QA=yes` — v1.2 Android-only):
   an iOS result starting with `Pass` or `Deferred`, and concrete Android
   evidence in the Evidence cell.
 
-Current local status from 2026-05-19: blocked for Android. Running
+Current local status from 2026-05-20: blocked for Android. Running
 `RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh` found no
 physical Android device, accepted iOS absence as a v1.2 Android-only defer, and
 reported RD-01 through RD-09 missing Android pass results plus concrete
 evidence. The matrix is filled with `Deferred — v1.2 Android-only` for iOS; the
 Android column and evidence still need a real run on connected Android devices.
+
+Use two physical Android devices for the Android-only gate. RD-04 must prove
+cross-device ledger identity without relying on the deferred iOS path.
 
 For raw device details, run:
 

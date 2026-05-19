@@ -1,6 +1,7 @@
 # Production Readiness
 
-Last verified: 2026-05-20 (`codex/release-hardening-1-0`)
+Last verified: 2026-05-20 (`codex/release-hardening-1-0`,
+PR head `3d3fb32995126734de8f349d3af6642803be3d65`)
 
 This checklist tracks the remaining launch gates for the Firebase project
 `rihla-safar` and the mobile apps. Treat checked items as verified from the
@@ -101,7 +102,7 @@ starts a new run.
 - [x] Historical Firebase production-state audit passed for v1.2.0+15.
   - Command: `bash tool/check_firebase_prod_state.sh rihla-safar`
   - Historical result (2026-05-15): 12 checks PASS, exit 0. Re-verified 2026-05-16 after v1.2.0+15 functions deploy.
-  - Current branch result (2026-05-19): FAIL until the branch backend is deployed. Firestore indexes and Hosting passed; Firestore rules differ from production, and the deployed Functions list is missing `deleteAccount`.
+  - Current branch result (2026-05-20, PR head `3d3fb32995126734de8f349d3af6642803be3d65`): FAIL until the branch backend is deployed. Firestore indexes and Hosting passed; Firestore rules differ from production, and the deployed Functions list is missing `deleteAccount`.
 - [x] Firebase Functions are deployed in production.
   - Evidence: production-state audit confirms expected functions are deployed (`joinGroupByInviteCode`, `cleanupAnonUidArtifacts`, account-deletion cascade, FCM token cleanup).
   - v1.2.0+15 changes: `joinGroupByInviteCode` now fans the joiner into existing event `participantIds` server-side (Gap 1); new `cleanupAnonUidArtifacts` callable scrubs FCM tokens + joinAttempts for the abandoned anon UID after email-link recovery (Gap 3, fire-and-forget — failures land in Sentry breadcrumbs).
@@ -109,7 +110,7 @@ starts a new run.
   - Backfill: `tool/backfill_join_event_sync.js` was run against `rihla-safar` on 2026-05-16 to reconcile historical event participant discrepancies.
 - [x] Firestore production rules match `security/firestore.rules`.
   - Historical evidence: production-state audit diffed the active v1.2.0+15 ruleset against the repo and reported PASS.
-  - Current branch note: production does not yet contain the new `recoveryCleanupIntents/{oldUid}` rules or the latest former-member display-name validation.
+  - Current branch note: production does not yet contain the new `recoveryCleanupIntents/{oldUid}` rules or the latest former-member display-name validation; this checkbox remains historical, not proof that the current branch is deployed.
 - [x] Firestore production indexes match `firestore.indexes.json`.
   - Evidence: production-state audit confirms index set matches the repo config; legacy `gear_items` index removed.
 - [x] Firebase Hosting invite/auth link files are deployed on both default domains.
@@ -125,7 +126,7 @@ starts a new run.
     ```bash
     bash tool/check_firebase_prod_state.sh rihla-safar
     ```
-  - Latest gate result (2026-05-19): Firestore database, indexes, and both
+  - Latest gate result (2026-05-20, PR head `3d3fb32995126734de8f349d3af6642803be3d65`): Firestore database, indexes, and both
     Hosting domains passed. Firestore rules failed because production lacks
     the current branch's `recoveryCleanupIntents/{oldUid}` rule block and
     latest display-name validation. Functions failed because production is
@@ -138,7 +139,7 @@ starts a new run.
     ```bash
     RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
     ```
-  - Latest gate result (2026-05-19): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty for RD-01..RD-09.
+  - Latest gate result (2026-05-20, PR head `3d3fb32995126734de8f349d3af6642803be3d65`): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty for RD-01..RD-09.
   - v1.2.0+15 carry-over: post-launch bugs found on +14 (group-detail back button, event settlement names, `currentUserIdProvider` reactivity, App Check on join callable, join-event-sync, anon-UID cleanup) are all resolved on `main` and documented in `docs/REAL-DEVICE-QA.md` § "Resolved on fix/post-launch-qa-v1.2".
   - Required Android matrix (RD-01..09):
     - Create group, join group by invite code, delete group.
@@ -174,18 +175,26 @@ These actions cannot be completed from this repo and remain before release:
    If the gate passes, complete the `docs/REAL-DEVICE-QA.md` matrix
    (RD-01..09) with concrete Android evidence. iOS cells stay marked
    `Deferred — v1.2 Android-only` until iOS ships.
-2. After RD-QA is recorded and the backend re-audit still passes for the target
+2. After branch testing/review is accepted, deploy the branch backend from a
+   clean worktree and verify production state:
+   ```bash
+   RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/deploy_firebase_backend.sh rihla-safar
+   bash tool/check_firebase_prod_state.sh rihla-safar
+   ```
+   Do not continue until the production-state check exits 0 for the target
+   commit.
+3. After RD-QA is recorded and the backend re-audit passes for the target
    commit, set the three Android release-workflow repository variables to
    `yes`:
    `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`,
    `RIHLA_REAL_DEVICE_QA_READY`.
-3. Set `RIHLA_RELEASE_APPROVED_SHA` to the full commit SHA that will be tagged
+4. Set `RIHLA_RELEASE_APPROVED_SHA` to the full commit SHA that will be tagged
    or manually dispatched. The release workflow refuses to upload to Play until
    the three readiness variables are `yes` and the approved SHA matches
    `GITHUB_SHA`.
-4. Confirm `main` branch protection is still enabled and still requires the
+5. Confirm `main` branch protection is still enabled and still requires the
    strict `Readiness Check / readiness` status before merging release branches.
-5. Re-run the full audit before promoting the Play Store track:
+6. Re-run the full audit before promoting the Play Store track:
    ```bash
    RIHLA_SKIP_IOS_QA=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
    ```
