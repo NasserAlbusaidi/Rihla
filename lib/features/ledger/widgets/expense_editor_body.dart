@@ -92,6 +92,7 @@ class ExpenseEditorBody extends ConsumerStatefulWidget {
 class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   late final TextEditingController _noteController;
   late final TextEditingController _amountController;
+  late final FocusNode _amountFocusNode;
 
   late String _amount;
   late ExpenseScope _scope;
@@ -121,6 +122,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     if (initial != null) {
       _amount = initial.amount.toString();
       _amountController = TextEditingController(text: _amount);
+      _amountFocusNode = FocusNode();
       _noteController = TextEditingController(text: initial.description ?? '');
       _scope = initial.scope;
       _selectedCategoryId = initial.categoryId;
@@ -134,19 +136,39 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     } else {
       _amount = '0';
       _amountController = TextEditingController(text: '0');
+      _amountFocusNode = FocusNode();
       _noteController = TextEditingController();
       _scope = ExpenseScope.global;
       _customSplitParticipants = <String>{};
       _splitMode = ref.read(settingsProvider).defaultSplitMode;
       _splitDistribution = null;
     }
+    _amountFocusNode.addListener(_selectDefaultZeroOnFocus);
   }
 
   @override
   void dispose() {
+    _amountFocusNode.removeListener(_selectDefaultZeroOnFocus);
+    _amountFocusNode.dispose();
     _noteController.dispose();
     _amountController.dispose();
     super.dispose();
+  }
+
+  void _selectDefaultZeroOnFocus() {
+    if (!_amountFocusNode.hasFocus) return;
+    _queueSelectDefaultZero();
+  }
+
+  void _queueSelectDefaultZero() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_amountFocusNode.hasFocus) return;
+      if (_amountController.text != '0') return;
+      _amountController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _amountController.text.length,
+      );
+    });
   }
 
   Future<void> _submit() async {
@@ -411,10 +433,12 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                   children: [
                     _AmountHero(
                       controller: _amountController,
+                      focusNode: _amountFocusNode,
                       amount: _amount,
                       currency: _tripCurrency,
                       onChanged: (value) =>
                           setState(() => _amount = _sanitizeAmount(value)),
+                      onTap: _queueSelectDefaultZero,
                     ),
                     _DescriptionField(controller: _noteController),
                     _Section(
@@ -576,15 +600,19 @@ class _ExpenseTopBar extends StatelessWidget {
 class _AmountHero extends StatelessWidget {
   const _AmountHero({
     required this.controller,
+    required this.focusNode,
     required this.amount,
     required this.currency,
     required this.onChanged,
+    required this.onTap,
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final String amount;
   final String currency;
   final ValueChanged<String> onChanged;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -616,45 +644,48 @@ class _AmountHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      currency,
-                      style: AppTypography.mono(
-                        fontSize: 20,
-                        color: colors.textSecondary,
-                        letterSpacing: 0.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    whole,
-                    style: AppTypography.mono(
-                      fontSize: 64,
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                      height: 1.05,
-                    ),
-                  ),
-                  if (fraction.isNotEmpty)
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 12),
                       child: Text(
-                        fraction,
+                        currency,
                         style: AppTypography.mono(
-                          fontSize: 28,
+                          fontSize: 20,
                           color: colors.textSecondary,
+                          letterSpacing: 0.5,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                ],
+                    const SizedBox(width: 10),
+                    Text(
+                      whole,
+                      style: AppTypography.mono(
+                        fontSize: 64,
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                        height: 1.05,
+                      ),
+                    ),
+                    if (fraction.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          fraction,
+                          style: AppTypography.mono(
+                            fontSize: 28,
+                            color: colors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
               const SizedBox(height: 10),
               Container(
@@ -670,6 +701,8 @@ class _AmountHero extends StatelessWidget {
           Positioned.fill(
             child: TextField(
               controller: controller,
+              focusNode: focusNode,
+              onTap: onTap,
               onChanged: onChanged,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
