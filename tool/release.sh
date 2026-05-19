@@ -43,6 +43,21 @@ usage() {
   exit 1
 }
 
+require_clean_worktree() {
+  local untracked_files
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    die "working tree is dirty - commit or stash first so the release can be tied to an exact commit"
+  fi
+
+  untracked_files="$(git ls-files --others --exclude-standard)"
+  if [ -n "$untracked_files" ]; then
+    echo "Untracked files:" >&2
+    printf '%s\n' "$untracked_files" >&2
+    die "remove, commit, or stash untracked files first so the release can be tied to an exact commit"
+  fi
+}
+
 [ $# -eq 1 ] || usage
 BUMP_ARG="$1"
 
@@ -54,9 +69,7 @@ CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 [ "$CURRENT_BRANCH" = "$MAIN_BRANCH" ] || \
   die "must be on $MAIN_BRANCH (currently on $CURRENT_BRANCH)"
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  die "working tree is dirty — commit or stash first"
-fi
+require_clean_worktree
 
 git fetch origin "$MAIN_BRANCH" --quiet
 LOCAL_SHA="$(git rev-parse HEAD)"

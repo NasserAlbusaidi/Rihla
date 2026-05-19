@@ -128,6 +128,11 @@ exit 64
       configuration,
       contains('RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch'),
     );
+    expect(release, contains('require_clean_worktree'));
+    expect(release, contains('git diff --quiet'));
+    expect(release, contains('git diff --cached --quiet'));
+    expect(release, contains('git ls-files --others --exclude-standard'));
+    expect(release, contains('release can be tied to an exact commit'));
     expect(commitIndex, greaterThanOrEqualTo(0));
     expect(readinessIndex, greaterThan(commitIndex));
     expect(tagIndex, greaterThan(readinessIndex));
