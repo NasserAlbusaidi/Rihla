@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/cover_art.dart';
@@ -32,7 +34,7 @@ class JourneyTicketCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final dateLabel = _formatDates(entry.startDate, entry.endDate);
+    final dateLabel = _formatDates(context, entry.startDate, entry.endDate);
 
     return GestureDetector(
       onTap: onTap,
@@ -55,9 +57,10 @@ class JourneyTicketCard extends StatelessWidget {
                 children: [
                   Positioned.fill(child: CoverArt.forEventType(entry.type)),
                   if (dateLabel != null)
-                    Positioned(
+                    Positioned.directional(
+                      textDirection: Directionality.of(context),
                       top: 8,
-                      left: 10,
+                      start: 10,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: BackdropFilter(
@@ -119,11 +122,7 @@ class JourneyTicketCard extends StatelessWidget {
                                 max: 3,
                               ),
                       ),
-                      RAmount(
-                        value: entry.userBalance,
-                        size: 14,
-                        sign: true,
-                      ),
+                      RAmount(value: entry.userBalance, size: 14, sign: true),
                     ],
                   ),
                 ],
@@ -136,19 +135,20 @@ class JourneyTicketCard extends StatelessWidget {
   }
 
   /// "Mar 14 — Mar 22" / "Mar 14" / "ending Mar 22" / null.
-  static String? _formatDates(DateTime? start, DateTime? end) {
-    String fmt(DateTime d) => '${_month(d.month)} ${d.day}';
-    if (start != null && end != null) return '${fmt(start)} — ${fmt(end)}';
-    if (start != null) return fmt(start);
-    if (end != null) return 'ending ${fmt(end)}';
+  static String? _formatDates(
+    BuildContext context,
+    DateTime? start,
+    DateTime? end,
+  ) {
+    if (start != null && end != null) {
+      return formatDateRangeShort(context, start, end);
+    }
+    if (start != null) return formatShortMonthDay(context, start);
+    if (end != null) {
+      return context.l10n.groupEventEnds(formatShortMonthDay(context, end));
+    }
     return null;
   }
-
-  static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-  static String _month(int m) => _months[m - 1];
 }
 
 // ────────── Perforation (dashed rule + edge punch holes) ──────────
@@ -177,13 +177,15 @@ class _Perforation extends StatelessWidget {
           Positioned.fill(
             child: CustomPaint(painter: _DashedRulePainter(color: ruleColor)),
           ),
-          Positioned(
-            left: -holeSize / 2,
+          Positioned.directional(
+            textDirection: Directionality.of(context),
+            start: -holeSize / 2,
             top: -holeSize / 2 + 0.5,
             child: _PunchHole(size: holeSize, color: holeColor),
           ),
-          Positioned(
-            right: -holeSize / 2,
+          Positioned.directional(
+            textDirection: Directionality.of(context),
+            end: -holeSize / 2,
             top: -holeSize / 2 + 0.5,
             child: _PunchHole(size: holeSize, color: holeColor),
           ),

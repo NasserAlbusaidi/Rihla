@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/utils/formatters.dart';
-import '../models/group_activity_log_model.dart';
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/utils/localized_dates.dart';
+import '../../activity/utils/activity_display.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../models/group_activity_log_model.dart';
 
 /// A single activity log entry tile (D-09).
 ///
@@ -37,7 +39,11 @@ class GroupActivityTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color, semanticsLabel) = _iconColorAndLabel(context, activity.type);
+    final (icon, color, semanticsLabel) = _iconColorAndLabel(
+      context,
+      activity.type,
+    );
+    final description = localizedGroupActivityText(context.l10n, activity);
 
     final content = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -81,7 +87,7 @@ class GroupActivityTile extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                activity.description,
+                description,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
@@ -90,7 +96,7 @@ class GroupActivityTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                AppFormatters.formatRelativeDate(activity.timestamp),
+                formatRelativeShort(context, activity.timestamp),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
@@ -139,35 +145,31 @@ class GroupActivityTile extends StatelessWidget {
     final mutedTint = context.colors.textMuted;
     return switch (type) {
       'group_settlement' => (
-          Iconsax.money_recive,
-          context.colors.primary,
-          'Payment recorded',
-        ),
+        Iconsax.money_recive,
+        context.colors.primary,
+        context.l10n.activityTitlePaymentRecorded,
+      ),
       'event_created' => (
-          Iconsax.calendar_add,
-          mutedTint,
-          'Event created',
-        ),
+        Iconsax.calendar_add,
+        mutedTint,
+        context.l10n.activityTitleEventCreated,
+      ),
       'event_deleted' => (
-          Iconsax.calendar_remove,
-          mutedTint,
-          'Event removed',
-        ),
+        Iconsax.calendar_remove,
+        mutedTint,
+        context.l10n.activityTitleEventRemoved,
+      ),
       'member_joined' => (
-          Iconsax.profile_add,
-          mutedTint,
-          'Member joined',
-        ),
+        Iconsax.profile_add,
+        mutedTint,
+        context.l10n.activityTitleMemberJoined,
+      ),
       'member_left' => (
-          Iconsax.profile_delete,
-          mutedTint,
-          'Member left',
-        ),
-      _ => (
-          Iconsax.info_circle,
-          mutedTint,
-          'Activity',
-        ),
+        Iconsax.profile_delete,
+        mutedTint,
+        context.l10n.activityTitleMemberLeft,
+      ),
+      _ => (Iconsax.info_circle, mutedTint, context.l10n.activityTitleGeneric),
     };
   }
 }

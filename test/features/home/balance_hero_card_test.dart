@@ -8,6 +8,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/widgets/balance_hero_card.dart';
 import 'package:safar/features/home/widgets/quick_action_tray.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 void main() {
@@ -23,10 +24,19 @@ void main() {
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: SingleChildScrollView(child: child)),
       ),
     );
   }
+
+  Widget wrapPlain(Widget child) => MaterialApp(
+    theme: AppTheme.lightTheme,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(body: child),
+  );
 
   group('BalanceHeroCard', () {
     test('widget class exists', () {
@@ -142,15 +152,12 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: QuickActionTray(
-              onAddExpense: () {},
-              onSettleUp: () {},
-              onInviteFriend: () {},
-              onActivity: () {},
-            ),
+        wrapPlain(
+          QuickActionTray(
+            onAddExpense: () {},
+            onSettleUp: () {},
+            onInviteFriend: () {},
+            onActivity: () {},
           ),
         ),
       );
@@ -164,15 +171,12 @@ void main() {
 
     testWidgets('Test 7: buttons have correct keys', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: QuickActionTray(
-              onAddExpense: () {},
-              onSettleUp: () {},
-              onInviteFriend: () {},
-              onActivity: () {},
-            ),
+        wrapPlain(
+          QuickActionTray(
+            onAddExpense: () {},
+            onSettleUp: () {},
+            onInviteFriend: () {},
+            onActivity: () {},
           ),
         ),
       );
@@ -194,15 +198,12 @@ void main() {
       var activityCalled = false;
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: QuickActionTray(
-              onAddExpense: () => addExpenseCalled = true,
-              onSettleUp: () => settleUpCalled = true,
-              onInviteFriend: () => inviteCalled = true,
-              onActivity: () => activityCalled = true,
-            ),
+        wrapPlain(
+          QuickActionTray(
+            onAddExpense: () => addExpenseCalled = true,
+            onSettleUp: () => settleUpCalled = true,
+            onInviteFriend: () => inviteCalled = true,
+            onActivity: () => activityCalled = true,
           ),
         ),
       );

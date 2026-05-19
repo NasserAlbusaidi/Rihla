@@ -26,7 +26,8 @@ void main() {
     expect(gate, contains('check_matrix_results'));
     expect(gate, contains('docs/REAL-DEVICE-QA.md'));
     expect(gate, contains('Real-device QA matrix is incomplete'));
-    expect(runbook, contains('Every RD-01 through RD-08 row'));
+    expect(runbook, contains('Every RD-01 through RD-09 row'));
+    expect(runbook, contains('RD-09 | Arabic RTL golden path'));
     expect(runbook, contains('Evidence cell must contain a concrete artifact'));
   });
 }

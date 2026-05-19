@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -77,30 +78,29 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
       );
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
-      setState(() => _serverError = _humanizeError(error));
+      setState(() => _serverError = _humanizeError(context, error));
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _serverError =
-            "Couldn't send the link. Check your connection and try again.";
+        _serverError = context.l10n.authErrorSendLink;
       });
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
-  String _humanizeError(FirebaseAuthException error) {
+  String _humanizeError(BuildContext context, FirebaseAuthException error) {
+    final l10n = context.l10n;
     switch (error.code) {
       case 'user-not-found':
       case 'invalid-email':
-        return "We couldn't find a Rihla account with this email. "
-            'Make sure you linked it on your previous device first.';
+        return l10n.authErrorAccountNotFound;
       case 'too-many-requests':
-        return 'Too many attempts. Wait a few minutes and try again.';
+        return l10n.authErrorRateLimited;
       case 'network-request-failed':
-        return 'No connection. Check your internet and try again.';
+        return l10n.authErrorOffline;
       default:
-        return 'Something went wrong (${error.code}). Please try again.';
+        return l10n.authErrorGeneric(error.code);
     }
   }
 
@@ -128,6 +128,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
     // be null on first read and the dialog would never show.
     ref.watch(userGroupsProvider);
     final colors = context.colors;
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: colors.scaffoldBackground,
       appBar: AppBar(
@@ -138,7 +139,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
           onPressed: _back,
         ),
         title: Text(
-          'Restore from email',
+          l10n.authRecoverTitle,
           style: AppTypography.sans(
             fontSize: 17,
             fontWeight: FontWeight.w700,
@@ -153,7 +154,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             children: [
               Text(
-                'Welcome back',
+                l10n.authWelcomeBack,
                 style: AppTypography.sans(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -162,8 +163,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Enter the email you linked on your old device. '
-                "We'll send a one-tap sign-in link.",
+                l10n.authRecoverDescription,
                 style: AppTypography.sans(
                   fontSize: 14,
                   color: colors.textSecondary,
@@ -179,9 +179,9 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
                 enableSuggestions: false,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'you@example.com',
+                decoration: InputDecoration(
+                  labelText: l10n.commonEmail,
+                  hintText: l10n.commonEmailHintExample,
                 ),
                 validator: validateEmail,
                 onFieldSubmitted: (_) => _send(),
@@ -210,7 +210,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
                           height: 22,
                           child: CircularProgressIndicator(strokeWidth: 2.5),
                         )
-                      : const Text('Send recovery link'),
+                      : Text(l10n.authRecoverSubmit),
                 ),
               ),
             ],

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -79,16 +80,19 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
           .read(authRecoveryServiceProvider)
           .sendRecoveryLink(widget.email);
       if (!mounted) return;
-      setState(() => _statusMessage = 'New link sent.');
+      setState(() => _statusMessage = context.l10n.authRecoverPendingResendStatus);
       _startCooldown();
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       setState(
-        () => _errorMessage = "Couldn't resend (${error.code}).",
+        () => _errorMessage =
+            context.l10n.authRecoverPendingResendErrorCode(error.code),
       );
     } catch (_) {
       if (!mounted) return;
-      setState(() => _errorMessage = "Couldn't resend. Try again in a bit.");
+      setState(
+        () => _errorMessage = context.l10n.authRecoverPendingResendErrorGeneric,
+      );
     } finally {
       if (mounted) setState(() => _resending = false);
     }
@@ -105,6 +109,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     final canResend = _remainingSeconds == 0 && !_resending;
 
     // When the bootstrap listener completes recovery, the UID flips. Watch
@@ -114,7 +119,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
       if (next != null && next != _initialUid) {
         _completed = true;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Welcome back')),
+          SnackBar(content: Text(context.l10n.authWelcomeBack)),
         );
         context.go(AppRoutes.home);
       }
@@ -157,7 +162,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Check your inbox',
+                l10n.authRecoverPendingTitle,
                 style: AppTypography.sans(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -173,7 +178,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                     height: 1.4,
                   ),
                   children: [
-                    const TextSpan(text: 'We sent a sign-in link to '),
+                    TextSpan(text: l10n.authRecoverPendingDescriptionPrefix),
                     TextSpan(
                       text: widget.email,
                       style: AppTypography.sans(
@@ -182,17 +187,13 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                         color: colors.textPrimary,
                       ),
                     ),
-                    const TextSpan(
-                      text:
-                          ". Tap it on this device — we'll pull your trips "
-                          'back automatically.',
-                    ),
+                    TextSpan(text: l10n.authRecoverPendingDescriptionSuffix),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               Text(
-                "Can't find it? Check your spam folder. The link is good for 24 hours.",
+                l10n.authRecoverPendingSpamHint,
                 style: AppTypography.sans(
                   fontSize: 13,
                   color: colors.textSecondary,
@@ -202,7 +203,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
               if (pendingLink != null) ...[
                 const SizedBox(height: 16),
                 Text(
-                  'We saw your link. Hang tight — restoring now.',
+                  l10n.authRecoverPendingLinkSeen,
                   key: const Key('recoverPending.linkSeen'),
                   style: AppTypography.sans(
                     fontSize: 13,
@@ -246,8 +247,10 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                         )
                       : Text(
                           canResend
-                              ? 'Resend link'
-                              : 'Resend in ${_remainingSeconds}s',
+                              ? l10n.authRecoverPendingResendLink
+                              : l10n.authRecoverPendingResendCountdown(
+                                  _remainingSeconds,
+                                ),
                         ),
                 ),
               ),
@@ -257,7 +260,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                 child: TextButton(
                   key: const Key('recoverPending.cancel'),
                   onPressed: _cancel,
-                  child: const Text('Cancel'),
+                  child: Text(l10n.commonCancel),
                 ),
               ),
             ],

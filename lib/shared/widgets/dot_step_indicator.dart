@@ -21,7 +21,8 @@ class DotStepIndicator extends StatelessWidget {
   /// counterpart in dark) — resolved inside [build] so the default is
   /// theme-aware.
   final Color? activeColor;
-  final bool showCheckmarks; // true for Add Expense steps, false for onboarding pages
+  final bool
+  showCheckmarks; // true for Add Expense steps, false for onboarding pages
 
   const DotStepIndicator({
     super.key,
@@ -37,25 +38,45 @@ class DotStepIndicator extends StatelessWidget {
     return Semantics(
       label: 'Step ${currentStep + 1} of $stepCount',
       child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(stepCount, (index) {
-        if (showCheckmarks && index < currentStep) {
-          // Complete step: filled circle with check
-          return _buildDot(context, filled: true, isCheck: true, active: resolvedActive);
-        } else if (index == currentStep) {
-          // Active step: filled circle
-          return _buildDot(context, filled: true, isCheck: false, active: resolvedActive);
-        } else {
-          // Upcoming step: outlined ring
-          return _buildDot(context, filled: false, isCheck: false, active: resolvedActive);
-        }
-      }),
-    ),
+        textDirection: TextDirection.ltr,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(stepCount, (index) {
+          if (showCheckmarks && index < currentStep) {
+            // Complete step: filled circle with check
+            return _buildDot(
+              context,
+              filled: true,
+              isCheck: true,
+              active: resolvedActive,
+            );
+          } else if (index == currentStep) {
+            // Active step: filled circle
+            return _buildDot(
+              context,
+              filled: true,
+              isCheck: false,
+              active: resolvedActive,
+            );
+          } else {
+            // Upcoming step: outlined ring
+            return _buildDot(
+              context,
+              filled: false,
+              isCheck: false,
+              active: resolvedActive,
+            );
+          }
+        }),
+      ),
     );
   }
 
-  Widget _buildDot(BuildContext context,
-      {required bool filled, required bool isCheck, required Color active}) {
+  Widget _buildDot(
+    BuildContext context, {
+    required bool filled,
+    required bool isCheck,
+    required Color active,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space4),
       child: Container(

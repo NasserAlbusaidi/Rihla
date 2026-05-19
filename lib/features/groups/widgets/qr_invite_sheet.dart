@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/config/app_links.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -44,7 +45,7 @@ class _QrInviteSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -58,7 +59,7 @@ class _QrInviteSheet extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Scan to join',
+              context.l10n.groupScanToJoin,
               style: AppTypography.display(
                 fontSize: 22,
                 color: colors.textPrimary,
@@ -75,10 +76,13 @@ class _QrInviteSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            _QrCard(uri: _inviteUri, semanticLabel: 'Invite QR code'),
+            _QrCard(
+              uri: _inviteUri,
+              semanticLabel: context.l10n.groupInviteQrCode,
+            ),
             const SizedBox(height: 20),
             Text(
-              'OR ENTER CODE',
+              context.l10n.groupOrEnterCode,
               style: AppTypography.mono(
                 fontSize: 10,
                 letterSpacing: 1.5,
@@ -93,7 +97,7 @@ class _QrInviteSheet extends StatelessWidget {
                 Expanded(
                   child: _SheetButton(
                     icon: Iconsax.copy,
-                    label: 'Copy link',
+                    label: context.l10n.groupCopyLink,
                     onTap: () async {
                       HapticService.lightClick();
                       await Clipboard.setData(
@@ -101,9 +105,9 @@ class _QrInviteSheet extends StatelessWidget {
                       );
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Link copied'),
-                          duration: Duration(seconds: 2),
+                        SnackBar(
+                          content: Text(context.l10n.groupLinkCopied),
+                          duration: const Duration(seconds: 2),
                         ),
                       );
                     },
@@ -113,14 +117,19 @@ class _QrInviteSheet extends StatelessWidget {
                 Expanded(
                   child: _SheetButton(
                     icon: Iconsax.send_2,
-                    label: 'Share',
+                    label: context.l10n.groupShare,
                     primary: true,
                     onTap: () {
                       HapticService.lightClick();
                       Share.share(
-                        "Join '${group.name}' on Rihla: $_inviteUri "
-                        '(code ${group.inviteCode})',
-                        subject: "Join '${group.name}' on Rihla",
+                        context.l10n.groupShareInviteMessage(
+                          group.name,
+                          _inviteUri.toString(),
+                          group.inviteCode,
+                        ),
+                        subject: context.l10n.groupShareInviteSubject(
+                          group.name,
+                        ),
                       );
                     },
                   ),

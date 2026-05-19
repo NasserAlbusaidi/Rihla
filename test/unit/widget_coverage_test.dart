@@ -245,6 +245,8 @@ void main() {
   group('InviteCodeDisplay', () {
     Widget wrap(Widget child) => MaterialApp(
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(body: child),
     );
 

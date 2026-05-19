@@ -4,9 +4,12 @@ import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/core/theme/error_widgets.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(body: child),
     );
 

@@ -11,6 +11,7 @@ import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -19,13 +20,16 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 GroupActivityLog _makeActivity(
   String id,
   String actorName,
-  String description,
-) => GroupActivityLog(
+  String description, {
+  String type = 'event_created',
+  Map<String, dynamic> metadata = const {},
+}) => GroupActivityLog(
   id: id,
-  type: 'event_created',
+  type: type,
   actorId: 'uid0',
   actorName: actorName,
   description: description,
+  metadata: metadata,
   timestamp: DateTime(2026, 3, 28),
 );
 
@@ -50,7 +54,12 @@ Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
 
   return ProviderScope(
     overrides: overrides,
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
@@ -112,8 +121,13 @@ void main() {
     });
 
     testWidgets('shows activity entries with group name', (tester) async {
-      final log1 = _makeActivity('a1', 'Alice', 'added an expense');
-      final log2 = _makeActivity('a2', 'Bob', 'joined the group');
+      final log1 = _makeActivity('a1', 'Alice', 'created an event');
+      final log2 = _makeActivity(
+        'a2',
+        'Bob',
+        'joined the group',
+        type: 'member_joined',
+      );
 
       final entries = [
         _makeEntry(log1, 'Trip A', 'g1'),
@@ -130,7 +144,7 @@ void main() {
 
       expect(find.text('Trip A'), findsOneWidget);
       expect(find.text('Trip B'), findsOneWidget);
-      expect(find.textContaining('added an expense'), findsOneWidget);
+      expect(find.textContaining('created an event'), findsOneWidget);
       expect(find.textContaining('joined the group'), findsOneWidget);
     });
 
@@ -190,6 +204,8 @@ void main() {
           ),
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             routerConfig: router,
           ),
         ),

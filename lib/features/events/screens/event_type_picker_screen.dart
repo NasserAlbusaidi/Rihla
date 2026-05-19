@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -11,6 +12,7 @@ import '../../../shared/animations/tap_bounce.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
+import '../utils/event_display.dart';
 
 /// Full-screen event type picker — Step 1 of the event creation flow.
 ///
@@ -35,7 +37,7 @@ class _EventTypePickerScreenState extends ConsumerState<EventTypePickerScreen> {
   Widget build(BuildContext context) {
     final disableAnimations = MediaQuery.of(context).disableAnimations;
     final types = EventTypeConfig.allTypes;
-    final selectedConfig = EventTypeConfig.forType(_selectedType);
+    final selectedLabel = _selectedType.localizedLabel(context.l10n);
 
     return Scaffold(
       key: EventKeys.eventTypePickerScreen,
@@ -46,12 +48,12 @@ class _EventTypePickerScreenState extends ConsumerState<EventTypePickerScreen> {
             _PickerTopBar(groupId: widget.groupId),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                padding: const EdgeInsetsDirectional.fromSTEB(24, 8, 24, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'What kind of\njourney is this?',
+                      context.l10n.eventPickerTitle,
                       key: EventKeys.eventTypePickerTitle,
                       style: AppTypography.display(
                         fontSize: 30,
@@ -61,7 +63,7 @@ class _EventTypePickerScreenState extends ConsumerState<EventTypePickerScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "We'll set sensible defaults for categories and splits.",
+                      context.l10n.eventPickerSubtitle,
                       style: AppTypography.sans(
                         fontSize: 13,
                         color: context.colors.textSecondary,
@@ -81,7 +83,7 @@ class _EventTypePickerScreenState extends ConsumerState<EventTypePickerScreen> {
                     ),
                     const SizedBox(height: 24),
                     _ContinueButton(
-                      label: 'Continue with ${selectedConfig.label}',
+                      label: context.l10n.eventContinueWith(selectedLabel),
                       onPressed: () => context.push(
                         '/group/${widget.groupId}/create-event/${_selectedType.value}',
                       ),
@@ -105,16 +107,16 @@ class _PickerTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 20, 8),
       child: SizedBox(
         height: 48,
         child: Stack(
           alignment: Alignment.center,
           children: [
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: IconButton(
-                tooltip: 'Close',
+                tooltip: context.l10n.commonClose,
                 icon: const Icon(Iconsax.close_circle, size: 20),
                 color: context.colors.textPrimary,
                 onPressed: () {
@@ -128,7 +130,7 @@ class _PickerTopBar extends StatelessWidget {
               ),
             ),
             Text(
-              'New event',
+              context.l10n.eventNew,
               style: AppTypography.sans(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -216,7 +218,9 @@ class _TypeCard extends StatelessWidget {
     final typeColor = config.resolveColor(colors);
 
     return Semantics(
-      label: '${config.label}: ${config.description}',
+      label:
+          '${config.type.localizedLabel(context.l10n)}: '
+          '${config.type.localizedDescription(context.l10n)}',
       button: true,
       selected: selected,
       child: TapBounce(
@@ -298,7 +302,7 @@ class _TypeCopy extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          config.type.value.toUpperCase(),
+          config.type.localizedShortLabel(context.l10n),
           style: AppTypography.mono(
             fontSize: 9,
             letterSpacing: 1.5,
@@ -308,7 +312,7 @@ class _TypeCopy extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          config.label,
+          config.type.localizedLabel(context.l10n),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTypography.display(
@@ -319,7 +323,7 @@ class _TypeCopy extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          config.description,
+          config.type.localizedDescription(context.l10n),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: AppTypography.sans(
@@ -341,6 +345,7 @@ class _ContinueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     return SizedBox(
       width: double.infinity,
       height: context.spacing.buttonHeight,
@@ -368,7 +373,10 @@ class _ContinueButton extends StatelessWidget {
               color: context.colors.textOnPrimary,
             ),
           ),
-          icon: const Icon(Iconsax.arrow_right_3, size: 16),
+          icon: Transform.scale(
+            scaleX: isRtl ? -1 : 1,
+            child: const Icon(Iconsax.arrow_right_3, size: 16),
+          ),
         ),
       ),
     );

@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import 'package:go_router/go_router.dart';
 import '../../../core/config/firebase_config.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
@@ -60,18 +61,18 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final group = groupAsync.valueOrNull;
 
     if (group == null) {
+      final l10n = context.l10n;
       return Scaffold(
         backgroundColor: context.colors.scaffoldBackground,
         body: Column(
           children: [
-            const ModuleHeader(title: 'Not Found', useDarkTheme: true),
+            ModuleHeader(title: l10n.commonNotFound, useDarkTheme: true),
             Expanded(
               child: EmptyStateView(
                 icon: Iconsax.warning_2,
-                title: 'This group is no longer available',
-                message:
-                    'You may have been removed. Tap below to go back home.',
-                actionLabel: 'Go Home',
+                title: l10n.groupSettleUpMissingTitle,
+                message: l10n.groupSettleUpMissingMessage,
+                actionLabel: l10n.commonGoHome,
                 onAction: () => context.go('/home'),
                 iconColor: context.colors.textSecondary,
               ),
@@ -164,7 +165,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Couldn\'t load balances.',
+                          context.l10n.settleUpCouldNotLoadBalances,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -176,7 +177,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           onPressed: () => ref.invalidate(
                             groupBalancesProvider(widget.groupId),
                           ),
-                          child: const Text('Retry'),
+                          child: Text(context.l10n.commonRetry),
                         ),
                       ],
                     ),
@@ -224,7 +225,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final entry = eventMap[eventId];
     if (entry == null) {
       return eventId.length > 8
-          ? 'Event ...${eventId.substring(eventId.length - 6)}'
+          ? context.l10n.groupSettleUpEventLabelFallback(
+              eventId.substring(eventId.length - 6),
+            )
           : eventId;
     }
 
@@ -274,7 +277,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     if (editedAmount <= Decimal.zero) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Amount must be greater than zero')),
+          SnackBar(
+            content: Text(context.l10n.settleUpAmountGreaterThanZero),
+          ),
         );
       }
       return;
@@ -284,8 +289,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Amount cannot exceed the outstanding balance of '
-              '${AppFormatters.formatCurrency(suggestedAmount, group.currency)}',
+              context.l10n.settleUpAmountExceedsOutstanding(
+                AppFormatters.formatCurrency(suggestedAmount, group.currency),
+              ),
             ),
           ),
         );
@@ -366,7 +372,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Settlement recorded.'),
+            content: Text(context.l10n.settleUpRecorded),
             backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -379,9 +385,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Couldn\'t record settlement. Check your connection and try again.',
-            ),
+            content: Text(context.l10n.settleUpRecordFailed),
             backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -401,6 +405,7 @@ class _SettlementTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
       child: SizedBox(
@@ -411,7 +416,7 @@ class _SettlementTopBar extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: IconButton(
-                tooltip: 'Back',
+                tooltip: l10n.commonBack,
                 icon: const Icon(Iconsax.arrow_left_2, size: 20),
                 color: context.colors.textPrimary,
                 onPressed: () {
@@ -424,7 +429,7 @@ class _SettlementTopBar extends StatelessWidget {
               ),
             ),
             Text(
-              'Settle Up',
+              l10n.settleUpTitle,
               style: TextStyle(
                 color: context.colors.textPrimary,
                 fontSize: 16,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -45,11 +46,12 @@ class EventSettingsScreen extends ConsumerWidget {
         child: eventAsync.when(
           data: (event) {
             if (event == null) {
-              return _buildError(context, ref, 'Event not found');
+              return _buildError(context, ref, context.l10n.eventNotFound);
             }
 
             final group = groupAsync.valueOrNull;
-            final isAdmin = group != null &&
+            final isAdmin =
+                group != null &&
                 EventPermissions.isEventAdmin(
                   event: event,
                   group: group,
@@ -66,7 +68,7 @@ class EventSettingsScreen extends ConsumerWidget {
                     _buildBackButton(context),
                     const SizedBox(height: 16),
                     Text(
-                      'Event Settings',
+                      context.l10n.eventSettingsTitle,
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
@@ -81,11 +83,11 @@ class EventSettingsScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     if (isAdmin)
                       EventDangerSection(
-                        groupId: groupId,
-                        eventId: eventId,
-                        event: event,
-                        isAdmin: isAdmin,
-                      )
+                            groupId: groupId,
+                            eventId: eventId,
+                            event: event,
+                            isAdmin: isAdmin,
+                          )
                           .animate()
                           .fadeIn(delay: 200.ms, duration: 400.ms)
                           .slideY(begin: 0.1, curve: Curves.easeOutCubic),
@@ -115,7 +117,7 @@ class EventSettingsScreen extends ConsumerWidget {
 
   Widget _buildBackButton(BuildContext context) {
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Container(
         key: EventKeys.settingsBackButton,
         decoration: BoxDecoration(
@@ -125,7 +127,9 @@ class EventSettingsScreen extends ConsumerWidget {
         ),
         child: IconButton(
           icon: Icon(
-            Iconsax.arrow_left,
+            Directionality.of(context) == TextDirection.rtl
+                ? Iconsax.arrow_right
+                : Iconsax.arrow_left,
             color: context.colors.textPrimary,
             size: 20,
           ),
@@ -154,7 +158,7 @@ class EventSettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Could not load settings',
+                  context.l10n.eventSettingsLoadFailed,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -163,7 +167,7 @@ class EventSettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Check your connection and try again.',
+                  context.l10n.activityLoadFailedMessage,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
@@ -173,11 +177,10 @@ class EventSettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => ref.invalidate(
-                    eventDetailProvider(
-                        (groupId: groupId, eventId: eventId)),
+                    eventDetailProvider((groupId: groupId, eventId: eventId)),
                   ),
                   child: Text(
-                    'Try again',
+                    context.l10n.groupTryAgain,
                     style: TextStyle(color: context.colors.primary),
                   ),
                 ),

@@ -64,6 +64,8 @@ void main() {
       overrides: overrides,
       child: MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: SingleChildScrollView(child: child)),
       ),
     );
@@ -85,6 +87,8 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               body: ActivityRow(
                 activity: activity,
@@ -114,8 +118,8 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Beach Trip'), findsOneWidget);
-        // Relative timestamp should be there (timeago)
-        expect(find.textContaining('ago'), findsOneWidget);
+        // Relative timestamp is rendered with the compact localized helper.
+        expect(find.textContaining('H'), findsOneWidget);
       },
     );
 
@@ -127,6 +131,8 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               body: ActivityRow(
                 activity: activity,
@@ -279,7 +285,7 @@ void main() {
 
     /// Builds a test app with GoRouter for BottomNavShell — ProfileScreen
     /// requires GoRouter.of(context) for back-button detection.
-    Widget buildShellApp(List<Override> overrides) {
+    Widget buildShellApp(List<Override> overrides, {Locale? locale}) {
       final router = GoRouter(
         initialLocation: '/home',
         routes: [
@@ -298,6 +304,7 @@ void main() {
         overrides: overrides,
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
+          locale: locale,
           routerConfig: router,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -321,6 +328,23 @@ void main() {
         orderedEquals(['Groups', 'Activity', 'Profile']),
       );
       expect(find.text('Chats'), findsNothing);
+    });
+
+    testWidgets('renders Arabic tab labels under Locale(ar)', (tester) async {
+      await tester.pumpWidget(
+        buildShellApp(shellOverrides(), locale: const Locale('ar')),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.destinations, hasLength(3));
+      expect(
+        navBar.destinations.map(
+          (destination) => (destination as NavigationDestination).label,
+        ),
+        orderedEquals(['المجموعات', 'النشاط', 'الملف']),
+      );
     });
 
     testWidgets(

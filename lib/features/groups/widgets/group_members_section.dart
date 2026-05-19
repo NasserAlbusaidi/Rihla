@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -42,7 +43,10 @@ class GroupMembersSection extends ConsumerWidget {
       key: GroupKeys.membersSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(title: 'Members', actionLabel: 'Manage'),
+        SettingsSectionHeader(
+          title: context.l10n.groupMembers,
+          actionLabel: context.l10n.groupManage,
+        ),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
@@ -110,7 +114,9 @@ class GroupMembersSection extends ConsumerWidget {
                 size: 20,
                 color: context.colors.textSecondary,
               ),
-              tooltip: 'Remove ${member.displayName} from group',
+              tooltip: context.l10n.groupRemoveMemberTooltip(
+                member.displayName,
+              ),
               onPressed: () {
                 HapticService.selection();
                 _handleRemove(context, ref, member);
@@ -123,10 +129,10 @@ class GroupMembersSection extends ConsumerWidget {
 
   Widget _buildRoleLabel(BuildContext context, GroupMember member) {
     final role = member.isCreator
-        ? 'Creator'
+        ? context.l10n.groupRoleCreator
         : member.userId == currentUserId
-        ? 'You'
-        : 'Member';
+        ? context.l10n.groupRoleYou
+        : context.l10n.groupRoleMember;
     return Text(
       key: member.isCreator ? GroupKeys.creatorBadge : null,
       role,
@@ -154,10 +160,10 @@ class GroupMembersSection extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Settle up with ${member.displayName} before removing them.',
+              context.l10n.groupSettleWithBeforeRemoving(member.displayName),
             ),
             action: SnackBarAction(
-              label: 'Settle Up',
+              label: context.l10n.groupSettleUp,
               onPressed: () => context.push('/group/$groupId/settle-up'),
             ),
           ),
@@ -195,7 +201,14 @@ class GroupMembersSection extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to remove ${member.displayName}: $e')),
+          SnackBar(
+            content: Text(
+              context.l10n.groupFailedRemoveMember(
+                member.displayName,
+                e.toString(),
+              ),
+            ),
+          ),
         );
       }
     }

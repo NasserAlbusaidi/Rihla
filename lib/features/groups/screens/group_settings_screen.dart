@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -46,7 +47,12 @@ class GroupSettingsScreen extends ConsumerWidget {
                 _SettingsTopBar(groupId: groupId),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      20,
+                      6,
+                      20,
+                      20,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -83,7 +89,7 @@ class GroupSettingsScreen extends ConsumerWidget {
               _SettingsTopBar(groupId: groupId),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                  padding: const EdgeInsetsDirectional.fromSTEB(20, 6, 20, 20),
                   child: SkeletonLoader.generic(count: 3),
                 ),
               ),
@@ -111,10 +117,12 @@ class _SettingsTopBar extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: _GhostIconButton(
                 key: GroupKeys.settingsBackButton,
-                icon: Iconsax.arrow_left,
+                icon: Directionality.of(context) == TextDirection.rtl
+                    ? Iconsax.arrow_right
+                    : Iconsax.arrow_left,
                 onTap: () {
                   if (GoRouter.of(context).canPop()) {
                     GoRouter.of(context).pop();
@@ -124,7 +132,7 @@ class _SettingsTopBar extends StatelessWidget {
             ),
             Text(
               key: GroupKeys.settingsTitle,
-              'Group settings',
+              context.l10n.groupSettingsTitle,
               style: AppTypography.sans(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
@@ -175,7 +183,7 @@ class _DefaultsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(title: 'Defaults'),
+        SettingsSectionHeader(title: context.l10n.groupDefaults),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -188,18 +196,18 @@ class _DefaultsSection extends StatelessWidget {
             children: [
               _DefaultsRow(
                 key: GroupKeys.settingsCurrencyTile,
-                title: 'Currency',
+                title: context.l10n.groupCurrency,
                 value: currency,
                 divider: true,
               ),
-              const _DefaultsRow(
-                title: 'Default split',
-                value: 'Equal',
+              _DefaultsRow(
+                title: context.l10n.groupDefaultSplit,
+                value: context.l10n.groupDefaultSplitEqual,
                 divider: true,
               ),
-              const _DefaultsRow(
-                title: 'Reminders',
-                value: 'Weekly',
+              _DefaultsRow(
+                title: context.l10n.groupReminders,
+                value: context.l10n.groupRemindersWeekly,
                 divider: false,
               ),
             ],
@@ -280,7 +288,7 @@ class _ErrorState extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Could not load settings',
+                    context.l10n.groupSettingsLoadFailed,
                     style: AppTypography.sans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -289,7 +297,7 @@ class _ErrorState extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Check your connection and try again.',
+                    context.l10n.activityLoadFailedMessage,
                     textAlign: TextAlign.center,
                     style: AppTypography.sans(
                       fontSize: 14,
@@ -301,7 +309,7 @@ class _ErrorState extends ConsumerWidget {
                     onPressed: () =>
                         ref.invalidate(groupDetailProvider(groupId)),
                     child: Text(
-                      'Try again',
+                      context.l10n.groupTryAgain,
                       style: AppTypography.sans(
                         fontSize: 14,
                         color: context.colors.primary,

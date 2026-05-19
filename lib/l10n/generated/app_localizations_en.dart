@@ -1119,6 +1119,1122 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get commonDone => 'Done';
+
+  @override
+  String get commonContinue => 'Continue';
+
+  @override
+  String get nameValidationEmpty => 'Name can\'t be empty.';
+
+  @override
+  String nameValidationTooLong(int maxLength) {
+    return 'Keep it to $maxLength characters or fewer.';
+  }
+
+  @override
+  String get nameValidationControlChars =>
+      'Remove line breaks or special characters.';
+
+  @override
+  String get nameValidationReserved => 'That name uses reserved wording.';
+
+  @override
+  String get homeActiveJourneys => 'Active journeys';
+
+  @override
+  String get homeSeeAll => 'See all';
+
+  @override
+  String get homeGroups => 'Groups';
+
+  @override
+  String get homeNewGroup => 'New group';
+
+  @override
+  String get homeRecently => 'Recently';
+
+  @override
+  String get homeNoActivityYet => 'No activity yet';
+
+  @override
+  String get homeTravellerFallback => 'traveller';
+
+  @override
+  String get homeStartFirstGroup => 'Start your first group';
+
+  @override
+  String get homeStartFirstGroupBody =>
+      'Plan trips, track expenses, and settle up with friends.';
+
+  @override
+  String get homeCreateGroup => 'Create Group';
+
+  @override
+  String get homeJoinGroup => 'Join Group';
+
+  @override
+  String get homeRecover => 'I had Rihla before — restore';
+
+  @override
+  String get homeErrorTitle => 'Something went wrong';
+
+  @override
+  String get homeErrorMessage =>
+      'Check your connection and try again. Your groups are safely synced — we just need internet to fetch the latest.';
+
+  @override
+  String get homeCreateAGroup => 'Create a Group';
+
+  @override
+  String get homeJoinAGroup => 'Join a Group';
+
+  @override
+  String get homeGoodMorning => 'Good morning';
+
+  @override
+  String get homeGoodAfternoon => 'Good afternoon';
+
+  @override
+  String get homeGoodEvening => 'Good evening';
+
+  @override
+  String homeGreeting(Object greeting, Object name) {
+    return '$greeting, $name';
+  }
+
+  @override
+  String get homeNoUpcomingJourneys => 'No upcoming or active journeys';
+
+  @override
+  String homeGroupSubtitle(int memberCount, int eventCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      memberCount,
+      locale: localeName,
+      other: '$memberCount members',
+      one: '1 member',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      eventCount,
+      locale: localeName,
+      other: '$eventCount events',
+      one: '1 event',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get homeTheyOweYou => 'they owe you';
+
+  @override
+  String get homeYouOwe => 'you owe';
+
+  @override
+  String get homeSettled => 'settled';
+
+  @override
+  String get homeAcrossAllJourneys => 'Across all journeys';
+
+  @override
+  String get homeNetYoureOwed => 'Net — you\'re owed';
+
+  @override
+  String get homeNetYouOwe => 'Net — you owe';
+
+  @override
+  String get homeAllSettledAcrossJourneys => 'All settled across journeys';
+
+  @override
+  String get homeOwed => 'owed';
+
+  @override
+  String get homeOwe => 'owe';
+
+  @override
+  String get homeOwedToYou => 'owed to you';
+
+  @override
+  String get homeBalanceUnavailable => 'Balance unavailable';
+
+  @override
+  String get homeSpendingUnavailable => 'Spending data unavailable';
+
+  @override
+  String homeWeeklySpending(Object currency) {
+    return 'Weekly Spending ($currency)';
+  }
+
+  @override
+  String get homeNoSpendingThisWeek => 'No spending this week';
+
+  @override
+  String get homeBottomNavGroups => 'Groups';
+
+  @override
+  String get homeBottomNavActivity => 'Activity';
+
+  @override
+  String get homeBottomNavProfile => 'Profile';
+
+  @override
+  String get homeQuickAddExpense => 'Add Expense';
+
+  @override
+  String get homeQuickSettleUp => 'Settle Up';
+
+  @override
+  String get homeQuickInviteFriend => 'Invite Friend';
+
+  @override
+  String get homeQuickActivity => 'Activity';
+
+  @override
+  String get activityTitle => 'Activity';
+
+  @override
+  String get activityCaption => 'ACTIVITY';
+
+  @override
+  String get activitySubtitle => 'Across every journey, every group';
+
+  @override
+  String get activityLoadFailedTitle => 'Could not load activity';
+
+  @override
+  String get activityLoadFailedMessage =>
+      'Check your connection and try again.';
+
+  @override
+  String get activityReload => 'Reload';
+
+  @override
+  String get activityNoActivityTitle => 'No activity yet';
+
+  @override
+  String get activityCrossGroupEmptyMessage =>
+      'Activity from all your groups will appear here.';
+
+  @override
+  String get activityEventEmptyMessage =>
+      'Actions by you and your group members will appear here.';
+
+  @override
+  String get activityGroupEmptyMessage =>
+      'Group events, payments, and member changes will appear here.';
+
+  @override
+  String get activityNoFilterTitle => 'Nothing matches this filter';
+
+  @override
+  String get activityNoFilterMessage =>
+      'Try a different filter, or switch back to All.';
+
+  @override
+  String get activityFilterAll => 'All';
+
+  @override
+  String get activityFilterActivity => 'Activity';
+
+  @override
+  String get activityFilterSettles => 'Settles';
+
+  @override
+  String get activityFilterSettlements => 'Settlements';
+
+  @override
+  String get activityFilterEvents => 'Events';
+
+  @override
+  String get activityFilterMembers => 'Members';
+
+  @override
+  String get activityEventMissingTitle => 'This event no longer exists';
+
+  @override
+  String get activityEventMissingMessage => 'It may have been deleted.';
+
+  @override
+  String get activityRelativeJustNow => 'JUST NOW';
+
+  @override
+  String activityRelativeMinutes(int count) {
+    return '${count}M';
+  }
+
+  @override
+  String activityRelativeHours(int count) {
+    return '${count}H';
+  }
+
+  @override
+  String activityRelativeDays(int count) {
+    return '${count}D';
+  }
+
+  @override
+  String get activitySomeone => 'Someone';
+
+  @override
+  String get activityEventMoneyCreated => 'added a money entry';
+
+  @override
+  String get activityEventMoneyUpdated => 'updated a money entry';
+
+  @override
+  String get activityEventMoneyDeleted => 'deleted a money entry';
+
+  @override
+  String get activityEventGearCreated => 'added a gear entry';
+
+  @override
+  String get activityEventGearUpdated => 'updated a gear entry';
+
+  @override
+  String get activityEventGearDeleted => 'deleted a gear entry';
+
+  @override
+  String get activityEventDocsCreated => 'added a document';
+
+  @override
+  String get activityEventDocsUpdated => 'updated a document';
+
+  @override
+  String get activityEventDocsDeleted => 'deleted a document';
+
+  @override
+  String get activityGroupSettlementDescription => 'recorded a settlement';
+
+  @override
+  String get activityGroupEventCreatedGeneric => 'created an event';
+
+  @override
+  String activityGroupEventCreated(Object eventName) {
+    return 'created $eventName';
+  }
+
+  @override
+  String get activityGroupEventDeletedGeneric => 'deleted an event';
+
+  @override
+  String activityGroupEventDeleted(Object eventName) {
+    return 'deleted $eventName';
+  }
+
+  @override
+  String get activityGroupMemberJoined => 'joined the group';
+
+  @override
+  String get activityGroupMemberLeft => 'left the group';
+
+  @override
+  String get activityTitlePaymentRecorded => 'Payment recorded';
+
+  @override
+  String get activityTitleEventCreated => 'Event created';
+
+  @override
+  String get activityTitleEventRemoved => 'Event removed';
+
+  @override
+  String get activityTitleMemberJoined => 'Member joined';
+
+  @override
+  String get activityTitleMemberLeft => 'Member left';
+
+  @override
+  String get activityTitleGeneric => 'Activity';
+
+  @override
+  String get eventTypeTripLabel => 'Trip';
+
+  @override
+  String get eventTypeTripShort => 'TRIP';
+
+  @override
+  String get eventTypeTripDescription =>
+      'Plan a shared trip with expenses and activity';
+
+  @override
+  String get eventTypeCampingLabel => 'Camping';
+
+  @override
+  String get eventTypeCampingShort => 'CAMPING';
+
+  @override
+  String get eventTypeCampingDescription =>
+      'Outdoor trip with shared expense tracking';
+
+  @override
+  String get eventTypeTravelLabel => 'Travel';
+
+  @override
+  String get eventTypeTravelShort => 'TRAVEL';
+
+  @override
+  String get eventTypeTravelDescription =>
+      'Journey with group expenses and activity';
+
+  @override
+  String get eventTypeNightDayOutLabel => 'Night/Day Out';
+
+  @override
+  String get eventTypeNightDayOutShort => 'NIGHT/DAY OUT';
+
+  @override
+  String get eventTypeNightDayOutDescription =>
+      'Quick outing with expense splitting';
+
+  @override
+  String get eventTypeCustomLabel => 'Custom';
+
+  @override
+  String get eventTypeCustomShort => 'EVENT';
+
+  @override
+  String get eventTypeCustomDescription => 'Start from a flexible event setup';
+
+  @override
+  String get eventPickerTitle => 'What kind of\njourney is this?';
+
+  @override
+  String get eventPickerSubtitle =>
+      'We\'ll set sensible defaults for categories and splits.';
+
+  @override
+  String eventContinueWith(Object type) {
+    return 'Continue with $type';
+  }
+
+  @override
+  String get eventNew => 'New event';
+
+  @override
+  String get eventNameLabel => 'Event Name';
+
+  @override
+  String get eventNameHint => 'e.g. Summer camping trip';
+
+  @override
+  String get eventDatesLabel => 'Dates';
+
+  @override
+  String get eventOptionalLabel => '(optional)';
+
+  @override
+  String get eventStartDate => 'Start date';
+
+  @override
+  String get eventEndDate => 'End date';
+
+  @override
+  String get eventCreate => 'Create Event';
+
+  @override
+  String get eventCreating => 'Creating…';
+
+  @override
+  String get eventSelectAtLeastOneParticipant =>
+      'Select at least one participant.';
+
+  @override
+  String get eventCreateFailed =>
+      'Couldn\'t create event. Check your connection and try again.';
+
+  @override
+  String get eventParticipants => 'Participants';
+
+  @override
+  String get eventSelectAll => 'Select All';
+
+  @override
+  String get eventSettingsTitle => 'Event Settings';
+
+  @override
+  String get eventSettingsLoadFailed => 'Could not load settings';
+
+  @override
+  String get eventNotFound => 'Event not found';
+
+  @override
+  String get eventDetailsSection => 'EVENT DETAILS';
+
+  @override
+  String get eventNameEmpty => 'Event name can\'t be empty.';
+
+  @override
+  String get eventUpdated => 'Event updated';
+
+  @override
+  String get eventSaveFailed => 'Couldn\'t save changes. Try again.';
+
+  @override
+  String get eventNotSet => 'Not set';
+
+  @override
+  String get eventDescriptionLabel => 'Description';
+
+  @override
+  String get eventSaveChanges => 'Save Changes';
+
+  @override
+  String get eventDangerZone => 'DANGER ZONE';
+
+  @override
+  String get eventUnsettledWarning => 'This event has unsettled balances.';
+
+  @override
+  String get eventDelete => 'Delete event';
+
+  @override
+  String get eventDeleteQuestion => 'Delete this event?';
+
+  @override
+  String get eventDeleteBody =>
+      'This will permanently delete the event and all its expenses, settlements, and activity. This cannot be undone.';
+
+  @override
+  String get eventDeleteBodyWithUnsettled =>
+      'This will permanently delete the event and all its expenses, settlements, and activity. This cannot be undone.\n\nThis event has unsettled balances. Settle up before deleting, or proceed anyway.';
+
+  @override
+  String get eventKeepEvent => 'Keep event';
+
+  @override
+  String eventDeleteFailed(Object error) {
+    return 'Failed to delete event: $error';
+  }
+
+  @override
+  String get eventAddExpense => 'Add expense';
+
+  @override
+  String get eventYourBalance => 'Your balance';
+
+  @override
+  String get eventYouAreOwed => 'You are owed';
+
+  @override
+  String get eventYouOwe => 'You owe';
+
+  @override
+  String get eventAllSettled => 'All settled';
+
+  @override
+  String get eventNothingToSettleYet => 'Nothing to settle yet';
+
+  @override
+  String get eventEveryoneSquare => 'Everyone is square on this trip.';
+
+  @override
+  String get eventAddFirstExpenseHint =>
+      'Add the first expense to start splitting.';
+
+  @override
+  String get eventBreakdownOwesYou => 'owes you';
+
+  @override
+  String get eventBreakdownYouOwe => 'you owe';
+
+  @override
+  String get eventTripTotal => 'Trip total';
+
+  @override
+  String eventExpenseCountInline(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count expenses',
+      one: '1 expense',
+    );
+    return '· $_temp0';
+  }
+
+  @override
+  String get eventLedgerLink => 'Ledger →';
+
+  @override
+  String get eventRecent => 'Recent';
+
+  @override
+  String get eventSeeAll => 'See all →';
+
+  @override
+  String get eventYouPaid => 'You paid';
+
+  @override
+  String eventPaidByName(Object name) {
+    return '$name paid';
+  }
+
+  @override
+  String get eventAddFirstExpenseTitle => 'Add the first expense';
+
+  @override
+  String get eventAddFirstExpenseBody => 'Pick who paid, split it fairly.';
+
+  @override
+  String eventPeopleOverline(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventSplittingBetweenYouAndOthers(int othersCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      othersCount,
+      locale: localeName,
+      other: 'Splitting between you and $othersCount others',
+      one: 'Splitting between you and 1 other',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventYou => 'You';
+
+  @override
+  String eventDayOf(int currentDay, int totalDays) {
+    return 'Day $currentDay of $totalDays';
+  }
+
+  @override
+  String get eventLoadFailedTitle => 'Could not load event';
+
+  @override
+  String get eventMissingMessage =>
+      'It may have been deleted, or the link is incorrect.';
+
+  @override
+  String eventSemanticCard(Object eventName, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return '$eventName, $_temp0';
+  }
+
+  @override
+  String eventYouOweAmount(Object amount, Object currency) {
+    return 'You owe $amount $currency';
+  }
+
+  @override
+  String eventYouAreOwedAmount(Object amount, Object currency) {
+    return 'You are owed $amount $currency';
+  }
+
+  @override
+  String get groupNameLabel => 'Group Name';
+
+  @override
+  String get groupNameHint => 'e.g. Family trip';
+
+  @override
+  String get groupYourNameInGroupLabel => 'Your name in this group';
+
+  @override
+  String get groupYourNameHint => 'how friends will see you';
+
+  @override
+  String get groupDifferentNameHelper =>
+      'You can use a different name in each group.';
+
+  @override
+  String groupCreateError(Object error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String get groupNew => 'New group';
+
+  @override
+  String get groupCreate => 'Create';
+
+  @override
+  String get groupMoodTitle => 'Who\'s coming along?';
+
+  @override
+  String get groupMoodBody =>
+      'A group is a circle of people you share expenses with — a household, a travel crew, a project team.';
+
+  @override
+  String get groupGlyph => 'Group glyph';
+
+  @override
+  String get groupDefaultCurrency => 'Default currency';
+
+  @override
+  String get groupCreatorTitle => 'You\'re the creator.';
+
+  @override
+  String get groupCreatorBody =>
+      'Once created, share an invite code to bring others in.';
+
+  @override
+  String get groupInviteCodeCopied => 'Invite code copied';
+
+  @override
+  String groupShareMessage(Object code) {
+    return 'Join my group on Rihla! Use code $code to join.';
+  }
+
+  @override
+  String groupShareSubject(Object name) {
+    return 'Join $name';
+  }
+
+  @override
+  String get groupShareCodeWithGroup => 'Share this code with your group';
+
+  @override
+  String get groupCopyCode => 'Copy Code';
+
+  @override
+  String get groupShare => 'Share';
+
+  @override
+  String get groupJoinTitle => 'Join a Group';
+
+  @override
+  String get groupJoinCta => 'Join Group';
+
+  @override
+  String get groupJoining => 'Joining…';
+
+  @override
+  String get groupYourName => 'Your name';
+
+  @override
+  String get groupJoinNameHint => 'how the group will see you';
+
+  @override
+  String get groupInviteCode => 'Invite code';
+
+  @override
+  String get groupInviteCodeHelper =>
+      'Ask a group member for their 6-character code';
+
+  @override
+  String get groupJoinHintTitle => 'You\'ll see balances right away.';
+
+  @override
+  String get groupJoinHintBody =>
+      'Joining is instant — no approval needed once the code matches.';
+
+  @override
+  String get groupJoinMoodTitle => 'Got an invite?';
+
+  @override
+  String get groupJoinMoodBody =>
+      'Enter the 6-character code a friend gave you. We will drop you straight into the group.';
+
+  @override
+  String get groupJoinInvalidCode =>
+      'That code doesn\'t match any group. Check the code and try again.';
+
+  @override
+  String get groupJoinAlreadyMember => 'You\'re already in this group.';
+
+  @override
+  String get groupJoinTooManyAttempts => 'Too many attempts. Try again later.';
+
+  @override
+  String get groupJoinPleaseSignIn => 'Please sign in and try again.';
+
+  @override
+  String get groupJoinFailed =>
+      'Couldn\'t join the group. Check your connection and try again.';
+
+  @override
+  String get groupMemberJoinedDescription => 'joined the group';
+
+  @override
+  String get groupMemberLeftDescription => 'left the group';
+
+  @override
+  String get groupEvents => 'Events';
+
+  @override
+  String get groupMembers => 'Members';
+
+  @override
+  String get groupNoEventsTitle => 'No events yet';
+
+  @override
+  String get groupNoEventsMessage =>
+      'Create your first event to start planning together.';
+
+  @override
+  String get groupCreateEvent => 'Create Event';
+
+  @override
+  String get groupLoadEventsFailed => 'Couldn\'t load events';
+
+  @override
+  String groupMemberCountCaps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count MEMBERS',
+      one: '1 MEMBER',
+    );
+    return 'GROUP · $_temp0';
+  }
+
+  @override
+  String get groupMoreTooltip => 'More';
+
+  @override
+  String get groupSettings => 'Group settings';
+
+  @override
+  String get groupActivity => 'Activity';
+
+  @override
+  String get groupYourBalanceHere => 'Your balance here';
+
+  @override
+  String get groupTheyOweYou => 'they owe you';
+
+  @override
+  String get groupYouOwe => 'you owe';
+
+  @override
+  String get groupAllSettled => 'all settled';
+
+  @override
+  String get groupSettleUp => 'Settle up';
+
+  @override
+  String groupEventEnds(Object date) {
+    return 'ends $date';
+  }
+
+  @override
+  String get groupYourShare => 'your share';
+
+  @override
+  String get groupNoShare => 'no share';
+
+  @override
+  String get groupMembersLoadFailed => 'Couldn\'t load members';
+
+  @override
+  String get groupMembersLoading => 'Loading members…';
+
+  @override
+  String get groupFormerMember => 'Former member';
+
+  @override
+  String get groupRoleYou => 'You';
+
+  @override
+  String get groupRoleCreator => 'Creator';
+
+  @override
+  String get groupLoadFailedTitle => 'Could not load group';
+
+  @override
+  String get groupNotFoundTitle => 'Group not found';
+
+  @override
+  String get groupNotFoundMessage =>
+      'It may have been deleted, or the link is incorrect.';
+
+  @override
+  String get groupBackHome => 'Back home';
+
+  @override
+  String get groupSettingsTitle => 'Group settings';
+
+  @override
+  String get groupDefaults => 'Defaults';
+
+  @override
+  String get groupCurrency => 'Currency';
+
+  @override
+  String get groupDefaultSplit => 'Default split';
+
+  @override
+  String get groupDefaultSplitEqual => 'Equal';
+
+  @override
+  String get groupReminders => 'Reminders';
+
+  @override
+  String get groupRemindersWeekly => 'Weekly';
+
+  @override
+  String get groupSettingsLoadFailed => 'Could not load settings';
+
+  @override
+  String get groupTryAgain => 'Try again';
+
+  @override
+  String get groupInvite => 'Invite';
+
+  @override
+  String groupCreatedDateCurrency(Object date, Object currency) {
+    return 'Created $date · $currency';
+  }
+
+  @override
+  String get groupAnyoneWithCodeCanJoin => 'Anyone with the code can join';
+
+  @override
+  String get groupEditNameSemantic => 'Edit group name';
+
+  @override
+  String get groupCopyInviteCodeSemantic => 'Copy invite code';
+
+  @override
+  String get groupShowQrCodeSemantic => 'Show QR code';
+
+  @override
+  String get groupShareInviteSemantic => 'Share invite';
+
+  @override
+  String get groupNameEmpty => 'Group name can\'t be empty.';
+
+  @override
+  String groupUpdateNameFailed(Object error) {
+    return 'Failed to update name: $error';
+  }
+
+  @override
+  String get groupDangerZone => 'Danger zone';
+
+  @override
+  String get groupDangerZoneCreatorOnly => 'Danger zone · Creator only';
+
+  @override
+  String get groupLeaveThisGroup => 'Leave this group';
+
+  @override
+  String get groupLeaveSubtitle =>
+      'You\'ll lose access to its events and expenses.';
+
+  @override
+  String get groupLeave => 'Leave';
+
+  @override
+  String get groupDeleteThisGroup => 'Delete this group';
+
+  @override
+  String get groupDeleteSubtitle => 'All events and expenses will be lost.';
+
+  @override
+  String get groupDelete => 'Delete';
+
+  @override
+  String get groupLeaveQuestion => 'Leave group?';
+
+  @override
+  String get groupLeaveBody =>
+      'You\'ll lose access to all events and data in this group.';
+
+  @override
+  String get groupStayInGroup => 'Stay in group';
+
+  @override
+  String get groupLeaveGroup => 'Leave group';
+
+  @override
+  String get groupSettleBeforeLeaving => 'Settle up before leaving the group.';
+
+  @override
+  String groupFailedLeave(Object error) {
+    return 'Failed to leave group: $error';
+  }
+
+  @override
+  String get groupSettleBeforeDeleting =>
+      'All members must settle up before deleting the group.';
+
+  @override
+  String groupFailedDelete(Object error) {
+    return 'Failed to delete group: $error';
+  }
+
+  @override
+  String get groupDeleteSheetTitle => 'Delete this group?';
+
+  @override
+  String get groupDeleteSheetRemovesPrefix => 'Removes ';
+
+  @override
+  String groupDeleteSheetMembersBody(int count) {
+    return ' for all $count members. Events, expenses, and balances inside it are erased. ';
+  }
+
+  @override
+  String get groupDeleteSheetEveryoneBody =>
+      ' for everyone. Events, expenses, and balances inside it are erased. ';
+
+  @override
+  String get groupDeleteSheetUndo => 'This can\'t be undone.';
+
+  @override
+  String get groupDeleteSheetTypePrefix => 'TYPE ';
+
+  @override
+  String get groupDeleteSheetTypeSuffix => ' TO CONFIRM';
+
+  @override
+  String get groupDeleteSheetRetention =>
+      'A copy is kept for 30 days in case you change your mind.';
+
+  @override
+  String get groupDeleteSheetConfirm => 'Delete group';
+
+  @override
+  String get groupScanToJoin => 'Scan to join';
+
+  @override
+  String get groupInviteQrCode => 'Invite QR code';
+
+  @override
+  String get groupOrEnterCode => 'OR ENTER CODE';
+
+  @override
+  String get groupCopyLink => 'Copy link';
+
+  @override
+  String get groupLinkCopied => 'Link copied';
+
+  @override
+  String groupShareInviteMessage(Object groupName, Object uri, Object code) {
+    return 'Join \'$groupName\' on Rihla: $uri or use code $code.';
+  }
+
+  @override
+  String groupShareInviteSubject(Object groupName) {
+    return 'Join \'$groupName\' on Rihla';
+  }
+
+  @override
+  String get groupManage => 'Manage';
+
+  @override
+  String groupRemoveMemberTooltip(Object name) {
+    return 'Remove $name from group';
+  }
+
+  @override
+  String get groupRoleMember => 'Member';
+
+  @override
+  String groupSettleWithBeforeRemoving(Object name) {
+    return 'Settle up with $name before removing them.';
+  }
+
+  @override
+  String groupFailedRemoveMember(Object name, Object error) {
+    return 'Failed to remove $name: $error';
+  }
+
+  @override
+  String get onboardingBrandKicker => 'RIHLA · ر.ح.ل.ة';
+
+  @override
+  String get onboardingBrandHeadlineLead => 'Trips,\ntallied with\n';
+
+  @override
+  String get onboardingBrandHeadlineAccent => 'care';
+
+  @override
+  String get onboardingBrandHeadlineSuffix => '.';
+
+  @override
+  String get onboardingBrandBody =>
+      'A travel ledger for friends, families and crews who want the trip to be the memory — not the math.';
+
+  @override
+  String get onboardingBegin => 'Begin';
+
+  @override
+  String get onboardingHowTitle => 'Three ways\nit travels with you.';
+
+  @override
+  String get onboardingHowGroupsTitle =>
+      'Groups for the people you travel with';
+
+  @override
+  String get onboardingHowGroupsBody =>
+      'A travel crew, a roommates group, a family. People stay; events come and go.';
+
+  @override
+  String get onboardingHowEventsTitle => 'Events for the trips & nights out';
+
+  @override
+  String get onboardingHowEventsBody =>
+      'Trips, dinners, weekends. Each gets a cover, a dates window, and its own ledger.';
+
+  @override
+  String get onboardingHowExpensesTitle => 'Expenses split in three taps';
+
+  @override
+  String get onboardingHowExpensesBody =>
+      'Equally, by share, or however. Math happens in the background — settle when you like.';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingSetupTitle => 'A few things\nbefore we begin.';
+
+  @override
+  String get onboardingNameSection => 'What should we call you?';
+
+  @override
+  String get onboardingCurrencySection => 'Home currency';
+
+  @override
+  String get onboardingCurrencyHelper => 'Each group can override this later.';
+
+  @override
+  String get onboardingNotificationsSection => 'Notifications';
+
+  @override
+  String get onboardingOpenRihla => 'Open Rihla';
+
+  @override
+  String get onboardingNameHint => 'Your name';
+
+  @override
+  String onboardingCurrencySemantics(Object currency) {
+    return '$currency currency';
+  }
+
+  @override
+  String get onboardingActivitySettlesTitle => 'Activity & settles';
+
+  @override
+  String get onboardingActivitySettlesSubtitle => 'When friends add or pay';
+
+  @override
+  String get onboardingWeeklyDigestTitle => 'Weekly digest';
+
+  @override
+  String get onboardingWeeklyDigestSubtitle => 'A Sunday summary';
+
+  @override
+  String get onboardingSkip => 'Skip';
+
+  @override
+  String onboardingStepSemantics(int active, int count) {
+    return 'Onboarding step $active of $count';
+  }
+
+  @override
   String get expenseSuccessTitle => 'Expense Saved';
 
   @override
@@ -1135,4 +2251,143 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expenseSuccessCategory => 'CATEGORY';
+
+  @override
+  String get commonNotFound => 'Not Found';
+
+  @override
+  String get commonEmail => 'Email';
+
+  @override
+  String get commonEmailHintExample => 'you@example.com';
+
+  @override
+  String get authWelcomeBack => 'Welcome back';
+
+  @override
+  String get authRecoverTitle => 'Restore from email';
+
+  @override
+  String get authRecoverDescription =>
+      'Enter the email you linked on your old device. We\'ll send a one-tap sign-in link.';
+
+  @override
+  String get authRecoverSubmit => 'Send recovery link';
+
+  @override
+  String get authErrorSendLink =>
+      'Couldn\'t send the link. Check your connection and try again.';
+
+  @override
+  String get authErrorAccountNotFound =>
+      'We couldn\'t find a Rihla account with this email. Make sure you linked it on your previous device first.';
+
+  @override
+  String get authErrorRateLimited =>
+      'Too many attempts. Wait a few minutes and try again.';
+
+  @override
+  String get authErrorOffline =>
+      'No connection. Check your internet and try again.';
+
+  @override
+  String authErrorGeneric(Object code) {
+    return 'Something went wrong ($code). Please try again.';
+  }
+
+  @override
+  String get authErrorEmailAlreadyLinked =>
+      'This email is already linked to a Rihla account. Restore from that account instead.';
+
+  @override
+  String get authErrorInvalidEmail => 'That doesn\'t look like a valid email.';
+
+  @override
+  String get authErrorEmailsDontMatch => 'Emails don\'t match.';
+
+  @override
+  String get authLinkEmailTitle => 'Link your email';
+
+  @override
+  String get authLinkEmailHeading => 'So you can come back';
+
+  @override
+  String get authLinkEmailDescription =>
+      'We\'ll email you a one-tap sign-in link. If you ever lose your phone or clear app data, enter the same email on a new device to get all your trips back.';
+
+  @override
+  String get authLinkEmailConfirmLabel => 'Confirm email';
+
+  @override
+  String get authLinkEmailSubmit => 'Send link';
+
+  @override
+  String get authLinkEmailPrivacyNote =>
+      'Your email is used only to restore your Rihla data. We don\'t send marketing email and we don\'t share it.';
+
+  @override
+  String get authRecoverPendingTitle => 'Check your inbox';
+
+  @override
+  String get authRecoverPendingDescriptionPrefix =>
+      'We sent a sign-in link to ';
+
+  @override
+  String get authRecoverPendingDescriptionSuffix =>
+      '. Tap it on this device — we\'ll pull your trips back automatically.';
+
+  @override
+  String get authRecoverPendingSpamHint =>
+      'Can\'t find it? Check your spam folder. The link is good for 24 hours.';
+
+  @override
+  String get authRecoverPendingLinkSeen =>
+      'We saw your link. Hang tight — restoring now.';
+
+  @override
+  String get authRecoverPendingResendStatus => 'New link sent.';
+
+  @override
+  String authRecoverPendingResendErrorCode(Object code) {
+    return 'Couldn\'t resend ($code).';
+  }
+
+  @override
+  String get authRecoverPendingResendErrorGeneric =>
+      'Couldn\'t resend. Try again in a bit.';
+
+  @override
+  String get authRecoverPendingResendLink => 'Resend link';
+
+  @override
+  String authRecoverPendingResendCountdown(int seconds) {
+    return 'Resend in ${seconds}s';
+  }
+
+  @override
+  String get authSignOutFirstTitle => 'This device is already in use';
+
+  @override
+  String get authSignOutFirstBody =>
+      'To restore a different account, you\'ll lose the trips and expenses on this device. They\'ll stay in the cloud only if they\'re tied to a different linked email — otherwise they\'ll be orphaned.';
+
+  @override
+  String get authSignOutFirstConfirm => 'Sign out and continue';
+
+  @override
+  String get groupSettleUpMissingTitle => 'This group is no longer available';
+
+  @override
+  String get groupSettleUpMissingMessage =>
+      'You may have been removed. Tap below to go back home.';
+
+  @override
+  String groupSettleUpEventLabelFallback(Object suffix) {
+    return 'Event ...$suffix';
+  }
+
+  @override
+  String errorPageNotFound(Object location) {
+    return 'Page not found: $location';
+  }
 }

@@ -9,6 +9,7 @@ import 'package:safar/features/activity/screens/activity_feed_screen.dart';
 import 'package:safar/features/activity/services/activity_service.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   const groupId = 'group-1';
@@ -33,13 +34,15 @@ void main() {
       routes: [
         GoRoute(
           path: '/group/:gid',
-          builder: (context, state) =>
-              Scaffold(body: Text('GroupDetail:${state.pathParameters['gid']}')),
+          builder: (context, state) => Scaffold(
+            body: Text('GroupDetail:${state.pathParameters['gid']}'),
+          ),
           routes: [
             GoRoute(
               path: 'event/:eid',
-              builder: (context, state) =>
-                  Scaffold(body: Text('EventHub:${state.pathParameters['eid']}')),
+              builder: (context, state) => Scaffold(
+                body: Text('EventHub:${state.pathParameters['eid']}'),
+              ),
               routes: [
                 GoRoute(
                   path: 'activity',
@@ -65,7 +68,12 @@ void main() {
           eventRef,
         ).overrideWith((ref) => Stream.value(const <ActivityLog>[])),
       ],
-      child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+      child: MaterialApp.router(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
     );
   }
 

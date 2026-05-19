@@ -23,6 +23,7 @@ import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
+import 'package:safar/l10n/generated/app_localizations_ar.dart';
 import 'package:safar/main.dart' as app;
 
 void main() {
@@ -40,40 +41,40 @@ void main() {
   });
 
   testWidgets('cold boot in ar → home → create group → ledger', (tester) async {
+    final ar = AppLocalizationsAr();
     _log('--- TEST START (locale=ar) ---');
     app.main();
 
     // The empty-onboarding branch from golden_path_test.dart:33-77 applies
     // identically here — if onboarding is dead code today, we land on home
-    // directly; if it's re-wired, we walk through it. The labels are still
-    // English in PR1 because Settings/Onboarding aren't translated yet
-    // (per PR1 non-goals); PR3 makes onboarding strings ARB-driven.
+    // directly; if it's re-wired, we walk through the localized Arabic copy.
     await _waitFor(
       tester,
       label: 'onboarding-or-home',
       predicate: () =>
-          find.text('Begin').evaluate().isNotEmpty ||
+          find.text(ar.onboardingBegin).evaluate().isNotEmpty ||
           find.byKey(const Key('home_screen')).evaluate().isNotEmpty,
       timeout: const Duration(seconds: 90),
     );
 
     if (find.byKey(const Key('home_screen')).evaluate().isEmpty) {
       // Onboarding path — copy the 3-tap walk from golden_path_test.dart.
-      await tester.tap(find.text('Begin').first);
+      await tester.tap(find.text(ar.onboardingBegin).first);
       await _settle(tester);
       await _waitFor(
         tester,
         label: 'onboarding-p2',
-        predicate: () => find.text('Next').evaluate().isNotEmpty,
+        predicate: () => find.text(ar.onboardingNext).evaluate().isNotEmpty,
       );
-      await tester.tap(find.text('Next').first);
+      await tester.tap(find.text(ar.onboardingNext).first);
       await _settle(tester);
       await _waitFor(
         tester,
         label: 'onboarding-p3',
-        predicate: () => find.text('Open Rihla').evaluate().isNotEmpty,
+        predicate: () =>
+            find.text(ar.onboardingOpenRihla).evaluate().isNotEmpty,
       );
-      await tester.tap(find.text('Open Rihla').first);
+      await tester.tap(find.text(ar.onboardingOpenRihla).first);
       await _settle(tester);
     }
 
@@ -116,6 +117,24 @@ void main() {
           'WordmarkLogo locale branch did not flip',
     );
 
+    expect(find.text(ar.homeBottomNavGroups), findsWidgets);
+    expect(find.text(ar.homeBottomNavActivity), findsWidgets);
+    expect(find.text(ar.homeBottomNavProfile), findsWidgets);
+
+    final activityTab = find.byKey(HomeKeys.bottomNavActivity);
+    expect(
+      activityTab,
+      findsOneWidget,
+      reason: 'home_bottom_nav_activity missing on Home after skeleton clear',
+    );
+    await tester.tap(activityTab);
+    await _settle(tester);
+    expect(
+      find.text(ar.activityTitle),
+      findsWidgets,
+      reason: 'Activity tab did not render Arabic title copy.',
+    );
+
     // PR2a Profile-translation assertion (codex round 1 P1-A): jump to the
     // Profile tab and assert one of its translated section labels renders in
     // Arabic. This proves the full chain end-to-end — locale wiring, ARB key
@@ -131,7 +150,7 @@ void main() {
     await _settle(tester);
 
     expect(
-      find.text('التفضيلات'),
+      find.text(ar.profileSectionPreferences),
       findsOneWidget,
       reason:
           'Profile screen "Preferences" section not translated to ar — '
@@ -177,6 +196,7 @@ void main() {
       predicate: () => find.byKey(GroupKeys.createScreen).evaluate().isNotEmpty,
     );
     _log('CHECKPOINT: create-group screen open (ar)');
+    expect(find.text(ar.groupNew), findsOneWidget);
 
     await tester.enterText(
       find.byKey(GroupKeys.groupNameInput),
@@ -198,14 +218,14 @@ void main() {
       tester,
       label: 'post-create share prompt or group detail',
       predicate: () =>
-          find.text('Done').evaluate().isNotEmpty ||
+          find.text(ar.commonDone).evaluate().isNotEmpty ||
           find.byKey(GroupKeys.detailScreen).evaluate().isNotEmpty,
       timeout: const Duration(seconds: 30),
     );
 
     if (find.byKey(GroupKeys.detailScreen).evaluate().isEmpty) {
       _log('CHECKPOINT: dismissing share prompt (ar)');
-      await tester.tap(find.text('Done').last);
+      await tester.tap(find.text(ar.commonDone).last);
       await _settle(tester, timeout: const Duration(seconds: 12));
     }
 
@@ -221,17 +241,17 @@ void main() {
       tester,
       label: 'new-event action',
       predicate: () =>
-          find.text('New event').evaluate().isNotEmpty ||
-          find.text('Create Event').evaluate().isNotEmpty,
+          find.text(ar.eventNew).evaluate().isNotEmpty ||
+          find.text(ar.groupCreateEvent).evaluate().isNotEmpty,
       timeout: const Duration(seconds: 30),
     );
-    final newEventAction = find.text('New event');
+    final newEventAction = find.text(ar.eventNew);
     if (newEventAction.evaluate().isNotEmpty) {
       await tester.ensureVisible(newEventAction.first);
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(newEventAction.first);
     } else {
-      final createEventAction = find.text('Create Event').first;
+      final createEventAction = find.text(ar.groupCreateEvent).first;
       await tester.ensureVisible(createEventAction);
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(createEventAction);
@@ -246,6 +266,7 @@ void main() {
       timeout: const Duration(seconds: 30),
     );
     _log('CHECKPOINT: event type picker open (ar)');
+    expect(find.text(ar.eventPickerTitle), findsOneWidget);
 
     final eventContinueButton = find.byKey(EventKeys.createEventButton);
     await tester.ensureVisible(eventContinueButton);
@@ -261,6 +282,7 @@ void main() {
       timeout: const Duration(seconds: 30),
     );
     _log('CHECKPOINT: create-event screen open (ar)');
+    expect(find.text(ar.eventCreate), findsOneWidget);
 
     await tester.enterText(
       find.byType(TextFormField).first,
@@ -304,7 +326,7 @@ void main() {
         await tester.enterText(find.byType(TextField).first, '12.345');
         await _settle(tester);
 
-        final addAction = find.widgetWithText(FilledButton, 'إضافة');
+        final addAction = find.widgetWithText(FilledButton, ar.editorActionAdd);
         expect(
           addAction,
           findsOneWidget,
@@ -316,10 +338,10 @@ void main() {
         await _waitFor(
           tester,
           label: 'expense success dialog',
-          predicate: () => find.text('تم').evaluate().isNotEmpty,
+          predicate: () => find.text(ar.commonDone).evaluate().isNotEmpty,
           timeout: const Duration(seconds: 30),
         );
-        await tester.tap(find.widgetWithText(ElevatedButton, 'تم'));
+        await tester.tap(find.widgetWithText(ElevatedButton, ar.commonDone));
         await _settle(tester, timeout: const Duration(seconds: 12));
 
         await _waitFor(
@@ -350,12 +372,12 @@ void main() {
       tester,
       label: 'arabic ledger copy',
       predicate: () =>
-          find.text('إضافة مصروف').evaluate().isNotEmpty ||
-          find.text('صفحة فارغة جاهزة للكتابة.').evaluate().isNotEmpty,
+          find.text(ar.ledgerAddExpense).evaluate().isNotEmpty ||
+          find.text(ar.ledgerEmptyStateTitle).evaluate().isNotEmpty,
       timeout: const Duration(seconds: 30),
     );
     expect(
-      find.text('إضافة مصروف'),
+      find.text(ar.ledgerAddExpense),
       findsOneWidget,
       reason:
           'Ledger sticky CTA did not render the Arabic ledgerAddExpense key.',

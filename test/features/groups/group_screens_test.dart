@@ -15,6 +15,7 @@ import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -138,7 +139,12 @@ Widget _wrap(Widget child, SharedPreferences prefs) {
         'group-1',
       ).overrideWith((ref) => Stream.value(const [])),
     ],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -165,7 +171,12 @@ Widget _wrapWithBalances(Widget child, SharedPreferences prefs) {
         'group-1',
       ).overrideWith((ref) => Stream.value(const [])),
     ],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 

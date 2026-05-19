@@ -11,6 +11,7 @@ import 'package:safar/features/auth/screens/recover_screen.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 class _MockRecoveryService extends Mock implements AuthRecoveryService {}
 
@@ -61,6 +62,8 @@ Widget _wrap({
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: _buildRouter(),
     ),
   );

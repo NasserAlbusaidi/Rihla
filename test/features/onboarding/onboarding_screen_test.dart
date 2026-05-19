@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/onboarding/screens/onboarding_screen.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 typedef _Harness = ({Widget app, ProviderContainer container, _DoneFlag done});
 
@@ -17,6 +18,7 @@ Future<_Harness> _buildHarness(
   WidgetTester tester, {
   int initialPage = 0,
   Map<String, Object> prefsSeed = const {},
+  Locale locale = const Locale('en'),
 }) async {
   // Onboarding is laid out for a phone — default 800×600 surface clips the
   // bottom CTAs. Size the surface to an iPhone-ish viewport for fidelity.
@@ -34,6 +36,9 @@ Future<_Harness> _buildHarness(
     container: container,
     child: MaterialApp(
       theme: AppTheme.lightTheme,
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: OnboardingScreen(
         initialPage: initialPage,
         onComplete: () => done.value = true,
@@ -92,70 +97,82 @@ void main() {
       expect(find.text('03 / 03'), findsOneWidget);
       expect(find.text('Open Rihla'), findsOneWidget);
     });
+
+    testWidgets('brand page renders Arabic copy under Locale(ar)', (
+      tester,
+    ) async {
+      final harness = await _buildHarness(tester, locale: const Locale('ar'));
+
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      expect(find.text('ابدأ'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is RichText &&
+              w.text.toPlainText().contains('رحلات') &&
+              w.text.toPlainText().contains('عناية'),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 
   group('OnboardingScreen — settings flag wiring', () {
-    testWidgets(
-      'screen reads onboardingComplete from settings on mount '
-      '(seeded true keeps initialPage state)',
-      (tester) async {
-        final harness = await _buildHarness(
-          tester,
-          prefsSeed: const {'settings_onboarding_complete': true},
-        );
+    testWidgets('screen reads onboardingComplete from settings on mount '
+        '(seeded true keeps initialPage state)', (tester) async {
+      final harness = await _buildHarness(
+        tester,
+        prefsSeed: const {'settings_onboarding_complete': true},
+      );
 
-        await tester.pumpWidget(harness.app);
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
 
-        // The screen mounts regardless of the flag (route redirect is
-        // the gatekeeper — see app_router_test.dart). Flag is preserved.
-        expect(
-          harness.container.read(settingsProvider).onboardingComplete,
-          isTrue,
-        );
-      },
-    );
+      // The screen mounts regardless of the flag (route redirect is
+      // the gatekeeper — see app_router_test.dart). Flag is preserved.
+      expect(
+        harness.container.read(settingsProvider).onboardingComplete,
+        isTrue,
+      );
+    });
 
-    testWidgets(
-      'name controller is pre-populated from a seeded device name',
-      (tester) async {
-        final harness = await _buildHarness(
-          tester,
-          initialPage: 2,
-          prefsSeed: const {'settings_device_name': 'Sami'},
-        );
+    testWidgets('name controller is pre-populated from a seeded device name', (
+      tester,
+    ) async {
+      final harness = await _buildHarness(
+        tester,
+        initialPage: 2,
+        prefsSeed: const {'settings_device_name': 'Sami'},
+      );
 
-        await tester.pumpWidget(harness.app);
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
 
-        // Even if the visual TextField is offstage due to layout in the test
-        // harness, the controller's text is set from settings on init.
-        expect(
-          harness.container.read(settingsProvider).deviceName,
-          'Sami',
-        );
-      },
-    );
+      // Even if the visual TextField is offstage due to layout in the test
+      // harness, the controller's text is set from settings on init.
+      expect(harness.container.read(settingsProvider).deviceName, 'Sami');
+    });
 
-    testWidgets(
-      'tapping Begin on brand page does not finalize onboarding',
-      (tester) async {
-        final harness = await _buildHarness(tester);
+    testWidgets('tapping Begin on brand page does not finalize onboarding', (
+      tester,
+    ) async {
+      final harness = await _buildHarness(tester);
 
-        await tester.pumpWidget(harness.app);
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
 
-        await tester.tap(_btn('Begin'), warnIfMissed: false);
-        await tester.pumpAndSettle();
+      await tester.tap(_btn('Begin'), warnIfMissed: false);
+      await tester.pumpAndSettle();
 
-        // Begin should never complete onboarding directly — that happens
-        // only on Skip / Open Rihla.
-        expect(harness.done.value, isFalse);
-        expect(
-          harness.container.read(settingsProvider).onboardingComplete,
-          isFalse,
-        );
-      },
-    );
+      // Begin should never complete onboarding directly — that happens
+      // only on Skip / Open Rihla.
+      expect(harness.done.value, isFalse);
+      expect(
+        harness.container.read(settingsProvider).onboardingComplete,
+        isFalse,
+      );
+    });
   });
 }

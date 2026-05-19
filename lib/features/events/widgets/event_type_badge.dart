@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../models/event_type_config.dart';
+import '../utils/event_display.dart';
 
 /// Pill badge showing the event type icon and label.
 ///
@@ -10,10 +12,7 @@ import '../models/event_type_config.dart';
 class EventTypeBadge extends StatelessWidget {
   final EventTypeConfig typeConfig;
 
-  const EventTypeBadge({
-    super.key,
-    required this.typeConfig,
-  });
+  const EventTypeBadge({super.key, required this.typeConfig});
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +29,7 @@ class EventTypeBadge extends StatelessWidget {
           Icon(typeConfig.icon, size: 20, color: typeColor),
           const SizedBox(width: 8),
           Text(
-            typeConfig.label,
+            typeConfig.type.localizedLabel(context.l10n),
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 14,

@@ -64,7 +64,7 @@ class WordmarkLogo extends StatelessWidget {
               padding: EdgeInsets.only(top: size * 0.08),
               child: CustomPaint(
                 size: Size(size * 1.6, size * 0.32),
-                painter: _FlourishPainter(color: saffron),
+                painter: _FlourishPainter(color: saffron, mirror: isArabic),
               ),
             ),
         ],
@@ -75,12 +75,19 @@ class WordmarkLogo extends StatelessWidget {
 
 /// Hand-drawn saffron underline arc — single curve, no arrow head.
 class _FlourishPainter extends CustomPainter {
-  const _FlourishPainter({required this.color});
+  const _FlourishPainter({required this.color, required this.mirror});
 
   final Color color;
+  final bool mirror;
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (mirror) {
+      canvas.save();
+      canvas.translate(size.width, 0);
+      canvas.scale(-1, 1);
+    }
+
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -91,12 +98,31 @@ class _FlourishPainter extends CustomPainter {
     final midY = size.height * 0.55;
     final path = Path()
       ..moveTo(w * 0.025, midY * 1.15)
-      ..cubicTo(w * 0.225, midY * 0.55, w * 0.450, midY * 1.35, w * 0.650, midY * 0.8)
-      ..cubicTo(w * 0.800, midY * 0.55, w * 0.950, midY * 0.55, w * 0.975, midY * 1.0);
+      ..cubicTo(
+        w * 0.225,
+        midY * 0.55,
+        w * 0.450,
+        midY * 1.35,
+        w * 0.650,
+        midY * 0.8,
+      )
+      ..cubicTo(
+        w * 0.800,
+        midY * 0.55,
+        w * 0.950,
+        midY * 0.55,
+        w * 0.975,
+        midY * 1.0,
+      );
 
     canvas.drawPath(path, paint);
+
+    if (mirror) {
+      canvas.restore();
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _FlourishPainter old) => old.color != color;
+  bool shouldRepaint(covariant _FlourishPainter old) =>
+      old.color != color || old.mirror != mirror;
 }

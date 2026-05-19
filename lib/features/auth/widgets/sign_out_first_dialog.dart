@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
@@ -23,11 +24,12 @@ class SignOutFirstDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     return AlertDialog(
       backgroundColor: colors.cardSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(
-        'This device is already in use',
+        l10n.authSignOutFirstTitle,
         style: AppTypography.sans(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -35,10 +37,7 @@ class SignOutFirstDialog extends StatelessWidget {
         ),
       ),
       content: Text(
-        "To restore a different account, you'll lose the trips and "
-        "expenses on this device. They'll stay in the cloud only if "
-        "they're tied to a different linked email — otherwise they'll be "
-        'orphaned.',
+        l10n.authSignOutFirstBody,
         style: AppTypography.sans(
           fontSize: 14,
           color: colors.textSecondary,
@@ -49,13 +48,13 @@ class SignOutFirstDialog extends StatelessWidget {
         TextButton(
           key: const Key('signOutFirst.cancel'),
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         FilledButton(
           key: const Key('signOutFirst.confirm'),
           style: FilledButton.styleFrom(backgroundColor: colors.error),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Sign out and continue'),
+          child: Text(l10n.authSignOutFirstConfirm),
         ),
       ],
     );

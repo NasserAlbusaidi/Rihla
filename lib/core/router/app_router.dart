@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:animations/animations.dart';
 import '../../features/events/models/event_model.dart';
 import '../../features/events/screens/create_event_screen.dart';
 import '../../features/events/screens/event_command_center.dart';
@@ -26,6 +25,7 @@ import '../../features/auth/screens/link_email_sent_screen.dart';
 import '../../features/auth/screens/recover_pending_screen.dart';
 import '../../features/auth/screens/recover_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
+import '../extensions/build_context_l10n.dart';
 import '../screens/splash_screen.dart';
 
 /// Route names for type-safe navigation
@@ -76,21 +76,59 @@ String _emailFromRouteState(GoRouterState state) {
   return state.uri.queryParameters['email'] ?? '';
 }
 
+const double _sharedAxisTravel = 0.08;
+
+@visibleForTesting
+Offset sharedAxisEnterOffsetForTextDirection(TextDirection direction) {
+  return Offset(
+    direction == TextDirection.rtl ? -_sharedAxisTravel : _sharedAxisTravel,
+    0,
+  );
+}
+
+@visibleForTesting
+Offset sharedAxisExitOffsetForTextDirection(TextDirection direction) {
+  return Offset(
+    direction == TextDirection.rtl ? _sharedAxisTravel : -_sharedAxisTravel,
+    0,
+  );
+}
+
 /// Shared axis page transition used by all route-level screens.
 ///
-/// Uses the Material 3 SharedAxisTransition pattern for fluid spatial navigation.
+/// The `animations` package horizontal shared-axis transition is always LTR.
+/// This local variant keeps the same fade + horizontal travel pattern while
+/// resolving travel direction from the ambient [Directionality].
 Widget _sharedAxisTransition(
   BuildContext context,
   Animation<double> animation,
   Animation<double> secondaryAnimation,
   Widget child,
 ) {
-  return SharedAxisTransition(
-    animation: animation,
-    secondaryAnimation: secondaryAnimation,
-    transitionType: SharedAxisTransitionType.horizontal,
-    fillColor: Colors.transparent,
-    child: child,
+  final textDirection = Directionality.of(context);
+  final enterTween = Tween<Offset>(
+    begin: sharedAxisEnterOffsetForTextDirection(textDirection),
+    end: Offset.zero,
+  ).chain(CurveTween(curve: Curves.easeOutCubic));
+  final exitTween = Tween<Offset>(
+    begin: Offset.zero,
+    end: sharedAxisExitOffsetForTextDirection(textDirection),
+  ).chain(CurveTween(curve: Curves.easeOutCubic));
+  final fade = CurvedAnimation(
+    parent: animation,
+    curve: const Interval(0.25, 1.0, curve: Curves.easeOut),
+    reverseCurve: const Interval(0.0, 0.75, curve: Curves.easeIn),
+  );
+
+  return FadeTransition(
+    opacity: fade,
+    child: SlideTransition(
+      position: exitTween.animate(secondaryAnimation),
+      child: SlideTransition(
+        position: enterTween.animate(animation),
+        child: child,
+      ),
+    ),
   );
 }
 
@@ -424,7 +462,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
 
     errorBuilder: (context, state) => Scaffold(
-      body: Center(child: Text('Page not found: ${state.matchedLocation}')),
+      body: Center(
+        child: Text(context.l10n.errorPageNotFound(state.matchedLocation)),
+      ),
     ),
   );
 });

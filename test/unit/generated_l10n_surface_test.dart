@@ -29,6 +29,53 @@ void main() {
       expect(l10n.settleUpTransfersHeadline(3), isNot(equals('3 transfers')));
     });
   });
+
+  group('generated PR3 localization surface', () {
+    test('English auth/router/group-settle residuals are reachable', () {
+      final l10n = AppLocalizationsEn();
+      for (final call in _pr3Calls) {
+        expect(call(l10n), isNotEmpty);
+      }
+
+      expect(
+        l10n.authErrorGeneric('user-not-found'),
+        contains('user-not-found'),
+      );
+      expect(
+        l10n.authRecoverPendingResendErrorCode('timeout'),
+        contains('timeout'),
+      );
+      expect(
+        l10n.authRecoverPendingResendCountdown(45),
+        contains('45'),
+      );
+      expect(
+        l10n.groupSettleUpEventLabelFallback('abc123'),
+        contains('abc123'),
+      );
+      expect(l10n.errorPageNotFound('/unknown'), contains('/unknown'));
+    });
+
+    test('Arabic auth/router/group-settle residuals are reachable', () {
+      final l10n = AppLocalizationsAr();
+      for (final call in _pr3Calls) {
+        expect(call(l10n), isNotEmpty);
+      }
+
+      // Confirm AR strings actually differ from the EN baselines (sanity that
+      // the AR ARB block was loaded and not silently falling back to EN).
+      final en = AppLocalizationsEn();
+      expect(l10n.authRecoverTitle, isNot(equals(en.authRecoverTitle)));
+      expect(
+        l10n.authSignOutFirstConfirm,
+        isNot(equals(en.authSignOutFirstConfirm)),
+      );
+      expect(
+        l10n.groupSettleUpMissingTitle,
+        isNot(equals(en.groupSettleUpMissingTitle)),
+      );
+    });
+  });
 }
 
 final _pr2bCalls = <_L10nString>[
@@ -289,4 +336,40 @@ final _pr2bCalls = <_L10nString>[
   (l10n) => l10n.expenseSuccessAddAnother,
   (l10n) => l10n.expenseSuccessTotalAmount,
   (l10n) => l10n.expenseSuccessCategory,
+];
+
+final _pr3Calls = <_L10nString>[
+  (l10n) => l10n.commonNotFound,
+  (l10n) => l10n.commonEmail,
+  (l10n) => l10n.commonEmailHintExample,
+  (l10n) => l10n.authWelcomeBack,
+  (l10n) => l10n.authRecoverTitle,
+  (l10n) => l10n.authRecoverDescription,
+  (l10n) => l10n.authRecoverSubmit,
+  (l10n) => l10n.authErrorSendLink,
+  (l10n) => l10n.authErrorAccountNotFound,
+  (l10n) => l10n.authErrorRateLimited,
+  (l10n) => l10n.authErrorOffline,
+  (l10n) => l10n.authErrorEmailAlreadyLinked,
+  (l10n) => l10n.authErrorInvalidEmail,
+  (l10n) => l10n.authErrorEmailsDontMatch,
+  (l10n) => l10n.authLinkEmailTitle,
+  (l10n) => l10n.authLinkEmailHeading,
+  (l10n) => l10n.authLinkEmailDescription,
+  (l10n) => l10n.authLinkEmailConfirmLabel,
+  (l10n) => l10n.authLinkEmailSubmit,
+  (l10n) => l10n.authLinkEmailPrivacyNote,
+  (l10n) => l10n.authRecoverPendingTitle,
+  (l10n) => l10n.authRecoverPendingDescriptionPrefix,
+  (l10n) => l10n.authRecoverPendingDescriptionSuffix,
+  (l10n) => l10n.authRecoverPendingSpamHint,
+  (l10n) => l10n.authRecoverPendingLinkSeen,
+  (l10n) => l10n.authRecoverPendingResendStatus,
+  (l10n) => l10n.authRecoverPendingResendErrorGeneric,
+  (l10n) => l10n.authRecoverPendingResendLink,
+  (l10n) => l10n.authSignOutFirstTitle,
+  (l10n) => l10n.authSignOutFirstBody,
+  (l10n) => l10n.authSignOutFirstConfirm,
+  (l10n) => l10n.groupSettleUpMissingTitle,
+  (l10n) => l10n.groupSettleUpMissingMessage,
 ];

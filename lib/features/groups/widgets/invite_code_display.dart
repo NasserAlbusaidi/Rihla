@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/keys/shared_keys.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 
@@ -28,10 +29,7 @@ class InviteCodeDisplay extends StatelessWidget {
       children: [
         // Code pill
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 16,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           decoration: BoxDecoration(
             color: context.colors.selectionFill,
             borderRadius: BorderRadius.circular(8),
@@ -65,12 +63,11 @@ class InviteCodeDisplay extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Copy Code'),
+                      child: Text(context.l10n.groupCopyCode),
                     ),
                   ),
                 ),
-              if (onCopy != null && onShare != null)
-                const SizedBox(width: 12),
+              if (onCopy != null && onShare != null) const SizedBox(width: 12),
               if (onShare != null)
                 Expanded(
                   child: SizedBox(
@@ -83,7 +80,7 @@ class InviteCodeDisplay extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Share'),
+                      child: Text(context.l10n.groupShare),
                     ),
                   ),
                 ),

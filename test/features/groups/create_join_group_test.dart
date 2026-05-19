@@ -17,6 +17,7 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/groups/screens/create_group_screen.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
 import 'package:safar/features/groups/screens/join_group_screen.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
@@ -31,7 +32,10 @@ void main() {
       });
     });
 
-    Future<Widget> buildCreateScreen({bool loading = false}) async {
+    Future<Widget> buildCreateScreen({
+      bool loading = false,
+      Locale locale = const Locale('en'),
+    }) async {
       final prefs = await SharedPreferences.getInstance();
       return ProviderScope(
         overrides: [
@@ -41,6 +45,9 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const CreateGroupScreen(),
         ),
       );
@@ -72,6 +79,8 @@ void main() {
         ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           routerConfig: router,
         ),
       );
@@ -114,6 +123,23 @@ void main() {
       expect(find.text('Your name in this group'), findsOneWidget);
     });
 
+    testWidgets('renders Arabic labels and required-name error', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        await buildCreateScreen(locale: const Locale('ar')),
+      );
+      await tester.pump();
+
+      expect(find.text('اسم المجموعة'), findsOneWidget);
+      expect(find.text('اسمك في هذه المجموعة'), findsOneWidget);
+
+      await tester.tap(find.text('إنشاء'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('لا يمكن أن يكون الاسم فارغًا.'), findsOneWidget);
+    });
+
     testWidgets('pre-fills display name from settings', (tester) async {
       // The device name is seeded in setUpAll via SharedPreferences mock.
       // The controller text is set lazily on first build when _didInitName=false.
@@ -130,6 +156,8 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: const CreateGroupScreen(),
           ),
         ),
@@ -179,6 +207,8 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: const CreateGroupScreen(),
           ),
         ),
@@ -247,7 +277,10 @@ void main() {
       });
     });
 
-    Future<Widget> buildJoinScreen({bool loading = false}) async {
+    Future<Widget> buildJoinScreen({
+      bool loading = false,
+      Locale locale = const Locale('en'),
+    }) async {
       final prefs = await SharedPreferences.getInstance();
       return ProviderScope(
         overrides: [
@@ -257,6 +290,9 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const JoinGroupScreen(),
         ),
       );
@@ -290,6 +326,8 @@ void main() {
         ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           routerConfig: router,
         ),
       );
@@ -334,6 +372,8 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: const JoinGroupScreen(),
           ),
         ),
@@ -346,6 +386,41 @@ void main() {
       await tester.pumpWidget(await buildJoinScreen());
       await tester.pump();
       expect(find.text('Invite code'), findsOneWidget);
+    });
+
+    testWidgets('renders Arabic labels and name validation error', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': ''});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupLoadingProvider.overrideWith((ref) => false),
+            groupErrorProvider.overrideWith((ref) => null),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            locale: const Locale('ar'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const JoinGroupScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('اسمك'), findsOneWidget);
+      expect(find.text('رمز الدعوة'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextFormField).last, 'ABC123');
+      await tester.pumpAndSettle();
+
+      expect(find.text('لا يمكن أن يكون الاسم فارغًا.'), findsOneWidget);
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'Test User',
+      });
     });
 
     testWidgets('renders 6-character instruction text', (tester) async {
@@ -435,6 +510,8 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: const JoinGroupScreen(),
           ),
         ),
@@ -511,6 +588,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const GroupSettingsScreen(groupId: 'group-1'),
         ),
       );
@@ -566,6 +645,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const GroupSettingsScreen(groupId: 'group-loading'),
         ),
       );
@@ -589,6 +670,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const GroupSettingsScreen(groupId: 'group-error'),
         ),
       );

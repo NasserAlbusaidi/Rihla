@@ -108,13 +108,14 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 
 ## Do / Don't
 
-**Do:** `context.colors|spacing|shadows` for all styling; `RAmount` for money, `RAvatar` for people, shared widgets (`lib/shared/widgets/`) before custom; route params via path/query not `extra`; soft-delete `isDeleted`+`deletedAt` (settlements append-only); validate names with `isValidDisplayName` (1–32, no control chars) kept aligned with `firestore.rules`; mock with `mocktail` + `FakeFirebaseFirestore` + `firebase_auth_mocks`; override `sharedPreferencesProvider` in every app-booting test; await Firebase init before auth-dependent writes.
+**Do:** `context.colors|spacing|shadows` for all styling; `EdgeInsetsDirectional` / `AlignmentDirectional` / `Positioned.directional` for start/end layout; `DirectionalIcon` or an explicit RTL flip for navigation arrows and row chevrons; `RAmount` for money, `RAvatar` for people, shared widgets (`lib/shared/widgets/`) before custom; route params via path/query not `extra`; soft-delete `isDeleted`+`deletedAt` (settlements append-only); validate names with `isValidDisplayName` (1–32, no control chars) kept aligned with `firestore.rules`; mock with `mocktail` + `FakeFirebaseFirestore` + `firebase_auth_mocks`; override `sharedPreferencesProvider` in every app-booting test; await Firebase init before auth-dependent writes.
 
 **Don't:**
 - ❌ `Navigator.push` for app nav — use `context.go`/`context.push` (readiness greps for it)
 - ❌ `state.extra` for required nav data (readiness greps for it) — deep links must work cold
 - ❌ `context.goNamed` — path strings only (readiness greps for `goNamed`)
 - ❌ Hardcoded `Color(0xFF…)` outside `lib/core/theme/tokens/` (fails CI)
+- ❌ `Alignment.centerLeft` / `EdgeInsets.only(left:)` for user-facing layouts — use directional start/end APIs so Arabic RTL mirrors correctly
 - ❌ `double` for money — `Decimal` only
 - ❌ Reintroduce Memories/Vault/Gear/Logistics (Phase 39)
 - ❌ Supabase config or Storage SDK

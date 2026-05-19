@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../activity/utils/activity_display.dart';
 import '../keys/group_keys.dart';
 import '../models/group_activity_log_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -110,7 +112,8 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   @override
   Widget build(BuildContext context) {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
-    final groupName = groupAsync.valueOrNull?.name ?? 'Activity';
+    final groupName =
+        groupAsync.valueOrNull?.name ?? context.l10n.activityTitle;
 
     return Scaffold(
       key: GroupKeys.activityScreen,
@@ -138,26 +141,26 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       );
     }
     if (_activities.isEmpty) {
-      return const EmptyStateView(
+      return EmptyStateView(
         icon: Iconsax.activity,
-        title: 'No activity yet',
-        message: 'Group events, payments, and member changes will appear here.',
+        title: context.l10n.activityNoActivityTitle,
+        message: context.l10n.activityGroupEmptyMessage,
       );
     }
     final filtered = _filtered;
     if (filtered.isEmpty) {
-      return const EmptyStateView(
+      return EmptyStateView(
         icon: Iconsax.search_normal,
-        title: 'Nothing matches this filter',
-        message: 'Try a different filter, or switch back to All.',
+        title: context.l10n.activityNoFilterTitle,
+        message: context.l10n.activityNoFilterMessage,
       );
     }
 
-    final days = _groupByDay(filtered, DateTime.now());
+    final days = _groupByDay(context, filtered, DateTime.now());
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
       itemCount: days.length + (_hasMore ? 1 : 0),
       itemBuilder: (ctx, i) {
         if (i == days.length) {
@@ -199,18 +202,23 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 20, 8),
       child: SizedBox(
         height: 48,
         child: Stack(
           alignment: Alignment.center,
           children: [
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: IconButton(
                 key: GroupKeys.activityBackButton,
-                tooltip: 'Back',
-                icon: const Icon(Iconsax.arrow_left_2, size: 20),
+                tooltip: context.l10n.commonBack,
+                icon: Icon(
+                  Directionality.of(context) == TextDirection.rtl
+                      ? Iconsax.arrow_right_2
+                      : Iconsax.arrow_left_2,
+                  size: 20,
+                ),
                 color: colors.textPrimary,
                 onPressed: () {
                   HapticService.lightClick();
@@ -251,22 +259,37 @@ class _FilterStrip extends StatelessWidget {
   final _Filter current;
   final ValueChanged<_Filter> onChange;
 
-  static const _options = [
-    (_Filter.all, 'Activity', GroupKeys.activityFilterAll),
-    (_Filter.settlements, 'Settles', GroupKeys.activityFilterSettlements),
-    (_Filter.events, 'Events', GroupKeys.activityFilterEvents),
-    (_Filter.members, 'Members', GroupKeys.activityFilterMembers),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final options = [
+      (
+        _Filter.all,
+        context.l10n.activityFilterActivity,
+        GroupKeys.activityFilterAll,
+      ),
+      (
+        _Filter.settlements,
+        context.l10n.activityFilterSettles,
+        GroupKeys.activityFilterSettlements,
+      ),
+      (
+        _Filter.events,
+        context.l10n.activityFilterEvents,
+        GroupKeys.activityFilterEvents,
+      ),
+      (
+        _Filter.members,
+        context.l10n.activityFilterMembers,
+        GroupKeys.activityFilterMembers,
+      ),
+    ];
     return SizedBox(
       height: 32,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          for (final opt in _options) ...[
+          for (final opt in options) ...[
             _Chip(
               chipKey: opt.$3,
               label: opt.$2,
@@ -390,6 +413,7 @@ class _ActivityRow extends StatelessWidget {
     final amountRaw = log.metadata['amount'];
     final amount = _coerceAmount(amountRaw);
     final isSettlement = log.type == 'group_settlement';
+    final description = localizedGroupActivityText(context.l10n, log);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -414,7 +438,7 @@ class _ActivityRow extends StatelessWidget {
                       ),
                       const TextSpan(text: ' '),
                       TextSpan(
-                        text: log.description,
+                        text: description,
                         style: AppTypography.sans(
                           fontSize: 14,
                           color: colors.textSecondary,
@@ -432,11 +456,7 @@ class _ActivityRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (amount != null) ...[
-                    RAmount(
-                      value: amount,
-                      size: 14,
-                      showCurrency: false,
-                    ),
+                    RAmount(value: amount, size: 14, showCurrency: false),
                     const SizedBox(height: 2),
                   ],
                   if (isSettlement && amount != null)
@@ -449,7 +469,7 @@ class _ActivityRow extends StatelessWidget {
                     )
                   else
                     Text(
-                      timeago.format(log.timestamp, locale: 'en_short'),
+                      formatRelativeShort(context, log.timestamp),
                       style: AppTypography.mono(
                         fontSize: 10,
                         color: colors.textSecondary,
@@ -491,8 +511,10 @@ class _CategoryIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final sageSoft =
-        Color.alphaBlend(colors.success.withValues(alpha: 0.18), colors.cardSurface);
+    final sageSoft = Color.alphaBlend(
+      colors.success.withValues(alpha: 0.18),
+      colors.cardSurface,
+    );
     final (bg, fg, icon, hasBorder) = switch (type) {
       'group_settlement' => (
         sageSoft,
@@ -527,9 +549,7 @@ class _CategoryIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(10),
-        border: hasBorder
-            ? Border.all(color: colors.rule, width: 0.5)
-            : null,
+        border: hasBorder ? Border.all(color: colors.rule, width: 0.5) : null,
       ),
       alignment: Alignment.center,
       child: Icon(icon, size: 18, color: fg),
@@ -559,7 +579,11 @@ class _DayGroup {
   final List<GroupActivityLog> entries;
 }
 
-List<_DayGroup> _groupByDay(List<GroupActivityLog> logs, DateTime now) {
+List<_DayGroup> _groupByDay(
+  BuildContext context,
+  List<GroupActivityLog> logs,
+  DateTime now,
+) {
   final today = DateTime(now.year, now.month, now.day);
   final buckets = <String, _DayBucket>{};
   final order = <String>[];
@@ -567,10 +591,10 @@ List<_DayGroup> _groupByDay(List<GroupActivityLog> logs, DateTime now) {
     final ts = log.timestamp;
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
-    final dateText = '${_monthShort(ts.month)} ${ts.day}';
+    final dateText = formatShortMonthDay(context, ts);
     final (label, suffix) = switch (diff) {
-      0 => ('Today', dateText),
-      1 => ('Yesterday', dateText),
+      0 => (context.l10n.timelineToday, dateText),
+      1 => (context.l10n.timelineYesterday, dateText),
       _ => (dateText, null),
     };
     final bucket = buckets.putIfAbsent(label, () {
@@ -594,19 +618,3 @@ class _DayBucket {
   final String? suffix;
   final List<GroupActivityLog> entries;
 }
-
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-String _monthShort(int m) => _months[m - 1];

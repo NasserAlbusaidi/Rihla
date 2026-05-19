@@ -40,6 +40,7 @@ class RouteMark extends StatelessWidget {
     final fg = foregroundColor ?? colors.textPrimary;
     final accent = accentColor ?? colors.primary;
     final bg = backgroundColor ?? colors.scaffoldBackground;
+    final mirror = Directionality.of(context) == TextDirection.rtl;
 
     return SizedBox(
       width: size,
@@ -49,6 +50,7 @@ class RouteMark extends StatelessWidget {
           foreground: fg,
           pin: monochrome ? fg : accent,
           background: bg,
+          mirror: mirror,
         ),
       ),
     );
@@ -60,11 +62,13 @@ class _RouteMarkPainter extends CustomPainter {
     required this.foreground,
     required this.pin,
     required this.background,
+    required this.mirror,
   });
 
   final Color foreground;
   final Color pin;
   final Color background;
+  final bool mirror;
 
   // Coordinates below mirror the SVG viewBox in design/hifi/logo-marks.jsx
   // (200×200). The canvas is scaled uniformly to the widget's size, so all
@@ -80,6 +84,10 @@ class _RouteMarkPainter extends CustomPainter {
     final scale = size.shortestSide / _viewBox;
     canvas.save();
     canvas.scale(scale);
+    if (mirror) {
+      canvas.translate(_viewBox, 0);
+      canvas.scale(-1, 1);
+    }
 
     canvas.drawCircle(_origin, 5.5, Paint()..color = foreground);
     canvas.drawCircle(
@@ -115,5 +123,6 @@ class _RouteMarkPainter extends CustomPainter {
   bool shouldRepaint(covariant _RouteMarkPainter old) =>
       old.foreground != foreground ||
       old.pin != pin ||
-      old.background != background;
+      old.background != background ||
+      old.mirror != mirror;
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 
+import 'package:safar/shared/widgets/dot_step_indicator.dart';
 import 'package:safar/shared/widgets/loading_button.dart';
 import 'package:safar/shared/widgets/search_filter_bar.dart';
 
@@ -359,6 +360,50 @@ void main() {
 
       final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
       expect(button.onPressed, isNull);
+    });
+  });
+
+  group('RTL polish', () {
+    testWidgets('ShimmerPlaceholder resolves shimmer from start to end', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(body: ShimmerPlaceholder(width: 100, height: 20)),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final container = tester.widget<Container>(find.byType(Container));
+      final decoration = container.decoration as BoxDecoration;
+      final gradient = decoration.gradient as LinearGradient;
+
+      expect(gradient.begin, AlignmentDirectional.centerStart);
+      expect(gradient.end, AlignmentDirectional.centerEnd);
+    });
+
+    testWidgets('DotStepIndicator keeps step order LTR in RTL layouts', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: DotStepIndicator(stepCount: 3, currentStep: 1),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final row = tester.widget<Row>(find.byType(Row));
+      expect(row.textDirection, TextDirection.ltr);
     });
   });
 

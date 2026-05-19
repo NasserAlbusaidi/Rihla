@@ -887,10 +887,737 @@
     }
   },
 
+  "commonDone": "Done",
+  "commonContinue": "Continue",
+
+  "nameValidationEmpty": "Name can't be empty.",
+  "nameValidationTooLong": "Keep it to {maxLength} characters or fewer.",
+  "@nameValidationTooLong": {
+    "placeholders": {
+      "maxLength": {
+        "type": "int"
+      }
+    }
+  },
+  "nameValidationControlChars": "Remove line breaks or special characters.",
+  "nameValidationReserved": "That name uses reserved wording.",
+
+  "homeActiveJourneys": "Active journeys",
+  "homeSeeAll": "See all",
+  "homeGroups": "Groups",
+  "homeNewGroup": "New group",
+  "homeRecently": "Recently",
+  "homeNoActivityYet": "No activity yet",
+  "homeTravellerFallback": "traveller",
+  "homeStartFirstGroup": "Start your first group",
+  "homeStartFirstGroupBody": "Plan trips, track expenses, and settle up with friends.",
+  "homeCreateGroup": "Create Group",
+  "homeJoinGroup": "Join Group",
+  "homeRecover": "I had Rihla before — restore",
+  "homeErrorTitle": "Something went wrong",
+  "homeErrorMessage": "Check your connection and try again. Your groups are safely synced — we just need internet to fetch the latest.",
+  "homeCreateAGroup": "Create a Group",
+  "homeJoinAGroup": "Join a Group",
+  "homeGoodMorning": "Good morning",
+  "homeGoodAfternoon": "Good afternoon",
+  "homeGoodEvening": "Good evening",
+  "homeGreeting": "{greeting}, {name}",
+  "@homeGreeting": {
+    "placeholders": {
+      "greeting": {},
+      "name": {}
+    }
+  },
+  "homeNoUpcomingJourneys": "No upcoming or active journeys",
+  "homeGroupSubtitle": "{memberCount, plural, =1{1 member} other{{memberCount} members}} · {eventCount, plural, =1{1 event} other{{eventCount} events}}",
+  "@homeGroupSubtitle": {
+    "placeholders": {
+      "memberCount": {
+        "type": "int"
+      },
+      "eventCount": {
+        "type": "int"
+      }
+    }
+  },
+  "homeTheyOweYou": "they owe you",
+  "homeYouOwe": "you owe",
+  "homeSettled": "settled",
+  "homeAcrossAllJourneys": "Across all journeys",
+  "homeNetYoureOwed": "Net — you're owed",
+  "homeNetYouOwe": "Net — you owe",
+  "homeAllSettledAcrossJourneys": "All settled across journeys",
+  "homeOwed": "owed",
+  "homeOwe": "owe",
+  "homeOwedToYou": "owed to you",
+  "homeBalanceUnavailable": "Balance unavailable",
+  "homeSpendingUnavailable": "Spending data unavailable",
+  "homeWeeklySpending": "Weekly Spending ({currency})",
+  "@homeWeeklySpending": {
+    "placeholders": {
+      "currency": {}
+    }
+  },
+  "homeNoSpendingThisWeek": "No spending this week",
+  "homeBottomNavGroups": "Groups",
+  "homeBottomNavActivity": "Activity",
+  "homeBottomNavProfile": "Profile",
+  "homeQuickAddExpense": "Add Expense",
+  "homeQuickSettleUp": "Settle Up",
+  "homeQuickInviteFriend": "Invite Friend",
+  "homeQuickActivity": "Activity",
+
+  "activityTitle": "Activity",
+  "activityCaption": "ACTIVITY",
+  "activitySubtitle": "Across every journey, every group",
+  "activityLoadFailedTitle": "Could not load activity",
+  "activityLoadFailedMessage": "Check your connection and try again.",
+  "activityReload": "Reload",
+  "activityNoActivityTitle": "No activity yet",
+  "activityCrossGroupEmptyMessage": "Activity from all your groups will appear here.",
+  "activityEventEmptyMessage": "Actions by you and your group members will appear here.",
+  "activityGroupEmptyMessage": "Group events, payments, and member changes will appear here.",
+  "activityNoFilterTitle": "Nothing matches this filter",
+  "activityNoFilterMessage": "Try a different filter, or switch back to All.",
+  "activityFilterAll": "All",
+  "activityFilterActivity": "Activity",
+  "activityFilterSettles": "Settles",
+  "activityFilterSettlements": "Settlements",
+  "activityFilterEvents": "Events",
+  "activityFilterMembers": "Members",
+  "activityEventMissingTitle": "This event no longer exists",
+  "activityEventMissingMessage": "It may have been deleted.",
+  "activityRelativeJustNow": "JUST NOW",
+  "activityRelativeMinutes": "{count}M",
+  "@activityRelativeMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "activityRelativeHours": "{count}H",
+  "@activityRelativeHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "activityRelativeDays": "{count}D",
+  "@activityRelativeDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "activitySomeone": "Someone",
+  "activityEventMoneyCreated": "added a money entry",
+  "activityEventMoneyUpdated": "updated a money entry",
+  "activityEventMoneyDeleted": "deleted a money entry",
+  "activityEventGearCreated": "added a gear entry",
+  "activityEventGearUpdated": "updated a gear entry",
+  "activityEventGearDeleted": "deleted a gear entry",
+  "activityEventDocsCreated": "added a document",
+  "activityEventDocsUpdated": "updated a document",
+  "activityEventDocsDeleted": "deleted a document",
+  "activityGroupSettlementDescription": "recorded a settlement",
+  "activityGroupEventCreatedGeneric": "created an event",
+  "activityGroupEventCreated": "created {eventName}",
+  "@activityGroupEventCreated": {
+    "placeholders": {
+      "eventName": {}
+    }
+  },
+  "activityGroupEventDeletedGeneric": "deleted an event",
+  "activityGroupEventDeleted": "deleted {eventName}",
+  "@activityGroupEventDeleted": {
+    "placeholders": {
+      "eventName": {}
+    }
+  },
+  "activityGroupMemberJoined": "joined the group",
+  "activityGroupMemberLeft": "left the group",
+  "activityTitlePaymentRecorded": "Payment recorded",
+  "activityTitleEventCreated": "Event created",
+  "activityTitleEventRemoved": "Event removed",
+  "activityTitleMemberJoined": "Member joined",
+  "activityTitleMemberLeft": "Member left",
+  "activityTitleGeneric": "Activity",
+
+  "eventTypeTripLabel": "Trip",
+  "eventTypeTripShort": "TRIP",
+  "eventTypeTripDescription": "Plan a shared trip with expenses and activity",
+  "eventTypeCampingLabel": "Camping",
+  "eventTypeCampingShort": "CAMPING",
+  "eventTypeCampingDescription": "Outdoor trip with shared expense tracking",
+  "eventTypeTravelLabel": "Travel",
+  "eventTypeTravelShort": "TRAVEL",
+  "eventTypeTravelDescription": "Journey with group expenses and activity",
+  "eventTypeNightDayOutLabel": "Night/Day Out",
+  "eventTypeNightDayOutShort": "NIGHT/DAY OUT",
+  "eventTypeNightDayOutDescription": "Quick outing with expense splitting",
+  "eventTypeCustomLabel": "Custom",
+  "eventTypeCustomShort": "EVENT",
+  "eventTypeCustomDescription": "Start from a flexible event setup",
+  "eventPickerTitle": "What kind of\njourney is this?",
+  "eventPickerSubtitle": "We'll set sensible defaults for categories and splits.",
+  "eventContinueWith": "Continue with {type}",
+  "@eventContinueWith": {
+    "placeholders": {
+      "type": {}
+    }
+  },
+  "eventNew": "New event",
+  "eventNameLabel": "Event Name",
+  "eventNameHint": "e.g. Summer camping trip",
+  "eventDatesLabel": "Dates",
+  "eventOptionalLabel": "(optional)",
+  "eventStartDate": "Start date",
+  "eventEndDate": "End date",
+  "eventCreate": "Create Event",
+  "eventCreating": "Creating…",
+  "eventSelectAtLeastOneParticipant": "Select at least one participant.",
+  "eventCreateFailed": "Couldn't create event. Check your connection and try again.",
+  "eventParticipants": "Participants",
+  "eventSelectAll": "Select All",
+  "eventSettingsTitle": "Event Settings",
+  "eventSettingsLoadFailed": "Could not load settings",
+  "eventNotFound": "Event not found",
+  "eventDetailsSection": "EVENT DETAILS",
+  "eventNameEmpty": "Event name can't be empty.",
+  "eventUpdated": "Event updated",
+  "eventSaveFailed": "Couldn't save changes. Try again.",
+  "eventNotSet": "Not set",
+  "eventDescriptionLabel": "Description",
+  "eventSaveChanges": "Save Changes",
+  "eventDangerZone": "DANGER ZONE",
+  "eventUnsettledWarning": "This event has unsettled balances.",
+  "eventDelete": "Delete event",
+  "eventDeleteQuestion": "Delete this event?",
+  "eventDeleteBody": "This will permanently delete the event and all its expenses, settlements, and activity. This cannot be undone.",
+  "eventDeleteBodyWithUnsettled": "This will permanently delete the event and all its expenses, settlements, and activity. This cannot be undone.\n\nThis event has unsettled balances. Settle up before deleting, or proceed anyway.",
+  "eventKeepEvent": "Keep event",
+  "eventDeleteFailed": "Failed to delete event: {error}",
+  "@eventDeleteFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "eventAddExpense": "Add expense",
+  "eventYourBalance": "Your balance",
+  "eventYouAreOwed": "You are owed",
+  "eventYouOwe": "You owe",
+  "eventAllSettled": "All settled",
+  "eventNothingToSettleYet": "Nothing to settle yet",
+  "eventEveryoneSquare": "Everyone is square on this trip.",
+  "eventAddFirstExpenseHint": "Add the first expense to start splitting.",
+  "eventBreakdownOwesYou": "owes you",
+  "eventBreakdownYouOwe": "you owe",
+  "eventTripTotal": "Trip total",
+  "eventExpenseCountInline": "· {count, plural, =1{1 expense} other{{count} expenses}}",
+  "@eventExpenseCountInline": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventLedgerLink": "Ledger →",
+  "eventRecent": "Recent",
+  "eventSeeAll": "See all →",
+  "eventYouPaid": "You paid",
+  "eventPaidByName": "{name} paid",
+  "@eventPaidByName": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "eventAddFirstExpenseTitle": "Add the first expense",
+  "eventAddFirstExpenseBody": "Pick who paid, split it fairly.",
+  "eventPeopleOverline": "{count, plural, =1{1 person} other{{count} people}}",
+  "@eventPeopleOverline": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventSplittingBetweenYouAndOthers": "{othersCount, plural, =1{Splitting between you and 1 other} other{Splitting between you and {othersCount} others}}",
+  "@eventSplittingBetweenYouAndOthers": {
+    "placeholders": {
+      "othersCount": {
+        "type": "int"
+      }
+    }
+  },
+  "eventYou": "You",
+  "eventDayOf": "Day {currentDay} of {totalDays}",
+  "@eventDayOf": {
+    "placeholders": {
+      "currentDay": {
+        "type": "int"
+      },
+      "totalDays": {
+        "type": "int"
+      }
+    }
+  },
+  "eventLoadFailedTitle": "Could not load event",
+  "eventMissingMessage": "It may have been deleted, or the link is incorrect.",
+  "eventSemanticCard": "{eventName}, {count, plural, =1{1 person} other{{count} people}}",
+  "@eventSemanticCard": {
+    "placeholders": {
+      "eventName": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventYouOweAmount": "You owe {amount} {currency}",
+  "@eventYouOweAmount": {
+    "placeholders": {
+      "amount": {},
+      "currency": {}
+    }
+  },
+  "eventYouAreOwedAmount": "You are owed {amount} {currency}",
+  "@eventYouAreOwedAmount": {
+    "placeholders": {
+      "amount": {},
+      "currency": {}
+    }
+  },
+
+  "groupNameLabel": "Group Name",
+  "groupNameHint": "e.g. Family trip",
+  "groupYourNameInGroupLabel": "Your name in this group",
+  "groupYourNameHint": "how friends will see you",
+  "groupDifferentNameHelper": "You can use a different name in each group.",
+  "groupCreateError": "Error: {error}",
+  "@groupCreateError": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "groupNew": "New group",
+  "groupCreate": "Create",
+  "groupMoodTitle": "Who's coming along?",
+  "groupMoodBody": "A group is a circle of people you share expenses with — a household, a travel crew, a project team.",
+  "groupGlyph": "Group glyph",
+  "groupDefaultCurrency": "Default currency",
+  "groupCreatorTitle": "You're the creator.",
+  "groupCreatorBody": "Once created, share an invite code to bring others in.",
+  "groupInviteCodeCopied": "Invite code copied",
+  "groupShareMessage": "Join my group on Rihla! Use code {code} to join.",
+  "@groupShareMessage": {
+    "placeholders": {
+      "code": {}
+    }
+  },
+  "groupShareSubject": "Join {name}",
+  "@groupShareSubject": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "groupShareCodeWithGroup": "Share this code with your group",
+  "groupCopyCode": "Copy Code",
+  "groupShare": "Share",
+  "groupJoinTitle": "Join a Group",
+  "groupJoinCta": "Join Group",
+  "groupJoining": "Joining…",
+  "groupYourName": "Your name",
+  "groupJoinNameHint": "how the group will see you",
+  "groupInviteCode": "Invite code",
+  "groupInviteCodeHelper": "Ask a group member for their 6-character code",
+  "groupJoinHintTitle": "You'll see balances right away.",
+  "groupJoinHintBody": "Joining is instant — no approval needed once the code matches.",
+  "groupJoinMoodTitle": "Got an invite?",
+  "groupJoinMoodBody": "Enter the 6-character code a friend gave you. We will drop you straight into the group.",
+  "groupJoinInvalidCode": "That code doesn't match any group. Check the code and try again.",
+  "groupJoinAlreadyMember": "You're already in this group.",
+  "groupJoinTooManyAttempts": "Too many attempts. Try again later.",
+  "groupJoinPleaseSignIn": "Please sign in and try again.",
+  "groupJoinFailed": "Couldn't join the group. Check your connection and try again.",
+  "groupMemberJoinedDescription": "joined the group",
+  "groupMemberLeftDescription": "left the group",
+  "groupEvents": "Events",
+  "groupMembers": "Members",
+  "groupNoEventsTitle": "No events yet",
+  "groupNoEventsMessage": "Create your first event to start planning together.",
+  "groupCreateEvent": "Create Event",
+  "groupLoadEventsFailed": "Couldn't load events",
+  "groupMemberCountCaps": "GROUP · {count, plural, =1{1 MEMBER} other{{count} MEMBERS}}",
+  "@groupMemberCountCaps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupMoreTooltip": "More",
+  "groupSettings": "Group settings",
+  "groupActivity": "Activity",
+  "groupYourBalanceHere": "Your balance here",
+  "groupTheyOweYou": "they owe you",
+  "groupYouOwe": "you owe",
+  "groupAllSettled": "all settled",
+  "groupSettleUp": "Settle up",
+  "groupEventEnds": "ends {date}",
+  "@groupEventEnds": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "groupYourShare": "your share",
+  "groupNoShare": "no share",
+  "groupMembersLoadFailed": "Couldn't load members",
+  "groupMembersLoading": "Loading members…",
+  "groupFormerMember": "Former member",
+  "groupRoleYou": "You",
+  "groupRoleCreator": "Creator",
+  "groupLoadFailedTitle": "Could not load group",
+  "groupNotFoundTitle": "Group not found",
+  "groupNotFoundMessage": "It may have been deleted, or the link is incorrect.",
+  "groupBackHome": "Back home",
+  "groupSettingsTitle": "Group settings",
+  "groupDefaults": "Defaults",
+  "groupCurrency": "Currency",
+  "groupDefaultSplit": "Default split",
+  "groupDefaultSplitEqual": "Equal",
+  "groupReminders": "Reminders",
+  "groupRemindersWeekly": "Weekly",
+  "groupSettingsLoadFailed": "Could not load settings",
+  "groupTryAgain": "Try again",
+  "groupInvite": "Invite",
+  "groupCreatedDateCurrency": "Created {date} · {currency}",
+  "@groupCreatedDateCurrency": {
+    "placeholders": {
+      "date": {},
+      "currency": {}
+    }
+  },
+  "groupAnyoneWithCodeCanJoin": "Anyone with the code can join",
+  "groupEditNameSemantic": "Edit group name",
+  "groupCopyInviteCodeSemantic": "Copy invite code",
+  "groupShowQrCodeSemantic": "Show QR code",
+  "groupShareInviteSemantic": "Share invite",
+  "groupNameEmpty": "Group name can't be empty.",
+  "groupUpdateNameFailed": "Failed to update name: {error}",
+  "@groupUpdateNameFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "groupDangerZone": "Danger zone",
+  "groupDangerZoneCreatorOnly": "Danger zone · Creator only",
+  "groupLeaveThisGroup": "Leave this group",
+  "groupLeaveSubtitle": "You'll lose access to its events and expenses.",
+  "groupLeave": "Leave",
+  "groupDeleteThisGroup": "Delete this group",
+  "groupDeleteSubtitle": "All events and expenses will be lost.",
+  "groupDelete": "Delete",
+  "groupLeaveQuestion": "Leave group?",
+  "groupLeaveBody": "You'll lose access to all events and data in this group.",
+  "groupStayInGroup": "Stay in group",
+  "groupLeaveGroup": "Leave group",
+  "groupSettleBeforeLeaving": "Settle up before leaving the group.",
+  "groupFailedLeave": "Failed to leave group: {error}",
+  "@groupFailedLeave": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "groupSettleBeforeDeleting": "All members must settle up before deleting the group.",
+  "groupFailedDelete": "Failed to delete group: {error}",
+  "@groupFailedDelete": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "groupDeleteSheetTitle": "Delete this group?",
+  "groupDeleteSheetRemovesPrefix": "Removes ",
+  "groupDeleteSheetMembersBody": " for all {count} members. Events, expenses, and balances inside it are erased. ",
+  "@groupDeleteSheetMembersBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupDeleteSheetEveryoneBody": " for everyone. Events, expenses, and balances inside it are erased. ",
+  "groupDeleteSheetUndo": "This can't be undone.",
+  "groupDeleteSheetTypePrefix": "TYPE ",
+  "groupDeleteSheetTypeSuffix": " TO CONFIRM",
+  "groupDeleteSheetRetention": "A copy is kept for 30 days in case you change your mind.",
+  "groupDeleteSheetConfirm": "Delete group",
+  "groupScanToJoin": "Scan to join",
+  "groupInviteQrCode": "Invite QR code",
+  "groupOrEnterCode": "OR ENTER CODE",
+  "groupCopyLink": "Copy link",
+  "groupLinkCopied": "Link copied",
+  "groupShareInviteMessage": "Join '{groupName}' on Rihla: {uri} or use code {code}.",
+  "@groupShareInviteMessage": {
+    "placeholders": {
+      "groupName": {},
+      "uri": {},
+      "code": {}
+    }
+  },
+  "groupShareInviteSubject": "Join '{groupName}' on Rihla",
+  "@groupShareInviteSubject": {
+    "placeholders": {
+      "groupName": {}
+    }
+  },
+  "groupManage": "Manage",
+  "groupRemoveMemberTooltip": "Remove {name} from group",
+  "@groupRemoveMemberTooltip": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "groupRoleMember": "Member",
+  "groupSettleWithBeforeRemoving": "Settle up with {name} before removing them.",
+  "@groupSettleWithBeforeRemoving": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "groupFailedRemoveMember": "Failed to remove {name}: {error}",
+  "@groupFailedRemoveMember": {
+    "placeholders": {
+      "name": {},
+      "error": {}
+    }
+  },
+
+  "onboardingBrandKicker": "RIHLA · ر.ح.ل.ة",
+  "onboardingBrandHeadlineLead": "Trips,\ntallied with\n",
+  "onboardingBrandHeadlineAccent": "care",
+  "onboardingBrandHeadlineSuffix": ".",
+  "onboardingBrandBody": "A travel ledger for friends, families and crews who want the trip to be the memory — not the math.",
+  "onboardingBegin": "Begin",
+  "onboardingHowTitle": "Three ways\nit travels with you.",
+  "onboardingHowGroupsTitle": "Groups for the people you travel with",
+  "onboardingHowGroupsBody": "A travel crew, a roommates group, a family. People stay; events come and go.",
+  "onboardingHowEventsTitle": "Events for the trips & nights out",
+  "onboardingHowEventsBody": "Trips, dinners, weekends. Each gets a cover, a dates window, and its own ledger.",
+  "onboardingHowExpensesTitle": "Expenses split in three taps",
+  "onboardingHowExpensesBody": "Equally, by share, or however. Math happens in the background — settle when you like.",
+  "onboardingNext": "Next",
+  "onboardingSetupTitle": "A few things\nbefore we begin.",
+  "onboardingNameSection": "What should we call you?",
+  "onboardingCurrencySection": "Home currency",
+  "onboardingCurrencyHelper": "Each group can override this later.",
+  "onboardingNotificationsSection": "Notifications",
+  "onboardingOpenRihla": "Open Rihla",
+  "onboardingNameHint": "Your name",
+  "onboardingCurrencySemantics": "{currency} currency",
+  "@onboardingCurrencySemantics": {
+    "placeholders": {
+      "currency": {}
+    }
+  },
+  "onboardingActivitySettlesTitle": "Activity & settles",
+  "onboardingActivitySettlesSubtitle": "When friends add or pay",
+  "onboardingWeeklyDigestTitle": "Weekly digest",
+  "onboardingWeeklyDigestSubtitle": "A Sunday summary",
+  "onboardingSkip": "Skip",
+  "onboardingStepSemantics": "Onboarding step {active} of {count}",
+  "@onboardingStepSemantics": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
   "expenseSuccessTitle": "Expense Saved",
   "expenseSuccessSyncedToCloud": "SYNCED TO CLOUD",
   "expenseSuccessDone": "Done",
   "expenseSuccessAddAnother": "Add Another",
   "expenseSuccessTotalAmount": "TOTAL AMOUNT",
-  "expenseSuccessCategory": "CATEGORY"
+  "expenseSuccessCategory": "CATEGORY",
+
+  "commonNotFound": "Not Found",
+  "@commonNotFound": {
+    "description": "Generic 'Not Found' label used in module headers and error states; pre-added for cross-feature reuse."
+  },
+  "commonEmail": "Email",
+  "@commonEmail": {
+    "description": "Email field label reused across the auth recover/link flows."
+  },
+  "commonEmailHintExample": "you@example.com",
+  "@commonEmailHintExample": {
+    "description": "Placeholder example shown inside the Email text field across auth flows."
+  },
+  "authWelcomeBack": "Welcome back",
+  "@authWelcomeBack": {
+    "description": "Friendly greeting shown both on the recover-from-email screen heading and the recovery-completion snackbar."
+  },
+
+  "authRecoverTitle": "Restore from email",
+  "@authRecoverTitle": {
+    "description": "App bar title on the Recover-from-email screen (Home empty state → 'I had Rihla before — restore')."
+  },
+  "authRecoverDescription": "Enter the email you linked on your old device. We'll send a one-tap sign-in link.",
+  "@authRecoverDescription": {
+    "description": "Body copy under the Welcome back heading on the recover-from-email screen."
+  },
+  "authRecoverSubmit": "Send recovery link",
+  "@authRecoverSubmit": {
+    "description": "Primary CTA on the recover-from-email screen — sends the sign-in link."
+  },
+  "authErrorSendLink": "Couldn't send the link. Check your connection and try again.",
+  "@authErrorSendLink": {
+    "description": "Catch-all error shown when sending the recovery/link email fails for an unknown reason."
+  },
+  "authErrorAccountNotFound": "We couldn't find a Rihla account with this email. Make sure you linked it on your previous device first.",
+  "@authErrorAccountNotFound": {
+    "description": "Recover error when Firebase returns user-not-found or invalid-email — tells the user this email isn't linked to any Rihla account."
+  },
+  "authErrorRateLimited": "Too many attempts. Wait a few minutes and try again.",
+  "@authErrorRateLimited": {
+    "description": "Auth error for Firebase's too-many-requests code."
+  },
+  "authErrorOffline": "No connection. Check your internet and try again.",
+  "@authErrorOffline": {
+    "description": "Auth error for Firebase's network-request-failed code."
+  },
+  "authErrorGeneric": "Something went wrong ({code}). Please try again.",
+  "@authErrorGeneric": {
+    "description": "Fallback auth error with the FirebaseAuthException code surfaced for support purposes.",
+    "placeholders": {
+      "code": {}
+    }
+  },
+  "authErrorEmailAlreadyLinked": "This email is already linked to a Rihla account. Restore from that account instead.",
+  "@authErrorEmailAlreadyLinked": {
+    "description": "Shown on the Link-email screen when the email is already linked to another Rihla account."
+  },
+  "authErrorInvalidEmail": "That doesn't look like a valid email.",
+  "@authErrorInvalidEmail": {
+    "description": "Shown on the Link-email screen when Firebase rejects the email format."
+  },
+  "authErrorEmailsDontMatch": "Emails don't match.",
+  "@authErrorEmailsDontMatch": {
+    "description": "Form-validator error on the Link-email screen when the email and confirm-email fields disagree."
+  },
+
+  "authLinkEmailTitle": "Link your email",
+  "@authLinkEmailTitle": {
+    "description": "App bar title on the Link-email screen (Settings → Linked email → Set up)."
+  },
+  "authLinkEmailHeading": "So you can come back",
+  "@authLinkEmailHeading": {
+    "description": "Headline on the Link-email screen — frames email-link as a recovery anchor, not a login."
+  },
+  "authLinkEmailDescription": "We'll email you a one-tap sign-in link. If you ever lose your phone or clear app data, enter the same email on a new device to get all your trips back.",
+  "@authLinkEmailDescription": {
+    "description": "Body copy under the headline on the Link-email screen explaining the recovery promise."
+  },
+  "authLinkEmailConfirmLabel": "Confirm email",
+  "@authLinkEmailConfirmLabel": {
+    "description": "Label for the second 'confirm email' text field on the Link-email screen — typo guard."
+  },
+  "authLinkEmailSubmit": "Send link",
+  "@authLinkEmailSubmit": {
+    "description": "Primary CTA on the Link-email screen — sends the sign-in link."
+  },
+  "authLinkEmailPrivacyNote": "Your email is used only to restore your Rihla data. We don't send marketing email and we don't share it.",
+  "@authLinkEmailPrivacyNote": {
+    "description": "Trust note shown below the email fields on the Link-email screen."
+  },
+
+  "authRecoverPendingTitle": "Check your inbox",
+  "@authRecoverPendingTitle": {
+    "description": "Headline on the recovery-pending screen ('we sent you an email, click the link')."
+  },
+  "authRecoverPendingDescriptionPrefix": "We sent a sign-in link to ",
+  "@authRecoverPendingDescriptionPrefix": {
+    "description": "First half of the recovery-pending body — split so the user's email can be rendered in a stronger style between prefix and suffix."
+  },
+  "authRecoverPendingDescriptionSuffix": ". Tap it on this device — we'll pull your trips back automatically.",
+  "@authRecoverPendingDescriptionSuffix": {
+    "description": "Second half of the recovery-pending body, rendered after the user's email."
+  },
+  "authRecoverPendingSpamHint": "Can't find it? Check your spam folder. The link is good for 24 hours.",
+  "@authRecoverPendingSpamHint": {
+    "description": "Helper text on the recovery-pending screen reminding the user to check spam and noting the 24h expiry."
+  },
+  "authRecoverPendingLinkSeen": "We saw your link. Hang tight — restoring now.",
+  "@authRecoverPendingLinkSeen": {
+    "description": "Inline status shown when the deep-link bootstrap has captured the recovery link and is completing recovery."
+  },
+  "authRecoverPendingResendStatus": "New link sent.",
+  "@authRecoverPendingResendStatus": {
+    "description": "Confirmation status shown after the user successfully resends the recovery link."
+  },
+  "authRecoverPendingResendErrorCode": "Couldn't resend ({code}).",
+  "@authRecoverPendingResendErrorCode": {
+    "description": "Resend error on the recovery-pending screen when Firebase surfaces a specific error code.",
+    "placeholders": {
+      "code": {}
+    }
+  },
+  "authRecoverPendingResendErrorGeneric": "Couldn't resend. Try again in a bit.",
+  "@authRecoverPendingResendErrorGeneric": {
+    "description": "Resend error on the recovery-pending screen for unknown/non-Firebase failures."
+  },
+  "authRecoverPendingResendLink": "Resend link",
+  "@authRecoverPendingResendLink": {
+    "description": "Outlined button label on the recovery-pending screen — resend the email when the cooldown is up."
+  },
+  "authRecoverPendingResendCountdown": "Resend in {seconds}s",
+  "@authRecoverPendingResendCountdown": {
+    "description": "Cooldown variant of the resend button label — counts down seconds until resend is allowed.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+
+  "authSignOutFirstTitle": "This device is already in use",
+  "@authSignOutFirstTitle": {
+    "description": "Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one."
+  },
+  "authSignOutFirstBody": "To restore a different account, you'll lose the trips and expenses on this device. They'll stay in the cloud only if they're tied to a different linked email — otherwise they'll be orphaned.",
+  "@authSignOutFirstBody": {
+    "description": "Body copy of the SignOutFirstDialog explaining what happens to local data when the user signs out to recover a different account."
+  },
+  "authSignOutFirstConfirm": "Sign out and continue",
+  "@authSignOutFirstConfirm": {
+    "description": "Destructive confirmation CTA on the SignOutFirstDialog."
+  },
+
+  "groupSettleUpMissingTitle": "This group is no longer available",
+  "@groupSettleUpMissingTitle": {
+    "description": "Empty-state title on the group settle-up screen when the group can no longer be loaded (e.g. the user was removed)."
+  },
+  "groupSettleUpMissingMessage": "You may have been removed. Tap below to go back home.",
+  "@groupSettleUpMissingMessage": {
+    "description": "Empty-state body on the group settle-up screen when the group is unavailable."
+  },
+  "groupSettleUpEventLabelFallback": "Event ...{suffix}",
+  "@groupSettleUpEventLabelFallback": {
+    "description": "Fallback label for a per-event breakdown row when the event's display name is unknown — shows the tail of the event ID.",
+    "placeholders": {
+      "suffix": {}
+    }
+  },
+
+  "errorPageNotFound": "Page not found: {location}",
+  "@errorPageNotFound": {
+    "description": "Fallback errorBuilder text shown by GoRouter when the requested location does not match any route.",
+    "placeholders": {
+      "location": {}
+    }
+  }
 }

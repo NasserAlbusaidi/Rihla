@@ -17,6 +17,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Stub data
@@ -126,7 +127,12 @@ Widget _wrapCreatorView(
         'group-1',
       ).overrideWith((ref) => AsyncValue.data(_zeroBalances)),
     ],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -146,7 +152,12 @@ Widget _wrapMemberView(Widget child, SharedPreferences prefs) {
         'group-1',
       ).overrideWith((ref) => AsyncValue.data(_zeroBalances)),
     ],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -166,7 +177,12 @@ Widget _wrapCreatorWithBalances(Widget child, SharedPreferences prefs) {
         'group-1',
       ).overrideWith((ref) => AsyncValue.data(_nonZeroBalances)),
     ],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -222,7 +238,12 @@ Widget _wrapDeleteNavigationTest({
         ),
       ),
     ],
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
@@ -259,7 +280,12 @@ Widget _wrapBackNavigationTest({required SharedPreferences prefs}) {
         'group-1',
       ).overrideWith((ref) => AsyncValue.data(_zeroBalances)),
     ],
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 

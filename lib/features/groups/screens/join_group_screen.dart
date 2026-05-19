@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/name_validators.dart';
+import '../../../core/utils/localized_name_validators.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
@@ -60,7 +61,10 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (isLoading) return;
 
     final trimmedName = _nameController.text.trim();
-    final nameError = validateDisplayName(_nameController.text);
+    final nameError = validateDisplayNameLocalized(
+      context,
+      _nameController.text,
+    );
     if (nameError != null) {
       ScaffoldMessenger.of(
         context,
@@ -120,18 +124,18 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
   String _errorMessage(String error) {
     if (error.contains('Invalid invite code')) {
-      return "That code doesn't match any group. Check the code and try again.";
+      return context.l10n.groupJoinInvalidCode;
     }
     if (error.contains('Already a member')) {
-      return "You're already in this group.";
+      return context.l10n.groupJoinAlreadyMember;
     }
     if (error.contains('Too many attempts')) {
-      return 'Too many attempts. Try again later.';
+      return context.l10n.groupJoinTooManyAttempts;
     }
     if (error.contains('Please sign in')) {
-      return 'Please sign in and try again.';
+      return context.l10n.groupJoinPleaseSignIn;
     }
-    return "Couldn't join the group. Check your connection and try again.";
+    return context.l10n.groupJoinFailed;
   }
 
   void _close() {
@@ -176,16 +180,16 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                padding: const EdgeInsetsDirectional.fromSTEB(24, 8, 24, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const _JoinMoodBlock(),
                     const SizedBox(height: 26),
                     _UnderlinedTextField(
-                      label: 'Your name',
+                      label: context.l10n.groupYourName,
                       controller: _nameController,
-                      hintText: 'how the group will see you',
+                      hintText: context.l10n.groupJoinNameHint,
                       textCapitalization: TextCapitalization.words,
                       onChanged: (_) => setState(() {}),
                     ),
@@ -204,7 +208,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                       key: GroupKeys.joinGroupButton,
                       isLoading: isLoading,
                       onPressed: canJoin ? _joinGroup : null,
-                      label: isLoading ? 'Joining…' : 'Join Group',
+                      label: isLoading
+                          ? context.l10n.groupJoining
+                          : context.l10n.groupJoinCta,
                     ),
                   ],
                 ),
@@ -233,7 +239,7 @@ class _JoinGroupTopBar extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: BackButton(
                 onPressed: onClose,
                 color: colors.textPrimary,
@@ -244,7 +250,7 @@ class _JoinGroupTopBar extends StatelessWidget {
               ),
             ),
             Text(
-              'Join a Group',
+              context.l10n.groupJoinTitle,
               style: AppTypography.display(
                 fontSize: 19,
                 color: colors.textPrimary,
@@ -267,7 +273,7 @@ class _JoinMoodBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Got an invite?',
+          context.l10n.groupJoinMoodTitle,
           style: AppTypography.display(
             fontSize: 30,
             color: colors.textPrimary,
@@ -276,7 +282,7 @@ class _JoinMoodBlock extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Enter the 6-character code a friend gave you. We will drop you straight into the group.',
+          context.l10n.groupJoinMoodBody,
           style: AppTypography.sans(
             fontSize: 13,
             color: colors.textSecondary,
@@ -352,10 +358,10 @@ class _InviteCodeField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _FieldLabel('Invite code'),
+        _FieldLabel(context.l10n.groupInviteCode),
         const SizedBox(height: 4),
         Text(
-          'Ask a group member for their 6-character code',
+          context.l10n.groupInviteCodeHelper,
           style: AppTypography.sans(
             fontSize: 12,
             color: colors.textSecondary,
@@ -421,7 +427,7 @@ class _JoinHintCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "You'll see balances right away.",
+            context.l10n.groupJoinHintTitle,
             style: AppTypography.sans(
               fontSize: 12,
               color: colors.textPrimary,
@@ -430,7 +436,7 @@ class _JoinHintCard extends StatelessWidget {
             ),
           ),
           Text(
-            'Joining is instant — no approval needed once the code matches.',
+            context.l10n.groupJoinHintBody,
             style: AppTypography.sans(
               fontSize: 12,
               color: colors.textSecondary,

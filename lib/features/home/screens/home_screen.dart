@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -106,11 +107,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
           SliverToBoxAdapter(
             child: SectionHeader(
-              title: 'Active journeys',
+              title: context.l10n.homeActiveJourneys,
               actionLabel:
                   journeysAsync.hasValue &&
                       (journeysAsync.value?.isNotEmpty ?? false)
-                  ? 'See all'
+                  ? context.l10n.homeSeeAll
                   : null,
               onActionTap: () => context.push('/activity'),
             ).animate().fadeIn(delay: 350.ms),
@@ -122,8 +123,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
           SliverToBoxAdapter(
             child: SectionHeader(
-              title: 'Groups',
-              actionLabel: 'New group',
+              title: context.l10n.homeGroups,
+              actionLabel: context.l10n.homeNewGroup,
               actionKey: HomeKeys.createGroupFab,
               onActionTap: () => _showCreateOrJoinSheet(context),
             ).animate().fadeIn(delay: 500.ms),
@@ -150,8 +151,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
           SliverToBoxAdapter(
-            child: const SectionHeader(
-              title: 'Recently',
+            child: SectionHeader(
+              title: context.l10n.homeRecently,
             ).animate().fadeIn(delay: 700.ms),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 4)),
@@ -164,7 +165,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                     ? Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Text(
-                          'No activity yet',
+                          context.l10n.homeNoActivityYet,
                           style: AppTypography.sans(
                             fontSize: 13,
                             color: context.colors.textSecondary,
@@ -196,7 +197,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   String _firstName() {
     final raw = ref.watch(settingsProvider).deviceName;
     final trimmed = raw.trim();
-    if (trimmed.isEmpty) return 'traveller';
+    if (trimmed.isEmpty) return context.l10n.homeTravellerFallback;
     return trimmed.split(RegExp(r'\s+')).first;
   }
 
@@ -228,7 +229,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               ),
               SizedBox(height: context.spacing.space20),
               Text(
-                'Start your first group',
+                context.l10n.homeStartFirstGroup,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -238,7 +239,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               ),
               SizedBox(height: context.spacing.space8),
               Text(
-                'Plan trips, track expenses, and settle up with friends.',
+                context.l10n.homeStartFirstGroupBody,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -254,7 +255,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   key: HomeKeys.createGroupFab,
                   onPressed: () => context.push('/create-group'),
                   icon: const Icon(Iconsax.add),
-                  label: const Text('Create Group'),
+                  label: Text(context.l10n.homeCreateGroup),
                 ),
               ),
               SizedBox(height: context.spacing.space12),
@@ -264,7 +265,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 child: OutlinedButton.icon(
                   onPressed: () => context.push('/join-group'),
                   icon: const Icon(Iconsax.login_1),
-                  label: const Text('Join Group'),
+                  label: Text(context.l10n.homeJoinGroup),
                 ),
               ),
               SizedBox(height: context.spacing.space20),
@@ -272,7 +273,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 key: const Key('home_empty_recover_cta'),
                 onPressed: () => context.push('/recover'),
                 child: Text(
-                  'I had Rihla before — restore',
+                  context.l10n.homeRecover,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -297,10 +298,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               padding: const EdgeInsets.all(24),
               child: EmptyStateView(
                 icon: Iconsax.warning_2,
-                title: 'Something went wrong',
-                message:
-                    'Check your connection and try again. Your groups are safely synced — we just need internet to fetch the latest.',
-                actionLabel: 'Retry',
+                title: context.l10n.homeErrorTitle,
+                message: context.l10n.homeErrorMessage,
+                actionLabel: context.l10n.commonRetry,
                 onAction: () => ref.refresh(userGroupsProvider),
               ),
             ),
@@ -356,7 +356,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               minTileHeight: 64,
               leading: Icon(Iconsax.people, color: context.colors.primary),
               title: Text(
-                'Create a Group',
+                context.l10n.homeCreateAGroup,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               onTap: () {
@@ -373,7 +373,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 color: context.colors.textSecondary,
               ),
               title: Text(
-                'Join a Group',
+                context.l10n.homeJoinAGroup,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               onTap: () {
@@ -399,7 +399,7 @@ class _TopBar extends ConsumerWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 6, 16, 0),
+        padding: const EdgeInsetsDirectional.fromSTEB(20, 6, 16, 0),
         child: Row(
           children: [
             GestureDetector(
@@ -466,15 +466,15 @@ class _GreetingStrip extends StatelessWidget {
     final colors = context.colors;
     final hour = DateTime.now().hour;
     final greeting = hour < 12
-        ? 'Good morning'
+        ? context.l10n.homeGoodMorning
         : hour < 17
-        ? 'Good afternoon'
-        : 'Good evening';
+        ? context.l10n.homeGoodAfternoon
+        : context.l10n.homeGoodEvening;
     return Padding(
       key: HomeKeys.yourGroupsHeader,
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 0),
       child: Text(
-        '$greeting, $name'.toUpperCase(),
+        context.l10n.homeGreeting(greeting, name).toUpperCase(),
         style: AppTypography.mono(
           fontSize: 10,
           color: colors.textSecondary,
@@ -516,7 +516,7 @@ class _JourneysStrip extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'No upcoming or active journeys',
+                      context.l10n.homeNoUpcomingJourneys,
                       style: AppTypography.sans(
                         fontSize: 13,
                         color: colors.textSecondary,
@@ -592,15 +592,12 @@ class _GroupRow extends ConsumerWidget {
               Decimal.zero);
     final eventCount = balances?.eventCount ?? 0;
     final memberCount = group.memberIds.length;
-    final subtitle =
-        '$memberCount member${memberCount == 1 ? '' : 's'}'
-        ' · '
-        '$eventCount event${eventCount == 1 ? '' : 's'}';
+    final subtitle = context.l10n.homeGroupSubtitle(memberCount, eventCount);
     final balanceCaption = userNet > Decimal.zero
-        ? 'they owe you'
+        ? context.l10n.homeTheyOweYou
         : userNet < Decimal.zero
-        ? 'you owe'
-        : 'settled';
+        ? context.l10n.homeYouOwe
+        : context.l10n.homeSettled;
 
     return InkWell(
       onTap: onTap,

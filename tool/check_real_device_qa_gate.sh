@@ -56,7 +56,8 @@ check_matrix_results() {
         || value == "Keyboard screenshot and saved amount" \
         || value == "Before/after screenshots" \
         || value == "`fcm_tokens/{uid}` exists" \
-        || value == "`fcm_tokens/{uid}` removed";
+        || value == "`fcm_tokens/{uid}` removed" \
+        || value == "Arabic RTL screenshots and golden-path log";
     }
 
     /^\| RD-[0-9][0-9] \|/ {
@@ -88,8 +89,8 @@ check_matrix_results() {
     }
 
     END {
-      if (total != 8) {
-        print "DETAIL: Expected 8 real-device QA matrix rows, found " total;
+      if (total != 9) {
+        print "DETAIL: Expected 9 real-device QA matrix rows, found " total;
         failures += 1;
       }
       exit failures > 0 ? 1 : 0;
