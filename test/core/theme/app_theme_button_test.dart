@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,6 +24,33 @@ void main() {
       });
     },
   );
+
+  test('local Material button overrides do not use 36dp minimum heights', () {
+    final offenders = <String>[];
+    for (final file in Directory('lib').listSync(recursive: true)) {
+      if (file is! File || !file.path.endsWith('.dart')) continue;
+
+      final content = file.readAsStringSync();
+      if (!content.contains('Button.styleFrom')) continue;
+
+      final lines = content.split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        if (RegExp(
+          r'minimumSize:\s*const Size\([^,]+,\s*36\)',
+        ).hasMatch(lines[i])) {
+          offenders.add('${file.path}:${i + 1}: ${lines[i].trim()}');
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'Material buttons below 40dp can clip Geist descenders; use the '
+          'theme defaults or a compact 40dp+ override with explicit line height.',
+    );
+  });
 }
 
 T _suppressFontErrors<T>(T Function() body) {

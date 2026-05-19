@@ -821,15 +821,21 @@ class _StepHeader extends StatelessWidget {
             onPressed: onSkip,
             style: TextButton.styleFrom(
               foregroundColor: colors.textSecondary,
-              minimumSize: const Size(48, 36),
-              padding: EdgeInsets.symmetric(horizontal: context.spacing.space8),
+              minimumSize: const Size(48, 44),
+              padding: EdgeInsetsDirectional.fromSTEB(
+                context.spacing.space8,
+                10,
+                context.spacing.space8,
+                12,
+              ),
             ),
             child: Text(
               context.l10n.onboardingSkip,
               style: AppTypography.sans(
                 fontSize: 13,
                 color: colors.textSecondary,
-              ),
+                height: 1.22,
+              ).copyWith(leadingDistribution: TextLeadingDistribution.even),
             ),
           ),
         ],
