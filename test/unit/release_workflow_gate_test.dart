@@ -46,4 +46,21 @@ void main() {
     expect(governance, contains('required_status_checks'));
     expect(governance, contains('readiness'));
   });
+
+  test('release helper runs readiness before tagging and pushing', () {
+    final release = read('tool/release.sh');
+
+    final commitIndex = release.indexOf(
+      r'git commit -m "chore(release): $NEW_TAG"',
+    );
+    final readinessIndex = release.indexOf('tool/check_release_readiness.sh');
+    final tagIndex = release.indexOf(r'git tag -a "$NEW_TAG"');
+    final pushIndex = release.indexOf(r'git push origin "$NEW_TAG"');
+
+    expect(release, contains(r'RIHLA_RELEASE_TARGET_SHA="$RELEASE_SHA"'));
+    expect(commitIndex, greaterThanOrEqualTo(0));
+    expect(readinessIndex, greaterThan(commitIndex));
+    expect(tagIndex, greaterThan(readinessIndex));
+    expect(pushIndex, greaterThan(tagIndex));
+  });
 }

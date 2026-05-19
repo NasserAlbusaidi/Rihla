@@ -241,3 +241,8 @@ bash tool/check_github_release_governance.sh
 
 It verifies the release variables against the target commit and confirms `main`
 requires the `Readiness Check / readiness` status check.
+
+The preferred tag path is `tool/release.sh`. It creates the version/changelog
+release commit first, prints the exact commit SHA for
+`RIHLA_RELEASE_APPROVED_SHA`, runs `tool/check_release_readiness.sh` with that
+SHA as `RIHLA_RELEASE_TARGET_SHA`, and only then creates/pushes the release tag.

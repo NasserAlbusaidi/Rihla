@@ -12,12 +12,15 @@
 #   2. Bumps version in pubspec.yaml (semver + build number)
 #   3. Opens $EDITOR on a CHANGELOG stub for the new version
 #   4. Commits as "chore(release): vX.Y.Z"
-#   5. Tags as "vX.Y.Z" and pushes both branch and tag
-#   6. Reports the GitHub Actions run URL — CI takes over and uploads
+#   5. Runs the consolidated release-readiness audit on that exact commit
+#   6. Tags as "vX.Y.Z" and pushes both branch and tag
+#   7. Reports the GitHub Actions run URL — CI takes over and uploads
 #      to the Play Store "first" closed-testing track
 #
 # Override the editor with EDITOR env var. Skip the changelog prompt
-# with SKIP_CHANGELOG=1 (CI-friendly).
+# with SKIP_CHANGELOG=1 (CI-friendly). Skip the post-commit approval prompt
+# with SKIP_RELEASE_APPROVAL_PROMPT=1 only if RIHLA_RELEASE_APPROVED_SHA is
+# already set to the release commit SHA.
 
 set -euo pipefail
 
@@ -148,6 +151,22 @@ fi
 
 git add "$PUBSPEC" "$CHANGELOG"
 git commit -m "chore(release): $NEW_TAG"
+RELEASE_SHA="$(git rev-parse HEAD)"
+
+echo
+echo "Release commit created: $RELEASE_SHA"
+echo "Before tagging, set GitHub repository variable RIHLA_RELEASE_APPROVED_SHA to this exact SHA after all release gates are approved:"
+echo
+echo "  gh variable set RIHLA_RELEASE_APPROVED_SHA --body \"$RELEASE_SHA\""
+echo
+echo "The release-readiness audit runs next and must pass before tag/push."
+if [ "${SKIP_RELEASE_APPROVAL_PROMPT:-0}" = "0" ]; then
+  printf "Press Enter after the release approval variable is set, or Ctrl+C to stop before tagging. "
+  read -r _
+fi
+
+RIHLA_RELEASE_TARGET_SHA="$RELEASE_SHA" bash tool/check_release_readiness.sh
+
 git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
 
 echo "Pushing $MAIN_BRANCH and $NEW_TAG to origin..."

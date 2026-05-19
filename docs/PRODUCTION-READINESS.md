@@ -182,6 +182,9 @@ These actions cannot be completed from this repo and remain before release:
    ```bash
    RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
    ```
+   `tool/release.sh` runs this same audit after creating the release commit and
+   before creating/pushing the tag. If the audit fails, fix the failed gate
+   before tagging that commit.
 
 Historical external actions completed on or before 2026-05-16:
 

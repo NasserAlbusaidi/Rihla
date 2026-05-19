@@ -162,6 +162,11 @@ Requires a signed keystore configured in `android/key.properties` (gitignored).
 
 Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`.
 
+Use `tool/release.sh` for tagged Android releases. The helper creates the
+release commit, prints the exact commit SHA to approve with
+`RIHLA_RELEASE_APPROVED_SHA`, then runs `tool/check_release_readiness.sh`
+before it creates or pushes the tag.
+
 iOS builds are manual — no iOS CI pipeline.
 
 See `docs/PRODUCTION-READINESS.md` for the current Firebase deployment and real-device QA checklist.
