@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
@@ -64,14 +65,14 @@ class _LoadedCard extends ConsumerWidget {
     final isPositive = net > Decimal.zero;
     final isNegative = net < Decimal.zero;
     final caption = isPositive
-        ? 'Net — you’re owed'
+        ? context.l10n.homeNetYoureOwed
         : isNegative
-        ? 'Net — you owe'
-        : 'All settled across journeys';
+        ? context.l10n.homeNetYouOwe
+        : context.l10n.homeAllSettledAcrossJourneys;
     final captionAccent = isPositive
-        ? 'owed'
+        ? context.l10n.homeOwed
         : isNegative
-        ? 'owe'
+        ? context.l10n.homeOwe
         : null;
     final tone = isPositive
         ? AmountTone.sage
@@ -82,7 +83,7 @@ class _LoadedCard extends ConsumerWidget {
     return Container(
       key: HomeKeys.balanceHeroCard,
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+      padding: const EdgeInsetsDirectional.fromSTEB(22, 20, 22, 22),
       decoration: BoxDecoration(
         color: colors.cardSurface,
         borderRadius: BorderRadius.circular(28),
@@ -97,7 +98,7 @@ class _LoadedCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Across all journeys',
+                  context.l10n.homeAcrossAllJourneys,
                   style: AppTypography.display(
                     fontSize: 16,
                     color: colors.textSecondary,
@@ -253,11 +254,15 @@ class _SplitLegend extends StatelessWidget {
       children: [
         _LegendLine(
           dotColor: colors.success,
-          label: 'owed to you',
+          label: context.l10n.homeOwedToYou,
           amount: owedToUser,
         ),
         const SizedBox(height: 6),
-        _LegendLine(dotColor: colors.error, label: 'you owe', amount: userOwes),
+        _LegendLine(
+          dotColor: colors.error,
+          label: context.l10n.homeYouOwe,
+          amount: userOwes,
+        ),
       ],
     );
   }
@@ -324,7 +329,7 @@ class _ErrorCard extends StatelessWidget {
         boxShadow: context.shadows.raised,
       ),
       child: Text(
-        'Balance unavailable',
+        context.l10n.homeBalanceUnavailable,
         style: AppTypography.sans(
           fontSize: 15,
           fontWeight: FontWeight.w600,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../activity/utils/activity_display.dart';
 import '../../groups/models/group_activity_log_model.dart';
 
 /// One row in the cross-group activity feed.
@@ -27,6 +29,7 @@ class ActivityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final description = localizedGroupActivityText(context.l10n, activity);
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -54,7 +57,7 @@ class ActivityRow extends StatelessWidget {
                         ),
                         const TextSpan(text: ' '),
                         TextSpan(
-                          text: activity.description,
+                          text: description,
                           style: AppTypography.sans(
                             fontSize: 14,
                             color: colors.textSecondary,
@@ -89,7 +92,7 @@ class ActivityRow extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        timeago.format(activity.timestamp),
+                        formatRelativeShort(context, activity.timestamp),
                         style: AppTypography.mono(
                           fontSize: 10,
                           color: colors.textSecondary,

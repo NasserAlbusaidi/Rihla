@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/loading_button.dart';
@@ -15,6 +16,7 @@ import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
+import '../utils/event_display.dart';
 import '../widgets/event_details_card.dart';
 import '../widgets/event_participants_card.dart';
 import '../widgets/event_type_badge.dart';
@@ -81,9 +83,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
     if (_selectedParticipantIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select at least one participant.'),
-          duration: Duration(seconds: 4),
+        SnackBar(
+          content: Text(context.l10n.eventSelectAtLeastOneParticipant),
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
@@ -102,12 +104,13 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     final uid = FirebaseConfig.currentUser?.uid ?? '';
 
     try {
-      final event = await ref.read(eventServiceProvider).createEvent(
+      final event = await ref
+          .read(eventServiceProvider)
+          .createEvent(
             groupId: widget.groupId,
             name: _nameController.text.trim(),
             type: widget.eventType,
-            participantIds:
-                List.unmodifiable(_selectedParticipantIds.toList()),
+            participantIds: List.unmodifiable(_selectedParticipantIds.toList()),
             participantNames: participantNames,
             createdBy: uid,
             startDate: _startDate,
@@ -124,14 +127,16 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
             ? ref.read(settingsProvider).deviceName
             : 'Someone';
-        ref.read(groupActivityServiceProvider).logGroupEvent(
-          groupId: widget.groupId,
-          type: 'event_created',
-          actorId: actorId,
-          actorName: actorName,
-          description: 'created ${event.name}',
-          metadata: {'eventId': event.id, 'eventName': event.name},
-        );
+        ref
+            .read(groupActivityServiceProvider)
+            .logGroupEvent(
+              groupId: widget.groupId,
+              type: 'event_created',
+              actorId: actorId,
+              actorName: actorName,
+              description: 'created ${event.name}',
+              metadata: {'eventId': event.id, 'eventName': event.name},
+            );
       } catch (_) {
         // Activity logging failure must never crash the creation flow.
       }
@@ -143,11 +148,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       if (!mounted) return;
       ref.read(eventLoadingProvider.notifier).state = false;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Couldn't create event. Check your connection and try again.",
-          ),
-          duration: Duration(seconds: 5),
+        SnackBar(
+          content: Text(context.l10n.eventCreateFailed),
+          duration: const Duration(seconds: 5),
         ),
       );
     }
@@ -194,13 +197,14 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         children: [
           ModuleHeader(
             useDarkTheme: true,
-            title: typeConfig.label,
+            title: widget.eventType.localizedLabel(context.l10n),
           ),
           Expanded(
             child: membersAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error: $err')),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => Center(
+                child: Text(context.l10n.groupCreateError(err.toString())),
+              ),
               data: (members) {
                 // Pre-populate participant selection once on first data load (D-04)
                 if (!_participantsInitialized && members.isNotEmpty) {
@@ -216,8 +220,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   });
                 }
 
-                final disableAnimations =
-                    MediaQuery.of(context).disableAnimations;
+                final disableAnimations = MediaQuery.of(
+                  context,
+                ).disableAnimations;
 
                 final badge = EventTypeBadge(typeConfig: typeConfig);
 
@@ -236,23 +241,23 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       setState(() => _selectedParticipantIds = ids),
                   onToggle: (userId) {
                     // Immutable set update
-                    final updated =
-                        Set<String>.from(_selectedParticipantIds);
+                    final updated = Set<String>.from(_selectedParticipantIds);
                     if (updated.contains(userId)) {
                       updated.remove(userId);
                     } else {
                       updated.add(userId);
                     }
                     setState(
-                      () => _selectedParticipantIds =
-                          Set.unmodifiable(updated),
+                      () => _selectedParticipantIds = Set.unmodifiable(updated),
                     );
                   },
                 );
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 16),
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -288,7 +293,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                         // --- Submit button ---
                         LoadingButton(
                           key: EventKeys.createEventButton,
-                          label: isLoading ? 'Creating\u2026' : 'Create Event',
+                          label: isLoading
+                              ? context.l10n.eventCreating
+                              : context.l10n.eventCreate,
                           isLoading: isLoading,
                           onPressed: () => _submitForm(members),
                         ),

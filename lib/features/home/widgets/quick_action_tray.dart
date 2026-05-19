@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../shared/animations/tap_bounce.dart';
 import '../keys/home_keys.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -40,25 +41,25 @@ class QuickActionTray extends StatelessWidget {
           _QuickActionButton(
             key: HomeKeys.addExpenseAction,
             icon: Iconsax.receipt_add,
-            label: 'Add Expense',
+            label: context.l10n.homeQuickAddExpense,
             onTap: onAddExpense,
           ),
           _QuickActionButton(
             key: HomeKeys.settleUpAction,
             icon: Iconsax.money_recive,
-            label: 'Settle Up',
+            label: context.l10n.homeQuickSettleUp,
             onTap: onSettleUp,
           ),
           _QuickActionButton(
             key: HomeKeys.inviteAction,
             icon: Iconsax.user_add,
-            label: 'Invite Friend',
+            label: context.l10n.homeQuickInviteFriend,
             onTap: onInviteFriend,
           ),
           _QuickActionButton(
             key: HomeKeys.activityAction,
             icon: Iconsax.activity,
-            label: 'Activity',
+            label: context.l10n.homeQuickActivity,
             onTap: onActivity,
           ),
         ],

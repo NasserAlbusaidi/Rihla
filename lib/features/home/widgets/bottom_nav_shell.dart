@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 
 import 'package:haptic_feedback/haptic_feedback.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../features/settings/screens/profile_screen.dart';
 import '../../../shared/widgets/grain_overlay.dart';
 import '../keys/home_keys.dart';
@@ -108,19 +109,37 @@ class _BottomNavShellState extends State<BottomNavShell> {
         elevation: 8,
         destinations: [
           NavigationDestination(
-            icon: Icon(Iconsax.people, color: context.colors.bottomNavInactiveIcon, key: HomeKeys.bottomNavGroups),
+            icon: Icon(
+              Iconsax.people,
+              color: context.colors.bottomNavInactiveIcon,
+              key: HomeKeys.bottomNavGroups,
+            ),
             selectedIcon: Icon(Iconsax.people5, color: context.colors.primary),
-            label: 'Groups',
+            label: context.l10n.homeBottomNavGroups,
           ),
           NavigationDestination(
-            icon: Icon(Iconsax.activity, color: context.colors.bottomNavInactiveIcon, key: HomeKeys.bottomNavActivity),
-            selectedIcon: Icon(Iconsax.activity5, color: context.colors.primary),
-            label: 'Activity',
+            icon: Icon(
+              Iconsax.activity,
+              color: context.colors.bottomNavInactiveIcon,
+              key: HomeKeys.bottomNavActivity,
+            ),
+            selectedIcon: Icon(
+              Iconsax.activity5,
+              color: context.colors.primary,
+            ),
+            label: context.l10n.homeBottomNavActivity,
           ),
           NavigationDestination(
-            icon: Icon(Iconsax.profile_circle, color: context.colors.bottomNavInactiveIcon, key: HomeKeys.bottomNavProfile),
-            selectedIcon: Icon(Iconsax.profile_circle5, color: context.colors.primary),
-            label: 'Profile',
+            icon: Icon(
+              Iconsax.profile_circle,
+              color: context.colors.bottomNavInactiveIcon,
+              key: HomeKeys.bottomNavProfile,
+            ),
+            selectedIcon: Icon(
+              Iconsax.profile_circle5,
+              color: context.colors.primary,
+            ),
+            label: context.l10n.homeBottomNavProfile,
           ),
         ],
       ),

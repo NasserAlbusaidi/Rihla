@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/name_validators.dart';
+import '../../../core/utils/localized_name_validators.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
@@ -66,7 +67,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       ref.read(groupErrorProvider.notifier).state = e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text(context.l10n.groupCreateError(e.toString())),
           duration: const Duration(seconds: 5),
         ),
       );
@@ -138,7 +139,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 child: SingleChildScrollView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                  padding: const EdgeInsetsDirectional.fromSTEB(24, 8, 24, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -148,22 +149,23 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                       const SizedBox(height: 26),
                       _WireframeTextField(
                         key: GroupKeys.groupNameInput,
-                        label: 'Group Name',
+                        label: context.l10n.groupNameLabel,
                         controller: _nameController,
-                        hintText: 'e.g. Family trip',
+                        hintText: context.l10n.groupNameHint,
                         textCapitalization: TextCapitalization.words,
-                        validator: validateDisplayName,
+                        validator: (value) =>
+                            validateDisplayNameLocalized(context, value),
                       ),
                       const SizedBox(height: 18),
                       _WireframeTextField(
                         key: GroupKeys.deviceNameInput,
-                        label: 'Your name in this group',
+                        label: context.l10n.groupYourNameInGroupLabel,
                         controller: _displayNameController,
-                        hintText: 'how friends will see you',
-                        helperText:
-                            'You can use a different name in each group.',
+                        hintText: context.l10n.groupYourNameHint,
+                        helperText: context.l10n.groupDifferentNameHelper,
                         textCapitalization: TextCapitalization.words,
-                        validator: validateDisplayName,
+                        validator: (value) =>
+                            validateDisplayNameLocalized(context, value),
                       ),
                       const SizedBox(height: 18),
                       const _ReadOnlyCurrencyField(),
@@ -203,7 +205,7 @@ class _CreateGroupTopBar extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: CloseButton(
                 onPressed: onClose,
                 color: colors.textPrimary,
@@ -214,14 +216,14 @@ class _CreateGroupTopBar extends StatelessWidget {
               ),
             ),
             Text(
-              'New group',
+              context.l10n.groupNew,
               style: AppTypography.display(
                 fontSize: 19,
                 color: colors.textPrimary,
               ),
             ),
             Align(
-              alignment: Alignment.centerRight,
+              alignment: AlignmentDirectional.centerEnd,
               child: SizedBox(
                 height: 34,
                 child: ElevatedButton(
@@ -252,7 +254,7 @@ class _CreateGroupTopBar extends StatelessWidget {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text('Create'),
+                      : Text(context.l10n.groupCreate),
                 ),
               ),
             ),
@@ -273,7 +275,7 @@ class _MoodBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Who's coming along?",
+          context.l10n.groupMoodTitle,
           style: AppTypography.display(
             fontSize: 30,
             color: colors.textPrimary,
@@ -282,7 +284,7 @@ class _MoodBlock extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'A group is a circle of people you share expenses with — a household, a travel crew, a project team.',
+          context.l10n.groupMoodBody,
           style: AppTypography.sans(
             fontSize: 13,
             color: colors.textSecondary,
@@ -314,7 +316,7 @@ class _GlyphRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _FieldLabel('Group glyph'),
+        _FieldLabel(context.l10n.groupGlyph),
         const SizedBox(height: 10),
         Wrap(
           spacing: 10,
@@ -427,7 +429,7 @@ class _ReadOnlyCurrencyField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _FieldLabel('Default currency'),
+        _FieldLabel(context.l10n.groupDefaultCurrency),
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
@@ -464,7 +466,7 @@ class _CreatorPreviewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "You're the creator.",
+            context.l10n.groupCreatorTitle,
             style: AppTypography.sans(
               fontSize: 12,
               color: colors.textPrimary,
@@ -473,7 +475,7 @@ class _CreatorPreviewCard extends StatelessWidget {
             ),
           ),
           Text(
-            'Once created, share an invite code to bring others in.',
+            context.l10n.groupCreatorBody,
             style: AppTypography.sans(
               fontSize: 12,
               color: colors.textSecondary,
@@ -531,17 +533,17 @@ class _SharePrompt extends StatelessWidget {
     Clipboard.setData(ClipboardData(text: group.inviteCode));
     HapticService.success();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Invite code copied'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(context.l10n.groupInviteCodeCopied),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  void _shareCode() {
+  void _shareCode(BuildContext context) {
     Share.share(
-      'Join my group on Rihla! Use code ${group.inviteCode} to join.',
-      subject: 'Join ${group.name}',
+      context.l10n.groupShareMessage(group.inviteCode),
+      subject: context.l10n.groupShareSubject(group.name),
     );
   }
 
@@ -565,7 +567,7 @@ class _SharePrompt extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Share this code with your group',
+              context.l10n.groupShareCodeWithGroup,
               style: AppTypography.sans(
                 fontSize: 13,
                 color: colors.textSecondary,
@@ -587,7 +589,7 @@ class _SharePrompt extends StatelessWidget {
                     height: 52,
                     child: ElevatedButton(
                       onPressed: () => _copyCode(context),
-                      child: const Text('Copy Code'),
+                      child: Text(context.l10n.groupCopyCode),
                     ),
                   ),
                 ),
@@ -596,8 +598,8 @@ class _SharePrompt extends StatelessWidget {
                   child: SizedBox(
                     height: 52,
                     child: OutlinedButton(
-                      onPressed: _shareCode,
-                      child: const Text('Share'),
+                      onPressed: () => _shareCode(context),
+                      child: Text(context.l10n.groupShare),
                     ),
                   ),
                 ),
@@ -609,7 +611,7 @@ class _SharePrompt extends StatelessWidget {
             Center(
               child: TextButton(
                 onPressed: onNavigate,
-                child: const Text('Done'),
+                child: Text(context.l10n.commonDone),
               ),
             ),
           ],

@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
@@ -21,8 +23,8 @@ import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
-import '../models/event_type_config.dart';
 import '../providers/event_provider.dart';
+import '../utils/event_display.dart';
 
 /// Per-event hub — V5R "dots" direction.
 ///
@@ -139,7 +141,12 @@ class _Content extends ConsumerWidget {
     );
 
     final breakdown = (state == _HubState.youOwed || state == _HubState.youOwe)
-        ? _breakdownFor(currentUid!, balances, participantDisplayNames)
+        ? _breakdownFor(
+            currentUid!,
+            balances,
+            participantDisplayNames,
+            context.l10n.activitySomeone,
+          )
         : const <_BreakdownEntry>[];
 
     return CustomScrollView(
@@ -158,7 +165,7 @@ class _Content extends ConsumerWidget {
         ),
         const SliverToBoxAdapter(child: OfflineBanner()),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+          padding: const EdgeInsetsDirectional.fromSTEB(20, 28, 20, 0),
           sliver: SliverToBoxAdapter(
             child: _BalanceHero(
               state: state,
@@ -182,7 +189,7 @@ class _Content extends ConsumerWidget {
         ),
         if (state != _HubState.empty)
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 0),
             sliver: SliverToBoxAdapter(
               child: _LedgerSummaryStrip(
                 total: total,
@@ -197,7 +204,7 @@ class _Content extends ConsumerWidget {
             ),
           ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+          padding: const EdgeInsetsDirectional.fromSTEB(20, 24, 20, 0),
           sliver: SliverToBoxAdapter(
             child: _RecentExpensesSection(
               expenses: expenses,
@@ -220,7 +227,7 @@ class _Content extends ConsumerWidget {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(0, 24, 0, 32),
+          padding: const EdgeInsetsDirectional.fromSTEB(0, 24, 0, 32),
           sliver: SliverToBoxAdapter(
             child: _RosterStrip(
               event: event,
@@ -272,6 +279,7 @@ List<_BreakdownEntry> _breakdownFor(
   String currentUid,
   List<UserBalance> balances,
   Map<String, String> names,
+  String fallbackName,
 ) {
   final settlements = BalanceCalculator.calculateOptimalSettlements(
     balances: balances,
@@ -286,7 +294,8 @@ List<_BreakdownEntry> _breakdownFor(
       entries.add(
         _BreakdownEntry(
           otherUid: from,
-          otherName: (s['fromUserName'] as String?) ?? names[from] ?? 'Someone',
+          otherName:
+              (s['fromUserName'] as String?) ?? names[from] ?? fallbackName,
           amount: amount,
         ),
       );
@@ -294,7 +303,7 @@ List<_BreakdownEntry> _breakdownFor(
       entries.add(
         _BreakdownEntry(
           otherUid: to,
-          otherName: (s['toUserName'] as String?) ?? names[to] ?? 'Someone',
+          otherName: (s['toUserName'] as String?) ?? names[to] ?? fallbackName,
           amount: amount,
         ),
       );
@@ -331,7 +340,7 @@ class _BalanceHero extends StatelessWidget {
         border: Border.all(color: colors.border),
         boxShadow: context.shadows.raised,
       ),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -351,7 +360,7 @@ class _BalanceHero extends StatelessWidget {
               key: EventKeys.addExpenseChip,
               onPressed: onAddExpense,
               icon: const Icon(Iconsax.add, size: 18),
-              label: const Text('Add expense'),
+              label: Text(context.l10n.eventAddExpense),
               style: FilledButton.styleFrom(
                 backgroundColor: colors.primary,
                 foregroundColor: colors.textOnPrimary,
@@ -389,7 +398,9 @@ class _BalanceWithBreakdown extends StatelessWidget {
     final colors = context.colors;
     final accent = isOwed ? colors.success : colors.error;
     final accentText = isOwed ? colors.successText : colors.errorText;
-    final overlineLabel = isOwed ? 'You are owed' : 'You owe';
+    final overlineLabel = isOwed
+        ? context.l10n.eventYouAreOwed
+        : context.l10n.eventYouOwe;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -398,7 +409,7 @@ class _BalanceWithBreakdown extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _Overline(label: overlineLabel, color: accentText),
-            const _Overline(label: 'Your balance'),
+            _Overline(label: context.l10n.eventYourBalance),
           ],
         ),
         const SizedBox(height: 8),
@@ -451,14 +462,16 @@ class _BalanceQuiet extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _Overline(label: 'Your balance'),
+        _Overline(label: context.l10n.eventYourBalance),
         const SizedBox(height: 10),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
               child: Text(
-                isSettled ? 'All settled' : 'Nothing to settle yet',
+                isSettled
+                    ? context.l10n.eventAllSettled
+                    : context.l10n.eventNothingToSettleYet,
                 style: AppTypography.display(
                   fontSize: 28,
                   color: isSettled ? colors.successText : colors.textSecondary,
@@ -474,8 +487,8 @@ class _BalanceQuiet extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           isSettled
-              ? 'Everyone is square on this trip.'
-              : 'Add the first expense to start splitting.',
+              ? context.l10n.eventEveryoneSquare
+              : context.l10n.eventAddFirstExpenseHint,
           style: AppTypography.sans(fontSize: 12, color: colors.textSecondary),
         ),
       ],
@@ -497,7 +510,9 @@ class _BreakdownRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final verb = isOwed ? 'owes you' : 'you owe';
+    final verb = isOwed
+        ? context.l10n.eventBreakdownOwesYou
+        : context.l10n.eventBreakdownYouOwe;
     final firstName = entry.otherName.split(' ').first;
     return InkWell(
       onTap: onTap,
@@ -538,8 +553,14 @@ class _BreakdownRow extends StatelessWidget {
                 tone: isOwed ? AmountTone.sage : AmountTone.rust,
               ),
               const SizedBox(width: 2),
-              // textMuted-decorative-justified: disclosure chevron is purely decorative affordance
-              Icon(Icons.chevron_right, size: 18, color: colors.textMuted),
+              Icon(
+                Directionality.of(context) == TextDirection.rtl
+                    ? Icons.chevron_left
+                    : Icons.chevron_right,
+                size: 18,
+                // textMuted-decorative-justified: disclosure chevron is purely decorative affordance
+                color: colors.textMuted,
+              ),
             ],
           ),
         ),
@@ -583,7 +604,7 @@ class _LedgerSummaryStrip extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _Overline(label: 'Trip total'),
+                    _Overline(label: context.l10n.eventTripTotal),
                     const SizedBox(height: 4),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -597,7 +618,7 @@ class _LedgerSummaryStrip extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 2),
                           child: Text(
-                            '· $count expense${count == 1 ? '' : 's'}',
+                            context.l10n.eventExpenseCountInline(count),
                             style: AppTypography.sans(
                               fontSize: 12,
                               color: colors.textSecondary,
@@ -611,7 +632,7 @@ class _LedgerSummaryStrip extends StatelessWidget {
                 ),
               ),
               Text(
-                'Ledger →',
+                context.l10n.eventLedgerLink,
                 style: AppTypography.sans(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -657,7 +678,7 @@ class _RecentExpensesSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            const _Overline(label: 'Recent'),
+            _Overline(label: context.l10n.eventRecent),
             const Spacer(),
             if (!isEmpty)
               InkWell(
@@ -665,7 +686,7 @@ class _RecentExpensesSection extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Text(
-                    'See all →',
+                    context.l10n.eventSeeAll,
                     style: AppTypography.sans(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -750,8 +771,8 @@ class _RecentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final payerName = expense.payerParticipantId == currentUid
-        ? 'You paid'
-        : '${_compactPayerName()} paid';
+        ? context.l10n.eventYouPaid
+        : context.l10n.eventPaidByName(_compactPayerName());
 
     return Container(
       decoration: BoxDecoration(
@@ -784,7 +805,8 @@ class _RecentRow extends StatelessWidget {
                 Text(
                   (expense.description?.isNotEmpty ?? false)
                       ? expense.description!
-                      : (expense.categoryName ?? 'Expense'),
+                      : (expense.categoryName ??
+                            context.l10n.ledgerExpenseFallback),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.sans(
@@ -795,7 +817,7 @@ class _RecentRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$payerName · ${_relativeAge(expense.createdAt)}',
+                  '$payerName · ${_relativeAge(context, expense.createdAt)}',
                   style: AppTypography.sans(
                     fontSize: 12,
                     color: colors.textSecondary,
@@ -869,7 +891,7 @@ class _AddFirstExpenseCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Add the first expense',
+                        context.l10n.eventAddFirstExpenseTitle,
                         style: AppTypography.sans(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -878,7 +900,7 @@ class _AddFirstExpenseCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Pick who paid, split it fairly.',
+                        context.l10n.eventAddFirstExpenseBody,
                         style: AppTypography.sans(
                           fontSize: 12,
                           color: colors.textSecondary,
@@ -991,7 +1013,7 @@ class _RosterStrip extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _Overline(label: '$count ${count == 1 ? 'person' : 'people'}'),
+          child: _Overline(label: context.l10n.eventPeopleOverline(count)),
         ),
         if (isEmpty) ...[
           const SizedBox(height: 6),
@@ -1004,18 +1026,11 @@ class _RosterStrip extends StatelessWidget {
                   color: colors.textSecondary,
                 ),
                 children: [
-                  const TextSpan(text: 'Splitting between '),
                   TextSpan(
-                    text: 'you',
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w700,
+                    text: context.l10n.eventSplittingBetweenYouAndOthers(
+                      othersCount,
                     ),
-                  ),
-                  TextSpan(
-                    text: othersCount == 1
-                        ? ' and 1 other'
-                        : ' and $othersCount others',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1033,7 +1048,8 @@ class _RosterStrip extends StatelessWidget {
             itemBuilder: (context, i) {
               final uid = event.participantIds[i];
               final isMe = uid == currentUid;
-              final name = participantDisplayNames[uid] ?? 'Someone';
+              final name =
+                  participantDisplayNames[uid] ?? context.l10n.activitySomeone;
               final balance = balanceByUid[uid];
               return _RosterPersonCard(
                 name: name,
@@ -1091,14 +1107,14 @@ class _RosterPersonCard extends StatelessWidget {
           ),
           boxShadow: context.shadows.raised,
         ),
-        padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(8, 12, 8, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             RAvatar(name: name, size: 40),
             const SizedBox(height: 8),
             Text(
-              isMe ? 'You' : short,
+              isMe ? context.l10n.eventYou : short,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.sans(
@@ -1167,11 +1183,10 @@ class _CoverHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusBar = MediaQuery.of(context).padding.top;
-    final config = EventTypeConfig.forType(event.type);
-    final dateRange = _formatDateRange(event.startDate, event.endDate);
-    final dayBadge = _formatDayBadge(event.startDate, event.endDate);
+    final dateRange = _formatDateRange(context, event.startDate, event.endDate);
+    final dayBadge = _formatDayBadge(context, event.startDate, event.endDate);
     final captionParts = <String>[
-      config.label.toUpperCase(),
+      event.type.localizedShortLabel(context.l10n),
       ?dateRange,
       if (groupName != null && groupName!.isNotEmpty) groupName!,
     ];
@@ -1196,15 +1211,18 @@ class _CoverHeader extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
+          Positioned.directional(
+            textDirection: Directionality.of(context),
             top: statusBar + 8,
-            left: 12,
-            right: 12,
+            start: 12,
+            end: 12,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _PaperIconButton(
-                  icon: Iconsax.arrow_left,
+                  icon: Directionality.of(context) == TextDirection.rtl
+                      ? Iconsax.arrow_right
+                      : Iconsax.arrow_left,
                   onTap: () {
                     HapticService.lightClick();
                     if (GoRouter.of(context).canPop()) {
@@ -1220,9 +1238,10 @@ class _CoverHeader extends StatelessWidget {
               ],
             ),
           ),
-          Positioned(
-            left: 20,
-            right: 20,
+          Positioned.directional(
+            textDirection: Directionality.of(context),
+            start: 20,
+            end: 20,
             bottom: 14,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1253,9 +1272,10 @@ class _CoverHeader extends StatelessWidget {
             ),
           ),
           if (dayBadge != null)
-            Positioned(
+            Positioned.directional(
               key: EventKeys.dayBadge,
-              right: 20,
+              textDirection: Directionality.of(context),
+              end: 20,
               bottom: -16,
               child: _DayBadge(label: dayBadge),
             ),
@@ -1264,15 +1284,22 @@ class _CoverHeader extends StatelessWidget {
     );
   }
 
-  static String? _formatDateRange(DateTime? start, DateTime? end) {
+  static String? _formatDateRange(
+    BuildContext context,
+    DateTime? start,
+    DateTime? end,
+  ) {
     if (start == null && end == null) return null;
-    String fmt(DateTime d) => '${_months[d.month - 1]} ${d.day}';
-    if (start == null) return fmt(end!);
-    if (end == null) return fmt(start);
-    return '${fmt(start)} — ${fmt(end)}';
+    if (start == null) return formatShortMonthDay(context, end!);
+    if (end == null) return formatShortMonthDay(context, start);
+    return formatDateRangeShort(context, start, end);
   }
 
-  static String? _formatDayBadge(DateTime? start, DateTime? end) {
+  static String? _formatDayBadge(
+    BuildContext context,
+    DateTime? start,
+    DateTime? end,
+  ) {
     if (start == null || end == null) return null;
     final startDay = DateUtils.dateOnly(start);
     final endDay = DateUtils.dateOnly(end);
@@ -1285,23 +1312,8 @@ class _CoverHeader extends StatelessWidget {
 
     final currentDay = today.difference(startDay).inDays + 1;
     final totalDays = endDay.difference(startDay).inDays + 1;
-    return 'Day $currentDay of $totalDays';
+    return context.l10n.eventDayOf(currentDay, totalDays);
   }
-
-  static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
 }
 
 class _DayBadge extends StatelessWidget {
@@ -1360,14 +1372,8 @@ class _PaperIconButton extends StatelessWidget {
 
 // ──────────────────────────── Misc helpers
 
-String _relativeAge(DateTime when) {
-  final now = DateTime.now();
-  final delta = now.difference(when);
-  if (delta.inMinutes < 1) return 'JUST NOW';
-  if (delta.inHours < 1) return '${delta.inMinutes}M';
-  if (delta.inDays < 1) return '${delta.inHours}H';
-  return '${delta.inDays}D';
-}
+String _relativeAge(BuildContext context, DateTime when) =>
+    formatRelativeShort(context, when);
 
 // ──────────────────────────── States
 
@@ -1402,9 +1408,9 @@ class _ErrorState extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
-            title: 'Could not load event',
-            message: 'Check your connection and try again.',
-            actionLabel: 'Retry',
+            title: context.l10n.eventLoadFailedTitle,
+            message: context.l10n.activityLoadFailedMessage,
+            actionLabel: context.l10n.commonRetry,
             onAction: onRetry,
           ),
         ),
@@ -1423,9 +1429,9 @@ class _NotFoundState extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: EmptyStateView(
             icon: Iconsax.box_remove,
-            title: 'Event not found',
-            message: 'It may have been deleted, or the link is incorrect.',
-            actionLabel: 'Go Home',
+            title: context.l10n.eventNotFound,
+            message: context.l10n.eventMissingMessage,
+            actionLabel: context.l10n.commonGoHome,
             onAction: () => GoRouter.of(context).go('/home'),
           ),
         ),

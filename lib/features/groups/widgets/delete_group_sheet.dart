@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -124,7 +125,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Delete this group?',
+                        context.l10n.groupDeleteSheetTitle,
                         style: AppTypography.display(
                           fontSize: 28,
                           color: colors.textPrimary,
@@ -140,7 +141,9 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                             height: 1.45,
                           ),
                           children: [
-                            const TextSpan(text: 'Removes '),
+                            TextSpan(
+                              text: context.l10n.groupDeleteSheetRemovesPrefix,
+                            ),
                             TextSpan(
                               text: widget.groupName,
                               style: AppTypography.sans(
@@ -151,11 +154,13 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                             ),
                             TextSpan(
                               text: widget.memberCount > 0
-                                  ? ' for all ${widget.memberCount} members. Events, expenses, and balances inside it are erased. '
-                                  : ' for everyone. Events, expenses, and balances inside it are erased. ',
+                                  ? context.l10n.groupDeleteSheetMembersBody(
+                                      widget.memberCount,
+                                    )
+                                  : context.l10n.groupDeleteSheetEveryoneBody,
                             ),
                             TextSpan(
-                              text: "This can't be undone.",
+                              text: context.l10n.groupDeleteSheetUndo,
                               style: AppTypography.sans(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -178,7 +183,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            'TYPE ',
+                            context.l10n.groupDeleteSheetTypePrefix,
                             style: AppTypography.sans(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -205,7 +210,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                             ),
                           ),
                           Text(
-                            ' TO CONFIRM',
+                            context.l10n.groupDeleteSheetTypeSuffix,
                             style: AppTypography.sans(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -262,7 +267,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              'A copy is kept for 30 days in case you change your mind.',
+                              context.l10n.groupDeleteSheetRetention,
                               style: AppTypography.sans(
                                 fontSize: 11,
                                 color: colors.textSecondary,
@@ -276,7 +281,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                 ),
                 SizedBox(height: spacing.space20),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(
+                  padding: EdgeInsetsDirectional.fromSTEB(
                     spacing.space24,
                     0,
                     spacing.space24,
@@ -296,7 +301,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                               ),
                             ),
                             child: Text(
-                              'Cancel',
+                              context.l10n.commonCancel,
                               style: AppTypography.sans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -321,7 +326,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                                 : null,
                             icon: const Icon(Iconsax.trash, size: 14),
                             label: Text(
-                              'Delete group',
+                              context.l10n.groupDeleteSheetConfirm,
                               style: AppTypography.sans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,

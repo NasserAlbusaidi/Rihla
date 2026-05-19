@@ -7,6 +7,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/widgets/qr_invite_sheet.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   final group = Group(
@@ -27,6 +28,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => Scaffold(
             body: Center(

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,25 @@ void main() {
 
   test('invite links are not gated by onboarding state', () {
     expect(appRouteRedirect(AppRoutes.joinInvite), isNull);
+  });
+
+  test('shared-axis transition offsets mirror in RTL', () {
+    expect(
+      sharedAxisEnterOffsetForTextDirection(TextDirection.ltr).dx,
+      greaterThan(0),
+    );
+    expect(
+      sharedAxisExitOffsetForTextDirection(TextDirection.ltr).dx,
+      lessThan(0),
+    );
+    expect(
+      sharedAxisEnterOffsetForTextDirection(TextDirection.rtl).dx,
+      lessThan(0),
+    );
+    expect(
+      sharedAxisExitOffsetForTextDirection(TextDirection.rtl).dx,
+      greaterThan(0),
+    );
   });
 
   test('onboarding route is not part of the shippable route tree', () async {

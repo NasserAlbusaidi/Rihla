@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/localized_dates.dart';
+import '../../activity/utils/activity_display.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../providers/dashboard_providers.dart';
@@ -67,10 +69,10 @@ class _CrossGroupActivityScreenState
       loading: () => const SizedBox.shrink(),
       error: (_, _) => EmptyStateView(
         icon: Iconsax.warning_2,
-        title: 'Could not load activity',
-        message: 'Check your connection and try again.',
+        title: context.l10n.activityLoadFailedTitle,
+        message: context.l10n.activityLoadFailedMessage,
         onAction: () => ref.invalidate(crossGroupActivityProvider),
-        actionLabel: 'Retry',
+        actionLabel: context.l10n.commonRetry,
       ),
       data: (entries) {
         final filtered = entries
@@ -80,16 +82,16 @@ class _CrossGroupActivityScreenState
           return EmptyStateView(
             icon: Iconsax.activity,
             title: entries.isEmpty
-                ? 'No activity yet'
-                : 'Nothing matches this filter',
+                ? context.l10n.activityNoActivityTitle
+                : context.l10n.activityNoFilterTitle,
             message: entries.isEmpty
-                ? 'Activity from all your groups will appear here.'
-                : 'Try a different filter, or switch back to All.',
+                ? context.l10n.activityCrossGroupEmptyMessage
+                : context.l10n.activityNoFilterMessage,
           );
         }
-        final days = _groupByDay(filtered, DateTime.now());
+        final days = _groupByDay(context, filtered, DateTime.now());
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
           itemCount: days.length,
           itemBuilder: (ctx, i) => Padding(
             padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
@@ -111,7 +113,7 @@ class _TopBar extends StatelessWidget {
     final colors = context.colors;
     final canPop = GoRouter.of(context).canPop();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 8, 20, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -125,7 +127,7 @@ class _TopBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Activity',
+                  context.l10n.activityTitle,
                   style: AppTypography.display(
                     fontSize: 28,
                     color: colors.textPrimary,
@@ -135,7 +137,7 @@ class _TopBar extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Across every journey, every group',
+                  context.l10n.activitySubtitle,
                   style: AppTypography.sans(
                     fontSize: 13,
                     color: colors.textSecondary,
@@ -158,14 +160,20 @@ class _BackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Tooltip(
-      message: 'Back',
+      message: context.l10n.commonBack,
       child: InkResponse(
         onTap: onTap,
         radius: 24,
         child: SizedBox(
           width: 40,
           height: 40,
-          child: Icon(Iconsax.arrow_left, size: 20, color: colors.textPrimary),
+          child: Icon(
+            Directionality.of(context) == TextDirection.rtl
+                ? Iconsax.arrow_right
+                : Iconsax.arrow_left,
+            size: 20,
+            color: colors.textPrimary,
+          ),
         ),
       ),
     );
@@ -179,22 +187,21 @@ class _FilterStrip extends StatelessWidget {
   final _Filter current;
   final ValueChanged<_Filter> onChange;
 
-  static const _labels = {
-    _Filter.all: 'All',
-    _Filter.settlements: 'Settlements',
-    _Filter.events: 'Events',
-    _Filter.members: 'Members',
-  };
-
   @override
   Widget build(BuildContext context) {
+    final labels = {
+      _Filter.all: context.l10n.activityFilterAll,
+      _Filter.settlements: context.l10n.activityFilterSettlements,
+      _Filter.events: context.l10n.activityFilterEvents,
+      _Filter.members: context.l10n.activityFilterMembers,
+    };
     return SizedBox(
       height: 32,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          for (final entry in _labels.entries) ...[
+          for (final entry in labels.entries) ...[
             _Chip(
               label: entry.value,
               active: current == entry.key,
@@ -305,6 +312,7 @@ class _ActivityRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final log = entry.log;
+    final description = localizedGroupActivityText(context.l10n, log);
     final amountStr = log.metadata['amount'];
     final amount = amountStr is num ? amountStr.toDouble() : null;
 
@@ -337,7 +345,7 @@ class _ActivityRow extends StatelessWidget {
                             ),
                             const TextSpan(text: ' '),
                             TextSpan(
-                              text: log.description,
+                              text: description,
                               style: AppTypography.sans(
                                 fontSize: 14,
                                 color: colors.textSecondary,
@@ -375,7 +383,7 @@ class _ActivityRow extends StatelessWidget {
                       const SizedBox.shrink(),
                     SizedBox(height: amount != null ? 3 : 0),
                     Text(
-                      timeago.format(log.timestamp, locale: 'en_short'),
+                      formatRelativeShort(context, log.timestamp),
                       style: AppTypography.mono(
                         fontSize: 10,
                         color: colors.textSecondary,
@@ -460,6 +468,7 @@ class _DayGroup {
 }
 
 List<_DayGroup> _groupByDay(
+  BuildContext context,
   List<CrossGroupActivityEntry> entries,
   DateTime now,
 ) {
@@ -472,10 +481,10 @@ List<_DayGroup> _groupByDay(
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
     final label = diff == 0
-        ? 'Today'
+        ? context.l10n.timelineToday
         : diff == 1
-        ? 'Yesterday'
-        : '${_monthShort(ts.month)} ${ts.day}';
+        ? context.l10n.timelineYesterday
+        : formatShortMonthDay(context, ts);
     if (!groups.containsKey(label)) {
       groups[label] = [];
       order.add(label);
@@ -486,19 +495,3 @@ List<_DayGroup> _groupByDay(
     for (final label in order) _DayGroup(label: label, entries: groups[label]!),
   ];
 }
-
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-String _monthShort(int m) => _months[m - 1];

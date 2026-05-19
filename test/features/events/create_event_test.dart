@@ -15,6 +15,7 @@ import 'package:safar/features/events/screens/event_type_picker_screen.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,7 +56,12 @@ final _testMembers = [
 Widget _wrapPicker(Widget child, SharedPreferences prefs) {
   return ProviderScope(
     overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -71,7 +77,12 @@ Widget _wrapCreate(Widget child, SharedPreferences prefs) {
       ).overrideWith((ref) => Stream.value(_testGroup)),
       eventLoadingProvider.overrideWith((ref) => false),
     ],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -178,6 +189,8 @@ void main() {
           ],
           child: MaterialApp.router(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             routerConfig: router,
           ),
         ),

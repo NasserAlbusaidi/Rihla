@@ -21,6 +21,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -154,7 +155,12 @@ Widget _wrap(
         _groupId,
       ).overrideWith((ref) => Stream.value(activities)),
     ],
-    child: MaterialApp(theme: AppTheme.lightTheme, home: child),
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -197,7 +203,12 @@ Widget _wrapWithRouter({
         _groupId,
       ).overrideWith((ref) => Stream.value(const [])),
     ],
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
@@ -607,7 +618,12 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+        MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -648,6 +664,8 @@ void main() {
             ],
             child: MaterialApp(
               theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               home: const GroupDetailScreen(groupId: _groupId),
             ),
           ),
@@ -689,6 +707,8 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               body: EventCard(
                 event: testEvent,

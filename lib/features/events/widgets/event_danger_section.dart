@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -82,7 +83,7 @@ class EventDangerSection extends ConsumerWidget {
         Icon(Iconsax.warning_2, size: 16, color: context.colors.errorText),
         const SizedBox(width: 6),
         Text(
-          'DANGER ZONE',
+          context.l10n.eventDangerZone,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -103,7 +104,7 @@ class EventDangerSection extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'This event has unsettled balances.',
+              context.l10n.eventUnsettledWarning,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
@@ -150,7 +151,7 @@ class EventDangerSection extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Delete event',
+                context.l10n.eventDelete,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -170,19 +171,15 @@ class EventDangerSection extends ConsumerWidget {
     bool hasUnsettled,
   ) {
     final body = hasUnsettled
-        ? 'This will permanently delete the event and all its expenses, '
-              'settlements, and activity. This cannot be undone.\n\n'
-              'This event has unsettled balances. Settle up before deleting, '
-              'or proceed anyway.'
-        : 'This will permanently delete the event and all its expenses, '
-              'settlements, and activity. This cannot be undone.';
+        ? context.l10n.eventDeleteBodyWithUnsettled
+        : context.l10n.eventDeleteBody;
 
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         key: EventKeys.deleteEventDialog,
         title: Text(
-          'Delete this event?',
+          context.l10n.eventDeleteQuestion,
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -201,7 +198,7 @@ class EventDangerSection extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
-              'Keep event',
+              context.l10n.eventKeepEvent,
               style: TextStyle(color: context.colors.textSecondary),
             ),
           ),
@@ -213,7 +210,7 @@ class EventDangerSection extends ConsumerWidget {
               _executeDelete(context, ref);
             },
             child: Text(
-              'Delete event',
+              context.l10n.eventDelete,
               style: TextStyle(
                 color: context.colors.errorText,
                 fontWeight: FontWeight.w700,
@@ -241,6 +238,7 @@ class EventDangerSection extends ConsumerWidget {
             actorId: actorId,
             actorName: actorName,
             description: 'deleted the event ${event.name}',
+            metadata: {'eventId': event.id, 'eventName': event.name},
           );
     } catch (_) {
       // Activity logging failure must never crash the delete flow.
@@ -255,9 +253,9 @@ class EventDangerSection extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete event: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.eventDeleteFailed(e.toString()))),
+        );
       }
     }
   }

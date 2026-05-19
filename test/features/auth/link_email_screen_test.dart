@@ -9,6 +9,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/screens/link_email_screen.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 class _MockRecoveryService extends Mock implements AuthRecoveryService {}
 
@@ -47,7 +48,12 @@ GoRouter _buildRouter() {
 Widget _wrap(GoRouter router, _MockRecoveryService service) {
   return ProviderScope(
     overrides: [authRecoveryServiceProvider.overrideWithValue(service)],
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 

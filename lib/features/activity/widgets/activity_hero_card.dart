@@ -23,12 +23,7 @@ class ActivityHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        0,
-      ),
+      margin: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 0),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
@@ -39,7 +34,7 @@ class ActivityHeroCard extends StatelessWidget {
           repeat: ImageRepeat.repeat,
           opacity: 0.035,
           fit: BoxFit.none,
-          alignment: Alignment.topLeft,
+          alignment: AlignmentDirectional.topStart,
         ),
       ),
       child: Column(

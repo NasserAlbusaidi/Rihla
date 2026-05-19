@@ -4,6 +4,7 @@ import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/events/widgets/event_participants_card.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,6 +23,8 @@ GroupMember _buildMember({required String id, required String name}) {
 
 Widget _wrap(Widget child) => MaterialApp(
   theme: AppTheme.lightTheme,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
   home: Scaffold(body: child),
 );
 

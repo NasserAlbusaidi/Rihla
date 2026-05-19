@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/providers/event_provider.dart';
 import '../keys/activity_keys.dart';
 import '../models/activity_log_model.dart';
 import '../services/activity_service.dart';
+import '../utils/activity_display.dart';
 
 /// Event activity feed — saffron travel-journal direction.
 ///
@@ -45,7 +47,7 @@ class ActivityFeedScreen extends ConsumerWidget {
         child: Column(
           children: [
             _TopBar(
-              title: eventAsync.valueOrNull?.name ?? 'Activity',
+              title: eventAsync.valueOrNull?.name ?? context.l10n.activityTitle,
               loading: eventAsync.isLoading,
             ),
             const SizedBox(height: 6),
@@ -84,15 +86,15 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (logs.isEmpty) {
-      return const EmptyStateView(
+      return EmptyStateView(
         icon: Iconsax.activity,
-        title: 'No activity yet',
-        message: 'Actions by you and your group members will appear here.',
+        title: context.l10n.activityNoActivityTitle,
+        message: context.l10n.activityEventEmptyMessage,
       );
     }
-    final days = _groupByDay(logs, DateTime.now());
+    final days = _groupByDay(context, logs, DateTime.now());
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
       itemCount: days.length,
       itemBuilder: (ctx, i) => Padding(
         padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
@@ -113,7 +115,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 20, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -129,7 +131,9 @@ class _TopBar extends StatelessWidget {
               width: 44,
               height: 44,
               child: Icon(
-                Iconsax.arrow_left,
+                Directionality.of(context) == TextDirection.rtl
+                    ? Iconsax.arrow_right
+                    : Iconsax.arrow_left,
                 size: 20,
                 color: colors.textPrimary,
               ),
@@ -144,7 +148,7 @@ class _TopBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'ACTIVITY',
+                    context.l10n.activityCaption,
                     style: AppTypography.mono(
                       fontSize: 10,
                       color: colors.textSecondary,
@@ -229,7 +233,8 @@ class _ActivityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final actor = log.actorName ?? 'Someone';
+    final actor = log.actorName ?? context.l10n.activitySomeone;
+    final text = localizedEventActivityText(context.l10n, log);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
@@ -253,7 +258,7 @@ class _ActivityRow extends StatelessWidget {
                       ),
                       const TextSpan(text: ' '),
                       TextSpan(
-                        text: log.logText,
+                        text: text,
                         style: AppTypography.sans(
                           fontSize: 14,
                           color: colors.textSecondary,
@@ -267,7 +272,7 @@ class _ActivityRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                timeago.format(log.createdAt, locale: 'en_short'),
+                formatRelativeShort(context, log.createdAt),
                 style: AppTypography.mono(
                   fontSize: 10,
                   color: colors.textSecondary,
@@ -334,7 +339,11 @@ class _DayGroup {
   final List<ActivityLog> entries;
 }
 
-List<_DayGroup> _groupByDay(List<ActivityLog> logs, DateTime now) {
+List<_DayGroup> _groupByDay(
+  BuildContext context,
+  List<ActivityLog> logs,
+  DateTime now,
+) {
   final today = DateTime(now.year, now.month, now.day);
   final groups = <String, List<ActivityLog>>{};
   final order = <String>[];
@@ -343,10 +352,10 @@ List<_DayGroup> _groupByDay(List<ActivityLog> logs, DateTime now) {
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
     final label = diff == 0
-        ? 'Today'
+        ? context.l10n.timelineToday
         : diff == 1
-        ? 'Yesterday'
-        : '${_monthShort(ts.month)} ${ts.day}';
+        ? context.l10n.timelineYesterday
+        : formatShortMonthDay(context, ts);
     if (!groups.containsKey(label)) {
       groups[label] = [];
       order.add(label);
@@ -358,22 +367,6 @@ List<_DayGroup> _groupByDay(List<ActivityLog> logs, DateTime now) {
   ];
 }
 
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-String _monthShort(int m) => _months[m - 1];
-
 // ──────────────────────────── States
 
 class _LoadingShimmer extends StatelessWidget {
@@ -382,7 +375,7 @@ class _LoadingShimmer extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
       itemCount: 3,
       itemBuilder: (ctx, i) => Padding(
         padding: EdgeInsets.only(top: i == 0 ? 4 : 16),
@@ -405,9 +398,9 @@ class _ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyStateView(
       icon: Iconsax.activity,
-      title: "Couldn't load activity",
-      message: 'Check your connection and try again.',
-      actionLabel: 'Reload',
+      title: context.l10n.activityLoadFailedTitle,
+      message: context.l10n.activityLoadFailedMessage,
+      actionLabel: context.l10n.activityReload,
       onAction: onRetry,
     );
   }
@@ -419,9 +412,9 @@ class _NotFoundView extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyStateView(
       icon: Iconsax.warning_2,
-      title: 'This event no longer exists',
-      message: 'It may have been deleted.',
-      actionLabel: 'Go Home',
+      title: context.l10n.activityEventMissingTitle,
+      message: context.l10n.activityEventMissingMessage,
+      actionLabel: context.l10n.commonGoHome,
       onAction: () => GoRouter.of(context).go('/home'),
     );
   }

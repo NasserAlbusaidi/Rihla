@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/home_keys.dart';
 import '../providers/dashboard_providers.dart';
@@ -33,11 +35,8 @@ class WeeklySpendingCard extends ConsumerWidget {
         context: context,
         key: HomeKeys.weeklySpendingCard,
         child: Text(
-          'Spending data unavailable',
-          style: TextStyle(
-            fontSize: 14,
-            color: context.colors.textSecondary,
-          ),
+          context.l10n.homeSpendingUnavailable,
+          style: TextStyle(fontSize: 14, color: context.colors.textSecondary),
         ),
       ),
       data: (weekData) => _buildCard(context, weekData),
@@ -59,7 +58,7 @@ class WeeklySpendingCard extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Weekly Spending (OMR)',
+            context.l10n.homeWeeklySpending('OMR'),
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 14,
@@ -69,7 +68,7 @@ class WeeklySpendingCard extends ConsumerWidget {
           SizedBox(height: context.spacing.space16),
           if (allZero)
             Text(
-              'No spending this week',
+              context.l10n.homeNoSpendingThisWeek,
               style: TextStyle(
                 fontSize: 14,
                 color: context.colors.textSecondary,
@@ -85,9 +84,9 @@ class WeeklySpendingCard extends ConsumerWidget {
                       ? (entry.amount / maxAmount).toDouble()
                       : 0.0;
                   final barHeight = 60 * fraction;
-                  final dayLabel = DateFormat.E()
-                      .format(entry.date)
-                      .substring(0, 3);
+                  final dayLabel = DateFormat.E(
+                    localeNameOf(context),
+                  ).format(entry.date);
 
                   return Expanded(
                     child: Column(

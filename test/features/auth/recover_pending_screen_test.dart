@@ -11,6 +11,7 @@ import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/screens/recover_pending_screen.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 class _MockRecoveryService extends Mock implements AuthRecoveryService {}
 
@@ -82,6 +83,8 @@ Widget _buildWidget({
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: _buildRouter(
         initial: initial,
         nestedRecover: nestedRecover,

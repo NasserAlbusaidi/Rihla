@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../providers/event_provider.dart';
@@ -16,10 +18,7 @@ import '../providers/event_provider.dart';
 /// Fire-and-forget pattern for async ops per Phase 26 P01 decision:
 /// onPressed / onTap are synchronous; async work is internal.
 class EventInfoSection extends ConsumerStatefulWidget {
-  const EventInfoSection({
-    super.key,
-    required this.event,
-  });
+  const EventInfoSection({super.key, required this.event});
 
   final Event event;
 
@@ -38,8 +37,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.event.name);
-    _descriptionController =
-        TextEditingController(text: widget.event.description ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.event.description ?? '',
+    );
     _startDate = widget.event.startDate;
     _endDate = widget.event.endDate;
   }
@@ -55,23 +55,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
   // Helpers
   // -------------------------------------------------------------------------
 
-  static String _formatDate(DateTime? date) {
-    if (date == null) return 'Not set';
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  String _formatDate(DateTime? date) {
+    if (date == null) return context.l10n.eventNotSet;
+    return formatShortMonthDayYear(context, date);
   }
 
   /// Fire-and-forget date picker (synchronous onTap, async via .then()).
@@ -99,9 +85,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
     if (name.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Event name can't be empty."),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(context.l10n.eventNameEmpty),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -111,7 +97,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
     setState(() => _isSaving = true);
     try {
       final description = _descriptionController.text.trim();
-      await ref.read(eventServiceProvider).updateEvent(
+      await ref
+          .read(eventServiceProvider)
+          .updateEvent(
             groupId: widget.event.groupId,
             eventId: widget.event.id,
             name: name != widget.event.name ? name : null,
@@ -123,9 +111,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Event updated',
-              style: TextStyle(color: Colors.white),
+            content: Text(
+              context.l10n.eventUpdated,
+              style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: context.colors.textPrimary,
             behavior: SnackBarBehavior.floating,
@@ -139,9 +127,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Couldn't save changes. Try again."),
-            duration: Duration(seconds: 3),
+          SnackBar(
+            content: Text(context.l10n.eventSaveFailed),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -189,14 +177,10 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
   Widget _buildSectionHeader() {
     return Row(
       children: [
-        Icon(
-          Iconsax.setting_2,
-          size: 16,
-          color: context.colors.textSecondary,
-        ),
+        Icon(Iconsax.setting_2, size: 16, color: context.colors.textSecondary),
         const SizedBox(width: 6),
         Text(
-          'EVENT DETAILS',
+          context.l10n.eventDetailsSection,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -214,11 +198,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
   }) {
     return InputDecoration(
       labelText: labelText,
-      prefixIcon: Icon(
-        icon,
-        size: 18,
-        color: context.colors.textSecondary,
-      ),
+      prefixIcon: Icon(icon, size: 18, color: context.colors.textSecondary),
       filled: true,
       fillColor: context.colors.inputFillWarm,
       enabledBorder: OutlineInputBorder(
@@ -245,7 +225,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
         color: context.colors.textPrimary,
       ),
       decoration: _fieldDecoration(
-        labelText: 'Event Name',
+        labelText: context.l10n.eventNameLabel,
         icon: Iconsax.text,
       ),
     );
@@ -263,7 +243,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
 
   Widget _buildDateTile({required bool isStart}) {
     final date = isStart ? _startDate : _endDate;
-    final label = isStart ? 'Start Date' : 'End Date';
+    final label = isStart
+        ? context.l10n.eventStartDate
+        : context.l10n.eventEndDate;
 
     return GestureDetector(
       onTap: () {
@@ -299,13 +281,17 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
         fontWeight: FontWeight.w400,
         color: context.colors.textPrimary,
       ),
-      decoration: _fieldDecoration(
-        labelText: 'Description',
-        icon: Iconsax.note,
-      ).copyWith(
-        alignLabelWithHint: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      ),
+      decoration:
+          _fieldDecoration(
+            labelText: context.l10n.eventDescriptionLabel,
+            icon: Iconsax.note,
+          ).copyWith(
+            alignLabelWithHint: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
+          ),
     );
   }
 
@@ -338,9 +324,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Text(
-                'Save Changes',
-                style: TextStyle(
+            : Text(
+                context.l10n.eventSaveChanges,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),

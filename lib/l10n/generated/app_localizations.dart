@@ -1982,6 +1982,1938 @@ abstract class AppLocalizations {
   /// **'{fromName} owes {toName}'**
   String settleUpOwes(Object fromName, Object toName);
 
+  /// No description provided for @commonDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get commonDone;
+
+  /// No description provided for @commonContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get commonContinue;
+
+  /// No description provided for @nameValidationEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Name can\'t be empty.'**
+  String get nameValidationEmpty;
+
+  /// No description provided for @nameValidationTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it to {maxLength} characters or fewer.'**
+  String nameValidationTooLong(int maxLength);
+
+  /// No description provided for @nameValidationControlChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove line breaks or special characters.'**
+  String get nameValidationControlChars;
+
+  /// No description provided for @nameValidationReserved.
+  ///
+  /// In en, this message translates to:
+  /// **'That name uses reserved wording.'**
+  String get nameValidationReserved;
+
+  /// No description provided for @homeActiveJourneys.
+  ///
+  /// In en, this message translates to:
+  /// **'Active journeys'**
+  String get homeActiveJourneys;
+
+  /// No description provided for @homeSeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get homeSeeAll;
+
+  /// No description provided for @homeGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get homeGroups;
+
+  /// No description provided for @homeNewGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get homeNewGroup;
+
+  /// No description provided for @homeRecently.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently'**
+  String get homeRecently;
+
+  /// No description provided for @homeNoActivityYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity yet'**
+  String get homeNoActivityYet;
+
+  /// No description provided for @homeTravellerFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'traveller'**
+  String get homeTravellerFallback;
+
+  /// No description provided for @homeStartFirstGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Start your first group'**
+  String get homeStartFirstGroup;
+
+  /// No description provided for @homeStartFirstGroupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan trips, track expenses, and settle up with friends.'**
+  String get homeStartFirstGroupBody;
+
+  /// No description provided for @homeCreateGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Group'**
+  String get homeCreateGroup;
+
+  /// No description provided for @homeJoinGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Join Group'**
+  String get homeJoinGroup;
+
+  /// No description provided for @homeRecover.
+  ///
+  /// In en, this message translates to:
+  /// **'I had Rihla before — restore'**
+  String get homeRecover;
+
+  /// No description provided for @homeErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get homeErrorTitle;
+
+  /// No description provided for @homeErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again. Your groups are safely synced — we just need internet to fetch the latest.'**
+  String get homeErrorMessage;
+
+  /// No description provided for @homeCreateAGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a Group'**
+  String get homeCreateAGroup;
+
+  /// No description provided for @homeJoinAGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a Group'**
+  String get homeJoinAGroup;
+
+  /// No description provided for @homeGoodMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get homeGoodMorning;
+
+  /// No description provided for @homeGoodAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get homeGoodAfternoon;
+
+  /// No description provided for @homeGoodEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get homeGoodEvening;
+
+  /// No description provided for @homeGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'{greeting}, {name}'**
+  String homeGreeting(Object greeting, Object name);
+
+  /// No description provided for @homeNoUpcomingJourneys.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming or active journeys'**
+  String get homeNoUpcomingJourneys;
+
+  /// No description provided for @homeGroupSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{memberCount, plural, =1{1 member} other{{memberCount} members}} · {eventCount, plural, =1{1 event} other{{eventCount} events}}'**
+  String homeGroupSubtitle(int memberCount, int eventCount);
+
+  /// No description provided for @homeTheyOweYou.
+  ///
+  /// In en, this message translates to:
+  /// **'they owe you'**
+  String get homeTheyOweYou;
+
+  /// No description provided for @homeYouOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'you owe'**
+  String get homeYouOwe;
+
+  /// No description provided for @homeSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'settled'**
+  String get homeSettled;
+
+  /// No description provided for @homeAcrossAllJourneys.
+  ///
+  /// In en, this message translates to:
+  /// **'Across all journeys'**
+  String get homeAcrossAllJourneys;
+
+  /// No description provided for @homeNetYoureOwed.
+  ///
+  /// In en, this message translates to:
+  /// **'Net — you\'re owed'**
+  String get homeNetYoureOwed;
+
+  /// No description provided for @homeNetYouOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'Net — you owe'**
+  String get homeNetYouOwe;
+
+  /// No description provided for @homeAllSettledAcrossJourneys.
+  ///
+  /// In en, this message translates to:
+  /// **'All settled across journeys'**
+  String get homeAllSettledAcrossJourneys;
+
+  /// No description provided for @homeOwed.
+  ///
+  /// In en, this message translates to:
+  /// **'owed'**
+  String get homeOwed;
+
+  /// No description provided for @homeOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'owe'**
+  String get homeOwe;
+
+  /// No description provided for @homeOwedToYou.
+  ///
+  /// In en, this message translates to:
+  /// **'owed to you'**
+  String get homeOwedToYou;
+
+  /// No description provided for @homeBalanceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance unavailable'**
+  String get homeBalanceUnavailable;
+
+  /// No description provided for @homeSpendingUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending data unavailable'**
+  String get homeSpendingUnavailable;
+
+  /// No description provided for @homeWeeklySpending.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly Spending ({currency})'**
+  String homeWeeklySpending(Object currency);
+
+  /// No description provided for @homeNoSpendingThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'No spending this week'**
+  String get homeNoSpendingThisWeek;
+
+  /// No description provided for @homeBottomNavGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get homeBottomNavGroups;
+
+  /// No description provided for @homeBottomNavActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get homeBottomNavActivity;
+
+  /// No description provided for @homeBottomNavProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get homeBottomNavProfile;
+
+  /// No description provided for @homeQuickAddExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Expense'**
+  String get homeQuickAddExpense;
+
+  /// No description provided for @homeQuickSettleUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle Up'**
+  String get homeQuickSettleUp;
+
+  /// No description provided for @homeQuickInviteFriend.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite Friend'**
+  String get homeQuickInviteFriend;
+
+  /// No description provided for @homeQuickActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get homeQuickActivity;
+
+  /// No description provided for @activityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityTitle;
+
+  /// No description provided for @activityCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'ACTIVITY'**
+  String get activityCaption;
+
+  /// No description provided for @activitySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Across every journey, every group'**
+  String get activitySubtitle;
+
+  /// No description provided for @activityLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load activity'**
+  String get activityLoadFailedTitle;
+
+  /// No description provided for @activityLoadFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get activityLoadFailedMessage;
+
+  /// No description provided for @activityReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get activityReload;
+
+  /// No description provided for @activityNoActivityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity yet'**
+  String get activityNoActivityTitle;
+
+  /// No description provided for @activityCrossGroupEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity from all your groups will appear here.'**
+  String get activityCrossGroupEmptyMessage;
+
+  /// No description provided for @activityEventEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions by you and your group members will appear here.'**
+  String get activityEventEmptyMessage;
+
+  /// No description provided for @activityGroupEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Group events, payments, and member changes will appear here.'**
+  String get activityGroupEmptyMessage;
+
+  /// No description provided for @activityNoFilterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches this filter'**
+  String get activityNoFilterTitle;
+
+  /// No description provided for @activityNoFilterMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different filter, or switch back to All.'**
+  String get activityNoFilterMessage;
+
+  /// No description provided for @activityFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get activityFilterAll;
+
+  /// No description provided for @activityFilterActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityFilterActivity;
+
+  /// No description provided for @activityFilterSettles.
+  ///
+  /// In en, this message translates to:
+  /// **'Settles'**
+  String get activityFilterSettles;
+
+  /// No description provided for @activityFilterSettlements.
+  ///
+  /// In en, this message translates to:
+  /// **'Settlements'**
+  String get activityFilterSettlements;
+
+  /// No description provided for @activityFilterEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get activityFilterEvents;
+
+  /// No description provided for @activityFilterMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get activityFilterMembers;
+
+  /// No description provided for @activityEventMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This event no longer exists'**
+  String get activityEventMissingTitle;
+
+  /// No description provided for @activityEventMissingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been deleted.'**
+  String get activityEventMissingMessage;
+
+  /// No description provided for @activityRelativeJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'JUST NOW'**
+  String get activityRelativeJustNow;
+
+  /// No description provided for @activityRelativeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}M'**
+  String activityRelativeMinutes(int count);
+
+  /// No description provided for @activityRelativeHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}H'**
+  String activityRelativeHours(int count);
+
+  /// No description provided for @activityRelativeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}D'**
+  String activityRelativeDays(int count);
+
+  /// No description provided for @activitySomeone.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone'**
+  String get activitySomeone;
+
+  /// No description provided for @activityEventMoneyCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'added a money entry'**
+  String get activityEventMoneyCreated;
+
+  /// No description provided for @activityEventMoneyUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'updated a money entry'**
+  String get activityEventMoneyUpdated;
+
+  /// No description provided for @activityEventMoneyDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted a money entry'**
+  String get activityEventMoneyDeleted;
+
+  /// No description provided for @activityEventGearCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'added a gear entry'**
+  String get activityEventGearCreated;
+
+  /// No description provided for @activityEventGearUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'updated a gear entry'**
+  String get activityEventGearUpdated;
+
+  /// No description provided for @activityEventGearDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted a gear entry'**
+  String get activityEventGearDeleted;
+
+  /// No description provided for @activityEventDocsCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'added a document'**
+  String get activityEventDocsCreated;
+
+  /// No description provided for @activityEventDocsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'updated a document'**
+  String get activityEventDocsUpdated;
+
+  /// No description provided for @activityEventDocsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted a document'**
+  String get activityEventDocsDeleted;
+
+  /// No description provided for @activityGroupSettlementDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'recorded a settlement'**
+  String get activityGroupSettlementDescription;
+
+  /// No description provided for @activityGroupEventCreatedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'created an event'**
+  String get activityGroupEventCreatedGeneric;
+
+  /// No description provided for @activityGroupEventCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'created {eventName}'**
+  String activityGroupEventCreated(Object eventName);
+
+  /// No description provided for @activityGroupEventDeletedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted an event'**
+  String get activityGroupEventDeletedGeneric;
+
+  /// No description provided for @activityGroupEventDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted {eventName}'**
+  String activityGroupEventDeleted(Object eventName);
+
+  /// No description provided for @activityGroupMemberJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'joined the group'**
+  String get activityGroupMemberJoined;
+
+  /// No description provided for @activityGroupMemberLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'left the group'**
+  String get activityGroupMemberLeft;
+
+  /// No description provided for @activityGroupMemberRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'removed {memberName} from the group'**
+  String activityGroupMemberRemoved(Object memberName);
+
+  /// No description provided for @activityTitlePaymentRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment recorded'**
+  String get activityTitlePaymentRecorded;
+
+  /// No description provided for @activityTitleEventCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Event created'**
+  String get activityTitleEventCreated;
+
+  /// No description provided for @activityTitleEventRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Event removed'**
+  String get activityTitleEventRemoved;
+
+  /// No description provided for @activityTitleMemberJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'Member joined'**
+  String get activityTitleMemberJoined;
+
+  /// No description provided for @activityTitleMemberLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Member left'**
+  String get activityTitleMemberLeft;
+
+  /// No description provided for @activityTitleGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityTitleGeneric;
+
+  /// No description provided for @eventTypeTripLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip'**
+  String get eventTypeTripLabel;
+
+  /// No description provided for @eventTypeTripShort.
+  ///
+  /// In en, this message translates to:
+  /// **'TRIP'**
+  String get eventTypeTripShort;
+
+  /// No description provided for @eventTypeTripDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan a shared trip with expenses and activity'**
+  String get eventTypeTripDescription;
+
+  /// No description provided for @eventTypeCampingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Camping'**
+  String get eventTypeCampingLabel;
+
+  /// No description provided for @eventTypeCampingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'CAMPING'**
+  String get eventTypeCampingShort;
+
+  /// No description provided for @eventTypeCampingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor trip with shared expense tracking'**
+  String get eventTypeCampingDescription;
+
+  /// No description provided for @eventTypeTravelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Travel'**
+  String get eventTypeTravelLabel;
+
+  /// No description provided for @eventTypeTravelShort.
+  ///
+  /// In en, this message translates to:
+  /// **'TRAVEL'**
+  String get eventTypeTravelShort;
+
+  /// No description provided for @eventTypeTravelDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Journey with group expenses and activity'**
+  String get eventTypeTravelDescription;
+
+  /// No description provided for @eventTypeNightDayOutLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Night/Day Out'**
+  String get eventTypeNightDayOutLabel;
+
+  /// No description provided for @eventTypeNightDayOutShort.
+  ///
+  /// In en, this message translates to:
+  /// **'NIGHT/DAY OUT'**
+  String get eventTypeNightDayOutShort;
+
+  /// No description provided for @eventTypeNightDayOutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick outing with expense splitting'**
+  String get eventTypeNightDayOutDescription;
+
+  /// No description provided for @eventTypeCustomLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get eventTypeCustomLabel;
+
+  /// No description provided for @eventTypeCustomShort.
+  ///
+  /// In en, this message translates to:
+  /// **'EVENT'**
+  String get eventTypeCustomShort;
+
+  /// No description provided for @eventTypeCustomDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Start from a flexible event setup'**
+  String get eventTypeCustomDescription;
+
+  /// No description provided for @eventPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What kind of\njourney is this?'**
+  String get eventPickerTitle;
+
+  /// No description provided for @eventPickerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll set sensible defaults for categories and splits.'**
+  String get eventPickerSubtitle;
+
+  /// No description provided for @eventContinueWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with {type}'**
+  String eventContinueWith(Object type);
+
+  /// No description provided for @eventNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New event'**
+  String get eventNew;
+
+  /// No description provided for @eventNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Event Name'**
+  String get eventNameLabel;
+
+  /// No description provided for @eventNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Summer camping trip'**
+  String get eventNameHint;
+
+  /// No description provided for @eventDatesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Dates'**
+  String get eventDatesLabel;
+
+  /// No description provided for @eventOptionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'(optional)'**
+  String get eventOptionalLabel;
+
+  /// No description provided for @eventStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get eventStartDate;
+
+  /// No description provided for @eventEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'End date'**
+  String get eventEndDate;
+
+  /// No description provided for @eventCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Event'**
+  String get eventCreate;
+
+  /// No description provided for @eventCreating.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get eventCreating;
+
+  /// No description provided for @eventSelectAtLeastOneParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one participant.'**
+  String get eventSelectAtLeastOneParticipant;
+
+  /// No description provided for @eventCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create event. Check your connection and try again.'**
+  String get eventCreateFailed;
+
+  /// No description provided for @eventParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get eventParticipants;
+
+  /// No description provided for @eventSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select All'**
+  String get eventSelectAll;
+
+  /// No description provided for @eventSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Event Settings'**
+  String get eventSettingsTitle;
+
+  /// No description provided for @eventSettingsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load settings'**
+  String get eventSettingsLoadFailed;
+
+  /// No description provided for @eventNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Event not found'**
+  String get eventNotFound;
+
+  /// No description provided for @eventDetailsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'EVENT DETAILS'**
+  String get eventDetailsSection;
+
+  /// No description provided for @eventNameEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Event name can\'t be empty.'**
+  String get eventNameEmpty;
+
+  /// No description provided for @eventUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Event updated'**
+  String get eventUpdated;
+
+  /// No description provided for @eventSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save changes. Try again.'**
+  String get eventSaveFailed;
+
+  /// No description provided for @eventNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get eventNotSet;
+
+  /// No description provided for @eventDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get eventDescriptionLabel;
+
+  /// No description provided for @eventSaveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Changes'**
+  String get eventSaveChanges;
+
+  /// No description provided for @eventDangerZone.
+  ///
+  /// In en, this message translates to:
+  /// **'DANGER ZONE'**
+  String get eventDangerZone;
+
+  /// No description provided for @eventUnsettledWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This event has unsettled balances.'**
+  String get eventUnsettledWarning;
+
+  /// No description provided for @eventDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete event'**
+  String get eventDelete;
+
+  /// No description provided for @eventDeleteQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this event?'**
+  String get eventDeleteQuestion;
+
+  /// No description provided for @eventDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will permanently delete the event and all its expenses, settlements, and activity. This cannot be undone.'**
+  String get eventDeleteBody;
+
+  /// No description provided for @eventDeleteBodyWithUnsettled.
+  ///
+  /// In en, this message translates to:
+  /// **'This will permanently delete the event and all its expenses, settlements, and activity. This cannot be undone.\n\nThis event has unsettled balances. Settle up before deleting, or proceed anyway.'**
+  String get eventDeleteBodyWithUnsettled;
+
+  /// No description provided for @eventKeepEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep event'**
+  String get eventKeepEvent;
+
+  /// No description provided for @eventDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete event: {error}'**
+  String eventDeleteFailed(Object error);
+
+  /// No description provided for @eventAddExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Add expense'**
+  String get eventAddExpense;
+
+  /// No description provided for @eventYourBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Your balance'**
+  String get eventYourBalance;
+
+  /// No description provided for @eventYouAreOwed.
+  ///
+  /// In en, this message translates to:
+  /// **'You are owed'**
+  String get eventYouAreOwed;
+
+  /// No description provided for @eventYouOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'You owe'**
+  String get eventYouOwe;
+
+  /// No description provided for @eventAllSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'All settled'**
+  String get eventAllSettled;
+
+  /// No description provided for @eventNothingToSettleYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to settle yet'**
+  String get eventNothingToSettleYet;
+
+  /// No description provided for @eventEveryoneSquare.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone is square on this trip.'**
+  String get eventEveryoneSquare;
+
+  /// No description provided for @eventAddFirstExpenseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the first expense to start splitting.'**
+  String get eventAddFirstExpenseHint;
+
+  /// No description provided for @eventBreakdownOwesYou.
+  ///
+  /// In en, this message translates to:
+  /// **'owes you'**
+  String get eventBreakdownOwesYou;
+
+  /// No description provided for @eventBreakdownYouOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'you owe'**
+  String get eventBreakdownYouOwe;
+
+  /// No description provided for @eventTripTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip total'**
+  String get eventTripTotal;
+
+  /// No description provided for @eventExpenseCountInline.
+  ///
+  /// In en, this message translates to:
+  /// **'· {count, plural, =1{1 expense} other{{count} expenses}}'**
+  String eventExpenseCountInline(int count);
+
+  /// No description provided for @eventLedgerLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Ledger →'**
+  String get eventLedgerLink;
+
+  /// No description provided for @eventRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get eventRecent;
+
+  /// No description provided for @eventSeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all →'**
+  String get eventSeeAll;
+
+  /// No description provided for @eventYouPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'You paid'**
+  String get eventYouPaid;
+
+  /// No description provided for @eventPaidByName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} paid'**
+  String eventPaidByName(Object name);
+
+  /// No description provided for @eventAddFirstExpenseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the first expense'**
+  String get eventAddFirstExpenseTitle;
+
+  /// No description provided for @eventAddFirstExpenseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick who paid, split it fairly.'**
+  String get eventAddFirstExpenseBody;
+
+  /// No description provided for @eventPeopleOverline.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 person} other{{count} people}}'**
+  String eventPeopleOverline(int count);
+
+  /// No description provided for @eventSplittingBetweenYouAndOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'{othersCount, plural, =1{Splitting between you and 1 other} other{Splitting between you and {othersCount} others}}'**
+  String eventSplittingBetweenYouAndOthers(int othersCount);
+
+  /// No description provided for @eventYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get eventYou;
+
+  /// No description provided for @eventDayOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {currentDay} of {totalDays}'**
+  String eventDayOf(int currentDay, int totalDays);
+
+  /// No description provided for @eventLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load event'**
+  String get eventLoadFailedTitle;
+
+  /// No description provided for @eventMissingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been deleted, or the link is incorrect.'**
+  String get eventMissingMessage;
+
+  /// No description provided for @eventSemanticCard.
+  ///
+  /// In en, this message translates to:
+  /// **'{eventName}, {count, plural, =1{1 person} other{{count} people}}'**
+  String eventSemanticCard(Object eventName, int count);
+
+  /// No description provided for @eventYouOweAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'You owe {amount} {currency}'**
+  String eventYouOweAmount(Object amount, Object currency);
+
+  /// No description provided for @eventYouAreOwedAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'You are owed {amount} {currency}'**
+  String eventYouAreOwedAmount(Object amount, Object currency);
+
+  /// No description provided for @groupNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Group Name'**
+  String get groupNameLabel;
+
+  /// No description provided for @groupNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Family trip'**
+  String get groupNameHint;
+
+  /// No description provided for @groupYourNameInGroupLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name in this group'**
+  String get groupYourNameInGroupLabel;
+
+  /// No description provided for @groupYourNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'how friends will see you'**
+  String get groupYourNameHint;
+
+  /// No description provided for @groupDifferentNameHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'You can use a different name in each group.'**
+  String get groupDifferentNameHelper;
+
+  /// No description provided for @groupCreateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String groupCreateError(Object error);
+
+  /// No description provided for @groupNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get groupNew;
+
+  /// No description provided for @groupCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get groupCreate;
+
+  /// No description provided for @groupMoodTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who\'s coming along?'**
+  String get groupMoodTitle;
+
+  /// No description provided for @groupMoodBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A group is a circle of people you share expenses with — a household, a travel crew, a project team.'**
+  String get groupMoodBody;
+
+  /// No description provided for @groupGlyph.
+  ///
+  /// In en, this message translates to:
+  /// **'Group glyph'**
+  String get groupGlyph;
+
+  /// No description provided for @groupDefaultCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Default currency'**
+  String get groupDefaultCurrency;
+
+  /// No description provided for @groupCreatorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re the creator.'**
+  String get groupCreatorTitle;
+
+  /// No description provided for @groupCreatorBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Once created, share an invite code to bring others in.'**
+  String get groupCreatorBody;
+
+  /// No description provided for @groupInviteCodeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite code copied'**
+  String get groupInviteCodeCopied;
+
+  /// No description provided for @groupShareMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Join my group on Rihla! Use code {code} to join.'**
+  String groupShareMessage(Object code);
+
+  /// No description provided for @groupShareSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Join {name}'**
+  String groupShareSubject(Object name);
+
+  /// No description provided for @groupShareCodeWithGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code with your group'**
+  String get groupShareCodeWithGroup;
+
+  /// No description provided for @groupCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Code'**
+  String get groupCopyCode;
+
+  /// No description provided for @groupShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get groupShare;
+
+  /// No description provided for @groupJoinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a Group'**
+  String get groupJoinTitle;
+
+  /// No description provided for @groupJoinCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Join Group'**
+  String get groupJoinCta;
+
+  /// No description provided for @groupJoining.
+  ///
+  /// In en, this message translates to:
+  /// **'Joining…'**
+  String get groupJoining;
+
+  /// No description provided for @groupYourName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get groupYourName;
+
+  /// No description provided for @groupJoinNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'how the group will see you'**
+  String get groupJoinNameHint;
+
+  /// No description provided for @groupInviteCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite code'**
+  String get groupInviteCode;
+
+  /// No description provided for @groupInviteCodeHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a group member for their 6-character code'**
+  String get groupInviteCodeHelper;
+
+  /// No description provided for @groupJoinHintTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll see balances right away.'**
+  String get groupJoinHintTitle;
+
+  /// No description provided for @groupJoinHintBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Joining is instant — no approval needed once the code matches.'**
+  String get groupJoinHintBody;
+
+  /// No description provided for @groupJoinMoodTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Got an invite?'**
+  String get groupJoinMoodTitle;
+
+  /// No description provided for @groupJoinMoodBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-character code a friend gave you. We will drop you straight into the group.'**
+  String get groupJoinMoodBody;
+
+  /// No description provided for @groupJoinInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'That code doesn\'t match any group. Check the code and try again.'**
+  String get groupJoinInvalidCode;
+
+  /// No description provided for @groupJoinAlreadyMember.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re already in this group.'**
+  String get groupJoinAlreadyMember;
+
+  /// No description provided for @groupJoinTooManyAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again later.'**
+  String get groupJoinTooManyAttempts;
+
+  /// No description provided for @groupJoinPleaseSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in and try again.'**
+  String get groupJoinPleaseSignIn;
+
+  /// No description provided for @groupJoinFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t join the group. Check your connection and try again.'**
+  String get groupJoinFailed;
+
+  /// No description provided for @groupMemberJoinedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'joined the group'**
+  String get groupMemberJoinedDescription;
+
+  /// No description provided for @groupMemberLeftDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'left the group'**
+  String get groupMemberLeftDescription;
+
+  /// No description provided for @groupEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get groupEvents;
+
+  /// No description provided for @groupMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get groupMembers;
+
+  /// No description provided for @groupNoEventsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No events yet'**
+  String get groupNoEventsTitle;
+
+  /// No description provided for @groupNoEventsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your first event to start planning together.'**
+  String get groupNoEventsMessage;
+
+  /// No description provided for @groupCreateEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Event'**
+  String get groupCreateEvent;
+
+  /// No description provided for @groupLoadEventsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load events'**
+  String get groupLoadEventsFailed;
+
+  /// No description provided for @groupMemberCountCaps.
+  ///
+  /// In en, this message translates to:
+  /// **'GROUP · {count, plural, =1{1 MEMBER} other{{count} MEMBERS}}'**
+  String groupMemberCountCaps(int count);
+
+  /// No description provided for @groupMoreTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get groupMoreTooltip;
+
+  /// No description provided for @groupSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Group settings'**
+  String get groupSettings;
+
+  /// No description provided for @groupActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get groupActivity;
+
+  /// No description provided for @groupYourBalanceHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Your balance here'**
+  String get groupYourBalanceHere;
+
+  /// No description provided for @groupTheyOweYou.
+  ///
+  /// In en, this message translates to:
+  /// **'they owe you'**
+  String get groupTheyOweYou;
+
+  /// No description provided for @groupYouOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'you owe'**
+  String get groupYouOwe;
+
+  /// No description provided for @groupAllSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'all settled'**
+  String get groupAllSettled;
+
+  /// No description provided for @groupSettleUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle up'**
+  String get groupSettleUp;
+
+  /// No description provided for @groupEventEnds.
+  ///
+  /// In en, this message translates to:
+  /// **'ends {date}'**
+  String groupEventEnds(Object date);
+
+  /// No description provided for @groupYourShare.
+  ///
+  /// In en, this message translates to:
+  /// **'your share'**
+  String get groupYourShare;
+
+  /// No description provided for @groupNoShare.
+  ///
+  /// In en, this message translates to:
+  /// **'no share'**
+  String get groupNoShare;
+
+  /// No description provided for @groupMembersLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load members'**
+  String get groupMembersLoadFailed;
+
+  /// No description provided for @groupMembersLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading members…'**
+  String get groupMembersLoading;
+
+  /// No description provided for @groupFormerMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Former member'**
+  String get groupFormerMember;
+
+  /// No description provided for @groupRoleYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get groupRoleYou;
+
+  /// No description provided for @groupRoleCreator.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator'**
+  String get groupRoleCreator;
+
+  /// No description provided for @groupLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load group'**
+  String get groupLoadFailedTitle;
+
+  /// No description provided for @groupNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Group not found'**
+  String get groupNotFoundTitle;
+
+  /// No description provided for @groupNotFoundMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been deleted, or the link is incorrect.'**
+  String get groupNotFoundMessage;
+
+  /// No description provided for @groupBackHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Back home'**
+  String get groupBackHome;
+
+  /// No description provided for @groupSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Group settings'**
+  String get groupSettingsTitle;
+
+  /// No description provided for @groupDefaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Defaults'**
+  String get groupDefaults;
+
+  /// No description provided for @groupCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get groupCurrency;
+
+  /// No description provided for @groupDefaultSplit.
+  ///
+  /// In en, this message translates to:
+  /// **'Default split'**
+  String get groupDefaultSplit;
+
+  /// No description provided for @groupDefaultSplitEqual.
+  ///
+  /// In en, this message translates to:
+  /// **'Equal'**
+  String get groupDefaultSplitEqual;
+
+  /// No description provided for @groupReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get groupReminders;
+
+  /// No description provided for @groupRemindersWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get groupRemindersWeekly;
+
+  /// No description provided for @groupSettingsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load settings'**
+  String get groupSettingsLoadFailed;
+
+  /// No description provided for @groupTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get groupTryAgain;
+
+  /// No description provided for @groupInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get groupInvite;
+
+  /// No description provided for @groupCreatedDateCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Created {date} · {currency}'**
+  String groupCreatedDateCurrency(Object date, Object currency);
+
+  /// No description provided for @groupAnyoneWithCodeCanJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with the code can join'**
+  String get groupAnyoneWithCodeCanJoin;
+
+  /// No description provided for @groupEditNameSemantic.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit group name'**
+  String get groupEditNameSemantic;
+
+  /// No description provided for @groupCopyInviteCodeSemantic.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy invite code'**
+  String get groupCopyInviteCodeSemantic;
+
+  /// No description provided for @groupShowQrCodeSemantic.
+  ///
+  /// In en, this message translates to:
+  /// **'Show QR code'**
+  String get groupShowQrCodeSemantic;
+
+  /// No description provided for @groupShareInviteSemantic.
+  ///
+  /// In en, this message translates to:
+  /// **'Share invite'**
+  String get groupShareInviteSemantic;
+
+  /// No description provided for @groupNameEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Group name can\'t be empty.'**
+  String get groupNameEmpty;
+
+  /// No description provided for @groupUpdateNameFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update name: {error}'**
+  String groupUpdateNameFailed(Object error);
+
+  /// No description provided for @groupDangerZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get groupDangerZone;
+
+  /// No description provided for @groupDangerZoneCreatorOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone · Creator only'**
+  String get groupDangerZoneCreatorOnly;
+
+  /// No description provided for @groupLeaveThisGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave this group'**
+  String get groupLeaveThisGroup;
+
+  /// No description provided for @groupLeaveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll lose access to its events and expenses.'**
+  String get groupLeaveSubtitle;
+
+  /// No description provided for @groupLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get groupLeave;
+
+  /// No description provided for @groupDeleteThisGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this group'**
+  String get groupDeleteThisGroup;
+
+  /// No description provided for @groupDeleteSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All events and expenses will be lost.'**
+  String get groupDeleteSubtitle;
+
+  /// No description provided for @groupDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get groupDelete;
+
+  /// No description provided for @groupLeaveQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave group?'**
+  String get groupLeaveQuestion;
+
+  /// No description provided for @groupLeaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll lose access to all events and data in this group.'**
+  String get groupLeaveBody;
+
+  /// No description provided for @groupStayInGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay in group'**
+  String get groupStayInGroup;
+
+  /// No description provided for @groupLeaveGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave group'**
+  String get groupLeaveGroup;
+
+  /// No description provided for @groupSettleBeforeLeaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle up before leaving the group.'**
+  String get groupSettleBeforeLeaving;
+
+  /// No description provided for @groupFailedLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to leave group: {error}'**
+  String groupFailedLeave(Object error);
+
+  /// No description provided for @groupSettleBeforeDeleting.
+  ///
+  /// In en, this message translates to:
+  /// **'All members must settle up before deleting the group.'**
+  String get groupSettleBeforeDeleting;
+
+  /// No description provided for @groupFailedDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete group: {error}'**
+  String groupFailedDelete(Object error);
+
+  /// No description provided for @groupDeleteSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this group?'**
+  String get groupDeleteSheetTitle;
+
+  /// No description provided for @groupDeleteSheetRemovesPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes '**
+  String get groupDeleteSheetRemovesPrefix;
+
+  /// No description provided for @groupDeleteSheetMembersBody.
+  ///
+  /// In en, this message translates to:
+  /// **' for all {count} members. Events, expenses, and balances inside it are erased. '**
+  String groupDeleteSheetMembersBody(int count);
+
+  /// No description provided for @groupDeleteSheetEveryoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **' for everyone. Events, expenses, and balances inside it are erased. '**
+  String get groupDeleteSheetEveryoneBody;
+
+  /// No description provided for @groupDeleteSheetUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'This can\'t be undone.'**
+  String get groupDeleteSheetUndo;
+
+  /// No description provided for @groupDeleteSheetTypePrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'TYPE '**
+  String get groupDeleteSheetTypePrefix;
+
+  /// No description provided for @groupDeleteSheetTypeSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **' TO CONFIRM'**
+  String get groupDeleteSheetTypeSuffix;
+
+  /// No description provided for @groupDeleteSheetRetention.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy is kept for 30 days in case you change your mind.'**
+  String get groupDeleteSheetRetention;
+
+  /// No description provided for @groupDeleteSheetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group'**
+  String get groupDeleteSheetConfirm;
+
+  /// No description provided for @groupScanToJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan to join'**
+  String get groupScanToJoin;
+
+  /// No description provided for @groupInviteQrCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite QR code'**
+  String get groupInviteQrCode;
+
+  /// No description provided for @groupOrEnterCode.
+  ///
+  /// In en, this message translates to:
+  /// **'OR ENTER CODE'**
+  String get groupOrEnterCode;
+
+  /// No description provided for @groupCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get groupCopyLink;
+
+  /// No description provided for @groupLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get groupLinkCopied;
+
+  /// No description provided for @groupShareInviteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Join \'{groupName}\' on Rihla: {uri} or use code {code}.'**
+  String groupShareInviteMessage(Object groupName, Object uri, Object code);
+
+  /// No description provided for @groupShareInviteSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Join \'{groupName}\' on Rihla'**
+  String groupShareInviteSubject(Object groupName);
+
+  /// No description provided for @groupManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get groupManage;
+
+  /// No description provided for @groupRemoveMemberTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from group'**
+  String groupRemoveMemberTooltip(Object name);
+
+  /// No description provided for @groupRoleMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get groupRoleMember;
+
+  /// No description provided for @groupSettleWithBeforeRemoving.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle up with {name} before removing them.'**
+  String groupSettleWithBeforeRemoving(Object name);
+
+  /// No description provided for @groupFailedRemoveMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove {name}: {error}'**
+  String groupFailedRemoveMember(Object name, Object error);
+
+  /// No description provided for @onboardingBrandKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'RIHLA · ر.ح.ل.ة'**
+  String get onboardingBrandKicker;
+
+  /// No description provided for @onboardingBrandHeadlineLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips,\ntallied with\n'**
+  String get onboardingBrandHeadlineLead;
+
+  /// No description provided for @onboardingBrandHeadlineAccent.
+  ///
+  /// In en, this message translates to:
+  /// **'care'**
+  String get onboardingBrandHeadlineAccent;
+
+  /// No description provided for @onboardingBrandHeadlineSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'.'**
+  String get onboardingBrandHeadlineSuffix;
+
+  /// No description provided for @onboardingBrandBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A travel ledger for friends, families and crews who want the trip to be the memory — not the math.'**
+  String get onboardingBrandBody;
+
+  /// No description provided for @onboardingBegin.
+  ///
+  /// In en, this message translates to:
+  /// **'Begin'**
+  String get onboardingBegin;
+
+  /// No description provided for @onboardingHowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Three ways\nit travels with you.'**
+  String get onboardingHowTitle;
+
+  /// No description provided for @onboardingHowGroupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups for the people you travel with'**
+  String get onboardingHowGroupsTitle;
+
+  /// No description provided for @onboardingHowGroupsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A travel crew, a roommates group, a family. People stay; events come and go.'**
+  String get onboardingHowGroupsBody;
+
+  /// No description provided for @onboardingHowEventsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Events for the trips & nights out'**
+  String get onboardingHowEventsTitle;
+
+  /// No description provided for @onboardingHowEventsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips, dinners, weekends. Each gets a cover, a dates window, and its own ledger.'**
+  String get onboardingHowEventsBody;
+
+  /// No description provided for @onboardingHowExpensesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses split in three taps'**
+  String get onboardingHowExpensesTitle;
+
+  /// No description provided for @onboardingHowExpensesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Equally, by share, or however. Math happens in the background — settle when you like.'**
+  String get onboardingHowExpensesBody;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A few things\nbefore we begin.'**
+  String get onboardingSetupTitle;
+
+  /// No description provided for @onboardingNameSection.
+  ///
+  /// In en, this message translates to:
+  /// **'What should we call you?'**
+  String get onboardingNameSection;
+
+  /// No description provided for @onboardingCurrencySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Home currency'**
+  String get onboardingCurrencySection;
+
+  /// No description provided for @onboardingCurrencyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Each group can override this later.'**
+  String get onboardingCurrencyHelper;
+
+  /// No description provided for @onboardingNotificationsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get onboardingNotificationsSection;
+
+  /// No description provided for @onboardingOpenRihla.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Rihla'**
+  String get onboardingOpenRihla;
+
+  /// No description provided for @onboardingNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get onboardingNameHint;
+
+  /// No description provided for @onboardingCurrencySemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'{currency} currency'**
+  String onboardingCurrencySemantics(Object currency);
+
+  /// No description provided for @onboardingActivitySettlesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity & settles'**
+  String get onboardingActivitySettlesTitle;
+
+  /// No description provided for @onboardingActivitySettlesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When friends add or pay'**
+  String get onboardingActivitySettlesSubtitle;
+
+  /// No description provided for @onboardingWeeklyDigestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly digest'**
+  String get onboardingWeeklyDigestTitle;
+
+  /// No description provided for @onboardingWeeklyDigestSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A Sunday summary'**
+  String get onboardingWeeklyDigestSubtitle;
+
+  /// No description provided for @onboardingSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
+  /// No description provided for @onboardingStepSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Onboarding step {active} of {count}'**
+  String onboardingStepSemantics(int active, int count);
+
   /// No description provided for @expenseSuccessTitle.
   ///
   /// In en, this message translates to:
@@ -2017,6 +3949,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CATEGORY'**
   String get expenseSuccessCategory;
+
+  /// Generic 'Not Found' label used in module headers and error states; pre-added for cross-feature reuse.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Found'**
+  String get commonNotFound;
+
+  /// Email field label reused across the auth recover/link flows.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get commonEmail;
+
+  /// Placeholder example shown inside the Email text field across auth flows.
+  ///
+  /// In en, this message translates to:
+  /// **'you@example.com'**
+  String get commonEmailHintExample;
+
+  /// Friendly greeting shown both on the recover-from-email screen heading and the recovery-completion snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back'**
+  String get authWelcomeBack;
+
+  /// App bar title on the Recover-from-email screen (Home empty state → 'I had Rihla before — restore').
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from email'**
+  String get authRecoverTitle;
+
+  /// Body copy under the Welcome back heading on the recover-from-email screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the email you linked on your old device. We\'ll send a one-tap sign-in link.'**
+  String get authRecoverDescription;
+
+  /// Primary CTA on the recover-from-email screen — sends the sign-in link.
+  ///
+  /// In en, this message translates to:
+  /// **'Send recovery link'**
+  String get authRecoverSubmit;
+
+  /// Catch-all error shown when sending the recovery/link email fails for an unknown reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the link. Check your connection and try again.'**
+  String get authErrorSendLink;
+
+  /// Recover error when Firebase returns user-not-found or invalid-email — tells the user this email isn't linked to any Rihla account.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find a Rihla account with this email. Make sure you linked it on your previous device first.'**
+  String get authErrorAccountNotFound;
+
+  /// Auth error for Firebase's too-many-requests code.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Wait a few minutes and try again.'**
+  String get authErrorRateLimited;
+
+  /// Auth error for Firebase's network-request-failed code.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection. Check your internet and try again.'**
+  String get authErrorOffline;
+
+  /// Fallback auth error with the FirebaseAuthException code surfaced for support purposes.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong ({code}). Please try again.'**
+  String authErrorGeneric(Object code);
+
+  /// Shown on the Link-email screen when the email is already linked to another Rihla account.
+  ///
+  /// In en, this message translates to:
+  /// **'This email is already linked to a Rihla account. Restore from that account instead.'**
+  String get authErrorEmailAlreadyLinked;
+
+  /// Shown on the Link-email screen when Firebase rejects the email format.
+  ///
+  /// In en, this message translates to:
+  /// **'That doesn\'t look like a valid email.'**
+  String get authErrorInvalidEmail;
+
+  /// Form-validator error on the Link-email screen when the email and confirm-email fields disagree.
+  ///
+  /// In en, this message translates to:
+  /// **'Emails don\'t match.'**
+  String get authErrorEmailsDontMatch;
+
+  /// App bar title on the Link-email screen (Settings → Linked email → Set up).
+  ///
+  /// In en, this message translates to:
+  /// **'Link your email'**
+  String get authLinkEmailTitle;
+
+  /// Headline on the Link-email screen — frames email-link as a recovery anchor, not a login.
+  ///
+  /// In en, this message translates to:
+  /// **'So you can come back'**
+  String get authLinkEmailHeading;
+
+  /// Body copy under the headline on the Link-email screen explaining the recovery promise.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll email you a one-tap sign-in link. If you ever lose your phone or clear app data, enter the same email on a new device to get all your trips back.'**
+  String get authLinkEmailDescription;
+
+  /// Label for the second 'confirm email' text field on the Link-email screen — typo guard.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm email'**
+  String get authLinkEmailConfirmLabel;
+
+  /// Primary CTA on the Link-email screen — sends the sign-in link.
+  ///
+  /// In en, this message translates to:
+  /// **'Send link'**
+  String get authLinkEmailSubmit;
+
+  /// Trust note shown below the email fields on the Link-email screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email is used only to restore your Rihla data. We don\'t send marketing email and we don\'t share it.'**
+  String get authLinkEmailPrivacyNote;
+
+  /// Headline on the recovery-pending screen ('we sent you an email, click the link').
+  ///
+  /// In en, this message translates to:
+  /// **'Check your inbox'**
+  String get authRecoverPendingTitle;
+
+  /// First half of the recovery-pending body — split so the user's email can be rendered in a stronger style between prefix and suffix.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a sign-in link to '**
+  String get authRecoverPendingDescriptionPrefix;
+
+  /// Second half of the recovery-pending body, rendered after the user's email.
+  ///
+  /// In en, this message translates to:
+  /// **'. Tap it on this device — we\'ll pull your trips back automatically.'**
+  String get authRecoverPendingDescriptionSuffix;
+
+  /// Second half of the link-email-sent body, rendered after the user's email — recovery and link flows share the same prefix but diverge here (link flow finishes the linking; recovery pulls trips back).
+  ///
+  /// In en, this message translates to:
+  /// **'. Tap it on this device to finish linking.'**
+  String get authLinkEmailSentDescriptionSuffix;
+
+  /// Helper text on the recovery-pending screen reminding the user to check spam and noting the 24h expiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t find it? Check your spam folder. The link is good for 24 hours.'**
+  String get authRecoverPendingSpamHint;
+
+  /// Inline status shown when the deep-link bootstrap has captured the recovery link and is completing recovery.
+  ///
+  /// In en, this message translates to:
+  /// **'We saw your link. Hang tight — restoring now.'**
+  String get authRecoverPendingLinkSeen;
+
+  /// Confirmation status shown after the user successfully resends the recovery link.
+  ///
+  /// In en, this message translates to:
+  /// **'New link sent.'**
+  String get authRecoverPendingResendStatus;
+
+  /// Resend error on the recovery-pending screen when Firebase surfaces a specific error code.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t resend ({code}).'**
+  String authRecoverPendingResendErrorCode(Object code);
+
+  /// Resend error on the recovery-pending screen for unknown/non-Firebase failures.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t resend. Try again in a bit.'**
+  String get authRecoverPendingResendErrorGeneric;
+
+  /// Outlined button label on the recovery-pending screen — resend the email when the cooldown is up.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend link'**
+  String get authRecoverPendingResendLink;
+
+  /// Cooldown variant of the resend button label — counts down seconds until resend is allowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend in {seconds}s'**
+  String authRecoverPendingResendCountdown(int seconds);
+
+  /// Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one.
+  ///
+  /// In en, this message translates to:
+  /// **'This device is already in use'**
+  String get authSignOutFirstTitle;
+
+  /// Body copy of the SignOutFirstDialog explaining what happens to local data when the user signs out to recover a different account.
+  ///
+  /// In en, this message translates to:
+  /// **'To restore a different account, you\'ll lose the trips and expenses on this device. They\'ll stay in the cloud only if they\'re tied to a different linked email — otherwise they\'ll be orphaned.'**
+  String get authSignOutFirstBody;
+
+  /// Destructive confirmation CTA on the SignOutFirstDialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and continue'**
+  String get authSignOutFirstConfirm;
+
+  /// Empty-state title on the group settle-up screen when the group can no longer be loaded (e.g. the user was removed).
+  ///
+  /// In en, this message translates to:
+  /// **'This group is no longer available'**
+  String get groupSettleUpMissingTitle;
+
+  /// Empty-state body on the group settle-up screen when the group is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'You may have been removed. Tap below to go back home.'**
+  String get groupSettleUpMissingMessage;
+
+  /// Fallback label for a per-event breakdown row when the event's display name is unknown — shows the tail of the event ID.
+  ///
+  /// In en, this message translates to:
+  /// **'Event ...{suffix}'**
+  String groupSettleUpEventLabelFallback(Object suffix);
+
+  /// Fallback errorBuilder text shown by GoRouter when the requested location does not match any route.
+  ///
+  /// In en, this message translates to:
+  /// **'Page not found: {location}'**
+  String errorPageNotFound(Object location);
 }
 
 class _AppLocalizationsDelegate

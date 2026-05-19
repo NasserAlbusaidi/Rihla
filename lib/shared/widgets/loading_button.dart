@@ -174,8 +174,8 @@ class _ShimmerPlaceholderState extends State<ShimmerPlaceholder>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.borderRadius),
             gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+              begin: AlignmentDirectional.centerStart,
+              end: AlignmentDirectional.centerEnd,
               colors: [
                 context.colors.inputFill,
                 context.colors.border,

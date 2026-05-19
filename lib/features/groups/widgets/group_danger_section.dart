@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -51,7 +52,9 @@ class GroupDangerSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SettingsSectionHeader(
-                title: isCreator ? 'Danger zone · Creator only' : 'Danger zone',
+                title: isCreator
+                    ? context.l10n.groupDangerZoneCreatorOnly
+                    : context.l10n.groupDangerZone,
                 color: context.colors.error,
               ),
               const SizedBox(height: 6),
@@ -77,14 +80,14 @@ class GroupDangerSection extends ConsumerWidget {
       behavior: HitTestBehavior.opaque,
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: _DangerCopy(
-              title: 'Leave this group',
-              subtitle: "You'll lose access to its events and expenses.",
+              title: context.l10n.groupLeaveThisGroup,
+              subtitle: context.l10n.groupLeaveSubtitle,
             ),
           ),
           _DangerButton(
-            label: 'Leave',
+            label: context.l10n.groupLeave,
             onTap: () {
               HapticService.selection();
               _showLeaveDialog(context, ref);
@@ -105,14 +108,14 @@ class GroupDangerSection extends ConsumerWidget {
       behavior: HitTestBehavior.opaque,
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: _DangerCopy(
-              title: 'Delete this group',
-              subtitle: 'All events and expenses will be lost.',
+              title: context.l10n.groupDeleteThisGroup,
+              subtitle: context.l10n.groupDeleteSubtitle,
             ),
           ),
           _DangerButton(
-            label: 'Delete',
+            label: context.l10n.groupDelete,
             onTap: () {
               HapticService.selection();
               _showDeleteDialog(context, ref);
@@ -129,7 +132,7 @@ class GroupDangerSection extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         key: GroupKeys.leaveGroupDialog,
         title: Text(
-          'Leave group?',
+          context.l10n.groupLeaveQuestion,
           style: AppTypography.sans(
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -137,7 +140,7 @@ class GroupDangerSection extends ConsumerWidget {
           ),
         ),
         content: Text(
-          "You'll lose access to all events and data in this group.",
+          context.l10n.groupLeaveBody,
           style: AppTypography.sans(
             fontSize: 14,
             color: context.colors.textSecondary,
@@ -147,7 +150,7 @@ class GroupDangerSection extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
-              'Stay in group',
+              context.l10n.groupStayInGroup,
               style: AppTypography.sans(
                 fontSize: 14,
                 color: context.colors.textSecondary,
@@ -162,7 +165,7 @@ class GroupDangerSection extends ConsumerWidget {
               _executeLeave(context, ref);
             },
             child: Text(
-              'Leave group',
+              context.l10n.groupLeaveGroup,
               style: AppTypography.sans(
                 fontSize: 14,
                 color: context.colors.errorText,
@@ -182,7 +185,7 @@ class GroupDangerSection extends ConsumerWidget {
 
     showDeleteGroupSheet(
       context,
-      groupName: groupName ?? 'this group',
+      groupName: groupName ?? context.l10n.groupDeleteThisGroup,
       memberCount: memberCount,
       onConfirm: () {
         HapticService.medium();
@@ -207,9 +210,9 @@ class GroupDangerSection extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Settle up before leaving the group.'),
+              content: Text(context.l10n.groupSettleBeforeLeaving),
               action: SnackBarAction(
-                label: 'Settle Up',
+                label: context.l10n.groupSettleUp,
                 onPressed: () => context.push('/group/$groupId/settle-up'),
               ),
             ),
@@ -241,9 +244,11 @@ class GroupDangerSection extends ConsumerWidget {
       await ref.read(groupServiceProvider).leaveGroup(groupId: groupId);
       router.go('/home');
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Failed to leave group: $e')),
-      );
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.groupFailedLeave(e.toString()))),
+        );
+      }
     }
   }
 
@@ -260,11 +265,7 @@ class GroupDangerSection extends ConsumerWidget {
       if (hasOutstanding) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'All members must settle up before deleting the group.',
-              ),
-            ),
+            SnackBar(content: Text(context.l10n.groupSettleBeforeDeleting)),
           );
         }
         return;
@@ -275,9 +276,11 @@ class GroupDangerSection extends ConsumerWidget {
       await ref.read(groupServiceProvider).deleteGroup(groupId: groupId);
       router.go('/home');
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Failed to delete group: $e')),
-      );
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.groupFailedDelete(e.toString()))),
+        );
+      }
     }
   }
 }

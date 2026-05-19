@@ -1,8 +1,9 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../shared/animations/tap_bounce.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/event_model.dart';
@@ -42,7 +43,8 @@ class EventCard extends ConsumerWidget {
     // Only used when personalBalance is null.
     final eventRef = (groupId: event.groupId, eventId: event.id);
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
-    final totalSpent = expensesAsync.whenOrNull(
+    final totalSpent =
+        expensesAsync.whenOrNull(
           data: (expenses) {
             if (expenses.isEmpty) return Decimal.zero;
             return expenses.fold<Decimal>(
@@ -55,7 +57,10 @@ class EventCard extends ConsumerWidget {
 
     final card = Semantics(
       button: true,
-      label: '${event.name}, ${event.participantIds.length} people',
+      label: context.l10n.eventSemanticCard(
+        event.name,
+        event.participantIds.length,
+      ),
       child: TapBounce(
         onTap: onTap,
         child: Container(
@@ -85,8 +90,9 @@ class EventCard extends ConsumerWidget {
                     color: event.isPast
                         ? context.colors.textSecondary.withValues(alpha: 0.3)
                         : context.colors.primary,
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(20),
+                    borderRadius: const BorderRadiusDirectional.only(
+                      topStart: Radius.circular(20),
+                      bottomStart: Radius.circular(20),
                     ),
                   ),
                 ),
@@ -107,7 +113,7 @@ class EventCard extends ConsumerWidget {
                         const SizedBox(height: 4),
                         // Date range
                         Text(
-                          _buildDateText(),
+                          _buildDateText(context),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -148,23 +154,25 @@ class EventCard extends ConsumerWidget {
     // Dart 3 switch for balance color coding and text (D-01)
     final (text, color) = switch (personalBalance!.compareTo(Decimal.zero)) {
       < 0 => (
-          'You owe ${personalBalance!.abs().toStringAsFixed(3)} OMR',
-          context.colors.errorText,
+        context.l10n.eventYouOweAmount(
+          personalBalance!.abs().toStringAsFixed(3),
+          'OMR',
         ),
+        context.colors.errorText,
+      ),
       > 0 => (
-          'You are owed ${personalBalance!.toStringAsFixed(3)} OMR',
-          context.colors.successText,
+        context.l10n.eventYouAreOwedAmount(
+          personalBalance!.toStringAsFixed(3),
+          'OMR',
         ),
-      _ => ('Settled', context.colors.textSecondary),
+        context.colors.successText,
+      ),
+      _ => (context.l10n.ledgerSettled, context.colors.textSecondary),
     };
 
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        color: color,
-      ),
+      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
     );
   }
 
@@ -195,14 +203,14 @@ class EventCard extends ConsumerWidget {
   }
 
   /// Builds the date text with date range if dates are set.
-  String _buildDateText() {
+  String _buildDateText(BuildContext context) {
     if (event.startDate != null && event.endDate != null) {
-      final fmt = DateFormat('MMM d');
-      // Use en-dash (U+2013) between start and end dates
-      return '${fmt.format(event.startDate!)} \u2013 ${fmt.format(event.endDate!)} \u00B7 ${event.participantIds.length} people';
+      return '${formatDateRangeShort(context, event.startDate, event.endDate)} '
+          '\u00B7 ${context.l10n.ledgerPeople(event.participantIds.length)}';
     } else if (event.startDate != null) {
-      return '${DateFormat('MMM d').format(event.startDate!)} \u00B7 ${event.participantIds.length} people';
+      return '${formatShortMonthDay(context, event.startDate!)} '
+          '\u00B7 ${context.l10n.ledgerPeople(event.participantIds.length)}';
     }
-    return '${event.participantIds.length} people';
+    return context.l10n.ledgerPeople(event.participantIds.length);
   }
 }

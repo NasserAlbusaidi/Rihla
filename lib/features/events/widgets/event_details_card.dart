@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/utils/name_validators.dart';
+import '../../../core/utils/localized_dates.dart';
+import '../../../core/utils/localized_name_validators.dart';
 
 /// Card widget containing the event name field and start/end date pickers.
 ///
@@ -41,17 +42,15 @@ class EventDetailsCard extends StatelessWidget {
         children: [
           // --- Event Name ---
           Text(
-            'Event Name',
+            context.l10n.eventNameLabel,
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
           TextFormField(
             controller: nameController,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              hintText: 'e.g. Summer camping trip',
-            ),
-            validator: validateDisplayName,
+            decoration: InputDecoration(hintText: context.l10n.eventNameHint),
+            validator: (value) => validateDisplayNameLocalized(context, value),
           ),
 
           const SizedBox(height: 24),
@@ -60,16 +59,15 @@ class EventDetailsCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Dates',
+                context.l10n.eventDatesLabel,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(width: 8),
               Text(
-                '(optional)',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: context.colors.textSecondary),
+                context.l10n.eventOptionalLabel,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: context.colors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -88,8 +86,8 @@ class EventDetailsCard extends StatelessWidget {
                     onPressed: onPickStartDate,
                     child: Text(
                       startDate != null
-                          ? DateFormat('MMM d, yyyy').format(startDate!)
-                          : 'Start date',
+                          ? formatShortMonthDayYear(context, startDate!)
+                          : context.l10n.eventStartDate,
                     ),
                   ),
                 ),
@@ -107,8 +105,8 @@ class EventDetailsCard extends StatelessWidget {
                     onPressed: onPickEndDate,
                     child: Text(
                       endDate != null
-                          ? DateFormat('MMM d, yyyy').format(endDate!)
-                          : 'End date',
+                          ? formatShortMonthDayYear(context, endDate!)
+                          : context.l10n.eventEndDate,
                     ),
                   ),
                 ),

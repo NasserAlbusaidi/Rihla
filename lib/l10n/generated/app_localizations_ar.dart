@@ -1155,6 +1155,1143 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get commonDone => 'تم';
+
+  @override
+  String get commonContinue => 'متابعة';
+
+  @override
+  String get nameValidationEmpty => 'لا يمكن أن يكون الاسم فارغًا.';
+
+  @override
+  String nameValidationTooLong(int maxLength) {
+    return 'اجعله $maxLength حرفًا أو أقل.';
+  }
+
+  @override
+  String get nameValidationControlChars => 'أزل فواصل الأسطر أو الأحرف الخاصة.';
+
+  @override
+  String get nameValidationReserved => 'هذا الاسم يستخدم عبارة محجوزة.';
+
+  @override
+  String get homeActiveJourneys => 'الرحلات النشطة';
+
+  @override
+  String get homeSeeAll => 'عرض الكل';
+
+  @override
+  String get homeGroups => 'المجموعات';
+
+  @override
+  String get homeNewGroup => 'مجموعة جديدة';
+
+  @override
+  String get homeRecently => 'الأحدث';
+
+  @override
+  String get homeNoActivityYet => 'لا يوجد نشاط بعد';
+
+  @override
+  String get homeTravellerFallback => 'مسافر';
+
+  @override
+  String get homeStartFirstGroup => 'ابدأ أول مجموعة';
+
+  @override
+  String get homeStartFirstGroupBody =>
+      'خطّط للرحلات، وتتبع المصاريف، وسوِّ الحساب مع الأصدقاء.';
+
+  @override
+  String get homeCreateGroup => 'إنشاء مجموعة';
+
+  @override
+  String get homeJoinGroup => 'الانضمام لمجموعة';
+
+  @override
+  String get homeRecover => 'استخدمت رحلة سابقًا — استعادة';
+
+  @override
+  String get homeErrorTitle => 'حدث خطأ ما';
+
+  @override
+  String get homeErrorMessage =>
+      'تحقق من اتصالك وحاول مرة أخرى. مجموعاتك متزامنة بأمان — نحتاج الإنترنت فقط لجلب الأحدث.';
+
+  @override
+  String get homeCreateAGroup => 'إنشاء مجموعة';
+
+  @override
+  String get homeJoinAGroup => 'الانضمام لمجموعة';
+
+  @override
+  String get homeGoodMorning => 'صباح الخير';
+
+  @override
+  String get homeGoodAfternoon => 'مساء الخير';
+
+  @override
+  String get homeGoodEvening => 'مساء الخير';
+
+  @override
+  String homeGreeting(Object greeting, Object name) {
+    return '$greeting، $name';
+  }
+
+  @override
+  String get homeNoUpcomingJourneys => 'لا توجد رحلات قادمة أو نشطة';
+
+  @override
+  String homeGroupSubtitle(int memberCount, int eventCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      memberCount,
+      locale: localeName,
+      other: '$memberCount عضو',
+      many: '$memberCount عضوًا',
+      few: '$memberCount أعضاء',
+      two: 'عضوان',
+      one: 'عضو واحد',
+      zero: 'لا أعضاء',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      eventCount,
+      locale: localeName,
+      other: '$eventCount فعالية',
+      many: '$eventCount فعالية',
+      few: '$eventCount فعاليات',
+      two: 'فعاليتان',
+      one: 'فعالية واحدة',
+      zero: 'لا فعاليات',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get homeTheyOweYou => 'هم مدينون لك';
+
+  @override
+  String get homeYouOwe => 'أنت مدين';
+
+  @override
+  String get homeSettled => 'مُسوّى';
+
+  @override
+  String get homeAcrossAllJourneys => 'عبر كل الرحلات';
+
+  @override
+  String get homeNetYoureOwed => 'الصافي — مستحق لك';
+
+  @override
+  String get homeNetYouOwe => 'الصافي — عليك دفع';
+
+  @override
+  String get homeAllSettledAcrossJourneys => 'كل الرحلات مُسوّاة';
+
+  @override
+  String get homeOwed => 'مستحق لك';
+
+  @override
+  String get homeOwe => 'عليك دفع';
+
+  @override
+  String get homeOwedToYou => 'مستحق لك';
+
+  @override
+  String get homeBalanceUnavailable => 'الرصيد غير متاح';
+
+  @override
+  String get homeSpendingUnavailable => 'بيانات الإنفاق غير متاحة';
+
+  @override
+  String homeWeeklySpending(Object currency) {
+    return 'الإنفاق الأسبوعي ($currency)';
+  }
+
+  @override
+  String get homeNoSpendingThisWeek => 'لا يوجد إنفاق هذا الأسبوع';
+
+  @override
+  String get homeBottomNavGroups => 'المجموعات';
+
+  @override
+  String get homeBottomNavActivity => 'النشاط';
+
+  @override
+  String get homeBottomNavProfile => 'الملف';
+
+  @override
+  String get homeQuickAddExpense => 'إضافة مصروف';
+
+  @override
+  String get homeQuickSettleUp => 'تسوية';
+
+  @override
+  String get homeQuickInviteFriend => 'دعوة صديق';
+
+  @override
+  String get homeQuickActivity => 'النشاط';
+
+  @override
+  String get activityTitle => 'النشاط';
+
+  @override
+  String get activityCaption => 'النشاط';
+
+  @override
+  String get activitySubtitle => 'عبر كل رحلة وكل مجموعة';
+
+  @override
+  String get activityLoadFailedTitle => 'تعذّر تحميل النشاط';
+
+  @override
+  String get activityLoadFailedMessage => 'تحقق من اتصالك وحاول مرة أخرى.';
+
+  @override
+  String get activityReload => 'إعادة التحميل';
+
+  @override
+  String get activityNoActivityTitle => 'لا يوجد نشاط بعد';
+
+  @override
+  String get activityCrossGroupEmptyMessage => 'سيظهر هنا نشاط كل مجموعاتك.';
+
+  @override
+  String get activityEventEmptyMessage =>
+      'ستظهر هنا إجراءاتك وإجراءات أعضاء المجموعة.';
+
+  @override
+  String get activityGroupEmptyMessage =>
+      'ستظهر هنا فعاليات المجموعة، والمدفوعات، وتغييرات الأعضاء.';
+
+  @override
+  String get activityNoFilterTitle => 'لا شيء يطابق هذا الفلتر';
+
+  @override
+  String get activityNoFilterMessage => 'جرّب فلترًا آخر، أو عد إلى الكل.';
+
+  @override
+  String get activityFilterAll => 'الكل';
+
+  @override
+  String get activityFilterActivity => 'النشاط';
+
+  @override
+  String get activityFilterSettles => 'تسويات';
+
+  @override
+  String get activityFilterSettlements => 'التسويات';
+
+  @override
+  String get activityFilterEvents => 'الفعاليات';
+
+  @override
+  String get activityFilterMembers => 'الأعضاء';
+
+  @override
+  String get activityEventMissingTitle => 'هذه الفعالية لم تعد موجودة';
+
+  @override
+  String get activityEventMissingMessage => 'ربما تم حذفها.';
+
+  @override
+  String get activityRelativeJustNow => 'الآن';
+
+  @override
+  String activityRelativeMinutes(int count) {
+    return '$count د';
+  }
+
+  @override
+  String activityRelativeHours(int count) {
+    return '$count س';
+  }
+
+  @override
+  String activityRelativeDays(int count) {
+    return '$count ي';
+  }
+
+  @override
+  String get activitySomeone => 'شخص ما';
+
+  @override
+  String get activityEventMoneyCreated => 'أضاف قيدًا ماليًا';
+
+  @override
+  String get activityEventMoneyUpdated => 'حدّث قيدًا ماليًا';
+
+  @override
+  String get activityEventMoneyDeleted => 'حذف قيدًا ماليًا';
+
+  @override
+  String get activityEventGearCreated => 'أضاف بند معدات';
+
+  @override
+  String get activityEventGearUpdated => 'حدّث بند معدات';
+
+  @override
+  String get activityEventGearDeleted => 'حذف بند معدات';
+
+  @override
+  String get activityEventDocsCreated => 'أضاف مستندًا';
+
+  @override
+  String get activityEventDocsUpdated => 'حدّث مستندًا';
+
+  @override
+  String get activityEventDocsDeleted => 'حذف مستندًا';
+
+  @override
+  String get activityGroupSettlementDescription => 'سجّل تسوية';
+
+  @override
+  String get activityGroupEventCreatedGeneric => 'أنشأ فعالية';
+
+  @override
+  String activityGroupEventCreated(Object eventName) {
+    return 'أنشأ $eventName';
+  }
+
+  @override
+  String get activityGroupEventDeletedGeneric => 'حذف فعالية';
+
+  @override
+  String activityGroupEventDeleted(Object eventName) {
+    return 'حذف $eventName';
+  }
+
+  @override
+  String get activityGroupMemberJoined => 'انضم إلى المجموعة';
+
+  @override
+  String get activityGroupMemberLeft => 'غادر المجموعة';
+
+  @override
+  String activityGroupMemberRemoved(Object memberName) {
+    return 'أزال $memberName من المجموعة';
+  }
+
+  @override
+  String get activityTitlePaymentRecorded => 'تم تسجيل دفعة';
+
+  @override
+  String get activityTitleEventCreated => 'تم إنشاء فعالية';
+
+  @override
+  String get activityTitleEventRemoved => 'تم حذف فعالية';
+
+  @override
+  String get activityTitleMemberJoined => 'انضم عضو';
+
+  @override
+  String get activityTitleMemberLeft => 'غادر عضو';
+
+  @override
+  String get activityTitleGeneric => 'نشاط';
+
+  @override
+  String get eventTypeTripLabel => 'رحلة';
+
+  @override
+  String get eventTypeTripShort => 'رحلة';
+
+  @override
+  String get eventTypeTripDescription =>
+      'خطّط لرحلة مشتركة مع المصاريف والنشاط';
+
+  @override
+  String get eventTypeCampingLabel => 'تخييم';
+
+  @override
+  String get eventTypeCampingShort => 'تخييم';
+
+  @override
+  String get eventTypeCampingDescription =>
+      'رحلة خارجية مع تتبع المصاريف المشتركة';
+
+  @override
+  String get eventTypeTravelLabel => 'سفر';
+
+  @override
+  String get eventTypeTravelShort => 'سفر';
+
+  @override
+  String get eventTypeTravelDescription => 'مشوار مع مصاريف جماعية ونشاط';
+
+  @override
+  String get eventTypeNightDayOutLabel => 'خروج ليلي/نهاري';
+
+  @override
+  String get eventTypeNightDayOutShort => 'خروج';
+
+  @override
+  String get eventTypeNightDayOutDescription => 'خروج سريع مع تقسيم المصاريف';
+
+  @override
+  String get eventTypeCustomLabel => 'مخصص';
+
+  @override
+  String get eventTypeCustomShort => 'فعالية';
+
+  @override
+  String get eventTypeCustomDescription => 'ابدأ بإعداد فعالية مرن';
+
+  @override
+  String get eventPickerTitle => 'أي نوع من\nالرحلات هذه؟';
+
+  @override
+  String get eventPickerSubtitle => 'سنضبط إعدادات مناسبة للفئات والتقسيم.';
+
+  @override
+  String eventContinueWith(Object type) {
+    return 'متابعة مع $type';
+  }
+
+  @override
+  String get eventNew => 'فعالية جديدة';
+
+  @override
+  String get eventNameLabel => 'اسم الفعالية';
+
+  @override
+  String get eventNameHint => 'مثال: رحلة تخييم صيفية';
+
+  @override
+  String get eventDatesLabel => 'التواريخ';
+
+  @override
+  String get eventOptionalLabel => '(اختياري)';
+
+  @override
+  String get eventStartDate => 'تاريخ البداية';
+
+  @override
+  String get eventEndDate => 'تاريخ النهاية';
+
+  @override
+  String get eventCreate => 'إنشاء فعالية';
+
+  @override
+  String get eventCreating => 'جارٍ الإنشاء…';
+
+  @override
+  String get eventSelectAtLeastOneParticipant =>
+      'اختر مشاركًا واحدًا على الأقل.';
+
+  @override
+  String get eventCreateFailed =>
+      'تعذّر إنشاء الفعالية. تحقق من اتصالك وحاول مرة أخرى.';
+
+  @override
+  String get eventParticipants => 'المشاركون';
+
+  @override
+  String get eventSelectAll => 'اختيار الكل';
+
+  @override
+  String get eventSettingsTitle => 'إعدادات الفعالية';
+
+  @override
+  String get eventSettingsLoadFailed => 'تعذّر تحميل الإعدادات';
+
+  @override
+  String get eventNotFound => 'الفعالية غير موجودة';
+
+  @override
+  String get eventDetailsSection => 'تفاصيل الفعالية';
+
+  @override
+  String get eventNameEmpty => 'لا يمكن أن يكون اسم الفعالية فارغًا.';
+
+  @override
+  String get eventUpdated => 'تم تحديث الفعالية';
+
+  @override
+  String get eventSaveFailed => 'تعذّر حفظ التغييرات. أعد المحاولة.';
+
+  @override
+  String get eventNotSet => 'غير محدد';
+
+  @override
+  String get eventDescriptionLabel => 'الوصف';
+
+  @override
+  String get eventSaveChanges => 'حفظ التغييرات';
+
+  @override
+  String get eventDangerZone => 'منطقة الخطر';
+
+  @override
+  String get eventUnsettledWarning =>
+      'هذه الفعالية تحتوي على أرصدة غير مسوّاة.';
+
+  @override
+  String get eventDelete => 'حذف الفعالية';
+
+  @override
+  String get eventDeleteQuestion => 'حذف هذه الفعالية؟';
+
+  @override
+  String get eventDeleteBody =>
+      'سيؤدي هذا إلى حذف الفعالية نهائيًا مع كل مصاريفها وتسوياتها ونشاطها. لا يمكن التراجع.';
+
+  @override
+  String get eventDeleteBodyWithUnsettled =>
+      'سيؤدي هذا إلى حذف الفعالية نهائيًا مع كل مصاريفها وتسوياتها ونشاطها. لا يمكن التراجع.\n\nهذه الفعالية تحتوي على أرصدة غير مسوّاة. سوِّ الحساب قبل الحذف، أو تابع على أي حال.';
+
+  @override
+  String get eventKeepEvent => 'الإبقاء على الفعالية';
+
+  @override
+  String eventDeleteFailed(Object error) {
+    return 'تعذّر حذف الفعالية: $error';
+  }
+
+  @override
+  String get eventAddExpense => 'إضافة مصروف';
+
+  @override
+  String get eventYourBalance => 'رصيدك';
+
+  @override
+  String get eventYouAreOwed => 'مستحق لك';
+
+  @override
+  String get eventYouOwe => 'عليك دفع';
+
+  @override
+  String get eventAllSettled => 'تمت التسوية';
+
+  @override
+  String get eventNothingToSettleYet => 'لا شيء للتسوية بعد';
+
+  @override
+  String get eventEveryoneSquare => 'الجميع متوازن في هذه الرحلة.';
+
+  @override
+  String get eventAddFirstExpenseHint => 'أضف أول مصروف لبدء التقسيم.';
+
+  @override
+  String get eventBreakdownOwesYou => 'مدين لك';
+
+  @override
+  String get eventBreakdownYouOwe => 'أنت مدين';
+
+  @override
+  String get eventTripTotal => 'إجمالي الرحلة';
+
+  @override
+  String eventExpenseCountInline(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مصروف',
+      many: '$count مصروفًا',
+      few: '$count مصاريف',
+      two: 'مصروفان',
+      one: 'مصروف واحد',
+      zero: 'لا مصاريف',
+    );
+    return '· $_temp0';
+  }
+
+  @override
+  String get eventLedgerLink => 'الدفتر ←';
+
+  @override
+  String get eventRecent => 'الأحدث';
+
+  @override
+  String get eventSeeAll => 'عرض الكل ←';
+
+  @override
+  String get eventYouPaid => 'أنت دفعت';
+
+  @override
+  String eventPaidByName(Object name) {
+    return '$name دفع';
+  }
+
+  @override
+  String get eventAddFirstExpenseTitle => 'أضف أول مصروف';
+
+  @override
+  String get eventAddFirstExpenseBody => 'اختر من دفع، وقسّمه بعدل.';
+
+  @override
+  String eventPeopleOverline(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count شخص',
+      many: '$count شخصًا',
+      few: '$count أشخاص',
+      two: 'شخصان',
+      one: 'شخص واحد',
+      zero: 'لا أشخاص',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventSplittingBetweenYouAndOthers(int othersCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      othersCount,
+      locale: localeName,
+      other: 'التقسيم بينك وبين $othersCount شخص آخر',
+      many: 'التقسيم بينك وبين $othersCount شخصًا آخر',
+      few: 'التقسيم بينك وبين $othersCount أشخاص آخرين',
+      two: 'التقسيم بينك وبين شخصين آخرين',
+      one: 'التقسيم بينك وبين شخص آخر',
+      zero: 'التقسيم عليك فقط',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventYou => 'أنت';
+
+  @override
+  String eventDayOf(int currentDay, int totalDays) {
+    return 'اليوم $currentDay من $totalDays';
+  }
+
+  @override
+  String get eventLoadFailedTitle => 'تعذّر تحميل الفعالية';
+
+  @override
+  String get eventMissingMessage => 'ربما تم حذفها، أو أن الرابط غير صحيح.';
+
+  @override
+  String eventSemanticCard(Object eventName, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count شخص',
+      many: '$count شخصًا',
+      few: '$count أشخاص',
+      two: 'شخصان',
+      one: 'شخص واحد',
+      zero: 'لا أشخاص',
+    );
+    return '$eventName، $_temp0';
+  }
+
+  @override
+  String eventYouOweAmount(Object amount, Object currency) {
+    return 'أنت مدين $amount $currency';
+  }
+
+  @override
+  String eventYouAreOwedAmount(Object amount, Object currency) {
+    return 'مستحق لك $amount $currency';
+  }
+
+  @override
+  String get groupNameLabel => 'اسم المجموعة';
+
+  @override
+  String get groupNameHint => 'مثال: رحلة العائلة';
+
+  @override
+  String get groupYourNameInGroupLabel => 'اسمك في هذه المجموعة';
+
+  @override
+  String get groupYourNameHint => 'كما سيراك أصدقاؤك';
+
+  @override
+  String get groupDifferentNameHelper =>
+      'يمكنك استخدام اسم مختلف في كل مجموعة.';
+
+  @override
+  String groupCreateError(Object error) {
+    return 'خطأ: $error';
+  }
+
+  @override
+  String get groupNew => 'مجموعة جديدة';
+
+  @override
+  String get groupCreate => 'إنشاء';
+
+  @override
+  String get groupMoodTitle => 'من سيكون معك؟';
+
+  @override
+  String get groupMoodBody =>
+      'المجموعة هي دائرة أشخاص تتشاركون معهم المصاريف — بيت، فريق سفر، أو فريق مشروع.';
+
+  @override
+  String get groupGlyph => 'رمز المجموعة';
+
+  @override
+  String get groupDefaultCurrency => 'العملة الافتراضية';
+
+  @override
+  String get groupCreatorTitle => 'أنت المنشئ.';
+
+  @override
+  String get groupCreatorBody => 'بعد الإنشاء، شارك رمز الدعوة لإضافة الآخرين.';
+
+  @override
+  String get groupInviteCodeCopied => 'تم نسخ رمز الدعوة';
+
+  @override
+  String groupShareMessage(Object code) {
+    return 'انضم إلى مجموعتي على Rihla! استخدم الرمز $code للانضمام.';
+  }
+
+  @override
+  String groupShareSubject(Object name) {
+    return 'انضم إلى $name';
+  }
+
+  @override
+  String get groupShareCodeWithGroup => 'شارك هذا الرمز مع مجموعتك';
+
+  @override
+  String get groupCopyCode => 'نسخ الرمز';
+
+  @override
+  String get groupShare => 'مشاركة';
+
+  @override
+  String get groupJoinTitle => 'الانضمام إلى مجموعة';
+
+  @override
+  String get groupJoinCta => 'الانضمام';
+
+  @override
+  String get groupJoining => 'جارٍ الانضمام…';
+
+  @override
+  String get groupYourName => 'اسمك';
+
+  @override
+  String get groupJoinNameHint => 'كما ستراك المجموعة';
+
+  @override
+  String get groupInviteCode => 'رمز الدعوة';
+
+  @override
+  String get groupInviteCodeHelper =>
+      'اطلب من أحد أعضاء المجموعة رمزهم المكوّن من 6 أحرف';
+
+  @override
+  String get groupJoinHintTitle => 'سترى الأرصدة فورًا.';
+
+  @override
+  String get groupJoinHintBody =>
+      'الانضمام فوري — لا حاجة لموافقة إذا كان الرمز صحيحًا.';
+
+  @override
+  String get groupJoinMoodTitle => 'لديك دعوة؟';
+
+  @override
+  String get groupJoinMoodBody =>
+      'أدخل الرمز المكوّن من 6 أحرف الذي أعطاك إياه صديقك. سننقلك مباشرة إلى المجموعة.';
+
+  @override
+  String get groupJoinInvalidCode =>
+      'هذا الرمز لا يطابق أي مجموعة. تحقق من الرمز وحاول مرة أخرى.';
+
+  @override
+  String get groupJoinAlreadyMember => 'أنت موجود بالفعل في هذه المجموعة.';
+
+  @override
+  String get groupJoinTooManyAttempts => 'محاولات كثيرة جدًا. حاول لاحقًا.';
+
+  @override
+  String get groupJoinPleaseSignIn => 'سجّل الدخول وحاول مرة أخرى.';
+
+  @override
+  String get groupJoinFailed =>
+      'تعذّر الانضمام إلى المجموعة. تحقق من اتصالك وحاول مرة أخرى.';
+
+  @override
+  String get groupMemberJoinedDescription => 'انضم إلى المجموعة';
+
+  @override
+  String get groupMemberLeftDescription => 'غادر المجموعة';
+
+  @override
+  String get groupEvents => 'الفعاليات';
+
+  @override
+  String get groupMembers => 'الأعضاء';
+
+  @override
+  String get groupNoEventsTitle => 'لا توجد فعاليات بعد';
+
+  @override
+  String get groupNoEventsMessage => 'أنشئ أول فعالية لتبدؤوا التخطيط معًا.';
+
+  @override
+  String get groupCreateEvent => 'إنشاء فعالية';
+
+  @override
+  String get groupLoadEventsFailed => 'تعذّر تحميل الفعاليات';
+
+  @override
+  String groupMemberCountCaps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count عضو',
+      many: '$count عضوًا',
+      few: '$count أعضاء',
+      two: 'عضوان',
+      one: 'عضو واحد',
+      zero: 'لا أعضاء',
+    );
+    return 'مجموعة · $_temp0';
+  }
+
+  @override
+  String get groupMoreTooltip => 'المزيد';
+
+  @override
+  String get groupSettings => 'إعدادات المجموعة';
+
+  @override
+  String get groupActivity => 'النشاط';
+
+  @override
+  String get groupYourBalanceHere => 'رصيدك هنا';
+
+  @override
+  String get groupTheyOweYou => 'هم مدينون لك';
+
+  @override
+  String get groupYouOwe => 'أنت مدين';
+
+  @override
+  String get groupAllSettled => 'كل شيء مُسوّى';
+
+  @override
+  String get groupSettleUp => 'تسوية';
+
+  @override
+  String groupEventEnds(Object date) {
+    return 'ينتهي $date';
+  }
+
+  @override
+  String get groupYourShare => 'حصتك';
+
+  @override
+  String get groupNoShare => 'لا حصة';
+
+  @override
+  String get groupMembersLoadFailed => 'تعذّر تحميل الأعضاء';
+
+  @override
+  String get groupMembersLoading => 'جارٍ تحميل الأعضاء…';
+
+  @override
+  String get groupFormerMember => 'عضو سابق';
+
+  @override
+  String get groupRoleYou => 'أنت';
+
+  @override
+  String get groupRoleCreator => 'المنشئ';
+
+  @override
+  String get groupLoadFailedTitle => 'تعذّر تحميل المجموعة';
+
+  @override
+  String get groupNotFoundTitle => 'المجموعة غير موجودة';
+
+  @override
+  String get groupNotFoundMessage => 'ربما تم حذفها، أو أن الرابط غير صحيح.';
+
+  @override
+  String get groupBackHome => 'العودة للرئيسية';
+
+  @override
+  String get groupSettingsTitle => 'إعدادات المجموعة';
+
+  @override
+  String get groupDefaults => 'الافتراضيات';
+
+  @override
+  String get groupCurrency => 'العملة';
+
+  @override
+  String get groupDefaultSplit => 'التقسيم الافتراضي';
+
+  @override
+  String get groupDefaultSplitEqual => 'متساوٍ';
+
+  @override
+  String get groupReminders => 'التذكيرات';
+
+  @override
+  String get groupRemindersWeekly => 'أسبوعيًا';
+
+  @override
+  String get groupSettingsLoadFailed => 'تعذّر تحميل الإعدادات';
+
+  @override
+  String get groupTryAgain => 'حاول مرة أخرى';
+
+  @override
+  String get groupInvite => 'دعوة';
+
+  @override
+  String groupCreatedDateCurrency(Object date, Object currency) {
+    return 'أُنشئت $date · $currency';
+  }
+
+  @override
+  String get groupAnyoneWithCodeCanJoin => 'يمكن لأي شخص لديه الرمز الانضمام';
+
+  @override
+  String get groupEditNameSemantic => 'تعديل اسم المجموعة';
+
+  @override
+  String get groupCopyInviteCodeSemantic => 'نسخ رمز الدعوة';
+
+  @override
+  String get groupShowQrCodeSemantic => 'عرض رمز QR';
+
+  @override
+  String get groupShareInviteSemantic => 'مشاركة الدعوة';
+
+  @override
+  String get groupNameEmpty => 'لا يمكن أن يكون اسم المجموعة فارغًا.';
+
+  @override
+  String groupUpdateNameFailed(Object error) {
+    return 'تعذّر تحديث الاسم: $error';
+  }
+
+  @override
+  String get groupDangerZone => 'منطقة الخطر';
+
+  @override
+  String get groupDangerZoneCreatorOnly => 'منطقة الخطر · للمنشئ فقط';
+
+  @override
+  String get groupLeaveThisGroup => 'مغادرة هذه المجموعة';
+
+  @override
+  String get groupLeaveSubtitle => 'ستفقد الوصول إلى فعالياتها ومصاريفها.';
+
+  @override
+  String get groupLeave => 'مغادرة';
+
+  @override
+  String get groupDeleteThisGroup => 'حذف هذه المجموعة';
+
+  @override
+  String get groupDeleteSubtitle => 'ستفقد كل الفعاليات والمصاريف.';
+
+  @override
+  String get groupDelete => 'حذف';
+
+  @override
+  String get groupLeaveQuestion => 'مغادرة المجموعة؟';
+
+  @override
+  String get groupLeaveBody =>
+      'ستفقد الوصول إلى كل الفعاليات والبيانات في هذه المجموعة.';
+
+  @override
+  String get groupStayInGroup => 'البقاء في المجموعة';
+
+  @override
+  String get groupLeaveGroup => 'مغادرة المجموعة';
+
+  @override
+  String get groupSettleBeforeLeaving => 'سوِّ الحساب قبل مغادرة المجموعة.';
+
+  @override
+  String groupFailedLeave(Object error) {
+    return 'تعذّرت مغادرة المجموعة: $error';
+  }
+
+  @override
+  String get groupSettleBeforeDeleting =>
+      'يجب أن يسوّي كل الأعضاء الحساب قبل حذف المجموعة.';
+
+  @override
+  String groupFailedDelete(Object error) {
+    return 'تعذّر حذف المجموعة: $error';
+  }
+
+  @override
+  String get groupDeleteSheetTitle => 'حذف هذه المجموعة؟';
+
+  @override
+  String get groupDeleteSheetRemovesPrefix => 'سيحذف ';
+
+  @override
+  String groupDeleteSheetMembersBody(int count) {
+    return ' لكل الأعضاء وعددهم $count. سيتم مسح الفعاليات والمصاريف والأرصدة داخلها. ';
+  }
+
+  @override
+  String get groupDeleteSheetEveryoneBody =>
+      ' للجميع. سيتم مسح الفعاليات والمصاريف والأرصدة داخلها. ';
+
+  @override
+  String get groupDeleteSheetUndo => 'لا يمكن التراجع عن هذا.';
+
+  @override
+  String get groupDeleteSheetTypePrefix => 'اكتب ';
+
+  @override
+  String get groupDeleteSheetTypeSuffix => ' للتأكيد';
+
+  @override
+  String get groupDeleteSheetRetention =>
+      'تُحفظ نسخة لمدة 30 يومًا في حال غيّرت رأيك.';
+
+  @override
+  String get groupDeleteSheetConfirm => 'حذف المجموعة';
+
+  @override
+  String get groupScanToJoin => 'امسح للانضمام';
+
+  @override
+  String get groupInviteQrCode => 'رمز QR للدعوة';
+
+  @override
+  String get groupOrEnterCode => 'أو أدخل الرمز';
+
+  @override
+  String get groupCopyLink => 'نسخ الرابط';
+
+  @override
+  String get groupLinkCopied => 'تم نسخ الرابط';
+
+  @override
+  String groupShareInviteMessage(Object groupName, Object uri, Object code) {
+    return 'انضم إلى $groupName على Rihla: $uri أو استخدم الرمز $code.';
+  }
+
+  @override
+  String groupShareInviteSubject(Object groupName) {
+    return 'انضم إلى $groupName على Rihla';
+  }
+
+  @override
+  String get groupManage => 'إدارة';
+
+  @override
+  String groupRemoveMemberTooltip(Object name) {
+    return 'إزالة $name من المجموعة';
+  }
+
+  @override
+  String get groupRoleMember => 'عضو';
+
+  @override
+  String groupSettleWithBeforeRemoving(Object name) {
+    return 'سوِّ الحساب مع $name قبل إزالته.';
+  }
+
+  @override
+  String groupFailedRemoveMember(Object name, Object error) {
+    return 'تعذّرت إزالة $name: $error';
+  }
+
+  @override
+  String get onboardingBrandKicker => 'RIHLA · ر.ح.ل.ة';
+
+  @override
+  String get onboardingBrandHeadlineLead => 'رحلات،\nمحسوبة بـ\n';
+
+  @override
+  String get onboardingBrandHeadlineAccent => 'عناية';
+
+  @override
+  String get onboardingBrandHeadlineSuffix => '.';
+
+  @override
+  String get onboardingBrandBody =>
+      'دفتر سفر للأصدقاء والعائلات والفرق التي تريد أن تبقى الرحلة هي الذكرى — لا الحسابات.';
+
+  @override
+  String get onboardingBegin => 'ابدأ';
+
+  @override
+  String get onboardingHowTitle => 'ثلاث طرق\nترافقك بها.';
+
+  @override
+  String get onboardingHowGroupsTitle => 'مجموعات لمن تسافر معهم';
+
+  @override
+  String get onboardingHowGroupsBody =>
+      'فريق سفر، سكن مشترك، عائلة. الأشخاص يبقون؛ والفعاليات تأتي وتذهب.';
+
+  @override
+  String get onboardingHowEventsTitle => 'فعاليات للرحلات والخروج';
+
+  @override
+  String get onboardingHowEventsBody =>
+      'رحلات، عشاء، عطلات قصيرة. لكل واحدة غلاف، ونافذة تواريخ، ودفترها الخاص.';
+
+  @override
+  String get onboardingHowExpensesTitle => 'تقسيم المصاريف بثلاث ضغطات';
+
+  @override
+  String get onboardingHowExpensesBody =>
+      'بالتساوي، بالحصص، أو كما تريد. الحسابات تتم في الخلفية — وسوِّ متى أردت.';
+
+  @override
+  String get onboardingNext => 'التالي';
+
+  @override
+  String get onboardingSetupTitle => 'بعض الأشياء\nقبل أن نبدأ.';
+
+  @override
+  String get onboardingNameSection => 'بماذا نناديك؟';
+
+  @override
+  String get onboardingCurrencySection => 'عملة الصفحة الرئيسية';
+
+  @override
+  String get onboardingCurrencyHelper => 'يمكن لكل مجموعة تغيير ذلك لاحقًا.';
+
+  @override
+  String get onboardingNotificationsSection => 'الإشعارات';
+
+  @override
+  String get onboardingOpenRihla => 'فتح Rihla';
+
+  @override
+  String get onboardingNameHint => 'اسمك';
+
+  @override
+  String onboardingCurrencySemantics(Object currency) {
+    return 'عملة $currency';
+  }
+
+  @override
+  String get onboardingActivitySettlesTitle => 'النشاط والتسويات';
+
+  @override
+  String get onboardingActivitySettlesSubtitle =>
+      'عندما يضيف الأصدقاء أو يدفعون';
+
+  @override
+  String get onboardingWeeklyDigestTitle => 'ملخص أسبوعي';
+
+  @override
+  String get onboardingWeeklyDigestSubtitle => 'ملخص يوم الأحد';
+
+  @override
+  String get onboardingSkip => 'تخطي';
+
+  @override
+  String onboardingStepSemantics(int active, int count) {
+    return 'خطوة التعريف $active من $count';
+  }
+
+  @override
   String get expenseSuccessTitle => 'تم حفظ المصروف';
 
   @override
@@ -1171,4 +2308,147 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get expenseSuccessCategory => 'الفئة';
+
+  @override
+  String get commonNotFound => 'غير موجود';
+
+  @override
+  String get commonEmail => 'البريد الإلكتروني';
+
+  @override
+  String get commonEmailHintExample => 'you@example.com';
+
+  @override
+  String get authWelcomeBack => 'مرحبًا بعودتك';
+
+  @override
+  String get authRecoverTitle => 'الاستعادة عبر البريد الإلكتروني';
+
+  @override
+  String get authRecoverDescription =>
+      'أدخل البريد الإلكتروني الذي ربطته بجهازك القديم، وسنرسل لك رابط دخول بضغطة واحدة.';
+
+  @override
+  String get authRecoverSubmit => 'إرسال رابط الاستعادة';
+
+  @override
+  String get authErrorSendLink =>
+      'تعذّر إرسال الرابط. تحقق من اتصالك وحاول مرة أخرى.';
+
+  @override
+  String get authErrorAccountNotFound =>
+      'لم نجد حساب Rihla مرتبطًا بهذا البريد. تأكد من ربطه على جهازك السابق أولًا.';
+
+  @override
+  String get authErrorRateLimited =>
+      'محاولات كثيرة جدًا. انتظر بضع دقائق ثم حاول مرة أخرى.';
+
+  @override
+  String get authErrorOffline =>
+      'لا يوجد اتصال. تحقق من الإنترنت وحاول مرة أخرى.';
+
+  @override
+  String authErrorGeneric(Object code) {
+    return 'حدث خطأ ما ($code). يرجى المحاولة مرة أخرى.';
+  }
+
+  @override
+  String get authErrorEmailAlreadyLinked =>
+      'هذا البريد مرتبط بالفعل بحساب Rihla. استعد ذلك الحساب بدلًا من ذلك.';
+
+  @override
+  String get authErrorInvalidEmail => 'لا يبدو هذا بريدًا إلكترونيًا صالحًا.';
+
+  @override
+  String get authErrorEmailsDontMatch => 'البريدان غير متطابقين.';
+
+  @override
+  String get authLinkEmailTitle => 'اربط بريدك الإلكتروني';
+
+  @override
+  String get authLinkEmailHeading => 'حتى تتمكن من العودة';
+
+  @override
+  String get authLinkEmailDescription =>
+      'سنرسل لك رابط دخول بضغطة واحدة. إذا فقدت هاتفك أو مسحت بيانات التطبيق، أدخل البريد نفسه على جهاز جديد لاستعادة كل رحلاتك.';
+
+  @override
+  String get authLinkEmailConfirmLabel => 'تأكيد البريد الإلكتروني';
+
+  @override
+  String get authLinkEmailSubmit => 'إرسال الرابط';
+
+  @override
+  String get authLinkEmailPrivacyNote =>
+      'نستخدم بريدك فقط لاستعادة بيانات Rihla. لا نرسل رسائل تسويقية ولا نشاركه مع أحد.';
+
+  @override
+  String get authRecoverPendingTitle => 'تحقق من بريدك الوارد';
+
+  @override
+  String get authRecoverPendingDescriptionPrefix =>
+      'أرسلنا رابط تسجيل دخول إلى ';
+
+  @override
+  String get authRecoverPendingDescriptionSuffix =>
+      '. اضغط عليه على هذا الجهاز — سنستعيد رحلاتك تلقائيًا.';
+
+  @override
+  String get authLinkEmailSentDescriptionSuffix =>
+      '. اضغط عليه على هذا الجهاز لإكمال الربط.';
+
+  @override
+  String get authRecoverPendingSpamHint =>
+      'لم تجده؟ تحقق من مجلد البريد المزعج. الرابط صالح لمدة 24 ساعة.';
+
+  @override
+  String get authRecoverPendingLinkSeen =>
+      'وصلنا رابطك. انتظر لحظة — جارٍ الاستعادة الآن.';
+
+  @override
+  String get authRecoverPendingResendStatus => 'تم إرسال رابط جديد.';
+
+  @override
+  String authRecoverPendingResendErrorCode(Object code) {
+    return 'تعذّرت إعادة الإرسال ($code).';
+  }
+
+  @override
+  String get authRecoverPendingResendErrorGeneric =>
+      'تعذّرت إعادة الإرسال. حاول بعد قليل.';
+
+  @override
+  String get authRecoverPendingResendLink => 'إعادة إرسال الرابط';
+
+  @override
+  String authRecoverPendingResendCountdown(int seconds) {
+    return 'إعادة الإرسال خلال $seconds ث';
+  }
+
+  @override
+  String get authSignOutFirstTitle => 'هذا الجهاز قيد الاستخدام بالفعل';
+
+  @override
+  String get authSignOutFirstBody =>
+      'لاستعادة حساب آخر، ستفقد الرحلات والمصاريف الموجودة على هذا الجهاز. ستبقى في السحابة فقط إذا كانت مرتبطة ببريد إلكتروني آخر — وإلا فستصبح بلا مالك.';
+
+  @override
+  String get authSignOutFirstConfirm => 'تسجيل الخروج والمتابعة';
+
+  @override
+  String get groupSettleUpMissingTitle => 'هذه المجموعة لم تعد متاحة';
+
+  @override
+  String get groupSettleUpMissingMessage =>
+      'قد تكون قد أُزلت منها. اضغط أدناه للعودة إلى الرئيسية.';
+
+  @override
+  String groupSettleUpEventLabelFallback(Object suffix) {
+    return 'فعالية ...$suffix';
+  }
+
+  @override
+  String errorPageNotFound(Object location) {
+    return 'الصفحة غير موجودة: $location';
+  }
 }

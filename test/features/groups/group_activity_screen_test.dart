@@ -15,6 +15,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_activity_screen.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Test fixture data
@@ -48,6 +49,7 @@ GroupActivityLog _yesterdayActivity() => GroupActivityLog(
   actorId: 'uid-bob',
   actorName: 'Bob',
   description: 'created Camping Trip',
+  metadata: const {'eventName': 'Camping Trip'},
   timestamp: _atMidday(-1),
 );
 
@@ -117,6 +119,8 @@ Widget _buildActivityScreen({
     ],
     child: MaterialApp(
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: GroupActivityScreen(groupId: groupId),
     ),
   );
@@ -154,7 +158,12 @@ Widget _buildActivityRoute({
         groupId,
       ).overrideWith((ref) => Stream.value(_testGroup)),
     ],
-    child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
@@ -249,11 +258,7 @@ void main() {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
-        _buildActivityRoute(
-          groupId: 'grp-test',
-          fakeDb: fakeDb,
-          prefs: prefs,
-        ),
+        _buildActivityRoute(groupId: 'grp-test', fakeDb: fakeDb, prefs: prefs),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -356,8 +361,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Only settlement activity visible
-      expect(_richTextContaining('paid Bob'), findsOneWidget);
-      expect(_richTextContaining('Bob created a camping event'), findsNothing);
+      expect(_richTextContaining('recorded a settlement'), findsOneWidget);
+      expect(_richTextContaining('created an event'), findsNothing);
     });
 
     testWidgets('renders activity tile with actor name and description', (
@@ -373,6 +378,7 @@ void main() {
           actorId: 'uid1',
           actorName: 'Alice',
           description: 'Alice created Weekend Trip',
+          metadata: const {'eventName': 'Weekend Trip'},
           timestamp: DateTime.now(),
         ),
       ]);
@@ -442,6 +448,7 @@ void main() {
           actorId: 'uid-bob',
           actorName: 'Bob',
           description: 'created Weekend Hike',
+          metadata: const {'eventName': 'Weekend Hike'},
           timestamp: _atMidday(0),
         ),
         _memberActivity(), // member_joined
@@ -454,7 +461,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // All activities visible with default 'All' filter
-      expect(_richTextContaining('paid Bob'), findsOneWidget);
+      expect(_richTextContaining('recorded a settlement'), findsOneWidget);
       expect(_richTextContaining('created Weekend Hike'), findsOneWidget);
       expect(_richTextContaining('joined the group'), findsOneWidget);
     });

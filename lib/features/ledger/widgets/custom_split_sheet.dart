@@ -916,6 +916,7 @@ class _NumberInput extends StatelessWidget {
       child: TextField(
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textDirection: TextDirection.ltr,
         textAlign: TextAlign.right,
         inputFormatters: [
           LocalizedDecimalTextInputFormatter(decimalDigits: decimalDigits),

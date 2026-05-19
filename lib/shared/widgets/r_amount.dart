@@ -86,12 +86,12 @@ class RAmount extends StatelessWidget {
     final abs = v.abs();
     final formatted = abs.toStringAsFixed(decimalPlaces);
     final dotIndex = formatted.indexOf('.');
-    final wholePart = dotIndex == -1 ? formatted : formatted.substring(0, dotIndex);
+    final wholePart = dotIndex == -1
+        ? formatted
+        : formatted.substring(0, dotIndex);
     final decimalPart = dotIndex == -1 ? '' : formatted.substring(dotIndex);
 
-    final prefix = sign
-        ? (isPositive ? '+' : (isNegative ? _minus : ''))
-        : '';
+    final prefix = sign ? (isPositive ? '+' : (isNegative ? _minus : '')) : '';
 
     final codeStyle = AppTypography.mono(
       fontSize: size * 0.42,
@@ -122,9 +122,11 @@ class RAmount extends StatelessWidget {
         children: [
           if (codeText.isNotEmpty) TextSpan(text: codeText, style: codeStyle),
           TextSpan(text: wholePart, style: wholeStyle),
-          if (decimalPart.isNotEmpty) TextSpan(text: decimalPart, style: decimalStyle),
+          if (decimalPart.isNotEmpty)
+            TextSpan(text: decimalPart, style: decimalStyle),
         ],
       ),
+      textDirection: TextDirection.ltr,
       maxLines: 1,
       overflow: TextOverflow.visible,
       softWrap: false,

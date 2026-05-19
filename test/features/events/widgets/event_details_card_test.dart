@@ -3,6 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/events/widgets/event_details_card.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
+
+Widget _wrap(Widget child) => MaterialApp(
+  theme: AppTheme.lightTheme,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(body: Form(child: child)),
+);
 
 void main() {
   group('EventDetailsCard', () {
@@ -18,16 +26,13 @@ void main() {
 
     testWidgets('renders name field and date tiles', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
-            body: Form(
-              child: EventDetailsCard(
-                nameController: nameController,
-                startDate: null,
-                endDate: null,
-                onPickStartDate: () {},
-                onPickEndDate: () {},
-              ),
-            ),
+        _wrap(
+          EventDetailsCard(
+            nameController: nameController,
+            startDate: null,
+            endDate: null,
+            onPickStartDate: () {},
+            onPickEndDate: () {},
           ),
         ),
       );
@@ -40,16 +45,13 @@ void main() {
 
     testWidgets('shows formatted start date when provided', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
-            body: Form(
-              child: EventDetailsCard(
-                nameController: nameController,
-                startDate: DateTime(2026, 6, 15),
-                endDate: null,
-                onPickStartDate: () {},
-                onPickEndDate: () {},
-              ),
-            ),
+        _wrap(
+          EventDetailsCard(
+            nameController: nameController,
+            startDate: DateTime(2026, 6, 15),
+            endDate: null,
+            onPickStartDate: () {},
+            onPickEndDate: () {},
           ),
         ),
       );
@@ -58,21 +60,19 @@ void main() {
       expect(find.text('End date'), findsOneWidget);
     });
 
-    testWidgets('calls onPickStartDate when start date button tapped',
-        (tester) async {
+    testWidgets('calls onPickStartDate when start date button tapped', (
+      tester,
+    ) async {
       var startTapped = false;
 
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
-            body: Form(
-              child: EventDetailsCard(
-                nameController: nameController,
-                startDate: null,
-                endDate: null,
-                onPickStartDate: () => startTapped = true,
-                onPickEndDate: () {},
-              ),
-            ),
+        _wrap(
+          EventDetailsCard(
+            nameController: nameController,
+            startDate: null,
+            endDate: null,
+            onPickStartDate: () => startTapped = true,
+            onPickEndDate: () {},
           ),
         ),
       );
@@ -81,21 +81,19 @@ void main() {
       expect(startTapped, isTrue);
     });
 
-    testWidgets('calls onPickEndDate when end date button tapped',
-        (tester) async {
+    testWidgets('calls onPickEndDate when end date button tapped', (
+      tester,
+    ) async {
       var endTapped = false;
 
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
-            body: Form(
-              child: EventDetailsCard(
-                nameController: nameController,
-                startDate: null,
-                endDate: null,
-                onPickStartDate: () {},
-                onPickEndDate: () => endTapped = true,
-              ),
-            ),
+        _wrap(
+          EventDetailsCard(
+            nameController: nameController,
+            startDate: null,
+            endDate: null,
+            onPickStartDate: () {},
+            onPickEndDate: () => endTapped = true,
           ),
         ),
       );
@@ -108,7 +106,11 @@ void main() {
       final formKey = GlobalKey<FormState>();
 
       await tester.pumpWidget(
-        MaterialApp(theme: AppTheme.lightTheme, home: Scaffold(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
             body: Form(
               key: formKey,
               child: EventDetailsCard(

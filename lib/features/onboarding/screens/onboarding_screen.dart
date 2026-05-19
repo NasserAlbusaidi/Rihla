@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
@@ -20,11 +21,7 @@ import '../../../shared/widgets/wordmark_logo.dart';
 /// Persists results into [settingsProvider] and flips `onboardingComplete`
 /// before invoking [onComplete] (or `context.go('/home')` when null).
 class OnboardingScreen extends ConsumerStatefulWidget {
-  const OnboardingScreen({
-    super.key,
-    this.onComplete,
-    this.initialPage = 0,
-  });
+  const OnboardingScreen({super.key, this.onComplete, this.initialPage = 0});
 
   /// Called after the user finishes (or skips) onboarding. Defaults to
   /// `context.go(AppRoutes.home)` when null; injectable for tests.
@@ -114,10 +111,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         onPageChanged: (i) => setState(() => _page = i),
         children: [
           _BrandPage(onBegin: () => _goToPage(1)),
-          _HowPage(
-            onSkip: _finishOnboarding,
-            onNext: () => _goToPage(2),
-          ),
+          _HowPage(onSkip: _finishOnboarding, onNext: () => _goToPage(2)),
           _SetupPage(
             nameController: _nameController,
             selectedCurrency: _selectedCurrency,
@@ -154,7 +148,7 @@ class _BrandPage extends StatelessWidget {
         decoration: BoxDecoration(gradient: colors.headerGradient),
         child: SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               context.spacing.space24 + 4,
               context.spacing.space24,
               context.spacing.space24 + 4,
@@ -164,7 +158,7 @@ class _BrandPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Align(
-                  alignment: Alignment.topLeft,
+                  alignment: AlignmentDirectional.topStart,
                   child: WordmarkLogo(
                     size: 32,
                     color: colors.cardSurface,
@@ -173,7 +167,7 @@ class _BrandPage extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'RIHLA · ر.ح.ل.ة',
+                  context.l10n.onboardingBrandKicker,
                   style: AppTypography.mono(
                     fontSize: 10,
                     color: colors.cardSurface.withValues(alpha: 0.85),
@@ -194,8 +188,7 @@ class _BrandPage extends StatelessWidget {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 280),
                   child: Text(
-                    'A travel ledger for friends, families and crews who want '
-                    'the trip to be the memory — not the math.',
+                    context.l10n.onboardingBrandBody,
                     style: AppTypography.sans(
                       fontSize: 14,
                       color: colors.cardSurface.withValues(alpha: 0.88),
@@ -214,7 +207,7 @@ class _BrandPage extends StatelessWidget {
                       onDarkBackground: true,
                     ),
                     _SaffronCta(
-                      label: 'Begin',
+                      label: context.l10n.onboardingBegin,
                       onPressed: onBegin,
                       icon: Iconsax.arrow_right_3,
                     ),
@@ -246,12 +239,12 @@ class _BrandHeadline extends StatelessWidget {
       text: TextSpan(
         style: baseStyle,
         children: [
-          const TextSpan(text: 'Trips,\ntallied with\n'),
+          TextSpan(text: context.l10n.onboardingBrandHeadlineLead),
           TextSpan(
-            text: 'care',
+            text: context.l10n.onboardingBrandHeadlineAccent,
             style: baseStyle.copyWith(color: colors.primary),
           ),
-          const TextSpan(text: '.'),
+          TextSpan(text: context.l10n.onboardingBrandHeadlineSuffix),
         ],
       ),
     );
@@ -266,26 +259,23 @@ class _HowPage extends StatelessWidget {
   final VoidCallback onSkip;
   final VoidCallback onNext;
 
-  static const _rows = <_HowRow>[
+  List<_HowRow> _rows(BuildContext context) => [
     _HowRow(
       number: '01',
-      title: 'Groups for the people you travel with',
-      body:
-          'A travel crew, a roommates group, a family. People stay; events come and go.',
+      title: context.l10n.onboardingHowGroupsTitle,
+      body: context.l10n.onboardingHowGroupsBody,
       icon: Iconsax.profile_2user,
     ),
     _HowRow(
       number: '02',
-      title: 'Events for the trips & nights out',
-      body:
-          'Trips, dinners, weekends. Each gets a cover, a dates window, and its own ledger.',
+      title: context.l10n.onboardingHowEventsTitle,
+      body: context.l10n.onboardingHowEventsBody,
       icon: Iconsax.location,
     ),
     _HowRow(
       number: '03',
-      title: 'Expenses split in three taps',
-      body:
-          'Equally, by share, or however. Math happens in the background — settle when you like.',
+      title: context.l10n.onboardingHowExpensesTitle,
+      body: context.l10n.onboardingHowExpensesBody,
       icon: Iconsax.tick_circle,
     ),
   ];
@@ -299,7 +289,7 @@ class _HowPage extends StatelessWidget {
         children: [
           _StepHeader(label: '02 / 03', onSkip: onSkip),
           Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               context.spacing.space24 + 4,
               context.spacing.space24 + 4,
               context.spacing.space24 + 4,
@@ -309,7 +299,7 @@ class _HowPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Three ways\nit travels with you.',
+                  context.l10n.onboardingHowTitle,
                   style: AppTypography.display(
                     fontSize: 36,
                     color: colors.textPrimary,
@@ -330,14 +320,14 @@ class _HowPage extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(
+              padding: EdgeInsetsDirectional.fromSTEB(
                 context.spacing.space24,
                 context.spacing.space20 + 2,
                 context.spacing.space24,
                 context.spacing.space16,
               ),
               children: [
-                for (final row in _rows) ...[
+                for (final row in _rows(context)) ...[
                   _HowRowTile(row: row),
                   SizedBox(height: context.spacing.space20 + 2),
                 ],
@@ -345,7 +335,7 @@ class _HowPage extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               context.spacing.space24,
               0,
               context.spacing.space24,
@@ -357,7 +347,7 @@ class _HowPage extends StatelessWidget {
               children: [
                 const _OnboardingDots(active: 1, count: 3),
                 _PrimaryInkCta(
-                  label: 'Next',
+                  label: context.l10n.onboardingNext,
                   onPressed: onNext,
                   icon: Iconsax.arrow_right_3,
                 ),
@@ -490,14 +480,14 @@ class _SetupPage extends StatelessWidget {
         children: [
           _StepHeader(label: '03 / 03', onSkip: onSkip),
           Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               context.spacing.space24 + 4,
               context.spacing.space24 + 4,
               context.spacing.space24 + 4,
               0,
             ),
             child: Text(
-              'A few things\nbefore we begin.',
+              context.l10n.onboardingSetupTitle,
               style: AppTypography.display(
                 fontSize: 36,
                 color: colors.textPrimary,
@@ -508,18 +498,18 @@ class _SetupPage extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(
+              padding: EdgeInsetsDirectional.fromSTEB(
                 context.spacing.space24,
                 context.spacing.space24 + 2,
                 context.spacing.space24,
                 context.spacing.space16,
               ),
               children: [
-                const _SectionLabel(text: 'What should we call you?'),
+                _SectionLabel(text: context.l10n.onboardingNameSection),
                 SizedBox(height: context.spacing.space8 + 2),
                 _NameField(controller: nameController),
                 SizedBox(height: context.spacing.space24 - 2),
-                const _SectionLabel(text: 'Home currency'),
+                _SectionLabel(text: context.l10n.onboardingCurrencySection),
                 SizedBox(height: context.spacing.space8 + 2),
                 Wrap(
                   spacing: context.spacing.space8,
@@ -535,7 +525,7 @@ class _SetupPage extends StatelessWidget {
                 ),
                 SizedBox(height: context.spacing.space8),
                 Text(
-                  'Each group can override this later.',
+                  context.l10n.onboardingCurrencyHelper,
                   style: AppTypography.sans(
                     fontSize: 11,
                     // textMuted-decorative-justified: Caption beneath inline label — non-essential helper copy.
@@ -543,7 +533,9 @@ class _SetupPage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: context.spacing.space24 + 4),
-                const _SectionLabel(text: 'Notifications'),
+                _SectionLabel(
+                  text: context.l10n.onboardingNotificationsSection,
+                ),
                 SizedBox(height: context.spacing.space8 + 2),
                 _NotificationsCard(
                   activitySettlesOn: activitySettlesOn,
@@ -555,7 +547,7 @@ class _SetupPage extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               context.spacing.space24,
               0,
               context.spacing.space24,
@@ -567,7 +559,7 @@ class _SetupPage extends StatelessWidget {
               children: [
                 const _OnboardingDots(active: 2, count: 3),
                 _SaffronCta(
-                  label: 'Open Rihla',
+                  label: context.l10n.onboardingOpenRihla,
                   onPressed: submitting ? null : onOpenRihla,
                   icon: Iconsax.arrow_right_3,
                   loading: submitting,
@@ -614,7 +606,7 @@ class _NameField extends StatelessWidget {
       textInputAction: TextInputAction.done,
       style: AppTypography.sans(fontSize: 15, color: colors.textPrimary),
       decoration: InputDecoration(
-        hintText: 'Your name',
+        hintText: context.l10n.onboardingNameHint,
         // textMuted-decorative-justified: TextField hint placeholder — disappears once user types.
         hintStyle: AppTypography.sans(fontSize: 15, color: colors.textMuted),
         filled: true,
@@ -656,7 +648,7 @@ class _PillChip extends StatelessWidget {
     return Semantics(
       button: true,
       selected: active,
-      label: '$label currency',
+      label: context.l10n.onboardingCurrencySemantics(label),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(9999),
@@ -711,15 +703,15 @@ class _NotificationsCard extends StatelessWidget {
       child: Column(
         children: [
           _ToggleRow(
-            title: 'Activity & settles',
-            subtitle: 'When friends add or pay',
+            title: context.l10n.onboardingActivitySettlesTitle,
+            subtitle: context.l10n.onboardingActivitySettlesSubtitle,
             value: activitySettlesOn,
             onChanged: onActivitySettlesChange,
             divider: true,
           ),
           _ToggleRow(
-            title: 'Weekly digest',
-            subtitle: 'A Sunday summary',
+            title: context.l10n.onboardingWeeklyDigestTitle,
+            subtitle: context.l10n.onboardingWeeklyDigestSubtitle,
             value: weeklyDigestOn,
             onChanged: onWeeklyDigestChange,
             divider: false,
@@ -806,7 +798,7 @@ class _StepHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: EdgeInsets.fromLTRB(
+      padding: EdgeInsetsDirectional.fromSTEB(
         context.spacing.space24,
         context.spacing.space24,
         context.spacing.space16,
@@ -830,12 +822,10 @@ class _StepHeader extends StatelessWidget {
             style: TextButton.styleFrom(
               foregroundColor: colors.textSecondary,
               minimumSize: const Size(48, 36),
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacing.space8,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: context.spacing.space8),
             ),
             child: Text(
-              'Skip',
+              context.l10n.onboardingSkip,
               style: AppTypography.sans(
                 fontSize: 13,
                 color: colors.textSecondary,
@@ -865,20 +855,22 @@ class _OnboardingDots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final activeColor = onDarkBackground ? colors.cardSurface : colors.textPrimary;
+    final activeColor = onDarkBackground
+        ? colors.cardSurface
+        : colors.textPrimary;
     final inactiveColor = onDarkBackground
         ? colors.cardSurface.withValues(alpha: 0.30)
         : colors.rule2;
     return Semantics(
-      label: 'Onboarding step ${active + 1} of $count',
+      label: context.l10n.onboardingStepSemantics(active + 1, count),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           for (var i = 0; i < count; i++)
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(
-                right: i == count - 1 ? 0 : context.spacing.space4 + 2,
+              margin: EdgeInsetsDirectional.only(
+                end: i == count - 1 ? 0 : context.spacing.space4 + 2,
               ),
               width: i == active ? 22 : 6,
               height: 6,
@@ -909,6 +901,7 @@ class _SaffronCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     return ElevatedButton.icon(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -944,7 +937,7 @@ class _SaffronCta extends StatelessWidget {
         children: [
           Text(label),
           SizedBox(width: context.spacing.space8),
-          Icon(icon, size: 14),
+          Transform.scale(scaleX: isRtl ? -1 : 1, child: Icon(icon, size: 14)),
         ],
       ),
     );
@@ -965,6 +958,7 @@ class _PrimaryInkCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -988,7 +982,7 @@ class _PrimaryInkCta extends StatelessWidget {
         children: [
           Text(label),
           SizedBox(width: context.spacing.space8),
-          Icon(icon, size: 14),
+          Transform.scale(scaleX: isRtl ? -1 : 1, child: Icon(icon, size: 14)),
         ],
       ),
     );

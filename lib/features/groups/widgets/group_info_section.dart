@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../home/widgets/group_glyph.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
@@ -45,9 +47,9 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
     if (trimmed.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Group name can't be empty."),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(context.l10n.groupNameEmpty),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -71,7 +73,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update name: $e'),
+            content: Text(context.l10n.groupUpdateNameFailed(e.toString())),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -87,7 +89,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
       children: [
         _buildIdentityCard(),
         const SizedBox(height: 10),
-        const SettingsSectionHeader(title: 'Invite'),
+        SettingsSectionHeader(title: context.l10n.groupInvite),
         const SizedBox(height: 8),
         _buildInviteCodeCard(),
       ],
@@ -111,8 +113,9 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
             children: [
               GroupGlyph(name: widget.group.name, size: 44),
               if (widget.isCreator)
-                Positioned(
-                  right: -4,
+                Positioned.directional(
+                  textDirection: Directionality.of(context),
+                  end: -4,
                   bottom: -4,
                   child: GestureDetector(
                     key: GroupKeys.groupNameEditIcon,
@@ -138,7 +141,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                         Iconsax.edit_2,
                         size: 10,
                         color: context.colors.cardSurface,
-                        semanticLabel: 'Edit group name',
+                        semanticLabel: context.l10n.groupEditNameSemantic,
                       ),
                     ),
                   ),
@@ -170,7 +173,10 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
         ),
         const SizedBox(height: 2),
         Text(
-          'Created ${_formatCreated(widget.group.createdAt)} · ${widget.group.currency}',
+          context.l10n.groupCreatedDateCurrency(
+            _formatCreated(context, widget.group.createdAt),
+            widget.group.currency,
+          ),
           style: AppTypography.sans(
             fontSize: 12,
             color: context.colors.textSecondary,
@@ -230,7 +236,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Anyone with the code can join',
+            context.l10n.groupAnyoneWithCodeCanJoin,
             style: AppTypography.sans(
               fontSize: 12,
               color: context.colors.textSecondary,
@@ -256,16 +262,16 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
               _InviteIconButton(
                 key: GroupKeys.inviteCodeCopyButton,
                 icon: Iconsax.copy,
-                semanticLabel: 'Copy invite code',
+                semanticLabel: context.l10n.groupCopyInviteCodeSemantic,
                 onTap: () {
                   Clipboard.setData(
                     ClipboardData(text: widget.group.inviteCode),
                   );
                   HapticService.success();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Invite code copied'),
-                      duration: Duration(seconds: 2),
+                    SnackBar(
+                      content: Text(context.l10n.groupInviteCodeCopied),
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 },
@@ -273,7 +279,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
               const SizedBox(width: 6),
               _InviteIconButton(
                 icon: Iconsax.scan_barcode,
-                semanticLabel: 'Show QR code',
+                semanticLabel: context.l10n.groupShowQrCodeSemantic,
                 onTap: () {
                   HapticService.selection();
                   showGroupInviteQrSheet(context, group: widget.group);
@@ -282,13 +288,12 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
               const SizedBox(width: 6),
               _InviteIconButton(
                 icon: Iconsax.send_2,
-                semanticLabel: 'Share invite',
+                semanticLabel: context.l10n.groupShareInviteSemantic,
                 onTap: () {
                   HapticService.selection();
                   Share.share(
-                    'Join my group on Rihla! Use code '
-                    '${widget.group.inviteCode} to join.',
-                    subject: 'Join ${widget.group.name}',
+                    context.l10n.groupShareMessage(widget.group.inviteCode),
+                    subject: context.l10n.groupShareSubject(widget.group.name),
                   );
                 },
               ),
@@ -299,23 +304,8 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
     );
   }
 
-  static String _formatCreated(DateTime createdAt) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[createdAt.month - 1]} ${createdAt.day}';
-  }
+  static String _formatCreated(BuildContext context, DateTime createdAt) =>
+      formatShortMonthDay(context, createdAt);
 }
 
 class _InviteIconButton extends StatelessWidget {

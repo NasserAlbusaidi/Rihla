@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../extensions/build_context_l10n.dart';
 import 'tokens/domain_aliases.dart';
 
 /// Reusable error state widget for network/connection errors.
@@ -111,7 +112,7 @@ class NetworkErrorWidget extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Iconsax.refresh),
-                label: const Text('Retry'),
+                label: Text(context.l10n.commonRetry),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: context.colors.primary,
                   foregroundColor: Colors.white,
@@ -165,7 +166,10 @@ class InlineErrorWidget extends StatelessWidget {
             ),
           ),
           if (onRetry != null)
-            TextButton(onPressed: onRetry, child: const Text('Retry')),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(context.l10n.commonRetry),
+            ),
         ],
       ),
     );

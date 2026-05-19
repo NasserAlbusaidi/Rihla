@@ -14,6 +14,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -142,6 +143,8 @@ void main() {
         ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           routerConfig: router,
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../groups/models/group_member_model.dart';
 import '../keys/event_keys.dart';
@@ -44,7 +45,7 @@ class EventParticipantsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Participants',
+            context.l10n.eventParticipants,
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
@@ -53,14 +54,14 @@ class EventParticipantsCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Select All',
+                  context.l10n.eventSelectAll,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
               Checkbox(
                 key: EventKeys.selectAllButton,
-                value: members.isNotEmpty &&
-                    selectedIds.length == members.length,
+                value:
+                    members.isNotEmpty && selectedIds.length == members.length,
                 checkColor: Colors.white,
                 fillColor: WidgetStateProperty.resolveWith(
                   (states) => states.contains(WidgetState.selected)
@@ -68,10 +69,10 @@ class EventParticipantsCard extends StatelessWidget {
                       : null,
                 ),
                 onChanged: (v) {
-                  final allIds =
-                      Set<String>.from(members.map((m) => m.userId));
+                  final allIds = Set<String>.from(members.map((m) => m.userId));
                   onSelectAllChanged(
-                      Set.unmodifiable(v == true ? allIds : <String>{}));
+                    Set.unmodifiable(v == true ? allIds : <String>{}),
+                  );
                 },
               ),
             ],

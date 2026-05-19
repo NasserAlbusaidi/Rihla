@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -42,7 +43,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
     final formatError = validateEmail(input);
     if (formatError != null) return formatError;
     if (normalizeEmail(input ?? '') != normalizeEmail(_emailController.text)) {
-      return "Emails don't match.";
+      return context.l10n.authErrorEmailsDontMatch;
     }
     return null;
   }
@@ -64,33 +65,32 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
       );
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
-      setState(() => _serverError = _humanizeError(error));
+      setState(() => _serverError = _humanizeError(context, error));
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _serverError =
-            "Couldn't send the link. Check your connection and try again.";
+        _serverError = context.l10n.authErrorSendLink;
       });
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
-  String _humanizeError(FirebaseAuthException error) {
+  String _humanizeError(BuildContext context, FirebaseAuthException error) {
+    final l10n = context.l10n;
     switch (error.code) {
       case 'credential-already-in-use':
       case 'email-already-in-use':
       case 'provider-already-linked':
-        return 'This email is already linked to a Rihla account. '
-            'Restore from that account instead.';
+        return l10n.authErrorEmailAlreadyLinked;
       case 'invalid-email':
-        return "That doesn't look like a valid email.";
+        return l10n.authErrorInvalidEmail;
       case 'too-many-requests':
-        return 'Too many attempts. Wait a few minutes and try again.';
+        return l10n.authErrorRateLimited;
       case 'network-request-failed':
-        return 'No connection. Check your internet and try again.';
+        return l10n.authErrorOffline;
       default:
-        return 'Something went wrong (${error.code}). Please try again.';
+        return l10n.authErrorGeneric(error.code);
     }
   }
 
@@ -114,6 +114,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: colors.scaffoldBackground,
       appBar: AppBar(
@@ -124,7 +125,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
           onPressed: _back,
         ),
         title: Text(
-          'Link your email',
+          l10n.authLinkEmailTitle,
           style: AppTypography.sans(
             fontSize: 17,
             fontWeight: FontWeight.w700,
@@ -139,7 +140,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             children: [
               Text(
-                'So you can come back',
+                l10n.authLinkEmailHeading,
                 style: AppTypography.sans(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -148,9 +149,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                "We'll email you a one-tap sign-in link. If you ever lose "
-                'your phone or clear app data, enter the same email on a new '
-                'device to get all your trips back.',
+                l10n.authLinkEmailDescription,
                 style: AppTypography.sans(
                   fontSize: 14,
                   color: colors.textSecondary,
@@ -166,9 +165,9 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                 enableSuggestions: false,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'you@example.com',
+                decoration: InputDecoration(
+                  labelText: l10n.commonEmail,
+                  hintText: l10n.commonEmailHintExample,
                 ),
                 validator: validateEmail,
               ),
@@ -180,7 +179,9 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                 enableSuggestions: false,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(labelText: 'Confirm email'),
+                decoration: InputDecoration(
+                  labelText: l10n.authLinkEmailConfirmLabel,
+                ),
                 validator: _validateConfirm,
                 onFieldSubmitted: (_) => _send(),
               ),
@@ -192,8 +193,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Your email is used only to restore your Rihla data. '
-                  "We don't send marketing email and we don't share it.",
+                  l10n.authLinkEmailPrivacyNote,
                   style: AppTypography.sans(
                     fontSize: 12,
                     color: colors.textSecondary,
@@ -225,7 +225,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                           height: 22,
                           child: CircularProgressIndicator(strokeWidth: 2.5),
                         )
-                      : const Text('Send link'),
+                      : Text(l10n.authLinkEmailSubmit),
                 ),
               ),
             ],

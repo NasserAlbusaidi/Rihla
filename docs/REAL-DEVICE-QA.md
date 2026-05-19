@@ -46,7 +46,7 @@ Pass criteria (default — full iOS + Android gate):
 - Firebase platform files are present:
   - `android/app/google-services.json`
   - `ios/Runner/GoogleService-Info.plist`
-- Every RD-01 through RD-08 row below has an iOS result starting with `Pass`,
+- Every RD-01 through RD-09 row below has an iOS result starting with `Pass`,
   an Android result starting with `Pass`, and evidence that replaces the
   placeholder text.
 
@@ -55,7 +55,7 @@ Pass criteria (with `RIHLA_SKIP_IOS_QA=yes` — v1.2 Android-only):
 - At least one physical Android device is listed.
 - iOS device absence reported as INFO.
 - `config.json` and Firebase platform files as above.
-- Every RD-01 through RD-08 row has an Android result starting with `Pass`,
+- Every RD-01 through RD-09 row has an Android result starting with `Pass`,
   an iOS result starting with `Pass` or `Deferred`, and concrete Android
   evidence in the Evidence cell.
 
@@ -99,6 +99,7 @@ a group ID, invite code, screenshot filename, or Firestore document path.
 | RD-06 | Offline and reconnect | Deferred — v1.2 Android-only |  | Before/after screenshots |
 | RD-07 | Notification opt-in | Deferred — v1.2 Android-only |  | `fcm_tokens/{uid}` exists |
 | RD-08 | Notification opt-out | Deferred — v1.2 Android-only |  | `fcm_tokens/{uid}` removed |
+| RD-09 | Arabic RTL golden path | Deferred — v1.2 Android-only |  | Arabic RTL screenshots and golden-path log |
 
 ## RD-01: Create Group
 
@@ -207,6 +208,35 @@ Pass criteria:
 - The in-app toggle stays disabled.
 - The token document for the current anonymous UID is removed.
 - Reopening the app does not recreate the token while the setting is off.
+
+## RD-09: Arabic RTL Golden Path
+
+Run this after the Arabic localization PR stack lands on the build under test.
+
+1. Install a production-Firebase build on a physical Android device.
+2. Switch the app language to Arabic from Profile, or start from a fresh
+   install whose settings are already seeded to Arabic.
+3. Walk the same core flow as `integration_test/golden_path_arabic_test.dart`:
+   Home, Activity tab, Profile tab, create group, create event, add expense,
+   and ledger.
+4. Capture screenshots for Home, Activity, Group Detail, Event Type Picker,
+   Create Event, Add Expense, and Ledger.
+5. While navigating, watch route motion, back arrows, row chevrons, the Rihla
+   wordmark flourish, route mark artwork, loading shimmer direction, and step
+   dots.
+
+Pass criteria:
+
+- Home bottom navigation, Activity, Profile, Groups, Events, and Ledger render
+  Arabic copy with no English UI islands except brand text, stored names,
+  invite codes, URLs, currency codes, and free-form user content.
+- Directional controls point the right way in RTL; custom-drawn marks do not
+  read backwards.
+- Shared-axis transitions feel spatially correct in RTL: forward navigation
+  enters from the start edge and back navigation returns toward the end edge.
+- Invite codes, URLs, and currency codes remain visually LTR and readable.
+- The Arabic golden-path integration log completes without render exceptions
+  on the same build.
 
 ## Resolved on `fix/post-launch-qa-v1.2`
 

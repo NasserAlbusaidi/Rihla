@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
@@ -15,6 +17,7 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
+import '../../events/utils/event_display.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -108,7 +111,7 @@ class _Content extends ConsumerWidget {
         slivers: [
           SliverToBoxAdapter(child: _CoverHeader(group: group)),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 0),
             sliver: SliverToBoxAdapter(
               child: _BalanceCard(
                 group: group,
@@ -130,8 +133,8 @@ class _Content extends ConsumerWidget {
           SliverToBoxAdapter(
             child: SectionHeader(
               key: GroupKeys.eventsSection,
-              title: 'Events',
-              actionLabel: 'New event',
+              title: context.l10n.groupEvents,
+              actionLabel: context.l10n.eventNew,
               onActionTap: () =>
                   GoRouter.of(context).push('/group/${group.id}/create-event'),
             ),
@@ -148,10 +151,10 @@ class _Content extends ConsumerWidget {
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: SectionHeader(
               key: GroupKeys.membersAndBalancesSection,
-              title: 'Members',
+              title: context.l10n.groupMembers,
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
@@ -187,9 +190,9 @@ class _Content extends ConsumerWidget {
               child: EmptyStateView(
                 key: GroupKeys.noEventsEmpty,
                 icon: Iconsax.calendar_add,
-                title: 'No events yet',
-                message: 'Create your first event to start planning together.',
-                actionLabel: 'Create Event',
+                title: context.l10n.groupNoEventsTitle,
+                message: context.l10n.groupNoEventsMessage,
+                actionLabel: context.l10n.groupCreateEvent,
                 onAction: () =>
                     GoRouter.of(context).push('/group/$groupId/create-event'),
               ),
@@ -218,7 +221,7 @@ class _Content extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Text(
-            "Couldn't load events",
+            context.l10n.groupLoadEventsFailed,
             style: AppTypography.sans(
               fontSize: 13,
               color: context.colors.textSecondary,
@@ -261,15 +264,18 @@ class _CoverHeader extends StatelessWidget {
             ),
           ),
           // Top buttons row.
-          Positioned(
+          Positioned.directional(
+            textDirection: Directionality.of(context),
             top: statusBar + 8,
-            left: 12,
-            right: 12,
+            start: 12,
+            end: 12,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _PaperIconButton(
-                  icon: Iconsax.arrow_left,
+                  icon: Directionality.of(context) == TextDirection.rtl
+                      ? Iconsax.arrow_right
+                      : Iconsax.arrow_left,
                   onTap: () {
                     HapticService.lightClick();
                     final router = GoRouter.of(context);
@@ -285,15 +291,16 @@ class _CoverHeader extends StatelessWidget {
             ),
           ),
           // Bottom title block.
-          Positioned(
-            left: 20,
-            right: 20,
+          Positioned.directional(
+            textDirection: Directionality.of(context),
+            start: 20,
+            end: 20,
             top: statusBar + 56,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'GROUP · $memberCount MEMBER${memberCount == 1 ? '' : 'S'}',
+                  context.l10n.groupMemberCountCaps(memberCount),
                   style: AppTypography.mono(
                     fontSize: 9,
                     color: context.colors.textOnPrimary.withValues(alpha: 0.85),
@@ -371,7 +378,7 @@ class _OverflowMenu extends StatelessWidget {
         color: Colors.transparent,
         shape: const CircleBorder(),
         child: PopupMenuButton<String>(
-          tooltip: 'More',
+          tooltip: context.l10n.groupMoreTooltip,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(spacing.radiusLarge),
           ),
@@ -405,7 +412,7 @@ class _OverflowMenu extends StatelessWidget {
                 children: [
                   Icon(Iconsax.setting_2, size: 16, color: colors.textPrimary),
                   const SizedBox(width: 10),
-                  const Text('Group settings'),
+                  Text(context.l10n.groupSettings),
                 ],
               ),
             ),
@@ -415,7 +422,7 @@ class _OverflowMenu extends StatelessWidget {
                 children: [
                   Icon(Iconsax.activity, size: 16, color: colors.textPrimary),
                   const SizedBox(width: 10),
-                  const Text('Activity'),
+                  Text(context.l10n.groupActivity),
                 ],
               ),
             ),
@@ -460,10 +467,10 @@ class _BalanceCard extends StatelessWidget {
         ? colors.error
         : colors.textSecondary;
     final captionText = isPositive
-        ? 'they owe you'
+        ? context.l10n.groupTheyOweYou
         : isNegative
-        ? 'you owe'
-        : 'all settled';
+        ? context.l10n.groupYouOwe
+        : context.l10n.groupAllSettled;
 
     return Container(
       decoration: BoxDecoration(
@@ -481,7 +488,7 @@ class _BalanceCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Your balance here',
+                  context.l10n.groupYourBalanceHere,
                   style: AppTypography.display(
                     fontSize: 14,
                     color: colors.textSecondary,
@@ -521,14 +528,14 @@ class _BalanceCard extends StatelessWidget {
               Expanded(
                 child: _PrimaryCtaButton(
                   icon: Iconsax.add,
-                  label: 'New event',
+                  label: context.l10n.eventNew,
                   onTap: onAddPrimary,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _SecondaryCtaButton(
-                  label: 'Settle up',
+                  label: context.l10n.groupSettleUp,
                   buttonKey: GroupKeys.settleUpCta,
                   onTap: onSettleUp,
                 ),
@@ -646,8 +653,8 @@ class _EventRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final spacing = context.spacing;
-    final dateLabel = _formatDates(event.startDate, event.endDate);
-    final subtitle = dateLabel ?? _eventTypeLabel(event.type);
+    final dateLabel = _formatDates(context, event.startDate, event.endDate);
+    final subtitle = dateLabel ?? _eventTypeLabel(context, event.type);
     final share = userShare ?? Decimal.zero;
     final hasShare = share != Decimal.zero;
 
@@ -675,7 +682,7 @@ class _EventRow extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _eventTypeLabel(event.type),
+                        _eventTypeLabel(context, event.type),
                         style: AppTypography.mono(
                           fontSize: 9,
                           color: colors.textSecondary,
@@ -726,7 +733,9 @@ class _EventRow extends StatelessWidget {
                       ),
                     const SizedBox(height: 2),
                     Text(
-                      hasShare ? 'your share' : 'no share',
+                      hasShare
+                          ? context.l10n.groupYourShare
+                          : context.l10n.groupNoShare,
                       style: AppTypography.sans(
                         fontSize: 11,
                         color: colors.textSecondary,
@@ -746,40 +755,24 @@ class _EventRow extends StatelessWidget {
     );
   }
 
-  static String? _formatDates(DateTime? start, DateTime? end) {
-    String fmt(DateTime d) => '${_monthShort(d.month)} ${d.day}';
-    if (start != null && end != null) return '${fmt(start)} — ${fmt(end)}';
-    if (start != null) return fmt(start);
-    if (end != null) return 'ends ${fmt(end)}';
+  static String? _formatDates(
+    BuildContext context,
+    DateTime? start,
+    DateTime? end,
+  ) {
+    if (start != null && end != null) {
+      return formatDateRangeShort(context, start, end);
+    }
+    if (start != null) return formatShortMonthDay(context, start);
+    if (end != null) {
+      return context.l10n.groupEventEnds(formatShortMonthDay(context, end));
+    }
     return null;
   }
 }
 
-String _eventTypeLabel(EventType t) {
-  return switch (t) {
-    EventType.trip => 'TRIP',
-    EventType.camping => 'CAMPING',
-    EventType.travel => 'TRAVEL',
-    EventType.nightDayOut => 'NIGHT/DAY OUT',
-    EventType.custom => 'EVENT',
-  };
-}
-
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-String _monthShort(int m) => _months[m - 1];
+String _eventTypeLabel(BuildContext context, EventType t) =>
+    t.localizedShortLabel(context.l10n);
 
 // ──────────────────────────── Members card
 
@@ -809,7 +802,9 @@ class _MembersCard extends StatelessWidget {
           boxShadow: context.shadows.raised,
         ),
         child: Text(
-          balancesAsync.hasError ? "Couldn't load members" : 'Loading members…',
+          balancesAsync.hasError
+              ? context.l10n.groupMembersLoadFailed
+              : context.l10n.groupMembersLoading,
           style: AppTypography.sans(fontSize: 13, color: colors.textSecondary),
         ),
       );
@@ -830,8 +825,9 @@ class _MembersCard extends StatelessWidget {
               name:
                   balances[i].displayName ??
                   data.memberNames[balances[i].participantId] ??
-                  'Former member',
+                  context.l10n.groupFormerMember,
               role: _roleFor(
+                context: context,
                 participantId: balances[i].participantId,
                 creatorId: group.createdBy,
                 currentUid: currentUid,
@@ -848,12 +844,15 @@ class _MembersCard extends StatelessWidget {
   }
 
   static String? _roleFor({
+    required BuildContext context,
     required String participantId,
     required String creatorId,
     required String? currentUid,
   }) {
-    if (currentUid != null && participantId == currentUid) return 'You';
-    if (participantId == creatorId) return 'Creator';
+    if (currentUid != null && participantId == currentUid) {
+      return context.l10n.groupRoleYou;
+    }
+    if (participantId == creatorId) return context.l10n.groupRoleCreator;
     return null;
   }
 }
@@ -977,9 +976,9 @@ class _ErrorState extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
-            title: 'Could not load group',
-            message: 'Check your connection and try again.',
-            actionLabel: 'Retry',
+            title: context.l10n.groupLoadFailedTitle,
+            message: context.l10n.activityLoadFailedMessage,
+            actionLabel: context.l10n.commonRetry,
             onAction: onRetry,
           ),
         ),
@@ -1000,9 +999,9 @@ class _NotFoundState extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: EmptyStateView(
             icon: Iconsax.box_remove,
-            title: 'Group not found',
-            message: 'It may have been deleted, or the link is incorrect.',
-            actionLabel: 'Back home',
+            title: context.l10n.groupNotFoundTitle,
+            message: context.l10n.groupNotFoundMessage,
+            actionLabel: context.l10n.groupBackHome,
             onAction: () => GoRouter.of(context).go('/home'),
           ),
         ),

@@ -25,26 +25,47 @@ bool _hasControlChar(String s) {
   return false;
 }
 
-/// Returns a user-facing error message, or `null` if [input] is a valid
-/// display / group / event name.
-///
-/// Suitable for direct use as a `TextFormField.validator`.
-String? validateDisplayName(String? input) {
+enum DisplayNameValidationError {
+  empty,
+  tooLong,
+  controlCharacter,
+  reservedWording,
+}
+
+/// Returns the validation error for [input], or `null` if it is valid.
+DisplayNameValidationError? displayNameValidationError(String? input) {
   final raw = input ?? '';
   final trimmed = raw.trim();
   if (trimmed.isEmpty) {
-    return "Name can't be empty.";
+    return DisplayNameValidationError.empty;
   }
   if (trimmed.length > kDisplayNameMaxLength) {
-    return 'Keep it to $kDisplayNameMaxLength characters or fewer.';
+    return DisplayNameValidationError.tooLong;
   }
   if (_hasControlChar(raw)) {
-    return 'Remove line breaks or special characters.';
+    return DisplayNameValidationError.controlCharacter;
   }
   if (trimmed.endsWith(_reservedFormerMemberSuffix)) {
-    return 'That name uses reserved wording.';
+    return DisplayNameValidationError.reservedWording;
   }
   return null;
+}
+
+/// Returns a user-facing English error message, or `null` if [input] is valid.
+///
+/// Suitable for direct use as a `TextFormField.validator` in non-localized
+/// contexts. Localized widgets should use `validateDisplayNameLocalized`.
+String? validateDisplayName(String? input) {
+  return switch (displayNameValidationError(input)) {
+    DisplayNameValidationError.empty => "Name can't be empty.",
+    DisplayNameValidationError.tooLong =>
+      'Keep it to $kDisplayNameMaxLength characters or fewer.',
+    DisplayNameValidationError.controlCharacter =>
+      'Remove line breaks or special characters.',
+    DisplayNameValidationError.reservedWording =>
+      'That name uses reserved wording.',
+    null => null,
+  };
 }
 
 /// Collapses runs of internal whitespace and trims edges. Use before

@@ -37,9 +37,41 @@ void main() {
     expect(find.text('12'), findsOneWidget);
     expect(find.text('.345'), findsOneWidget);
   });
+
+  testWidgets('renders decimal fraction left-to-right under Arabic locale', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester, locale: const Locale('ar'));
+
+    await tester.enterText(find.byType(TextField).first, '٠٫٥');
+    await tester.pump();
+
+    final fractionText = find.text('.5');
+    expect(fractionText, findsOneWidget);
+    expect(Directionality.of(tester.element(fractionText)), TextDirection.ltr);
+  });
+
+  testWidgets('selects the default zero when amount field is focused', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester);
+
+    final amountField = tester.widget<TextField>(find.byType(TextField).first);
+
+    await tester.tap(find.byType(TextField).first);
+    await tester.pump();
+
+    expect(
+      amountField.controller?.selection,
+      const TextSelection(baseOffset: 0, extentOffset: 1),
+    );
+  });
 }
 
-Future<void> _pumpAddExpenseScreen(WidgetTester tester) async {
+Future<void> _pumpAddExpenseScreen(
+  WidgetTester tester, {
+  Locale locale = const Locale('en'),
+}) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   await tester.pumpWidget(
@@ -55,6 +87,7 @@ Future<void> _pumpAddExpenseScreen(WidgetTester tester) async {
         ).overrideWith((ref) => Stream.value(_categories)),
       ],
       child: MaterialApp(
+        locale: locale,
         theme: AppTheme.lightTheme,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

@@ -14,6 +14,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   testWidgets('renders current day badge when event is in progress', (
@@ -64,11 +65,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _wrap(
-          event: event,
-          expenses: [expense],
-          balances: _settledBalances,
-        ),
+        _wrap(event: event, expenses: [expense], balances: _settledBalances),
       );
       await tester.pumpAndSettle();
 
@@ -93,11 +90,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      _wrap(
-        event: event,
-        expenses: [expense],
-        balances: _userOwedBalances,
-      ),
+      _wrap(event: event, expenses: [expense], balances: _userOwedBalances),
     );
     await tester.pumpAndSettle();
 
@@ -120,11 +113,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      _wrap(
-        event: event,
-        expenses: [expense],
-        balances: _userOwingBalances,
-      ),
+      _wrap(event: event, expenses: [expense], balances: _userOwingBalances),
     );
     await tester.pumpAndSettle();
 
@@ -217,12 +206,12 @@ Widget _wrap({
   return ProviderScope(
     overrides: [
       currentUserIdProvider.overrideWithValue('uid-1'),
-      eventDetailProvider(eventRef).overrideWith(
-        (_) => Stream<Event?>.value(event),
-      ),
-      groupDetailProvider(event.groupId).overrideWith(
-        (_) => Stream<Group?>.value(_group),
-      ),
+      eventDetailProvider(
+        eventRef,
+      ).overrideWith((_) => Stream<Event?>.value(event)),
+      groupDetailProvider(
+        event.groupId,
+      ).overrideWith((_) => Stream<Group?>.value(_group)),
       eventExpensesProvider(
         eventRef,
       ).overrideWith((_) => Stream.value(expenses)),
@@ -230,15 +219,16 @@ Widget _wrap({
         eventRef,
       ).overrideWith((_) => Stream.value(const [])),
       if (balances != null)
-        eventBalancesProvider((eventRef: eventRef, event: event))
-            .overrideWith((_) => AsyncValue.data(balances)),
+        eventBalancesProvider((
+          eventRef: eventRef,
+          event: event,
+        )).overrideWith((_) => AsyncValue.data(balances)),
     ],
     child: MaterialApp(
       theme: AppTheme.lightTheme,
-      home: EventCommandCenter(
-        groupId: event.groupId,
-        eventId: event.id,
-      ),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: EventCommandCenter(groupId: event.groupId, eventId: event.id),
     ),
   );
 }
@@ -255,9 +245,8 @@ Future<void> _pumpEventHubRouter(
     routes: [
       GoRoute(
         path: '/group/:gid',
-        builder: (_, state) => Scaffold(
-          body: Text('GroupRoute:${state.pathParameters['gid']}'),
-        ),
+        builder: (_, state) =>
+            Scaffold(body: Text('GroupRoute:${state.pathParameters['gid']}')),
         routes: [
           GoRoute(
             path: 'event/:eid',
@@ -285,9 +274,7 @@ Future<void> _pumpEventHubRouter(
               GoRoute(
                 path: 'settings',
                 builder: (_, state) => Scaffold(
-                  body: Text(
-                    'SettingsRoute:${state.pathParameters['eid']}',
-                  ),
+                  body: Text('SettingsRoute:${state.pathParameters['eid']}'),
                 ),
               ),
             ],
@@ -302,12 +289,12 @@ Future<void> _pumpEventHubRouter(
     ProviderScope(
       overrides: [
         currentUserIdProvider.overrideWithValue('uid-1'),
-        eventDetailProvider(eventRef).overrideWith(
-          (_) => Stream<Event?>.value(event),
-        ),
-        groupDetailProvider(event.groupId).overrideWith(
-          (_) => Stream<Group?>.value(_group),
-        ),
+        eventDetailProvider(
+          eventRef,
+        ).overrideWith((_) => Stream<Event?>.value(event)),
+        groupDetailProvider(
+          event.groupId,
+        ).overrideWith((_) => Stream<Group?>.value(_group)),
         eventExpensesProvider(
           eventRef,
         ).overrideWith((_) => Stream.value(expenses)),
@@ -315,11 +302,15 @@ Future<void> _pumpEventHubRouter(
           eventRef,
         ).overrideWith((_) => Stream.value(const [])),
         if (balances != null)
-          eventBalancesProvider((eventRef: eventRef, event: event))
-              .overrideWithValue(AsyncValue.data(balances)),
+          eventBalancesProvider((
+            eventRef: eventRef,
+            event: event,
+          )).overrideWithValue(AsyncValue.data(balances)),
       ],
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: router,
       ),
     ),
