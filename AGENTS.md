@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Overview
 
-Rihla ("Journey") is a Flutter mobile app for group and event coordination. Package name is `safar`, Android ID is `com.safar.safar`. Current version: **1.2.0+15**. Backend is Firebase-only: Firestore, Firebase Auth (anon + optional email-link recovery), Cloud Functions (Node 20 / TypeScript), FCM, and App Check — **no Storage SDK use** (protected media, when needed, routes through Cloud Functions). The app keeps SQLite caches for fast local reads while relying on Firestore offline persistence for queued writes.
+Rihla ("Journey") is a Flutter mobile app for group and event coordination. Package name is `safar`, Android ID is `com.safar.safar`. Current version: **1.2.0+16**. Backend is Firebase-only: Firestore, Firebase Auth (anon + optional email-link recovery), Cloud Functions (Node 20 / TypeScript), FCM, and App Check — **no Storage SDK use** (protected media, when needed, routes through Cloud Functions). The app keeps SQLite caches for fast local reads while relying on Firestore offline persistence for queued writes.
 
 v1.2.0+15 backend additions: `joinGroupByInviteCode` now fans the joiner into existing event `participantIds` server-side; new `cleanupAnonUidArtifacts` callable scrubs anon-UID leftovers after email-link recovery.
 
