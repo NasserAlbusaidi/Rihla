@@ -307,15 +307,17 @@ class _GroupMemberBalanceCardState extends State<GroupMemberBalanceCard>
                   foregroundColor: context.colors.primary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 4,
+                    vertical: 10,
                   ),
-                  minimumSize: Size.zero,
+                  minimumSize: const Size(0, 40),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
                   'Settle',
                   style: TextStyle(
                     fontSize: 12,
+                    height: 1.22,
+                    leadingDistribution: TextLeadingDistribution.even,
                     fontWeight: FontWeight.w700,
                     color: context.colors.primary,
                   ),

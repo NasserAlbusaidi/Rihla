@@ -39,8 +39,16 @@ void main() {
         final minimumSizePattern = RegExp(
           r'minimumSize:\s*const Size\([^,]+,\s*([0-9]+(?:\.[0-9]+)?)\)',
         );
+        final zeroMinimumSizePattern = RegExp(
+          r'minimumSize:\s*(?:const\s+)?Size\.zero',
+        );
         for (var i = 0; i < lines.length; i++) {
           final match = minimumSizePattern.firstMatch(lines[i]);
+          if (zeroMinimumSizePattern.hasMatch(lines[i])) {
+            offenders.add('${file.path}:${i + 1}: ${lines[i].trim()}');
+            continue;
+          }
+
           if (match == null) continue;
 
           final height = double.parse(match.group(1)!);
