@@ -58,6 +58,7 @@ require_clean_worktree
 npm20 --prefix functions ci
 npm20 --prefix functions audit --omit=dev --audit-level=low
 npm20 --prefix functions run build
+require_clean_worktree
 
 npx --yes "firebase-tools@${FIREBASE_TOOLS_VERSION}" deploy \
   --force \

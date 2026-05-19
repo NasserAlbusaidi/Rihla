@@ -148,11 +148,24 @@ exit 64
   test('Firebase deploy helper refuses dirty tracked worktrees', () {
     final deploy = read('tool/deploy_firebase_backend.sh');
 
+    final buildIndex = deploy.indexOf('npm20 --prefix functions run build');
+    final postBuildCleanIndex = deploy.indexOf(
+      'require_clean_worktree',
+      buildIndex,
+    );
+    final deployIndex = deploy.indexOf(
+      r'firebase-tools@${FIREBASE_TOOLS_VERSION}',
+    );
+
     expect(deploy, contains('require_clean_worktree'));
     expect(deploy, contains('git diff --quiet'));
     expect(deploy, contains('git diff --cached --quiet'));
     expect(deploy, contains('git ls-files --others --exclude-standard'));
     expect(deploy, contains('RIHLA_ALLOW_DIRTY_FIREBASE_DEPLOY'));
     expect(deploy, contains('production can be tied to an exact commit'));
+    expect(buildIndex, greaterThanOrEqualTo(0));
+    expect(postBuildCleanIndex, greaterThan(buildIndex));
+    expect(postBuildCleanIndex, lessThan(deployIndex));
+    expect(deployIndex, greaterThan(buildIndex));
   });
 }
