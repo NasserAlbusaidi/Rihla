@@ -1467,6 +1467,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityGroupMemberLeft => 'غادر المجموعة';
 
   @override
+  String activityGroupMemberRemoved(Object memberName) {
+    return 'أزال $memberName من المجموعة';
+  }
+
+  @override
   String get activityTitlePaymentRecorded => 'تم تسجيل دفعة';
 
   @override

@@ -443,6 +443,7 @@
   "activityGroupEventDeleted": "حذف {eventName}",
   "activityGroupMemberJoined": "انضم إلى المجموعة",
   "activityGroupMemberLeft": "غادر المجموعة",
+  "activityGroupMemberRemoved": "أزال {memberName} من المجموعة",
   "activityTitlePaymentRecorded": "تم تسجيل دفعة",
   "activityTitleEventCreated": "تم إنشاء فعالية",
   "activityTitleEventRemoved": "تم حذف فعالية",

@@ -21,6 +21,8 @@ String localizedEventActivityText(AppLocalizations l10n, ActivityLog log) {
 
 String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
   final eventName = log.metadata['eventName'] as String?;
+  final memberName = log.metadata['memberName'] as String?;
+  final memberAction = log.metadata['memberAction'] as String?;
   return switch (log.type) {
     'group_settlement' => l10n.activityGroupSettlementDescription,
     'event_created' =>
@@ -32,7 +34,12 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
           ? l10n.activityGroupEventDeletedGeneric
           : l10n.activityGroupEventDeleted(eventName),
     'member_joined' => l10n.activityGroupMemberJoined,
-    'member_left' => l10n.activityGroupMemberLeft,
+    'member_left' =>
+      memberAction == 'removed'
+          ? (memberName == null || memberName.isEmpty
+                ? log.description
+                : l10n.activityGroupMemberRemoved(memberName))
+          : l10n.activityGroupMemberLeft,
     _ => log.description,
   };
 }

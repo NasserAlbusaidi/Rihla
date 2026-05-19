@@ -1427,6 +1427,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityGroupMemberLeft => 'left the group';
 
   @override
+  String activityGroupMemberRemoved(Object memberName) {
+    return 'removed $memberName from the group';
+  }
+
+  @override
   String get activityTitlePaymentRecorded => 'Payment recorded';
 
   @override

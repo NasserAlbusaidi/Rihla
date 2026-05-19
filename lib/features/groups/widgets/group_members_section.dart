@@ -185,6 +185,10 @@ class GroupMembersSection extends ConsumerWidget {
                 ? ref.read(settingsProvider).deviceName
                 : member.displayName,
             description: '${member.displayName} was removed from the group',
+            metadata: {
+              'memberAction': 'removed',
+              'memberName': member.displayName,
+            },
           );
     } catch (_) {
       // Activity logging failure must never crash the remove flow.

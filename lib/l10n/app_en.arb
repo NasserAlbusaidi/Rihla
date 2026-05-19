@@ -1039,6 +1039,12 @@
   },
   "activityGroupMemberJoined": "joined the group",
   "activityGroupMemberLeft": "left the group",
+  "activityGroupMemberRemoved": "removed {memberName} from the group",
+  "@activityGroupMemberRemoved": {
+    "placeholders": {
+      "memberName": {}
+    }
+  },
   "activityTitlePaymentRecorded": "Payment recorded",
   "activityTitleEventCreated": "Event created",
   "activityTitleEventRemoved": "Event removed",

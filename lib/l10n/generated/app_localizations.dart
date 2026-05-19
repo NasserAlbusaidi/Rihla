@@ -2522,6 +2522,12 @@ abstract class AppLocalizations {
   /// **'left the group'**
   String get activityGroupMemberLeft;
 
+  /// No description provided for @activityGroupMemberRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'removed {memberName} from the group'**
+  String activityGroupMemberRemoved(Object memberName);
+
   /// No description provided for @activityTitlePaymentRecorded.
   ///
   /// In en, this message translates to:

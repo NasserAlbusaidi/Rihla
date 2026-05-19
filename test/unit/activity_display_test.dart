@@ -66,6 +66,19 @@ void main() {
       expect(localizedGroupActivityText(ar, log), 'أنشأ Beach Trip');
     });
 
+    test('localizes member removal without misattributing the actor', () {
+      final en = AppLocalizationsEn();
+      final ar = AppLocalizationsAr();
+      final log = _groupLog(
+        type: 'member_left',
+        description: 'Bob was removed from the group',
+        metadata: const {'memberAction': 'removed', 'memberName': 'Bob'},
+      );
+
+      expect(localizedGroupActivityText(en, log), 'removed Bob from the group');
+      expect(localizedGroupActivityText(ar, log), 'أزال Bob من المجموعة');
+    });
+
     test('preserves legacy group fallback text for unknown rows', () {
       final ar = AppLocalizationsAr();
       final log = _groupLog(
