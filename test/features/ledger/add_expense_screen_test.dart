@@ -15,30 +15,7 @@ void main() {
   testWidgets('renders Add Expense as a single-page wireframe form', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          eventDetailProvider((
-            groupId: 'group-1',
-            eventId: 'event-1',
-          )).overrideWith((ref) => Stream.value(_event)),
-          tripCategoriesProvider(
-            'event-1',
-          ).overrideWith((ref) => Stream.value(_categories)),
-        ],
-        child: MaterialApp(
-          theme: AppTheme.lightTheme,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const AddExpenseScreen(groupId: 'group-1', eventId: 'event-1'),
-        ),
-      ),
-    );
-
-    await tester.pumpAndSettle();
+    await _pumpAddExpenseScreen(tester);
 
     expect(find.text('Add expense'), findsOneWidget);
     expect(find.text('AMOUNT · OMR'), findsOneWidget);
@@ -48,6 +25,45 @@ void main() {
     expect(find.text('Split between'), findsOneWidget);
     expect(find.text('Where'), findsOneWidget);
   });
+
+  testWidgets('accepts Arabic keyboard digits in the amount field', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester);
+
+    await tester.enterText(find.byType(TextField).first, '١٢٫٣٤٥');
+    await tester.pump();
+
+    expect(find.text('12'), findsOneWidget);
+    expect(find.text('.345'), findsOneWidget);
+  });
+}
+
+Future<void> _pumpAddExpenseScreen(WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        eventDetailProvider((
+          groupId: 'group-1',
+          eventId: 'event-1',
+        )).overrideWith((ref) => Stream.value(_event)),
+        tripCategoriesProvider(
+          'event-1',
+        ).overrideWith((ref) => Stream.value(_categories)),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const AddExpenseScreen(groupId: 'group-1', eventId: 'event-1'),
+      ),
+    ),
+  );
+
+  await tester.pumpAndSettle();
 }
 
 final _event = Event(

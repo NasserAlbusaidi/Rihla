@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/localized_decimal_input.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../keys/group_keys.dart';
@@ -265,7 +266,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
     if (!context.mounted || result == null) return;
 
-    final editedAmount = Decimal.tryParse(result.amount) ?? suggestedAmount;
+    final editedAmount =
+        Decimal.tryParse(normalizeLocalizedDecimalInput(result.amount)) ??
+        suggestedAmount;
     final noteText = result.note.isEmpty ? null : result.note;
 
     if (editedAmount <= Decimal.zero) {

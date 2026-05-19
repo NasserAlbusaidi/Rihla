@@ -11,6 +11,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/expense_scope_display_name.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
@@ -487,18 +488,13 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   }
 
   String _sanitizeAmount(String value) {
-    final cleaned = value.replaceAll(RegExp(r'[^0-9.]'), '');
-    if (cleaned.isEmpty) return '0';
-    final parts = cleaned.split('.');
-    if (parts.length == 1) return cleaned;
     final maxDecimals =
         AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3;
-    final fraction = parts.skip(1).join();
-    final clampedFraction = fraction.substring(
-      0,
-      fraction.length.clamp(0, maxDecimals),
+    final normalized = normalizeLocalizedDecimalInput(
+      value,
+      decimalDigits: maxDecimals,
     );
-    return '${parts.first.isEmpty ? '0' : parts.first}.$clampedFraction';
+    return normalized.isEmpty ? '0' : normalized;
   }
 }
 
@@ -678,6 +674,12 @@ class _AmountHero extends StatelessWidget {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              inputFormatters: [
+                LocalizedDecimalTextInputFormatter(
+                  decimalDigits:
+                      AppFormatters.currencyConfig[currency]?.decimals ?? 3,
+                ),
+              ],
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.transparent),
               cursorColor: Colors.transparent,
