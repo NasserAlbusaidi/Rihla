@@ -168,6 +168,7 @@ fi
 
 git add "$PUBSPEC" "$CHANGELOG"
 git commit -m "chore(release): $NEW_TAG"
+require_clean_worktree
 RELEASE_SHA="$(git rev-parse HEAD)"
 
 echo

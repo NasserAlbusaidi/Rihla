@@ -117,6 +117,10 @@ exit 64
     final commitIndex = release.indexOf(
       r'git commit -m "chore(release): $NEW_TAG"',
     );
+    final postCommitCleanIndex = release.indexOf(
+      'require_clean_worktree',
+      commitIndex,
+    );
     final readinessIndex = release.indexOf('tool/check_release_readiness.sh');
     final tagIndex = release.indexOf(r'git tag -a "$NEW_TAG"');
     final pushIndex = release.indexOf(r'git push origin "$NEW_TAG"');
@@ -134,6 +138,8 @@ exit 64
     expect(release, contains('git ls-files --others --exclude-standard'));
     expect(release, contains('release can be tied to an exact commit'));
     expect(commitIndex, greaterThanOrEqualTo(0));
+    expect(postCommitCleanIndex, greaterThan(commitIndex));
+    expect(postCommitCleanIndex, lessThan(readinessIndex));
     expect(readinessIndex, greaterThan(commitIndex));
     expect(tagIndex, greaterThan(readinessIndex));
     expect(pushIndex, greaterThan(tagIndex));
