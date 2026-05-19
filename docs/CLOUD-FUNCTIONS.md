@@ -357,8 +357,10 @@ Attest / DeviceCheck on iOS) or the callable returns
 Debug builds and the emulator suite bypass enforcement when
 `FirebaseConfig.initialize(useDebugAppCheck: true)` is called — see
 `lib/main.dart:48-50`. The release pipeline gates on the
-`RIHLA_APP_CHECK_READY` repo variable to prevent shipping a build that
-would 100% fail App Check.
+`RIHLA_APP_CHECK_READY` repo variable and the commit-bound
+`RIHLA_RELEASE_APPROVED_SHA` variable to prevent shipping a build that
+would 100% fail App Check or reusing stale release approvals on a newer
+commit.
 
 ---
 

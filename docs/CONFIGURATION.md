@@ -224,5 +224,10 @@ Required repository variables:
 | `RIHLA_BACKEND_RELEASE_READY` | `yes` | Confirms Firebase backend and Hosting production-state checks passed before Play upload |
 | `RIHLA_APP_CHECK_READY` | `yes` | Confirms Android and iOS apps are enrolled in Firebase App Check before deploying enforced callables |
 | `RIHLA_REAL_DEVICE_QA_READY` | `yes` | Confirms the physical-device QA matrix passed |
+| `RIHLA_RELEASE_APPROVED_SHA` | Full release commit SHA | Confirms the three release readiness variables apply to the exact commit being uploaded |
 
-The CI pipeline refuses to upload unless those variables are set, then runs `flutter analyze`, tests with 80% raw coverage enforcement, a hardcoded color lint, builds the AAB, and uploads to the Play Store Closed Testing (alpha track).
+The CI pipeline refuses to upload unless those variables are set and
+`RIHLA_RELEASE_APPROVED_SHA` equals the workflow's `GITHUB_SHA`. It then runs
+`flutter analyze`, tests with 80% raw coverage enforcement, a hardcoded color
+lint, builds the AAB, and uploads to the Play Store Closed Testing (alpha
+track).

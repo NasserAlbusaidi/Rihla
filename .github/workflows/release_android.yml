@@ -38,6 +38,7 @@ jobs:
           RIHLA_BACKEND_RELEASE_READY: ${{ vars.RIHLA_BACKEND_RELEASE_READY }}
           RIHLA_APP_CHECK_READY: ${{ vars.RIHLA_APP_CHECK_READY }}
           RIHLA_REAL_DEVICE_QA_READY: ${{ vars.RIHLA_REAL_DEVICE_QA_READY }}
+          RIHLA_RELEASE_APPROVED_SHA: ${{ vars.RIHLA_RELEASE_APPROVED_SHA }}
         run: |
           if [ "$RIHLA_BACKEND_RELEASE_READY" != "yes" ]; then
             echo "::error::Set repository variable RIHLA_BACKEND_RELEASE_READY=yes only after Firebase backend and Hosting production checks pass."
@@ -49,6 +50,14 @@ jobs:
           fi
           if [ "$RIHLA_REAL_DEVICE_QA_READY" != "yes" ]; then
             echo "::error::Set repository variable RIHLA_REAL_DEVICE_QA_READY=yes only after the physical-device QA matrix passes."
+            exit 1
+          fi
+          if [ -z "$RIHLA_RELEASE_APPROVED_SHA" ]; then
+            echo "::error::Set repository variable RIHLA_RELEASE_APPROVED_SHA to ${GITHUB_SHA} only after all release gates pass for this exact commit."
+            exit 1
+          fi
+          if [ "$RIHLA_RELEASE_APPROVED_SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::RIHLA_RELEASE_APPROVED_SHA=${RIHLA_RELEASE_APPROVED_SHA} does not match this release commit ${GITHUB_SHA}."
             exit 1
           fi
 

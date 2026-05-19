@@ -146,7 +146,8 @@ starts a new run.
   - iOS re-activation: when iOS ships, unset `RIHLA_SKIP_IOS_QA` and replace `Deferred ...` cells with `Pass ...` and concrete iOS evidence.
 - [ ] Android release workflow external confirmations are not set.
   - `.github/workflows/release_android.yml` now refuses to upload unless `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, and `RIHLA_REAL_DEVICE_QA_READY` repository variables are all set to `yes`.
-  - Leave these unset until the production-state audit, App Check Console enrolment, and physical-device QA matrix pass.
+  - It also requires `RIHLA_RELEASE_APPROVED_SHA` to match the exact commit being uploaded, so stale `yes` variables from a previous release cannot authorize a newer tag.
+  - Leave these unset until the production-state audit, App Check Console enrolment, and physical-device QA matrix pass for the target commit.
 
 ## External Actions
 
@@ -159,12 +160,16 @@ These actions cannot be completed from this repo and remain before release:
    If the gate passes, complete the `docs/REAL-DEVICE-QA.md` matrix
    (RD-01..09) with concrete Android evidence. iOS cells stay marked
    `Deferred — v1.2 Android-only` until iOS ships.
-2. After RD-QA is recorded and the backend re-audit still passes, set the
-   three Android release-workflow repository variables to `yes`:
+2. After RD-QA is recorded and the backend re-audit still passes for the target
+   commit, set the three Android release-workflow repository variables to
+   `yes`:
    `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`,
-   `RIHLA_REAL_DEVICE_QA_READY`. The release workflow refuses to upload
-   to Play until all three are set.
-3. Re-run the full audit before promoting the Play Store track:
+   `RIHLA_REAL_DEVICE_QA_READY`.
+3. Set `RIHLA_RELEASE_APPROVED_SHA` to the full commit SHA that will be tagged
+   or manually dispatched. The release workflow refuses to upload to Play until
+   the three readiness variables are `yes` and the approved SHA matches
+   `GITHUB_SHA`.
+4. Re-run the full audit before promoting the Play Store track:
    ```bash
    RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
    ```
