@@ -27,9 +27,11 @@ require_clean_worktree() {
     return 0
   fi
 
-  if ! git diff --quiet || ! git diff --cached --quiet; then
+  if ! git diff --quiet \
+    || ! git diff --cached --quiet \
+    || [ -n "$(git ls-files --others --exclude-standard)" ]; then
     echo "Refusing to deploy Firebase backend from a dirty working tree."
-    echo "Commit or stash tracked changes first so production can be tied to an exact commit."
+    echo "Commit, stash, or remove local changes first so production can be tied to an exact commit."
     echo "Emergency override: RIHLA_ALLOW_DIRTY_FIREBASE_DEPLOY=yes"
     exit 2
   fi

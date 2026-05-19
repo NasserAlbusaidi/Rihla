@@ -119,6 +119,7 @@ exit 64
     expect(deploy, contains('require_clean_worktree'));
     expect(deploy, contains('git diff --quiet'));
     expect(deploy, contains('git diff --cached --quiet'));
+    expect(deploy, contains('git ls-files --others --exclude-standard'));
     expect(deploy, contains('RIHLA_ALLOW_DIRTY_FIREBASE_DEPLOY'));
     expect(deploy, contains('production can be tied to an exact commit'));
   });
