@@ -111,6 +111,8 @@ exit 64
 
   test('release helper runs readiness before tagging and pushing', () {
     final release = read('tool/release.sh');
+    final readme = read('README.md');
+    final configuration = read('docs/CONFIGURATION.md');
 
     final commitIndex = release.indexOf(
       r'git commit -m "chore(release): $NEW_TAG"',
@@ -120,6 +122,12 @@ exit 64
     final pushIndex = release.indexOf(r'git push origin "$NEW_TAG"');
 
     expect(release, contains(r'RIHLA_RELEASE_TARGET_SHA="$RELEASE_SHA"'));
+    expect(release, contains('RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch'));
+    expect(readme, contains('RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch'));
+    expect(
+      configuration,
+      contains('RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch'),
+    );
     expect(commitIndex, greaterThanOrEqualTo(0));
     expect(readinessIndex, greaterThan(commitIndex));
     expect(tagIndex, greaterThan(readinessIndex));

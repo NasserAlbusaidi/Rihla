@@ -246,3 +246,13 @@ The preferred tag path is `tool/release.sh`. It creates the version/changelog
 release commit first, prints the exact commit SHA for
 `RIHLA_RELEASE_APPROVED_SHA`, runs `tool/check_release_readiness.sh` with that
 SHA as `RIHLA_RELEASE_TARGET_SHA`, and only then creates/pushes the release tag.
+
+For the current Android-only launch while iOS is deferred, pass the Android-only
+QA flag through the helper:
+
+```bash
+RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch
+```
+
+Omit `RIHLA_SKIP_IOS_QA=yes` when the release includes full iOS physical-device
+QA evidence.

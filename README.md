@@ -167,6 +167,13 @@ release commit, prints the exact commit SHA to approve with
 `RIHLA_RELEASE_APPROVED_SHA`, then runs `tool/check_release_readiness.sh`
 before it creates or pushes the tag.
 
+For the current Android-only launch while iOS is deferred, invoke the helper
+with the Android-only QA gate enabled:
+
+```bash
+RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch
+```
+
 iOS builds are manual — no iOS CI pipeline.
 
 See `docs/PRODUCTION-READINESS.md` for the current Firebase deployment and real-device QA checklist.

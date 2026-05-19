@@ -6,6 +6,8 @@
 #   ./tool/release.sh minor      # 1.2.0+11 -> 1.3.0+12
 #   ./tool/release.sh major      # 1.2.0+11 -> 2.0.0+12
 #   ./tool/release.sh 1.4.2      # explicit semver, build auto-bumps
+#   RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch
+#                                # Android-only release while iOS is deferred
 #
 # What it does:
 #   1. Verifies clean working tree on main, in sync with origin
@@ -20,7 +22,9 @@
 # Override the editor with EDITOR env var. Skip the changelog prompt
 # with SKIP_CHANGELOG=1 (CI-friendly). Skip the post-commit approval prompt
 # with SKIP_RELEASE_APPROVAL_PROMPT=1 only if RIHLA_RELEASE_APPROVED_SHA is
-# already set to the release commit SHA.
+# already set to the release commit SHA. For the current Android-only launch,
+# run with RIHLA_SKIP_IOS_QA=yes so the consolidated audit uses the documented
+# Android-only real-device QA gate. Omit it when iOS ships.
 
 set -euo pipefail
 
@@ -160,6 +164,11 @@ echo
 echo "  gh variable set RIHLA_RELEASE_APPROVED_SHA --body \"$RELEASE_SHA\""
 echo
 echo "The release-readiness audit runs next and must pass before tag/push."
+if [ "${RIHLA_SKIP_IOS_QA:-}" = "yes" ]; then
+  echo "Android-only QA mode is enabled: RIHLA_SKIP_IOS_QA=yes"
+else
+  echo "Full iOS + Android QA mode is enabled. Set RIHLA_SKIP_IOS_QA=yes only for the Android-only launch."
+fi
 if [ "${SKIP_RELEASE_APPROVAL_PROMPT:-0}" = "0" ]; then
   printf "Press Enter after the release approval variable is set, or Ctrl+C to stop before tagging. "
   read -r _
