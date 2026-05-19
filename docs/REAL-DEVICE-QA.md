@@ -52,7 +52,8 @@ Pass criteria (default — full iOS + Android gate):
 
 Pass criteria (with `RIHLA_SKIP_IOS_QA=yes` — v1.2 Android-only):
 
-- At least one physical Android device is listed.
+- At least two physical Android devices are listed so RD-04 can prove
+  cross-device ledger identity without iOS.
 - iOS device absence reported as INFO.
 - `config.json` and Firebase platform files as above.
 - Every RD-01 through RD-09 row has an Android result starting with `Pass`,

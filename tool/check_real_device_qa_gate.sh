@@ -118,6 +118,13 @@ if flutter devices --machine >"$TMP_FILE"; then
     | select((.targetPlatform | startswith("android")) and .emulator == false)
     | "\(.name) [\(.id)]"
   ' "$TMP_FILE")"
+  android_device_count="$(jq '
+    [
+      .[]
+      | select((.targetPlatform | startswith("android")) and .emulator == false)
+    ]
+    | length
+  ' "$TMP_FILE")"
   non_physical_mobile="$(jq -r '
     .[]
     | select((.targetPlatform == "ios" or (.targetPlatform | startswith("android"))) and .emulator == true)
@@ -132,7 +139,15 @@ if flutter devices --machine >"$TMP_FILE"; then
     fail "No physical iOS device detected"
   fi
 
-  if [ -n "$android_devices" ]; then
+  if [ "$SKIP_IOS_QA" = "yes" ]; then
+    if [ "$android_device_count" -ge 2 ]; then
+      pass "Physical Android devices detected for Android-only two-device QA: ${android_devices//$'\n'/, }"
+    elif [ "$android_device_count" -eq 1 ]; then
+      fail "At least two physical Android devices required when RIHLA_SKIP_IOS_QA=yes for RD-04; detected: ${android_devices//$'\n'/, }"
+    else
+      fail "No physical Android device detected"
+    fi
+  elif [ -n "$android_devices" ]; then
     pass "Physical Android device detected: ${android_devices//$'\n'/, }"
   else
     fail "No physical Android device detected"
