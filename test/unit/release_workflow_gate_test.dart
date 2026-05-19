@@ -109,6 +109,19 @@ exit 64
     expect(governance, contains('readiness'));
   });
 
+  test('README coverage gate matches the enforced 80 percent threshold', () {
+    final readme = read('README.md');
+    final readiness = read('.github/workflows/readiness_check.yml');
+    final releaseWorkflow = read('.github/workflows/release_android.yml');
+    final releaseAudit = read('tool/check_release_readiness.sh');
+
+    expect(readiness, contains('coverage >= 80.0'));
+    expect(releaseWorkflow, contains('coverage >= 80.0'));
+    expect(releaseAudit, contains('coverage >= 80.0'));
+    expect(readme, contains('80% raw line coverage'));
+    expect(readme, isNot(contains('temporarily 70%')));
+  });
+
   test('release helper runs readiness before tagging and pushing', () {
     final release = read('tool/release.sh');
     final readme = read('README.md');

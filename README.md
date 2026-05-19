@@ -138,7 +138,7 @@ flutter analyze
 
 Tests use `mocktail` for mocking and `fake_cloud_firestore` / `firebase_auth_mocks` to avoid real Firebase calls. Provider overrides swap `sharedPreferencesProvider` and other async deps in test scope.
 
-**Coverage gate** is temporarily 70% in CI while auth/profile/settings suites catch up; local raw coverage is ~80%+.
+**Coverage gate** is 80% raw line coverage in CI and in `tool/check_release_readiness.sh`.
 
 ---
 
