@@ -1,7 +1,6 @@
 # Real-Device QA
 
-Last prepared: 2026-05-20 (`codex/release-hardening-1-0`,
-PR head `3d3fb32995126734de8f349d3af6642803be3d65`)
+Last prepared: 2026-05-20 (`codex/release-hardening-1-0`, PR #39)
 
 This checklist covers the release QA that cannot be proven by unit, widget, or
 emulator tests. Run it on physical iOS and Android devices against the

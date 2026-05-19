@@ -1,7 +1,6 @@
 # Production Readiness
 
-Last verified: 2026-05-20 (`codex/release-hardening-1-0`,
-PR head `3d3fb32995126734de8f349d3af6642803be3d65`)
+Last verified: 2026-05-20 (`codex/release-hardening-1-0`, PR #39)
 
 This checklist tracks the remaining launch gates for the Firebase project
 `rihla-safar` and the mobile apps. Treat checked items as verified from the
@@ -102,7 +101,7 @@ starts a new run.
 - [x] Historical Firebase production-state audit passed for v1.2.0+15.
   - Command: `bash tool/check_firebase_prod_state.sh rihla-safar`
   - Historical result (2026-05-15): 12 checks PASS, exit 0. Re-verified 2026-05-16 after v1.2.0+15 functions deploy.
-  - Current branch result (2026-05-20, PR head `3d3fb32995126734de8f349d3af6642803be3d65`): FAIL until the branch backend is deployed. Firestore indexes and Hosting passed; Firestore rules differ from production, and the deployed Functions list is missing `deleteAccount`.
+  - Current branch result (2026-05-20, PR #39): FAIL until the branch backend is deployed. Firestore indexes and Hosting passed; Firestore rules differ from production, and the deployed Functions list is missing `deleteAccount`.
 - [x] Firebase Functions are deployed in production.
   - Evidence: production-state audit confirms expected functions are deployed (`joinGroupByInviteCode`, `cleanupAnonUidArtifacts`, account-deletion cascade, FCM token cleanup).
   - v1.2.0+15 changes: `joinGroupByInviteCode` now fans the joiner into existing event `participantIds` server-side (Gap 1); new `cleanupAnonUidArtifacts` callable scrubs FCM tokens + joinAttempts for the abandoned anon UID after email-link recovery (Gap 3, fire-and-forget — failures land in Sentry breadcrumbs).
@@ -126,7 +125,7 @@ starts a new run.
     ```bash
     bash tool/check_firebase_prod_state.sh rihla-safar
     ```
-  - Latest gate result (2026-05-20, PR head `3d3fb32995126734de8f349d3af6642803be3d65`): Firestore database, indexes, and both
+  - Latest gate result (2026-05-20, PR #39): Firestore database, indexes, and both
     Hosting domains passed. Firestore rules failed because production lacks
     the current branch's `recoveryCleanupIntents/{oldUid}` rule block and
     latest display-name validation. Functions failed because production is
@@ -139,7 +138,7 @@ starts a new run.
     ```bash
     RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
     ```
-  - Latest gate result (2026-05-20, PR head `3d3fb32995126734de8f349d3af6642803be3d65`): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty for RD-01..RD-09.
+  - Latest gate result (2026-05-20, PR #39): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty for RD-01..RD-09.
   - v1.2.0+15 carry-over: post-launch bugs found on +14 (group-detail back button, event settlement names, `currentUserIdProvider` reactivity, App Check on join callable, join-event-sync, anon-UID cleanup) are all resolved on `main` and documented in `docs/REAL-DEVICE-QA.md` § "Resolved on fix/post-launch-qa-v1.2".
   - Required Android matrix (RD-01..09):
     - Create group, join group by invite code, delete group.
