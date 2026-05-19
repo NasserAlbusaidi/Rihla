@@ -31,6 +31,9 @@ void main() {
     expect(runbook, contains('Every RD-01 through RD-09 row'));
     expect(runbook, contains('RD-09 | Arabic RTL golden path'));
     expect(runbook, contains('Evidence cell must contain a concrete artifact'));
+    expect(runbook, isNot(contains('Two paths disagree')));
+    expect(runbook, isNot(contains('never invokes the matrix script')));
+    expect(runbook, contains('`tool/release.sh` runs the consolidated audit'));
   });
 
   test('release readiness runs GitHub release governance gate', () {

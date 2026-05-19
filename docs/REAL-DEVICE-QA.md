@@ -273,7 +273,14 @@ Three bugs found in the v1.2.0+14 closed-test session on 2026-05-16. All fixed a
 ## Follow-ups for v1.2.0+16
 
 - **Former-member UI rendering for dormant anon-UID creators.** The post-recovery cleanup only fires when a user actually recovers via email link. Anon UIDs that created events in past sessions and were never recovered remain as `createdBy` on those events + retain real historical expense / settlement attribution. Confirmed on production for one orphan UID across 5 events in group `78cb99b0…` (event creator + 1 expense as payer + 1 settlement as payer — NOT safe to delete via the participant cleanup script). The "ghost member" rendering in settle-up is technically correct. Fix is UI-level: mark `participantIds` entries whose UID is no longer in `group.memberIds` as "former member" rather than deleting their data. Touch points likely: `groupBalancesProvider`, settle-up sheet, ledger participant labels.
-- **RD-QA gate reconciliation.** Two paths disagree about whether the RD-QA matrix in `docs/REAL-DEVICE-QA.md` blocks release: `tool/check_release_readiness.sh` invokes the matrix gate and fails on empty Android cells, but `.github/workflows/release_android.yml` only checks the three repo variables (`RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, `RIHLA_REAL_DEVICE_QA_READY`, all set `yes`) and never invokes the matrix script. Pick one: either fill RD-01..08 Android cells with concrete evidence from the closed-test flows, or update the readiness script + production-readiness doc to say the matrix is an external attestation and stop pretending it gates CI.
+- **RD-QA release gate.** `tool/release.sh` runs the consolidated audit after
+  creating the release commit and before creating or pushing a tag. That audit
+  invokes `tool/check_release_readiness.sh`, which invokes this matrix gate and
+  the GitHub release-governance gate. The Android column and evidence cells for
+  RD-01..RD-09 must therefore be filled with concrete physical-device evidence
+  before the release tag can be cut through the repo helper. The GitHub Actions
+  Play upload still has its own repository-variable guard, including the
+  commit-bound `RIHLA_RELEASE_APPROVED_SHA`, as a final tag/workflow safeguard.
 
 ## Adjacent gaps still deferred
 
