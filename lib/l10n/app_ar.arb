@@ -712,6 +712,7 @@
   "authRecoverPendingTitle": "تحقق من بريدك الوارد",
   "authRecoverPendingDescriptionPrefix": "أرسلنا رابط تسجيل دخول إلى ",
   "authRecoverPendingDescriptionSuffix": ". اضغط عليه على هذا الجهاز — سنستعيد رحلاتك تلقائيًا.",
+  "authLinkEmailSentDescriptionSuffix": ". اضغط عليه على هذا الجهاز لإكمال الربط.",
   "authRecoverPendingSpamHint": "لم تجده؟ تحقق من مجلد البريد المزعج. الرابط صالح لمدة 24 ساعة.",
   "authRecoverPendingLinkSeen": "وصلنا رابطك. انتظر لحظة — جارٍ الاستعادة الآن.",
   "authRecoverPendingResendStatus": "تم إرسال رابط جديد.",

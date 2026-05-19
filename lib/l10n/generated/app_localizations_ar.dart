@@ -2389,6 +2389,10 @@ class AppLocalizationsAr extends AppLocalizations {
       '. اضغط عليه على هذا الجهاز — سنستعيد رحلاتك تلقائيًا.';
 
   @override
+  String get authLinkEmailSentDescriptionSuffix =>
+      '. اضغط عليه على هذا الجهاز لإكمال الربط.';
+
+  @override
   String get authRecoverPendingSpamHint =>
       'لم تجده؟ تحقق من مجلد البريد المزعج. الرابط صالح لمدة 24 ساعة.';
 

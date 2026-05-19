@@ -1547,6 +1547,10 @@
   "@authRecoverPendingDescriptionSuffix": {
     "description": "Second half of the recovery-pending body, rendered after the user's email."
   },
+  "authLinkEmailSentDescriptionSuffix": ". Tap it on this device to finish linking.",
+  "@authLinkEmailSentDescriptionSuffix": {
+    "description": "Second half of the link-email-sent body, rendered after the user's email — recovery and link flows share the same prefix but diverge here (link flow finishes the linking; recovery pulls trips back)."
+  },
   "authRecoverPendingSpamHint": "Can't find it? Check your spam folder. The link is good for 24 hours.",
   "@authRecoverPendingSpamHint": {
     "description": "Helper text on the recovery-pending screen reminding the user to check spam and noting the 24h expiry."

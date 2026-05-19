@@ -4088,6 +4088,12 @@ abstract class AppLocalizations {
   /// **'. Tap it on this device — we\'ll pull your trips back automatically.'**
   String get authRecoverPendingDescriptionSuffix;
 
+  /// Second half of the link-email-sent body, rendered after the user's email — recovery and link flows share the same prefix but diverge here (link flow finishes the linking; recovery pulls trips back).
+  ///
+  /// In en, this message translates to:
+  /// **'. Tap it on this device to finish linking.'**
+  String get authLinkEmailSentDescriptionSuffix;
+
   /// Helper text on the recovery-pending screen reminding the user to check spam and noting the 24h expiry.
   ///
   /// In en, this message translates to:

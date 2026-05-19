@@ -674,6 +674,7 @@ class _AmountHero extends StatelessWidget {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              textDirection: TextDirection.ltr,
               inputFormatters: [
                 LocalizedDecimalTextInputFormatter(
                   decimalDigits:

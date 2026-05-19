@@ -2337,6 +2337,10 @@ class AppLocalizationsEn extends AppLocalizations {
       '. Tap it on this device — we\'ll pull your trips back automatically.';
 
   @override
+  String get authLinkEmailSentDescriptionSuffix =>
+      '. Tap it on this device to finish linking.';
+
+  @override
   String get authRecoverPendingSpamHint =>
       'Can\'t find it? Check your spam folder. The link is good for 24 hours.';
 
