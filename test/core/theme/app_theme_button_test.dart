@@ -25,32 +25,40 @@ void main() {
     },
   );
 
-  test('local Material button overrides do not use 36dp minimum heights', () {
-    final offenders = <String>[];
-    for (final file in Directory('lib').listSync(recursive: true)) {
-      if (file is! File || !file.path.endsWith('.dart')) continue;
+  test(
+    'local Material button overrides do not go below 40dp minimum heights',
+    () {
+      final offenders = <String>[];
+      for (final file in Directory('lib').listSync(recursive: true)) {
+        if (file is! File || !file.path.endsWith('.dart')) continue;
 
-      final content = file.readAsStringSync();
-      if (!content.contains('Button.styleFrom')) continue;
+        final content = file.readAsStringSync();
+        if (!content.contains('Button.styleFrom')) continue;
 
-      final lines = content.split('\n');
-      for (var i = 0; i < lines.length; i++) {
-        if (RegExp(
-          r'minimumSize:\s*const Size\([^,]+,\s*36\)',
-        ).hasMatch(lines[i])) {
-          offenders.add('${file.path}:${i + 1}: ${lines[i].trim()}');
+        final lines = content.split('\n');
+        final minimumSizePattern = RegExp(
+          r'minimumSize:\s*const Size\([^,]+,\s*([0-9]+(?:\.[0-9]+)?)\)',
+        );
+        for (var i = 0; i < lines.length; i++) {
+          final match = minimumSizePattern.firstMatch(lines[i]);
+          if (match == null) continue;
+
+          final height = double.parse(match.group(1)!);
+          if (height < 40) {
+            offenders.add('${file.path}:${i + 1}: ${lines[i].trim()}');
+          }
         }
       }
-    }
 
-    expect(
-      offenders,
-      isEmpty,
-      reason:
-          'Material buttons below 40dp can clip Geist descenders; use the '
-          'theme defaults or a compact 40dp+ override with explicit line height.',
-    );
-  });
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'Material buttons below 40dp can clip Geist descenders; use the '
+            'theme defaults or a compact 40dp+ override with explicit line height.',
+      );
+    },
+  );
 }
 
 T _suppressFontErrors<T>(T Function() body) {

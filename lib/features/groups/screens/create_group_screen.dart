@@ -200,7 +200,7 @@ class _CreateGroupTopBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SizedBox(
-        height: 36,
+        height: 44,
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -225,7 +225,7 @@ class _CreateGroupTopBar extends StatelessWidget {
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: SizedBox(
-                height: 34,
+                height: 40,
                 child: ElevatedButton(
                   key: GroupKeys.createGroupButton,
                   onPressed: isLoading ? null : onCreate,
@@ -236,15 +236,23 @@ class _CreateGroupTopBar extends StatelessWidget {
                       alpha: 0.72,
                     ),
                     disabledForegroundColor: colors.scaffoldBackground,
-                    minimumSize: const Size(0, 34),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    shape: const StadiumBorder(),
-                    textStyle: AppTypography.sans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.1,
-                      height: 1.18,
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      14,
+                      9,
+                      14,
+                      11,
                     ),
+                    shape: const StadiumBorder(),
+                    textStyle:
+                        AppTypography.sans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.1,
+                          height: 1.22,
+                        ).copyWith(
+                          leadingDistribution: TextLeadingDistribution.even,
+                        ),
                   ),
                   child: isLoading
                       ? SizedBox(
