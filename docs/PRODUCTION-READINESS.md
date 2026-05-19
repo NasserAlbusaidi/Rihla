@@ -72,9 +72,12 @@ starts a new run.
   - Note: Homebrew Java 21 may be installed even when `/usr/libexec/java_home -v 21` still resolves to Java 17; prefer the explicit `brew --prefix openjdk@21` path above.
 - [x] Firestore production database exists for `rihla-safar`.
   - Database: `(default)`, Native mode, location `nam5`
-- [x] Some Firebase Hosting public files are already live.
-  - `https://rihla-safar.web.app/.well-known/assetlinks.json` contains the Android package `com.safar.safar`.
-  - The hosted auth continue pages are reachable, but the deployed copies are stale and still tracked as a release blocker below.
+- [x] Firebase Hosting invite/auth link files are deployed on both default domains.
+  - Evidence: production-state audit verifies `/join/<code>` invite fallback,
+    Apple App Site Association `/join/*` entries, Digital Asset Links matching
+    `com.safar.safar`, and the auth continue page containing
+    `rihla://auth-link` on both `rihla-safar.web.app` and
+    `rihla-safar.firebaseapp.com`.
 - [x] Production Functions dependency audit has no known vulnerabilities at low-or-higher severity.
   - Command: `npm --prefix functions audit --omit=dev --audit-level=low`
 - [x] App Check client and callable enforcement are wired in the repo.
@@ -112,8 +115,6 @@ starts a new run.
   - Current branch note: production does not yet contain the new `recoveryCleanupIntents/{oldUid}` rules or the latest former-member display-name validation; this checkbox remains historical, not proof that the current branch is deployed.
 - [x] Firestore production indexes match `firestore.indexes.json`.
   - Evidence: production-state audit confirms index set matches the repo config; legacy `gear_items` index removed.
-- [x] Firebase Hosting invite/auth link files are deployed on both default domains.
-  - Evidence: production-state audit verifies `/join/<code>` invite fallback, Apple App Site Association `/join/*` entries, Digital Asset Links matching `com.safar.safar`, and the auth continue page containing `rihla://auth-link` on both `rihla-safar.web.app` and `rihla-safar.firebaseapp.com`.
 - [x] Firebase App Check Console enrolment is verified.
   - Evidence: Android app enrolled with Play Integrity; iOS app enrolled with App Attest (with DeviceCheck fallback). Enforced `joinGroupByInviteCode` callable is live in production.
   - Re-verify path: Firebase Console → App Check → confirm enforcement is ON for Cloud Functions and that both platform apps show "Enforced".

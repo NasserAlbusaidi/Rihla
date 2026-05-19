@@ -122,6 +122,20 @@ exit 64
     expect(readme, isNot(contains('temporarily 70%')));
   });
 
+  test('production readiness does not mark verified Hosting files stale', () {
+    final productionReadiness = read('docs/PRODUCTION-READINESS.md');
+
+    expect(
+      productionReadiness,
+      contains('Firebase Hosting invite/auth link files are deployed'),
+    );
+    expect(productionReadiness, isNot(contains('deployed copies are stale')));
+    expect(
+      productionReadiness,
+      isNot(contains('still tracked as a release blocker below')),
+    );
+  });
+
   test('release helper runs readiness before tagging and pushing', () {
     final release = read('tool/release.sh');
     final readme = read('README.md');
