@@ -553,12 +553,12 @@ class _BreakdownRow extends StatelessWidget {
                 tone: isOwed ? AmountTone.sage : AmountTone.rust,
               ),
               const SizedBox(width: 2),
-              // textMuted-decorative-justified: disclosure chevron is purely decorative affordance
               Icon(
                 Directionality.of(context) == TextDirection.rtl
                     ? Icons.chevron_left
                     : Icons.chevron_right,
                 size: 18,
+                // textMuted-decorative-justified: disclosure chevron is purely decorative affordance
                 color: colors.textMuted,
               ),
             ],
