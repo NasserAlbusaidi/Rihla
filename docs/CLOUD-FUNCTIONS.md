@@ -148,6 +148,7 @@ security rules.
 ```ts
 interface CleanupAnonUidArtifactsInput {
   oldUid: string;
+  cleanupSecret: string;
 }
 
 interface CleanupAnonUidArtifactsOutput {
@@ -155,6 +156,7 @@ interface CleanupAnonUidArtifactsOutput {
   groupsFailed: string[];
   authUserDeleted: boolean;
   fcmTokenDeleted: boolean;
+  joinAttemptsDeleted: boolean;
 }
 ```
 
@@ -162,12 +164,19 @@ interface CleanupAnonUidArtifactsOutput {
 
 1. **Auth gate.** Throws `unauthenticated` if `request.auth` is null.
 2. **Input validation.** `oldUid` must be a non-empty string and must
-   differ from the caller's current UID.
-3. **Recovery precondition.** Calls `getAuth().getUser(newUid)` and
+   differ from the caller's current UID. `cleanupSecret` must be a
+   32-128 character one-time secret.
+3. **Cleanup intent precondition.** Before sign-out, the retiring
+   anonymous UID writes `recoveryCleanupIntents/{oldUid}` with the
+   secret. The callable verifies that document exists, matches the
+   supplied secret, and is no older than 15 minutes. Without this, any
+   recovered user who can see another anon UID could try to migrate that
+   user's artifacts.
+4. **Recovery precondition.** Calls `getAuth().getUser(newUid)` and
    verifies the user is linked to either `'password'` or `'emailLink'`
    provider. A pure-anon UID may not call this — there is nothing to
    recover into. `failed-precondition` if missing.
-4. **Per-group cleanup transaction.** For every group where
+5. **Per-group cleanup transaction.** For every group where
    `memberIds` contains `oldUid`:
    - Rewrite `memberIds`: `[..., oldUid, ...]` → `[..., newUid, ...]`
      (dedupes if `newUid` already present).
@@ -178,9 +187,11 @@ interface CleanupAnonUidArtifactsOutput {
    - For each event in the group: rewrite `participantIds`,
      `participantNames` keys, and `createdBy` analogously. Same for
      each non-deleted expense's `createdBy`.
-5. **Auth + FCM cleanup.** Deletes the Auth user for `oldUid` (ignores
-   `auth/user-not-found`). Deletes `fcm_tokens/{oldUid}` if present.
-6. **Returns** counts and a list of group IDs that failed (other
+6. **Auth + keyed-artifact cleanup.** Deletes the Auth user for
+   `oldUid` (ignores `auth/user-not-found`). Deletes
+   `fcm_tokens/{oldUid}`, `joinAttempts/{oldUid}`, and the consumed
+   cleanup intent when present.
+7. **Returns** counts and a list of group IDs that failed (other
    groups continue). Per-group failures land in `groupsFailed` so the
    client can show a partial-success banner.
 
@@ -191,6 +202,8 @@ interface CleanupAnonUidArtifactsOutput {
 | `unauthenticated` | Sign-in required. | No `request.auth`. |
 | `invalid-argument` | oldUid must be a non-empty string. | Type/length check. |
 | `invalid-argument` | oldUid must differ from caller uid. | Caller passed their own UID. |
+| `invalid-argument` | cleanupSecret is invalid. | Missing or malformed cleanup secret. |
+| `permission-denied` | Invalid cleanup intent. | Missing, expired, or mismatched `recoveryCleanupIntents/{oldUid}`. |
 | `failed-precondition` | Recovered user must be linked to an email provider. | Caller is still anonymous. |
 | `failed-precondition` | Recovered user must exist before cleanup. | Auth lookup failed for any other reason. |
 | `failed-precondition` | groups/{gid}.memberIds is malformed. | Schema violation in a group doc. |
@@ -204,17 +217,21 @@ callable returns a partial success.
 
 ```dart
 // lib/core/services/firebase_functions_service.dart
-Future<void> cleanupAnonUidArtifacts({required String oldUid}) async {
+Future<void> cleanupAnonUidArtifacts({
+  required String oldUid,
+  required String cleanupSecret,
+}) async {
   await _functions.httpsCallable('cleanupAnonUidArtifacts').call({
     'oldUid': oldUid,
+    'cleanupSecret': cleanupSecret,
   });
 }
 ```
 
 In production this is called fire-and-forget from
-`AuthRecoveryService` after a successful email-link sign-in. Failures
-are captured in Sentry breadcrumbs rather than blocking the user, on
-the assumption that a follow-up cleanup pass can run later if needed.
+`AuthRecoveryService` after it creates the cleanup intent, drains
+pending writes, and completes email-link sign-in. Failures are captured
+in Sentry breadcrumbs rather than blocking the user.
 
 ### Operational notes
 
@@ -223,8 +240,8 @@ the assumption that a follow-up cleanup pass can run later if needed.
   See `docs/PRODUCT.md § Known Limitations` for the partial-cleanup
   caveat.
 - The callable runs **after** the new UID is established; it cannot be
-  rolled back. If the cleanup fails mid-stream, retry-from-current-
-  state is safe (idempotent).
+  rolled back. If per-group cleanup fails, the one-time intent remains
+  until it expires so a support retry can use the same secret.
 
 ---
 

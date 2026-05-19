@@ -82,8 +82,7 @@ check_raw_coverage() {
   fi
 
   echo "Raw coverage: ${coverage}%"
-  # TODO: ratchet this back to 80% once auth/profile/settings coverage catches up.
-  awk -v coverage="$coverage" 'BEGIN { exit (coverage >= 70.0) ? 0 : 1 }'
+  awk -v coverage="$coverage" 'BEGIN { exit (coverage >= 80.0) ? 0 : 1 }'
 }
 
 check_app_check_enforced() {

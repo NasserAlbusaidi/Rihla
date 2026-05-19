@@ -8,9 +8,13 @@ class FirebaseFunctionsService {
 
   final FirebaseFunctions _functions;
 
-  Future<void> cleanupAnonUidArtifacts({required String oldUid}) async {
+  Future<void> cleanupAnonUidArtifacts({
+    required String oldUid,
+    required String cleanupSecret,
+  }) async {
     await _functions.httpsCallable('cleanupAnonUidArtifacts').call({
       'oldUid': oldUid,
+      'cleanupSecret': cleanupSecret,
     });
   }
 

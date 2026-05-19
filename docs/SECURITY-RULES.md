@@ -473,7 +473,7 @@ the check instead.
 | Invite-code redemption | A rule cannot atomically read `inviteCodes` + add to `memberIds` + fan out into all events while staying under the `get` budget. | `joinGroupByInviteCode` callable. |
 | Rate-limiting failed joins | Rules cannot increment a counter across requests. | `joinAttempts` doc, written by the callable. |
 | Account deletion cascade | Cross-collection scrub across hundreds of docs exceeds rules' write surface. | `deleteAccount` callable. |
-| UID migration after recovery | Same. | `cleanupAnonUidArtifacts` callable. |
+| UID migration after recovery | Same. Rules only let the retiring anon UID create/update a one-time `recoveryCleanupIntents/{oldUid}` secret; the Admin callable performs the actual rewrite after verifying it. | `cleanupAnonUidArtifacts` callable. |
 | Currency whitelist | `validCurrency` checks length only; the actual allowed set (OMR/USD/EUR/GBP/SAR/AED/JPY/KWD/BHD/QAR) lives in `MoneySerializer`. | Client validation + `MoneySerializer`. |
 | Money math correctness | Rules can validate fields, not arithmetic. | `BalanceCalculator` + unit tests under `test/unit/`. |
 | Server-side App Check enforcement | Rules don't see App Check tokens. | `{ enforceAppCheck: true }` on every callable. |

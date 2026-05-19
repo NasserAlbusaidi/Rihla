@@ -243,6 +243,7 @@ class _CreateGroupTopBar extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.1,
+                      height: 1.18,
                     ),
                   ),
                   child: isLoading

@@ -1,6 +1,6 @@
 # Real-Device QA
 
-Last prepared: 2026-05-16 (v1.2.0+15)
+Last prepared: 2026-05-19 (`codex/release-hardening-1-0`)
 
 This checklist covers the release QA that cannot be proven by unit, widget, or
 emulator tests. Run it on physical iOS and Android devices against the
@@ -59,9 +59,12 @@ Pass criteria (with `RIHLA_SKIP_IOS_QA=yes` — v1.2 Android-only):
   an iOS result starting with `Pass` or `Deferred`, and concrete Android
   evidence in the Evidence cell.
 
-Current local status from 2026-05-15: blocked for Android. The matrix is
-filled with `Deferred — v1.2 Android-only` for iOS; the Android column and
-evidence still need a real run on a connected Android device.
+Current local status from 2026-05-19: blocked for Android. Running
+`RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh` found no
+physical Android device, accepted iOS absence as a v1.2 Android-only defer, and
+reported RD-01 through RD-09 missing Android pass results plus concrete
+evidence. The matrix is filled with `Deferred — v1.2 Android-only` for iOS; the
+Android column and evidence still need a real run on connected Android devices.
 
 For raw device details, run:
 
@@ -265,7 +268,7 @@ Three bugs found in the v1.2.0+14 closed-test session on 2026-05-16. All fixed a
 ## Also shipped in v1.2.0+15
 
 - **Join-event-sync (Gap 1) — RESOLVED.** `joinGroupByInviteCode` now fans the joining UID + displayName into every non-deleted event's `participantIds` / `participantNames` inside the same Admin transaction. Idempotent on re-join (heals already-affected stale state). Production backfill ran 2026-05-16 against 2 groups / 2 events / 3 UIDs via `tool/backfill_join_event_sync.js`.
-- **Anon-UID cleanup at recovery (Gap 3 server-safe) — RESOLVED.** New `cleanupAnonUidArtifacts` callable runs fire-and-forget after a successful `signInWithEmailLink`. Per group: replaces or removes the old anon UID in `memberIds`, copies the member doc, reassigns `createdBy` on group/event/expense docs (NOT settlements), rewrites event `participantIds` / `participantNames`. Then deletes the anon Firebase Auth user and orphan `fcm_tokens/{oldUid}`. Recovery itself succeeds regardless of cleanup outcome; failures land in a Sentry breadcrumb with no PII.
+- **Anon-UID cleanup at recovery (Gap 3 server-safe) — RESOLVED.** `cleanupAnonUidArtifacts` runs fire-and-forget after a successful `signInWithEmailLink`, but only after the retiring anon UID has created a one-time `recoveryCleanupIntents/{oldUid}` secret. Per group: replaces or removes the old anon UID in `memberIds`, copies the member doc, reassigns `createdBy` on group/event/expense docs (NOT settlements), rewrites event `participantIds` / `participantNames`. Then deletes the anon Firebase Auth user, orphan `fcm_tokens/{oldUid}`, `joinAttempts/{oldUid}`, and the consumed cleanup intent. Recovery itself succeeds regardless of cleanup outcome; failures land in a Sentry breadcrumb with no PII.
 
 ## Follow-ups for v1.2.0+16
 

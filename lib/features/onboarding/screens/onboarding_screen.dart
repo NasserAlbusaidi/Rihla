@@ -920,6 +920,7 @@ class _SaffronCta extends StatelessWidget {
         textStyle: AppTypography.sans(
           fontSize: 14,
           fontWeight: FontWeight.w600,
+          height: 1.22,
         ),
       ),
       icon: loading
@@ -975,6 +976,7 @@ class _PrimaryInkCta extends StatelessWidget {
         textStyle: AppTypography.sans(
           fontSize: 14,
           fontWeight: FontWeight.w600,
+          height: 1.22,
         ),
       ),
       child: Row(

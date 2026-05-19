@@ -564,4 +564,4 @@ ProviderScope(
 )
 ```
 
-Minimum coverage: temporary 70% raw line coverage. Ratchet back to 80% after the auth/profile/settings coverage backlog is closed.
+Minimum coverage: 80% raw line coverage.

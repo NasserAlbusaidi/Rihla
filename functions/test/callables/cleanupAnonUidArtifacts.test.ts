@@ -7,6 +7,7 @@ import { cleanupAnonUidArtifacts } from '../../src/callables/cleanupAnonUidArtif
 
 const testEnv = functionsTest({ projectId: 'rihla-safar-test' });
 const wrapped = testEnv.wrap(cleanupAnonUidArtifacts);
+const cleanupSecret = 'test-cleanup-secret-with-enough-entropy-12345';
 
 async function clearAuthUsers(): Promise<void> {
   const auth = getAuth();
@@ -33,6 +34,27 @@ async function seedAuthUsers(
     email: `${newUid}@example.com`,
     password: 'Password123!',
   });
+}
+
+async function seedCleanupIntent(
+  oldUid = 'old-anon-uid',
+  secret = cleanupSecret,
+): Promise<void> {
+  await getFirestore().doc(`recoveryCleanupIntents/${oldUid}`).set({
+    secret,
+    createdAt: new Date(),
+  });
+}
+
+function cleanupCall(
+  oldUid = 'old-anon-uid',
+  newUid = 'new-uid',
+  secret = cleanupSecret,
+): Promise<unknown> {
+  return wrapped({
+    data: { oldUid, cleanupSecret: secret },
+    auth: { uid: newUid },
+  } as any);
 }
 
 async function seedGroup(
@@ -113,7 +135,7 @@ describe('cleanupAnonUidArtifacts', () => {
     await getAuth().createUser({ uid: 'still-anon' });
 
     await expect(wrapped({
-      data: { oldUid: 'old-anon-uid' },
+      data: { oldUid: 'old-anon-uid', cleanupSecret },
       auth: { uid: 'still-anon' },
     } as any)).rejects.toMatchObject({ code: 'failed-precondition' });
   });
@@ -126,21 +148,33 @@ describe('cleanupAnonUidArtifacts', () => {
     });
 
     await expect(wrapped({
-      data: { oldUid: 'same-uid' },
+      data: { oldUid: 'same-uid', cleanupSecret },
       auth: { uid: 'same-uid' },
     } as any)).rejects.toMatchObject({ code: 'invalid-argument' });
   });
 
+  test('missing cleanup intent cannot migrate another UID artifacts', async () => {
+    await seedAuthUsers();
+    await seedGroup('victim-group', ['old-anon-uid']);
+    await seedMember('victim-group', 'old-anon-uid');
+
+    await expect(cleanupCall()).rejects.toMatchObject({
+      code: 'permission-denied',
+    });
+
+    const group = await getFirestore().doc('groups/victim-group').get();
+    expect(group.data()?.memberIds).toEqual(['old-anon-uid']);
+    await expect(getAuth().getUser('old-anon-uid')).resolves.toBeDefined();
+  });
+
   test('when both UIDs are members, oldUid is removed and survivor retained', async () => {
     await seedAuthUsers();
+    await seedCleanupIntent();
     await seedGroup('g1', ['old-anon-uid', 'new-uid', 'owner']);
     await seedMember('g1', 'old-anon-uid', { displayName: 'Old Name' });
     await seedMember('g1', 'new-uid', { displayName: 'New Name', role: 'CREATOR' });
 
-    await expect(wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any)).resolves.toMatchObject({
+    await expect(cleanupCall()).resolves.toMatchObject({
       groupsProcessed: 1,
       groupsFailed: [],
       authUserDeleted: true,
@@ -162,6 +196,7 @@ describe('cleanupAnonUidArtifacts', () => {
 
   test('when only oldUid is a member, it is replaced and member doc copied', async () => {
     await seedAuthUsers();
+    await seedCleanupIntent();
     await seedGroup('g1', ['old-anon-uid'], { createdBy: 'owner' });
     await seedMember('g1', 'old-anon-uid', {
       displayName: 'Recovered Name',
@@ -169,10 +204,7 @@ describe('cleanupAnonUidArtifacts', () => {
       isShadow: true,
     });
 
-    await wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any);
+    await cleanupCall();
 
     const db = getFirestore();
     const group = await db.doc('groups/g1').get();
@@ -193,6 +225,7 @@ describe('cleanupAnonUidArtifacts', () => {
   test('createdBy is rewritten on group, active event, and active expense only', async () => {
     const db = getFirestore();
     await seedAuthUsers();
+    await seedCleanupIntent();
     await seedGroup('g1', ['old-anon-uid'], { createdBy: 'old-anon-uid' });
     await seedMember('g1', 'old-anon-uid');
     await seedEvent('g1', 'active', { createdBy: 'old-anon-uid' });
@@ -215,10 +248,7 @@ describe('cleanupAnonUidArtifacts', () => {
       createdBy: 'old-anon-uid',
     });
 
-    await wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any);
+    await cleanupCall();
 
     const group = await db.doc('groups/g1').get();
     const activeEvent = await db.doc('groups/g1/events/active').get();
@@ -236,6 +266,7 @@ describe('cleanupAnonUidArtifacts', () => {
 
   test('event participantIds and participantNames replace oldUid with calling UID', async () => {
     await seedAuthUsers();
+    await seedCleanupIntent();
     await seedGroup('g1', ['old-anon-uid']);
     await seedMember('g1', 'old-anon-uid');
     await seedEvent('g1', 'e1', {
@@ -246,10 +277,7 @@ describe('cleanupAnonUidArtifacts', () => {
       },
     });
 
-    await wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any);
+    await cleanupCall();
 
     const event = await getFirestore().doc('groups/g1/events/e1').get();
     expect(event.data()?.participantIds).toEqual(['new-uid', 'owner']);
@@ -261,11 +289,9 @@ describe('cleanupAnonUidArtifacts', () => {
 
   test('deleted anon auth user returns authUserDeleted true', async () => {
     await seedAuthUsers();
+    await seedCleanupIntent();
 
-    const result = await wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any);
+    const result = await cleanupCall() as { authUserDeleted: boolean };
 
     expect(result.authUserDeleted).toBe(true);
     await expect(getAuth().getUser('old-anon-uid'))
@@ -274,12 +300,10 @@ describe('cleanupAnonUidArtifacts', () => {
 
   test('auth/user-not-found during auth delete returns false without throwing', async () => {
     await seedAuthUsers();
+    await seedCleanupIntent();
     await getAuth().deleteUser('old-anon-uid');
 
-    await expect(wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any)).resolves.toMatchObject({
+    await expect(cleanupCall()).resolves.toMatchObject({
       authUserDeleted: false,
     });
   });
@@ -287,16 +311,17 @@ describe('cleanupAnonUidArtifacts', () => {
   test('per-group failure is returned while other groups still process', async () => {
     const db = getFirestore();
     await seedAuthUsers();
+    await seedCleanupIntent();
     await seedGroup('good', ['old-anon-uid']);
     await seedMember('good', 'old-anon-uid');
     await seedGroup('bad', ['old-anon-uid']);
     await seedMember('bad', 'old-anon-uid');
     await seedEvent('bad', 'bad-event', { participantIds: 'old-anon-uid' });
 
-    const result = await wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any);
+    const result = await cleanupCall() as {
+      groupsProcessed: number;
+      groupsFailed: string[];
+    };
 
     const good = await db.doc('groups/good').get();
     const bad = await db.doc('groups/bad').get();
@@ -309,12 +334,10 @@ describe('cleanupAnonUidArtifacts', () => {
   test('fcm token for oldUid is deleted when present', async () => {
     const db = getFirestore();
     await seedAuthUsers();
+    await seedCleanupIntent();
     await db.doc('fcm_tokens/old-anon-uid').set({ token: 'stale-token' });
 
-    const result = await wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any);
+    const result = await cleanupCall() as { fcmTokenDeleted: boolean };
 
     const fcmToken = await db.doc('fcm_tokens/old-anon-uid').get();
     expect(result.fcmTokenDeleted).toBe(true);
@@ -323,12 +346,25 @@ describe('cleanupAnonUidArtifacts', () => {
 
   test('absent fcm token returns false without error', async () => {
     await seedAuthUsers();
+    await seedCleanupIntent();
 
-    await expect(wrapped({
-      data: { oldUid: 'old-anon-uid' },
-      auth: { uid: 'new-uid' },
-    } as any)).resolves.toMatchObject({
+    await expect(cleanupCall()).resolves.toMatchObject({
       fcmTokenDeleted: false,
     });
+  });
+
+  test('join attempt and cleanup intent for oldUid are deleted after cleanup', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await db.doc('joinAttempts/old-anon-uid').set({ failCount: 3 });
+
+    await expect(cleanupCall()).resolves.toMatchObject({
+      joinAttemptsDeleted: true,
+    });
+
+    expect((await db.doc('joinAttempts/old-anon-uid').get()).exists).toBe(false);
+    expect((await db.doc('recoveryCleanupIntents/old-anon-uid').get()).exists)
+      .toBe(false);
   });
 });

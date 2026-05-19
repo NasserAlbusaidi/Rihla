@@ -47,7 +47,12 @@ void main() {
   AuthRecoveryService buildService({
     FirebaseFirestore? firestore,
     Future<void> Function()? anonymousSessionFactory,
-    Future<void> Function(String oldUid)? cleanupAnonUidArtifacts,
+    Future<void> Function({
+      required String oldUid,
+      required String cleanupSecret,
+    })?
+    cleanupAnonUidArtifacts,
+    Future<String> Function(String oldUid)? cleanupIntentFactory,
     void Function({
       required String message,
       required Map<String, Object?> data,
@@ -59,7 +64,11 @@ void main() {
       prefs: prefs,
       firestore: firestore ?? defaultFirestore,
       anonymousSessionFactory: anonymousSessionFactory ?? () async {},
-      cleanupAnonUidArtifacts: cleanupAnonUidArtifacts ?? (_) async {},
+      cleanupAnonUidArtifacts:
+          cleanupAnonUidArtifacts ??
+          ({required oldUid, required cleanupSecret}) async {},
+      cleanupIntentFactory:
+          cleanupIntentFactory ?? (_) async => 'test-cleanup-secret',
       recoveryCleanupFailureRecorder: recoveryCleanupFailureRecorder,
     );
   }
@@ -288,9 +297,14 @@ void main() {
           return credential;
         });
         final service = buildService(
-          cleanupAnonUidArtifacts: (oldUid) async {
-            calls.add('cleanup:$oldUid');
+          cleanupIntentFactory: (oldUid) async {
+            calls.add('intent:$oldUid');
+            return 'client-secret';
           },
+          cleanupAnonUidArtifacts:
+              ({required oldUid, required cleanupSecret}) async {
+                calls.add('cleanup:$oldUid:$cleanupSecret');
+              },
         );
         await service.setPendingEmail('foo@example.com');
 
@@ -298,10 +312,11 @@ void main() {
 
         expect(result, same(credential));
         expect(calls, [
+          'intent:anon-uid-123',
           'waitForPendingWrites',
           'signOut',
           'signInWithEmailLink',
-          'cleanup:anon-uid-123',
+          'cleanup:anon-uid-123:client-secret',
         ]);
       },
     );
@@ -316,9 +331,10 @@ void main() {
       ).thenAnswer((_) async => credential);
       final breadcrumbs = <Map<String, Object?>>[];
       final service = buildService(
-        cleanupAnonUidArtifacts: (_) async {
-          throw StateError('cleanup failed for foo@example.com');
-        },
+        cleanupAnonUidArtifacts:
+            ({required oldUid, required cleanupSecret}) async {
+              throw StateError('cleanup failed for foo@example.com');
+            },
         recoveryCleanupFailureRecorder: ({required message, required data}) {
           breadcrumbs.add({'message': message, ...data});
         },
@@ -342,9 +358,10 @@ void main() {
       ).thenAnswer((_) async => credential);
       final breadcrumbs = <Map<String, Object?>>[];
       final service = buildService(
-        cleanupAnonUidArtifacts: (_) async {
-          throw StateError('cleanup failed for foo@example.com');
-        },
+        cleanupAnonUidArtifacts:
+            ({required oldUid, required cleanupSecret}) async {
+              throw StateError('cleanup failed for foo@example.com');
+            },
         recoveryCleanupFailureRecorder: ({required message, required data}) {
           breadcrumbs.add({'message': message, ...data});
         },

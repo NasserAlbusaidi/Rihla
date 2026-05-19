@@ -145,6 +145,25 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Recovery cleanup intents are one-time bearer secrets. The retiring
+    // anonymous UID writes its own intent before sign-out; the callable verifies
+    // and consumes it after email-link recovery. Clients never read or delete
+    // these documents directly.
+    match /recoveryCleanupIntents/{oldUid} {
+      function validCleanupIntent() {
+        return signedIn()
+          && request.auth.uid == oldUid
+          && request.resource.data.keys().hasOnly(['secret', 'createdAt'])
+          && request.resource.data.secret is string
+          && request.resource.data.secret.size() >= 32
+          && request.resource.data.secret.size() <= 128
+          && request.resource.data.createdAt is timestamp;
+      }
+
+      allow create, update: if validCleanupIntent();
+      allow get, list, delete: if false;
+    }
+
     match /groups/{groupId} {
       function isMember() {
         return signedIn() && request.auth.uid in resource.data.memberIds;

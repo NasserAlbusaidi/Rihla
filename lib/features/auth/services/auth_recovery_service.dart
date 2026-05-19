@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,6 +17,14 @@ typedef RecoveryCleanupFailureRecorder =
       required String message,
       required Map<String, Object?> data,
     });
+
+typedef CleanupAnonUidArtifacts =
+    Future<void> Function({
+      required String oldUid,
+      required String cleanupSecret,
+    });
+
+typedef CleanupIntentFactory = Future<String> Function(String oldUid);
 
 /// Orchestrates the email-link account recovery flows from spec §4.
 ///
@@ -33,7 +44,8 @@ class AuthRecoveryService {
     required SharedPreferences prefs,
     FirebaseFirestore? firestore,
     Future<void> Function()? anonymousSessionFactory,
-    Future<void> Function(String oldUid)? cleanupAnonUidArtifacts,
+    CleanupAnonUidArtifacts? cleanupAnonUidArtifacts,
+    CleanupIntentFactory? cleanupIntentFactory,
     RecoveryCleanupFailureRecorder? recoveryCleanupFailureRecorder,
   }) : _auth = auth,
        _prefs = prefs,
@@ -42,9 +54,25 @@ class AuthRecoveryService {
            anonymousSessionFactory ?? FirebaseConfig.ensureAnonymousSession,
        _cleanupAnonUidArtifacts =
            cleanupAnonUidArtifacts ??
-           ((oldUid) => FirebaseFunctionsService().cleanupAnonUidArtifacts(
-             oldUid: oldUid,
-           )),
+           (({required oldUid, required cleanupSecret}) =>
+               FirebaseFunctionsService().cleanupAnonUidArtifacts(
+                 oldUid: oldUid,
+                 cleanupSecret: cleanupSecret,
+               )),
+       _cleanupIntentFactory =
+           cleanupIntentFactory ??
+           ((oldUid) async {
+             final secret = _generateCleanupSecret();
+             final targetFirestore = firestore ?? FirebaseFirestore.instance;
+             await targetFirestore
+                 .collection(_cleanupIntentCollection)
+                 .doc(oldUid)
+                 .set({
+                   'secret': secret,
+                   'createdAt': FieldValue.serverTimestamp(),
+                 });
+             return secret;
+           }),
        _recoveryCleanupFailureRecorder =
            recoveryCleanupFailureRecorder ?? _recordCleanupFailureBreadcrumb;
 
@@ -52,11 +80,22 @@ class AuthRecoveryService {
   final SharedPreferences _prefs;
   final FirebaseFirestore? _firestore;
   final Future<void> Function() _anonymousSessionFactory;
-  final Future<void> Function(String oldUid) _cleanupAnonUidArtifacts;
+  final CleanupAnonUidArtifacts _cleanupAnonUidArtifacts;
+  final CleanupIntentFactory _cleanupIntentFactory;
   final RecoveryCleanupFailureRecorder _recoveryCleanupFailureRecorder;
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = 'auth.inFlightOp';
+  static const _cleanupIntentCollection = 'recoveryCleanupIntents';
+  static final Random _secureRandom = Random.secure();
+
+  static String _generateCleanupSecret() {
+    final bytes = Uint8List(32);
+    for (var i = 0; i < bytes.length; i += 1) {
+      bytes[i] = _secureRandom.nextInt(256);
+    }
+    return base64UrlEncode(bytes);
+  }
 
   static void _recordCleanupFailureBreadcrumb({
     required String message,
@@ -199,6 +238,21 @@ class AuthRecoveryService {
     final oldUid = retiringUser != null && retiringUser.isAnonymous
         ? retiringUser.uid
         : null;
+    String? cleanupSecret;
+    if (oldUid != null && oldUid.isNotEmpty) {
+      try {
+        cleanupSecret = await _cleanupIntentFactory(oldUid);
+      } catch (error, stackTrace) {
+        _recoveryCleanupFailureRecorder(
+          message: 'Recovery cleanup intent creation failed',
+          data: {'errorType': error.runtimeType.toString()},
+        );
+        FirebaseConfig.log(
+          'Recovery: cleanup intent creation failed (${error.runtimeType})',
+          stackTrace: stackTrace,
+        );
+      }
+    }
     try {
       final firestore = _firestore ?? FirebaseFirestore.instance;
       await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
@@ -216,9 +270,12 @@ class AuthRecoveryService {
     await clearPendingEmail();
     await clearInFlightOp();
     FirebaseConfig.log('Recovery: recovered uid ${result.user?.uid}');
-    if (oldUid != null && oldUid.isNotEmpty && result.user?.uid != oldUid) {
+    if (oldUid != null &&
+        oldUid.isNotEmpty &&
+        cleanupSecret != null &&
+        result.user?.uid != oldUid) {
       unawaited(
-        _cleanupAnonUidArtifacts(oldUid)
+        _cleanupAnonUidArtifacts(oldUid: oldUid, cleanupSecret: cleanupSecret)
             .then((_) {
               FirebaseConfig.log('Recovery: anon uid cleanup completed');
             })

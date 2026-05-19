@@ -225,4 +225,4 @@ Required repository variables:
 | `RIHLA_APP_CHECK_READY` | `yes` | Confirms Android and iOS apps are enrolled in Firebase App Check before deploying enforced callables |
 | `RIHLA_REAL_DEVICE_QA_READY` | `yes` | Confirms the physical-device QA matrix passed |
 
-The CI pipeline refuses to upload unless those variables are set, then runs `flutter analyze`, tests with temporary 70% raw coverage enforcement, a hardcoded color lint, builds the AAB, and uploads to the Play Store Closed Testing (alpha track). Ratchet the gate back to 80% after the auth/profile/settings coverage backlog is closed.
+The CI pipeline refuses to upload unless those variables are set, then runs `flutter analyze`, tests with 80% raw coverage enforcement, a hardcoded color lint, builds the AAB, and uploads to the Play Store Closed Testing (alpha track).

@@ -1346,6 +1346,7 @@ class _DeleteCard extends StatelessWidget {
                 textStyle: AppTypography.sans(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
+                  height: 1.18,
                 ),
               ),
             ),

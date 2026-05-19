@@ -1,6 +1,6 @@
 # Production Readiness
 
-Last verified: 2026-05-16 (v1.2.0+15)
+Last verified: 2026-05-19 (`codex/release-hardening-1-0`)
 
 This checklist tracks the remaining launch gates for the Firebase project
 `rihla-safar` and the mobile apps. Treat checked items as verified from the
@@ -12,13 +12,15 @@ Run the consolidated read-only audit:
 RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
 ```
 
-Backend deployment, App Check Console enrolment, and the Firebase production-
-state audit are complete as of 2026-05-16 (v1.2.0+15 functions deployed). v1.2 launches Android-only on
-Google Play; iOS is soft-deferred to follow within weeks of Android
-Production. The remaining release gates are Android-only physical-device QA
-(`docs/REAL-DEVICE-QA.md` with `RIHLA_SKIP_IOS_QA=yes`) and the three CI
-release-confirmation repo variables. The consolidated audit will continue to
-fail until those two gates are recorded as passing.
+Current branch status: local code gates pass for the hardening branch, but the
+Firebase production-state audit does not yet pass for this branch because the
+new Firestore rules and Functions have not been deployed. v1.2 launches
+Android-only on Google Play; iOS is soft-deferred to follow within weeks of
+Android Production. The remaining release gates are backend deploy/re-audit,
+Android-only physical-device QA (`docs/REAL-DEVICE-QA.md` with
+`RIHLA_SKIP_IOS_QA=yes`), and the three CI release-confirmation repo variables.
+The consolidated audit will continue to fail until those gates are recorded as
+passing.
 
 GitHub also runs `.github/workflows/readiness_check.yml` on `main` pushes and
 pull requests. That workflow covers the local non-deploy gates only; it does not
@@ -32,14 +34,14 @@ starts a new run.
 
 - [x] Android release bundle builds locally.
   - Command: `flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation`
-  - Output: `build/app/outputs/bundle/release/app-release.aab` at 54.2 MB
+  - Latest result (2026-05-19): `build/app/outputs/bundle/release/app-release.aab` at 58.5 MB
 - [x] Static analysis is clean with infos enabled as non-fatal.
   - Command: `flutter analyze --no-fatal-infos`
-- [x] Non-golden Flutter test suite passes with raw coverage over the temporary 70% gate.
+- [x] Non-golden Flutter test suite passes with raw coverage over the 80% gate.
   - Command: `flutter test --coverage test/architecture test/core test/features test/helpers test/integration test/shared test/unit test/widget_test.dart`
-  - Result: 1207 passed (verified 2026-05-16 on `fix/post-launch-qa-v1.2` post-merge)
-  - Coverage: 74.0% raw line coverage (last recorded; re-measure when ratcheting back)
-  - Note: CI and `tool/check_release_readiness.sh` currently enforce 70%; ratchet back to 80% after the auth/profile/settings test backlog is closed.
+  - Result: 1287 passed, 3 skipped (verified 2026-05-19 on `codex/release-hardening-1-0`)
+  - Coverage: 80.6% raw line coverage
+  - Note: CI and `tool/check_release_readiness.sh` both enforce 80% raw line coverage.
 - [x] Navigation smoke tests cover the shippable route tree and invite links.
   - Command: `flutter test test/unit/app_router_test.dart test/helpers/navigation_test.dart test/unit/deep_link_service_test.dart test/unit/auth_link_hosting_files_test.dart test/features/activity/activity_feed_screen_test.dart test/features/groups/qr_invite_sheet_test.dart test/features/groups/group_detail_navigation_test.dart test/features/events/event_command_center_test.dart test/features/ledger/ledger_screen_overflow_test.dart`
   - Result: 61 passed
@@ -61,7 +63,7 @@ starts a new run.
   - Result: 8 passed
 - [x] Firebase emulator/rules tests pass under Java 21.
   - Command: `npm --prefix functions run test:emulator`
-  - Result: 3 suites passed, 80 tests passed
+  - Latest result (2026-05-19): 5 suites passed, 105 tests passed
   - Note: raw `npm --prefix functions test` expects the Firestore emulator to already be running; use `test:emulator` for the normal local/CI backend gate.
   - Note: Homebrew Java 21 may be installed even when `/usr/libexec/java_home -v 21` still resolves to Java 17; prefer the explicit `brew --prefix openjdk@21` path above.
 - [x] Firestore production database exists for `rihla-safar`.
@@ -92,15 +94,18 @@ starts a new run.
   - Evidence: `SettingsService.loadSettings()` drops invalid legacy persisted names instead of surfacing them to create/join flows.
 - [x] Firebase project upgraded to Blaze plan.
   - Evidence: Cloud Functions are deployed (see below), which requires `cloudbuild.googleapis.com` and `artifactregistry.googleapis.com` — both gated on Blaze.
-- [x] Firebase production-state audit passes.
+- [x] Historical Firebase production-state audit passed for v1.2.0+15.
   - Command: `bash tool/check_firebase_prod_state.sh rihla-safar`
-  - Latest result (2026-05-15): 12 checks PASS, exit 0. Re-verified 2026-05-16 after v1.2.0+15 functions deploy.
+  - Historical result (2026-05-15): 12 checks PASS, exit 0. Re-verified 2026-05-16 after v1.2.0+15 functions deploy.
+  - Current branch result (2026-05-19): FAIL until the branch backend is deployed. Firestore indexes and Hosting passed; Firestore rules differ from production, and the deployed Functions list is missing `deleteAccount`.
 - [x] Firebase Functions are deployed in production.
   - Evidence: production-state audit confirms expected functions are deployed (`joinGroupByInviteCode`, `cleanupAnonUidArtifacts`, account-deletion cascade, FCM token cleanup).
   - v1.2.0+15 changes: `joinGroupByInviteCode` now fans the joiner into existing event `participantIds` server-side (Gap 1); new `cleanupAnonUidArtifacts` callable scrubs FCM tokens + joinAttempts for the abandoned anon UID after email-link recovery (Gap 3, fire-and-forget — failures land in Sentry breadcrumbs).
+  - v1.0 hardening branch: `cleanupAnonUidArtifacts` now requires a 15-minute one-time `recoveryCleanupIntents/{oldUid}` secret created by the retiring anon UID before sign-out, so recovered users cannot migrate arbitrary visible anon UIDs.
   - Backfill: `tool/backfill_join_event_sync.js` was run against `rihla-safar` on 2026-05-16 to reconcile historical event participant discrepancies.
 - [x] Firestore production rules match `security/firestore.rules`.
-  - Evidence: production-state audit diffs the active ruleset against the repo and reports PASS.
+  - Historical evidence: production-state audit diffed the active v1.2.0+15 ruleset against the repo and reported PASS.
+  - Current branch note: production does not yet contain the new `recoveryCleanupIntents/{oldUid}` rules or the latest former-member display-name validation.
 - [x] Firestore production indexes match `firestore.indexes.json`.
   - Evidence: production-state audit confirms index set matches the repo config; legacy `gear_items` index removed.
 - [x] Firebase Hosting invite/auth link files are deployed on both default domains.
@@ -111,20 +116,33 @@ starts a new run.
 
 ## Blockers
 
+- [ ] Firebase production state is not aligned with this branch yet.
+  - Gate command:
+    ```bash
+    bash tool/check_firebase_prod_state.sh rihla-safar
+    ```
+  - Latest gate result (2026-05-19): Firestore database, indexes, and both
+    Hosting domains passed. Firestore rules failed because production lacks
+    the current branch's `recoveryCleanupIntents/{oldUid}` rule block and
+    latest display-name validation. Functions failed because production is
+    missing `deleteAccount`.
+  - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
+    then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
 - [ ] Real-device QA is not complete (Android-only for v1.2).
   - Runbook: `docs/REAL-DEVICE-QA.md`
   - Gate command (v1.2 Android-only):
     ```bash
     RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
     ```
-  - Latest gate result (2026-05-15): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty.
+  - Latest gate result (2026-05-19): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty for RD-01..RD-09.
   - v1.2.0+15 carry-over: post-launch bugs found on +14 (group-detail back button, event settlement names, `currentUserIdProvider` reactivity, App Check on join callable, join-event-sync, anon-UID cleanup) are all resolved on `main` and documented in `docs/REAL-DEVICE-QA.md` § "Resolved on fix/post-launch-qa-v1.2".
-  - Required Android matrix (RD-01..08):
+  - Required Android matrix (RD-01..09):
     - Create group, join group by invite code, delete group.
     - Two-device ledger identity (two Android devices in one group; one pays an expense and each device shows the correct payer/ower identity).
     - Android expense entry keyboard exposes decimal input for OMR amounts.
     - Offline and reconnect: create/read flows recover without false permanent offline state.
     - Notification opt-in and opt-out: token is written on enable and removed on disable.
+    - Arabic RTL golden path.
   - iOS re-activation: when iOS ships, unset `RIHLA_SKIP_IOS_QA` and replace `Deferred ...` cells with `Pass ...` and concrete iOS evidence.
 - [ ] Android release workflow external confirmations are not set.
   - `.github/workflows/release_android.yml` now refuses to upload unless `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, and `RIHLA_REAL_DEVICE_QA_READY` repository variables are all set to `yes`.
@@ -139,7 +157,7 @@ These actions cannot be completed from this repo and remain before release:
    RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
    ```
    If the gate passes, complete the `docs/REAL-DEVICE-QA.md` matrix
-   (RD-01..08) with concrete Android evidence. iOS cells stay marked
+   (RD-01..09) with concrete Android evidence. iOS cells stay marked
    `Deferred — v1.2 Android-only` until iOS ships.
 2. After RD-QA is recorded and the backend re-audit still passes, set the
    three Android release-workflow repository variables to `yes`:
@@ -159,7 +177,7 @@ Historical external actions completed on or before 2026-05-16:
 - Enrolled Firebase App Check (Play Integrity for Android, App Attest /
   DeviceCheck fallback for iOS).
 - Re-ran `bash tool/check_firebase_prod_state.sh rihla-safar` — 12 checks
-  PASS.
+  PASS for the v1.2.0+15 backend snapshot.
 - 2026-05-16: deployed v1.2.0+15 functions (`joinGroupByInviteCode` event
   fan-out + new `cleanupAnonUidArtifacts` callable); ran
   `tool/backfill_join_event_sync.js` against `rihla-safar`; tagged
@@ -174,7 +192,7 @@ Historical external actions completed on or before 2026-05-16:
   server-side reconciliation tool (or expand the callable to traverse
   references) before the next batch of recoveries lands. Inspection tool:
   `tool/inspect_orphan_anon_uids.js`.
-- **Complete the Android RD-QA matrix.** RD-01..08 cells in
+- **Complete the Android RD-QA matrix.** RD-01..09 cells in
   `docs/REAL-DEVICE-QA.md` are still empty; gate command above will block
   the next release tag until they're filled with concrete evidence.
 
@@ -183,15 +201,16 @@ Historical external actions completed on or before 2026-05-16:
 The initial production deploy is complete. Use these commands for subsequent
 backend changes.
 
-Before deploying, run the read-only production-state check:
+Before deploying, run the read-only production-state check to understand
+current drift:
 
 ```bash
 bash tool/check_firebase_prod_state.sh rihla-safar
 ```
 
-The command should report 12 PASS lines and exit 0 against the currently
-deployed backend. If it fails, the deployed state has drifted from the repo
-and needs a redeploy.
+If this branch includes backend changes, rule/function mismatches are expected
+before deployment. After deployment, the command should report PASS and exit 0
+against the currently deployed backend.
 
 Redeploy backend after a rules / indexes / Functions / Hosting change:
 

@@ -274,6 +274,14 @@ the Admin SDK (`functions/src/admin.ts`), which bypasses Firestore
 Security Rules entirely. Per-group transactions stay atomic; auth
 deletion happens after the Firestore scrub.
 
+The v1.0 release hardening adds a one-time cleanup intent before that
+Admin rewrite is allowed. While still signed in as the retiring anon
+UID, the client writes `recoveryCleanupIntents/{oldUid}` with a random
+secret. After email-link sign-in, the callable requires the same secret
+and rejects missing, expired, or mismatched intents. This prevents a
+recovered user from passing an arbitrary visible anon UID and migrating
+someone else's group references.
+
 The trade-off: a Cloud Function is one more deploy surface and one
 more error mode. The runbook (T2 in `docs/RUNBOOK.md`) calls out the
 error-rate tripwire that catches cleanup failures.
@@ -396,11 +404,12 @@ Day N (recover path, on new device):
     → DeepLinkService routes the URL
       → reads inFlightOp = 'recover'
       → AuthRecoveryService.completeRecovery(emailLink)
+        → create recoveryCleanupIntents/{tempUid} with one-time secret
         → waitForPendingWrites(timeout: 5s)
         → FirebaseAuth.signOut()  -- discards tempUid session
         → FirebaseAuth.signInWithEmailLink(...)  -- signs in as originalUid
         → returns UserCredential (uid = originalUid)
-        → unawaited(cleanupAnonUidArtifacts(oldUid: tempUid))
+        → unawaited(cleanupAnonUidArtifacts(oldUid: tempUid, cleanupSecret))
   UidChangeListener fires on the auth stream:
     tempUid -> originalUid
     → LocalDatabase.wipeAndReinitialize()  -- clears safar_cache.db
@@ -412,6 +421,7 @@ Day N (recover path, on new device):
         rewrite memberIds, members docs, event participant refs.
       → Delete tempUid from Firebase Auth.
       → Delete fcm_tokens/{tempUid}.
+      → Delete joinAttempts/{tempUid} and the consumed cleanup intent.
 ```
 
 The hand-offs across `SharedPreferences` (`pendingEmail`, `inFlightOp`)
