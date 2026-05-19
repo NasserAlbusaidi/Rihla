@@ -2,6 +2,14 @@
 # Runs the release-readiness gates that can be checked from this machine.
 # This script is read-only with respect to Firebase production: it lists and
 # compares deployed state, but it does not deploy or enable APIs.
+#
+# Env vars:
+#   RIHLA_CONFIRM_APP_CHECK_READY=yes  Confirms Firebase App Check Console
+#                                      enrollment before release.
+#   RIHLA_SKIP_IOS_QA=yes             Runs the real-device QA gate in
+#                                      Android-only mode for the current
+#                                      Google Play launch. Unset this when
+#                                      iOS ships.
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -106,6 +114,10 @@ check_app_check_enrollment_confirmed() {
 }
 
 cd "$ROOT_DIR"
+
+if [ "${RIHLA_SKIP_IOS_QA:-}" = "yes" ]; then
+  echo "INFO: RIHLA_SKIP_IOS_QA=yes - real-device QA will run in Android-only mode."
+fi
 
 run_step "Java 21 available" setup_java21
 run_step "Node 20 available for Functions commands" node20_available

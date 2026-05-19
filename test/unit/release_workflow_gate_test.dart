@@ -85,9 +85,22 @@ exit 64
   test('release readiness runs GitHub release governance gate', () {
     final readiness = read('tool/check_release_readiness.sh');
     final governance = read('tool/check_github_release_governance.sh');
+    final productionReadiness = read('docs/PRODUCTION-READINESS.md');
 
     expect(readiness, contains('GitHub release governance'));
     expect(readiness, contains('tool/check_github_release_governance.sh'));
+    expect(readiness, contains('RIHLA_SKIP_IOS_QA'));
+    expect(
+      productionReadiness,
+      contains(
+        'RIHLA_SKIP_IOS_QA=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh',
+      ),
+    );
+    expect(
+      productionReadiness,
+      contains('main branch protection is configured'),
+    );
+    expect(productionReadiness, isNot(contains('main is not protected')));
     expect(governance, contains('RIHLA_RELEASE_APPROVED_SHA'));
     expect(governance, contains('RIHLA_RELEASE_TARGET_SHA'));
     expect(governance, contains('RIHLA_RELEASE_PROTECTED_BRANCH'));
