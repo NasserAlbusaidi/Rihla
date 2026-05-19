@@ -231,3 +231,13 @@ The CI pipeline refuses to upload unless those variables are set and
 `flutter analyze`, tests with 80% raw coverage enforcement, a hardcoded color
 lint, builds the AAB, and uploads to the Play Store Closed Testing (alpha
 track).
+
+Before tagging or manually dispatching a release, run the read-only GitHub
+governance check:
+
+```bash
+bash tool/check_github_release_governance.sh
+```
+
+It verifies the release variables against the target commit and confirms `main`
+requires the `Readiness Check / readiness` status check.

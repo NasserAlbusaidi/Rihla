@@ -1,6 +1,6 @@
 # Production Readiness
 
-Last verified: 2026-05-19 (`codex/release-hardening-1-0`)
+Last verified: 2026-05-20 (`codex/release-hardening-1-0`)
 
 This checklist tracks the remaining launch gates for the Firebase project
 `rihla-safar` and the mobile apps. Treat checked items as verified from the
@@ -18,9 +18,9 @@ new Firestore rules and Functions have not been deployed. v1.2 launches
 Android-only on Google Play; iOS is soft-deferred to follow within weeks of
 Android Production. The remaining release gates are backend deploy/re-audit,
 Android-only physical-device QA (`docs/REAL-DEVICE-QA.md` with
-`RIHLA_SKIP_IOS_QA=yes`), and the three CI release-confirmation repo variables.
-The consolidated audit will continue to fail until those gates are recorded as
-passing.
+`RIHLA_SKIP_IOS_QA=yes`), the commit-bound CI release-confirmation repo
+variables, and GitHub branch-protection governance. The consolidated audit will
+continue to fail until those gates are recorded as passing.
 
 GitHub also runs `.github/workflows/readiness_check.yml` on `main` pushes and
 pull requests. That workflow covers the local non-deploy gates only; it does not
@@ -148,6 +148,13 @@ starts a new run.
   - `.github/workflows/release_android.yml` now refuses to upload unless `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, and `RIHLA_REAL_DEVICE_QA_READY` repository variables are all set to `yes`.
   - It also requires `RIHLA_RELEASE_APPROVED_SHA` to match the exact commit being uploaded, so stale `yes` variables from a previous release cannot authorize a newer tag.
   - Leave these unset until the production-state audit, App Check Console enrolment, and physical-device QA matrix pass for the target commit.
+- [ ] GitHub release governance is not complete.
+  - Gate command:
+    ```bash
+    bash tool/check_github_release_governance.sh
+    ```
+  - Latest gate result (2026-05-20): the three historical readiness variables are still `yes`, but `RIHLA_RELEASE_APPROVED_SHA` is unset for the current branch head and `main` is not protected.
+  - Required action: protect `main`, require the `Readiness Check / readiness` status check with up-to-date branches, and set `RIHLA_RELEASE_APPROVED_SHA` only after all release gates pass for the exact target commit.
 
 ## External Actions
 
@@ -169,7 +176,9 @@ These actions cannot be completed from this repo and remain before release:
    or manually dispatched. The release workflow refuses to upload to Play until
    the three readiness variables are `yes` and the approved SHA matches
    `GITHUB_SHA`.
-4. Re-run the full audit before promoting the Play Store track:
+4. Protect `main` and require the `Readiness Check / readiness` status check
+   with up-to-date branches before merging release branches.
+5. Re-run the full audit before promoting the Play Store track:
    ```bash
    RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
    ```

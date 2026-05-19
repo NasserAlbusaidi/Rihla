@@ -149,6 +149,7 @@ run_step "Android release app bundle" \
     --android-skip-build-dependency-validation
 run_step "Firebase production state" bash tool/check_firebase_prod_state.sh rihla-safar
 run_step "Real-device QA gate" bash tool/check_real_device_qa_gate.sh
+run_step "GitHub release governance" bash tool/check_github_release_governance.sh
 
 echo
 if [ "$FAILURES" -ne 0 ]; then
