@@ -21,6 +21,20 @@ npm20() {
   npx --yes node@20 "$npm_cli" "$@"
 }
 
+require_clean_worktree() {
+  if [ "${RIHLA_ALLOW_DIRTY_FIREBASE_DEPLOY:-}" = "yes" ]; then
+    echo "WARNING: RIHLA_ALLOW_DIRTY_FIREBASE_DEPLOY=yes — deploying from a dirty worktree."
+    return 0
+  fi
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Refusing to deploy Firebase backend from a dirty working tree."
+    echo "Commit or stash tracked changes first so production can be tied to an exact commit."
+    echo "Emergency override: RIHLA_ALLOW_DIRTY_FIREBASE_DEPLOY=yes"
+    exit 2
+  fi
+}
+
 echo "Preparing Firebase backend deploy for project: ${PROJECT_ID}"
 echo
 echo "Prerequisites:"
@@ -36,6 +50,8 @@ if [ "${RIHLA_CONFIRM_FIREBASE_DEPLOY:-}" != "yes" ] || [ "${RIHLA_CONFIRM_APP_C
   echo "  RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/deploy_firebase_backend.sh ${PROJECT_ID}"
   exit 2
 fi
+
+require_clean_worktree
 
 npm20 --prefix functions ci
 npm20 --prefix functions audit --omit=dev --audit-level=low

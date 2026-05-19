@@ -112,4 +112,14 @@ exit 64
     expect(tagIndex, greaterThan(readinessIndex));
     expect(pushIndex, greaterThan(tagIndex));
   });
+
+  test('Firebase deploy helper refuses dirty tracked worktrees', () {
+    final deploy = read('tool/deploy_firebase_backend.sh');
+
+    expect(deploy, contains('require_clean_worktree'));
+    expect(deploy, contains('git diff --quiet'));
+    expect(deploy, contains('git diff --cached --quiet'));
+    expect(deploy, contains('RIHLA_ALLOW_DIRTY_FIREBASE_DEPLOY'));
+    expect(deploy, contains('production can be tied to an exact commit'));
+  });
 }
