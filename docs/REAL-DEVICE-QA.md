@@ -78,6 +78,13 @@ flutter devices
 
 ## Run Commands
 
+To print the current branch, commit, artifact hashes, install commands, and
+final gate command from this checkout, run:
+
+```bash
+bash tool/print_android_qa_handoff.sh
+```
+
 For the Android-only wake-up QA pass, prefer the release APK built from the
 current PR head so the matrix exercises the same app artifact listed in the PR
 handoff and blocker issue. Connect two physical Android devices, then install

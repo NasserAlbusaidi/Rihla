@@ -45,6 +45,7 @@ void main() {
 
   test('real-device QA gate requires completed matrix evidence', () {
     final gate = read('tool/check_real_device_qa_gate.sh');
+    final handoff = read('tool/print_android_qa_handoff.sh');
     final runbook = read('docs/REAL-DEVICE-QA.md');
     final normalizedRunbook = runbook.replaceAll(RegExp(r'\s+'), ' ');
 
@@ -62,6 +63,14 @@ void main() {
       contains(
         'adb -s <android-device-id-1> install -r build/app/outputs/flutter-apk/app-release.apk',
       ),
+    );
+    expect(runbook, contains('bash tool/print_android_qa_handoff.sh'));
+    expect(handoff, contains('git rev-parse HEAD'));
+    expect(handoff, contains('shasum -a 256'));
+    expect(handoff, contains('build/app/outputs/flutter-apk/app-release.apk'));
+    expect(
+      handoff,
+      contains('RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh'),
     );
     expect(
       normalizedRunbook,
