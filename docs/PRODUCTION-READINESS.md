@@ -12,6 +12,14 @@ Run the consolidated read-only audit:
 RIHLA_SKIP_IOS_QA=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh
 ```
 
+For a single wake-up handoff that prints the current commit, Android QA
+artifact hashes, Firebase deploy command, release audit command, and open
+blocker links, run:
+
+```bash
+bash tool/print_release_wakeup_handoff.sh rihla-safar
+```
+
 For a full iOS + Android release, omit `RIHLA_SKIP_IOS_QA=yes` and replace the
 iOS `Deferred ...` matrix cells with passing physical-device evidence.
 
@@ -173,6 +181,10 @@ starts a new run.
 
 These actions cannot be completed from this repo and remain before release:
 
+0. Print the current wake-up handoff:
+   ```bash
+   bash tool/print_release_wakeup_handoff.sh rihla-safar
+   ```
 1. Connect a physical Android device (or two for RD-04), then run:
    ```bash
    RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh

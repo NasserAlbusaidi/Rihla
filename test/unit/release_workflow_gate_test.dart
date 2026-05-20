@@ -406,4 +406,31 @@ exit 64
       contains(r'RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)"'),
     );
   });
+
+  test('release wake-up handoff aggregates external release gates', () {
+    final handoff = read('tool/print_release_wakeup_handoff.sh');
+    final productionReadiness = read('docs/PRODUCTION-READINESS.md');
+
+    expect(handoff, contains('Rihla release wake-up handoff'));
+    expect(handoff, contains('tool/print_android_qa_handoff.sh'));
+    expect(handoff, contains('tool/print_firebase_deploy_handoff.sh'));
+    expect(handoff, contains('tool/check_release_readiness.sh'));
+    expect(handoff, contains('RIHLA_SKIP_IOS_QA=yes'));
+    expect(handoff, contains('RIHLA_CONFIRM_APP_CHECK_READY=yes'));
+    expect(handoff, contains('RIHLA_BACKEND_RELEASE_READY=yes'));
+    expect(handoff, contains('RIHLA_REAL_DEVICE_QA_READY=yes'));
+    expect(handoff, contains('RIHLA_RELEASE_APPROVED_SHA'));
+    expect(
+      handoff,
+      contains('https://github.com/NasserAlbusaidi/Rihla/issues/40'),
+    );
+    expect(
+      handoff,
+      contains('https://github.com/NasserAlbusaidi/Rihla/issues/41'),
+    );
+    expect(
+      productionReadiness,
+      contains('bash tool/print_release_wakeup_handoff.sh rihla-safar'),
+    );
+  });
 }
