@@ -109,14 +109,31 @@ exit 64
     expect(governance, contains('readiness'));
   });
 
-  test('release readiness uses isolated emulator ports', () {
+  test('Firebase emulator gates use the isolated runner', () {
     final readiness = read('tool/check_release_readiness.sh');
+    final emulatorRunner = read('tool/run_firebase_emulator_tests.sh');
+    final functionsPackage = read('functions/package.json');
+    final readinessWorkflow = read('.github/workflows/readiness_check.yml');
+    final releaseWorkflow = read('.github/workflows/release_android.yml');
+    final productionReadiness = read('docs/PRODUCTION-READINESS.md');
 
-    expect(readiness, contains('run_firebase_emulator_tests'));
-    expect(readiness, contains('RIHLA_FIRESTORE_EMULATOR_PORT:-18080'));
-    expect(readiness, contains('RIHLA_AUTH_EMULATOR_PORT:-19099'));
-    expect(readiness, contains(r'${TEMP_FILES[@]-}'));
-    expect(readiness, isNot(contains('.XXXXXX.json')));
+    expect(emulatorRunner, contains('RIHLA_FIRESTORE_EMULATOR_PORT:-18080'));
+    expect(emulatorRunner, contains('RIHLA_AUTH_EMULATOR_PORT:-19099'));
+    expect(emulatorRunner, contains(r'${TEMP_FILES[@]-}'));
+    expect(emulatorRunner, contains('FIREBASE_TOOLS_VERSION:-15.8.0'));
+    expect(
+      emulatorRunner,
+      contains(r'firebase-tools@${FIREBASE_TOOLS_VERSION}'),
+    );
+    expect(emulatorRunner, isNot(contains('.XXXXXX.json')));
+    expect(
+      functionsPackage,
+      contains('"test:emulator": "bash ../tool/run_firebase_emulator_tests.sh"'),
+    );
+    expect(readiness, contains('bash tool/run_firebase_emulator_tests.sh'));
+    expect(readinessWorkflow, contains('npm --prefix functions run test:emulator'));
+    expect(releaseWorkflow, contains('npm --prefix functions run test:emulator'));
+    expect(productionReadiness, contains('npm --prefix functions run test:emulator'));
     expect(
       readiness,
       isNot(contains('npm20 --prefix functions run test:emulator')),

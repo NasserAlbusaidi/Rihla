@@ -15,18 +15,6 @@ set -uo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 JAVA21_HOME="${JAVA21_HOME:-}"
 FAILURES=0
-TEMP_FILES=()
-
-cleanup() {
-  local file
-  for file in "${TEMP_FILES[@]-}"; do
-    if [ -z "$file" ]; then
-      continue
-    fi
-    rm -f "$file"
-  done
-}
-trap cleanup EXIT
 
 pass() {
   echo "PASS: $*"
@@ -125,39 +113,6 @@ check_app_check_enrollment_confirmed() {
   fi
 }
 
-run_firebase_emulator_tests() {
-  local config
-  local auth_port="${RIHLA_AUTH_EMULATOR_PORT:-19099}"
-  local firestore_port="${RIHLA_FIRESTORE_EMULATOR_PORT:-18080}"
-
-  config="$(mktemp "$ROOT_DIR/.firebase-release-emulators.XXXXXX")"
-  TEMP_FILES+=("$config")
-
-  cat >"$config" <<JSON
-{
-  "firestore": {
-    "rules": "security/firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "emulators": {
-    "auth": { "port": ${auth_port} },
-    "firestore": { "port": ${firestore_port} },
-    "ui": { "enabled": false },
-    "singleProjectMode": true
-  }
-}
-JSON
-
-  (
-    cd "$ROOT_DIR/functions"
-    npx --yes firebase-tools@15.8.0 emulators:exec \
-      --config "$config" \
-      --project rihla-safar-test \
-      --only auth,firestore \
-      "npx --yes node@20 node_modules/jest/bin/jest.js --runInBand"
-  )
-}
-
 cd "$ROOT_DIR"
 
 if [ "${RIHLA_SKIP_IOS_QA:-}" = "yes" ]; then
@@ -171,7 +126,7 @@ run_step "Functions dependency audit at low severity" npm20 --prefix functions a
 run_step "Functions TypeScript build" npm20 --prefix functions run build
 run_step "App Check enforcement configured" check_app_check_enforced
 run_step "App Check Console enrollment confirmed" check_app_check_enrollment_confirmed
-run_step "Firebase emulator rules/functions tests" run_firebase_emulator_tests
+run_step "Firebase emulator rules/functions tests" bash tool/run_firebase_emulator_tests.sh
 run_step "Flutter analyzer" flutter analyze --no-fatal-infos
 run_step "Theme purity check" bash tool/check_theme_purity.sh
 run_step "Navigation smoke tests" \
