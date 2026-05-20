@@ -94,8 +94,15 @@ bash tool/print_android_qa_handoff.sh
 
 For the Android-only wake-up QA pass, prefer the release APK built from the
 current PR head so the matrix exercises the same app artifact listed in the PR
-handoff and blocker issue. Connect two physical Android devices, then install
-the APK on both:
+handoff and blocker issue. If artifacts are missing or the checkout changed
+since the last build, rebuild the current head first:
+
+```bash
+flutter build apk --release --dart-define-from-file=config.json --android-skip-build-dependency-validation
+flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation
+```
+
+Connect two physical Android devices, then install the APK on both:
 
 ```bash
 adb devices

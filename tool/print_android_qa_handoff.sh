@@ -14,6 +14,11 @@ echo
 echo "Branch: $(git rev-parse --abbrev-ref HEAD)"
 echo "Commit: $(git rev-parse HEAD)"
 echo
+echo "Rebuild this exact checkout before device install if artifacts are missing"
+echo "or if the checkout changed since the last build:"
+echo "  flutter build apk --release --dart-define-from-file=config.json --android-skip-build-dependency-validation"
+echo "  flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation"
+echo
 
 if [ -f "$APK_PATH" ] && [ -f "$AAB_PATH" ]; then
   echo "Artifacts:"

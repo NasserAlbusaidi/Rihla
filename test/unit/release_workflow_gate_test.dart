@@ -76,12 +76,30 @@ void main() {
     );
     expect(
       runbook,
+      contains(
+        'flutter build apk --release --dart-define-from-file=config.json --android-skip-build-dependency-validation',
+      ),
+    );
+    expect(
+      runbook,
       contains('bash tool/print_release_wakeup_handoff.sh rihla-safar'),
     );
     expect(runbook, contains('audit doc'));
     expect(runbook, contains('bash tool/print_android_qa_handoff.sh'));
     expect(handoff, contains('git rev-parse HEAD'));
     expect(handoff, contains('shasum -a 256'));
+    expect(
+      handoff,
+      contains(
+        'Rebuild this exact checkout before device install if artifacts are missing',
+      ),
+    );
+    expect(
+      handoff,
+      contains(
+        'flutter build apk --release --dart-define-from-file=config.json --android-skip-build-dependency-validation',
+      ),
+    );
     expect(handoff, contains('build/app/outputs/flutter-apk/app-release.apk'));
     expect(
       handoff,
