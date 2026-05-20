@@ -109,6 +109,20 @@ exit 64
     expect(governance, contains('readiness'));
   });
 
+  test('release readiness uses isolated emulator ports', () {
+    final readiness = read('tool/check_release_readiness.sh');
+
+    expect(readiness, contains('run_firebase_emulator_tests'));
+    expect(readiness, contains('RIHLA_FIRESTORE_EMULATOR_PORT:-18080'));
+    expect(readiness, contains('RIHLA_AUTH_EMULATOR_PORT:-19099'));
+    expect(readiness, contains(r'${TEMP_FILES[@]-}'));
+    expect(readiness, isNot(contains('.XXXXXX.json')));
+    expect(
+      readiness,
+      isNot(contains('npm20 --prefix functions run test:emulator')),
+    );
+  });
+
   test('README coverage gate matches the enforced 80 percent threshold', () {
     final readme = read('README.md');
     final readiness = read('.github/workflows/readiness_check.yml');
