@@ -92,9 +92,11 @@ path was used.
 ## Test Matrix
 
 Record each result as Pass, Fail, or Blocked with the device model, OS version,
-build source, and Firebase project. For release, both iOS and Android cells must
-start with `Pass` and the Evidence cell must contain a concrete artifact such as
-a group ID, invite code, screenshot filename, or Firestore document path.
+build source, and Firebase project. In the default full iOS + Android gate, both
+iOS and Android cells must start with `Pass`. In Android-only mode, iOS cells
+may start with `Deferred` and Android cells must start with `Pass`. Evidence
+cell must contain a concrete artifact such as a group ID, invite code,
+screenshot filename, or Firestore document path.
 
 | ID | Area | iOS | Android | Evidence |
 |---|---|---|---|---|

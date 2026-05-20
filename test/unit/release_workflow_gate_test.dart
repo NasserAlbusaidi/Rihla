@@ -24,13 +24,29 @@ void main() {
   test('real-device QA gate requires completed matrix evidence', () {
     final gate = read('tool/check_real_device_qa_gate.sh');
     final runbook = read('docs/REAL-DEVICE-QA.md');
+    final normalizedRunbook = runbook.replaceAll(RegExp(r'\s+'), ' ');
 
     expect(gate, contains('check_matrix_results'));
     expect(gate, contains('docs/REAL-DEVICE-QA.md'));
     expect(gate, contains('Real-device QA matrix is incomplete'));
     expect(runbook, contains('Every RD-01 through RD-09 row'));
     expect(runbook, contains('RD-09 | Arabic RTL golden path'));
-    expect(runbook, contains('Evidence cell must contain a concrete artifact'));
+    expect(
+      normalizedRunbook,
+      contains('Evidence cell must contain a concrete artifact'),
+    );
+    expect(
+      normalizedRunbook,
+      contains('In Android-only mode, iOS cells may start with `Deferred`'),
+    );
+    expect(
+      normalizedRunbook,
+      isNot(
+        contains(
+          'For release, both iOS and Android cells must start with `Pass`',
+        ),
+      ),
+    );
     expect(runbook, isNot(contains('Two paths disagree')));
     expect(runbook, isNot(contains('never invokes the matrix script')));
     expect(runbook, contains('`tool/release.sh` runs the consolidated audit'));
