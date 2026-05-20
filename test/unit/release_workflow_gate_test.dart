@@ -505,4 +505,24 @@ exit 64
       contains('bash tool/print_release_wakeup_handoff.sh rihla-safar'),
     );
   });
+
+  test('release hardening audit maps objective to evidence and blockers', () {
+    final audit = read('docs/RELEASE-HARDENING-AUDIT.md');
+    final productionReadiness = read('docs/PRODUCTION-READINESS.md');
+
+    expect(audit, contains('codex/release-hardening-1-0'));
+    expect(audit, contains('PR #39'));
+    expect(audit, contains('not release complete'));
+    expect(audit, contains('lib/core/theme/app_theme.dart'));
+    expect(audit, contains('test/core/theme/app_theme_button_test.dart'));
+    expect(audit, contains('tool/check_release_readiness.sh'));
+    expect(audit, contains('tool/check_firebase_prod_state.sh'));
+    expect(audit, contains('tool/print_release_wakeup_handoff.sh'));
+    expect(audit, contains('tool/print_android_qa_handoff.sh'));
+    expect(audit, contains('docs/REAL-DEVICE-QA.md'));
+    expect(audit, contains('#40'));
+    expect(audit, contains('#41'));
+    expect(audit, contains('Not complete'));
+    expect(productionReadiness, contains('docs/RELEASE-HARDENING-AUDIT.md'));
+  });
 }

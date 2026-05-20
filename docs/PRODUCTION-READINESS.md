@@ -20,6 +20,9 @@ blocker links, run:
 bash tool/print_release_wakeup_handoff.sh rihla-safar
 ```
 
+For the prompt-to-artifact map of this release-hardening branch, see
+`docs/RELEASE-HARDENING-AUDIT.md`.
+
 For a full iOS + Android release, omit `RIHLA_SKIP_IOS_QA=yes` and replace the
 iOS `Deferred ...` matrix cells with passing physical-device evidence.
 
