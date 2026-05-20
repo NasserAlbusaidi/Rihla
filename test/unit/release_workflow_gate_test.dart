@@ -74,6 +74,27 @@ void main() {
     expect(runbook, contains('`tool/release.sh` runs the consolidated audit'));
   });
 
+  test('real-device QA gate rejects documented placeholder evidence', () {
+    final gate = read('tool/check_real_device_qa_gate.sh');
+    final runbook = read('docs/REAL-DEVICE-QA.md');
+    final placeholders = <String>[
+      'Group ID or screenshot',
+      'Invite code and joined member name',
+      'Group no longer appears on both devices',
+      'Screenshots from both devices',
+      'Keyboard screenshot and saved amount',
+      'Before/after screenshots',
+      '`fcm_tokens/{uid}` exists',
+      '`fcm_tokens/{uid}` removed',
+      'Arabic RTL screenshots and golden-path log',
+    ];
+
+    for (final placeholder in placeholders) {
+      expect(runbook, contains(placeholder));
+      expect(gate, contains('"$placeholder"'));
+    }
+  });
+
   test(
     'Android-only real-device gate requires two physical Android devices',
     () async {
