@@ -55,12 +55,12 @@ starts a new run.
   - Command: `flutter analyze --no-fatal-infos`
 - [x] Non-golden Flutter test suite passes with raw coverage over the 80% gate.
   - Command: `flutter test --coverage test/architecture test/core test/features test/helpers test/integration test/shared test/unit test/widget_test.dart`
-  - Result: 1287 passed, 3 skipped (verified 2026-05-19 on `codex/release-hardening-1-0`)
+  - Result: 1303 passed, 3 skipped (verified 2026-05-20 on `codex/release-hardening-1-0`)
   - Coverage: 80.6% raw line coverage
   - Note: CI and `tool/check_release_readiness.sh` both enforce 80% raw line coverage.
 - [x] Navigation smoke tests cover the shippable route tree and invite links.
   - Command: `flutter test test/unit/app_router_test.dart test/helpers/navigation_test.dart test/unit/deep_link_service_test.dart test/unit/auth_link_hosting_files_test.dart test/features/activity/activity_feed_screen_test.dart test/features/groups/qr_invite_sheet_test.dart test/features/groups/group_detail_navigation_test.dart test/features/events/event_command_center_test.dart test/features/ledger/ledger_screen_overflow_test.dart`
-  - Result: 61 passed
+  - Result: 69 passed
   - Coverage: splash redirects to `/home`, `/join/:code` stays addressable on fresh installs, onboarding is not in the production route tree, invite links use Firebase Hosting, normalize legacy lowercase codes before sharing, and accept browser-normalized trailing slashes, account-recovery browser fallback links use the `rihla://auth-link` app scheme, both Firebase default Hosting domains are checked by the production-state verifier, production code avoids imperative `Navigator.push`, `state.extra`, and named GoRouter calls, GroupDetail create-event/settle-up/settings/activity entry points route to expected destinations, event hub module cards, expense hero, and settings button route to ledger/activity/settings, Ledger settings/search/add/settle-up/edit entry points route to expected destinations, and direct-entry nested back navigation covers group settings, group settle-up, group activity, create-event, typed create-event, event hub, event activity, ledger, activity, settings, add, edit, and settle-up.
 - [x] Account-recovery success routes are restoration-safe.
   - Command: `flutter test test/features/auth/link_email_screen_test.dart test/features/auth/recover_screen_test.dart`
