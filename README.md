@@ -158,7 +158,10 @@ Requires a signed keystore configured in `android/key.properties` (gitignored).
 
 ### CI/CD
 
-`.github/workflows/release_android.yml` triggers on manual dispatch or a `v*` tag push. It runs tests, builds the AAB, and uploads to Google Play alpha.
+`.github/workflows/release_android.yml` triggers on manual dispatch or a `v*`
+tag push. The upload job refuses non-`v*` refs and refuses tag commits that are
+not contained in `origin/main`. It runs tests, builds the AAB, and uploads to
+Google Play alpha.
 
 Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`.
 

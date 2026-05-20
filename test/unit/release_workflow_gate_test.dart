@@ -7,7 +7,20 @@ void main() {
 
   test('Android release workflow requires external release confirmations', () {
     final workflow = read('.github/workflows/release_android.yml');
+    final readme = read('README.md');
+    final configuration = read('docs/CONFIGURATION.md');
+    final productionReadiness = read('docs/PRODUCTION-READINESS.md');
+    final normalizedProductionReadiness = productionReadiness.replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
 
+    expect(workflow, contains('Release ref validation'));
+    expect(workflow, contains('GITHUB_REF_TYPE'));
+    expect(workflow, contains('refs/tags/v*'));
+    expect(workflow, contains('git fetch --no-tags origin main'));
+    expect(workflow, contains('git merge-base --is-ancestor'));
+    expect(workflow, contains('origin/main'));
     expect(workflow, contains('Release readiness confirmations'));
     expect(workflow, contains('RIHLA_BACKEND_RELEASE_READY'));
     expect(workflow, contains('RIHLA_APP_CHECK_READY'));
@@ -19,6 +32,15 @@ void main() {
       contains('Firebase backend and Hosting production checks'),
     );
     expect(workflow, contains('physical-device QA matrix passes'));
+    expect(readme, contains('refuses non-`v*` refs'));
+    expect(
+      configuration,
+      contains('manual dispatch must target the release tag'),
+    );
+    expect(
+      normalizedProductionReadiness,
+      contains('tag commit is contained in `origin/main`'),
+    );
   });
 
   test('real-device QA gate requires completed matrix evidence', () {
@@ -144,12 +166,23 @@ exit 64
     expect(emulatorRunner, isNot(contains('.XXXXXX.json')));
     expect(
       functionsPackage,
-      contains('"test:emulator": "bash ../tool/run_firebase_emulator_tests.sh"'),
+      contains(
+        '"test:emulator": "bash ../tool/run_firebase_emulator_tests.sh"',
+      ),
     );
     expect(readiness, contains('bash tool/run_firebase_emulator_tests.sh'));
-    expect(readinessWorkflow, contains('npm --prefix functions run test:emulator'));
-    expect(releaseWorkflow, contains('npm --prefix functions run test:emulator'));
-    expect(productionReadiness, contains('npm --prefix functions run test:emulator'));
+    expect(
+      readinessWorkflow,
+      contains('npm --prefix functions run test:emulator'),
+    );
+    expect(
+      releaseWorkflow,
+      contains('npm --prefix functions run test:emulator'),
+    );
+    expect(
+      productionReadiness,
+      contains('npm --prefix functions run test:emulator'),
+    );
     expect(
       readiness,
       isNot(contains('npm20 --prefix functions run test:emulator')),

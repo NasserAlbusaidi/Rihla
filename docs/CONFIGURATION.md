@@ -227,10 +227,12 @@ Required repository variables:
 | `RIHLA_RELEASE_APPROVED_SHA` | Full release commit SHA | Confirms the three release readiness variables apply to the exact commit being uploaded |
 
 The CI pipeline refuses to upload unless those variables are set and
-`RIHLA_RELEASE_APPROVED_SHA` equals the workflow's `GITHUB_SHA`. It then runs
-`flutter analyze`, tests with 80% raw coverage enforcement, a hardcoded color
-lint, builds the AAB, and uploads to the Play Store Closed Testing (alpha
-track).
+`RIHLA_RELEASE_APPROVED_SHA` equals the workflow's `GITHUB_SHA`. The release
+workflow also refuses non-`v*` refs and refuses tag commits that are not
+contained in `origin/main`, so a manual dispatch must target the release tag. It
+then runs `flutter analyze`, tests with 80% raw coverage enforcement, a
+hardcoded color lint, builds the AAB, and uploads to the Play Store Closed
+Testing (alpha track).
 
 Before tagging or manually dispatching a release, run the read-only GitHub
 governance check:

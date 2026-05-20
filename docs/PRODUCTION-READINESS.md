@@ -152,6 +152,9 @@ starts a new run.
 - [ ] Android release workflow external confirmations are not set.
   - `.github/workflows/release_android.yml` now refuses to upload unless `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, and `RIHLA_REAL_DEVICE_QA_READY` repository variables are all set to `yes`.
   - It also requires `RIHLA_RELEASE_APPROVED_SHA` to match the exact commit being uploaded, so stale `yes` variables from a previous release cannot authorize a newer tag.
+  - The upload job now refuses non-`v*` refs and refuses tag commits that are
+    not contained in `origin/main`, so manual dispatches must target a release
+    tag on the protected branch history.
   - Leave these unset until the production-state audit, App Check Console enrolment, and physical-device QA matrix pass for the target commit.
 - [x] GitHub release governance is configured.
   - Gate command:
@@ -189,9 +192,10 @@ These actions cannot be completed from this repo and remain before release:
    `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`,
    `RIHLA_REAL_DEVICE_QA_READY`.
 4. Set `RIHLA_RELEASE_APPROVED_SHA` to the full commit SHA that will be tagged
-   or manually dispatched. The release workflow refuses to upload to Play until
-   the three readiness variables are `yes` and the approved SHA matches
-   `GITHUB_SHA`.
+   and uploaded. The release workflow refuses to upload to Play until the three
+   readiness variables are `yes`, the approved SHA matches `GITHUB_SHA`, the
+   workflow is running from a `v*` tag, and the tag commit is contained in
+   `origin/main`.
 5. Confirm `main` branch protection is still enabled and still requires the
    strict `Readiness Check / readiness` status before merging release branches.
 6. Re-run the full audit before promoting the Play Store track:
