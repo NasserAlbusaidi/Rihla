@@ -9,12 +9,15 @@
 #                          iOS cells must read "Deferred ..." or "Pass ...".
 #                          Unset (the default) re-enables the strict iOS+Android
 #                          gate for when iOS ships.
+#   RIHLA_REAL_DEVICE_QA_DOC
+#                          Optional test-only override for the QA matrix file.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_FILE="$(mktemp)"
 FAILURES=0
 SKIP_IOS_QA="${RIHLA_SKIP_IOS_QA:-}"
+QA_DOC="${RIHLA_REAL_DEVICE_QA_DOC:-docs/REAL-DEVICE-QA.md}"
 
 if [ "$SKIP_IOS_QA" = "yes" ]; then
   echo "INFO: RIHLA_SKIP_IOS_QA=yes — running in Android-only mode (iOS soft-deferred for v1.2)."
@@ -62,7 +65,10 @@ check_matrix_results() {
 
     function evidence_has_build_trace(value, lower) {
       lower = tolower(value);
-      return lower ~ /(commit|sha-256|sha256|apk|aab|play|track|build|artifact|app-release)/ \
+      return lower ~ /(commit|sha-256|sha256|apk|aab|app-release)/ \
+        || lower ~ /play[[:space:]-]*(track|build|testing|internal|closed|open|production)/ \
+        || lower ~ /track[[:space:]-]*(build|version)/ \
+        || lower ~ /build[[:space:]-]*(number|version|code)/ \
         || value ~ /[0-9a-fA-F]{12,}/;
     }
 
@@ -104,7 +110,7 @@ check_matrix_results() {
       }
       exit failures > 0 ? 1 : 0;
     }
-  ' docs/REAL-DEVICE-QA.md
+  ' "$QA_DOC"
 }
 
 cd "$ROOT_DIR"

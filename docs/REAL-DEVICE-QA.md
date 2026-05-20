@@ -121,6 +121,7 @@ cell must contain a concrete artifact such as a group ID, invite code,
 screenshot filename, or Firestore document path. Evidence cell must also
 include build traceability: commit SHA, APK/AAB SHA-256, Play track/build
 number, or the relevant output from `tool/print_android_qa_handoff.sh`.
+Generic words like `build` or `artifact` are not enough by themselves.
 
 | ID | Area | iOS | Android | Evidence |
 |---|---|---|---|---|

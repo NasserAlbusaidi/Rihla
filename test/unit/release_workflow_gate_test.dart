@@ -65,6 +65,10 @@ void main() {
       contains('Evidence cell must also include build traceability'),
     );
     expect(
+      normalizedRunbook,
+      contains('Generic words like `build` or `artifact` are not enough'),
+    );
+    expect(
       runbook,
       contains(
         'adb -s <android-device-id-1> install -r build/app/outputs/flutter-apk/app-release.apk',
@@ -119,10 +123,78 @@ void main() {
   test('real-device QA gate rejects evidence without build traceability', () {
     final gate = read('tool/check_real_device_qa_gate.sh');
 
+    expect(gate, contains('RIHLA_REAL_DEVICE_QA_DOC'));
     expect(gate, contains('evidence_has_build_trace'));
     expect(gate, contains('evidence does not include build traceability'));
     expect(gate, contains('sha-256'));
     expect(gate, contains('app-release'));
+    expect(gate, contains('build[[:space:]-]*(number|version|code)'));
+    expect(gate, isNot(contains('|build|artifact')));
+  });
+
+  test('real-device QA gate rejects vague build evidence wording', () async {
+    final tempDir = Directory.systemTemp.createTempSync(
+      'rihla-qa-trace-fixture-',
+    );
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+
+    final flutterStub = File('${tempDir.path}/flutter')
+      ..writeAsStringSync('''
+#!/usr/bin/env bash
+if [ "\$1" = "devices" ] && [ "\$2" = "--machine" ]; then
+  cat <<'JSON'
+[
+  {
+    "name": "Pixel QA 1",
+    "id": "pixel-qa-1",
+    "targetPlatform": "android-arm64",
+    "emulator": false
+  },
+  {
+    "name": "Pixel QA 2",
+    "id": "pixel-qa-2",
+    "targetPlatform": "android-arm64",
+    "emulator": false
+  }
+]
+JSON
+  exit 0
+fi
+echo "unexpected flutter invocation: \$*" >&2
+exit 64
+''');
+    await Process.run('chmod', ['+x', flutterStub.path]);
+
+    final matrix = File('${tempDir.path}/REAL-DEVICE-QA.md')
+      ..writeAsStringSync('''
+| ID | Area | iOS | Android | Evidence |
+|---|---|---|---|---|
+| RD-01 | Create group | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | Screenshot build artifact without a trace |
+| RD-02 | Join group by invite code | Deferred — v1.2 Android-only | Pass Pixel QA 2 Android 15 | Invite QA1234; commit abcdef123456 |
+| RD-03 | Delete group | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | Group deleted; APK sha-256 abcdef1234567890 |
+| RD-04 | Two-device ledger identity | Deferred — v1.2 Android-only | Pass two Pixel devices | Screenshots both devices; app-release.apk sha256 abcdef1234567890 |
+| RD-05 | Decimal expense input | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | OMR 1.250 saved; AAB sha256 abcdef1234567890 |
+| RD-06 | Offline and reconnect | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | Reconnect pass; Play track internal build 15 |
+| RD-07 | Notification opt-in | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | fcm token exists; build number 15 |
+| RD-08 | Notification opt-out | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | fcm token removed; commit abcdef123456 |
+| RD-09 | Arabic RTL golden path | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | RTL screenshots; commit abcdef123456 |
+''');
+
+    final result = await Process.run(
+      'bash',
+      ['tool/check_real_device_qa_gate.sh'],
+      environment: {
+        'PATH': '${tempDir.path}:${Platform.environment['PATH']}',
+        'RIHLA_SKIP_IOS_QA': 'yes',
+        'RIHLA_REAL_DEVICE_QA_DOC': matrix.path,
+      },
+    );
+
+    expect(result.exitCode, isNot(0));
+    expect(
+      '${result.stdout}\n${result.stderr}',
+      contains('RD-01 evidence does not include build traceability'),
+    );
   });
 
   test(
