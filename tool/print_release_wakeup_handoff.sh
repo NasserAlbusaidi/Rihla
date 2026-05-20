@@ -13,6 +13,7 @@ echo
 echo "Branch: $(git rev-parse --abbrev-ref HEAD)"
 echo "Commit: $(git rev-parse HEAD)"
 echo "PR: https://github.com/NasserAlbusaidi/Rihla/pull/39"
+echo "Release hardening audit: docs/RELEASE-HARDENING-AUDIT.md"
 echo
 echo "Open release blockers:"
 echo "- #40 Physical Android QA: https://github.com/NasserAlbusaidi/Rihla/issues/40"

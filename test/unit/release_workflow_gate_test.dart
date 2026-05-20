@@ -484,6 +484,7 @@ exit 64
     final productionReadiness = read('docs/PRODUCTION-READINESS.md');
 
     expect(handoff, contains('Rihla release wake-up handoff'));
+    expect(handoff, contains('docs/RELEASE-HARDENING-AUDIT.md'));
     expect(handoff, contains('tool/print_android_qa_handoff.sh'));
     expect(handoff, contains('tool/print_firebase_deploy_handoff.sh'));
     expect(handoff, contains('tool/check_release_readiness.sh'));
