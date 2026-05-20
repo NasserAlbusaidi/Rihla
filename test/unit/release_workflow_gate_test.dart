@@ -331,4 +331,32 @@ exit 64
     expect(postBuildCleanIndex, lessThan(deployIndex));
     expect(deployIndex, greaterThan(buildIndex));
   });
+
+  test('Firebase deploy helper requires commit-bound approval', () {
+    final deploy = read('tool/deploy_firebase_backend.sh');
+    final productionReadiness = read('docs/PRODUCTION-READINESS.md');
+    final cloudFunctions = read('docs/CLOUD-FUNCTIONS.md');
+    final securityRules = read('docs/SECURITY-RULES.md');
+    final runbook = read('docs/RUNBOOK.md');
+
+    expect(deploy, contains('RIHLA_FIREBASE_DEPLOY_APPROVED_SHA'));
+    expect(deploy, contains('git rev-parse HEAD'));
+    expect(deploy, contains('does not match current commit'));
+    expect(
+      productionReadiness,
+      contains(r'RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)"'),
+    );
+    expect(
+      cloudFunctions,
+      contains(r'RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)"'),
+    );
+    expect(
+      securityRules,
+      contains(r'RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)"'),
+    );
+    expect(
+      runbook,
+      contains(r'RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)"'),
+    );
+  });
 }

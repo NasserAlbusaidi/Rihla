@@ -396,12 +396,11 @@ Tests use the Firestore emulator under Java 21. See
 Functions deploy via the same script the readiness check uses:
 
 ```bash
-RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes \
-  bash tool/deploy_firebase_backend.sh rihla-safar
+RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
 ```
 
-The script refuses to deploy unless both env gates and the App Check
-repo variables agree.
+The script refuses to deploy unless both env gates are present, the approved SHA
+matches the current commit, and the App Check repo variables agree.
 
 ---
 

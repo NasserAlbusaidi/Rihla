@@ -502,12 +502,11 @@ unauthenticated contexts against the running emulator.
 Rules deploy as part of the backend deployment script:
 
 ```bash
-RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes \
-  bash tool/deploy_firebase_backend.sh rihla-safar
+RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
 ```
 
-The script also diffs current production rules against the repo first
-and refuses to deploy a regression without confirmation. See
+The script also requires a clean worktree plus commit-bound approved SHA, then
+diffs current production rules against the repo after deploy verification. See
 [RUNBOOK.md § T2](./RUNBOOK.md) for the rules-drift incident response.
 
 ### Aligning `isValidDisplayName` with the client

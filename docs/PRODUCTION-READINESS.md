@@ -182,7 +182,7 @@ These actions cannot be completed from this repo and remain before release:
 2. After branch testing/review is accepted, deploy the branch backend from a
    clean worktree and verify production state:
    ```bash
-   RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/deploy_firebase_backend.sh rihla-safar
+   RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
    bash tool/check_firebase_prod_state.sh rihla-safar
    ```
    Do not continue until the production-state check exits 0 for the target
@@ -253,12 +253,13 @@ against the currently deployed backend.
 Redeploy backend after a rules / indexes / Functions / Hosting change:
 
 ```bash
-RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/deploy_firebase_backend.sh rihla-safar
+RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
 ```
 
 The script installs Functions dependencies from the lockfile, audits production
-dependencies at low severity, builds Functions, deploys Firestore rules/indexes,
-Functions, and Hosting, then runs `tool/check_firebase_prod_state.sh`.
+dependencies at low severity, builds Functions, rechecks the clean worktree and
+approved SHA, deploys Firestore rules/indexes, Functions, and Hosting, then runs
+`tool/check_firebase_prod_state.sh`.
 
 Equivalent manual deploy command:
 

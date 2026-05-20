@@ -37,6 +37,23 @@ require_clean_worktree() {
   fi
 }
 
+require_approved_sha() {
+  local current_sha
+  current_sha="$(git rev-parse HEAD)"
+
+  if [ -z "${RIHLA_FIREBASE_DEPLOY_APPROVED_SHA:-}" ]; then
+    echo "Refusing to deploy without commit-bound approval."
+    echo "Set RIHLA_FIREBASE_DEPLOY_APPROVED_SHA to the exact commit being deployed:"
+    echo "  RIHLA_FIREBASE_DEPLOY_APPROVED_SHA=\"$current_sha\""
+    exit 2
+  fi
+
+  if [ "$RIHLA_FIREBASE_DEPLOY_APPROVED_SHA" != "$current_sha" ]; then
+    echo "Refusing to deploy: RIHLA_FIREBASE_DEPLOY_APPROVED_SHA=${RIHLA_FIREBASE_DEPLOY_APPROVED_SHA} does not match current commit ${current_sha}."
+    exit 2
+  fi
+}
+
 echo "Preparing Firebase backend deploy for project: ${PROJECT_ID}"
 echo
 echo "Prerequisites:"
@@ -49,16 +66,18 @@ echo
 if [ "${RIHLA_CONFIRM_FIREBASE_DEPLOY:-}" != "yes" ] || [ "${RIHLA_CONFIRM_APP_CHECK_READY:-}" != "yes" ]; then
   echo "Refusing to deploy without confirmation."
   echo "Run with both confirmations when the prerequisites above are complete:"
-  echo "  RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/deploy_firebase_backend.sh ${PROJECT_ID}"
+  echo "  RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA=\"$(git rev-parse HEAD)\" bash tool/deploy_firebase_backend.sh ${PROJECT_ID}"
   exit 2
 fi
 
 require_clean_worktree
+require_approved_sha
 
 npm20 --prefix functions ci
 npm20 --prefix functions audit --omit=dev --audit-level=low
 npm20 --prefix functions run build
 require_clean_worktree
+require_approved_sha
 
 npx --yes "firebase-tools@${FIREBASE_TOOLS_VERSION}" deploy \
   --force \
