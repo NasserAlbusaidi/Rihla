@@ -237,6 +237,41 @@ exit 64
     );
   });
 
+  test('production readiness does not mark current branch backend deployed', () {
+    final productionReadiness = read('docs/PRODUCTION-READINESS.md');
+
+    expect(
+      productionReadiness,
+      contains(
+        '- [x] Historical v1.2.0+15 Firebase Functions were deployed in production.',
+      ),
+    );
+    expect(
+      productionReadiness,
+      contains(
+        '- [x] Historical v1.2.0+15 Firestore production rules matched `security/firestore.rules`.',
+      ),
+    );
+    expect(
+      productionReadiness,
+      contains(
+        '- [ ] Firebase production state is not aligned with this branch yet.',
+      ),
+    );
+    expect(
+      productionReadiness,
+      isNot(contains('- [x] Firebase Functions are deployed in production.')),
+    );
+    expect(
+      productionReadiness,
+      isNot(
+        contains(
+          '- [x] Firestore production rules match `security/firestore.rules`.',
+        ),
+      ),
+    );
+  });
+
   test('release helper runs readiness before tagging and pushing', () {
     final release = read('tool/release.sh');
     final readme = read('README.md');

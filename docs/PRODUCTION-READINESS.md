@@ -105,12 +105,13 @@ starts a new run.
   - Command: `bash tool/check_firebase_prod_state.sh rihla-safar`
   - Historical result (2026-05-15): 12 checks PASS, exit 0. Re-verified 2026-05-16 after v1.2.0+15 functions deploy.
   - Current branch result (2026-05-20, PR #39): FAIL until the branch backend is deployed. Firestore indexes and Hosting passed; Firestore rules differ from production, and the deployed Functions list is missing `deleteAccount`.
-- [x] Firebase Functions are deployed in production.
-  - Evidence: production-state audit confirms expected functions are deployed (`joinGroupByInviteCode`, `cleanupAnonUidArtifacts`, account-deletion cascade, FCM token cleanup).
+- [x] Historical v1.2.0+15 Firebase Functions were deployed in production.
+  - Historical evidence: production-state audit confirmed expected functions were deployed (`joinGroupByInviteCode`, `cleanupAnonUidArtifacts`, account-deletion cascade, FCM token cleanup) for the v1.2.0+15 backend snapshot.
   - v1.2.0+15 changes: `joinGroupByInviteCode` now fans the joiner into existing event `participantIds` server-side (Gap 1); new `cleanupAnonUidArtifacts` callable scrubs FCM tokens + joinAttempts for the abandoned anon UID after email-link recovery (Gap 3, fire-and-forget — failures land in Sentry breadcrumbs).
   - v1.0 hardening branch: `cleanupAnonUidArtifacts` now requires a 15-minute one-time `recoveryCleanupIntents/{oldUid}` secret created by the retiring anon UID before sign-out, so recovered users cannot migrate arbitrary visible anon UIDs.
+  - Current branch note: production is missing `deleteAccount`; this checkbox is historical evidence only, not proof that the current branch Functions are deployed.
   - Backfill: `tool/backfill_join_event_sync.js` was run against `rihla-safar` on 2026-05-16 to reconcile historical event participant discrepancies.
-- [x] Firestore production rules match `security/firestore.rules`.
+- [x] Historical v1.2.0+15 Firestore production rules matched `security/firestore.rules`.
   - Historical evidence: production-state audit diffed the active v1.2.0+15 ruleset against the repo and reported PASS.
   - Current branch note: production does not yet contain the new `recoveryCleanupIntents/{oldUid}` rules or the latest former-member display-name validation; this checkbox remains historical, not proof that the current branch is deployed.
 - [x] Firestore production indexes match `firestore.indexes.json`.
