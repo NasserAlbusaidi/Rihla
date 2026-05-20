@@ -505,11 +505,28 @@ exit 64
   test('release wake-up handoff aggregates external release gates', () {
     final handoff = read('tool/print_release_wakeup_handoff.sh');
     final productionReadiness = read('docs/PRODUCTION-READINESS.md');
+    final firebaseHandoffIndex = handoff.indexOf('Firebase backend handoff');
+    final androidHandoffIndex = handoff.indexOf('Android QA handoff');
+    final backendDeployStepIndex = productionReadiness.indexOf(
+      'deploy the branch backend from a clean worktree',
+    );
+    final androidQaStepIndex = productionReadiness.indexOf(
+      'Connect two physical Android devices',
+    );
 
     expect(handoff, contains('Rihla release wake-up handoff'));
     expect(handoff, contains('docs/RELEASE-HARDENING-AUDIT.md'));
+    expect(handoff, contains('Recommended wake-up sequence'));
+    expect(
+      handoff,
+      contains(
+        'Complete #41 first so production Firebase matches this exact commit',
+      ),
+    );
     expect(handoff, contains('tool/print_android_qa_handoff.sh'));
     expect(handoff, contains('tool/print_firebase_deploy_handoff.sh'));
+    expect(firebaseHandoffIndex, greaterThan(-1));
+    expect(androidHandoffIndex, greaterThan(firebaseHandoffIndex));
     expect(handoff, contains('tool/check_release_readiness.sh'));
     expect(handoff, contains('RIHLA_SKIP_IOS_QA=yes'));
     expect(handoff, contains('RIHLA_CONFIRM_APP_CHECK_READY=yes'));
@@ -527,6 +544,12 @@ exit 64
     expect(
       productionReadiness,
       contains('bash tool/print_release_wakeup_handoff.sh rihla-safar'),
+    );
+    expect(backendDeployStepIndex, greaterThan(-1));
+    expect(androidQaStepIndex, greaterThan(backendDeployStepIndex));
+    expect(
+      productionReadiness,
+      contains('Production Firebase must match this branch'),
     );
     expect(
       productionReadiness,

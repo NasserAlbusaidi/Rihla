@@ -86,6 +86,11 @@ audit command from this checkout, run:
 bash tool/print_release_wakeup_handoff.sh rihla-safar
 ```
 
+For final release evidence, complete the Firebase backend deploy and
+production-state verification handoff before recording the physical-device QA
+matrix. The QA rows should prove the app against the production Firebase
+backend for this same branch commit, not an older deployed backend.
+
 For the Android QA slice only, run:
 
 ```bash

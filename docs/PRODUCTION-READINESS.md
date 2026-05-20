@@ -188,15 +188,11 @@ These actions cannot be completed from this repo and remain before release:
    ```bash
    bash tool/print_release_wakeup_handoff.sh rihla-safar
    ```
-1. Connect two physical Android devices, complete the `docs/REAL-DEVICE-QA.md`
-   matrix (RD-01..09) with concrete Android evidence, then rerun the gate until
-   it exits 0:
-   ```bash
-   RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
-   ```
-   iOS cells stay marked `Deferred — v1.2 Android-only` until iOS ships.
-2. After branch testing/review is accepted, deploy the branch backend from a
-   clean worktree and verify production state:
+1. After branch testing/review is accepted and Firebase deploy approval is
+   explicit, deploy the branch backend from a clean worktree and verify
+   production state. Production Firebase must match this branch before the
+   final real-device QA evidence is recorded; otherwise the matrix proves the
+   wrong backend:
    ```bash
    bash tool/print_firebase_deploy_handoff.sh rihla-safar
    RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
@@ -204,6 +200,13 @@ These actions cannot be completed from this repo and remain before release:
    ```
    Do not continue until the production-state check exits 0 for the target
    commit.
+2. Connect two physical Android devices, complete the `docs/REAL-DEVICE-QA.md`
+   matrix (RD-01..09) with concrete Android evidence against the verified
+   production Firebase backend, then rerun the gate until it exits 0:
+   ```bash
+   RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
+   ```
+   iOS cells stay marked `Deferred — v1.2 Android-only` until iOS ships.
 3. After RD-QA is recorded and the backend re-audit passes for the target
    commit, set the three Android release-workflow repository variables to
    `yes`:

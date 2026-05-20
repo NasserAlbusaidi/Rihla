@@ -39,6 +39,9 @@ bash tool/print_release_wakeup_handoff.sh rihla-safar
   cell.
 - #41: Deploy the branch Firebase backend only after explicit approval, then
   rerun `bash tool/check_firebase_prod_state.sh rihla-safar` until it exits 0.
+- Recommended wake-up order is #41 before #40, because the real-device QA
+  matrix must prove this branch against the matching production Firebase
+  backend.
 - Android release workflow variables must remain unset until #40 and #41 pass
   for the exact target commit.
 

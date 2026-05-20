@@ -19,13 +19,19 @@ echo "Open release blockers:"
 echo "- #40 Physical Android QA: https://github.com/NasserAlbusaidi/Rihla/issues/40"
 echo "- #41 Firebase backend deploy: https://github.com/NasserAlbusaidi/Rihla/issues/41"
 echo
-echo "Android QA handoff"
-echo "------------------"
-bash tool/print_android_qa_handoff.sh
+echo "Recommended wake-up sequence:"
+echo "1. Confirm branch review/testing acceptance and explicit Firebase deploy approval."
+echo "2. Complete #41 first so production Firebase matches this exact commit."
+echo "3. Complete #40 next on two physical Android devices against production Firebase."
+echo "4. Run the final Android-only release audit after both blockers pass."
 echo
 echo "Firebase backend handoff"
 echo "------------------------"
 bash tool/print_firebase_deploy_handoff.sh "$PROJECT_ID"
+echo
+echo "Android QA handoff"
+echo "------------------"
+bash tool/print_android_qa_handoff.sh
 echo
 echo "Final Android-only release audit after #40 and #41 pass:"
 echo "  RIHLA_SKIP_IOS_QA=yes RIHLA_CONFIRM_APP_CHECK_READY=yes bash tool/check_release_readiness.sh"
