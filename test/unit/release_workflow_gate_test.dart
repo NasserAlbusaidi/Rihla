@@ -335,6 +335,7 @@ exit 64
   test('Firebase deploy helper requires commit-bound approval', () {
     final deploy = read('tool/deploy_firebase_backend.sh');
     final productionReadiness = read('docs/PRODUCTION-READINESS.md');
+    final configuration = read('docs/CONFIGURATION.md');
     final cloudFunctions = read('docs/CLOUD-FUNCTIONS.md');
     final securityRules = read('docs/SECURITY-RULES.md');
     final runbook = read('docs/RUNBOOK.md');
@@ -344,6 +345,11 @@ exit 64
     expect(deploy, contains('does not match current commit'));
     expect(
       productionReadiness,
+      contains(r'RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)"'),
+    );
+    expect(configuration, contains('RIHLA_FIREBASE_DEPLOY_APPROVED_SHA'));
+    expect(
+      configuration,
       contains(r'RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)"'),
     );
     expect(

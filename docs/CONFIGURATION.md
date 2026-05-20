@@ -244,6 +244,21 @@ bash tool/check_github_release_governance.sh
 It verifies the release variables against the target commit and confirms `main`
 requires the `Readiness Check / readiness` status check.
 
+### Firebase backend deploy helper
+
+`tool/deploy_firebase_backend.sh` is for approved backend deploys, not normal
+local app runs. These shell variables are release-operation guardrails, not app
+runtime configuration. The helper requires explicit deploy confirmation, App
+Check confirmation, a clean worktree, and a commit-bound approved SHA:
+
+```bash
+RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
+```
+
+`RIHLA_FIREBASE_DEPLOY_APPROVED_SHA` must match the exact local commit being
+deployed. The helper checks it before dependency install/build and again after
+the Functions build before `firebase deploy`.
+
 The preferred tag path is `tool/release.sh`. It creates the version/changelog
 release commit first, prints the exact commit SHA for
 `RIHLA_RELEASE_APPROVED_SHA`, runs `tool/check_release_readiness.sh` with that
