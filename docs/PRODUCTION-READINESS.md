@@ -188,13 +188,13 @@ These actions cannot be completed from this repo and remain before release:
    ```bash
    bash tool/print_release_wakeup_handoff.sh rihla-safar
    ```
-1. Connect a physical Android device (or two for RD-04), then run:
+1. Connect two physical Android devices, complete the `docs/REAL-DEVICE-QA.md`
+   matrix (RD-01..09) with concrete Android evidence, then rerun the gate until
+   it exits 0:
    ```bash
    RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
    ```
-   If the gate passes, complete the `docs/REAL-DEVICE-QA.md` matrix
-   (RD-01..09) with concrete Android evidence. iOS cells stay marked
-   `Deferred — v1.2 Android-only` until iOS ships.
+   iOS cells stay marked `Deferred — v1.2 Android-only` until iOS ships.
 2. After branch testing/review is accepted, deploy the branch backend from a
    clean worktree and verify production state:
    ```bash

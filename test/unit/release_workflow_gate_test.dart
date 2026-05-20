@@ -528,6 +528,18 @@ exit 64
       productionReadiness,
       contains('bash tool/print_release_wakeup_handoff.sh rihla-safar'),
     );
+    expect(
+      productionReadiness,
+      contains('complete the `docs/REAL-DEVICE-QA.md`'),
+    );
+    expect(
+      productionReadiness,
+      contains('then rerun the gate until'),
+    );
+    expect(
+      productionReadiness,
+      isNot(contains('If the gate passes, complete')),
+    );
   });
 
   test('release hardening audit maps objective to evidence and blockers', () {
