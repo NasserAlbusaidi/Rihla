@@ -78,8 +78,15 @@ flutter devices
 
 ## Run Commands
 
-To print the current branch, commit, artifact hashes, install commands, and
-final gate command from this checkout, run:
+To print the current branch, commit, audit doc, Android artifact hashes,
+install commands, Firebase deploy handoff, open blockers, and final release
+audit command from this checkout, run:
+
+```bash
+bash tool/print_release_wakeup_handoff.sh rihla-safar
+```
+
+For the Android QA slice only, run:
 
 ```bash
 bash tool/print_android_qa_handoff.sh

@@ -74,6 +74,11 @@ void main() {
         'adb -s <android-device-id-1> install -r build/app/outputs/flutter-apk/app-release.apk',
       ),
     );
+    expect(
+      runbook,
+      contains('bash tool/print_release_wakeup_handoff.sh rihla-safar'),
+    );
+    expect(runbook, contains('audit doc'));
     expect(runbook, contains('bash tool/print_android_qa_handoff.sh'));
     expect(handoff, contains('git rev-parse HEAD'));
     expect(handoff, contains('shasum -a 256'));
