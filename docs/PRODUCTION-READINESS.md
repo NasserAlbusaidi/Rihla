@@ -38,7 +38,8 @@ starts a new run.
 
 - [x] Android release bundle builds locally.
   - Command: `flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation`
-  - Latest result (2026-05-19): `build/app/outputs/bundle/release/app-release.aab` at 58.5 MB
+  - Latest PR #39 hardening result (2026-05-20): `build/app/outputs/bundle/release/app-release.aab` at 58.5 MB
+  - Current commit and artifact SHA-256s for Android QA handoff: `bash tool/print_android_qa_handoff.sh`
 - [x] Static analysis is clean with infos enabled as non-fatal.
   - Command: `flutter analyze --no-fatal-infos`
 - [x] Non-golden Flutter test suite passes with raw coverage over the 80% gate.
@@ -182,6 +183,7 @@ These actions cannot be completed from this repo and remain before release:
 2. After branch testing/review is accepted, deploy the branch backend from a
    clean worktree and verify production state:
    ```bash
+   bash tool/print_firebase_deploy_handoff.sh rihla-safar
    RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
    bash tool/check_firebase_prod_state.sh rihla-safar
    ```
@@ -243,6 +245,7 @@ Before deploying, run the read-only production-state check to understand
 current drift:
 
 ```bash
+bash tool/print_firebase_deploy_handoff.sh rihla-safar
 bash tool/check_firebase_prod_state.sh rihla-safar
 ```
 

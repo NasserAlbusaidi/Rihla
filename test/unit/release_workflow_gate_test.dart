@@ -364,6 +364,7 @@ exit 64
 
   test('Firebase deploy helper requires commit-bound approval', () {
     final deploy = read('tool/deploy_firebase_backend.sh');
+    final handoff = read('tool/print_firebase_deploy_handoff.sh');
     final productionReadiness = read('docs/PRODUCTION-READINESS.md');
     final configuration = read('docs/CONFIGURATION.md');
     final cloudFunctions = read('docs/CLOUD-FUNCTIONS.md');
@@ -373,6 +374,16 @@ exit 64
     expect(deploy, contains('RIHLA_FIREBASE_DEPLOY_APPROVED_SHA'));
     expect(deploy, contains('git rev-parse HEAD'));
     expect(deploy, contains('does not match current commit'));
+    expect(handoff, contains('git rev-parse HEAD'));
+    expect(handoff, contains('tool/deploy_firebase_backend.sh'));
+    expect(handoff, contains('tool/check_firebase_prod_state.sh'));
+    expect(handoff, contains('RIHLA_CONFIRM_FIREBASE_DEPLOY=yes'));
+    expect(handoff, contains('RIHLA_CONFIRM_APP_CHECK_READY=yes'));
+    expect(handoff, contains('RIHLA_FIREBASE_DEPLOY_APPROVED_SHA'));
+    expect(
+      productionReadiness,
+      contains('bash tool/print_firebase_deploy_handoff.sh rihla-safar'),
+    );
     expect(
       productionReadiness,
       contains(r'RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)"'),
