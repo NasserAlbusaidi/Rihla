@@ -25,6 +25,38 @@ void main() {
     },
   );
 
+  testWidgets('rendered button labels leave bottom descender clearance', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
+      await _pumpDescenderButtons(tester, theme);
+      _expectRenderedLabelClearance(
+        tester,
+        buttonKey: _elevatedButtonKey,
+        labelKey: _elevatedLabelKey,
+        minBottomGap: 12,
+      );
+      _expectRenderedLabelClearance(
+        tester,
+        buttonKey: _filledButtonKey,
+        labelKey: _filledLabelKey,
+        minBottomGap: 12,
+      );
+      _expectRenderedLabelClearance(
+        tester,
+        buttonKey: _outlinedButtonKey,
+        labelKey: _outlinedLabelKey,
+        minBottomGap: 12,
+      );
+      _expectRenderedLabelClearance(
+        tester,
+        buttonKey: _textButtonKey,
+        labelKey: _textLabelKey,
+        minBottomGap: 9,
+      );
+    }
+  });
+
   test(
     'local Material button overrides do not go below 40dp minimum heights',
     () {
@@ -68,6 +100,15 @@ void main() {
     },
   );
 }
+
+const _elevatedButtonKey = ValueKey('descender-elevated-button');
+const _elevatedLabelKey = ValueKey('descender-elevated-label');
+const _filledButtonKey = ValueKey('descender-filled-button');
+const _filledLabelKey = ValueKey('descender-filled-label');
+const _outlinedButtonKey = ValueKey('descender-outlined-button');
+const _outlinedLabelKey = ValueKey('descender-outlined-label');
+const _textButtonKey = ValueKey('descender-text-button');
+const _textLabelKey = ValueKey('descender-text-label');
 
 T _suppressFontErrors<T>(T Function() body) {
   final originalOnError = FlutterError.onError;
@@ -114,4 +155,59 @@ void _expectLabelStyle(ButtonStyle style, {required double fontSize}) {
   expect(textStyle!.fontSize, fontSize);
   expect(textStyle.height, 1.22);
   expect(textStyle.leadingDistribution, TextLeadingDistribution.even);
+}
+
+Future<void> _pumpDescenderButtons(WidgetTester tester, ThemeData theme) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: theme,
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevatedButton(
+                key: _elevatedButtonKey,
+                onPressed: () {},
+                child: const Text('gypjq', key: _elevatedLabelKey),
+              ),
+              FilledButton(
+                key: _filledButtonKey,
+                onPressed: () {},
+                child: const Text('gypjq', key: _filledLabelKey),
+              ),
+              OutlinedButton(
+                key: _outlinedButtonKey,
+                onPressed: () {},
+                child: const Text('gypjq', key: _outlinedLabelKey),
+              ),
+              TextButton(
+                key: _textButtonKey,
+                onPressed: () {},
+                child: const Text('gypjq', key: _textLabelKey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+}
+
+void _expectRenderedLabelClearance(
+  WidgetTester tester, {
+  required Key buttonKey,
+  required Key labelKey,
+  required double minBottomGap,
+}) {
+  final buttonRect = tester.getRect(find.byKey(buttonKey));
+  final labelRect = tester.getRect(find.byKey(labelKey));
+
+  expect(labelRect.top, greaterThanOrEqualTo(buttonRect.top));
+  expect(labelRect.bottom, lessThanOrEqualTo(buttonRect.bottom));
+  expect(
+    buttonRect.bottom - labelRect.bottom,
+    greaterThanOrEqualTo(minBottomGap),
+  );
 }
