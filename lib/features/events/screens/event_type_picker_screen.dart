@@ -371,6 +371,7 @@ class _ContinueButton extends StatelessWidget {
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: context.colors.textOnPrimary,
+              height: 1.22,
             ),
           ),
           icon: Transform.scale(

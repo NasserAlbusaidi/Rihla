@@ -3,6 +3,7 @@ import {
   DocumentData,
   DocumentReference,
   FieldValue,
+  Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
@@ -11,6 +12,7 @@ import '../admin';
 
 export interface CleanupAnonUidArtifactsInput {
   oldUid: string;
+  cleanupSecret: string;
 }
 
 export interface CleanupAnonUidArtifactsOutput {
@@ -18,7 +20,12 @@ export interface CleanupAnonUidArtifactsOutput {
   groupsFailed: string[];
   authUserDeleted: boolean;
   fcmTokenDeleted: boolean;
+  joinAttemptsDeleted: boolean;
 }
+
+const cleanupIntentMaxAgeMs = 15 * 60 * 1000;
+const cleanupSecretMinLength = 32;
+const cleanupSecretMaxLength = 128;
 
 function parseOldUid(data: CleanupAnonUidArtifactsInput | undefined): string {
   const oldUid = data?.oldUid;
@@ -26,6 +33,18 @@ function parseOldUid(data: CleanupAnonUidArtifactsInput | undefined): string {
     throw new HttpsError('invalid-argument', 'oldUid must be a non-empty string.');
   }
   return oldUid.trim();
+}
+
+function parseCleanupSecret(data: CleanupAnonUidArtifactsInput | undefined): string {
+  const cleanupSecret = data?.cleanupSecret;
+  if (
+    typeof cleanupSecret !== 'string'
+    || cleanupSecret.length < cleanupSecretMinLength
+    || cleanupSecret.length > cleanupSecretMaxLength
+  ) {
+    throw new HttpsError('invalid-argument', 'cleanupSecret is invalid.');
+  }
+  return cleanupSecret;
 }
 
 function getStringArray(data: DocumentData, field: string, path: string): string[] {
@@ -86,6 +105,35 @@ async function assertRecoveredUser(newUid: string): Promise<void> {
       'Recovered user must exist before cleanup.',
     );
   }
+}
+
+function cleanupIntentError(): HttpsError {
+  return new HttpsError('permission-denied', 'Invalid cleanup intent.');
+}
+
+async function assertCleanupIntent(
+  oldUid: string,
+  cleanupSecret: string,
+): Promise<DocumentReference> {
+  const db = getFirestore();
+  const intentRef = db.doc(`recoveryCleanupIntents/${oldUid}`);
+  const intentSnap = await intentRef.get();
+  if (!intentSnap.exists) {
+    throw cleanupIntentError();
+  }
+
+  const data = intentSnap.data() ?? {};
+  if (data.secret !== cleanupSecret) {
+    throw cleanupIntentError();
+  }
+  const createdAt = data.createdAt;
+  if (
+    !(createdAt instanceof Timestamp)
+    || Timestamp.now().toMillis() - createdAt.toMillis() > cleanupIntentMaxAgeMs
+  ) {
+    throw cleanupIntentError();
+  }
+  return intentRef;
 }
 
 async function processGroup(
@@ -203,11 +251,13 @@ export const cleanupAnonUidArtifacts = onCall<
 
     const newUid = request.auth.uid;
     const oldUid = parseOldUid(request.data);
+    const cleanupSecret = parseCleanupSecret(request.data);
     if (newUid === oldUid) {
       throw new HttpsError('invalid-argument', 'oldUid must differ from caller uid.');
     }
 
     await assertRecoveredUser(newUid);
+    const cleanupIntentRef = await assertCleanupIntent(oldUid, cleanupSecret);
 
     const db = getFirestore();
     const groupSnaps = await db
@@ -261,11 +311,27 @@ export const cleanupAnonUidArtifacts = onCall<
       });
     }
 
+    const joinAttemptsRef = db.doc(`joinAttempts/${oldUid}`);
+    const joinAttemptsSnap = await joinAttemptsRef.get();
+    const joinAttemptsDeleted = joinAttemptsSnap.exists;
+    if (joinAttemptsDeleted) {
+      await joinAttemptsRef.delete();
+      logger.info('cleanupAnonUidArtifacts join attempts deleted', {
+        oldUid,
+        newUid,
+      });
+    }
+
+    if (groupsFailed.length === 0) {
+      await cleanupIntentRef.delete();
+    }
+
     return {
       groupsProcessed,
       groupsFailed,
       authUserDeleted,
       fcmTokenDeleted,
+      joinAttemptsDeleted,
     };
   },
 );

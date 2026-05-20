@@ -9,6 +9,8 @@ import { resolve } from 'node:path';
 
 const PROJECT_ID = 'rihla-publish-readiness-rules-test';
 const RULES_PATH = resolve(__dirname, '../../security/firestore.rules');
+const [FIRESTORE_HOST, FIRESTORE_PORT] =
+  (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
 
 describe('Publish readiness Firestore rules', () => {
   let testEnv: RulesTestEnvironment;
@@ -18,8 +20,8 @@ describe('Publish readiness Firestore rules', () => {
       projectId: PROJECT_ID,
       firestore: {
         rules: readFileSync(RULES_PATH, 'utf8'),
-        host: '127.0.0.1',
-        port: 8080,
+        host: FIRESTORE_HOST,
+        port: Number(FIRESTORE_PORT),
       },
     });
   });
@@ -339,6 +341,32 @@ describe('Publish readiness Firestore rules', () => {
       firstFailAt: new Date(),
       lockedUntil: null,
     }));
+  });
+
+  test('recovery cleanup intent can only be created by the retiring UID', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const member = testEnv.authenticatedContext('member').firestore();
+    const validIntent = {
+      secret: 'client-generated-secret-with-enough-entropy-12345',
+      createdAt: new Date(),
+    };
+
+    await assertSucceeds(owner.doc('recoveryCleanupIntents/owner').set(validIntent));
+    await assertSucceeds(owner.doc('recoveryCleanupIntents/owner').update({
+      secret: 'client-generated-secret-with-enough-entropy-67890',
+      createdAt: new Date(),
+    }));
+    await assertFails(member.doc('recoveryCleanupIntents/owner').set(validIntent));
+    await assertFails(owner.doc('recoveryCleanupIntents/owner-short').set({
+      secret: 'short',
+      createdAt: new Date(),
+    }));
+    await assertFails(owner.doc('recoveryCleanupIntents/owner-extra').set({
+      ...validIntent,
+      newUid: 'member',
+    }));
+    await assertFails(owner.doc('recoveryCleanupIntents/owner').get());
+    await assertFails(owner.doc('recoveryCleanupIntents/owner').delete());
   });
 
   test('creator can atomically delete group, member docs, and invite code', async () => {

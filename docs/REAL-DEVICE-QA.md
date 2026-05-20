@@ -1,6 +1,6 @@
 # Real-Device QA
 
-Last prepared: 2026-05-16 (v1.2.0+15)
+Last prepared: 2026-05-20 (`codex/release-hardening-1-0`, PR #39)
 
 This checklist covers the release QA that cannot be proven by unit, widget, or
 emulator tests. Run it on physical iOS and Android devices against the
@@ -52,16 +52,23 @@ Pass criteria (default — full iOS + Android gate):
 
 Pass criteria (with `RIHLA_SKIP_IOS_QA=yes` — v1.2 Android-only):
 
-- At least one physical Android device is listed.
+- At least two physical Android devices are listed so RD-04 can prove
+  cross-device ledger identity without iOS.
 - iOS device absence reported as INFO.
 - `config.json` and Firebase platform files as above.
 - Every RD-01 through RD-09 row has an Android result starting with `Pass`,
   an iOS result starting with `Pass` or `Deferred`, and concrete Android
   evidence in the Evidence cell.
 
-Current local status from 2026-05-15: blocked for Android. The matrix is
-filled with `Deferred — v1.2 Android-only` for iOS; the Android column and
-evidence still need a real run on a connected Android device.
+Current local status from 2026-05-20: blocked for Android. Running
+`RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh` found no
+physical Android device, accepted iOS absence as a v1.2 Android-only defer, and
+reported RD-01 through RD-09 missing Android pass results plus concrete
+evidence. The matrix is filled with `Deferred — v1.2 Android-only` for iOS; the
+Android column and evidence still need a real run on connected Android devices.
+
+Use two physical Android devices for the Android-only gate. RD-04 must prove
+cross-device ledger identity without relying on the deferred iOS path.
 
 For raw device details, run:
 
@@ -71,6 +78,47 @@ flutter devices
 
 ## Run Commands
 
+To print the current branch, commit, audit doc, Android artifact hashes,
+install commands, Firebase deploy handoff, open blockers, and final release
+audit command from this checkout, run:
+
+```bash
+bash tool/print_release_wakeup_handoff.sh rihla-safar
+```
+
+For final release evidence, complete the Firebase backend deploy and
+production-state verification handoff before recording the physical-device QA
+matrix. The QA rows should prove the app against the production Firebase
+backend for this same branch commit, not an older deployed backend.
+
+For the Android QA slice only, run:
+
+```bash
+bash tool/print_android_qa_handoff.sh
+```
+
+For the Android-only wake-up QA pass, prefer the release APK built from the
+current PR head so the matrix exercises the same app artifact listed in the PR
+handoff and blocker issue. If artifacts are missing or the checkout changed
+since the last build, rebuild the current head first:
+
+```bash
+flutter build apk --release --dart-define-from-file=config.json --android-skip-build-dependency-validation
+flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation
+```
+
+Connect two physical Android devices, then install the APK on both:
+
+```bash
+adb devices
+adb -s <android-device-id-1> install -r build/app/outputs/flutter-apk/app-release.apk
+adb -s <android-device-id-2> install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+If the Play testing track is the source of truth for a given pass, install the
+AAB-delivered build from Play instead and record the track/build in each
+evidence cell.
+
 Use one terminal per device:
 
 ```bash
@@ -78,16 +126,21 @@ flutter run -d <ios-device-id> --dart-define-from-file=config.json
 flutter run -d <android-device-id> --dart-define-from-file=config.json
 ```
 
-For a closer release check, install the built Android AAB through the Play
-testing track and install iOS through Xcode or TestFlight. Record which build
-path was used.
+Use `flutter run` when you need logs while reproducing a failure. For a closer
+release check, install iOS through Xcode or TestFlight. Record which build path
+was used.
 
 ## Test Matrix
 
 Record each result as Pass, Fail, or Blocked with the device model, OS version,
-build source, and Firebase project. For release, both iOS and Android cells must
-start with `Pass` and the Evidence cell must contain a concrete artifact such as
-a group ID, invite code, screenshot filename, or Firestore document path.
+build source, and Firebase project. In the default full iOS + Android gate, both
+iOS and Android cells must start with `Pass`. In Android-only mode, iOS cells
+may start with `Deferred` and Android cells must start with `Pass`. Evidence
+cell must contain a concrete artifact such as a group ID, invite code,
+screenshot filename, or Firestore document path. Evidence cell must also
+include build traceability: commit SHA, APK/AAB SHA-256, Play track/build
+number, or the relevant output from `tool/print_android_qa_handoff.sh`.
+Generic words like `build` or `artifact` are not enough by themselves.
 
 | ID | Area | iOS | Android | Evidence |
 |---|---|---|---|---|
@@ -265,12 +318,19 @@ Three bugs found in the v1.2.0+14 closed-test session on 2026-05-16. All fixed a
 ## Also shipped in v1.2.0+15
 
 - **Join-event-sync (Gap 1) — RESOLVED.** `joinGroupByInviteCode` now fans the joining UID + displayName into every non-deleted event's `participantIds` / `participantNames` inside the same Admin transaction. Idempotent on re-join (heals already-affected stale state). Production backfill ran 2026-05-16 against 2 groups / 2 events / 3 UIDs via `tool/backfill_join_event_sync.js`.
-- **Anon-UID cleanup at recovery (Gap 3 server-safe) — RESOLVED.** New `cleanupAnonUidArtifacts` callable runs fire-and-forget after a successful `signInWithEmailLink`. Per group: replaces or removes the old anon UID in `memberIds`, copies the member doc, reassigns `createdBy` on group/event/expense docs (NOT settlements), rewrites event `participantIds` / `participantNames`. Then deletes the anon Firebase Auth user and orphan `fcm_tokens/{oldUid}`. Recovery itself succeeds regardless of cleanup outcome; failures land in a Sentry breadcrumb with no PII.
+- **Anon-UID cleanup at recovery (Gap 3 server-safe) — RESOLVED.** `cleanupAnonUidArtifacts` runs fire-and-forget after a successful `signInWithEmailLink`, but only after the retiring anon UID has created a one-time `recoveryCleanupIntents/{oldUid}` secret. Per group: replaces or removes the old anon UID in `memberIds`, copies the member doc, reassigns `createdBy` on group/event/expense docs (NOT settlements), rewrites event `participantIds` / `participantNames`. Then deletes the anon Firebase Auth user, orphan `fcm_tokens/{oldUid}`, `joinAttempts/{oldUid}`, and the consumed cleanup intent. Recovery itself succeeds regardless of cleanup outcome; failures land in a Sentry breadcrumb with no PII.
 
 ## Follow-ups for v1.2.0+16
 
 - **Former-member UI rendering for dormant anon-UID creators.** The post-recovery cleanup only fires when a user actually recovers via email link. Anon UIDs that created events in past sessions and were never recovered remain as `createdBy` on those events + retain real historical expense / settlement attribution. Confirmed on production for one orphan UID across 5 events in group `78cb99b0…` (event creator + 1 expense as payer + 1 settlement as payer — NOT safe to delete via the participant cleanup script). The "ghost member" rendering in settle-up is technically correct. Fix is UI-level: mark `participantIds` entries whose UID is no longer in `group.memberIds` as "former member" rather than deleting their data. Touch points likely: `groupBalancesProvider`, settle-up sheet, ledger participant labels.
-- **RD-QA gate reconciliation.** Two paths disagree about whether the RD-QA matrix in `docs/REAL-DEVICE-QA.md` blocks release: `tool/check_release_readiness.sh` invokes the matrix gate and fails on empty Android cells, but `.github/workflows/release_android.yml` only checks the three repo variables (`RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, `RIHLA_REAL_DEVICE_QA_READY`, all set `yes`) and never invokes the matrix script. Pick one: either fill RD-01..08 Android cells with concrete evidence from the closed-test flows, or update the readiness script + production-readiness doc to say the matrix is an external attestation and stop pretending it gates CI.
+- **RD-QA release gate.** `tool/release.sh` runs the consolidated audit after
+  creating the release commit and before creating or pushing a tag. That audit
+  invokes `tool/check_release_readiness.sh`, which invokes this matrix gate and
+  the GitHub release-governance gate. The Android column and evidence cells for
+  RD-01..RD-09 must therefore be filled with concrete physical-device evidence
+  before the release tag can be cut through the repo helper. The GitHub Actions
+  Play upload still has its own repository-variable guard, including the
+  commit-bound `RIHLA_RELEASE_APPROVED_SHA`, as a final tag/workflow safeguard.
 
 ## Adjacent gaps still deferred
 

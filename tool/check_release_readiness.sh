@@ -2,6 +2,14 @@
 # Runs the release-readiness gates that can be checked from this machine.
 # This script is read-only with respect to Firebase production: it lists and
 # compares deployed state, but it does not deploy or enable APIs.
+#
+# Env vars:
+#   RIHLA_CONFIRM_APP_CHECK_READY=yes  Confirms Firebase App Check Console
+#                                      enrollment before release.
+#   RIHLA_SKIP_IOS_QA=yes             Runs the real-device QA gate in
+#                                      Android-only mode for the current
+#                                      Google Play launch. Unset this when
+#                                      iOS ships.
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -82,8 +90,7 @@ check_raw_coverage() {
   fi
 
   echo "Raw coverage: ${coverage}%"
-  # TODO: ratchet this back to 80% once auth/profile/settings coverage catches up.
-  awk -v coverage="$coverage" 'BEGIN { exit (coverage >= 70.0) ? 0 : 1 }'
+  awk -v coverage="$coverage" 'BEGIN { exit (coverage >= 80.0) ? 0 : 1 }'
 }
 
 check_app_check_enforced() {
@@ -108,6 +115,10 @@ check_app_check_enrollment_confirmed() {
 
 cd "$ROOT_DIR"
 
+if [ "${RIHLA_SKIP_IOS_QA:-}" = "yes" ]; then
+  echo "INFO: RIHLA_SKIP_IOS_QA=yes - real-device QA will run in Android-only mode."
+fi
+
 run_step "Java 21 available" setup_java21
 run_step "Node 20 available for Functions commands" node20_available
 run_step "Functions dependencies install from lockfile" npm20 --prefix functions ci
@@ -115,8 +126,7 @@ run_step "Functions dependency audit at low severity" npm20 --prefix functions a
 run_step "Functions TypeScript build" npm20 --prefix functions run build
 run_step "App Check enforcement configured" check_app_check_enforced
 run_step "App Check Console enrollment confirmed" check_app_check_enrollment_confirmed
-run_step "Firebase emulator rules/functions tests" \
-  npm20 --prefix functions run test:emulator
+run_step "Firebase emulator rules/functions tests" bash tool/run_firebase_emulator_tests.sh
 run_step "Flutter analyzer" flutter analyze --no-fatal-infos
 run_step "Theme purity check" bash tool/check_theme_purity.sh
 run_step "Navigation smoke tests" \
@@ -150,6 +160,7 @@ run_step "Android release app bundle" \
     --android-skip-build-dependency-validation
 run_step "Firebase production state" bash tool/check_firebase_prod_state.sh rihla-safar
 run_step "Real-device QA gate" bash tool/check_real_device_qa_gate.sh
+run_step "GitHub release governance" bash tool/check_github_release_governance.sh
 
 echo
 if [ "$FAILURES" -ne 0 ]; then

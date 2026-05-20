@@ -6,18 +6,25 @@
 #   ./tool/release.sh minor      # 1.2.0+11 -> 1.3.0+12
 #   ./tool/release.sh major      # 1.2.0+11 -> 2.0.0+12
 #   ./tool/release.sh 1.4.2      # explicit semver, build auto-bumps
+#   RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch
+#                                # Android-only release while iOS is deferred
 #
 # What it does:
 #   1. Verifies clean working tree on main, in sync with origin
 #   2. Bumps version in pubspec.yaml (semver + build number)
 #   3. Opens $EDITOR on a CHANGELOG stub for the new version
 #   4. Commits as "chore(release): vX.Y.Z"
-#   5. Tags as "vX.Y.Z" and pushes both branch and tag
-#   6. Reports the GitHub Actions run URL — CI takes over and uploads
+#   5. Runs the consolidated release-readiness audit on that exact commit
+#   6. Tags as "vX.Y.Z" and pushes both branch and tag
+#   7. Reports the GitHub Actions run URL — CI takes over and uploads
 #      to the Play Store "first" closed-testing track
 #
 # Override the editor with EDITOR env var. Skip the changelog prompt
-# with SKIP_CHANGELOG=1 (CI-friendly).
+# with SKIP_CHANGELOG=1 (CI-friendly). Skip the post-commit approval prompt
+# with SKIP_RELEASE_APPROVAL_PROMPT=1 only if RIHLA_RELEASE_APPROVED_SHA is
+# already set to the release commit SHA. For the current Android-only launch,
+# run with RIHLA_SKIP_IOS_QA=yes so the consolidated audit uses the documented
+# Android-only real-device QA gate. Omit it when iOS ships.
 
 set -euo pipefail
 
@@ -36,6 +43,21 @@ usage() {
   exit 1
 }
 
+require_clean_worktree() {
+  local untracked_files
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    die "working tree is dirty - commit or stash first so the release can be tied to an exact commit"
+  fi
+
+  untracked_files="$(git ls-files --others --exclude-standard)"
+  if [ -n "$untracked_files" ]; then
+    echo "Untracked files:" >&2
+    printf '%s\n' "$untracked_files" >&2
+    die "remove, commit, or stash untracked files first so the release can be tied to an exact commit"
+  fi
+}
+
 [ $# -eq 1 ] || usage
 BUMP_ARG="$1"
 
@@ -47,9 +69,7 @@ CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 [ "$CURRENT_BRANCH" = "$MAIN_BRANCH" ] || \
   die "must be on $MAIN_BRANCH (currently on $CURRENT_BRANCH)"
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  die "working tree is dirty — commit or stash first"
-fi
+require_clean_worktree
 
 git fetch origin "$MAIN_BRANCH" --quiet
 LOCAL_SHA="$(git rev-parse HEAD)"
@@ -148,6 +168,28 @@ fi
 
 git add "$PUBSPEC" "$CHANGELOG"
 git commit -m "chore(release): $NEW_TAG"
+require_clean_worktree
+RELEASE_SHA="$(git rev-parse HEAD)"
+
+echo
+echo "Release commit created: $RELEASE_SHA"
+echo "Before tagging, set GitHub repository variable RIHLA_RELEASE_APPROVED_SHA to this exact SHA after all release gates are approved:"
+echo
+echo "  gh variable set RIHLA_RELEASE_APPROVED_SHA --body \"$RELEASE_SHA\""
+echo
+echo "The release-readiness audit runs next and must pass before tag/push."
+if [ "${RIHLA_SKIP_IOS_QA:-}" = "yes" ]; then
+  echo "Android-only QA mode is enabled: RIHLA_SKIP_IOS_QA=yes"
+else
+  echo "Full iOS + Android QA mode is enabled. Set RIHLA_SKIP_IOS_QA=yes only for the Android-only launch."
+fi
+if [ "${SKIP_RELEASE_APPROVAL_PROMPT:-0}" = "0" ]; then
+  printf "Press Enter after the release approval variable is set, or Ctrl+C to stop before tagging. "
+  read -r _
+fi
+
+RIHLA_RELEASE_TARGET_SHA="$RELEASE_SHA" bash tool/check_release_readiness.sh
+
 git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
 
 echo "Pushing $MAIN_BRANCH and $NEW_TAG to origin..."

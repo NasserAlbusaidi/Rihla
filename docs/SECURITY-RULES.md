@@ -473,7 +473,7 @@ the check instead.
 | Invite-code redemption | A rule cannot atomically read `inviteCodes` + add to `memberIds` + fan out into all events while staying under the `get` budget. | `joinGroupByInviteCode` callable. |
 | Rate-limiting failed joins | Rules cannot increment a counter across requests. | `joinAttempts` doc, written by the callable. |
 | Account deletion cascade | Cross-collection scrub across hundreds of docs exceeds rules' write surface. | `deleteAccount` callable. |
-| UID migration after recovery | Same. | `cleanupAnonUidArtifacts` callable. |
+| UID migration after recovery | Same. Rules only let the retiring anon UID create/update a one-time `recoveryCleanupIntents/{oldUid}` secret; the Admin callable performs the actual rewrite after verifying it. | `cleanupAnonUidArtifacts` callable. |
 | Currency whitelist | `validCurrency` checks length only; the actual allowed set (OMR/USD/EUR/GBP/SAR/AED/JPY/KWD/BHD/QAR) lives in `MoneySerializer`. | Client validation + `MoneySerializer`. |
 | Money math correctness | Rules can validate fields, not arithmetic. | `BalanceCalculator` + unit tests under `test/unit/`. |
 | Server-side App Check enforcement | Rules don't see App Check tokens. | `{ enforceAppCheck: true }` on every callable. |
@@ -502,12 +502,11 @@ unauthenticated contexts against the running emulator.
 Rules deploy as part of the backend deployment script:
 
 ```bash
-RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes \
-  bash tool/deploy_firebase_backend.sh rihla-safar
+RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
 ```
 
-The script also diffs current production rules against the repo first
-and refuses to deploy a regression without confirmation. See
+The script also requires a clean worktree plus commit-bound approved SHA, then
+diffs current production rules against the repo after deploy verification. See
 [RUNBOOK.md § T2](./RUNBOOK.md) for the rules-drift incident response.
 
 ### Aligning `isValidDisplayName` with the client

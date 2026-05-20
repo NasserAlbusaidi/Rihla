@@ -224,5 +224,52 @@ Required repository variables:
 | `RIHLA_BACKEND_RELEASE_READY` | `yes` | Confirms Firebase backend and Hosting production-state checks passed before Play upload |
 | `RIHLA_APP_CHECK_READY` | `yes` | Confirms Android and iOS apps are enrolled in Firebase App Check before deploying enforced callables |
 | `RIHLA_REAL_DEVICE_QA_READY` | `yes` | Confirms the physical-device QA matrix passed |
+| `RIHLA_RELEASE_APPROVED_SHA` | Full release commit SHA | Confirms the three release readiness variables apply to the exact commit being uploaded |
 
-The CI pipeline refuses to upload unless those variables are set, then runs `flutter analyze`, tests with temporary 70% raw coverage enforcement, a hardcoded color lint, builds the AAB, and uploads to the Play Store Closed Testing (alpha track). Ratchet the gate back to 80% after the auth/profile/settings coverage backlog is closed.
+The CI pipeline refuses to upload unless those variables are set and
+`RIHLA_RELEASE_APPROVED_SHA` equals the workflow's `GITHUB_SHA`. The release
+workflow also refuses non-`v*` refs and refuses tag commits that are not
+contained in `origin/main`, so a manual dispatch must target the release tag. It
+then runs `flutter analyze`, tests with 80% raw coverage enforcement, a
+hardcoded color lint, builds the AAB, and uploads to the Play Store Closed
+Testing (alpha track).
+
+Before tagging or manually dispatching a release, run the read-only GitHub
+governance check:
+
+```bash
+bash tool/check_github_release_governance.sh
+```
+
+It verifies the release variables against the target commit and confirms `main`
+requires the `Readiness Check / readiness` status check.
+
+### Firebase backend deploy helper
+
+`tool/deploy_firebase_backend.sh` is for approved backend deploys, not normal
+local app runs. These shell variables are release-operation guardrails, not app
+runtime configuration. The helper requires explicit deploy confirmation, App
+Check confirmation, a clean worktree, and a commit-bound approved SHA:
+
+```bash
+RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
+```
+
+`RIHLA_FIREBASE_DEPLOY_APPROVED_SHA` must match the exact local commit being
+deployed. The helper checks it before dependency install/build and again after
+the Functions build before `firebase deploy`.
+
+The preferred tag path is `tool/release.sh`. It creates the version/changelog
+release commit first, prints the exact commit SHA for
+`RIHLA_RELEASE_APPROVED_SHA`, runs `tool/check_release_readiness.sh` with that
+SHA as `RIHLA_RELEASE_TARGET_SHA`, and only then creates/pushes the release tag.
+
+For the current Android-only launch while iOS is deferred, pass the Android-only
+QA flag through the helper:
+
+```bash
+RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch
+```
+
+Omit `RIHLA_SKIP_IOS_QA=yes` when the release includes full iOS physical-device
+QA evidence.

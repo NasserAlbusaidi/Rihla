@@ -9,12 +9,15 @@
 #                          iOS cells must read "Deferred ..." or "Pass ...".
 #                          Unset (the default) re-enables the strict iOS+Android
 #                          gate for when iOS ships.
+#   RIHLA_REAL_DEVICE_QA_DOC
+#                          Optional test-only override for the QA matrix file.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_FILE="$(mktemp)"
 FAILURES=0
 SKIP_IOS_QA="${RIHLA_SKIP_IOS_QA:-}"
+QA_DOC="${RIHLA_REAL_DEVICE_QA_DOC:-docs/REAL-DEVICE-QA.md}"
 
 if [ "$SKIP_IOS_QA" = "yes" ]; then
   echo "INFO: RIHLA_SKIP_IOS_QA=yes — running in Android-only mode (iOS soft-deferred for v1.2)."
@@ -60,6 +63,15 @@ check_matrix_results() {
         || value == "Arabic RTL screenshots and golden-path log";
     }
 
+    function evidence_has_build_trace(value, lower) {
+      lower = tolower(value);
+      return lower ~ /(commit|sha-256|sha256|apk|aab|app-release)/ \
+        || lower ~ /play[[:space:]-]*(track|build|testing|internal|closed|open|production)/ \
+        || lower ~ /track[[:space:]-]*(build|version)/ \
+        || lower ~ /build[[:space:]-]*(number|version|code)/ \
+        || value ~ /[0-9a-fA-F]{12,}/;
+    }
+
     /^\| RD-[0-9][0-9] \|/ {
       total += 1;
       id = trim($2);
@@ -85,6 +97,9 @@ check_matrix_results() {
       if (evidence == "" || is_placeholder(evidence)) {
         print "DETAIL: " id " evidence is missing or still a placeholder in docs/REAL-DEVICE-QA.md";
         failures += 1;
+      } else if (!evidence_has_build_trace(evidence)) {
+        print "DETAIL: " id " evidence does not include build traceability in docs/REAL-DEVICE-QA.md";
+        failures += 1;
       }
     }
 
@@ -95,7 +110,7 @@ check_matrix_results() {
       }
       exit failures > 0 ? 1 : 0;
     }
-  ' docs/REAL-DEVICE-QA.md
+  ' "$QA_DOC"
 }
 
 cd "$ROOT_DIR"
@@ -118,6 +133,13 @@ if flutter devices --machine >"$TMP_FILE"; then
     | select((.targetPlatform | startswith("android")) and .emulator == false)
     | "\(.name) [\(.id)]"
   ' "$TMP_FILE")"
+  android_device_count="$(jq '
+    [
+      .[]
+      | select((.targetPlatform | startswith("android")) and .emulator == false)
+    ]
+    | length
+  ' "$TMP_FILE")"
   non_physical_mobile="$(jq -r '
     .[]
     | select((.targetPlatform == "ios" or (.targetPlatform | startswith("android"))) and .emulator == true)
@@ -132,7 +154,15 @@ if flutter devices --machine >"$TMP_FILE"; then
     fail "No physical iOS device detected"
   fi
 
-  if [ -n "$android_devices" ]; then
+  if [ "$SKIP_IOS_QA" = "yes" ]; then
+    if [ "$android_device_count" -ge 2 ]; then
+      pass "Physical Android devices detected for Android-only two-device QA: ${android_devices//$'\n'/, }"
+    elif [ "$android_device_count" -eq 1 ]; then
+      fail "At least two physical Android devices required when RIHLA_SKIP_IOS_QA=yes for RD-04; detected: ${android_devices//$'\n'/, }"
+    else
+      fail "No physical Android device detected"
+    fi
+  elif [ -n "$android_devices" ]; then
     pass "Physical Android device detected: ${android_devices//$'\n'/, }"
   else
     fail "No physical Android device detected"

@@ -137,8 +137,7 @@ version. For Functions, redeploy the previous Git SHA:
 
 ```bash
 git checkout <previous-sha> -- functions/
-RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes \
-  bash tool/deploy_firebase_backend.sh rihla-safar
+RIHLA_CONFIRM_FIREBASE_DEPLOY=yes RIHLA_CONFIRM_APP_CHECK_READY=yes RIHLA_FIREBASE_DEPLOY_APPROVED_SHA="$(git rev-parse HEAD)" bash tool/deploy_firebase_backend.sh rihla-safar
 git checkout HEAD -- functions/
 ```
 

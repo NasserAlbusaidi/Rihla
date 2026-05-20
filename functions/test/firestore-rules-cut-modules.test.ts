@@ -15,6 +15,8 @@ import { resolve } from 'node:path';
 
 const PROJECT_ID = 'rihla-rules-test';
 const RULES_PATH = resolve(__dirname, '../../security/firestore.rules');
+const [FIRESTORE_HOST, FIRESTORE_PORT] =
+  (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
 
 describe('Phase 39 — cut module subcollections are denied', () => {
   let testEnv: RulesTestEnvironment;
@@ -24,8 +26,8 @@ describe('Phase 39 — cut module subcollections are denied', () => {
       projectId: PROJECT_ID,
       firestore: {
         rules: readFileSync(RULES_PATH, 'utf8'),
-        host: '127.0.0.1',
-        port: 8080,
+        host: FIRESTORE_HOST,
+        port: Number(FIRESTORE_PORT),
       },
     });
   });

@@ -57,45 +57,53 @@ class AppTheme {
           backgroundColor: AppColorTokens.light.primary,
           foregroundColor: AppColorTokens.light.textOnPrimary,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: _prominentButtonMinimumSize,
+          padding: _prominentButtonPadding,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9999),
           ),
-          textStyle: AppTypography.sans(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
+          textStyle: _buttonLabelStyle(),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColorTokens.light.primary,
+          foregroundColor: AppColorTokens.light.textOnPrimary,
+          minimumSize: _prominentButtonMinimumSize,
+          padding: _prominentButtonPadding,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9999),
           ),
+          textStyle: _buttonLabelStyle(),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColorTokens.light.textPrimary,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: _prominentButtonMinimumSize,
+          padding: _prominentButtonPadding,
           side: BorderSide(color: AppColorTokens.light.textPrimary, width: 1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9999),
           ),
-          textStyle: AppTypography.sans(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
-          ),
+          textStyle: _buttonLabelStyle(),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColorTokens.light.primaryDark,
-          textStyle: AppTypography.sans(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+          minimumSize: _textButtonMinimumSize,
+          padding: _textButtonPadding,
+          textStyle: _buttonLabelStyle(fontSize: 13),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColorTokens.light.inputFill,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -106,7 +114,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColorTokens.light.focusRing, width: 1.5),
+          borderSide: BorderSide(
+            color: AppColorTokens.light.focusRing,
+            width: 1.5,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -226,28 +237,62 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: AppColorTokens.dark.cardSurface,
         elevation: 0,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColorTokens.dark.primary,
           foregroundColor: AppColorTokens.dark.textOnPrimary,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: _prominentButtonMinimumSize,
+          padding: _prominentButtonPadding,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9999),
           ),
-          textStyle: AppTypography.sans(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
+          textStyle: _buttonLabelStyle(),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColorTokens.dark.primary,
+          foregroundColor: AppColorTokens.dark.textOnPrimary,
+          minimumSize: _prominentButtonMinimumSize,
+          padding: _prominentButtonPadding,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9999),
           ),
+          textStyle: _buttonLabelStyle(),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColorTokens.dark.textPrimary,
+          minimumSize: _prominentButtonMinimumSize,
+          padding: _prominentButtonPadding,
+          side: BorderSide(color: AppColorTokens.dark.textPrimary, width: 1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9999),
+          ),
+          textStyle: _buttonLabelStyle(),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColorTokens.dark.primary,
+          minimumSize: _textButtonMinimumSize,
+          padding: _textButtonPadding,
+          textStyle: _buttonLabelStyle(fontSize: 13),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColorTokens.dark.inputFill,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -258,7 +303,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColorTokens.dark.focusRing, width: 1.5),
+          borderSide: BorderSide(
+            color: AppColorTokens.dark.focusRing,
+            width: 1.5,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -287,6 +335,22 @@ class AppTheme {
         AppShadowTokens.dark,
       ],
     );
+  }
+
+  static const Size _prominentButtonMinimumSize = Size(64, 52);
+  static const Size _textButtonMinimumSize = Size(48, 44);
+  static const EdgeInsetsGeometry _prominentButtonPadding =
+      EdgeInsetsDirectional.fromSTEB(24, 14, 24, 16);
+  static const EdgeInsetsGeometry _textButtonPadding =
+      EdgeInsetsDirectional.fromSTEB(12, 10, 12, 12);
+
+  static TextStyle _buttonLabelStyle({double fontSize = 15}) {
+    return AppTypography.sans(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.1,
+      height: 1.22,
+    ).copyWith(leadingDistribution: TextLeadingDistribution.even);
   }
 
   /// Builds the [TextTheme] for the given brightness.

@@ -212,9 +212,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                           foregroundColor: context.colors.primaryDark,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 8,
+                            vertical: 10,
                           ),
-                          minimumSize: const Size(0, 34),
+                          minimumSize: const Size(0, 40),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           shape: const StadiumBorder(),
                         ),
@@ -223,6 +223,8 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
+                            height: 1.22,
+                            leadingDistribution: TextLeadingDistribution.even,
                           ),
                         ),
                       ),

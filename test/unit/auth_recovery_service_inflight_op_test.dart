@@ -52,7 +52,9 @@ void main() {
     auth: auth,
     prefs: prefs,
     firestore: firestore,
-    cleanupAnonUidArtifacts: (_) async {},
+    cleanupAnonUidArtifacts:
+        ({required oldUid, required cleanupSecret}) async {},
+    cleanupIntentFactory: (_) async => 'test-cleanup-secret',
   );
 
   group('inFlightOp tracking', () {

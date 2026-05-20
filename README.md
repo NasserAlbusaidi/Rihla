@@ -2,7 +2,7 @@
 
 **Rihla** ("Journey" in Arabic) is a Flutter mobile app for group coordination and event planning. Users create or join persistent groups — friend circles, travel crews — then spin up events inside those groups (trips, camping weekends, dinners, or custom types). The app tracks finances at both the group and event level, so friends can settle up across multiple outings rather than one at a time.
 
-Package: `safar` · Android ID: `com.safar.safar` · Version: 1.2.0+15
+Package: `safar` · Android ID: `com.safar.safar` · Version: 1.2.0+16
 
 ---
 
@@ -138,7 +138,7 @@ flutter analyze
 
 Tests use `mocktail` for mocking and `fake_cloud_firestore` / `firebase_auth_mocks` to avoid real Firebase calls. Provider overrides swap `sharedPreferencesProvider` and other async deps in test scope.
 
-**Coverage gate** is temporarily 70% in CI while auth/profile/settings suites catch up; local raw coverage is ~80%+.
+**Coverage gate** is 80% raw line coverage in CI and in `tool/check_release_readiness.sh`.
 
 ---
 
@@ -158,9 +158,24 @@ Requires a signed keystore configured in `android/key.properties` (gitignored).
 
 ### CI/CD
 
-`.github/workflows/release_android.yml` triggers on manual dispatch or a `v*` tag push. It runs tests, builds the AAB, and uploads to Google Play alpha.
+`.github/workflows/release_android.yml` triggers on manual dispatch or a `v*`
+tag push. The upload job refuses non-`v*` refs and refuses tag commits that are
+not contained in `origin/main`. It runs tests, builds the AAB, and uploads to
+Google Play alpha.
 
 Required secrets: `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `CONFIG_JSON`, `GOOGLE_PLAY_JSON_KEY`.
+
+Use `tool/release.sh` for tagged Android releases. The helper creates the
+release commit, prints the exact commit SHA to approve with
+`RIHLA_RELEASE_APPROVED_SHA`, then runs `tool/check_release_readiness.sh`
+before it creates or pushes the tag.
+
+For the current Android-only launch while iOS is deferred, invoke the helper
+with the Android-only QA gate enabled:
+
+```bash
+RIHLA_SKIP_IOS_QA=yes ./tool/release.sh patch
+```
 
 iOS builds are manual — no iOS CI pipeline.
 

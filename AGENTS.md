@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Overview
 
-Rihla ("Journey") is a Flutter mobile app for group and event coordination. Package name is `safar`, Android ID is `com.safar.safar`. Current version: **1.2.0+15**. Backend is Firebase-only: Firestore, Firebase Auth (anon + optional email-link recovery), Cloud Functions (Node 20 / TypeScript), FCM, and App Check — **no Storage SDK use** (protected media, when needed, routes through Cloud Functions). The app keeps SQLite caches for fast local reads while relying on Firestore offline persistence for queued writes.
+Rihla ("Journey") is a Flutter mobile app for group and event coordination. Package name is `safar`, Android ID is `com.safar.safar`. Current version: **1.2.0+16**. Backend is Firebase-only: Firestore, Firebase Auth (anon + optional email-link recovery), Cloud Functions (Node 20 / TypeScript), FCM, and App Check — **no Storage SDK use** (protected media, when needed, routes through Cloud Functions). The app keeps SQLite caches for fast local reads while relying on Firestore offline persistence for queued writes.
 
 v1.2.0+15 backend additions: `joinGroupByInviteCode` now fans the joiner into existing event `participantIds` server-side; new `cleanupAnonUidArtifacts` callable scrubs anon-UID leftovers after email-link recovery.
 
@@ -196,7 +196,7 @@ Two GitHub Actions workflows:
 
 **Play Store listing edits** (icon, screenshots, text) are not in CI — use `fastlane supply` locally. See `fastlane/README.md`. Lanes: `fastlane android icon`, `fastlane android listing`, `fastlane android pull`. All AAB-safe.
 
-**Coverage gate**: temporarily **70%** in both workflows while auth/profile/settings suites catch up (local raw coverage is ~80%+). Ratchet back to 80% once the TODOs in both workflows are cleared.
+**Coverage gate**: **80% raw line coverage** in both GitHub workflows and `tool/check_release_readiness.sh`.
 
 No iOS CI — iOS builds are manual. Toolchain: Java 17 for the Android build, Java 21 for Firebase emulator tests in `functions/`. AGP 8.9.1, Kotlin 2.1.0.
 

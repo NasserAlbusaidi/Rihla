@@ -570,13 +570,18 @@ class _ExpenseTopBar extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: context.colors.primary,
                   foregroundColor: context.colors.textOnPrimary,
-                  minimumSize: const Size(64, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  minimumSize: const Size(64, 40),
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 9, 16, 11),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(
                       context.spacing.radiusSmall,
                     ),
                   ),
+                  textStyle: AppTypography.sans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.22,
+                  ).copyWith(leadingDistribution: TextLeadingDistribution.even),
                 ),
                 child: isLoading
                     ? const SizedBox(
@@ -1336,8 +1341,8 @@ class _DeleteCard extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: colors.error,
                 foregroundColor: Colors.white,
-                minimumSize: const Size(0, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                minimumSize: const Size(0, 40),
+                padding: const EdgeInsetsDirectional.fromSTEB(14, 9, 14, 11),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(
                     context.spacing.radiusSmall,
@@ -1346,7 +1351,8 @@ class _DeleteCard extends StatelessWidget {
                 textStyle: AppTypography.sans(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                ),
+                  height: 1.22,
+                ).copyWith(leadingDistribution: TextLeadingDistribution.even),
               ),
             ),
           ],
@@ -1589,13 +1595,26 @@ class _SplitCustomiseSheetState extends State<_SplitCustomiseSheet> {
                       style: FilledButton.styleFrom(
                         backgroundColor: colors.primary,
                         foregroundColor: colors.textOnPrimary,
-                        minimumSize: const Size(64, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        minimumSize: const Size(64, 40),
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          16,
+                          9,
+                          16,
+                          11,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(
                             context.spacing.radiusSmall,
                           ),
                         ),
+                        textStyle:
+                            AppTypography.sans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              height: 1.22,
+                            ).copyWith(
+                              leadingDistribution: TextLeadingDistribution.even,
+                            ),
                       ),
                       child: Text(context.l10n.commonApply),
                     ),

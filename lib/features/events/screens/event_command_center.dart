@@ -367,6 +367,7 @@ class _BalanceHero extends StatelessWidget {
                 textStyle: AppTypography.sans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
+                  height: 1.22,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),

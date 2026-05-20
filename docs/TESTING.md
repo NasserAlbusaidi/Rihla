@@ -11,7 +11,7 @@ The most important constraint: **no test ever touches real Firebase**. All Fireb
 
 ### Coverage Target
 
-Temporary 70% minimum raw line coverage. CI reads `coverage/lcov.info` directly with `lcov --summary` and does not remove feature directories or bootstrap files before enforcing the threshold. Ratchet this back to 80% after the auth/profile/settings coverage backlog is closed.
+Minimum 80% raw line coverage. CI reads `coverage/lcov.info` directly with `lcov --summary` and does not remove feature directories or bootstrap files before enforcing the threshold.
 
 ### Test Types
 
@@ -622,15 +622,15 @@ CI tracks the number of `find.text()` calls in the test suite against a baseline
 
 ### Coverage threshold
 
-After running `flutter test --coverage`, CI enforces the temporary 70% threshold on the raw `coverage/lcov.info` report:
+After running `flutter test --coverage`, CI enforces the 80% threshold on the raw `coverage/lcov.info` report:
 
 ```yaml
-- name: Check Coverage Threshold (70%)
+- name: Check Coverage Threshold (80%)
   run: |
     COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 \
       | awk '/lines\.\.\.\.\.\.\.:/ { gsub("%", "", $2); print $2; exit }')
-    if ! awk -v coverage="$COVERAGE" 'BEGIN { exit (coverage >= 70.0) ? 0 : 1 }'; then
-      echo "::error::Raw coverage ${COVERAGE}% is below 70% threshold"
+    if ! awk -v coverage="$COVERAGE" 'BEGIN { exit (coverage >= 80.0) ? 0 : 1 }'; then
+      echo "::error::Raw coverage ${COVERAGE}% is below 80% threshold"
       exit 1
     fi
 ```
