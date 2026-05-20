@@ -78,6 +78,21 @@ flutter devices
 
 ## Run Commands
 
+For the Android-only wake-up QA pass, prefer the release APK built from the
+current PR head so the matrix exercises the same app artifact listed in the PR
+handoff and blocker issue. Connect two physical Android devices, then install
+the APK on both:
+
+```bash
+adb devices
+adb -s <android-device-id-1> install -r build/app/outputs/flutter-apk/app-release.apk
+adb -s <android-device-id-2> install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+If the Play testing track is the source of truth for a given pass, install the
+AAB-delivered build from Play instead and record the track/build in each
+evidence cell.
+
 Use one terminal per device:
 
 ```bash
@@ -85,9 +100,9 @@ flutter run -d <ios-device-id> --dart-define-from-file=config.json
 flutter run -d <android-device-id> --dart-define-from-file=config.json
 ```
 
-For a closer release check, install the built Android AAB through the Play
-testing track and install iOS through Xcode or TestFlight. Record which build
-path was used.
+Use `flutter run` when you need logs while reproducing a failure. For a closer
+release check, install iOS through Xcode or TestFlight. Record which build path
+was used.
 
 ## Test Matrix
 

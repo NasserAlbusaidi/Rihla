@@ -58,6 +58,12 @@ void main() {
       contains('Evidence cell must contain a concrete artifact'),
     );
     expect(
+      runbook,
+      contains(
+        'adb -s <android-device-id-1> install -r build/app/outputs/flutter-apk/app-release.apk',
+      ),
+    );
+    expect(
       normalizedRunbook,
       contains('In Android-only mode, iOS cells may start with `Deferred`'),
     );
