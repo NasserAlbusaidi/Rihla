@@ -52,11 +52,17 @@ void main() {
     expect(gate, contains('check_matrix_results'));
     expect(gate, contains('docs/REAL-DEVICE-QA.md'));
     expect(gate, contains('Real-device QA matrix is incomplete'));
+    expect(gate, contains('evidence_has_build_trace'));
+    expect(gate, contains('evidence does not include build traceability'));
     expect(runbook, contains('Every RD-01 through RD-09 row'));
     expect(runbook, contains('RD-09 | Arabic RTL golden path'));
     expect(
       normalizedRunbook,
       contains('Evidence cell must contain a concrete artifact'),
+    );
+    expect(
+      normalizedRunbook,
+      contains('Evidence cell must also include build traceability'),
     );
     expect(
       runbook,
@@ -108,6 +114,15 @@ void main() {
       expect(runbook, contains(placeholder));
       expect(gate, contains('"$placeholder"'));
     }
+  });
+
+  test('real-device QA gate rejects evidence without build traceability', () {
+    final gate = read('tool/check_real_device_qa_gate.sh');
+
+    expect(gate, contains('evidence_has_build_trace'));
+    expect(gate, contains('evidence does not include build traceability'));
+    expect(gate, contains('sha-256'));
+    expect(gate, contains('app-release'));
   });
 
   test(

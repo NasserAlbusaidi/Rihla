@@ -60,6 +60,12 @@ check_matrix_results() {
         || value == "Arabic RTL screenshots and golden-path log";
     }
 
+    function evidence_has_build_trace(value, lower) {
+      lower = tolower(value);
+      return lower ~ /(commit|sha-256|sha256|apk|aab|play|track|build|artifact|app-release)/ \
+        || value ~ /[0-9a-fA-F]{12,}/;
+    }
+
     /^\| RD-[0-9][0-9] \|/ {
       total += 1;
       id = trim($2);
@@ -84,6 +90,9 @@ check_matrix_results() {
       }
       if (evidence == "" || is_placeholder(evidence)) {
         print "DETAIL: " id " evidence is missing or still a placeholder in docs/REAL-DEVICE-QA.md";
+        failures += 1;
+      } else if (!evidence_has_build_trace(evidence)) {
+        print "DETAIL: " id " evidence does not include build traceability in docs/REAL-DEVICE-QA.md";
         failures += 1;
       }
     }

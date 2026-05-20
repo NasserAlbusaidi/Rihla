@@ -118,7 +118,9 @@ build source, and Firebase project. In the default full iOS + Android gate, both
 iOS and Android cells must start with `Pass`. In Android-only mode, iOS cells
 may start with `Deferred` and Android cells must start with `Pass`. Evidence
 cell must contain a concrete artifact such as a group ID, invite code,
-screenshot filename, or Firestore document path.
+screenshot filename, or Firestore document path. Evidence cell must also
+include build traceability: commit SHA, APK/AAB SHA-256, Play track/build
+number, or the relevant output from `tool/print_android_qa_handoff.sh`.
 
 | ID | Area | iOS | Android | Evidence |
 |---|---|---|---|---|
