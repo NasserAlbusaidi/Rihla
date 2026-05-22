@@ -18,8 +18,16 @@ class DeepLinkService {
   final AppLinks _appLinks;
   // ignore: cancel_subscriptions, process-lifetime singleton listener
   StreamSubscription<Uri>? _subscription;
+  bool Function()? _shouldBlockNavigation;
+  void Function(Uri uri)? _onBlockedNavigation;
 
-  Future<void> init(GoRouter router) async {
+  Future<void> init(
+    GoRouter router, {
+    bool Function()? shouldBlockNavigation,
+    void Function(Uri uri)? onBlockedNavigation,
+  }) async {
+    _shouldBlockNavigation = shouldBlockNavigation;
+    _onBlockedNavigation = onBlockedNavigation;
     if (_subscription != null) return;
 
     _subscription = _appLinks.uriLinkStream.listen(
@@ -62,6 +70,11 @@ class DeepLinkService {
   void _openJoinLink(GoRouter router, Uri uri) {
     final joinUri = parseJoinLink(uri);
     if (joinUri == null) return;
+
+    if (_shouldBlockNavigation?.call() == true) {
+      _onBlockedNavigation?.call(uri);
+      return;
+    }
 
     router.go(joinUri.toString());
   }

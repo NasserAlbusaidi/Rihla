@@ -2426,6 +2426,39 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get accountJobRecoveryTitle => 'جارٍ إكمال استعادة الحساب';
+
+  @override
+  String get accountJobDeletionTitle => 'جارٍ حذف حسابك';
+
+  @override
+  String get accountJobRecoveryBody =>
+      'أبقِ Rihla مفتوحًا بينما ننقل مجموعات هذا الجهاز وسجله إلى حسابك المستعاد.';
+
+  @override
+  String get accountJobDeletionBody =>
+      'أبقِ Rihla مفتوحًا بينما نزيل بيانات حسابك وننظّف هذا الجهاز.';
+
+  @override
+  String accountJobProgress(int current, int total) {
+    return '$current من $total';
+  }
+
+  @override
+  String get accountJobProgressIndeterminate => 'جارٍ العمل...';
+
+  @override
+  String get accountJobDeepLinkBlocked =>
+      'أكمل مهمة الحساب هذه قبل فتح الدعوات أو روابط الاستعادة.';
+
+  @override
+  String get accountJobRetry => 'إعادة المحاولة';
+
+  @override
+  String get accountJobSupportCopy =>
+      'إذا استمرت إعادة المحاولة بالفشل، تواصل مع الدعم قبل إعادة التثبيت حتى نتحقق من حالة الحساب.';
+
+  @override
   String get authSignOutFirstTitle => 'هذا الجهاز قيد الاستخدام بالفعل';
 
   @override

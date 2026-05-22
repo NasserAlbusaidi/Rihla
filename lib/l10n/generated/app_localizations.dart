@@ -4142,6 +4142,60 @@ abstract class AppLocalizations {
   /// **'Resend in {seconds}s'**
   String authRecoverPendingResendCountdown(int seconds);
 
+  /// Blocking overlay title while recovery cleanup is migrating account data.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing account restore'**
+  String get accountJobRecoveryTitle;
+
+  /// Blocking overlay title while account deletion is scrubbing server and local data.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your account'**
+  String get accountJobDeletionTitle;
+
+  /// Blocking overlay body for a recovery cleanup job.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Rihla open while we finish moving this device\'s groups and history into your restored account.'**
+  String get accountJobRecoveryBody;
+
+  /// Blocking overlay body for an account deletion job.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Rihla open while we remove your account data and clean up this device.'**
+  String get accountJobDeletionBody;
+
+  /// Counted progress label for account jobs.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String accountJobProgress(int current, int total);
+
+  /// Indeterminate progress label for account jobs when no total is available.
+  ///
+  /// In en, this message translates to:
+  /// **'Working...'**
+  String get accountJobProgressIndeterminate;
+
+  /// Overlay notice shown when a deep link is blocked during an account job.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish this account task before opening invites or recovery links.'**
+  String get accountJobDeepLinkBlocked;
+
+  /// Retry button label on the blocking account job overlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get accountJobRetry;
+
+  /// Support-oriented copy shown on terminal or repeated account job failures.
+  ///
+  /// In en, this message translates to:
+  /// **'If retry keeps failing, contact support before reinstalling so we can check the account state.'**
+  String get accountJobSupportCopy;
+
   /// Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one.
   ///
   /// In en, this message translates to:

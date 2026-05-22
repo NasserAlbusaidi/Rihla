@@ -164,6 +164,16 @@ service cloud.firestore {
       allow get, list, delete: if false;
     }
 
+    // Job progress documents are server-owned. Clients advance and read status
+    // only through callables so the schema does not become a direct rules API.
+    match /recoveryCleanupJobs/{jobId} {
+      allow read, write: if false;
+    }
+
+    match /deletionJobs/{jobId} {
+      allow read, write: if false;
+    }
+
     match /groups/{groupId} {
       function isMember() {
         return signedIn() && request.auth.uid in resource.data.memberIds;

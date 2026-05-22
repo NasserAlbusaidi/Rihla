@@ -1594,6 +1594,51 @@
     }
   },
 
+  "accountJobRecoveryTitle": "Finishing account restore",
+  "@accountJobRecoveryTitle": {
+    "description": "Blocking overlay title while recovery cleanup is migrating account data."
+  },
+  "accountJobDeletionTitle": "Deleting your account",
+  "@accountJobDeletionTitle": {
+    "description": "Blocking overlay title while account deletion is scrubbing server and local data."
+  },
+  "accountJobRecoveryBody": "Keep Rihla open while we finish moving this device's groups and history into your restored account.",
+  "@accountJobRecoveryBody": {
+    "description": "Blocking overlay body for a recovery cleanup job."
+  },
+  "accountJobDeletionBody": "Keep Rihla open while we remove your account data and clean up this device.",
+  "@accountJobDeletionBody": {
+    "description": "Blocking overlay body for an account deletion job."
+  },
+  "accountJobProgress": "{current} of {total}",
+  "@accountJobProgress": {
+    "description": "Counted progress label for account jobs.",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "accountJobProgressIndeterminate": "Working...",
+  "@accountJobProgressIndeterminate": {
+    "description": "Indeterminate progress label for account jobs when no total is available."
+  },
+  "accountJobDeepLinkBlocked": "Finish this account task before opening invites or recovery links.",
+  "@accountJobDeepLinkBlocked": {
+    "description": "Overlay notice shown when a deep link is blocked during an account job."
+  },
+  "accountJobRetry": "Retry",
+  "@accountJobRetry": {
+    "description": "Retry button label on the blocking account job overlay."
+  },
+  "accountJobSupportCopy": "If retry keeps failing, contact support before reinstalling so we can check the account state.",
+  "@accountJobSupportCopy": {
+    "description": "Support-oriented copy shown on terminal or repeated account job failures."
+  },
+
   "authSignOutFirstTitle": "This device is already in use",
   "@authSignOutFirstTitle": {
     "description": "Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one."

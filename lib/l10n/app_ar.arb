@@ -722,6 +722,16 @@
   "authRecoverPendingResendLink": "إعادة إرسال الرابط",
   "authRecoverPendingResendCountdown": "إعادة الإرسال خلال {seconds} ث",
 
+  "accountJobRecoveryTitle": "جارٍ إكمال استعادة الحساب",
+  "accountJobDeletionTitle": "جارٍ حذف حسابك",
+  "accountJobRecoveryBody": "أبقِ Rihla مفتوحًا بينما ننقل مجموعات هذا الجهاز وسجله إلى حسابك المستعاد.",
+  "accountJobDeletionBody": "أبقِ Rihla مفتوحًا بينما نزيل بيانات حسابك وننظّف هذا الجهاز.",
+  "accountJobProgress": "{current} من {total}",
+  "accountJobProgressIndeterminate": "جارٍ العمل...",
+  "accountJobDeepLinkBlocked": "أكمل مهمة الحساب هذه قبل فتح الدعوات أو روابط الاستعادة.",
+  "accountJobRetry": "إعادة المحاولة",
+  "accountJobSupportCopy": "إذا استمرت إعادة المحاولة بالفشل، تواصل مع الدعم قبل إعادة التثبيت حتى نتحقق من حالة الحساب.",
+
   "authSignOutFirstTitle": "هذا الجهاز قيد الاستخدام بالفعل",
   "authSignOutFirstBody": "لاستعادة حساب آخر، ستفقد الرحلات والمصاريف الموجودة على هذا الجهاز. ستبقى في السحابة فقط إذا كانت مرتبطة ببريد إلكتروني آخر — وإلا فستصبح بلا مالك.",
   "authSignOutFirstConfirm": "تسجيل الخروج والمتابعة",

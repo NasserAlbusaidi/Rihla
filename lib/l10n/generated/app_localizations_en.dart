@@ -2374,6 +2374,39 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get accountJobRecoveryTitle => 'Finishing account restore';
+
+  @override
+  String get accountJobDeletionTitle => 'Deleting your account';
+
+  @override
+  String get accountJobRecoveryBody =>
+      'Keep Rihla open while we finish moving this device\'s groups and history into your restored account.';
+
+  @override
+  String get accountJobDeletionBody =>
+      'Keep Rihla open while we remove your account data and clean up this device.';
+
+  @override
+  String accountJobProgress(int current, int total) {
+    return '$current of $total';
+  }
+
+  @override
+  String get accountJobProgressIndeterminate => 'Working...';
+
+  @override
+  String get accountJobDeepLinkBlocked =>
+      'Finish this account task before opening invites or recovery links.';
+
+  @override
+  String get accountJobRetry => 'Retry';
+
+  @override
+  String get accountJobSupportCopy =>
+      'If retry keeps failing, contact support before reinstalling so we can check the account state.';
+
+  @override
   String get authSignOutFirstTitle => 'This device is already in use';
 
   @override

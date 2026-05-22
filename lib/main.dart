@@ -21,6 +21,8 @@ import 'core/providers/settings_provider.dart';
 import 'core/theme/tokens/color_tokens.dart';
 import 'core/services/app_messenger.dart';
 import 'core/services/deep_link_service.dart';
+import 'features/auth/providers/account_job_coordinator_provider.dart';
+import 'features/auth/widgets/account_job_overlay.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
@@ -162,13 +164,39 @@ class SafarApp extends ConsumerStatefulWidget {
 }
 
 class _SafarAppState extends ConsumerState<SafarApp> {
+  AccountJobLifecycleObserver? _accountJobLifecycleObserver;
+
   @override
   void initState() {
     super.initState();
+    _accountJobLifecycleObserver = AccountJobLifecycleObserver(() {
+      return ref
+          .read(accountJobCoordinatorProvider.notifier)
+          .resumeOnAppResume();
+    });
+    WidgetsBinding.instance.addObserver(_accountJobLifecycleObserver!);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(DeepLinkService.instance.init(ref.read(routerProvider)));
+      final coordinator = ref.read(accountJobCoordinatorProvider.notifier);
+      unawaited(coordinator.resumeOnLaunch());
+      unawaited(
+        DeepLinkService.instance.init(
+          ref.read(routerProvider),
+          shouldBlockNavigation: () =>
+              ref.read(accountJobCoordinatorProvider).isBlocking,
+          onBlockedNavigation: (_) => coordinator.notifyDeepLinkBlocked(),
+        ),
+      );
     });
+  }
+
+  @override
+  void dispose() {
+    final observer = _accountJobLifecycleObserver;
+    if (observer != null) {
+      WidgetsBinding.instance.removeObserver(observer);
+    }
+    super.dispose();
   }
 
   @override
@@ -190,6 +218,9 @@ class _SafarAppState extends ConsumerState<SafarApp> {
         darkTheme: AppTheme.darkTheme,
         themeMode: settings.themeMode.toMaterialThemeMode(),
         routerConfig: router,
+        builder: (context, child) {
+          return AccountJobOverlay(child: child ?? const SizedBox.shrink());
+        },
       ),
     );
   }

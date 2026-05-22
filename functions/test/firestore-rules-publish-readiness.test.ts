@@ -369,6 +369,26 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(owner.doc('recoveryCleanupIntents/owner').delete());
   });
 
+  test('account job progress documents are callable-only and deny client access', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const jobData = {
+      kind: 'recoveryCleanup',
+      status: 'running',
+      uid: 'owner',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    for (const collection of ['recoveryCleanupJobs', 'deletionJobs']) {
+      const doc = owner.doc(`${collection}/job1`);
+      await assertFails(doc.get());
+      await assertFails(owner.collection(collection).get());
+      await assertFails(doc.set(jobData));
+      await assertFails(doc.update({ status: 'complete' }));
+      await assertFails(doc.delete());
+    }
+  });
+
   test('creator can atomically delete group, member docs, and invite code', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
     const batch = owner.batch();
