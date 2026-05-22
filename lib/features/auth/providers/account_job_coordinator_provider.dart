@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../models/account_job_status.dart';
+import 'auth_provider.dart';
 
 typedef AccountJobResumeProbe = Future<AccountJobStatusSnapshot?> Function();
 typedef AccountJobAdvance =
@@ -48,8 +49,10 @@ class AccountJobDriver {
 
 final accountJobDriverProvider = Provider<AccountJobDriver>((ref) {
   return AccountJobDriver(
-    resumeProbe: () async => null,
-    advance: (status) async => status,
+    resumeProbe: () =>
+        ref.read(authRecoveryServiceProvider).resumePendingRecoveryCleanup(),
+    advance: (status) =>
+        ref.read(authRecoveryServiceProvider).advanceAccountJob(status),
     routeHome: () {},
   );
 });

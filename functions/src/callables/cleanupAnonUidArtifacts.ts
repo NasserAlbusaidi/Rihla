@@ -290,6 +290,20 @@ export const cleanupAnonUidArtifacts = onCall<
       }
     }
 
+    if (groupsFailed.length > 0) {
+      throw new HttpsError(
+        'internal',
+        'Recovery cleanup failed before identity deletion.',
+        {
+          groupsProcessed,
+          groupsFailed,
+          authUserDeleted: false,
+          fcmTokenDeleted: false,
+          joinAttemptsDeleted: false,
+        },
+      );
+    }
+
     let authUserDeleted = false;
     try {
       await getAuth().deleteUser(oldUid);

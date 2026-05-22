@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/features/auth/models/account_job_status.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -47,11 +48,13 @@ void main() {
   AuthRecoveryService buildService({
     FirebaseFirestore? firestore,
     Future<void> Function()? anonymousSessionFactory,
-    Future<void> Function({
+    Future<AccountJobStatusSnapshot> Function({
       required String oldUid,
       required String cleanupSecret,
     })?
-    cleanupAnonUidArtifacts,
+    claimRecoveryCleanupJob,
+    Future<AccountJobStatusSnapshot> Function({required String jobId})?
+    advanceRecoveryCleanupJob,
     Future<String> Function(String oldUid)? cleanupIntentFactory,
     void Function({
       required String message,
@@ -64,9 +67,26 @@ void main() {
       prefs: prefs,
       firestore: firestore ?? defaultFirestore,
       anonymousSessionFactory: anonymousSessionFactory ?? () async {},
-      cleanupAnonUidArtifacts:
-          cleanupAnonUidArtifacts ??
-          ({required oldUid, required cleanupSecret}) async {},
+      claimRecoveryCleanupJob:
+          claimRecoveryCleanupJob ??
+          ({required oldUid, required cleanupSecret}) async {
+            return const AccountJobStatusSnapshot(
+              jobId: 'recovery-job',
+              kind: AccountJobKind.recoveryCleanup,
+              status: AccountJobRunStatus.complete,
+              phase: 'Complete',
+            );
+          },
+      advanceRecoveryCleanupJob:
+          advanceRecoveryCleanupJob ??
+          ({required jobId}) async {
+            return AccountJobStatusSnapshot(
+              jobId: jobId,
+              kind: AccountJobKind.recoveryCleanup,
+              status: AccountJobRunStatus.complete,
+              phase: 'Complete',
+            );
+          },
       cleanupIntentFactory:
           cleanupIntentFactory ?? (_) async => 'test-cleanup-secret',
       recoveryCleanupFailureRecorder: recoveryCleanupFailureRecorder,
@@ -248,12 +268,11 @@ void main() {
     );
 
     test(
-      'drains pending writes and signs out anon UID before recovery',
+      'drains pending writes and signs in without signing out first',
       () async {
         final credential = _MockUserCredential();
         final firestore = _MockFirestore();
         when(firestore.waitForPendingWrites).thenAnswer((_) async {});
-        when(() => auth.signOut()).thenAnswer((_) async {});
         when(
           () => auth.signInWithEmailLink(
             email: any(named: 'email'),
@@ -267,25 +286,22 @@ void main() {
 
         verifyInOrder([
           firestore.waitForPendingWrites,
-          () => auth.signOut(),
           () => auth.signInWithEmailLink(
             email: 'foo@example.com',
             emailLink: link,
           ),
         ]);
+        verifyNever(() => auth.signOut());
       },
     );
 
     test(
-      'invokes cleanup callable after signInWithEmailLink with captured anon UID',
+      'claims and advances cleanup job around signInWithEmailLink',
       () async {
         final credential = _MockUserCredential();
         final calls = <String>[];
         when(defaultFirestore.waitForPendingWrites).thenAnswer((_) async {
           calls.add('waitForPendingWrites');
-        });
-        when(() => auth.signOut()).thenAnswer((_) async {
-          calls.add('signOut');
         });
         when(
           () => auth.signInWithEmailLink(
@@ -301,10 +317,25 @@ void main() {
             calls.add('intent:$oldUid');
             return 'client-secret';
           },
-          cleanupAnonUidArtifacts:
+          claimRecoveryCleanupJob:
               ({required oldUid, required cleanupSecret}) async {
-                calls.add('cleanup:$oldUid:$cleanupSecret');
+                calls.add('claim:$oldUid:$cleanupSecret');
+                return const AccountJobStatusSnapshot(
+                  jobId: 'job-1',
+                  kind: AccountJobKind.recoveryCleanup,
+                  status: AccountJobRunStatus.running,
+                  phase: 'Migrating groups',
+                );
               },
+          advanceRecoveryCleanupJob: ({required jobId}) async {
+            calls.add('advance:$jobId');
+            return AccountJobStatusSnapshot(
+              jobId: jobId,
+              kind: AccountJobKind.recoveryCleanup,
+              status: AccountJobRunStatus.complete,
+              phase: 'Complete',
+            );
+          },
         );
         await service.setPendingEmail('foo@example.com');
 
@@ -313,15 +344,16 @@ void main() {
         expect(result, same(credential));
         expect(calls, [
           'intent:anon-uid-123',
+          'claim:anon-uid-123:client-secret',
           'waitForPendingWrites',
-          'signOut',
           'signInWithEmailLink',
-          'cleanup:anon-uid-123:client-secret',
+          'claim:anon-uid-123:client-secret',
+          'advance:job-1',
         ]);
       },
     );
 
-    test('recovery succeeds when cleanup callable throws', () async {
+    test('recovery fails loud when cleanup advancement throws', () async {
       final credential = _MockUserCredential();
       when(
         () => auth.signInWithEmailLink(
@@ -331,20 +363,29 @@ void main() {
       ).thenAnswer((_) async => credential);
       final breadcrumbs = <Map<String, Object?>>[];
       final service = buildService(
-        cleanupAnonUidArtifacts:
+        claimRecoveryCleanupJob:
             ({required oldUid, required cleanupSecret}) async {
-              throw StateError('cleanup failed for foo@example.com');
+              return const AccountJobStatusSnapshot(
+                jobId: 'job-1',
+                kind: AccountJobKind.recoveryCleanup,
+                status: AccountJobRunStatus.running,
+                phase: 'Migrating groups',
+              );
             },
+        advanceRecoveryCleanupJob: ({required jobId}) async {
+          throw StateError('cleanup failed for foo@example.com');
+        },
         recoveryCleanupFailureRecorder: ({required message, required data}) {
           breadcrumbs.add({'message': message, ...data});
         },
       );
       await service.setPendingEmail('foo@example.com');
 
-      final result = await service.completeRecovery(link);
-      await Future<void>.delayed(Duration.zero);
+      await expectLater(
+        () => service.completeRecovery(link),
+        throwsA(isA<StateError>()),
+      );
 
-      expect(result, same(credential));
       expect(breadcrumbs, hasLength(1));
     });
 
@@ -358,18 +399,28 @@ void main() {
       ).thenAnswer((_) async => credential);
       final breadcrumbs = <Map<String, Object?>>[];
       final service = buildService(
-        cleanupAnonUidArtifacts:
+        claimRecoveryCleanupJob:
             ({required oldUid, required cleanupSecret}) async {
-              throw StateError('cleanup failed for foo@example.com');
+              return const AccountJobStatusSnapshot(
+                jobId: 'job-1',
+                kind: AccountJobKind.recoveryCleanup,
+                status: AccountJobRunStatus.running,
+                phase: 'Migrating groups',
+              );
             },
+        advanceRecoveryCleanupJob: ({required jobId}) async {
+          throw StateError('cleanup failed for foo@example.com');
+        },
         recoveryCleanupFailureRecorder: ({required message, required data}) {
           breadcrumbs.add({'message': message, ...data});
         },
       );
       await service.setPendingEmail('foo@example.com');
 
-      await service.completeRecovery(link);
-      await Future<void>.delayed(Duration.zero);
+      await expectLater(
+        () => service.completeRecovery(link),
+        throwsA(isA<StateError>()),
+      );
 
       final serialized = breadcrumbs.single.toString();
       expect(serialized, isNot(contains('foo@example.com')));
@@ -382,7 +433,6 @@ void main() {
       when(
         firestore.waitForPendingWrites,
       ).thenAnswer((_) => Completer<void>().future);
-      when(() => auth.signOut()).thenAnswer((_) async {});
       when(
         () => auth.signInWithEmailLink(
           email: any(named: 'email'),
@@ -398,7 +448,7 @@ void main() {
       );
 
       expect(result, same(credential));
-      verify(() => auth.signOut()).called(1);
+      verifyNever(() => auth.signOut());
       verify(
         () =>
             auth.signInWithEmailLink(email: 'foo@example.com', emailLink: link),

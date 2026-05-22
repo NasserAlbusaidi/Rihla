@@ -2470,10 +2470,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get authSignOutFirstBody =>
-      'لاستعادة حساب آخر، ستفقد الرحلات والمصاريف الموجودة على هذا الجهاز. ستبقى في السحابة فقط إذا كانت مرتبطة ببريد إلكتروني آخر — وإلا فستصبح بلا مالك.';
+      'لاستعادة حساب هذا البريد، سننقل مجموعات ومصاريف هذا الجهاز الحالية إلى ذلك الحساب بعد أن تضغط رابط البريد.';
 
   @override
-  String get authSignOutFirstConfirm => 'تسجيل الخروج والمتابعة';
+  String get authSignOutFirstConfirm => 'الاستعادة والدمج';
 
   @override
   String get groupSettleUpMissingTitle => 'هذه المجموعة لم تعد متاحة';

@@ -46,15 +46,6 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
     if (groups.isEmpty) return true;
     final confirmed = await SignOutFirstDialog.show(context);
     if (confirmed != true) return false;
-    try {
-      // No linked email yet on this device — sign out the anon UID and
-      // mint a fresh one before sending the recovery link. This mirrors
-      // signOutCurrentDevice() but skips the linked-email guard.
-      await ref.read(firebaseAuthProvider).signOut();
-    } catch (_) {
-      // signOut should not realistically fail; continue regardless and
-      // let the recovery flow surface any auth failure.
-    }
     return true;
   }
 

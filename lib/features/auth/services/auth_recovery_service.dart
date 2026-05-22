@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/firebase_functions_service.dart';
+import '../models/account_job_status.dart';
 import 'auth_email_link_config.dart';
 
 typedef RecoveryCleanupFailureRecorder =
@@ -18,11 +19,17 @@ typedef RecoveryCleanupFailureRecorder =
       required Map<String, Object?> data,
     });
 
-typedef CleanupAnonUidArtifacts =
-    Future<void> Function({
+typedef ClaimRecoveryCleanupJob =
+    Future<AccountJobStatusSnapshot> Function({
       required String oldUid,
       required String cleanupSecret,
     });
+
+typedef AdvanceRecoveryCleanupJob =
+    Future<AccountJobStatusSnapshot> Function({required String jobId});
+
+typedef GetRecoveryCleanupJobStatus =
+    Future<AccountJobStatusSnapshot> Function({required String jobId});
 
 typedef CleanupIntentFactory = Future<String> Function(String oldUid);
 
@@ -44,7 +51,9 @@ class AuthRecoveryService {
     required SharedPreferences prefs,
     FirebaseFirestore? firestore,
     Future<void> Function()? anonymousSessionFactory,
-    CleanupAnonUidArtifacts? cleanupAnonUidArtifacts,
+    ClaimRecoveryCleanupJob? claimRecoveryCleanupJob,
+    AdvanceRecoveryCleanupJob? advanceRecoveryCleanupJob,
+    GetRecoveryCleanupJobStatus? getRecoveryCleanupJobStatus,
     CleanupIntentFactory? cleanupIntentFactory,
     RecoveryCleanupFailureRecorder? recoveryCleanupFailureRecorder,
   }) : _auth = auth,
@@ -52,13 +61,21 @@ class AuthRecoveryService {
        _firestore = firestore,
        _anonymousSessionFactory =
            anonymousSessionFactory ?? FirebaseConfig.ensureAnonymousSession,
-       _cleanupAnonUidArtifacts =
-           cleanupAnonUidArtifacts ??
+       _claimRecoveryCleanupJob =
+           claimRecoveryCleanupJob ??
            (({required oldUid, required cleanupSecret}) =>
-               FirebaseFunctionsService().cleanupAnonUidArtifacts(
+               FirebaseFunctionsService().claimRecoveryCleanupJob(
                  oldUid: oldUid,
                  cleanupSecret: cleanupSecret,
                )),
+       _advanceRecoveryCleanupJob =
+           advanceRecoveryCleanupJob ??
+           (({required jobId}) => FirebaseFunctionsService()
+               .advanceRecoveryCleanupJob(jobId: jobId)),
+       _getRecoveryCleanupJobStatus =
+           getRecoveryCleanupJobStatus ??
+           (({required jobId}) => FirebaseFunctionsService()
+               .getRecoveryCleanupJobStatus(jobId: jobId)),
        _cleanupIntentFactory =
            cleanupIntentFactory ??
            ((oldUid) async {
@@ -80,12 +97,17 @@ class AuthRecoveryService {
   final SharedPreferences _prefs;
   final FirebaseFirestore? _firestore;
   final Future<void> Function() _anonymousSessionFactory;
-  final CleanupAnonUidArtifacts _cleanupAnonUidArtifacts;
+  final ClaimRecoveryCleanupJob _claimRecoveryCleanupJob;
+  final AdvanceRecoveryCleanupJob _advanceRecoveryCleanupJob;
+  final GetRecoveryCleanupJobStatus _getRecoveryCleanupJobStatus;
   final CleanupIntentFactory _cleanupIntentFactory;
   final RecoveryCleanupFailureRecorder _recoveryCleanupFailureRecorder;
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = 'auth.inFlightOp';
+  static const _pendingCleanupOldUidKey = 'auth.pendingRecoveryCleanupOldUid';
+  static const _pendingCleanupSecretKey = 'auth.pendingRecoveryCleanupSecret';
+  static const _pendingCleanupJobIdKey = 'auth.pendingRecoveryCleanupJobId';
   static const _cleanupIntentCollection = 'recoveryCleanupIntents';
   static final Random _secureRandom = Random.secure();
 
@@ -152,6 +174,50 @@ class AuthRecoveryService {
 
   Future<void> clearInFlightOp() async {
     await _prefs.remove(_inFlightOpKey);
+  }
+
+  Future<void> _storePendingCleanup({
+    required String oldUid,
+    required String cleanupSecret,
+    String? jobId,
+  }) async {
+    await _prefs.setString(_pendingCleanupOldUidKey, oldUid);
+    await _prefs.setString(_pendingCleanupSecretKey, cleanupSecret);
+    if (jobId != null && jobId.isNotEmpty) {
+      await _prefs.setString(_pendingCleanupJobIdKey, jobId);
+    }
+  }
+
+  Future<void> _clearPendingCleanup() async {
+    await _prefs.remove(_pendingCleanupOldUidKey);
+    await _prefs.remove(_pendingCleanupSecretKey);
+    await _prefs.remove(_pendingCleanupJobIdKey);
+  }
+
+  Future<AccountJobStatusSnapshot?> resumePendingRecoveryCleanup() async {
+    final jobId = _prefs.getString(_pendingCleanupJobIdKey);
+    if (jobId == null || jobId.isEmpty) return null;
+    final status = await _getRecoveryCleanupJobStatus(jobId: jobId);
+    if (status.status == AccountJobRunStatus.complete) {
+      await _clearPendingCleanup();
+      await clearPendingEmail();
+      await clearInFlightOp();
+      return null;
+    }
+    return status;
+  }
+
+  Future<AccountJobStatusSnapshot> advanceAccountJob(
+    AccountJobStatusSnapshot status,
+  ) async {
+    if (status.kind != AccountJobKind.recoveryCleanup) return status;
+    final next = await _advanceRecoveryCleanupJob(jobId: status.jobId);
+    if (next.status == AccountJobRunStatus.complete) {
+      await _clearPendingCleanup();
+      await clearPendingEmail();
+      await clearInFlightOp();
+    }
+    return next;
   }
 
   /// Send a sign-in link to attach [email] to the current anonymous user.
@@ -242,6 +308,19 @@ class AuthRecoveryService {
     if (oldUid != null && oldUid.isNotEmpty) {
       try {
         cleanupSecret = await _cleanupIntentFactory(oldUid);
+        await _storePendingCleanup(
+          oldUid: oldUid,
+          cleanupSecret: cleanupSecret,
+        );
+        final status = await _claimRecoveryCleanupJob(
+          oldUid: oldUid,
+          cleanupSecret: cleanupSecret,
+        );
+        await _storePendingCleanup(
+          oldUid: oldUid,
+          cleanupSecret: cleanupSecret,
+          jobId: status.jobId,
+        );
       } catch (error, stackTrace) {
         _recoveryCleanupFailureRecorder(
           message: 'Recovery cleanup intent creation failed',
@@ -251,6 +330,7 @@ class AuthRecoveryService {
           'Recovery: cleanup intent creation failed (${error.runtimeType})',
           stackTrace: stackTrace,
         );
+        rethrow;
       }
     }
     try {
@@ -262,35 +342,53 @@ class AuthRecoveryService {
         '${pendingWritesTimeout.inSeconds}s — continuing recovery',
       );
     }
-    await _auth.signOut();
     final result = await _auth.signInWithEmailLink(
       email: email,
       emailLink: emailLink,
     );
-    await clearPendingEmail();
-    await clearInFlightOp();
     FirebaseConfig.log('Recovery: recovered uid ${result.user?.uid}');
     if (oldUid != null &&
         oldUid.isNotEmpty &&
         cleanupSecret != null &&
         result.user?.uid != oldUid) {
-      unawaited(
-        _cleanupAnonUidArtifacts(oldUid: oldUid, cleanupSecret: cleanupSecret)
-            .then((_) {
-              FirebaseConfig.log('Recovery: anon uid cleanup completed');
-            })
-            .catchError((Object error, StackTrace stackTrace) {
-              _recoveryCleanupFailureRecorder(
-                message: 'Recovery anon uid cleanup failed',
-                data: {'errorType': error.runtimeType.toString()},
-              );
-              FirebaseConfig.log(
-                'Recovery: anon uid cleanup failed (${error.runtimeType})',
-                stackTrace: stackTrace,
-              );
-            }),
+      var status = await _claimRecoveryCleanupJob(
+        oldUid: oldUid,
+        cleanupSecret: cleanupSecret,
       );
+      await _storePendingCleanup(
+        oldUid: oldUid,
+        cleanupSecret: cleanupSecret,
+        jobId: status.jobId,
+      );
+      try {
+        while (status.status == AccountJobRunStatus.running) {
+          status = await _advanceRecoveryCleanupJob(jobId: status.jobId);
+        }
+      } catch (error, stackTrace) {
+        _recoveryCleanupFailureRecorder(
+          message: 'Recovery anon uid cleanup failed',
+          data: {'errorType': error.runtimeType.toString()},
+        );
+        FirebaseConfig.log(
+          'Recovery: anon uid cleanup failed (${error.runtimeType})',
+          stackTrace: stackTrace,
+        );
+        rethrow;
+      }
+      if (status.status != AccountJobRunStatus.complete) {
+        _recoveryCleanupFailureRecorder(
+          message: 'Recovery anon uid cleanup failed',
+          data: {'status': status.status.wireName},
+        );
+        throw StateError(
+          'Recovery cleanup did not complete (${status.status.wireName})',
+        );
+      }
+      await _clearPendingCleanup();
+      FirebaseConfig.log('Recovery: anon uid cleanup completed');
     }
+    await clearPendingEmail();
+    await clearInFlightOp();
     return result;
   }
 

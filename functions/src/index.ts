@@ -1,8 +1,13 @@
-import { setGlobalOptions } from 'firebase-functions/v2';
-import './admin';
+import { setGlobalOptions } from "firebase-functions/v2";
+import "./admin";
 
-setGlobalOptions({ region: 'us-central1' });
+setGlobalOptions({ region: "us-central1" });
 
-export { joinGroupByInviteCode } from './callables/joinGroupByInviteCode';
-export { cleanupAnonUidArtifacts } from './callables/cleanupAnonUidArtifacts';
-export { deleteAccount } from './callables/deleteAccount';
+export { joinGroupByInviteCode } from "./callables/joinGroupByInviteCode";
+export { cleanupAnonUidArtifacts } from "./callables/cleanupAnonUidArtifacts";
+export { deleteAccount } from "./callables/deleteAccount";
+export {
+  advanceRecoveryCleanupJob,
+  claimRecoveryCleanupJob,
+  getRecoveryCleanupJobStatus,
+} from "./callables/recoveryCleanupJob";

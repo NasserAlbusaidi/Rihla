@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/features/auth/models/account_job_status.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -52,8 +53,22 @@ void main() {
     auth: auth,
     prefs: prefs,
     firestore: firestore,
-    cleanupAnonUidArtifacts:
-        ({required oldUid, required cleanupSecret}) async {},
+    claimRecoveryCleanupJob: ({required oldUid, required cleanupSecret}) async {
+      return const AccountJobStatusSnapshot(
+        jobId: 'recovery-job',
+        kind: AccountJobKind.recoveryCleanup,
+        status: AccountJobRunStatus.complete,
+        phase: 'Complete',
+      );
+    },
+    advanceRecoveryCleanupJob: ({required jobId}) async {
+      return AccountJobStatusSnapshot(
+        jobId: jobId,
+        kind: AccountJobKind.recoveryCleanup,
+        status: AccountJobRunStatus.complete,
+        phase: 'Complete',
+      );
+    },
     cleanupIntentFactory: (_) async => 'test-cleanup-secret',
   );
 

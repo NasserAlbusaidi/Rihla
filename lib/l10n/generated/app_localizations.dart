@@ -4214,16 +4214,16 @@ abstract class AppLocalizations {
   /// **'This device is already in use'**
   String get authSignOutFirstTitle;
 
-  /// Body copy of the SignOutFirstDialog explaining what happens to local data when the user signs out to recover a different account.
+  /// Body copy of the SignOutFirstDialog explaining that populated-device recovery now migrates current anonymous data into the restored account.
   ///
   /// In en, this message translates to:
-  /// **'To restore a different account, you\'ll lose the trips and expenses on this device. They\'ll stay in the cloud only if they\'re tied to a different linked email — otherwise they\'ll be orphaned.'**
+  /// **'To restore this email account, we\'ll move this device\'s current groups and expenses into that account after you tap the email link.'**
   String get authSignOutFirstBody;
 
   /// Destructive confirmation CTA on the SignOutFirstDialog.
   ///
   /// In en, this message translates to:
-  /// **'Sign out and continue'**
+  /// **'Restore and merge'**
   String get authSignOutFirstConfirm;
 
   /// Empty-state title on the group settle-up screen when the group can no longer be loaded (e.g. the user was removed).

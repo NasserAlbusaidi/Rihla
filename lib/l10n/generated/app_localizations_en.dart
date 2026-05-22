@@ -2418,10 +2418,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authSignOutFirstBody =>
-      'To restore a different account, you\'ll lose the trips and expenses on this device. They\'ll stay in the cloud only if they\'re tied to a different linked email — otherwise they\'ll be orphaned.';
+      'To restore this email account, we\'ll move this device\'s current groups and expenses into that account after you tap the email link.';
 
   @override
-  String get authSignOutFirstConfirm => 'Sign out and continue';
+  String get authSignOutFirstConfirm => 'Restore and merge';
 
   @override
   String get groupSettleUpMissingTitle => 'This group is no longer available';

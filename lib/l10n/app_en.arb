@@ -1651,11 +1651,11 @@
   "@authSignOutFirstTitle": {
     "description": "Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one."
   },
-  "authSignOutFirstBody": "To restore a different account, you'll lose the trips and expenses on this device. They'll stay in the cloud only if they're tied to a different linked email — otherwise they'll be orphaned.",
+  "authSignOutFirstBody": "To restore this email account, we'll move this device's current groups and expenses into that account after you tap the email link.",
   "@authSignOutFirstBody": {
-    "description": "Body copy of the SignOutFirstDialog explaining what happens to local data when the user signs out to recover a different account."
+    "description": "Body copy of the SignOutFirstDialog explaining that populated-device recovery now migrates current anonymous data into the restored account."
   },
-  "authSignOutFirstConfirm": "Sign out and continue",
+  "authSignOutFirstConfirm": "Restore and merge",
   "@authSignOutFirstConfirm": {
     "description": "Destructive confirmation CTA on the SignOutFirstDialog."
   },
