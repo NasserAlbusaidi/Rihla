@@ -724,8 +724,10 @@
 
   "accountJobRecoveryTitle": "جارٍ إكمال استعادة الحساب",
   "accountJobDeletionTitle": "جارٍ حذف حسابك",
+  "accountJobCacheWipeTitle": "جارٍ تأمين البيانات المحلية",
   "accountJobRecoveryBody": "أبقِ Rihla مفتوحًا بينما ننقل مجموعات هذا الجهاز وسجله إلى حسابك المستعاد.",
   "accountJobDeletionBody": "أبقِ Rihla مفتوحًا بينما نزيل بيانات حسابك وننظّف هذا الجهاز.",
+  "accountJobCacheWipeBody": "أبقِ Rihla مفتوحًا بينما نمسح ذاكرة الحساب السابق غير المتصلة.",
   "accountJobProgress": "{current} من {total}",
   "accountJobProgressIndeterminate": "جارٍ العمل...",
   "accountJobDeepLinkBlocked": "أكمل مهمة الحساب هذه قبل فتح الدعوات أو روابط الاستعادة.",

@@ -1602,6 +1602,10 @@
   "@accountJobDeletionTitle": {
     "description": "Blocking overlay title while account deletion is scrubbing server and local data."
   },
+  "accountJobCacheWipeTitle": "Securing local data",
+  "@accountJobCacheWipeTitle": {
+    "description": "Blocking overlay title while the local SQLite cache is being wiped after a UID change."
+  },
   "accountJobRecoveryBody": "Keep Rihla open while we finish moving this device's groups and history into your restored account.",
   "@accountJobRecoveryBody": {
     "description": "Blocking overlay body for a recovery cleanup job."
@@ -1609,6 +1613,10 @@
   "accountJobDeletionBody": "Keep Rihla open while we remove your account data and clean up this device.",
   "@accountJobDeletionBody": {
     "description": "Blocking overlay body for an account deletion job."
+  },
+  "accountJobCacheWipeBody": "Keep Rihla open while we clear the previous account's offline cache.",
+  "@accountJobCacheWipeBody": {
+    "description": "Blocking overlay body while the local SQLite cache is being wiped after a UID change."
   },
   "accountJobProgress": "{current} of {total}",
   "@accountJobProgress": {

@@ -2432,12 +2432,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get accountJobDeletionTitle => 'جارٍ حذف حسابك';
 
   @override
+  String get accountJobCacheWipeTitle => 'جارٍ تأمين البيانات المحلية';
+
+  @override
   String get accountJobRecoveryBody =>
       'أبقِ Rihla مفتوحًا بينما ننقل مجموعات هذا الجهاز وسجله إلى حسابك المستعاد.';
 
   @override
   String get accountJobDeletionBody =>
       'أبقِ Rihla مفتوحًا بينما نزيل بيانات حسابك وننظّف هذا الجهاز.';
+
+  @override
+  String get accountJobCacheWipeBody =>
+      'أبقِ Rihla مفتوحًا بينما نمسح ذاكرة الحساب السابق غير المتصلة.';
 
   @override
   String accountJobProgress(int current, int total) {

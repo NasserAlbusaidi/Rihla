@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/auth/services/uid_change_listener.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 
 class _MockUser extends Mock implements firebase_auth.User {}
@@ -18,15 +19,13 @@ firebase_auth.User _userWithUid(String uid) {
 ProviderContainer _container(Stream<firebase_auth.User?> stream) {
   final container = ProviderContainer(
     overrides: [
-      authStateProvider.overrideWith((ref) => stream),
+      authUserChangesProvider.overrideWith((ref) => stream),
+      cacheWipeFnProvider.overrideWithValue(() async {}),
     ],
   );
-  // Force authStateProvider to subscribe before any controller.add fires —
+  // Force the safe-UID pipeline to subscribe before any controller.add fires —
   // broadcast streams drop events that have no listeners yet.
-  container.listen<AsyncValue<firebase_auth.User?>>(
-    authStateProvider,
-    (_, _) {},
-  );
+  container.listen<String?>(currentUserIdProvider, (_, _) {});
   return container;
 }
 
@@ -51,28 +50,31 @@ void main() {
       expect(container.read(currentUserIdProvider), equals('uid-original'));
     });
 
-    test('reactively swaps when Firebase Auth changes users mid-session', () async {
-      final controller = StreamController<firebase_auth.User?>.broadcast();
-      addTearDown(controller.close);
-      final container = _container(controller.stream);
-      addTearDown(container.dispose);
+    test(
+      'reactively swaps when Firebase Auth changes users mid-session',
+      () async {
+        final controller = StreamController<firebase_auth.User?>.broadcast();
+        addTearDown(controller.close);
+        final container = _container(controller.stream);
+        addTearDown(container.dispose);
 
-      controller.add(_userWithUid('uid-anon-debug'));
-      await pumpEventQueue();
-      expect(container.read(currentUserIdProvider), equals('uid-anon-debug'));
+        controller.add(_userWithUid('uid-anon-debug'));
+        await pumpEventQueue();
+        expect(container.read(currentUserIdProvider), equals('uid-anon-debug'));
 
-      // Simulate email-link recovery swapping the auth user.
-      controller.add(_userWithUid('uid-recovered'));
-      await pumpEventQueue();
+        // Simulate email-link recovery swapping the auth user.
+        controller.add(_userWithUid('uid-recovered'));
+        await pumpEventQueue();
 
-      expect(
-        container.read(currentUserIdProvider),
-        equals('uid-recovered'),
-        reason:
-            'Provider must follow auth swaps so post-recovery participant '
-            'lookups use the new UID (regression for 2026-05-16 incident).',
-      );
-    });
+        expect(
+          container.read(currentUserIdProvider),
+          equals('uid-recovered'),
+          reason:
+              'Provider must follow auth swaps so post-recovery participant '
+              'lookups use the new UID (regression for 2026-05-16 incident).',
+        );
+      },
+    );
 
     test('returns null when the user signs out', () async {
       final controller = StreamController<firebase_auth.User?>.broadcast();

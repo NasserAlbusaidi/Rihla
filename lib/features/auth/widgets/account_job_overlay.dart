@@ -7,6 +7,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../models/account_job_status.dart';
 import '../providers/account_job_coordinator_provider.dart';
+import '../services/uid_change_listener.dart';
 
 class AccountJobOverlay extends ConsumerWidget {
   const AccountJobOverlay({super.key, required this.child});
@@ -16,24 +17,52 @@ class AccountJobOverlay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(accountJobCoordinatorProvider);
+    final cacheBarrier = ref.watch(uidCacheBarrierProvider);
     final job = state.activeJob;
+    final cacheJob = cacheBarrier.isBlocking
+        ? AccountJobStatusSnapshot(
+            jobId: 'local-cache-wipe',
+            kind: AccountJobKind.cacheWipe,
+            status: cacheBarrier.phase == UidCacheBarrierPhase.failed
+                ? AccountJobRunStatus.failed
+                : AccountJobRunStatus.running,
+            phase: '',
+            retryable: cacheBarrier.phase == UidCacheBarrierPhase.failed,
+            errorCode: cacheBarrier.error?.runtimeType.toString(),
+          )
+        : null;
+    final activeJob = job ?? cacheJob;
+    final isBlocking = state.isBlocking || cacheBarrier.isBlocking;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        IgnorePointer(ignoring: state.isBlocking, child: child),
-        if (job != null && state.isBlocking)
-          _BlockingJobPanel(job: job, blockedDeepLink: state.blockedDeepLink),
+        IgnorePointer(ignoring: isBlocking, child: child),
+        if (activeJob != null && isBlocking)
+          _BlockingJobPanel(
+            job: activeJob,
+            blockedDeepLink: state.blockedDeepLink,
+            onRetry: activeJob.kind == AccountJobKind.cacheWipe
+                ? () => ref.read(uidCacheBarrierProvider.notifier).retry()
+                : () => ref
+                      .read(accountJobCoordinatorProvider.notifier)
+                      .retryActiveJob(),
+          ),
       ],
     );
   }
 }
 
 class _BlockingJobPanel extends ConsumerWidget {
-  const _BlockingJobPanel({required this.job, required this.blockedDeepLink});
+  const _BlockingJobPanel({
+    required this.job,
+    required this.blockedDeepLink,
+    required this.onRetry,
+  });
 
   final AccountJobStatusSnapshot job;
   final bool blockedDeepLink;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,10 +72,12 @@ class _BlockingJobPanel extends ConsumerWidget {
     final title = switch (job.kind) {
       AccountJobKind.recoveryCleanup => l10n.accountJobRecoveryTitle,
       AccountJobKind.deleteAccount => l10n.accountJobDeletionTitle,
+      AccountJobKind.cacheWipe => l10n.accountJobCacheWipeTitle,
     };
     final body = switch (job.kind) {
       AccountJobKind.recoveryCleanup => l10n.accountJobRecoveryBody,
       AccountJobKind.deleteAccount => l10n.accountJobDeletionBody,
+      AccountJobKind.cacheWipe => l10n.accountJobCacheWipeBody,
     };
     final progressText = job.hasCountedProgress
         ? l10n.accountJobProgress(job.current!, job.total!)
@@ -128,11 +159,7 @@ class _BlockingJobPanel extends ConsumerWidget {
                   SizedBox(height: spacing.space24),
                   FilledButton.icon(
                     key: const Key('accountJobOverlay.retry'),
-                    onPressed: job.retryable
-                        ? () => ref
-                              .read(accountJobCoordinatorProvider.notifier)
-                              .retryActiveJob()
-                        : null,
+                    onPressed: job.retryable ? onRetry : null,
                     icon: const Icon(Iconsax.refresh),
                     label: Text(l10n.accountJobRetry),
                   ),

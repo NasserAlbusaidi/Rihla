@@ -16,8 +16,26 @@ firebase_auth.User _userWithUid(String uid) {
   return user;
 }
 
+ProviderContainer _container({
+  required Stream<firebase_auth.User?> userChanges,
+  required CacheWipeFn wipe,
+}) {
+  final container = ProviderContainer(
+    overrides: [
+      authUserChangesProvider.overrideWith((ref) => userChanges),
+      cacheWipeFnProvider.overrideWithValue(wipe),
+    ],
+  );
+  container.listen<UidCacheBarrierState>(
+    uidCacheBarrierProvider,
+    (_, _) {},
+    fireImmediately: true,
+  );
+  return container;
+}
+
 void main() {
-  group('uidChangeListenerProvider', () {
+  group('uidCacheBarrierProvider', () {
     late StreamController<firebase_auth.User?> userChanges;
     late int wipeCalls;
     late ProviderContainer container;
@@ -25,16 +43,12 @@ void main() {
     setUp(() {
       userChanges = StreamController<firebase_auth.User?>.broadcast();
       wipeCalls = 0;
-      container = ProviderContainer(
-        overrides: [
-          authUserChangesProvider.overrideWith((ref) => userChanges.stream),
-          cacheWipeFnProvider.overrideWithValue(() async {
-            wipeCalls++;
-          }),
-        ],
+      container = _container(
+        userChanges: userChanges.stream,
+        wipe: () async {
+          wipeCalls++;
+        },
       );
-      // Subscribe so the listener attaches to the stream.
-      container.read(uidChangeListenerProvider);
     });
 
     tearDown(() async {
@@ -42,25 +56,99 @@ void main() {
       await userChanges.close();
     });
 
-    test('does not wipe on the first emission (cold-start baseline)', () async {
+    test(
+      'publishes the first emission as the safe cold-start baseline',
+      () async {
+        userChanges.add(_userWithUid('uid-1'));
+        await pumpEventQueue();
+
+        expect(wipeCalls, 0);
+        expect(
+          container.read(uidCacheBarrierProvider).phase,
+          UidCacheBarrierPhase.safe,
+        );
+        expect(container.read(safeUidProvider), 'uid-1');
+        expect(container.read(uidProvider), 'uid-1');
+      },
+    );
+
+    test('withholds the new UID until the cache wipe completes', () async {
+      final wipeCompleter = Completer<void>();
+      container.dispose();
+      container = _container(
+        userChanges: userChanges.stream,
+        wipe: () {
+          wipeCalls++;
+          return wipeCompleter.future;
+        },
+      );
+
       userChanges.add(_userWithUid('uid-1'));
       await pumpEventQueue();
-
-      expect(wipeCalls, 0);
-    });
-
-    test('wipes once when the UID actually changes', () async {
-      userChanges.add(_userWithUid('uid-1'));
-      await pumpEventQueue();
-      expect(wipeCalls, 0);
+      expect(container.read(safeUidProvider), 'uid-1');
 
       userChanges.add(_userWithUid('uid-2'));
       await pumpEventQueue();
 
       expect(wipeCalls, 1);
+      expect(
+        container.read(uidCacheBarrierProvider).phase,
+        UidCacheBarrierPhase.wiping,
+      );
+      expect(container.read(safeUidProvider), isNull);
+      expect(container.read(uidProvider), isNull);
+
+      wipeCompleter.complete();
+      await pumpEventQueue();
+
+      expect(
+        container.read(uidCacheBarrierProvider).phase,
+        UidCacheBarrierPhase.safe,
+      );
+      expect(container.read(safeUidProvider), 'uid-2');
     });
 
-    test('does not wipe when the same UID re-emits (linkWithCredential)', () async {
+    test(
+      'failed wipe blocks safe UID publication until retry succeeds',
+      () async {
+        container.dispose();
+        var failNext = true;
+        container = _container(
+          userChanges: userChanges.stream,
+          wipe: () async {
+            wipeCalls++;
+            if (failNext) {
+              failNext = false;
+              throw StateError('boom');
+            }
+          },
+        );
+
+        userChanges.add(_userWithUid('uid-1'));
+        await pumpEventQueue();
+        userChanges.add(_userWithUid('uid-2'));
+        await pumpEventQueue();
+
+        expect(wipeCalls, 1);
+        expect(
+          container.read(uidCacheBarrierProvider).phase,
+          UidCacheBarrierPhase.failed,
+        );
+        expect(container.read(safeUidProvider), isNull);
+
+        await container.read(uidCacheBarrierProvider.notifier).retry();
+        await pumpEventQueue();
+
+        expect(wipeCalls, 2);
+        expect(
+          container.read(uidCacheBarrierProvider).phase,
+          UidCacheBarrierPhase.safe,
+        );
+        expect(container.read(safeUidProvider), 'uid-2');
+      },
+    );
+
+    test('does not wipe when the same UID re-emits', () async {
       final user = _userWithUid('uid-1');
       userChanges.add(user);
       await pumpEventQueue();
@@ -68,54 +156,7 @@ void main() {
       await pumpEventQueue();
 
       expect(wipeCalls, 0);
-    });
-
-    test('wipes on each distinct UID transition', () async {
-      userChanges.add(_userWithUid('uid-1'));
-      await pumpEventQueue();
-      userChanges.add(_userWithUid('uid-2'));
-      await pumpEventQueue();
-      userChanges.add(_userWithUid('uid-3'));
-      await pumpEventQueue();
-
-      expect(wipeCalls, 2);
-    });
-
-    test('treats sign-out (null user) as a UID change from a real UID', () async {
-      userChanges.add(_userWithUid('uid-1'));
-      await pumpEventQueue();
-      userChanges.add(null);
-      await pumpEventQueue();
-
-      expect(wipeCalls, 1);
-    });
-
-    test('continues running after a wipe failure', () async {
-      // Re-create the container with a wipe that throws on the first call.
-      container.dispose();
-      var failNext = true;
-      container = ProviderContainer(
-        overrides: [
-          authUserChangesProvider.overrideWith((ref) => userChanges.stream),
-          cacheWipeFnProvider.overrideWithValue(() async {
-            wipeCalls++;
-            if (failNext) {
-              failNext = false;
-              throw StateError('boom');
-            }
-          }),
-        ],
-      );
-      container.read(uidChangeListenerProvider);
-
-      userChanges.add(_userWithUid('uid-1'));
-      await pumpEventQueue();
-      userChanges.add(_userWithUid('uid-2'));
-      await pumpEventQueue();
-      userChanges.add(_userWithUid('uid-3'));
-      await pumpEventQueue();
-
-      expect(wipeCalls, 2);
+      expect(container.read(safeUidProvider), 'uid-1');
     });
   });
 }

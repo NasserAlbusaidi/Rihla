@@ -2380,12 +2380,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountJobDeletionTitle => 'Deleting your account';
 
   @override
+  String get accountJobCacheWipeTitle => 'Securing local data';
+
+  @override
   String get accountJobRecoveryBody =>
       'Keep Rihla open while we finish moving this device\'s groups and history into your restored account.';
 
   @override
   String get accountJobDeletionBody =>
       'Keep Rihla open while we remove your account data and clean up this device.';
+
+  @override
+  String get accountJobCacheWipeBody =>
+      'Keep Rihla open while we clear the previous account\'s offline cache.';
 
   @override
   String accountJobProgress(int current, int total) {

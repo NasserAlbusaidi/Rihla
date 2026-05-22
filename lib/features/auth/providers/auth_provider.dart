@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../services/auth_recovery_service.dart';
+import '../services/uid_change_listener.dart';
 
 /// Auth state provider — listens to Firebase auth changes.
 final authStateProvider = StreamProvider<firebase_auth.User?>((ref) {
@@ -31,10 +32,10 @@ final authUserChangesProvider = StreamProvider<firebase_auth.User?>((ref) {
   }
 });
 
-/// Current Firebase UID, or null if no user is signed in. Re-emits on
-/// every UID change (sign-in, sign-out, recovery flow).
+/// Current Firebase UID after the local cache barrier has accepted it, or null
+/// if no user is signed in or the cache is still being wiped for a UID swap.
 final uidProvider = Provider<String?>((ref) {
-  return ref.watch(authUserChangesProvider).valueOrNull?.uid;
+  return ref.watch(safeUidProvider);
 });
 
 /// Email currently linked to the active Firebase user, or null when the

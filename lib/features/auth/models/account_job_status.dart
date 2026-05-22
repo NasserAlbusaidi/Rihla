@@ -1,11 +1,13 @@
 enum AccountJobKind {
   recoveryCleanup,
-  deleteAccount;
+  deleteAccount,
+  cacheWipe;
 
   String get wireName {
     return switch (this) {
       AccountJobKind.recoveryCleanup => 'recoveryCleanup',
       AccountJobKind.deleteAccount => 'deleteAccount',
+      AccountJobKind.cacheWipe => 'cacheWipe',
     };
   }
 
@@ -13,6 +15,7 @@ enum AccountJobKind {
     return switch (value) {
       'recoveryCleanup' => AccountJobKind.recoveryCleanup,
       'deleteAccount' => AccountJobKind.deleteAccount,
+      'cacheWipe' => AccountJobKind.cacheWipe,
       _ => throw ArgumentError.value(value, 'value', 'unknown job kind'),
     };
   }

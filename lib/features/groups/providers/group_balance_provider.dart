@@ -1,7 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../auth/providers/auth_provider.dart';
+import '../../auth/services/uid_change_listener.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../ledger/models/expense_model.dart';
@@ -417,15 +417,13 @@ Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
 // currentUserIdProvider — injectable UID for testability
 // ---------------------------------------------------------------------------
 
-/// Provides the current Firebase user's UID, or null if not authenticated.
+/// Provides the current Firebase user's UID after the local cache barrier has
+/// accepted it, or null if not authenticated.
 ///
-/// Watches [authStateProvider] so consumers re-render when Firebase Auth swaps
-/// users — critical for the email-link recovery flow, which switches the
-/// anonymous session to the linked account. A plain Provider that read
-/// `FirebaseConfig.currentUser?.uid` would cache the pre-recovery UID and
-/// strand every participant lookup until the app was force-stopped.
+/// Watches [safeUidProvider] so consumers do not read SQLite caches under a
+/// newly observed Firebase UID until the cross-UID cache wipe has succeeded.
 final currentUserIdProvider = Provider<String?>((ref) {
-  return ref.watch(authStateProvider).valueOrNull?.uid;
+  return ref.watch(safeUidProvider);
 });
 
 // ---------------------------------------------------------------------------

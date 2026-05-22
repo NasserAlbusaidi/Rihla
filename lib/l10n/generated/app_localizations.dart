@@ -4154,6 +4154,12 @@ abstract class AppLocalizations {
   /// **'Deleting your account'**
   String get accountJobDeletionTitle;
 
+  /// Blocking overlay title while the local SQLite cache is being wiped after a UID change.
+  ///
+  /// In en, this message translates to:
+  /// **'Securing local data'**
+  String get accountJobCacheWipeTitle;
+
   /// Blocking overlay body for a recovery cleanup job.
   ///
   /// In en, this message translates to:
@@ -4165,6 +4171,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep Rihla open while we remove your account data and clean up this device.'**
   String get accountJobDeletionBody;
+
+  /// Blocking overlay body while the local SQLite cache is being wiped after a UID change.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Rihla open while we clear the previous account\'s offline cache.'**
+  String get accountJobCacheWipeBody;
 
   /// Counted progress label for account jobs.
   ///
