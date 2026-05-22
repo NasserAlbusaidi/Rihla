@@ -1,6 +1,7 @@
 import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../features/auth/models/account_job_status.dart';
+import '../../features/auth/models/delete_account_output.dart';
 import '../config/firebase_config.dart';
 
 class FirebaseFunctionsService {
@@ -53,7 +54,26 @@ class FirebaseFunctionsService {
     );
   }
 
-  Future<void> deleteAccount() async {
-    await _functions.httpsCallable('deleteAccount').call(<String, dynamic>{});
+  Future<DeleteAccountOutput> deleteAccount() async {
+    try {
+      final result = await _functions
+          .httpsCallable('deleteAccount')
+          .call(<String, dynamic>{});
+      return DeleteAccountOutput.fromJson(
+        Map<String, dynamic>.from(result.data as Map),
+      );
+    } on FirebaseFunctionsException catch (error) {
+      final details = error.details;
+      if (details is Map) {
+        throw DeleteAccountPartialFailure(
+          output: DeleteAccountOutput.fromJson(
+            Map<String, dynamic>.from(details),
+          ),
+          code: error.code,
+          message: error.message ?? 'deleteAccount failed after partial work',
+        );
+      }
+      rethrow;
+    }
   }
 }

@@ -345,6 +345,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileDeletionError => 'Couldn\'t delete the account. Try again.';
 
   @override
+  String get profileDeletionPartial =>
+      'Your account data was removed, but Auth cleanup needs support. Contact us before retrying.';
+
+  @override
+  String get profileDeletionLocalCleanup =>
+      'Your account was deleted, but this device could not finish local cleanup. Restart Rihla before continuing.';
+
+  @override
   String get commonApply => 'Apply';
 
   @override

@@ -468,6 +468,14 @@
   "@profileDeletionError": {
     "description": "SnackBar shown when account deletion fails."
   },
+  "profileDeletionPartial": "Your account data was removed, but Auth cleanup needs support. Contact us before retrying.",
+  "@profileDeletionPartial": {
+    "description": "SnackBar shown when server data deletion succeeded but Firebase Auth user deletion failed."
+  },
+  "profileDeletionLocalCleanup": "Your account was deleted, but this device could not finish local cleanup. Restart Rihla before continuing.",
+  "@profileDeletionLocalCleanup": {
+    "description": "SnackBar shown when server deletion succeeded but local cache wipe or local sign-out failed."
+  },
 
   "commonApply": "Apply",
   "commonRetry": "Retry",

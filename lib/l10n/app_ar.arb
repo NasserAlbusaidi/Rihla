@@ -135,6 +135,8 @@
   "profileDeletionOk": "تم حذف الحساب.",
   "profileDeletionNoUser": "لا يوجد حساب نشط للحذف.",
   "profileDeletionError": "تعذّر حذف الحساب. أعد المحاولة.",
+  "profileDeletionPartial": "أُزيلت بيانات حسابك، لكن تنظيف المصادقة يحتاج دعمًا. تواصل معنا قبل إعادة المحاولة.",
+  "profileDeletionLocalCleanup": "تم حذف حسابك، لكن هذا الجهاز لم يُكمل التنظيف المحلي. أعد تشغيل Rihla قبل المتابعة.",
 
   "commonApply": "تطبيق",
   "commonRetry": "إعادة المحاولة",

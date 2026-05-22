@@ -344,6 +344,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileDeletionError => 'تعذّر حذف الحساب. أعد المحاولة.';
 
   @override
+  String get profileDeletionPartial =>
+      'أُزيلت بيانات حسابك، لكن تنظيف المصادقة يحتاج دعمًا. تواصل معنا قبل إعادة المحاولة.';
+
+  @override
+  String get profileDeletionLocalCleanup =>
+      'تم حذف حسابك، لكن هذا الجهاز لم يُكمل التنظيف المحلي. أعد تشغيل Rihla قبل المتابعة.';
+
+  @override
   String get commonApply => 'تطبيق';
 
   @override

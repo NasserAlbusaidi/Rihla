@@ -8,6 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/auth/models/delete_account_output.dart';
 import 'package:safar/features/auth/services/data_deletion_service.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart'
@@ -19,6 +20,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _MockDeletionService extends Mock implements DataDeletionService {}
 
 class _MockUser extends Mock implements firebase_auth.User {}
+
+const _output = DeleteAccountOutput(
+  groupsProcessed: 0,
+  tombstoneIds: [],
+  expensesScrubbed: 0,
+  settlementsScrubbed: 0,
+  activityLogsScrubbed: 0,
+  membersDeleted: 0,
+  groupsOrphanedAndSoftDeleted: 0,
+  fcmTokenDeleted: false,
+  joinAttemptsDeleted: false,
+  authUserDeleted: true,
+);
 
 firebase_auth.User _userWithEmail(String? email) {
   final u = _MockUser();
@@ -113,7 +127,7 @@ void main() {
   ) async {
     when(
       () => service.deleteAccount(),
-    ).thenAnswer((_) async => DeletionResult.ok);
+    ).thenAnswer((_) async => const DeletionOk(_output));
 
     await tester.pumpWidget(await _wrap(service: service, email: null));
     await tester.pumpAndSettle();
@@ -130,7 +144,7 @@ void main() {
   testWidgets('deletion errors show the retry snack', (tester) async {
     when(
       () => service.deleteAccount(),
-    ).thenAnswer((_) async => DeletionResult.error);
+    ).thenAnswer((_) async => DeletionError(StateError('boom')));
 
     await tester.pumpWidget(
       await _wrap(service: service, email: 'foo@example.com'),

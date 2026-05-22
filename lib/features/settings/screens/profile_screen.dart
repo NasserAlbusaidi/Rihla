@@ -689,8 +689,10 @@ class _PreferencesCard extends ConsumerWidget {
               bg: colors.cardSoft,
             ),
             label: context.l10n.profilePreferencesDefaultSplit,
-            trailingText:
-                splitModeDisplayName(settings.defaultSplitMode, context.l10n),
+            trailingText: splitModeDisplayName(
+              settings.defaultSplitMode,
+              context.l10n,
+            ),
             onTap: () => DefaultSplitPickerSheet.show(context),
             divider: false,
           ),
@@ -760,12 +762,15 @@ class _AccountCard extends ConsumerWidget {
     if (confirmed != true) return;
     final result = await ref.read(dataDeletionServiceProvider).deleteAccount();
     final message = switch (result) {
-      DeletionResult.ok => l10n.profileDeletionOk,
-      DeletionResult.noUser => l10n.profileDeletionNoUser,
-      DeletionResult.error => l10n.profileDeletionError,
+      DeletionOk() => l10n.profileDeletionOk,
+      DeletionNoUser() => l10n.profileDeletionNoUser,
+      DeletionServerScrubbedAuthDeleteFailed() => l10n.profileDeletionPartial,
+      DeletionLocalCleanupFailed() => l10n.profileDeletionLocalCleanup,
+      DeletionLocalSignOutFailed() => l10n.profileDeletionLocalCleanup,
+      DeletionError() => l10n.profileDeletionError,
     };
     messenger.showSnackBar(SnackBar(content: Text(message)));
-    if (result == DeletionResult.ok && context.mounted) {
+    if (result is DeletionOk && context.mounted) {
       context.go(AppRoutes.home);
     }
   }
@@ -784,9 +789,7 @@ class _AccountCard extends ConsumerWidget {
       await ref.read(authRecoveryServiceProvider).signOutCurrentDevice();
       messenger.showSnackBar(SnackBar(content: Text(signedOut)));
     } catch (_) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(signOutFailed)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(signOutFailed)));
     }
   }
 
@@ -1133,10 +1136,7 @@ void _showSnack(BuildContext context, String message) {
 // ──────────────────────────── Outbound action helpers
 
 void _shareApp(BuildContext context) {
-  Share.share(
-    context.l10n.profileShareMessage,
-    subject: 'Rihla',
-  );
+  Share.share(context.l10n.profileShareMessage, subject: 'Rihla');
 }
 
 Future<void> _openExternalUrl(BuildContext context, String url) async {

@@ -752,6 +752,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t delete the account. Try again.'**
   String get profileDeletionError;
 
+  /// SnackBar shown when server data deletion succeeded but Firebase Auth user deletion failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account data was removed, but Auth cleanup needs support. Contact us before retrying.'**
+  String get profileDeletionPartial;
+
+  /// SnackBar shown when server deletion succeeded but local cache wipe or local sign-out failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account was deleted, but this device could not finish local cleanup. Restart Rihla before continuing.'**
+  String get profileDeletionLocalCleanup;
+
   /// No description provided for @commonApply.
   ///
   /// In en, this message translates to:
