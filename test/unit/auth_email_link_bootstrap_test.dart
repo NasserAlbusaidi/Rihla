@@ -204,54 +204,57 @@ void main() {
     },
   );
 
-  group('link → recover auto-fallback', () {
+  group('link conflict handling', () {
     for (final code in const [
       'email-already-in-use',
       'credential-already-in-use',
       'provider-already-linked',
     ]) {
-      test('opLink failing with $code falls back to completeRecovery', () async {
-        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-        when(
-          () => service.readInFlightOp(),
-        ).thenReturn(AuthRecoveryService.opLink);
-        when(
-          () => service.completeEmailLink(any()),
-        ).thenThrow(FirebaseAuthException(code: code));
-        when(
-          () => service.completeRecovery(any()),
-        ).thenAnswer((_) async => _MockUserCredential());
-        await attach();
+      test(
+        'opLink failing with $code does not call completeRecovery',
+        () async {
+          when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+          when(
+            () => service.readInFlightOp(),
+          ).thenReturn(AuthRecoveryService.opLink);
+          when(
+            () => service.completeEmailLink(any()),
+          ).thenThrow(FirebaseAuthException(code: code));
+          await attach();
 
-        uriStream.add(_validAuthLink());
-        await pumpEventQueue();
+          uriStream.add(_validAuthLink());
+          await pumpEventQueue();
 
-        verify(() => service.completeEmailLink(any())).called(1);
-        verify(
-          () => service.completeRecovery(_validAuthLink().toString()),
-        ).called(1);
-      });
+          verify(() => service.completeEmailLink(any())).called(1);
+          verifyNever(() => service.completeRecovery(any()));
+          final conflict = container.read(authEmailLinkConflictProvider);
+          expect(conflict?.email, 'foo@example.com');
+          expect(conflict?.code, code);
+        },
+      );
     }
 
-    test('successful fallback clears pendingEmailLinkProvider', () async {
+    test('successful link clears stale conflict state', () async {
       when(() => service.readPendingEmail()).thenReturn('foo@example.com');
       when(
         () => service.readInFlightOp(),
       ).thenReturn(AuthRecoveryService.opLink);
       when(
         () => service.completeEmailLink(any()),
-      ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
-      when(
-        () => service.completeRecovery(any()),
       ).thenAnswer((_) async => _MockUserCredential());
       await attach();
 
-      container.read(pendingEmailLinkProvider.notifier).state =
-          'https://stale-link';
+      container
+          .read(authEmailLinkConflictProvider.notifier)
+          .state = const AuthEmailLinkConflict(
+        email: 'foo@example.com',
+        link: 'https://stale-link',
+        code: 'email-already-in-use',
+      );
       uriStream.add(_validAuthLink());
       await pumpEventQueue();
 
-      expect(container.read(pendingEmailLinkProvider), isNull);
+      expect(container.read(authEmailLinkConflictProvider), isNull);
     });
 
     test(
@@ -277,8 +280,7 @@ void main() {
     test(
       'opRecover failing with email-already-in-use does NOT re-fallback',
       () async {
-        // Recover failures must not trigger another recover attempt — only
-        // link → recover is auto-fallback territory.
+        // Recover failures must not trigger another recover attempt.
         when(() => service.readPendingEmail()).thenReturn('foo@example.com');
         when(
           () => service.readInFlightOp(),
@@ -296,31 +298,34 @@ void main() {
       },
     );
 
-    test('same link emitted by initial + stream is handled only once', () async {
-      // app_links emits the cold-start URL through BOTH getInitialLink() and
-      // uriLinkStream on the same launch. Without dedupe, the second pass
-      // clobbers the first's success path with a "no pending email" error
-      // (prefs got cleared by the first completion).
-      when(
-        () => appLinks.getInitialLink(),
-      ).thenAnswer((_) async => _validAuthLink());
-      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-      when(
-        () => service.readInFlightOp(),
-      ).thenReturn(AuthRecoveryService.opRecover);
-      when(
-        () => service.completeRecovery(any()),
-      ).thenAnswer((_) async => _MockUserCredential());
+    test(
+      'same link emitted by initial + stream is handled only once',
+      () async {
+        // app_links emits the cold-start URL through BOTH getInitialLink() and
+        // uriLinkStream on the same launch. Without dedupe, the second pass
+        // clobbers the first's success path with a "no pending email" error
+        // (prefs got cleared by the first completion).
+        when(
+          () => appLinks.getInitialLink(),
+        ).thenAnswer((_) async => _validAuthLink());
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opRecover);
+        when(
+          () => service.completeRecovery(any()),
+        ).thenAnswer((_) async => _MockUserCredential());
 
-      await attach();
-      await pumpEventQueue();
+        await attach();
+        await pumpEventQueue();
 
-      // Re-emit the same URL via the stream — must be ignored.
-      uriStream.add(_validAuthLink());
-      await pumpEventQueue();
+        // Re-emit the same URL via the stream — must be ignored.
+        uriStream.add(_validAuthLink());
+        await pumpEventQueue();
 
-      verify(() => service.completeRecovery(any())).called(1);
-    });
+        verify(() => service.completeRecovery(any())).called(1);
+      },
+    );
 
     test('different oobCodes are processed independently', () async {
       // A second, distinct link in the same session must still be handled.
@@ -346,7 +351,7 @@ void main() {
       verify(() => service.completeRecovery(any())).called(2);
     });
 
-    test('fallback recover failure does not crash the stream', () async {
+    test('link conflict does not crash the stream', () async {
       when(() => service.readPendingEmail()).thenReturn('foo@example.com');
       when(
         () => service.readInFlightOp(),
@@ -354,9 +359,6 @@ void main() {
       when(
         () => service.completeEmailLink(any()),
       ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
-      when(
-        () => service.completeRecovery(any()),
-      ).thenThrow(FirebaseAuthException(code: 'invalid-action-code'));
       await attach();
 
       uriStream.add(_validAuthLink());
@@ -371,6 +373,7 @@ void main() {
       await pumpEventQueue();
 
       verify(() => service.completeEmailLink(any())).called(2);
+      verifyNever(() => service.completeRecovery(any()));
     });
   });
 }

@@ -20,6 +20,22 @@ final appLinksProvider = Provider<AppLinks>((ref) => AppLinks());
 /// phases reads this to surface a "Confirm your email" prompt.
 final pendingEmailLinkProvider = StateProvider<String?>((ref) => null);
 
+class AuthEmailLinkConflict {
+  const AuthEmailLinkConflict({
+    required this.email,
+    required this.link,
+    required this.code,
+  });
+
+  final String email;
+  final String link;
+  final String code;
+}
+
+final authEmailLinkConflictProvider = StateProvider<AuthEmailLinkConflict?>(
+  (ref) => null,
+);
+
 /// Canonical key for deduping repeated emissions of the same Firebase
 /// email-auth link. Prefers `oobCode` (single-use, server-bound) and falls
 /// back to the full URL string when the param is absent (e.g. malformed or
@@ -88,10 +104,9 @@ String _humanize(FirebaseAuthException error) {
 ///   1. `recover` op (Settings hadn't linked yet → user typed email on
 ///      Recover screen) → swap UID via `signInWithEmailLink`.
 ///   2. `link` op (default; Settings → "Link my email") → attach email to
-///      the current anon UID via `linkWithCredential`. Auto-falls-back to
-///      `recover` when the email is already owned by a different UID
-///      (`email-already-in-use` and friends) — that means the user is on a
-///      new install/device, so recovery is what they actually want.
+///      the current anon UID via `linkWithCredential`. If Firebase reports
+///      the email is already owned by another account, the listener records
+///      an explicit conflict and does not infer recovery/merge consent.
 ///   3. No pending email at all → stash the link URL in
 ///      [pendingEmailLinkProvider] so the UI can finish with a manual
 ///      prompt.
@@ -152,50 +167,37 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         final result = await service.completeRecovery(link);
         FirebaseConfig.log('Recovery: completeRecovery succeeded');
         ref.read(pendingEmailLinkProvider.notifier).state = null;
+        ref.read(authEmailLinkConflictProvider.notifier).state = null;
         _showSnack('Restored ${result.user?.email ?? pendingEmail}');
       } else {
         final result = await service.completeEmailLink(link);
         FirebaseConfig.log('Recovery: completeEmailLink succeeded');
         ref.read(pendingEmailLinkProvider.notifier).state = null;
+        ref.read(authEmailLinkConflictProvider.notifier).state = null;
         _showSnack('Linked ${result.user?.email ?? pendingEmail}');
       }
     } on FirebaseAuthException catch (error, stack) {
-      final shouldFallback =
+      final isLinkConflict =
           op == AuthRecoveryService.opLink &&
           (error.code == 'email-already-in-use' ||
               error.code == 'credential-already-in-use' ||
               error.code == 'provider-already-linked');
 
-      if (shouldFallback) {
+      if (isLinkConflict) {
         FirebaseConfig.log(
-          'Recovery: link failed with ${error.code}; '
-          'falling back to recover (existing UID owns this email)',
+          'Recovery: link failed with ${error.code}; surfacing conflict',
+          error: error,
+          stackTrace: stack,
         );
-        try {
-          // completeEmailLink throws before clearing prefs, so pendingEmail
-          // and inFlightOp are still primed. completeRecovery reads them.
-          final result = await service.completeRecovery(link);
-          FirebaseConfig.log('Recovery: fallback recover succeeded');
-          ref.read(pendingEmailLinkProvider.notifier).state = null;
-          _showSnack('Restored ${result.user?.email ?? pendingEmail}');
-          return;
-        } on FirebaseAuthException catch (e2, s2) {
-          FirebaseConfig.log(
-            'Recovery: fallback recover also failed (${e2.code})',
-            error: e2,
-            stackTrace: s2,
-          );
-          _showSnack(_humanize(e2), isError: true);
-          return;
-        } catch (e2, s2) {
-          FirebaseConfig.log(
-            'Recovery: fallback recover failed',
-            error: e2,
-            stackTrace: s2,
-          );
-          _showSnack("Couldn't restore your account. Try again.", isError: true);
-          return;
-        }
+        ref
+            .read(authEmailLinkConflictProvider.notifier)
+            .state = AuthEmailLinkConflict(
+          email: pendingEmail,
+          link: link,
+          code: error.code,
+        );
+        _showSnack(_humanize(error), isError: true);
+        return;
       }
 
       FirebaseConfig.log(
