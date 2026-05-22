@@ -15,6 +15,7 @@ export interface AccountJobStatusOutput {
   errorCode?: string;
   messageKey?: string;
   counters?: Record<string, number>;
+  output?: Record<string, unknown>;
 }
 
 export interface RecoveryCleanupCounters {

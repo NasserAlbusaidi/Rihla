@@ -62,6 +62,7 @@ class AccountJobStatusSnapshot {
     this.errorCode,
     this.messageKey,
     this.counters = const <String, int>{},
+    this.output,
   });
 
   final String jobId;
@@ -74,6 +75,7 @@ class AccountJobStatusSnapshot {
   final String? errorCode;
   final String? messageKey;
   final Map<String, int> counters;
+  final Map<String, dynamic>? output;
 
   bool get isBlocking {
     return status == AccountJobRunStatus.running ||
@@ -96,6 +98,7 @@ class AccountJobStatusSnapshot {
     String? errorCode,
     String? messageKey,
     Map<String, int>? counters,
+    Map<String, dynamic>? output,
   }) {
     return AccountJobStatusSnapshot(
       jobId: jobId ?? this.jobId,
@@ -108,6 +111,7 @@ class AccountJobStatusSnapshot {
       errorCode: errorCode ?? this.errorCode,
       messageKey: messageKey ?? this.messageKey,
       counters: counters ?? this.counters,
+      output: output ?? this.output,
     );
   }
 
@@ -125,6 +129,9 @@ class AccountJobStatusSnapshot {
       counters: Map<String, int>.from(
         (json['counters'] as Map?) ?? const <String, int>{},
       ),
+      output: json['output'] is Map
+          ? Map<String, dynamic>.from(json['output'] as Map)
+          : null,
     );
   }
 
@@ -140,6 +147,7 @@ class AccountJobStatusSnapshot {
       'errorCode': errorCode,
       'messageKey': messageKey,
       'counters': counters,
+      'output': output,
     };
   }
 }

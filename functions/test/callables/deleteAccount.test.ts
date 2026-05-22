@@ -3,10 +3,18 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
-import { deleteAccount } from '../../src/callables/deleteAccount';
+import {
+  advanceDeleteAccountJob,
+  deleteAccount,
+  getDeleteAccountJobStatus,
+  startOrResumeDeleteAccountJob,
+} from '../../src/callables/deleteAccount';
 
 const testEnv = functionsTest({ projectId: 'rihla-safar-test' });
 const wrapped = testEnv.wrap(deleteAccount);
+const wrappedStartJob = testEnv.wrap(startOrResumeDeleteAccountJob);
+const wrappedAdvanceJob = testEnv.wrap(advanceDeleteAccountJob);
+const wrappedGetJobStatus = testEnv.wrap(getDeleteAccountJobStatus);
 
 const deletedUid = 'uid-delete';
 const otherUid = 'uid-other';
@@ -42,19 +50,21 @@ async function seedGroup(
   memberIds: string[],
   data: Record<string, unknown> = {},
 ): Promise<void> {
-  await getFirestore().doc(`groups/${groupId}`).set({
-    id: groupId,
-    name: groupId,
-    memberIds,
-    createdBy: memberIds[0],
-    inviteCode: `${groupId}123`.slice(0, 6).toUpperCase(),
-    currency: 'OMR',
-    createdAt: new Date('2026-01-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-    isDeleted: false,
-    deletedAt: null,
-    ...data,
-  });
+  await getFirestore()
+    .doc(`groups/${groupId}`)
+    .set({
+      id: groupId,
+      name: groupId,
+      memberIds,
+      createdBy: memberIds[0],
+      inviteCode: `${groupId}123`.slice(0, 6).toUpperCase(),
+      currency: 'OMR',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+      isDeleted: false,
+      deletedAt: null,
+      ...data,
+    });
 }
 
 async function seedMember(
@@ -62,17 +72,21 @@ async function seedMember(
   uid: string,
   data: Record<string, unknown> = {},
 ): Promise<void> {
-  await getFirestore().doc(`groups/${groupId}/members/${uid}`).set({
-    id: uid,
-    userId: uid,
-    displayName: uid === deletedUid ? oldName : otherName,
-    role: uid === deletedUid ? 'CREATOR' : 'MEMBER',
-    joinedAt: new Date(uid === deletedUid
-      ? '2026-01-01T00:00:00.000Z'
-      : '2026-01-03T00:00:00.000Z'),
-    isShadow: false,
-    ...data,
-  });
+  await getFirestore()
+    .doc(`groups/${groupId}/members/${uid}`)
+    .set({
+      id: uid,
+      userId: uid,
+      displayName: uid === deletedUid ? oldName : otherName,
+      role: uid === deletedUid ? 'CREATOR' : 'MEMBER',
+      joinedAt: new Date(
+        uid === deletedUid
+          ? '2026-01-01T00:00:00.000Z'
+          : '2026-01-03T00:00:00.000Z',
+      ),
+      isShadow: false,
+      ...data,
+    });
 }
 
 async function seedEvent(
@@ -80,26 +94,30 @@ async function seedEvent(
   eventId: string,
   data: Record<string, unknown> = {},
 ): Promise<void> {
-  await getFirestore().doc(`groups/${groupId}/events/${eventId}`).set({
-    id: eventId,
-    groupId,
-    name: eventId,
-    type: 'trip',
-    createdBy: deletedUid,
-    participantIds: [deletedUid, otherUid],
-    participantNames: {
-      [deletedUid]: oldName,
-      [otherUid]: otherName,
-    },
-    modules: { ledger: true },
-    isDeleted: false,
-    createdAt: new Date('2026-01-04T00:00:00.000Z'),
-    updatedAt: new Date('2026-01-05T00:00:00.000Z'),
-    ...data,
-  });
+  await getFirestore()
+    .doc(`groups/${groupId}/events/${eventId}`)
+    .set({
+      id: eventId,
+      groupId,
+      name: eventId,
+      type: 'trip',
+      createdBy: deletedUid,
+      participantIds: [deletedUid, otherUid],
+      participantNames: {
+        [deletedUid]: oldName,
+        [otherUid]: otherName,
+      },
+      modules: { ledger: true },
+      isDeleted: false,
+      createdAt: new Date('2026-01-04T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-05T00:00:00.000Z'),
+      ...data,
+    });
 }
 
-function expectNoDeletedIdentity(data: FirebaseFirestore.DocumentData | undefined): void {
+function expectNoDeletedIdentity(
+  data: FirebaseFirestore.DocumentData | undefined,
+): void {
   expect(JSON.stringify(data)).not.toContain(deletedUid);
   expect(JSON.stringify(data)).not.toContain(oldName);
 }
@@ -122,14 +140,17 @@ afterAll(async () => {
 
 describe('deleteAccount', () => {
   test('missing auth is rejected', async () => {
-    await expect(wrapped({ data: {} } as any))
-      .rejects.toMatchObject({ code: 'unauthenticated' });
+    await expect(wrapped({ data: {} } as any)).rejects.toMatchObject({
+      code: 'unauthenticated',
+    });
   });
 
   test('cascades identity deletion while preserving ledger facts', async () => {
     const db = getFirestore();
     await seedAuthUser();
-    await seedGroup('groupA', [deletedUid, otherUid], { createdBy: deletedUid });
+    await seedGroup('groupA', [deletedUid, otherUid], {
+      createdBy: deletedUid,
+    });
     await seedMember('groupA', deletedUid);
     await seedMember('groupA', otherUid);
     await seedGroup('groupB', [deletedUid], { createdBy: deletedUid });
@@ -172,21 +193,23 @@ describe('deleteAccount', () => {
       deletedAt: '2026-01-07T00:00:00.000Z',
       createdAt: '2026-01-06T00:00:00.000Z',
     });
-    await db.doc('groups/groupA/events/eventA/settlements/eventSettlement').set({
-      id: 'eventSettlement',
-      eventId: 'eventA',
-      createdBy: otherUid,
-      payerParticipantId: otherUid,
-      recipientParticipantId: deletedUid,
-      payerName: otherName,
-      recipientName: oldName,
-      amountFils: 3000,
-      currency: 'OMR',
-      note: `${oldName} settlement note`,
-      isDeleted: false,
-      deletedAt: null,
-      settledAt: '2026-01-08T00:00:00.000Z',
-    });
+    await db
+      .doc('groups/groupA/events/eventA/settlements/eventSettlement')
+      .set({
+        id: 'eventSettlement',
+        eventId: 'eventA',
+        createdBy: otherUid,
+        payerParticipantId: otherUid,
+        recipientParticipantId: deletedUid,
+        payerName: otherName,
+        recipientName: oldName,
+        amountFils: 3000,
+        currency: 'OMR',
+        note: `${oldName} settlement note`,
+        isDeleted: false,
+        deletedAt: null,
+        settledAt: '2026-01-08T00:00:00.000Z',
+      });
     await db.doc('groups/groupA/settlements/groupSettlement').set({
       id: 'groupSettlement',
       groupId: 'groupA',
@@ -204,22 +227,24 @@ describe('deleteAccount', () => {
       deletedAt: null,
       settledAt: '2026-01-09T00:00:00.000Z',
     });
-    await db.doc('groups/groupA/events/eventA/activity_logs/eventActivity').set({
-      id: 'eventActivity',
-      eventId: 'eventA',
-      actorId: deletedUid,
-      targetParticipantId: deletedUid,
-      actorName: oldName,
-      category: 'MONEY',
-      eventType: 'CREATE',
-      logText: `${oldName} paid dinner`,
-      metadata: {
+    await db
+      .doc('groups/groupA/events/eventA/activity_logs/eventActivity')
+      .set({
+        id: 'eventActivity',
+        eventId: 'eventA',
         actorId: deletedUid,
+        targetParticipantId: deletedUid,
         actorName: oldName,
-        recipientName: oldName,
-      },
-      createdAt: '2026-01-10T00:00:00.000Z',
-    });
+        category: 'MONEY',
+        eventType: 'CREATE',
+        logText: `${oldName} paid dinner`,
+        metadata: {
+          actorId: deletedUid,
+          actorName: oldName,
+          recipientName: oldName,
+        },
+        createdAt: '2026-01-10T00:00:00.000Z',
+      });
     await db.doc('groups/groupA/activity/groupActivity').set({
       id: 'groupActivity',
       type: 'group_settlement',
@@ -255,7 +280,9 @@ describe('deleteAccount', () => {
 
     const groupA = await db.doc('groups/groupA').get();
     const groupAMemberIds = groupA.data()?.memberIds as string[];
-    const groupATombstoneId = groupAMemberIds.find((id) => id.startsWith('deleted-'));
+    const groupATombstoneId = groupAMemberIds.find((id) =>
+      id.startsWith('deleted-'),
+    );
     expect(groupA.data()).toMatchObject({
       createdBy: otherUid,
       isDeleted: false,
@@ -264,7 +291,9 @@ describe('deleteAccount', () => {
     expect(groupAMemberIds).toContain(otherUid);
     expect(groupAMemberIds).not.toContain(deletedUid);
 
-    const tombstoneMember = await db.doc(`groups/groupA/members/${groupATombstoneId}`).get();
+    const tombstoneMember = await db
+      .doc(`groups/groupA/members/${groupATombstoneId}`)
+      .get();
     const oldMember = await db.doc(`groups/groupA/members/${deletedUid}`).get();
     expect(oldMember.exists).toBe(false);
     expect(tombstoneMember.data()).toMatchObject({
@@ -294,7 +323,9 @@ describe('deleteAccount', () => {
     });
     expectNoDeletedIdentity(event.data());
 
-    const paid = await db.doc('groups/groupA/events/eventA/expenses/paid').get();
+    const paid = await db
+      .doc('groups/groupA/events/eventA/expenses/paid')
+      .get();
     expect(paid.data()).toMatchObject({
       createdBy: 'deleted-user',
       payerParticipantId: groupATombstoneId,
@@ -307,7 +338,9 @@ describe('deleteAccount', () => {
     expect(paid.data()?.amountFils).toBe(12000);
     expectNoDeletedIdentity(paid.data());
 
-    const softDeleted = await db.doc('groups/groupA/events/eventA/expenses/softDeleted').get();
+    const softDeleted = await db
+      .doc('groups/groupA/events/eventA/expenses/softDeleted')
+      .get();
     expect(softDeleted.data()).toMatchObject({
       payerParticipantId: otherUid,
       customSplitParticipants: [groupATombstoneId],
@@ -319,9 +352,9 @@ describe('deleteAccount', () => {
     });
     expectNoDeletedIdentity(softDeleted.data());
 
-    const eventSettlement = await db.doc(
-      'groups/groupA/events/eventA/settlements/eventSettlement',
-    ).get();
+    const eventSettlement = await db
+      .doc('groups/groupA/events/eventA/settlements/eventSettlement')
+      .get();
     expect(eventSettlement.data()).toMatchObject({
       payerParticipantId: otherUid,
       recipientParticipantId: groupATombstoneId,
@@ -331,7 +364,9 @@ describe('deleteAccount', () => {
     });
     expectNoDeletedIdentity(eventSettlement.data());
 
-    const groupSettlement = await db.doc('groups/groupA/settlements/groupSettlement').get();
+    const groupSettlement = await db
+      .doc('groups/groupA/settlements/groupSettlement')
+      .get();
     expect(groupSettlement.data()).toMatchObject({
       createdBy: 'deleted-user',
       payerParticipantId: groupATombstoneId,
@@ -342,9 +377,9 @@ describe('deleteAccount', () => {
     });
     expectNoDeletedIdentity(groupSettlement.data());
 
-    const eventActivity = await db.doc(
-      'groups/groupA/events/eventA/activity_logs/eventActivity',
-    ).get();
+    const eventActivity = await db
+      .doc('groups/groupA/events/eventA/activity_logs/eventActivity')
+      .get();
     expect(eventActivity.data()).toMatchObject({
       actorId: groupATombstoneId,
       targetParticipantId: groupATombstoneId,
@@ -352,7 +387,9 @@ describe('deleteAccount', () => {
     });
     expectNoDeletedIdentity(eventActivity.data());
 
-    const groupActivity = await db.doc('groups/groupA/activity/groupActivity').get();
+    const groupActivity = await db
+      .doc('groups/groupA/activity/groupActivity')
+      .get();
     expect(groupActivity.data()).toMatchObject({
       actorId: groupATombstoneId,
       actorName: 'Deleted member',
@@ -360,9 +397,12 @@ describe('deleteAccount', () => {
     expectNoDeletedIdentity(groupActivity.data());
 
     expect((await db.doc(`fcm_tokens/${deletedUid}`).get()).exists).toBe(false);
-    expect((await db.doc(`joinAttempts/${deletedUid}`).get()).exists).toBe(false);
-    await expect(getAuth().getUser(deletedUid))
-      .rejects.toMatchObject({ code: 'auth/user-not-found' });
+    expect((await db.doc(`joinAttempts/${deletedUid}`).get()).exists).toBe(
+      false,
+    );
+    await expect(getAuth().getUser(deletedUid)).rejects.toMatchObject({
+      code: 'auth/user-not-found',
+    });
   });
 
   test('second run is idempotent after the UID has been scrubbed', async () => {
@@ -410,6 +450,107 @@ describe('deleteAccount', () => {
       authUserDeleted: true,
     });
     expect((await db.doc(`fcm_tokens/${deletedUid}`).get()).exists).toBe(false);
-    expect((await db.doc(`joinAttempts/${deletedUid}`).get()).exists).toBe(false);
+    expect((await db.doc(`joinAttempts/${deletedUid}`).get()).exists).toBe(
+      false,
+    );
+  });
+});
+
+describe('deleteAccount resumable job', () => {
+  test('start, status, and bounded advances converge to complete deletion', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('groupA', [deletedUid, otherUid], {
+      createdBy: deletedUid,
+    });
+    await seedMember('groupA', deletedUid);
+    await seedMember('groupA', otherUid);
+    await seedEvent('groupA', 'eventA');
+    await db.doc(`fcm_tokens/${deletedUid}`).set({ token: 'stale-token' });
+
+    const start = await wrappedStartJob({
+      data: {},
+      auth: { uid: deletedUid },
+    } as any);
+    expect(start).toMatchObject({
+      jobId: deletedUid,
+      kind: 'deleteAccount',
+      status: 'running',
+      current: 0,
+      total: 2,
+    });
+
+    const status = await wrappedGetJobStatus({
+      data: { jobId: deletedUid },
+      auth: { uid: deletedUid },
+    } as any);
+    expect(status).toMatchObject({
+      jobId: deletedUid,
+      kind: 'deleteAccount',
+      status: 'running',
+    });
+
+    const afterGroup = await wrappedAdvanceJob({
+      data: { jobId: deletedUid },
+      auth: { uid: deletedUid },
+    } as any);
+    expect(afterGroup).toMatchObject({
+      status: 'running',
+      current: 1,
+      counters: {
+        groupsProcessed: 1,
+        tombstoneIds: 1,
+      },
+    });
+    const afterGroupOutput = afterGroup.output as {
+      tombstoneIds: string[];
+    };
+    const tombstoneId = afterGroupOutput.tombstoneIds[0];
+    expect(tombstoneId).toMatch(/^deleted-/);
+    expect(
+      (await db.doc(`groups/groupA/members/${deletedUid}`).get()).exists,
+    ).toBe(false);
+    expect(
+      (await db.doc(`groups/groupA/members/${tombstoneId}`).get()).exists,
+    ).toBe(true);
+
+    const complete = await wrappedAdvanceJob({
+      data: { jobId: deletedUid },
+      auth: { uid: deletedUid },
+    } as any);
+    expect(complete).toMatchObject({
+      status: 'complete',
+      current: 2,
+      output: {
+        groupsProcessed: 1,
+        fcmTokenDeleted: true,
+        authUserDeleted: true,
+      },
+    });
+    expect((await db.doc(`fcm_tokens/${deletedUid}`).get()).exists).toBe(false);
+    await expect(getAuth().getUser(deletedUid)).rejects.toMatchObject({
+      code: 'auth/user-not-found',
+    });
+  });
+
+  test('status and advance reject another uid', async () => {
+    await seedAuthUser();
+    await wrappedStartJob({
+      data: {},
+      auth: { uid: deletedUid },
+    } as any);
+
+    await expect(
+      wrappedGetJobStatus({
+        data: { jobId: deletedUid },
+        auth: { uid: otherUid },
+      } as any),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    await expect(
+      wrappedAdvanceJob({
+        data: { jobId: deletedUid },
+        auth: { uid: otherUid },
+      } as any),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
   });
 });

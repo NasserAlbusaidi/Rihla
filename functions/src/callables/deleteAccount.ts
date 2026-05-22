@@ -14,6 +14,10 @@ import {
   HttpsError,
   onCall,
 } from "firebase-functions/v2/https";
+import {
+  AccountJobStatusOutput,
+  DeleteAccountCounters,
+} from "../accountJobs/types";
 import "../admin";
 
 // Server-side account deletion cascade. This synchronously scrubs Firestore
@@ -22,6 +26,7 @@ import "../admin";
 const deletedMemberName = "Deleted member";
 const deletedUserSentinel = "deleted-user";
 const batchLimit = 450;
+const deletionJobCollection = "deletionJobs";
 
 export interface DeleteAccountOutput {
   groupsProcessed: number;
@@ -43,6 +48,29 @@ interface GroupCascadeResult {
   activityLogsScrubbed: number;
   membersDeleted: number;
   groupOrphanedAndSoftDeleted: boolean;
+}
+
+interface DeleteAccountJobIdInput {
+  jobId: string;
+}
+
+interface DeleteAccountJobDoc {
+  kind: "deleteAccount";
+  uid: string;
+  status: "running" | "failed" | "complete";
+  phase: string;
+  groupIds: string[];
+  tombstoneIdsByGroup: Record<string, string>;
+  cursorIndex: number;
+  retryable: boolean;
+  errorCode?: string;
+  counters: DeleteAccountCounters;
+  output: DeleteAccountOutput;
+  terminalDocsDeleted?: boolean;
+  authDeleteAttempted?: boolean;
+  serverScrubbedAuthDeleteFailed?: boolean;
+  createdAt: Timestamp | FieldValue;
+  updatedAt: Timestamp | FieldValue;
 }
 
 class BatchWriter {
@@ -98,11 +126,86 @@ function assertNoInput(data: unknown): void {
   );
 }
 
+function parseJobId(data: DeleteAccountJobIdInput | undefined): string {
+  const jobId = data?.jobId;
+  if (typeof jobId !== "string" || jobId.trim().length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "jobId must be a non-empty string.",
+    );
+  }
+  return jobId.trim();
+}
+
 function generateTombstoneId(): string {
   const value = Math.floor(Math.random() * 36 ** 8)
     .toString(36)
     .padStart(8, "0");
   return `deleted-${value}`;
+}
+
+function emptyDeleteAccountOutput(): DeleteAccountOutput {
+  return {
+    groupsProcessed: 0,
+    tombstoneIds: [],
+    expensesScrubbed: 0,
+    settlementsScrubbed: 0,
+    activityLogsScrubbed: 0,
+    membersDeleted: 0,
+    groupsOrphanedAndSoftDeleted: 0,
+    fcmTokenDeleted: false,
+    joinAttemptsDeleted: false,
+    authUserDeleted: false,
+  };
+}
+
+function countersFromOutput(
+  output: DeleteAccountOutput,
+): DeleteAccountCounters {
+  return {
+    groupsProcessed: output.groupsProcessed,
+    tombstoneIds: output.tombstoneIds.length,
+    expensesScrubbed: output.expensesScrubbed,
+    settlementsScrubbed: output.settlementsScrubbed,
+    activityLogsScrubbed: output.activityLogsScrubbed,
+    membersDeleted: output.membersDeleted,
+    groupsOrphanedAndSoftDeleted: output.groupsOrphanedAndSoftDeleted,
+  };
+}
+
+function outputRecord(output: DeleteAccountOutput): Record<string, unknown> {
+  return {
+    groupsProcessed: output.groupsProcessed,
+    tombstoneIds: [...output.tombstoneIds],
+    expensesScrubbed: output.expensesScrubbed,
+    settlementsScrubbed: output.settlementsScrubbed,
+    activityLogsScrubbed: output.activityLogsScrubbed,
+    membersDeleted: output.membersDeleted,
+    groupsOrphanedAndSoftDeleted: output.groupsOrphanedAndSoftDeleted,
+    fcmTokenDeleted: output.fcmTokenDeleted,
+    joinAttemptsDeleted: output.joinAttemptsDeleted,
+    authUserDeleted: output.authUserDeleted,
+  };
+}
+
+function statusFromDeletionJob(
+  jobId: string,
+  data: DeleteAccountJobDoc,
+): AccountJobStatusOutput {
+  const total = data.groupIds.length + 1;
+  const terminalComplete = data.status === "complete" ? 1 : 0;
+  return {
+    jobId,
+    kind: "deleteAccount",
+    status: data.status,
+    phase: data.phase,
+    current: Math.min(data.cursorIndex + terminalComplete, total),
+    total,
+    retryable: data.retryable,
+    errorCode: data.errorCode,
+    counters: { ...data.counters },
+    output: outputRecord(data.output),
+  };
 }
 
 function asStringArray(value: unknown, path: string): string[] {
@@ -378,6 +481,7 @@ async function processGroup(
   writer: BatchWriter,
   groupRef: DocumentReference,
   uid: string,
+  tombstoneIdOverride?: string,
 ): Promise<GroupCascadeResult> {
   const groupSnap = await groupRef.get();
   if (!groupSnap.exists) {
@@ -390,14 +494,18 @@ async function processGroup(
     `groups/${groupRef.id}.memberIds`,
   );
   if (!memberIds.includes(uid)) {
-    throw new HttpsError(
-      "failed-precondition",
-      `groups/${groupRef.id} no longer contains uid.`,
-    );
+    return {
+      tombstoneId: tombstoneIdOverride ?? generateTombstoneId(),
+      expensesScrubbed: 0,
+      settlementsScrubbed: 0,
+      activityLogsScrubbed: 0,
+      membersDeleted: 0,
+      groupOrphanedAndSoftDeleted: false,
+    };
   }
 
-  let tombstoneId = generateTombstoneId();
-  while (memberIds.includes(tombstoneId)) {
+  let tombstoneId = tombstoneIdOverride ?? generateTombstoneId();
+  while (tombstoneIdOverride == null && memberIds.includes(tombstoneId)) {
     tombstoneId = generateTombstoneId();
   }
 
@@ -425,21 +533,6 @@ async function processGroup(
     groupUpdate.isDeleted = true;
     groupUpdate.deletedAt = FieldValue.serverTimestamp();
   }
-
-  await writer.set(groupRef.collection("members").doc(tombstoneId), {
-    id: tombstoneId,
-    userId: tombstoneId,
-    displayName: deletedMemberName,
-    role: "MEMBER",
-    joinedAt:
-      oldMemberData?.joinedAt ??
-      groupData.createdAt ??
-      FieldValue.serverTimestamp(),
-    isShadow: oldMemberData?.isShadow === true,
-    isTombstone: true,
-  });
-  await writer.delete(oldMemberRef);
-  await writer.update(groupRef, groupUpdate);
 
   let expensesScrubbed = 0;
   let settlementsScrubbed = 0;
@@ -530,6 +623,21 @@ async function processGroup(
     }
   }
 
+  await writer.set(groupRef.collection("members").doc(tombstoneId), {
+    id: tombstoneId,
+    userId: tombstoneId,
+    displayName: deletedMemberName,
+    role: "MEMBER",
+    joinedAt:
+      oldMemberData?.joinedAt ??
+      groupData.createdAt ??
+      FieldValue.serverTimestamp(),
+    isShadow: oldMemberData?.isShadow === true,
+    isTombstone: true,
+  });
+  await writer.delete(oldMemberRef);
+  await writer.update(groupRef, groupUpdate);
+
   return {
     tombstoneId,
     expensesScrubbed,
@@ -546,6 +654,281 @@ async function deleteDocIfExists(ref: DocumentReference): Promise<boolean> {
   await ref.delete();
   return true;
 }
+
+function addGroupResult(
+  output: DeleteAccountOutput,
+  result: GroupCascadeResult,
+): DeleteAccountOutput {
+  const tombstoneIds = output.tombstoneIds.includes(result.tombstoneId)
+    ? output.tombstoneIds
+    : [...output.tombstoneIds, result.tombstoneId];
+  return {
+    ...output,
+    groupsProcessed: output.groupsProcessed + 1,
+    tombstoneIds,
+    expensesScrubbed: output.expensesScrubbed + result.expensesScrubbed,
+    settlementsScrubbed:
+      output.settlementsScrubbed + result.settlementsScrubbed,
+    activityLogsScrubbed:
+      output.activityLogsScrubbed + result.activityLogsScrubbed,
+    membersDeleted: output.membersDeleted + result.membersDeleted,
+    groupsOrphanedAndSoftDeleted:
+      output.groupsOrphanedAndSoftDeleted +
+      (result.groupOrphanedAndSoftDeleted ? 1 : 0),
+  };
+}
+
+async function loadAuthorizedDeletionJob(
+  request: CallableRequest<DeleteAccountJobIdInput>,
+): Promise<{ ref: DocumentReference; data: DeleteAccountJobDoc }> {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Sign-in required.");
+  }
+  const jobId = parseJobId(request.data);
+  if (jobId !== request.auth.uid) {
+    throw new HttpsError(
+      "permission-denied",
+      "Deletion job belongs to another user.",
+    );
+  }
+  const ref = getFirestore().doc(`${deletionJobCollection}/${jobId}`);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "Deletion job not found.");
+  }
+  return { ref, data: snap.data() as DeleteAccountJobDoc };
+}
+
+async function createOrLoadDeletionJob(
+  uid: string,
+): Promise<{ ref: DocumentReference; data: DeleteAccountJobDoc }> {
+  const db = getFirestore();
+  const ref = db.doc(`${deletionJobCollection}/${uid}`);
+  const existing = await ref.get();
+  if (existing.exists) {
+    return { ref, data: existing.data() as DeleteAccountJobDoc };
+  }
+
+  const groupsSnap = await db
+    .collection("groups")
+    .where("memberIds", "array-contains", uid)
+    .get();
+  const groupIds: string[] = [];
+  const tombstoneIdsByGroup: Record<string, string> = {};
+  for (const groupDoc of groupsSnap.docs) {
+    const memberIds = asStringArray(
+      groupDoc.data().memberIds,
+      `groups/${groupDoc.id}.memberIds`,
+    );
+    let tombstoneId = generateTombstoneId();
+    while (memberIds.includes(tombstoneId)) {
+      tombstoneId = generateTombstoneId();
+    }
+    groupIds.push(groupDoc.id);
+    tombstoneIdsByGroup[groupDoc.id] = tombstoneId;
+  }
+
+  const output = emptyDeleteAccountOutput();
+  const data: DeleteAccountJobDoc = {
+    kind: "deleteAccount",
+    uid,
+    status: "running",
+    phase: groupIds.length === 0 ? "Deleting account" : "Scrubbing groups",
+    groupIds,
+    tombstoneIdsByGroup,
+    cursorIndex: 0,
+    retryable: true,
+    counters: countersFromOutput(output),
+    output,
+    terminalDocsDeleted: false,
+    authDeleteAttempted: false,
+    serverScrubbedAuthDeleteFailed: false,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  await ref.set(data);
+  return { ref, data };
+}
+
+async function completeDeletionTerminalStep(
+  db: Firestore,
+  data: DeleteAccountJobDoc,
+): Promise<DeleteAccountJobDoc> {
+  let output = data.output;
+  if (data.terminalDocsDeleted !== true) {
+    output = {
+      ...output,
+      fcmTokenDeleted: await deleteDocIfExists(
+        db.doc(`fcm_tokens/${data.uid}`),
+      ),
+      joinAttemptsDeleted: await deleteDocIfExists(
+        db.doc(`joinAttempts/${data.uid}`),
+      ),
+    };
+  }
+
+  try {
+    await getAuth().deleteUser(data.uid);
+    output = { ...output, authUserDeleted: true };
+    return {
+      ...data,
+      status: "complete",
+      phase: "Complete",
+      retryable: false,
+      output,
+      counters: countersFromOutput(output),
+      terminalDocsDeleted: true,
+      authDeleteAttempted: true,
+      serverScrubbedAuthDeleteFailed: false,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+  } catch (error) {
+    if ((error as { code?: unknown }).code === "auth/user-not-found") {
+      return {
+        ...data,
+        status: "complete",
+        phase: "Complete",
+        retryable: false,
+        output,
+        counters: countersFromOutput(output),
+        terminalDocsDeleted: true,
+        authDeleteAttempted: true,
+        serverScrubbedAuthDeleteFailed: false,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+    }
+    logger.error("delete account job auth delete failed after cascade", {
+      uid: data.uid,
+      output,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return {
+      ...data,
+      status: "failed",
+      phase: "Auth cleanup failed",
+      retryable: true,
+      errorCode: "auth-delete-failed",
+      output,
+      counters: countersFromOutput(output),
+      terminalDocsDeleted: true,
+      authDeleteAttempted: true,
+      serverScrubbedAuthDeleteFailed: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+  }
+}
+
+export const startOrResumeDeleteAccountJob = onCall<
+  unknown,
+  Promise<AccountJobStatusOutput>
+>(
+  { enforceAppCheck: true, timeoutSeconds: 60, memory: "512MiB" },
+  async (request: CallableRequest<unknown>) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Sign-in required.");
+    }
+    assertNoInput(request.data);
+    const { ref, data } = await createOrLoadDeletionJob(request.auth.uid);
+    return statusFromDeletionJob(ref.id, data);
+  },
+);
+
+export const getDeleteAccountJobStatus = onCall<
+  DeleteAccountJobIdInput,
+  Promise<AccountJobStatusOutput>
+>(
+  { enforceAppCheck: true, timeoutSeconds: 60, memory: "512MiB" },
+  async (request: CallableRequest<DeleteAccountJobIdInput>) => {
+    const { ref, data } = await loadAuthorizedDeletionJob(request);
+    return statusFromDeletionJob(ref.id, data);
+  },
+);
+
+export const advanceDeleteAccountJob = onCall<
+  DeleteAccountJobIdInput,
+  Promise<AccountJobStatusOutput>
+>(
+  { enforceAppCheck: true, timeoutSeconds: 120, memory: "1GiB" },
+  async (request: CallableRequest<DeleteAccountJobIdInput>) => {
+    const { ref, data } = await loadAuthorizedDeletionJob(request);
+    if (data.status === "complete") return statusFromDeletionJob(ref.id, data);
+    if (data.status === "failed" && data.serverScrubbedAuthDeleteFailed) {
+      const retried = await completeDeletionTerminalStep(getFirestore(), {
+        ...data,
+        status: "running",
+        phase: "Retrying auth cleanup",
+        retryable: true,
+      });
+      await ref.set(
+        { ...retried, errorCode: FieldValue.delete() },
+        { merge: true },
+      );
+      return statusFromDeletionJob(ref.id, retried);
+    }
+    if (data.status !== "running") {
+      throw new HttpsError(
+        "failed-precondition",
+        "Deletion job is not running.",
+      );
+    }
+
+    const db = getFirestore();
+    const groupId = data.groupIds[data.cursorIndex];
+    if (groupId == null) {
+      const terminal = await completeDeletionTerminalStep(db, data);
+      await ref.set(terminal, { merge: true });
+      return statusFromDeletionJob(ref.id, terminal);
+    }
+
+    try {
+      const writer = new BatchWriter(db);
+      const result = await processGroup(
+        db,
+        writer,
+        db.doc(`groups/${groupId}`),
+        data.uid,
+        data.tombstoneIdsByGroup[groupId],
+      );
+      await writer.flush();
+      const output = addGroupResult(data.output, result);
+      const next: DeleteAccountJobDoc = {
+        ...data,
+        phase: "Scrubbing groups",
+        cursorIndex: data.cursorIndex + 1,
+        output,
+        counters: countersFromOutput(output),
+        retryable: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      await ref.set(
+        { ...next, errorCode: FieldValue.delete() },
+        { merge: true },
+      );
+      logger.info("advanceDeleteAccountJob group scrubbed", {
+        uid: data.uid,
+        groupId,
+        tombstoneId: result.tombstoneId,
+      });
+      return statusFromDeletionJob(ref.id, next);
+    } catch (error) {
+      const failed: DeleteAccountJobDoc = {
+        ...data,
+        status: "failed",
+        phase: `Group ${groupId} failed`,
+        retryable: true,
+        errorCode: error instanceof Error ? error.name : "unknown",
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      await ref.set(failed, { merge: true });
+      logger.error("advanceDeleteAccountJob group failed", {
+        uid: data.uid,
+        groupId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return statusFromDeletionJob(ref.id, failed);
+    }
+  },
+);
 
 export const deleteAccount = onCall<unknown, Promise<DeleteAccountOutput>>(
   { enforceAppCheck: true, timeoutSeconds: 540, memory: "1GiB" },

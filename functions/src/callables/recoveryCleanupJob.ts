@@ -524,10 +524,9 @@ export const claimRecoveryCleanupJob = onCall<
       status: data.status === "complete" ? "complete" : "running",
       phase: data.status === "complete" ? "Complete" : "Migrating groups",
       retryable: true,
-      errorCode: undefined,
       updatedAt: FieldValue.serverTimestamp(),
     };
-    await ref.set(next, { merge: true });
+    await ref.set({ ...next, errorCode: FieldValue.delete() }, { merge: true });
     if (intentRef != null) await intentRef.delete();
     return statusFromJob(ref.id, next);
   },
@@ -629,10 +628,12 @@ export const advanceRecoveryCleanupJob = onCall<
         counters,
         phase: "Migrating groups",
         retryable: true,
-        errorCode: undefined,
         updatedAt: FieldValue.serverTimestamp(),
       };
-      await ref.set(next, { merge: true });
+      await ref.set(
+        { ...next, errorCode: FieldValue.delete() },
+        { merge: true },
+      );
       return statusFromJob(ref.id, next);
     } catch (error) {
       const failed: RecoveryCleanupJobDoc = {

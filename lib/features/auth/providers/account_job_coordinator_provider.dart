@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../models/account_job_status.dart';
+import '../services/data_deletion_service.dart';
 import 'auth_provider.dart';
 
 typedef AccountJobResumeProbe = Future<AccountJobStatusSnapshot?> Function();
@@ -49,10 +50,22 @@ class AccountJobDriver {
 
 final accountJobDriverProvider = Provider<AccountJobDriver>((ref) {
   return AccountJobDriver(
-    resumeProbe: () =>
-        ref.read(authRecoveryServiceProvider).resumePendingRecoveryCleanup(),
-    advance: (status) =>
-        ref.read(authRecoveryServiceProvider).advanceAccountJob(status),
+    resumeProbe: () async {
+      final recovery = await ref
+          .read(authRecoveryServiceProvider)
+          .resumePendingRecoveryCleanup();
+      if (recovery != null) return recovery;
+      return ref.read(dataDeletionServiceProvider).resumePendingDeletion();
+    },
+    advance: (status) {
+      return switch (status.kind) {
+        AccountJobKind.recoveryCleanup =>
+          ref.read(authRecoveryServiceProvider).advanceAccountJob(status),
+        AccountJobKind.deleteAccount =>
+          ref.read(dataDeletionServiceProvider).advanceAccountJob(status),
+        AccountJobKind.cacheWipe => Future.value(status),
+      };
+    },
     routeHome: () {},
   );
 });

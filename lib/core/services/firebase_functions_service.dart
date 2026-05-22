@@ -54,6 +54,37 @@ class FirebaseFunctionsService {
     );
   }
 
+  Future<AccountJobStatusSnapshot> startOrResumeDeleteAccountJob() async {
+    final result = await _functions
+        .httpsCallable('startOrResumeDeleteAccountJob')
+        .call(<String, dynamic>{});
+    return AccountJobStatusSnapshot.fromJson(
+      Map<String, dynamic>.from(result.data as Map),
+    );
+  }
+
+  Future<AccountJobStatusSnapshot> advanceDeleteAccountJob({
+    required String jobId,
+  }) async {
+    final result = await _functions
+        .httpsCallable('advanceDeleteAccountJob')
+        .call({'jobId': jobId});
+    return AccountJobStatusSnapshot.fromJson(
+      Map<String, dynamic>.from(result.data as Map),
+    );
+  }
+
+  Future<AccountJobStatusSnapshot> getDeleteAccountJobStatus({
+    required String jobId,
+  }) async {
+    final result = await _functions
+        .httpsCallable('getDeleteAccountJobStatus')
+        .call({'jobId': jobId});
+    return AccountJobStatusSnapshot.fromJson(
+      Map<String, dynamic>.from(result.data as Map),
+    );
+  }
+
   Future<DeleteAccountOutput> deleteAccount() async {
     try {
       final result = await _functions
