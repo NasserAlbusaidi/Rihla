@@ -9,6 +9,7 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/services/app_messenger.dart';
 import '../services/auth_email_link_config.dart';
 import '../services/auth_recovery_service.dart';
+import 'account_job_coordinator_provider.dart';
 import 'auth_provider.dart';
 
 final appLinksProvider = Provider<AppLinks>((ref) => AppLinks());
@@ -168,6 +169,9 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         FirebaseConfig.log('Recovery: completeRecovery succeeded');
         ref.read(pendingEmailLinkProvider.notifier).state = null;
         ref.read(authEmailLinkConflictProvider.notifier).state = null;
+        unawaited(
+          ref.read(accountJobCoordinatorProvider.notifier).resumeOnAppResume(),
+        );
         _showSnack('Restored ${result.user?.email ?? pendingEmail}');
       } else {
         final result = await service.completeEmailLink(link);

@@ -55,6 +55,8 @@ void main() {
     claimRecoveryCleanupJob,
     Future<AccountJobStatusSnapshot> Function({required String jobId})?
     advanceRecoveryCleanupJob,
+    Future<AccountJobStatusSnapshot> Function({required String jobId})?
+    getRecoveryCleanupJobStatus,
     Future<String> Function(String oldUid)? cleanupIntentFactory,
     void Function({
       required String message,
@@ -79,6 +81,16 @@ void main() {
           },
       advanceRecoveryCleanupJob:
           advanceRecoveryCleanupJob ??
+          ({required jobId}) async {
+            return AccountJobStatusSnapshot(
+              jobId: jobId,
+              kind: AccountJobKind.recoveryCleanup,
+              status: AccountJobRunStatus.complete,
+              phase: 'Complete',
+            );
+          },
+      getRecoveryCleanupJobStatus:
+          getRecoveryCleanupJobStatus ??
           ({required jobId}) async {
             return AccountJobStatusSnapshot(
               jobId: jobId,
@@ -353,7 +365,7 @@ void main() {
       },
     );
 
-    test('recovery fails loud when cleanup advancement throws', () async {
+    test('records cleanup failure when advancement throws', () async {
       final credential = _MockUserCredential();
       when(
         () => auth.signInWithEmailLink(
@@ -381,11 +393,9 @@ void main() {
       );
       await service.setPendingEmail('foo@example.com');
 
-      await expectLater(
-        () => service.completeRecovery(link),
-        throwsA(isA<StateError>()),
-      );
+      final result = await service.completeRecovery(link);
 
+      expect(result, same(credential));
       expect(breadcrumbs, hasLength(1));
     });
 
@@ -417,15 +427,103 @@ void main() {
       );
       await service.setPendingEmail('foo@example.com');
 
-      await expectLater(
-        () => service.completeRecovery(link),
-        throwsA(isA<StateError>()),
-      );
+      await service.completeRecovery(link);
 
       final serialized = breadcrumbs.single.toString();
       expect(serialized, isNot(contains('foo@example.com')));
       expect(serialized, contains('StateError'));
     });
+
+    test(
+      'returns restored credential and preserves cleanup job when advancement throws',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async => credential);
+        final breadcrumbs = <Map<String, Object?>>[];
+        final service = buildService(
+          claimRecoveryCleanupJob:
+              ({required oldUid, required cleanupSecret}) async {
+                return const AccountJobStatusSnapshot(
+                  jobId: 'job-1',
+                  kind: AccountJobKind.recoveryCleanup,
+                  status: AccountJobRunStatus.running,
+                  phase: 'Migrating groups',
+                );
+              },
+          advanceRecoveryCleanupJob: ({required jobId}) async {
+            throw StateError('cleanup failed for foo@example.com');
+          },
+          recoveryCleanupFailureRecorder: ({required message, required data}) {
+            breadcrumbs.add({'message': message, ...data});
+          },
+        );
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeRecovery(link);
+
+        expect(result, same(credential));
+        expect(service.readPendingEmail(), isNull);
+        expect(service.readInFlightOp(), isNull);
+        expect(
+          prefs.getString('auth.pendingRecoveryCleanupOldUid'),
+          'anon-uid-123',
+        );
+        expect(
+          prefs.getString('auth.pendingRecoveryCleanupSecret'),
+          'test-cleanup-secret',
+        );
+        expect(prefs.getString('auth.pendingRecoveryCleanupJobId'), 'job-1');
+        expect(breadcrumbs, hasLength(1));
+      },
+    );
+
+    test(
+      'resumePendingRecoveryCleanup claims a blocked pre-sign-in job',
+      () async {
+        final calls = <String>[];
+        await prefs.setString(
+          'auth.pendingRecoveryCleanupOldUid',
+          'anon-uid-123',
+        );
+        await prefs.setString(
+          'auth.pendingRecoveryCleanupSecret',
+          'test-cleanup-secret',
+        );
+        await prefs.setString(
+          'auth.pendingRecoveryCleanupJobId',
+          'anon-uid-123',
+        );
+        final service = buildService(
+          getRecoveryCleanupJobStatus: ({required jobId}) async {
+            calls.add('status:$jobId');
+            throw StateError('blocked preclaim is not readable yet');
+          },
+          claimRecoveryCleanupJob:
+              ({required oldUid, required cleanupSecret}) async {
+                calls.add('claim:$oldUid:$cleanupSecret');
+                return const AccountJobStatusSnapshot(
+                  jobId: 'anon-uid-123',
+                  kind: AccountJobKind.recoveryCleanup,
+                  status: AccountJobRunStatus.running,
+                  phase: 'Migrating groups',
+                );
+              },
+        );
+
+        final status = await service.resumePendingRecoveryCleanup();
+
+        expect(status?.status, AccountJobRunStatus.running);
+        expect(calls, [
+          'status:anon-uid-123',
+          'claim:anon-uid-123:test-cleanup-secret',
+        ]);
+      },
+    );
 
     test('continues recovery when pending writes exceed the timeout', () async {
       final credential = _MockUserCredential();

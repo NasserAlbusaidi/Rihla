@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/features/auth/providers/account_job_coordinator_provider.dart';
 import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/services/auth_email_link_config.dart';
@@ -89,6 +90,44 @@ void main() {
     verify(() => service.completeRecovery(any())).called(1);
     verifyNever(() => service.completeEmailLink(any()));
   });
+
+  test(
+    'successful recovery asks account job coordinator to resume cleanup',
+    () async {
+      var resumeCalls = 0;
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          appLinksProvider.overrideWithValue(appLinks),
+          authRecoveryServiceProvider.overrideWithValue(service),
+          accountJobDriverProvider.overrideWithValue(
+            AccountJobDriver(
+              resumeProbe: () async {
+                resumeCalls += 1;
+                return null;
+              },
+              advance: (status) async => status,
+              routeHome: () {},
+            ),
+          ),
+        ],
+      );
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(
+        () => service.readInFlightOp(),
+      ).thenReturn(AuthRecoveryService.opRecover);
+      when(
+        () => service.completeRecovery(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+      await attach();
+
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      verify(() => service.completeRecovery(any())).called(1);
+      expect(resumeCalls, 1);
+    },
+  );
 
   test(
     'null inFlightOp defaults to completeEmailLink (legacy/pre-P4)',

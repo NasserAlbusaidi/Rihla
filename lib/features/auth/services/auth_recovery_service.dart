@@ -196,8 +196,51 @@ class AuthRecoveryService {
 
   Future<AccountJobStatusSnapshot?> resumePendingRecoveryCleanup() async {
     final jobId = _prefs.getString(_pendingCleanupJobIdKey);
-    if (jobId == null || jobId.isEmpty) return null;
-    final status = await _getRecoveryCleanupJobStatus(jobId: jobId);
+    final oldUid = _prefs.getString(_pendingCleanupOldUidKey);
+    final cleanupSecret = _prefs.getString(_pendingCleanupSecretKey);
+    if (jobId == null || jobId.isEmpty) {
+      if (oldUid == null ||
+          oldUid.isEmpty ||
+          cleanupSecret == null ||
+          cleanupSecret.isEmpty) {
+        return null;
+      }
+      final claimed = await _claimRecoveryCleanupJob(
+        oldUid: oldUid,
+        cleanupSecret: cleanupSecret,
+      );
+      await _storePendingCleanup(
+        oldUid: oldUid,
+        cleanupSecret: cleanupSecret,
+        jobId: claimed.jobId,
+      );
+      return claimed;
+    }
+    AccountJobStatusSnapshot status;
+    try {
+      status = await _getRecoveryCleanupJobStatus(jobId: jobId);
+    } catch (error, stackTrace) {
+      if (oldUid == null ||
+          oldUid.isEmpty ||
+          cleanupSecret == null ||
+          cleanupSecret.isEmpty) {
+        rethrow;
+      }
+      FirebaseConfig.log(
+        'Recovery: cleanup status unavailable; retrying claim',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      status = await _claimRecoveryCleanupJob(
+        oldUid: oldUid,
+        cleanupSecret: cleanupSecret,
+      );
+      await _storePendingCleanup(
+        oldUid: oldUid,
+        cleanupSecret: cleanupSecret,
+        jobId: status.jobId,
+      );
+    }
     if (status.status == AccountJobRunStatus.complete) {
       await _clearPendingCleanup();
       await clearPendingEmail();
@@ -351,18 +394,31 @@ class AuthRecoveryService {
         oldUid.isNotEmpty &&
         cleanupSecret != null &&
         result.user?.uid != oldUid) {
-      var status = await _claimRecoveryCleanupJob(
-        oldUid: oldUid,
-        cleanupSecret: cleanupSecret,
-      );
-      await _storePendingCleanup(
-        oldUid: oldUid,
-        cleanupSecret: cleanupSecret,
-        jobId: status.jobId,
-      );
       try {
+        var status = await _claimRecoveryCleanupJob(
+          oldUid: oldUid,
+          cleanupSecret: cleanupSecret,
+        );
+        await _storePendingCleanup(
+          oldUid: oldUid,
+          cleanupSecret: cleanupSecret,
+          jobId: status.jobId,
+        );
         while (status.status == AccountJobRunStatus.running) {
           status = await _advanceRecoveryCleanupJob(jobId: status.jobId);
+        }
+        if (status.status == AccountJobRunStatus.complete) {
+          await _clearPendingCleanup();
+          FirebaseConfig.log('Recovery: anon uid cleanup completed');
+        } else {
+          _recoveryCleanupFailureRecorder(
+            message: 'Recovery anon uid cleanup incomplete',
+            data: {'status': status.status.wireName},
+          );
+          FirebaseConfig.log(
+            'Recovery: anon uid cleanup incomplete '
+            '(${status.status.wireName})',
+          );
         }
       } catch (error, stackTrace) {
         _recoveryCleanupFailureRecorder(
@@ -373,19 +429,7 @@ class AuthRecoveryService {
           'Recovery: anon uid cleanup failed (${error.runtimeType})',
           stackTrace: stackTrace,
         );
-        rethrow;
       }
-      if (status.status != AccountJobRunStatus.complete) {
-        _recoveryCleanupFailureRecorder(
-          message: 'Recovery anon uid cleanup failed',
-          data: {'status': status.status.wireName},
-        );
-        throw StateError(
-          'Recovery cleanup did not complete (${status.status.wireName})',
-        );
-      }
-      await _clearPendingCleanup();
-      FirebaseConfig.log('Recovery: anon uid cleanup completed');
     }
     await clearPendingEmail();
     await clearInFlightOp();
