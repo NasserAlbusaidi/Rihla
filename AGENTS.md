@@ -153,7 +153,7 @@ All money math uses the `decimal` package (not `double`). Default currency is OM
 ## Key Technical Details
 
 - **Soft deletes**: Expenses use `isDeleted` + `deletedAt`. Settlements are **append-only** (B3) — corrections create a new offsetting row, never an edit. Events and groups support soft-delete via `isDeleted`/`deletedAt`.
-- **Ownership invariants (B1)**: `createdBy` is immutable on expenses and settlements; only the creator can edit/soft-delete their own rows. Enforced client-side and in `security/firestore.rules`.
+- **Ownership invariants (B1)**: `createdBy` is immutable on expenses and settlements; only the creator can edit/soft-delete their own rows. Enforced client-side and in `security/firestore.rules`. Server-side account recovery/deletion callables may rewrite UID identity fields, including `createdBy`, as re-identification/tombstoning maintenance; they must not change financial amounts or settlement direction.
 - **Name-based members**: Group creator adds member names during creation and picks which name is theirs. Joiners enter invite code then pick an unclaimed name. Display names are stored on `groups/{gid}/members/{uid}` and mirrored from `settingsProvider.deviceName`.
 - **Display-name validation**: 1-32 chars, no control chars, unified across client and rules via `isValidDisplayName`.
 - **Event modules**: `EventModules` only carries `ledger` after Phase 39. Legacy keys (gear/logistics/vault/memories) are silently ignored from existing data.

@@ -3,6 +3,7 @@ import { getAuth } from "firebase-admin/auth";
 import {
   DocumentData,
   DocumentReference,
+  FieldPath,
   FieldValue,
   Firestore,
   Timestamp,
@@ -22,7 +23,7 @@ import {
 import {
   renameMapKey,
   replaceUidInArray,
-  rewriteNestedUidReferences,
+  rewriteRecoveryMetadataUidReferences,
 } from "../accountJobs/identityRewrite";
 import "../admin";
 
@@ -65,6 +66,7 @@ const cleanupIntentMaxAgeMs = 15 * 60 * 1000;
 const cleanupSecretMinLength = 32;
 const cleanupSecretMaxLength = 128;
 const batchLimit = 450;
+const collectionPageLimit = 200;
 
 class BatchWriter {
   private batch: WriteBatch;
@@ -74,17 +76,20 @@ class BatchWriter {
     this.batch = db.batch();
   }
 
-  async set(ref: DocumentReference, data: DocumentData): Promise<void> {
+  async enqueueSet(ref: DocumentReference, data: DocumentData): Promise<void> {
     this.batch.set(ref, data);
     await this.afterWrite();
   }
 
-  async update(ref: DocumentReference, data: DocumentData): Promise<void> {
+  async enqueueUpdate(
+    ref: DocumentReference,
+    data: DocumentData,
+  ): Promise<void> {
     this.batch.update(ref, data);
     await this.afterWrite();
   }
 
-  async delete(ref: DocumentReference): Promise<void> {
+  async enqueueDelete(ref: DocumentReference): Promise<void> {
     this.batch.delete(ref);
     await this.afterWrite();
   }
@@ -169,6 +174,47 @@ function statusFromJob(
     errorCode: data.errorCode,
     counters: { ...data.counters },
   };
+}
+
+function withoutErrorCode(data: RecoveryCleanupJobDoc): RecoveryCleanupJobDoc {
+  const next = { ...data };
+  delete next.errorCode;
+  return next;
+}
+
+function asStringArray(value: unknown, path: string): string[] {
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => typeof entry !== "string")
+  ) {
+    throw new HttpsError("failed-precondition", `${path} is malformed.`);
+  }
+  return value;
+}
+
+function optionalStringArray(value: unknown, path: string): string[] | null {
+  if (value == null) return null;
+  return asStringArray(value, path);
+}
+
+async function forEachCollectionDoc(
+  collectionRef: FirebaseFirestore.CollectionReference,
+  onDoc: (doc: FirebaseFirestore.QueryDocumentSnapshot) => Promise<void>,
+): Promise<void> {
+  let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+  while (true) {
+    let query: FirebaseFirestore.Query = collectionRef
+      .orderBy(FieldPath.documentId())
+      .limit(collectionPageLimit);
+    if (lastDoc != null) query = query.startAfter(lastDoc);
+    const page = await query.get();
+    if (page.empty) return;
+    for (const doc of page.docs) {
+      await onDoc(doc);
+    }
+    lastDoc = page.docs[page.docs.length - 1];
+    if (page.size < collectionPageLimit) return;
+  }
 }
 
 function cleanupIntentError(): HttpsError {
@@ -294,16 +340,17 @@ function expenseUpdates(
   data: DocumentData,
   oldUid: string,
   newUid: string,
+  path = "expense",
 ): DocumentData | null {
   const updates: DocumentData = {};
   if (data.createdBy === oldUid) updates.createdBy = newUid;
   if (data.payerParticipantId === oldUid) updates.payerParticipantId = newUid;
-  if (Array.isArray(data.customSplitParticipants)) {
-    const replaced = replaceUidInArray(
-      data.customSplitParticipants,
-      oldUid,
-      newUid,
-    );
+  const customSplitParticipants = optionalStringArray(
+    data.customSplitParticipants,
+    `${path}.customSplitParticipants`,
+  );
+  if (customSplitParticipants != null) {
+    const replaced = replaceUidInArray(customSplitParticipants, oldUid, newUid);
     if (replaced.changed) updates.customSplitParticipants = replaced.value;
   }
   const distribution = renameMapKey(data.splitDistribution, oldUid, newUid, {
@@ -330,11 +377,17 @@ function activityUpdates(
   data: DocumentData,
   oldUid: string,
   newUid: string,
+  path = "activity",
 ): DocumentData | null {
   const updates: DocumentData = {};
   if (data.actorId === oldUid) updates.actorId = newUid;
   if (data.targetParticipantId === oldUid) updates.targetParticipantId = newUid;
-  const metadata = rewriteNestedUidReferences(data.metadata, oldUid, newUid);
+  const metadata = rewriteRecoveryMetadataUidReferences(
+    data.metadata,
+    oldUid,
+    newUid,
+    `${path}.metadata`,
+  );
   if (metadata.changed) updates.metadata = metadata.value;
   return Object.keys(updates).length > 0 ? updates : null;
 }
@@ -345,15 +398,14 @@ async function processSettlementsCollection(
   oldUid: string,
   newUid: string,
 ): Promise<number> {
-  const snap = await collectionRef.get();
   let rewritten = 0;
-  for (const doc of snap.docs) {
+  await forEachCollectionDoc(collectionRef, async (doc) => {
     const updates = settlementUpdates(doc.data(), oldUid, newUid);
     if (updates != null) {
-      await writer.update(doc.ref, updates);
+      await writer.enqueueUpdate(doc.ref, updates);
       rewritten += 1;
     }
-  }
+  });
   return rewritten;
 }
 
@@ -363,20 +415,18 @@ async function processActivityCollection(
   oldUid: string,
   newUid: string,
 ): Promise<number> {
-  const snap = await collectionRef.get();
   let rewritten = 0;
-  for (const doc of snap.docs) {
-    const updates = activityUpdates(doc.data(), oldUid, newUid);
+  await forEachCollectionDoc(collectionRef, async (doc) => {
+    const updates = activityUpdates(doc.data(), oldUid, newUid, doc.ref.path);
     if (updates != null) {
-      await writer.update(doc.ref, updates);
+      await writer.enqueueUpdate(doc.ref, updates);
       rewritten += 1;
     }
-  }
+  });
   return rewritten;
 }
 
 async function processGroup(
-  db: Firestore,
   writer: BatchWriter,
   groupRef: DocumentReference,
   oldUid: string,
@@ -393,20 +443,13 @@ async function processGroup(
   if (!groupSnap.exists) return result;
 
   const groupData = groupSnap.data() ?? {};
-  const memberIds = Array.isArray(groupData.memberIds)
-    ? groupData.memberIds.filter(
-        (value: unknown): value is string => typeof value === "string",
-      )
-    : [];
-  if (!memberIds.includes(oldUid)) return result;
-
-  const replacedMemberIds = replaceUidInArray(memberIds, oldUid, newUid);
-  const groupUpdate: DocumentData = {
-    memberIds: replacedMemberIds.value,
-    updatedAt: FieldValue.serverTimestamp(),
-  };
-  if (groupData.createdBy === oldUid) groupUpdate.createdBy = newUid;
-  await writer.update(groupRef, groupUpdate);
+  const memberIds = asStringArray(
+    groupData.memberIds,
+    `groups/${groupRef.id}.memberIds`,
+  );
+  const hasOldMemberId = memberIds.includes(oldUid);
+  const hasNewMemberId = memberIds.includes(newUid);
+  if (!hasOldMemberId && !hasNewMemberId) return result;
 
   const oldMemberRef = groupRef.collection("members").doc(oldUid);
   const newMemberRef = groupRef.collection("members").doc(newUid);
@@ -414,29 +457,16 @@ async function processGroup(
     oldMemberRef.get(),
     newMemberRef.get(),
   ]);
-  if (!newMemberSnap.exists && oldMemberSnap.exists) {
-    await writer.set(newMemberRef, {
-      ...(oldMemberSnap.data() ?? {}),
-      id: newUid,
-      userId: newUid,
-    });
-    result.membersRewritten += 1;
-  }
-  if (oldMemberSnap.exists) {
-    await writer.delete(oldMemberRef);
-    result.membersRewritten += 1;
-  }
 
-  const eventsSnap = await groupRef.collection("events").get();
-  for (const eventDoc of eventsSnap.docs) {
+  await forEachCollectionDoc(groupRef.collection("events"), async (eventDoc) => {
     const eventData = eventDoc.data();
     const eventUpdate: DocumentData = {};
-    if (Array.isArray(eventData.participantIds)) {
-      const replaced = replaceUidInArray(
-        eventData.participantIds,
-        oldUid,
-        newUid,
-      );
+    const participantIds = optionalStringArray(
+      eventData.participantIds,
+      `${eventDoc.ref.path}.participantIds`,
+    );
+    if (participantIds != null) {
+      const replaced = replaceUidInArray(participantIds, oldUid, newUid);
       if (replaced.changed) eventUpdate.participantIds = replaced.value;
     }
     const participantNames = renameMapKey(
@@ -452,18 +482,24 @@ async function processGroup(
     if (eventData.createdBy === oldUid) eventUpdate.createdBy = newUid;
     if (Object.keys(eventUpdate).length > 0) {
       eventUpdate.updatedAt = FieldValue.serverTimestamp();
-      await writer.update(eventDoc.ref, eventUpdate);
+      await writer.enqueueUpdate(eventDoc.ref, eventUpdate);
       result.eventsRewritten += 1;
     }
 
-    const expensesSnap = await eventDoc.ref.collection("expenses").get();
-    for (const expenseDoc of expensesSnap.docs) {
-      const updates = expenseUpdates(expenseDoc.data(), oldUid, newUid);
+    await forEachCollectionDoc(eventDoc.ref.collection("expenses"), async (
+      expenseDoc,
+    ) => {
+      const updates = expenseUpdates(
+        expenseDoc.data(),
+        oldUid,
+        newUid,
+        expenseDoc.ref.path,
+      );
       if (updates != null) {
-        await writer.update(expenseDoc.ref, updates);
+        await writer.enqueueUpdate(expenseDoc.ref, updates);
         result.expensesRewritten += 1;
       }
-    }
+    });
 
     result.settlementsRewritten += await processSettlementsCollection(
       writer,
@@ -477,7 +513,7 @@ async function processGroup(
       oldUid,
       newUid,
     );
-  }
+  });
 
   result.settlementsRewritten += await processSettlementsCollection(
     writer,
@@ -491,6 +527,29 @@ async function processGroup(
     oldUid,
     newUid,
   );
+
+  await writer.flush();
+
+  const replacedMemberIds = replaceUidInArray(memberIds, oldUid, newUid);
+  const groupUpdate: DocumentData = {
+    memberIds: replacedMemberIds.value,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (groupData.createdBy === oldUid) groupUpdate.createdBy = newUid;
+  await writer.enqueueUpdate(groupRef, groupUpdate);
+
+  if (!newMemberSnap.exists && oldMemberSnap.exists) {
+    await writer.enqueueSet(newMemberRef, {
+      ...(oldMemberSnap.data() ?? {}),
+      id: newUid,
+      userId: newUid,
+    });
+    result.membersRewritten += 1;
+  }
+  if (oldMemberSnap.exists) {
+    await writer.enqueueDelete(oldMemberRef);
+    result.membersRewritten += 1;
+  }
 
   await writer.flush();
   return result;
@@ -549,14 +608,27 @@ export const advanceRecoveryCleanupJob = onCall<
 >(
   { enforceAppCheck: true },
   async (request: CallableRequest<RecoveryCleanupJobIdInput>) => {
-    const { ref, data } = await loadAuthorizedJob(request);
-    if (data.status === "complete") return statusFromJob(ref.id, data);
-    if (data.status !== "running") {
+    const { ref, data: loadedData } = await loadAuthorizedJob(request);
+    if (loadedData.status === "complete")
+      return statusFromJob(ref.id, loadedData);
+    if (
+      loadedData.status !== "running" &&
+      !(loadedData.status === "failed" && loadedData.retryable)
+    ) {
       throw new HttpsError(
         "failed-precondition",
         "Recovery cleanup job is not running.",
       );
     }
+    const data: RecoveryCleanupJobDoc =
+      loadedData.status === "failed"
+        ? {
+            ...withoutErrorCode(loadedData),
+            status: "running",
+            phase: "Retrying group migration",
+            updatedAt: FieldValue.serverTimestamp(),
+          }
+        : loadedData;
     const newUid = data.newUid;
     if (newUid == null || newUid.length === 0) {
       throw new HttpsError(
@@ -603,7 +675,6 @@ export const advanceRecoveryCleanupJob = onCall<
     try {
       const writer = new BatchWriter(db);
       const result = await processGroup(
-        db,
         writer,
         db.doc(`groups/${groupId}`),
         data.oldUid,

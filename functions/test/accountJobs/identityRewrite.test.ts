@@ -6,6 +6,7 @@ import {
   replaceUidInArray,
   rewriteDisplayName,
   rewriteNestedUidReferences,
+  rewriteRecoveryMetadataUidReferences,
 } from "../../src/accountJobs/identityRewrite";
 
 describe("identity rewrite primitives", () => {
@@ -59,6 +60,41 @@ describe("identity rewrite primitives", () => {
       },
       changed: true,
     });
+  });
+
+  test("recovery metadata rewrites only known identity fields", () => {
+    expect(
+      rewriteRecoveryMetadataUidReferences(
+        {
+          actorId: "old",
+          recipientId: "old",
+          actors: ["old", "other"],
+          contentHash: "old",
+          nested: { actorId: "old" },
+        },
+        "old",
+        "new",
+      ),
+    ).toEqual({
+      value: {
+        actorId: "new",
+        recipientId: "new",
+        actors: ["new", "other"],
+        contentHash: "old",
+        nested: { actorId: "old" },
+      },
+      changed: true,
+    });
+  });
+
+  test("recovery metadata rejects malformed identity arrays", () => {
+    expect(() =>
+      rewriteRecoveryMetadataUidReferences(
+        { actors: ["old", { uid: "other" }] },
+        "old",
+        "new",
+      ),
+    ).toThrow("metadata.actors must be a string array");
   });
 
   test("recovery policy preserves names and PII fields", () => {

@@ -163,7 +163,7 @@ void main() {
     verifyNever(() => firebaseAuth.signOut());
   });
 
-  testWidgets('on a populated device, confirming signs out then proceeds', (
+  testWidgets('on a populated device, confirming proceeds without sign-out', (
     tester,
   ) async {
     when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
@@ -187,7 +187,7 @@ void main() {
     await tester.tap(find.byKey(const Key('signOutFirst.confirm')));
     await tester.pumpAndSettle();
 
-    verify(() => firebaseAuth.signOut()).called(1);
+    verifyNever(() => firebaseAuth.signOut());
     verify(() => service.sendRecoveryLink('foo@example.com')).called(1);
     expect(find.text('PENDING:foo@example.com'), findsOneWidget);
   });

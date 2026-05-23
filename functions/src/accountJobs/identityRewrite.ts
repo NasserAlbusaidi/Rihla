@@ -56,10 +56,14 @@ export function replaceUidInArray(
 ): RewriteResult<string[]> {
   let changed = false;
   const next: string[] = [];
+  const seen = new Set<string>();
   for (const value of values) {
     const replacement = value === sourceUid ? destinationUid : value;
     if (replacement !== value) changed = true;
-    if (!next.includes(replacement)) next.push(replacement);
+    if (!seen.has(replacement)) {
+      seen.add(replacement);
+      next.push(replacement);
+    }
   }
   return { value: next, changed };
 }
@@ -134,6 +138,82 @@ export function rewriteNestedUidReferences(
     return { value: next, changed };
   }
   return { value, changed: false };
+}
+
+const recoveryMetadataStringFields = new Set([
+  "actorId",
+  "targetParticipantId",
+  "payerParticipantId",
+  "recipientParticipantId",
+  "recipientId",
+  "relatedUserId",
+]);
+
+const recoveryMetadataStringArrayFields = new Set([
+  "participantIds",
+  "customSplitParticipants",
+  "actors",
+  "actorIds",
+]);
+
+function rewriteRecoveryMetadataObject(
+  value: Record<string, unknown>,
+  sourceUid: string,
+  destinationUid: string,
+  path: string,
+): RewriteResult<Record<string, unknown>> {
+  let changed = false;
+  const next: Record<string, unknown> = { ...value };
+
+  for (const field of recoveryMetadataStringFields) {
+    if (!Object.prototype.hasOwnProperty.call(value, field)) continue;
+    const fieldValue = value[field];
+    if (fieldValue == null) continue;
+    if (typeof fieldValue !== "string") {
+      throw new Error(`${path}.${field} must be a string.`);
+    }
+    if (fieldValue === sourceUid) {
+      next[field] = destinationUid;
+      changed = true;
+    }
+  }
+
+  for (const field of recoveryMetadataStringArrayFields) {
+    if (!Object.prototype.hasOwnProperty.call(value, field)) continue;
+    const fieldValue = value[field];
+    if (fieldValue == null) continue;
+    if (
+      !Array.isArray(fieldValue) ||
+      fieldValue.some((entry) => typeof entry !== "string")
+    ) {
+      throw new Error(`${path}.${field} must be a string array.`);
+    }
+    const replaced = replaceUidInArray(fieldValue, sourceUid, destinationUid);
+    if (replaced.changed) {
+      next[field] = replaced.value;
+      changed = true;
+    }
+  }
+
+  return { value: next, changed };
+}
+
+export function rewriteRecoveryMetadataUidReferences(
+  value: unknown,
+  sourceUid: string,
+  destinationUid: string,
+  path = "metadata",
+): RewriteResult<unknown> {
+  if (value == null) return { value, changed: false };
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${path} must be an object.`);
+  }
+  return rewriteRecoveryMetadataObject(
+    value as Record<string, unknown>,
+    sourceUid,
+    destinationUid,
+    path,
+  );
 }
 
 export function rewriteDisplayName(

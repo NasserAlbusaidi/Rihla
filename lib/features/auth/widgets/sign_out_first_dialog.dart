@@ -7,8 +7,8 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 /// Spec §4.3 / FR-REC-2.
 ///
 /// Shown when the user attempts recovery on a device that already has a
-/// populated session. Two outcomes: confirm sign-out (orphans the local
-/// anon UID's data, just like clearing app data does today) or cancel.
+/// populated anonymous session. Two outcomes: confirm recovery and let the
+/// cleanup job migrate the local anon UID's data, or cancel.
 class SignOutFirstDialog extends StatelessWidget {
   const SignOutFirstDialog({super.key});
 

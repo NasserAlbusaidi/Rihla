@@ -131,7 +131,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 ## Key Invariants
 
 - Soft delete: expenses `isDeleted`+`deletedAt`; settlements **append-only** (B3 — corrections = new offsetting row); events/groups soft-delete too.
-- Ownership (B1): `createdBy` immutable on expenses/settlements; only creator edits/soft-deletes own rows. Client + `firestore.rules`.
+- Ownership (B1): `createdBy` immutable on expenses/settlements; only creator edits/soft-deletes own rows. Client + `firestore.rules`. Server-side account recovery/deletion callables may rewrite UID identity fields, including `createdBy`, as re-identification/tombstoning maintenance; they must not change financial amounts or settlement direction.
 - Name-based members: creator adds names + picks own; joiner enters invite code + picks unclaimed name. Lives on `groups/{gid}/members/{uid}`, mirrored from `settingsProvider.deviceName`.
 - Event modules: only `ledger: true` after Phase 39; model silently ignores legacy keys for compat.
 - Group join: via `joinGroupByInviteCode` Function — atomic, validated, rate-limited 5/hr/UID, idempotent.
