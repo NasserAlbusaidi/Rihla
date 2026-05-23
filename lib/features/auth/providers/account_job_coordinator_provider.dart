@@ -111,7 +111,12 @@ class AccountJobCoordinator extends StateNotifier<AccountJobCoordinatorState> {
   Future<void> retryActiveJob() async {
     final active = state.activeJob;
     if (active == null || !active.retryable || _advanceInFlight) return;
-    await _advance(active);
+    final running = active.copyWith(
+      status: AccountJobRunStatus.running,
+      retryable: false,
+    );
+    state = state.copyWith(activeJob: running, blockedDeepLink: false);
+    await _advance(running);
   }
 
   Future<void> _resume(String reason) async {
