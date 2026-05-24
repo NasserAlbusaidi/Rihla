@@ -150,7 +150,8 @@ int _encodeSplitValue(Decimal value, SplitMode mode, String currency) {
 }
 
 Decimal _decodeSplitValue(Object? value, SplitMode mode) {
-  final persistedValue = _persistedInt(value);
+  final persistedValue =
+      parsePersistedSubunit(value, field: 'cache.splitDistribution');
   return switch (mode) {
     SplitMode.exact => MoneySerializer.fromSubunits(persistedValue, 'OMR'),
     SplitMode.percent =>
@@ -159,11 +160,4 @@ Decimal _decodeSplitValue(Object? value, SplitMode mode) {
       ),
     SplitMode.shares || SplitMode.equally => Decimal.fromInt(persistedValue),
   };
-}
-
-int _persistedInt(Object? value) {
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  if (value is Decimal) return value.toBigInt().toInt();
-  return Decimal.parse(value.toString()).toBigInt().toInt();
 }

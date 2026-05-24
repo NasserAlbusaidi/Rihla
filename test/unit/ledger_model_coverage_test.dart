@@ -4,6 +4,38 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 
 void main() {
+  group('parsePersistedSubunit', () {
+    test(
+      'throws on fractional input instead of silently truncating',
+      () {
+        // Integer values pass through in any supported shape.
+        expect(parsePersistedSubunit(5000, field: 'amountFils'), 5000);
+        expect(
+          parsePersistedSubunit(Decimal.fromInt(5000), field: 'amountFils'),
+          5000,
+        );
+        expect(parsePersistedSubunit('5000', field: 'amountFils'), 5000);
+
+        // Fractional values must throw -- a Firestore doc that ever
+        // roundtripped a money column as a fractional double (9.99 instead
+        // of integer fils 999) would silently become 9 fils on read.
+        expect(
+          () => parsePersistedSubunit(9.99, field: 'amountFils'),
+          throwsStateError,
+        );
+        expect(
+          () =>
+              parsePersistedSubunit(Decimal.parse('9.99'), field: 'amountFils'),
+          throwsStateError,
+        );
+        expect(
+          () => parsePersistedSubunit('9.99', field: 'amountFils'),
+          throwsStateError,
+        );
+      },
+    );
+  });
+
   group('Expense model serialization', () {
     test('fromJson reads legacy joined category and payer profile data', () {
       final expense = Expense.fromJson({
