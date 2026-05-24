@@ -283,10 +283,9 @@ class BalanceCalculator {
 
     for (final s in settlements) {
       if (s.payerParticipantId != null &&
-          settlementAdjustmentMap.containsKey(s.payerParticipantId)) {
-        settlementAdjustmentMap[s.payerParticipantId!] =
-            settlementAdjustmentMap[s.payerParticipantId!]! +
-            s.amount;
+          paidMap.containsKey(s.payerParticipantId)) {
+        paidMap[s.payerParticipantId!] =
+            paidMap[s.payerParticipantId!]! + s.amount;
       }
       if (s.recipientParticipantId != null &&
           settlementAdjustmentMap.containsKey(s.recipientParticipantId)) {

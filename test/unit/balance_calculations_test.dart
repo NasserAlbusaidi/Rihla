@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/trip/models/trip_model.dart';
 
@@ -48,6 +49,27 @@ void main() {
     return balances
         .singleWhere((balance) => balance.participantId == participantId)
         .totalPaid;
+  }
+
+  Decimal netFor(List<UserBalance> balances, String participantId) {
+    return balances
+        .singleWhere((balance) => balance.participantId == participantId)
+        .netBalance;
+  }
+
+  Settlement settlement({
+    required String amount,
+    required String payerId,
+    required String recipientId,
+  }) {
+    return Settlement(
+      id: 'settlement-$payerId-$recipientId-$amount',
+      tripId: 'event-1',
+      payerParticipantId: payerId,
+      recipientParticipantId: recipientId,
+      amount: Decimal.parse(amount),
+      settledAt: DateTime(2026),
+    );
   }
 
   group('BalanceCalculator splitDistribution', () {
@@ -224,6 +246,41 @@ void main() {
         expect(owedFor(balances, 'p1'), Decimal.parse('4.500'));
         expect(owedFor(balances, 'p2'), Decimal.parse('4.500'));
         expect(owedFor(balances, 'p3'), Decimal.zero);
+      },
+    );
+  });
+
+  group('BalanceCalculator settlements', () {
+    final participants = [
+      participant('p1'),
+      participant('p2'),
+      participant('p3'),
+    ];
+
+    test(
+      'totalPaid includes settlement payments made by the participant',
+      () {
+        // p1 pays a 9.000 expense, global split (each owes 3.000).
+        // p2 then settles 3.000 to p1.
+        // After fold: paidFor(p1)=9 (received, not paid); paidFor(p2)=3 (paid
+        // the settlement); paidFor(p3)=0. netBalance unchanged.
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(amount: '9.000', splitMode: null, payerId: 'p1'),
+          ],
+          settlements: [
+            settlement(amount: '3.000', payerId: 'p2', recipientId: 'p1'),
+          ],
+          participants: participants,
+        );
+
+        expect(paidFor(balances, 'p1'), Decimal.parse('9.000'));
+        expect(paidFor(balances, 'p2'), Decimal.parse('3.000'));
+        expect(paidFor(balances, 'p3'), Decimal.zero);
+
+        expect(netFor(balances, 'p1'), Decimal.parse('3.000'));
+        expect(netFor(balances, 'p2'), Decimal.zero);
+        expect(netFor(balances, 'p3'), Decimal.parse('-3.000'));
       },
     );
   });
