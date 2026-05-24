@@ -434,8 +434,16 @@ class BalanceCalculator {
         .where((b) => b.netBalance > Decimal.zero)
         .toList();
 
-    debtors.sort((a, b) => a.netBalance.compareTo(b.netBalance));
-    creditors.sort((a, b) => b.netBalance.compareTo(a.netBalance));
+    debtors.sort((a, b) {
+      final byBalance = a.netBalance.compareTo(b.netBalance);
+      if (byBalance != 0) return byBalance;
+      return a.participantId.compareTo(b.participantId);
+    });
+    creditors.sort((a, b) {
+      final byBalance = b.netBalance.compareTo(a.netBalance);
+      if (byBalance != 0) return byBalance;
+      return a.participantId.compareTo(b.participantId);
+    });
 
     final List<Map<String, dynamic>> settlements = [];
     int i = 0, j = 0;

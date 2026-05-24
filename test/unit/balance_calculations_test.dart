@@ -285,6 +285,58 @@ void main() {
     );
   });
 
+  group('BalanceCalculator.calculateOptimalSettlements', () {
+    test(
+      'equal-balance debtors are matched in deterministic participantId order',
+      () {
+        // p1 is a creditor (+15); p3, p2, p4 are debtors all at -5.
+        // Input order is intentionally non-alphabetical so the test detects
+        // any reliance on insertion order. After the tiebreaker fix the first
+        // settlement must come from p2 (alphabetically first among equal-
+        // balance debtors), not whoever appeared first in the input.
+        final balances = [
+          UserBalance(
+            participantId: 'p1',
+            displayName: 'p1',
+            totalPaid: Decimal.parse('15'),
+            totalOwed: Decimal.zero,
+            netBalance: Decimal.parse('15'),
+          ),
+          UserBalance(
+            participantId: 'p3',
+            displayName: 'p3',
+            totalPaid: Decimal.zero,
+            totalOwed: Decimal.parse('5'),
+            netBalance: Decimal.parse('-5'),
+          ),
+          UserBalance(
+            participantId: 'p2',
+            displayName: 'p2',
+            totalPaid: Decimal.zero,
+            totalOwed: Decimal.parse('5'),
+            netBalance: Decimal.parse('-5'),
+          ),
+          UserBalance(
+            participantId: 'p4',
+            displayName: 'p4',
+            totalPaid: Decimal.zero,
+            totalOwed: Decimal.parse('5'),
+            netBalance: Decimal.parse('-5'),
+          ),
+        ];
+
+        final settlements = BalanceCalculator.calculateOptimalSettlements(
+          balances: balances,
+        );
+
+        expect(settlements.length, 3);
+        expect(settlements[0]['fromUserId'], 'p2');
+        expect(settlements[1]['fromUserId'], 'p3');
+        expect(settlements[2]['fromUserId'], 'p4');
+      },
+    );
+  });
+
   group('BalanceCalculator soft-delete', () {
     final participants = [
       participant('p1'),
