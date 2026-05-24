@@ -349,7 +349,23 @@ class BalanceCalculator {
       );
     }
 
-    return Map<String, Decimal>.from(distribution);
+    // Normalize to OMR precision so sub-fils noise can't survive into the
+    // persistence boundary's truncating toSubunits call. Alphabetically-last
+    // recipient absorbs the remainder, matching the documented invariant for
+    // equal/shares/percent splits (see CLAUDE.md).
+    final sortedRecipients = distribution.keys.toList()..sort();
+    final allocations = <String, Decimal>{};
+    var allocated = Decimal.zero;
+    for (int i = 0; i < sortedRecipients.length; i++) {
+      final recipientId = sortedRecipients[i];
+      final isLast = i == sortedRecipients.length - 1;
+      final value = isLast
+          ? expense.amount - allocated
+          : _toOmaniPrecision(distribution[recipientId]!);
+      allocations[recipientId] = value;
+      allocated += value;
+    }
+    return allocations;
   }
 
   static Map<String, Decimal> _allocatePercent(

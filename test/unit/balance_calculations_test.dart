@@ -161,6 +161,34 @@ void main() {
     });
 
     test(
+      'exact mode normalizes sub-fils precision to OMR scale; alphabetically-last absorbs remainder',
+      () {
+        // The validator's _splitTolerance (0.001) permits sub-fils precision
+        // through; without normalization, the persistence boundary
+        // (MoneySerializer.toSubunits) silently truncates each share's
+        // sub-fils part, so sum(persisted_subunits) drifts from amount.
+        // After fix: each share is rounded to OMR precision (scale 1000),
+        // alphabetically-last absorbs the residual.
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(
+              amount: '10.001',
+              splitMode: SplitMode.exact,
+              splitDistribution: {
+                'p1': Decimal.parse('5.0005'),
+                'p2': Decimal.parse('5.0005'),
+              },
+            ),
+          ],
+          participants: [participant('p1'), participant('p2')],
+        );
+
+        expect(owedFor(balances, 'p1'), Decimal.parse('5.000'));
+        expect(owedFor(balances, 'p2'), Decimal.parse('5.001'));
+      },
+    );
+
+    test(
       'exact mode throws on invalid sum instead of silently rewriting to equal split',
       () {
         // Distribution sums to 9 but expense is 10 -- off by more than the
