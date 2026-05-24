@@ -384,7 +384,10 @@ class BalanceCalculator {
       return _allocateEqual(expense.amount, distribution.keys);
     }
 
-    return _allocateWeighted(expense.amount, distribution, _hundred);
+    // Use the actual sum as denominator (not _hundred) so any slack within
+    // tolerance is distributed proportionally across all recipients, rather
+    // than concentrated on the alphabetically-last participant.
+    return _allocateWeighted(expense.amount, distribution, totalPercent);
   }
 
   static Map<String, Decimal> _allocateWeighted(

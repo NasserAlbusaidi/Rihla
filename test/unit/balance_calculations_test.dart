@@ -258,6 +258,44 @@ void main() {
     });
 
     test(
+      'percent mode distributes slack proportionally instead of dumping on alphabetically-last',
+      () {
+        // p3 typed 40.001 (typo); sum = 100.001, within tolerance. Without
+        // the fix, p1 and p2 receive exactly 30.000 each and p3 absorbs the
+        // -0.001 slack as 40.000. After the fix, each recipient's weight is
+        // normalized against the actual total (100.001), so the over-sum
+        // shrinks all three shares proportionally; p3's truncation still
+        // ends up as remainder-absorbing because they sort alphabetically
+        // last, but the slack is shared rather than concentrated.
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(
+              amount: '100.000',
+              splitMode: SplitMode.percent,
+              splitDistribution: {
+                'p1': Decimal.parse('30.000'),
+                'p2': Decimal.parse('30.000'),
+                'p3': Decimal.parse('40.001'),
+              },
+            ),
+          ],
+          participants: [
+            participant('p1'),
+            participant('p2'),
+            participant('p3'),
+          ],
+        );
+
+        // p1 and p2 were 30% of an effective 100.001 -> 29.99970... -> 29.999
+        // after OMR precision truncation. p3 (alphabetically last) absorbs
+        // the rounding remainder so sum == 100.000 exactly.
+        expect(owedFor(balances, 'p1'), Decimal.parse('29.999'));
+        expect(owedFor(balances, 'p2'), Decimal.parse('29.999'));
+        expect(owedFor(balances, 'p3'), Decimal.parse('40.002'));
+      },
+    );
+
+    test(
       'percent mode falls back to equal split across distribution keys on invalid sum',
       () {
         final balances = BalanceCalculator.calculateBalances(
