@@ -161,26 +161,29 @@ void main() {
     });
 
     test(
-      'exact mode falls back to equal split across distribution keys on invalid sum',
+      'exact mode throws on invalid sum instead of silently rewriting to equal split',
       () {
-        final balances = BalanceCalculator.calculateBalances(
-          expenses: [
-            expense(
-              amount: '10.000',
-              splitMode: SplitMode.exact,
-              splitDistribution: {
-                'p1': Decimal.parse('3.000'),
-                'p2': Decimal.parse('3.000'),
-                'p3': Decimal.parse('3.000'),
-              },
-            ),
-          ],
-          participants: participants,
+        // Distribution sums to 9 but expense is 10 -- off by more than the
+        // tolerance. The editor validates this upstream; if a persisted
+        // expense ever diverges, we surface the discrepancy loudly instead
+        // of replacing the user's intent with an equal split.
+        expect(
+          () => BalanceCalculator.calculateBalances(
+            expenses: [
+              expense(
+                amount: '10.000',
+                splitMode: SplitMode.exact,
+                splitDistribution: {
+                  'p1': Decimal.parse('3.000'),
+                  'p2': Decimal.parse('3.000'),
+                  'p3': Decimal.parse('3.000'),
+                },
+              ),
+            ],
+            participants: participants,
+          ),
+          throwsStateError,
         );
-
-        expect(owedFor(balances, 'p1'), Decimal.parse('3.333'));
-        expect(owedFor(balances, 'p2'), Decimal.parse('3.333'));
-        expect(owedFor(balances, 'p3'), Decimal.parse('3.334'));
       },
     );
 

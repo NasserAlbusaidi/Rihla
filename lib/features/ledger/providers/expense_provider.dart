@@ -343,10 +343,10 @@ class BalanceCalculator {
     );
 
     if ((total - expense.amount).abs() > _splitTolerance) {
-      debugPrint(
-        'Invalid exact split for expense ${expense.id}; falling back to equal split.',
+      throw StateError(
+        'Invalid exact split for expense ${expense.id}: '
+        'distribution sums to $total but amount is ${expense.amount}.',
       );
-      return _allocateEqual(expense.amount, distribution.keys);
     }
 
     return Map<String, Decimal>.from(distribution);
