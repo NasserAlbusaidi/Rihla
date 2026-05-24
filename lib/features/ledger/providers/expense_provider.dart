@@ -189,6 +189,7 @@ class BalanceCalculator {
 
     // Process each expense
     for (final expense in expenses) {
+      if (expense.isDeleted) continue;
       final payerId = expense.payerParticipantId;
 
       // Track what payer paid

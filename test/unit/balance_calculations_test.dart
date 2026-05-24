@@ -22,6 +22,7 @@ void main() {
     String payerId = 'p1',
     ExpenseScope scope = ExpenseScope.global,
     List<String>? customSplitParticipants,
+    bool isDeleted = false,
   }) {
     return Expense(
       id: 'expense-$amount-${splitMode?.storageKey ?? 'legacy'}',
@@ -33,6 +34,7 @@ void main() {
       splitMode: splitMode,
       splitDistribution: splitDistribution,
       createdAt: DateTime(2026),
+      isDeleted: isDeleted,
     );
   }
 
@@ -40,6 +42,12 @@ void main() {
     return balances
         .singleWhere((balance) => balance.participantId == participantId)
         .totalOwed;
+  }
+
+  Decimal paidFor(List<UserBalance> balances, String participantId) {
+    return balances
+        .singleWhere((balance) => balance.participantId == participantId)
+        .totalPaid;
   }
 
   group('BalanceCalculator splitDistribution', () {
@@ -216,6 +224,43 @@ void main() {
         expect(owedFor(balances, 'p1'), Decimal.parse('4.500'));
         expect(owedFor(balances, 'p2'), Decimal.parse('4.500'));
         expect(owedFor(balances, 'p3'), Decimal.zero);
+      },
+    );
+  });
+
+  group('BalanceCalculator soft-delete', () {
+    final participants = [
+      participant('p1'),
+      participant('p2'),
+      participant('p3'),
+    ];
+
+    test(
+      'isDeleted expenses do not contribute to totalPaid or totalOwed',
+      () {
+        // One deleted expense (should be ignored) + one live expense
+        // (should split equally three ways at 1.000 each).
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(
+              amount: '9.000',
+              splitMode: null,
+              payerId: 'p1',
+              isDeleted: true,
+            ),
+            expense(
+              amount: '3.000',
+              splitMode: null,
+              payerId: 'p1',
+            ),
+          ],
+          participants: participants,
+        );
+
+        expect(paidFor(balances, 'p1'), Decimal.parse('3.000'));
+        expect(owedFor(balances, 'p1'), Decimal.parse('1.000'));
+        expect(owedFor(balances, 'p2'), Decimal.parse('1.000'));
+        expect(owedFor(balances, 'p3'), Decimal.parse('1.000'));
       },
     );
   });
