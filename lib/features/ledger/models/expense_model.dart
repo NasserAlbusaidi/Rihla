@@ -356,32 +356,6 @@ class Expense {
   }
 }
 
-/// Parse a persisted money/share value that *must* represent an integer
-/// count of subunits, into an int. Throws [StateError] on any fractional
-/// input. Accepts [int], [Decimal], [num], or a stringified [Decimal] for
-/// Firestore round-trip flexibility.
-///
-/// Use this at every cache/Firestore read boundary instead of an ad-hoc
-/// `.toInt()` cast: a doc that ever roundtrips a money column as a
-/// fractional double (`9.99` instead of integer fils `999`) would otherwise
-/// silently truncate to `9`, corrupting money math with no signal.
-int parsePersistedSubunit(Object? value, {required String field}) {
-  if (value is int) return value;
-  if (value == null) {
-    throw StateError('Expected integer subunits for $field, got null');
-  }
-  final asDecimal = value is Decimal
-      ? value
-      : Decimal.parse(value.toString());
-  final asInt = asDecimal.toBigInt().toInt();
-  if (Decimal.fromInt(asInt) != asDecimal) {
-    throw StateError(
-      'Expected integer subunits for $field, got fractional value: $value',
-    );
-  }
-  return asInt;
-}
-
 /// Balance summary for a user
 class UserBalance {
   final String participantId;
