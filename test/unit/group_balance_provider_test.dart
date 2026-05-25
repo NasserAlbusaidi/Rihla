@@ -462,6 +462,98 @@ void main() {
       // totalSpent = 15.000 + 25.500 + 9.500 = 50.000
       expect(data.totalSpent, equals(Decimal.parse('50.000')));
     });
+
+    test(
+      'perEventBreakdown nets sum to zero per event when a former actor settles',
+      () async {
+        // Fix [3] regression at site #6 (_buildPerEventBreakdown). Before
+        // the fix, the breakdown used event.participantIds only, so a
+        // former-actor settlement payer's contribution was dropped from
+        // the per-event net while the recipient's adjustment still applied.
+        const groupId = 'group-1';
+        final event = _makeEvent(
+          id: 'event-a',
+          groupId: groupId,
+          participantIds: ['alice', 'bob'],
+          participantNames: {'alice': 'Alice', 'bob': 'Bob'},
+        );
+        final expenses = [
+          _makeExpense(
+            id: 'exp-1',
+            payerParticipantId: 'alice',
+            amount: Decimal.parse('30.000'),
+            tripId: 'event-a',
+          ),
+        ];
+        // event-scoped (not the helper's default 'group')
+        final settlements = [
+          Settlement(
+            id: 's1',
+            tripId: 'event-a',
+            payerParticipantId: 'charlie',
+            recipientParticipantId: 'alice',
+            amount: Decimal.parse('5.000'),
+            payerName: 'Charlie',
+            recipientName: 'Alice',
+            settledAt: DateTime(2025, 1, 2),
+            scope: 'event',
+          ),
+        ];
+        final members = [
+          _makeMember(userId: 'alice', groupId: groupId, displayName: 'Alice'),
+          _makeMember(userId: 'bob', groupId: groupId, displayName: 'Bob'),
+        ];
+
+        final container = ProviderContainer(
+          overrides: [
+            groupEventsProvider(
+              groupId,
+            ).overrideWith((_) => Stream.value([event])),
+            groupMembersProvider(
+              groupId,
+            ).overrideWith((_) => Stream.value(members)),
+            eventExpensesProvider((
+              groupId: groupId,
+              eventId: 'event-a',
+            )).overrideWith((_) => Stream.value(expenses)),
+            eventSettlementsProvider((
+              groupId: groupId,
+              eventId: 'event-a',
+            )).overrideWith((_) => Stream.value(settlements)),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pumpUntilData(container, groupId);
+
+        final data = container
+            .read(groupBalancesProvider(groupId))
+            .valueOrNull!;
+
+        // breakdown: uid -> eventId -> netBalance
+        final perEventNetForEventA = <String, Decimal>{};
+        for (final entry in data.perEventBreakdown.entries) {
+          final net = entry.value['event-a'];
+          if (net != null) perEventNetForEventA[entry.key] = net;
+        }
+        final sum = perEventNetForEventA.values.fold(
+          Decimal.zero,
+          (acc, v) => acc + v,
+        );
+        expect(
+          sum,
+          Decimal.zero,
+          reason:
+              'per-event breakdown sum(netBalance) must be 0 even when a '
+              'former-actor settlement is part of the event',
+        );
+        expect(
+          perEventNetForEventA.keys.toSet(),
+          {'alice', 'bob', 'charlie'},
+          reason: 'charlie (former actor) must appear in the breakdown',
+        );
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------

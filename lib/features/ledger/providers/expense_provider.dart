@@ -8,6 +8,9 @@ import '../../../core/services/money_serializer.dart';
 import '../../../core/services/cache/settlement_cache_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
+import '../../groups/providers/group_provider.dart';
+import '../../groups/services/event_participant_resolver.dart';
+import '../../groups/services/member_name_resolver.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
@@ -135,21 +138,28 @@ final eventBalancesProvider = Provider.family<
   final expenses = expensesAsync.valueOrNull ?? [];
   final settlements = settlementsAsync.valueOrNull ?? [];
 
-  // Derive participants from event data (no SQLite needed)
-  final participants = params.event.participantIds.map((id) {
-    return Participant(
-      id: id,
-      tripId: params.event.id,
-      role: ParticipantRole.member,
-      joinedAt: params.event.createdAt,
-      displayName: params.event.participantNames[id],
-    );
-  }).toList();
+  // Union participants with any former financial actor (Fix [3]). Without
+  // this, settlements involving UIDs not in event.participantIds drop the
+  // payer's contribution and break sum(netBalance) == 0 at the per-event view.
+  final members = ref.watch(groupMembersProvider(params.eventRef.groupId))
+      .valueOrNull ?? const [];
+  final resolution = buildEventParticipants(
+    event: params.event,
+    expenses: expenses,
+    settlements: settlements,
+    resolveDisplay: (uid, {String? fallbackName}) =>
+        MemberNameResolver.resolveEventScoped(
+          uid: uid,
+          event: params.event,
+          members: members,
+          fallbackName: fallbackName,
+        ),
+  );
 
   final balances = BalanceCalculator.calculateBalances(
     expenses: expenses,
     settlements: settlements,
-    participants: participants,
+    participants: resolution.participants,
   );
 
   return AsyncValue.data(balances);

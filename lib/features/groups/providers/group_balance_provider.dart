@@ -7,8 +7,9 @@ import '../../events/providers/event_provider.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
-import '../../trip/models/trip_model.dart';
 import '../models/group_activity_log_model.dart';
+import '../models/group_member_model.dart';
+import '../services/event_participant_resolver.dart';
 import '../services/group_activity_service.dart';
 import '../services/group_settlement_service.dart';
 import '../services/member_name_resolver.dart';
@@ -212,55 +213,35 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
   final totalOwedPerUid = <String, Decimal>{};
   final netBalancePerUid = <String, Decimal>{};
   final allMemberIds = members.map((m) => m.userId).toSet();
-  final liveMemberIds = members
-      .where((m) => !m.isTombstone)
-      .map((m) => m.userId)
-      .toSet();
-  final allFormerFinancialActorsSeen = <String>{};
 
   for (final event in events) {
     final eventExpenses = expensesByEvent[event.id] ?? const <Expense>[];
     final eventSettlements =
         eventSettlementsByEvent[event.id] ?? const <Settlement>[];
-    final eventFinancialUids = <String>{
-      for (final expense in eventExpenses) expense.payerParticipantId,
-      for (final settlement in eventSettlements) ...[
-        if (settlement.payerParticipantId != null)
-          settlement.payerParticipantId!,
-        if (settlement.recipientParticipantId != null)
-          settlement.recipientParticipantId!,
-      ],
-    };
-    final eventLocalFormerActors = eventFinancialUids.difference(liveMemberIds);
-    allFormerFinancialActorsSeen.addAll(eventLocalFormerActors);
 
-    final eventParticipantUids = <String>{
-      ...event.participantIds,
-      ...eventLocalFormerActors,
-    };
-    if (eventParticipantUids.isEmpty) continue;
-
-    final eventParticipants = eventParticipantUids.map((uid) {
-      final display = MemberNameResolver.resolveGroupScoped(
-        uid: uid,
-        members: members,
-        fallbackName: uidToFallbackName[uid],
-      );
-      return Participant(
-        id: uid,
-        tripId: event.id,
-        role: ParticipantRole.member,
-        joinedAt: event.createdAt,
-        // Formatted for display. Raw names are exposed through memberRawNames
-        // so write paths never persist the former-member suffix.
-        displayName: MemberNameResolver.format(display),
-      );
-    }).toList();
+    // Fix [3]: union event roster with every UID that touches money in this
+    // event (expense payer + customSplit + splitDistribution.keys + settlement
+    // payer/recipient). The inline union this replaced missed split recipients
+    // and used the wrong (`difference(liveMemberIds)`) inclusion filter.
+    final resolution = buildEventParticipants(
+      event: event,
+      expenses: eventExpenses,
+      settlements: eventSettlements,
+      resolveDisplay: (uid, {String? fallbackName}) =>
+          MemberNameResolver.resolveGroupScoped(
+            uid: uid,
+            members: members,
+            // Event-derived names (collected at line 170 above) are higher
+            // confidence than per-row financial fallbacks — prefer them.
+            fallbackName: uidToFallbackName[uid] ?? fallbackName,
+          ),
+    );
+    if (resolution.participants.isEmpty) continue;
 
     final eventBalances = BalanceCalculator.calculateBalances(
       expenses: eventExpenses,
       settlements: eventSettlements,
-      participants: eventParticipants,
+      participants: resolution.participants,
     );
 
     for (final balance in eventBalances) {
@@ -303,9 +284,11 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     }
   }
 
+  // The helper-driven per-event loop now populates totalPaid/Owed/Net for
+  // every financial actor (including formers), so the explicit
+  // allFormerFinancialActorsSeen set the previous union carried is redundant.
   final allUids = <String>{
     ...allMemberIds,
-    ...allFormerFinancialActorsSeen,
     ...totalPaidPerUid.keys,
     ...totalOwedPerUid.keys,
     ...netBalancePerUid.keys,
@@ -329,10 +312,14 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     );
   }).toList();
 
-  // Step 7: Compute per-event breakdown (RESEARCH Pattern 4). This drill-down
-  // intentionally keeps using event.participantIds only; aggregate balances
-  // above are the authoritative settle-up participant set.
-  final perEventBreakdown = _buildPerEventBreakdown(events, ref, groupId);
+  // Step 7: Per-event breakdown (RESEARCH Pattern 4). Uses the same union
+  // helper so per-event nets sum to zero when former actors are involved.
+  final perEventBreakdown = _buildPerEventBreakdown(
+    events,
+    ref,
+    groupId,
+    members,
+  );
 
   final memberNames = <String, String>{};
   final memberRawNames = <String, String>{};
@@ -364,9 +351,9 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
 ///
 /// Returns: memberId → { eventId → netBalance }
 ///
-/// For each event, participants are derived from [Event.participantIds] and
-/// [Event.participantNames] (UID-based per D-04). Only events with at least
-/// one participant are included.
+/// Per-event participants include former financial actors via
+/// [buildEventParticipants] (Fix [3]) so per-event nets sum to zero when a
+/// settlement involves someone outside the event roster.
 ///
 /// This function intentionally calls [ref.watch] — it is only ever called from
 /// within the [groupBalancesProvider] Provider.family body where this is safe.
@@ -374,6 +361,7 @@ Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
   List<Event> events,
   Ref ref,
   String groupId,
+  List<GroupMember> members,
 ) {
   final breakdown = <String, Map<String, Decimal>>{};
 
@@ -384,25 +372,24 @@ Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
     final settlements =
         ref.watch(eventSettlementsProvider(eventRef)).valueOrNull ?? [];
 
-    // Build participants for this event only (UID-based per D-04)
-    final participants = event.participantIds
-        .map(
-          (uid) => Participant(
-            id: uid,
-            tripId: event.id,
-            role: ParticipantRole.member,
-            joinedAt: event.createdAt,
-            displayName: event.participantNames[uid],
+    final resolution = buildEventParticipants(
+      event: event,
+      expenses: expenses,
+      settlements: settlements,
+      resolveDisplay: (uid, {String? fallbackName}) =>
+          MemberNameResolver.resolveGroupScoped(
+            uid: uid,
+            members: members,
+            fallbackName: fallbackName,
           ),
-        )
-        .toList();
+    );
 
-    if (participants.isEmpty) continue;
+    if (resolution.participants.isEmpty) continue;
 
     final eventBalances = BalanceCalculator.calculateBalances(
       expenses: expenses,
       settlements: settlements,
-      participants: participants,
+      participants: resolution.participants,
     );
 
     for (final b in eventBalances) {

@@ -18,8 +18,10 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
+import '../../groups/services/event_participant_resolver.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../ledger/models/expense_model.dart';
+import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
@@ -107,6 +109,7 @@ class _Content extends ConsumerWidget {
     final eventRef = (groupId: groupId, eventId: eventId);
     final currentUid = ref.watch(currentUserIdProvider);
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+    final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
     final balancesAsync = ref.watch(
       eventBalancesProvider((eventRef: eventRef, event: event)),
     );
@@ -114,17 +117,34 @@ class _Content extends ConsumerWidget {
         ref.watch(groupMembersProvider(groupId)).valueOrNull ?? [];
 
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
+    final settlements =
+        settlementsAsync.valueOrNull ?? const <Settlement>[];
     final balances = balancesAsync.valueOrNull ?? const <UserBalance>[];
-    final participantDisplayNames = <String, String>{
-      for (final uid in event.participantIds)
-        uid: MemberNameResolver.format(
+
+    // Fix [3]: union event roster with former financial actors so the roster
+    // strip and display-name map include UIDs that show up only in
+    // expenses/settlements. Without this, a former-member settlement payer
+    // is invisible in the strip even though the post-fix `balances` includes
+    // their row.
+    final resolution = buildEventParticipants(
+      event: event,
+      expenses: expenses,
+      settlements: settlements,
+      resolveDisplay: (uid, {String? fallbackName}) =>
           MemberNameResolver.resolveEventScoped(
             uid: uid,
             event: event,
             members: groupMembers,
+            fallbackName: fallbackName,
           ),
-        ),
+    );
+    final participantDisplayNames = <String, String>{
+      for (final entry in resolution.displays.entries)
+        entry.key: MemberNameResolver.format(entry.value),
     };
+    final rosterUids = resolution.participants
+        .map((p) => p.id)
+        .toList(growable: false);
 
     final total = expenses.fold<Decimal>(
       Decimal.zero,
@@ -230,7 +250,7 @@ class _Content extends ConsumerWidget {
           padding: const EdgeInsetsDirectional.fromSTEB(0, 24, 0, 32),
           sliver: SliverToBoxAdapter(
             child: _RosterStrip(
-              event: event,
+              rosterUids: rosterUids,
               participantDisplayNames: participantDisplayNames,
               balances: balances,
               currentUid: currentUid,
@@ -983,7 +1003,7 @@ class _DashedBorderPainter extends CustomPainter {
 
 class _RosterStrip extends StatelessWidget {
   const _RosterStrip({
-    required this.event,
+    required this.rosterUids,
     required this.participantDisplayNames,
     required this.balances,
     required this.currentUid,
@@ -991,7 +1011,10 @@ class _RosterStrip extends StatelessWidget {
     required this.onPersonTap,
   });
 
-  final Event event;
+  /// Union of `event.participantIds` and former financial actors (Fix [3]).
+  /// Drives count, others-count, and per-card iteration so former actors
+  /// render alongside current participants.
+  final List<String> rosterUids;
   final Map<String, String> participantDisplayNames;
   final List<UserBalance> balances;
   final String? currentUid;
@@ -1001,11 +1024,10 @@ class _RosterStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final count = event.participantIds.length;
+    final count = rosterUids.length;
     final balanceByUid = {for (final b in balances) b.participantId: b};
 
-    final othersCount =
-        currentUid != null && event.participantIds.contains(currentUid)
+    final othersCount = currentUid != null && rosterUids.contains(currentUid)
         ? count - 1
         : count;
 
@@ -1044,10 +1066,10 @@ class _RosterStrip extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: event.participantIds.length,
+            itemCount: rosterUids.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
-              final uid = event.participantIds[i];
+              final uid = rosterUids[i];
               final isMe = uid == currentUid;
               final name =
                   participantDisplayNames[uid] ?? context.l10n.activitySomeone;

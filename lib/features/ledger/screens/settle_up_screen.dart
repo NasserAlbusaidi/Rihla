@@ -13,10 +13,10 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
+import '../../groups/services/event_participant_resolver.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../groups/widgets/record_payment_sheet.dart';
 import '../../groups/widgets/settle_up_page_body.dart';
-import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../providers/expense_provider.dart';
 
@@ -92,21 +92,6 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final groupMembers =
         ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ?? [];
 
-    final participants = event.participantIds.map((id) {
-      final display = MemberNameResolver.resolveEventScoped(
-        uid: id,
-        event: event,
-        members: groupMembers,
-      );
-      return Participant(
-        id: id,
-        tripId: event.id,
-        role: ParticipantRole.member,
-        joinedAt: event.createdAt,
-        displayName: MemberNameResolver.format(display),
-      );
-    }).toList();
-
     return Scaffold(
       key: LedgerKeys.settleUpScreen,
       backgroundColor: context.colors.scaffoldBackground,
@@ -119,6 +104,29 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                 data: (expenses) {
                   final settlements = settlementsAsync.valueOrNull ?? const [];
 
+                  // Fix [3]: union event roster with former financial actors.
+                  // The helper's `displays` map feeds both userDisplayNames
+                  // (for chip rendering) and userRawNames (which is then
+                  // persisted into NEW settlement docs via
+                  // SettleUpPageBody.onRecord → addSettlement payerName /
+                  // recipientName). The previous code re-called
+                  // resolveEventScoped without the helper's fallback names,
+                  // which produced "Former member" for pure orphans and
+                  // persisted that literal string.
+                  final resolution = buildEventParticipants(
+                    event: event,
+                    expenses: expenses,
+                    settlements: settlements,
+                    resolveDisplay: (uid, {String? fallbackName}) =>
+                        MemberNameResolver.resolveEventScoped(
+                          uid: uid,
+                          event: event,
+                          members: groupMembers,
+                          fallbackName: fallbackName,
+                        ),
+                  );
+                  final participants = resolution.participants;
+
                   final balances = BalanceCalculator.calculateBalances(
                     expenses: expenses,
                     settlements: settlements,
@@ -127,14 +135,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
 
                   final userDisplayNames = <String, String>{};
                   final userRawNames = <String, String>{};
-                  for (final uid in event.participantIds) {
-                    final display = MemberNameResolver.resolveEventScoped(
-                      uid: uid,
-                      event: event,
-                      members: groupMembers,
+                  for (final entry in resolution.displays.entries) {
+                    userDisplayNames[entry.key] = MemberNameResolver.format(
+                      entry.value,
                     );
-                    userDisplayNames[uid] = MemberNameResolver.format(display);
-                    userRawNames[uid] = display.rawName;
+                    userRawNames[entry.key] = entry.value.rawName;
                   }
 
                   final optimalSettlements =

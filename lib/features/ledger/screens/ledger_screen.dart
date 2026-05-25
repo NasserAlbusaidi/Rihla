@@ -17,8 +17,8 @@ import '../../events/providers/event_provider.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
+import '../../groups/services/event_participant_resolver.dart';
 import '../../groups/services/member_name_resolver.dart';
-import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
@@ -132,20 +132,23 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final participants = event.participantIds.map((id) {
-      final display = MemberNameResolver.resolveEventScoped(
-        uid: id,
-        event: event,
-        members: groupMembers,
-      );
-      return Participant(
-        id: id,
-        tripId: event.id,
-        role: ParticipantRole.member,
-        joinedAt: event.createdAt,
-        displayName: MemberNameResolver.format(display),
-      );
-    }).toList();
+    // Union event roster with former financial actors (Fix [3]) so per-event
+    // sum(netBalance) == 0 when a settlement involves a UID not in the event
+    // roster. Helper handles split recipients, custom-split participants,
+    // and fallback names harvested from expense/settlement payerName fields.
+    final resolution = buildEventParticipants(
+      event: event,
+      expenses: expenses,
+      settlements: settlements,
+      resolveDisplay: (uid, {String? fallbackName}) =>
+          MemberNameResolver.resolveEventScoped(
+            uid: uid,
+            event: event,
+            members: groupMembers,
+            fallbackName: fallbackName,
+          ),
+    );
+    final participants = resolution.participants;
     final currentPid = event.participantIds.contains(currentUserId)
         ? currentUserId
         : null;
