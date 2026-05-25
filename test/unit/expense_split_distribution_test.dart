@@ -65,25 +65,6 @@ void main() {
         expect(roundTrip.splitDistribution, distributionFor(mode));
       });
 
-      test('toJson/fromJson round-trips ${mode.storageKey}', () {
-        final expense = buildExpense(
-          splitMode: mode,
-          splitDistribution: distributionFor(mode),
-        );
-
-        final json = expense.toJson();
-
-        expect(json['split_mode'], mode.storageKey);
-        expect(json['split_distribution'], persistedDistributionFor(mode));
-
-        final roundTrip = Expense.fromJson({
-          'id': expense.id,
-          'created_at': expense.createdAt.toIso8601String(),
-          ...json,
-        });
-        expect(roundTrip.splitMode, mode);
-        expect(roundTrip.splitDistribution, distributionFor(mode));
-      });
     }
 
     test('copyWith preserves, updates, and clears split fields', () {
