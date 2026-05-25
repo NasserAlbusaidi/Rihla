@@ -115,9 +115,18 @@ String? _encodeSplitDistribution(Expense expense) {
   final distribution = expense.splitDistribution;
   if (mode == null || distribution == null) return null;
 
+  assert(
+    expense.currency == 'OMR',
+    'ExpenseCacheRepository persists splitDistribution as integer subunits '
+    'with no currency column; the decode path hardcodes OMR. Caching '
+    'currency=${expense.currency} for expense ${expense.id} would silently '
+    'round-trip as OMR. V1 ships OMR-only; multi-currency cluster (deferred) '
+    'will add the column and symmetric currency-aware decode.',
+  );
+
   final encoded = {
     for (final entry in distribution.entries)
-      entry.key: _encodeSplitValue(entry.value, mode, expense.currency),
+      entry.key: _encodeSplitValue(entry.value, mode),
   };
   return jsonEncode(encoded);
 }
@@ -141,9 +150,11 @@ Map<String, Decimal>? _decodeSplitDistribution(Object? raw, SplitMode? mode) {
   return decoded.isEmpty ? null : decoded;
 }
 
-int _encodeSplitValue(Decimal value, SplitMode mode, String currency) {
+// Symmetric encode/decode: both hardcode OMR. The cache schema has no
+// currency column; _encodeSplitDistribution's assert pins the contract.
+int _encodeSplitValue(Decimal value, SplitMode mode) {
   return switch (mode) {
-    SplitMode.exact => MoneySerializer.toSubunits(value, currency),
+    SplitMode.exact => MoneySerializer.toSubunits(value, 'OMR'),
     SplitMode.percent => (value * Decimal.fromInt(1000)).toBigInt().toInt(),
     SplitMode.shares || SplitMode.equally => value.toBigInt().toInt(),
   };

@@ -6,6 +6,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/core/services/cache/expense_cache_repository.dart';
 import 'package:safar/core/services/local_database.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -87,6 +88,37 @@ void main() {
         expect(result.first.id, equals('e-42'));
         expect(result.first.amount, equals(Decimal.parse('42.500')));
       });
+
+      test(
+        'asserts OMR-only currency when expense has a splitDistribution '
+        '(cache schema does not persist currency; V1 OMR-only)',
+        () async {
+          // The cache row stores splitDistribution as integer subunits with
+          // no currency column. The decode path hardcodes OMR. Caching a
+          // USD expense with a splitDistribution would silently round-trip
+          // as OMR fils — half the system writes cents, half reads fils.
+          // The encode-side assertion makes the asymmetry loud.
+          final usdExpense = Expense(
+            id: 'e-usd',
+            tripId: 'trip-1',
+            payerParticipantId: 'payer-1',
+            amount: Decimal.parse('10.00'),
+            currency: 'USD',
+            scope: ExpenseScope.global,
+            splitMode: SplitMode.exact,
+            splitDistribution: {
+              'payer-1': Decimal.parse('5.00'),
+              'p2': Decimal.parse('5.00'),
+            },
+            createdAt: DateTime(2026, 1, 1),
+          );
+
+          expect(
+            () => repo.cacheExpenses('trip-1', [usdExpense]),
+            throwsA(isA<AssertionError>()),
+          );
+        },
+      );
 
       test('replaces existing entries on conflict (upsert)', () async {
         final original = buildExpense(
