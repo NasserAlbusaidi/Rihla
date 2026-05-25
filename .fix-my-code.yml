@@ -1,0 +1,3 @@
+test_cmd: flutter test
+lint_cmd: flutter analyze
+build_cmd: flutter analyze
