@@ -161,14 +161,13 @@ void main() {
     });
 
     test(
-      'exact mode normalizes sub-fils precision to OMR scale; alphabetically-last absorbs remainder',
+      'exact mode preserves user-typed sub-fils values when sum matches amount',
       () {
-        // The validator's _splitTolerance (0.001) permits sub-fils precision
-        // through; without normalization, the persistence boundary
-        // (MoneySerializer.toSubunits) silently truncates each share's
-        // sub-fils part, so sum(persisted_subunits) drifts from amount.
-        // After fix: each share is rounded to OMR precision (scale 1000),
-        // alphabetically-last absorbs the residual.
+        // User typed two equal sub-fils shares that sum exactly to amount.
+        // The function trusts the validated values — no per-share truncation,
+        // no last-absorbs-remainder. The in-memory aggregation may carry
+        // sub-fils precision; truncation happens at the persist boundary
+        // (MoneySerializer.toSubunits), not in allocation.
         final balances = BalanceCalculator.calculateBalances(
           expenses: [
             expense(
@@ -183,8 +182,72 @@ void main() {
           participants: [participant('p1'), participant('p2')],
         );
 
-        expect(owedFor(balances, 'p1'), Decimal.parse('5.000'));
-        expect(owedFor(balances, 'p2'), Decimal.parse('5.001'));
+        expect(owedFor(balances, 'p1'), Decimal.parse('5.0005'));
+        expect(owedFor(balances, 'p2'), Decimal.parse('5.0005'));
+      },
+    );
+
+    test(
+      'exact mode keeps explicit-zero recipient at zero, even with sub-fils peers',
+      () {
+        // Regression: pre-fix, p3 (alphabetically last) absorbed the residual
+        // from _toOmaniPrecision truncating p1 and p2's sub-fils digits,
+        // ending up owing 0.001 OMR despite explicitly typing 0.0000.
+        // After fix: p3 stays at 0 (their typed intent); no surprise debt.
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(
+              amount: '10.000',
+              splitMode: SplitMode.exact,
+              splitDistribution: {
+                'alice': Decimal.parse('5.0001'),
+                'bob': Decimal.parse('4.9999'),
+                'carol': Decimal.parse('0.0000'),
+              },
+            ),
+          ],
+          participants: [
+            participant('alice'),
+            participant('bob'),
+            participant('carol'),
+          ],
+        );
+
+        expect(owedFor(balances, 'alice'), Decimal.parse('5.0001'));
+        expect(owedFor(balances, 'bob'), Decimal.parse('4.9999'));
+        expect(owedFor(balances, 'carol'), Decimal.zero);
+      },
+    );
+
+    test(
+      'exact mode redistributes within-tolerance residual to largest non-zero recipient (not alphabetically-last zero)',
+      () {
+        // User typed values summing to 9.9991 (0.0009 short of amount, within
+        // _splitTolerance). The residual goes to the largest non-zero share
+        // (alice, 5.0000) — NOT to carol (alphabetically last but typed zero).
+        // This keeps explicit-zero shares stable while preserving sum-to-amount.
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(
+              amount: '10.000',
+              splitMode: SplitMode.exact,
+              splitDistribution: {
+                'alice': Decimal.parse('5.0000'),
+                'bob': Decimal.parse('4.9991'),
+                'carol': Decimal.parse('0.0000'),
+              },
+            ),
+          ],
+          participants: [
+            participant('alice'),
+            participant('bob'),
+            participant('carol'),
+          ],
+        );
+
+        expect(owedFor(balances, 'alice'), Decimal.parse('5.0009'));
+        expect(owedFor(balances, 'bob'), Decimal.parse('4.9991'));
+        expect(owedFor(balances, 'carol'), Decimal.zero);
       },
     );
 

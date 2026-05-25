@@ -349,22 +349,28 @@ class BalanceCalculator {
       );
     }
 
-    // Normalize to OMR precision so sub-fils noise can't survive into the
-    // persistence boundary's truncating toSubunits call. Alphabetically-last
-    // recipient absorbs the remainder, matching the documented invariant for
-    // equal/shares/percent splits (see CLAUDE.md).
-    final sortedRecipients = distribution.keys.toList()..sort();
-    final allocations = <String, Decimal>{};
-    var allocated = Decimal.zero;
-    for (int i = 0; i < sortedRecipients.length; i++) {
-      final recipientId = sortedRecipients[i];
-      final isLast = i == sortedRecipients.length - 1;
-      final value = isLast
-          ? expense.amount - allocated
-          : _toOmaniPrecision(distribution[recipientId]!);
-      allocations[recipientId] = value;
-      allocated += value;
+    // Exact mode trusts user-typed values: no per-share OMR truncation, no
+    // alphabetically-last absorbs-remainder. That invariant belongs to
+    // equal/shares/percent where the user gave WEIGHTS, not amounts.
+    // Persist boundary handles subunit truncation separately.
+    final residual = expense.amount - total;
+    if (residual == Decimal.zero) {
+      return Map<String, Decimal>.from(distribution);
     }
+
+    // Tolerance gap (|residual| <= _splitTolerance) — distribute to the
+    // largest non-zero recipient so a recipient who explicitly typed 0
+    // stays at 0. Falls back to first key if every entry is zero (only
+    // possible when expense.amount itself is within tolerance of zero).
+    final allocations = Map<String, Decimal>.from(distribution);
+    final absorberEntry = distribution.entries
+        .where((e) => e.value > Decimal.zero)
+        .fold<MapEntry<String, Decimal>?>(
+          null,
+          (best, e) => best == null || e.value > best.value ? e : best,
+        );
+    final absorberId = absorberEntry?.key ?? distribution.keys.first;
+    allocations[absorberId] = allocations[absorberId]! + residual;
     return allocations;
   }
 
