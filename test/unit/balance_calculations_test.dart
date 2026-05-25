@@ -258,15 +258,27 @@ void main() {
     });
 
     test(
-      'percent mode distributes slack proportionally instead of dumping on alphabetically-last',
+      'percent mode scales each share against actual sum (over-sum proportional, remainder still last-absorbed)',
       () {
-        // p3 typed 40.001 (typo); sum = 100.001, within tolerance. Without
-        // the fix, p1 and p2 receive exactly 30.000 each and p3 absorbs the
-        // -0.001 slack as 40.000. After the fix, each recipient's weight is
-        // normalized against the actual total (100.001), so the over-sum
-        // shrinks all three shares proportionally; p3's truncation still
-        // ends up as remainder-absorbing because they sort alphabetically
-        // last, but the slack is shared rather than concentrated.
+        // Two distinct mechanisms — separated here because conflating them
+        // misled an earlier reading of this test.
+        //
+        //   1. Over-sum scaling: the denominator in _allocateWeighted is the
+        //      ACTUAL typed total (100.001 here), not the nominal _hundred.
+        //      Every non-last share is shrunk proportionally: typed 30%
+        //      → (100 * 30) / 100.001 = 29.99970... → 29.999 after OMR
+        //      precision truncation. The pre-fix code used _hundred as the
+        //      denominator and gave p1, p2 their typed 30.000 exactly,
+        //      dumping the entire -0.001 slack on p3 as 40.000.
+        //   2. Rounding-remainder absorption: alphabetically-last still
+        //      receives `amount - sum(others)`. After scaling, the residual
+        //      is +0.002 (100 - 29.999 - 29.999), so p3's allocation is
+        //      40.002 — slightly more than typed (40.001). This concentration
+        //      is intentional and matches CLAUDE.md's documented invariant
+        //      for equal/shares/percent splits.
+        //
+        // The fix made the over-sum distribution proportional. The remainder
+        // concentration is unchanged.
         final balances = BalanceCalculator.calculateBalances(
           expenses: [
             expense(
@@ -286,9 +298,7 @@ void main() {
           ],
         );
 
-        // p1 and p2 were 30% of an effective 100.001 -> 29.99970... -> 29.999
-        // after OMR precision truncation. p3 (alphabetically last) absorbs
-        // the rounding remainder so sum == 100.000 exactly.
+        // Pre-fix would have produced 30.000 / 30.000 / 40.000.
         expect(owedFor(balances, 'p1'), Decimal.parse('29.999'));
         expect(owedFor(balances, 'p2'), Decimal.parse('29.999'));
         expect(owedFor(balances, 'p3'), Decimal.parse('40.002'));
