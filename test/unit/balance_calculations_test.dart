@@ -252,6 +252,39 @@ void main() {
     );
 
     test(
+      'shares and percent modes assert OMR-only currency (V1 ships OMR; multi-currency cluster deferred)',
+      () {
+        // _allocateWeighted routes through _toOmaniPrecision, which
+        // hardcodes 'OMR'. Calling it on a non-OMR expense would silently
+        // produce wrong-precision intermediates. The assert pins the
+        // constraint loudly in debug mode until the multi-currency
+        // cluster lands.
+        final usdExpense = Expense(
+          id: 'usd-shares',
+          tripId: 'event-1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('10.00'),
+          currency: 'USD',
+          scope: ExpenseScope.global,
+          splitMode: SplitMode.shares,
+          splitDistribution: {
+            'p1': Decimal.fromInt(1),
+            'p2': Decimal.fromInt(1),
+          },
+          createdAt: DateTime(2026),
+        );
+
+        expect(
+          () => BalanceCalculator.calculateBalances(
+            expenses: [usdExpense],
+            participants: [participant('p1'), participant('p2')],
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+      },
+    );
+
+    test(
       'exact mode throws on invalid sum instead of silently rewriting to equal split',
       () {
         // Distribution sums to 9 but expense is 10 -- off by more than the

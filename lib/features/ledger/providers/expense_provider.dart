@@ -318,6 +318,12 @@ class BalanceCalculator {
     Expense expense,
     Map<String, Decimal> distribution,
   ) {
+    assert(
+      expense.currency == 'OMR',
+      '_allocateShares routes through _toOmaniPrecision which hardcodes OMR. '
+      'V1 ships OMR-only; multi-currency cluster (deferred) will rework this '
+      'path. Got currency=${expense.currency} for expense ${expense.id}.',
+    );
     final totalShares = distribution.values.fold(
       Decimal.zero,
       (sum, value) => sum + value,
@@ -378,6 +384,12 @@ class BalanceCalculator {
     Expense expense,
     Map<String, Decimal> distribution,
   ) {
+    assert(
+      expense.currency == 'OMR',
+      '_allocatePercent routes through _toOmaniPrecision which hardcodes OMR. '
+      'V1 ships OMR-only; multi-currency cluster (deferred) will rework this '
+      'path. Got currency=${expense.currency} for expense ${expense.id}.',
+    );
     final totalPercent = distribution.values.fold(
       Decimal.zero,
       (sum, value) => sum + value,
