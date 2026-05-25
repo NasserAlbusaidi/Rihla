@@ -162,7 +162,7 @@ final eventBalancesProvider = Provider.family<
 /// Balance calculation engine
 class BalanceCalculator {
   static final Decimal _splitTolerance = Decimal.parse('0.001');
-  static final Decimal _hundred = Decimal.fromInt(100);
+  static final Decimal _percentScale = Decimal.fromInt(100);
 
   /// Calculate balances with proper scope handling
   ///
@@ -377,14 +377,14 @@ class BalanceCalculator {
       (sum, value) => sum + value,
     );
 
-    if ((totalPercent - _hundred).abs() > _splitTolerance) {
+    if ((totalPercent - _percentScale).abs() > _splitTolerance) {
       debugPrint(
         'Invalid percent split for expense ${expense.id}; falling back to equal split.',
       );
       return _allocateEqual(expense.amount, distribution.keys);
     }
 
-    // Use the actual sum as denominator (not _hundred) so any slack within
+    // Use the actual sum as denominator (not _percentScale) so any slack within
     // tolerance is distributed proportionally across all recipients, rather
     // than concentrated on the alphabetically-last participant.
     return _allocateWeighted(expense.amount, distribution, totalPercent);
