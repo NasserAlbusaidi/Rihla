@@ -677,5 +677,42 @@ void main() {
       final total = BalanceCalculator.calculateTotalExpenses(expenses);
       expect(total, Decimal.parse('33.333'));
     });
+
+    test('Soft-deleted expenses are excluded from total', () {
+      final expenses = [
+        Expense(
+          id: 'e1',
+          tripId: 't1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('40.000'),
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026),
+        ),
+        Expense(
+          id: 'e2-deleted',
+          tripId: 't1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('500.000'),
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026),
+          isDeleted: true,
+          deletedAt: DateTime(2026, 1, 2),
+        ),
+        Expense(
+          id: 'e3',
+          tripId: 't1',
+          payerParticipantId: 'p2',
+          amount: Decimal.parse('10.000'),
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026),
+        ),
+      ];
+
+      final total = BalanceCalculator.calculateTotalExpenses(expenses);
+      expect(total, Decimal.parse('50.000'),
+          reason:
+              'Soft-deleted expense (500.000) must not contribute; matches '
+              'sibling calculateBalances which already filters isDeleted.');
+    });
   });
 }

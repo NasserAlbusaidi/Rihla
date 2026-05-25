@@ -503,6 +503,8 @@ class BalanceCalculator {
   }
 
   static Decimal calculateTotalExpenses(List<Expense> expenses) {
-    return expenses.fold(Decimal.zero, (sum, e) => sum + e.amount);
+    return expenses
+        .where((e) => !e.isDeleted)
+        .fold(Decimal.zero, (sum, e) => sum + e.amount);
   }
 }
