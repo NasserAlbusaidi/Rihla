@@ -152,6 +152,13 @@ class BalanceCalculator {
     for (final expense in expenses) {
       final payerId = expense.payerParticipantId;
 
+      // Quantize allocations to this expense's own currency precision.
+      // Unknown/garbage currency (untrusted Firestore data) falls back to OMR
+      // so calculateBalances never throws (Issue #47).
+      final currency = MoneySerializer.isSupported(expense.currency)
+          ? expense.currency
+          : 'OMR';
+
       // Track what payer paid
       if (paidMap.containsKey(payerId)) {
         paidMap[payerId] = paidMap[payerId]! + expense.amount;
@@ -164,9 +171,10 @@ class BalanceCalculator {
           distribution != null &&
           distribution.isNotEmpty) {
         final allocations = switch (splitMode) {
-          SplitMode.shares => _allocateShares(expense, distribution),
-          SplitMode.exact => _allocateExact(expense, distribution),
-          SplitMode.percent => _allocatePercent(expense, distribution),
+          SplitMode.shares => _allocateShares(expense, distribution, currency),
+          SplitMode.exact => _allocateExact(expense, distribution, currency),
+          SplitMode.percent =>
+            _allocatePercent(expense, distribution, currency),
           SplitMode.equally => <String, Decimal>{},
         };
 
@@ -215,7 +223,7 @@ class BalanceCalculator {
       if (splitCount == 0) continue;
 
       final perHead = (expense.amount / Decimal.fromInt(splitCount)).toDecimal(
-        scaleOnInfinitePrecision: 3,
+        scaleOnInfinitePrecision: MoneySerializer.fractionDigits(currency),
       );
 
       // Remainder-safe distribution: assign truncated perHead to all
@@ -278,6 +286,7 @@ class BalanceCalculator {
   static Map<String, Decimal> _allocateShares(
     Expense expense,
     Map<String, Decimal> distribution,
+    String currency,
   ) {
     final totalShares = distribution.values.fold(
       Decimal.zero,
@@ -288,15 +297,21 @@ class BalanceCalculator {
       debugPrint(
         'Invalid shares split for expense ${expense.id}; falling back to equal split.',
       );
-      return _allocateEqual(expense.amount, distribution.keys);
+      return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
-    return _allocateWeighted(expense.amount, distribution, totalShares);
+    return _allocateWeighted(
+      expense.amount,
+      distribution,
+      totalShares,
+      currency,
+    );
   }
 
   static Map<String, Decimal> _allocateExact(
     Expense expense,
     Map<String, Decimal> distribution,
+    String currency,
   ) {
     final total = distribution.values.fold(
       Decimal.zero,
@@ -307,7 +322,7 @@ class BalanceCalculator {
       debugPrint(
         'Invalid exact split for expense ${expense.id}; falling back to equal split.',
       );
-      return _allocateEqual(expense.amount, distribution.keys);
+      return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
     return Map<String, Decimal>.from(distribution);
@@ -316,6 +331,7 @@ class BalanceCalculator {
   static Map<String, Decimal> _allocatePercent(
     Expense expense,
     Map<String, Decimal> distribution,
+    String currency,
   ) {
     final totalPercent = distribution.values.fold(
       Decimal.zero,
@@ -326,16 +342,17 @@ class BalanceCalculator {
       debugPrint(
         'Invalid percent split for expense ${expense.id}; falling back to equal split.',
       );
-      return _allocateEqual(expense.amount, distribution.keys);
+      return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
-    return _allocateWeighted(expense.amount, distribution, _hundred);
+    return _allocateWeighted(expense.amount, distribution, _hundred, currency);
   }
 
   static Map<String, Decimal> _allocateWeighted(
     Decimal amount,
     Map<String, Decimal> weights,
     Decimal denominator,
+    String currency,
   ) {
     final sortedRecipients = weights.keys.toList()..sort();
     final allocations = <String, Decimal>{};
@@ -346,10 +363,11 @@ class BalanceCalculator {
       final isLast = i == sortedRecipients.length - 1;
       final allocation = isLast
           ? amount - allocated
-          : _toOmaniPrecision(
+          : _toCurrencyPrecision(
               ((amount * weights[recipientId]!) / denominator).toDecimal(
                 scaleOnInfinitePrecision: 10,
               ),
+              currency,
             );
       allocations[recipientId] = allocation;
       allocated += allocation;
@@ -358,23 +376,26 @@ class BalanceCalculator {
     return allocations;
   }
 
-  static Decimal _toOmaniPrecision(Decimal value) {
+  /// Quantize [value] to [currency]'s subunit precision by round-tripping
+  /// through integer subunits (OMR→3dp, USD→2dp, JPY→0dp). (Issue #47)
+  static Decimal _toCurrencyPrecision(Decimal value, String currency) {
     return MoneySerializer.fromSubunits(
-      MoneySerializer.toSubunits(value, 'OMR'),
-      'OMR',
+      MoneySerializer.toSubunits(value, currency),
+      currency,
     );
   }
 
   static Map<String, Decimal> _allocateEqual(
     Decimal amount,
     Iterable<String> recipientIds,
+    String currency,
   ) {
     final sortedRecipients = recipientIds.toList()..sort();
     final splitCount = sortedRecipients.length;
     if (splitCount == 0) return {};
 
     final perHead = (amount / Decimal.fromInt(splitCount)).toDecimal(
-      scaleOnInfinitePrecision: 3,
+      scaleOnInfinitePrecision: MoneySerializer.fractionDigits(currency),
     );
     final remainder = amount - (perHead * Decimal.fromInt(splitCount));
 
