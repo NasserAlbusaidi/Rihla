@@ -6,8 +6,11 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../firebase_options.dart';
+import '../services/cache_uid_barrier.dart';
+import '../services/firestore_cache_gate.dart';
 
 /// Firebase client configuration and initialization.
 ///
@@ -62,30 +65,75 @@ class FirebaseConfig {
   /// deciding to create a new one. Without this wait, `currentUser`
   /// is null immediately after `initializeApp()` even when a session
   /// IS persisted — causing a new anonymous UID on every restart.
-  static Future<void> ensureAnonymousSession() async {
+  ///
+  /// After the session settles, runs the cold-start cache barrier (#45): if the
+  /// booted UID differs from the last-active UID, or a swap demonstrably
+  /// happened this boot (`internal-error` retry), or an in-session swap left the
+  /// dirty flag set, it clears the Firestore SDK on-device cache BEFORE the
+  /// first read. Skipped via [runCacheBarrier] = false for in-session reauth,
+  /// where `clearPersistence()` would throw on the already-started instance.
+  static Future<void> ensureAnonymousSession({
+    bool runCacheBarrier = true,
+    FirebaseAuth? authOverride,
+    SharedPreferences? prefs,
+    FirestoreCacheGate? cacheGate,
+  }) async {
+    final authInstance = authOverride ?? auth;
+    var swapped = false;
+
     // Wait for auth state restoration from disk (fires once on startup).
-    final restoredUser = await auth.authStateChanges().first;
+    final restoredUser = await authInstance.authStateChanges().first;
     if (restoredUser != null) {
       log('Firebase session restored (uid: ${restoredUser.uid})');
-      await recoverRestoredSessionIfNeeded(
+      swapped = await recoverRestoredSessionIfNeeded(
         verifyToken: () async {
           await restoredUser.getIdToken();
         },
-        signOut: auth.signOut,
-        signInAnonymously: _signInAnonymously,
+        signOut: authInstance.signOut,
+        signInAnonymously: () => _signInAnonymously(authInstance),
       );
-      return;
+    } else {
+      log('No persisted Firebase session — signing in anonymously');
+      await _signInAnonymously(authInstance);
     }
 
-    log('No persisted Firebase session — signing in anonymously');
-    await _signInAnonymously();
+    if (runCacheBarrier) {
+      await _runCacheBarrier(
+        authInstance: authInstance,
+        swapped: swapped,
+        prefs: prefs,
+        cacheGate: cacheGate,
+      );
+    }
   }
 
-  static Future<void> _signInAnonymously() async {
+  /// Clears the Firestore SDK cache before the first read when this boot's UID
+  /// does not own the current cache. The single `clearPersistence()` site (#45);
+  /// legal here because no Firestore read/write has occurred yet this boot.
+  static Future<void> _runCacheBarrier({
+    required FirebaseAuth authInstance,
+    required bool swapped,
+    SharedPreferences? prefs,
+    FirestoreCacheGate? cacheGate,
+  }) async {
+    final uid = authInstance.currentUser?.uid;
+    if (uid == null) {
+      log('Cache barrier skipped — no current uid after session settle');
+      return;
+    }
+    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+    await CacheUidBarrier(
+      prefs: resolvedPrefs,
+      cacheGate: cacheGate ?? FirebaseFirestoreCacheGate(),
+    ).reconcile(uid, forceClear: swapped);
+  }
+
+  static Future<void> _signInAnonymously([FirebaseAuth? authOverride]) async {
+    final authInstance = authOverride ?? auth;
     try {
-      await auth.signInAnonymously();
+      await authInstance.signInAnonymously();
       log(
-        'Firebase anonymous session established (uid: ${auth.currentUser?.uid})',
+        'Firebase anonymous session established (uid: ${authInstance.currentUser?.uid})',
       );
     } on FirebaseAuthException catch (e) {
       log(
