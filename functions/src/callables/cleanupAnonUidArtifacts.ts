@@ -17,7 +17,12 @@ export interface CleanupAnonUidArtifactsInput {
 
 export interface CleanupAnonUidArtifactsOutput {
   groupsProcessed: number;
-  groupsFailed: string[];
+  // String identifiers of the steps that failed during the cascade.
+  // Group failures push the groupId; fcm/joinAttempts failures push the
+  // literal sentinels 'fcm_tokens' / 'joinAttempts'. While this array
+  // is non-empty, the callable refuses to delete the old anon Auth user
+  // or consume the cleanup intent (#46).
+  cascadeFailed: string[];
   authUserDeleted: boolean;
   fcmTokenDeleted: boolean;
   joinAttemptsDeleted: boolean;
@@ -243,7 +248,10 @@ export const cleanupAnonUidArtifacts = onCall<
   CleanupAnonUidArtifactsInput,
   Promise<CleanupAnonUidArtifactsOutput>
 >(
-  { enforceAppCheck: true },
+  // #46: bump timeout + memory so the per-group cascade has 9 min of
+  // headroom on accounts with many groups (default callable timeout is
+  // 60s; default memory 256MiB).
+  { enforceAppCheck: true, timeoutSeconds: 540, memory: '1GiB' },
   async (request: CallableRequest<CleanupAnonUidArtifactsInput>) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign-in required.');
@@ -264,7 +272,7 @@ export const cleanupAnonUidArtifacts = onCall<
       .collection('groups')
       .where('memberIds', 'array-contains', oldUid)
       .get();
-    const groupsFailed: string[] = [];
+    const cascadeFailed: string[] = [];
     let groupsProcessed = 0;
 
     for (const groupSnap of groupSnaps.docs) {
@@ -280,7 +288,7 @@ export const cleanupAnonUidArtifacts = onCall<
           });
         }
       } catch (error) {
-        groupsFailed.push(groupSnap.id);
+        cascadeFailed.push(groupSnap.id);
         logger.error('cleanupAnonUidArtifacts group failed', {
           oldUid,
           newUid,
@@ -290,45 +298,74 @@ export const cleanupAnonUidArtifacts = onCall<
       }
     }
 
-    let authUserDeleted = false;
-    try {
-      await getAuth().deleteUser(oldUid);
-      authUserDeleted = true;
-    } catch (error) {
-      if ((error as { code?: unknown }).code !== 'auth/user-not-found') {
-        throw error;
-      }
-    }
-
+    // #46: fcm/joinAttempts deletes MUST run before the Auth-delete gate so
+    // identity residue is scrubbed even when a partial-cascade retry is
+    // expected, and so failures of those steps participate in the gate.
     const fcmTokenRef = db.doc(`fcm_tokens/${oldUid}`);
     const fcmTokenSnap = await fcmTokenRef.get();
-    const fcmTokenDeleted = fcmTokenSnap.exists;
-    if (fcmTokenDeleted) {
-      await fcmTokenRef.delete();
-      logger.info('cleanupAnonUidArtifacts fcm token deleted', {
-        oldUid,
-        newUid,
-      });
+    let fcmTokenDeleted = false;
+    if (fcmTokenSnap.exists) {
+      try {
+        await fcmTokenRef.delete();
+        fcmTokenDeleted = true;
+        logger.info('cleanupAnonUidArtifacts fcm token deleted', {
+          oldUid,
+          newUid,
+        });
+      } catch (error) {
+        cascadeFailed.push('fcm_tokens');
+        logger.error('cleanupAnonUidArtifacts fcm token delete failed', {
+          oldUid,
+          newUid,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     const joinAttemptsRef = db.doc(`joinAttempts/${oldUid}`);
     const joinAttemptsSnap = await joinAttemptsRef.get();
-    const joinAttemptsDeleted = joinAttemptsSnap.exists;
-    if (joinAttemptsDeleted) {
-      await joinAttemptsRef.delete();
-      logger.info('cleanupAnonUidArtifacts join attempts deleted', {
-        oldUid,
-        newUid,
-      });
+    let joinAttemptsDeleted = false;
+    if (joinAttemptsSnap.exists) {
+      try {
+        await joinAttemptsRef.delete();
+        joinAttemptsDeleted = true;
+        logger.info('cleanupAnonUidArtifacts join attempts deleted', {
+          oldUid,
+          newUid,
+        });
+      } catch (error) {
+        cascadeFailed.push('joinAttempts');
+        logger.error('cleanupAnonUidArtifacts join attempts delete failed', {
+          oldUid,
+          newUid,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
-    if (groupsFailed.length === 0) {
+    // #46 P0 fix: while ANY cascade step failed, the old anon Auth user
+    // MUST remain so the client can retry within the 15-min intent
+    // window. Today's pre-fix code unconditionally deleted the Auth
+    // user, stranding Firestore references to a now-non-existent UID.
+    let authUserDeleted = false;
+    if (cascadeFailed.length === 0) {
+      try {
+        await getAuth().deleteUser(oldUid);
+        authUserDeleted = true;
+      } catch (error) {
+        if ((error as { code?: unknown }).code !== 'auth/user-not-found') {
+          throw error;
+        }
+      }
+      // Intent is consumed only on full success; on partial failure the
+      // client retains the bearer secret for retry until the 15-min
+      // code-side expiry (and 1h gcloud TTL backstop).
       await cleanupIntentRef.delete();
     }
 
     return {
       groupsProcessed,
-      groupsFailed,
+      cascadeFailed,
       authUserDeleted,
       fcmTokenDeleted,
       joinAttemptsDeleted,

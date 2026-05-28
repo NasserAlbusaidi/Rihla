@@ -476,7 +476,10 @@ async function deleteDocIfExists(ref: DocumentReference): Promise<boolean> {
 }
 
 export const deleteAccount = onCall<unknown, Promise<DeleteAccountOutput>>(
-  { enforceAppCheck: true },
+  // #46: bump timeout + memory so the per-group cascade has 9 min of
+  // headroom on accounts with many groups (default callable timeout is
+  // 60s; default memory 256MiB).
+  { enforceAppCheck: true, timeoutSeconds: 540, memory: '1GiB' },
   async (request: CallableRequest<unknown>) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign-in required.');
