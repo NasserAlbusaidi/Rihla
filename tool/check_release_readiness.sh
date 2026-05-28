@@ -10,11 +10,19 @@
 #                                      Android-only mode for the current
 #                                      Google Play launch. Unset this when
 #                                      iOS ships.
+#   RIHLA_IOS_SIDELOAD=yes            Skips the iOS associated-domains
+#                                      entitlement assertion while v1.2
+#                                      ships Android-only with the free
+#                                      Apple dev team (see commit a029eb5).
+#                                      Unset this when iOS ships on a paid
+#                                      team and Runner.entitlements is
+#                                      restored.
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 JAVA21_HOME="${JAVA21_HOME:-}"
 FAILURES=0
+export RIHLA_IOS_SIDELOAD="${RIHLA_IOS_SIDELOAD:-yes}"
 
 pass() {
   echo "PASS: $*"

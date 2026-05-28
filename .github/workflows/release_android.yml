@@ -116,6 +116,8 @@ jobs:
         run: npm --prefix functions run test:emulator
 
       - name: Run Tests with Coverage
+        env:
+          RIHLA_IOS_SIDELOAD: 'yes'
         run: |
           rm -f coverage/lcov.info
           flutter test --coverage \

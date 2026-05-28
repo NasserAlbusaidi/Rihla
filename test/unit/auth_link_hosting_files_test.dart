@@ -87,15 +87,24 @@ void main() {
     expect(manifest, contains('android:pathPrefix="/join"'));
   });
 
-  test('iOS entitlements declare Universal Links for auth and invites', () {
-    final entitlements = File(
-      'ios/Runner/Runner.entitlements',
-    ).readAsStringSync();
+  test(
+    'iOS entitlements declare Universal Links for auth and invites',
+    () {
+      final entitlements = File(
+        'ios/Runner/Runner.entitlements',
+      ).readAsStringSync();
 
-    expect(entitlements, contains('com.apple.developer.associated-domains'));
-    expect(entitlements, contains('applinks:rihla-safar.firebaseapp.com'));
-    expect(entitlements, contains('applinks:rihla-safar.web.app'));
-  });
+      expect(entitlements, contains('com.apple.developer.associated-domains'));
+      expect(entitlements, contains('applinks:rihla-safar.firebaseapp.com'));
+      expect(entitlements, contains('applinks:rihla-safar.web.app'));
+    },
+    // Sideload builds (free Apple dev team) cannot use associated-domains;
+    // commit a029eb5 strips the entitlement on purpose. Set RIHLA_IOS_SIDELOAD=yes
+    // to skip this assertion while v1.2 ships Android-only.
+    skip: Platform.environment['RIHLA_IOS_SIDELOAD'] == 'yes'
+        ? 'RIHLA_IOS_SIDELOAD=yes — entitlements intentionally stripped for sideload'
+        : null,
+  );
 
   test('Firebase Hosting rewrites invite links to a browser fallback', () {
     final firebaseJson =
