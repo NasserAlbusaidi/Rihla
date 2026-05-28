@@ -10,6 +10,18 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 
 class _MockUser extends Mock implements firebase_auth.User {}
 
+class _FakeCacheOwnerStore implements CacheOwnerStore {
+  String? ownerUid;
+
+  @override
+  String? readOwnerUid() => ownerUid;
+
+  @override
+  Future<void> saveOwnerUid(String? uid) async {
+    ownerUid = uid;
+  }
+}
+
 firebase_auth.User _userWithUid(String uid) {
   final user = _MockUser();
   when(() => user.uid).thenReturn(uid);
@@ -21,6 +33,8 @@ ProviderContainer _container(Stream<firebase_auth.User?> stream) {
     overrides: [
       authUserChangesProvider.overrideWith((ref) => stream),
       cacheWipeFnProvider.overrideWithValue(() async {}),
+      cacheFileExistsProvider.overrideWithValue(() async => false),
+      cacheOwnerStoreProvider.overrideWithValue(_FakeCacheOwnerStore()),
     ],
   );
   // Force the safe-UID pipeline to subscribe before any controller.add fires —

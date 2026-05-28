@@ -34,47 +34,52 @@ class ExpenseCacheRepository {
   /// persisting in SQLite (see BalanceCacheRepository history — Phase 9 fix).
   ///
   /// Called as a side-effect inside [eventExpensesProvider]'s asyncMap (D-15).
-  Future<void> cacheExpenses(String eventId, List<Expense> expenses) async {
+  Future<void> cacheExpenses(
+    String ownerUid,
+    String eventId,
+    List<Expense> expenses,
+  ) async {
     final db = await LocalDatabase.database;
     // NOTE: 'trip_id' column stores eventId (historical schema — do not rename).
-    await db.delete('expenses', where: 'trip_id = ?', whereArgs: [eventId]);
+    await db.delete(
+      'expenses',
+      where: 'owner_uid = ? AND trip_id = ?',
+      whereArgs: [ownerUid, eventId],
+    );
     if (expenses.isEmpty) return;
     final syncedAt = DateTime.now().toIso8601String();
     final batch = db.batch();
     for (final expense in expenses) {
-      batch.insert(
-        'expenses',
-        {
-          'id': expense.id,
-          'trip_id': expense.tripId,
-          'payer_participant_id': expense.payerParticipantId,
-          'amount': expense.amount.toString(),
-          'description': expense.description,
-          'category_id': expense.categoryId,
-          'category_name': expense.categoryName,
-          'scope': expense.scope.value,
-          'sub_group_id': expense.subGroupId,
-          'split_mode': expense.splitMode?.storageKey,
-          'split_distribution': _encodeSplitDistribution(expense),
-          'created_at': expense.createdAt.toIso8601String(),
-          'synced_at': syncedAt,
-          'is_deleted': expense.isDeleted ? 1 : 0,
-          'deleted_at': expense.deletedAt?.toIso8601String(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('expenses', {
+        'id': expense.id,
+        'owner_uid': ownerUid,
+        'trip_id': expense.tripId,
+        'payer_participant_id': expense.payerParticipantId,
+        'amount': expense.amount.toString(),
+        'description': expense.description,
+        'category_id': expense.categoryId,
+        'category_name': expense.categoryName,
+        'scope': expense.scope.value,
+        'sub_group_id': expense.subGroupId,
+        'split_mode': expense.splitMode?.storageKey,
+        'split_distribution': _encodeSplitDistribution(expense),
+        'created_at': expense.createdAt.toIso8601String(),
+        'synced_at': syncedAt,
+        'is_deleted': expense.isDeleted ? 1 : 0,
+        'deleted_at': expense.deletedAt?.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
 
   /// Read non-deleted expenses from SQLite for [eventId].
-  Future<List<Expense>> getExpenses(String eventId) async {
+  Future<List<Expense>> getExpenses(String ownerUid, String eventId) async {
     final db = await LocalDatabase.database;
     // NOTE: 'trip_id' column stores eventId.
     final maps = await db.query(
       'expenses',
-      where: 'trip_id = ? AND is_deleted = 0',
-      whereArgs: [eventId],
+      where: 'owner_uid = ? AND trip_id = ? AND is_deleted = 0',
+      whereArgs: [ownerUid, eventId],
       orderBy: 'created_at DESC',
     );
     return maps.map((map) {
@@ -161,8 +166,10 @@ int _encodeSplitValue(Decimal value, SplitMode mode) {
 }
 
 Decimal _decodeSplitValue(Object? value, SplitMode mode) {
-  final persistedValue =
-      parsePersistedSubunit(value, field: 'cache.splitDistribution');
+  final persistedValue = parsePersistedSubunit(
+    value,
+    field: 'cache.splitDistribution',
+  );
   return switch (mode) {
     SplitMode.exact => MoneySerializer.fromSubunits(persistedValue, 'OMR'),
     SplitMode.percent =>

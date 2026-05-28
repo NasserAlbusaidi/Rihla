@@ -63,17 +63,52 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('cacheSettlements', () {
+      const ownerUid = 'owner-1';
+
       test('writes settlement list to SQLite settlements table', () async {
         final settlements = [
           buildSettlement(id: 's-1', tripId: 'trip-1'),
           buildSettlement(id: 's-2', tripId: 'trip-1', amount: '3.000'),
         ];
 
-        await repo.cacheSettlements('trip-1', settlements);
+        await repo.cacheSettlements(ownerUid, 'trip-1', settlements);
 
-        final result = await repo.getSettlements('trip-1');
+        final result = await repo.getSettlements(ownerUid, 'trip-1');
         expect(result.length, equals(2));
       });
+
+      test('reads only settlements for the requested owner UID', () async {
+        await repo.cacheSettlements('owner-a', 'trip-1', [
+          buildSettlement(id: 's-owner-a', tripId: 'trip-1'),
+        ]);
+        await repo.cacheSettlements('owner-b', 'trip-1', [
+          buildSettlement(id: 's-owner-b', tripId: 'trip-1'),
+        ]);
+
+        final ownerA = await repo.getSettlements('owner-a', 'trip-1');
+        final ownerB = await repo.getSettlements('owner-b', 'trip-1');
+
+        expect(ownerA.map((settlement) => settlement.id), ['s-owner-a']);
+        expect(ownerB.map((settlement) => settlement.id), ['s-owner-b']);
+      });
+
+      test(
+        'empty snapshot replacement does not delete another owner cache',
+        () async {
+          await repo.cacheSettlements('owner-a', 'trip-1', [
+            buildSettlement(id: 's-owner-a', tripId: 'trip-1'),
+          ]);
+          await repo.cacheSettlements('owner-b', 'trip-1', [
+            buildSettlement(id: 's-owner-b', tripId: 'trip-1'),
+          ]);
+
+          await repo.cacheSettlements('owner-a', 'trip-1', []);
+
+          expect(await repo.getSettlements('owner-a', 'trip-1'), isEmpty);
+          final ownerB = await repo.getSettlements('owner-b', 'trip-1');
+          expect(ownerB.map((settlement) => settlement.id), ['s-owner-b']);
+        },
+      );
 
       test('stores correct id and amount', () async {
         final settlement = buildSettlement(
@@ -82,9 +117,9 @@ void main() {
           amount: '7.750',
         );
 
-        await repo.cacheSettlements('trip-1', [settlement]);
+        await repo.cacheSettlements(ownerUid, 'trip-1', [settlement]);
 
-        final result = await repo.getSettlements('trip-1');
+        final result = await repo.getSettlements(ownerUid, 'trip-1');
         expect(result.first.id, equals('s-99'));
         expect(result.first.amount, equals(Decimal.parse('7.750')));
       });
@@ -101,9 +136,9 @@ void main() {
           isDeleted: true,
         );
 
-        await repo.cacheSettlements('trip-1', [active, deleted]);
+        await repo.cacheSettlements(ownerUid, 'trip-1', [active, deleted]);
 
-        final result = await repo.getSettlements('trip-1');
+        final result = await repo.getSettlements(ownerUid, 'trip-1');
         expect(result.length, equals(1));
         expect(result.first.id, equals('s-1'));
       });
@@ -112,18 +147,18 @@ void main() {
         'ghost-row prevention: second cacheSettlements replaces full set',
         () async {
           // First write: 2 settlements
-          await repo.cacheSettlements('trip-1', [
+          await repo.cacheSettlements(ownerUid, 'trip-1', [
             buildSettlement(id: 's-1', tripId: 'trip-1'),
             buildSettlement(id: 's-2', tripId: 'trip-1'),
           ]);
 
           // Second write: only 1 settlement (s-2 was server-deleted)
-          await repo.cacheSettlements('trip-1', [
+          await repo.cacheSettlements(ownerUid, 'trip-1', [
             buildSettlement(id: 's-1', tripId: 'trip-1'),
           ]);
 
           // s-2 must be gone — delete-then-insert prevents ghost row
-          final result = await repo.getSettlements('trip-1');
+          final result = await repo.getSettlements(ownerUid, 'trip-1');
           expect(result.length, equals(1));
           expect(result.first.id, equals('s-1'));
         },
@@ -131,25 +166,27 @@ void main() {
     });
 
     group('getSettlements', () {
+      const ownerUid = 'owner-1';
+
       test('reads settlements from SQLite by eventId', () async {
-        await repo.cacheSettlements('trip-A', [
+        await repo.cacheSettlements(ownerUid, 'trip-A', [
           buildSettlement(id: 's-a1', tripId: 'trip-A'),
         ]);
-        await repo.cacheSettlements('trip-B', [
+        await repo.cacheSettlements(ownerUid, 'trip-B', [
           buildSettlement(id: 's-b1', tripId: 'trip-B'),
         ]);
 
-        final resultA = await repo.getSettlements('trip-A');
+        final resultA = await repo.getSettlements(ownerUid, 'trip-A');
         expect(resultA.length, equals(1));
         expect(resultA.first.id, equals('s-a1'));
 
-        final resultB = await repo.getSettlements('trip-B');
+        final resultB = await repo.getSettlements(ownerUid, 'trip-B');
         expect(resultB.length, equals(1));
         expect(resultB.first.id, equals('s-b1'));
       });
 
       test('returns empty list when no settlements cached', () async {
-        final result = await repo.getSettlements('nonexistent-trip');
+        final result = await repo.getSettlements(ownerUid, 'nonexistent-trip');
         expect(result, isEmpty);
       });
     });

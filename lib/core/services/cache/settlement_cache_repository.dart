@@ -29,44 +29,49 @@ class SettlementCacheRepository {
   ///
   /// Called as a side-effect inside [eventSettlementsProvider]'s asyncMap (D-15).
   Future<void> cacheSettlements(
+    String ownerUid,
     String eventId,
     List<Settlement> settlements,
   ) async {
     final db = await LocalDatabase.database;
     // NOTE: 'trip_id' column stores eventId (historical schema — do not rename).
-    await db.delete('settlements', where: 'trip_id = ?', whereArgs: [eventId]);
+    await db.delete(
+      'settlements',
+      where: 'owner_uid = ? AND trip_id = ?',
+      whereArgs: [ownerUid, eventId],
+    );
     if (settlements.isEmpty) return;
     final syncedAt = DateTime.now().toIso8601String();
     final batch = db.batch();
     for (final s in settlements) {
-      batch.insert(
-        'settlements',
-        {
-          'id': s.id,
-          'trip_id': s.tripId,
-          'payer_participant_id': s.payerParticipantId,
-          'recipient_participant_id': s.recipientParticipantId,
-          'amount': s.amount.toString(),
-          'note': s.note,
-          'created_at': s.settledAt.toIso8601String(),
-          'synced_at': syncedAt,
-          'is_deleted': s.isDeleted ? 1 : 0,
-          'deleted_at': s.deletedAt?.toIso8601String(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('settlements', {
+        'id': s.id,
+        'owner_uid': ownerUid,
+        'trip_id': s.tripId,
+        'payer_participant_id': s.payerParticipantId,
+        'recipient_participant_id': s.recipientParticipantId,
+        'amount': s.amount.toString(),
+        'note': s.note,
+        'created_at': s.settledAt.toIso8601String(),
+        'synced_at': syncedAt,
+        'is_deleted': s.isDeleted ? 1 : 0,
+        'deleted_at': s.deletedAt?.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
 
   /// Read non-deleted settlements from SQLite for [eventId].
-  Future<List<Settlement>> getSettlements(String eventId) async {
+  Future<List<Settlement>> getSettlements(
+    String ownerUid,
+    String eventId,
+  ) async {
     final db = await LocalDatabase.database;
     // NOTE: 'trip_id' column stores eventId.
     final maps = await db.query(
       'settlements',
-      where: 'trip_id = ? AND is_deleted = 0',
-      whereArgs: [eventId],
+      where: 'owner_uid = ? AND trip_id = ? AND is_deleted = 0',
+      whereArgs: [ownerUid, eventId],
       orderBy: 'created_at DESC',
     );
     return maps.map((map) {

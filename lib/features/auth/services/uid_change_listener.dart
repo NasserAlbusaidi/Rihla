@@ -2,17 +2,53 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/local_database.dart';
 import '../providers/auth_provider.dart';
 
 /// Function the listener calls to wipe the local SQLite cache. Indirected
 /// through a provider so tests can override with a fake that records calls.
 typedef CacheWipeFn = Future<void> Function();
+typedef CacheFileExistsFn = Future<bool> Function();
+
+abstract class CacheOwnerStore {
+  String? readOwnerUid();
+  Future<void> saveOwnerUid(String? uid);
+}
+
+class SharedPreferencesCacheOwnerStore implements CacheOwnerStore {
+  SharedPreferencesCacheOwnerStore(this._prefs);
+
+  static const ownerUidKey = 'localCache.ownerUid';
+
+  final SharedPreferences _prefs;
+
+  @override
+  String? readOwnerUid() => _prefs.getString(ownerUidKey);
+
+  @override
+  Future<void> saveOwnerUid(String? uid) async {
+    if (uid == null || uid.isEmpty) {
+      await _prefs.remove(ownerUidKey);
+      return;
+    }
+    await _prefs.setString(ownerUidKey, uid);
+  }
+}
 
 final cacheWipeFnProvider = Provider<CacheWipeFn>((ref) {
   return LocalDatabase.wipeAndReinitialize;
+});
+
+final cacheFileExistsProvider = Provider<CacheFileExistsFn>((ref) {
+  return LocalDatabase.cacheFileExists;
+});
+
+final cacheOwnerStoreProvider = Provider<CacheOwnerStore>((ref) {
+  return SharedPreferencesCacheOwnerStore(ref.watch(sharedPreferencesProvider));
 });
 
 enum UidCacheBarrierPhase { uninitialized, safe, wiping, failed }
@@ -69,7 +105,11 @@ class UidCacheBarrierState {
 
 final uidCacheBarrierProvider =
     StateNotifierProvider<UidCacheBarrierNotifier, UidCacheBarrierState>((ref) {
-      final notifier = UidCacheBarrierNotifier(ref.read(cacheWipeFnProvider));
+      final notifier = UidCacheBarrierNotifier(
+        wipe: ref.read(cacheWipeFnProvider),
+        cacheFileExists: ref.read(cacheFileExistsProvider),
+        ownerStore: ref.read(cacheOwnerStoreProvider),
+      );
       ref.listen<AsyncValue<firebase_auth.User?>>(authUserChangesProvider, (
         previous,
         next,
@@ -86,10 +126,18 @@ final safeUidProvider = Provider<String?>((ref) {
 });
 
 class UidCacheBarrierNotifier extends StateNotifier<UidCacheBarrierState> {
-  UidCacheBarrierNotifier(this._wipe)
-    : super(const UidCacheBarrierState.uninitialized());
+  UidCacheBarrierNotifier({
+    required CacheWipeFn wipe,
+    required CacheFileExistsFn cacheFileExists,
+    required CacheOwnerStore ownerStore,
+  }) : _wipe = wipe,
+       _cacheFileExists = cacheFileExists,
+       _ownerStore = ownerStore,
+       super(const UidCacheBarrierState.uninitialized());
 
   final CacheWipeFn _wipe;
+  final CacheFileExistsFn _cacheFileExists;
+  final CacheOwnerStore _ownerStore;
   var _seenInitial = false;
   String? _lastObservedUid;
   Future<void>? _wipeInFlight;
@@ -98,11 +146,7 @@ class UidCacheBarrierNotifier extends StateNotifier<UidCacheBarrierState> {
     if (!_seenInitial) {
       _seenInitial = true;
       _lastObservedUid = uid;
-      state = UidCacheBarrierState(
-        phase: UidCacheBarrierPhase.safe,
-        safeUid: uid,
-        observedUid: uid,
-      );
+      unawaited(_acceptInitialUid(uid));
       return;
     }
 
@@ -137,15 +181,44 @@ class UidCacheBarrierNotifier extends StateNotifier<UidCacheBarrierState> {
     _wipeInFlight = _wipeForObservedUid(observedUid);
   }
 
+  Future<void> _acceptInitialUid(String? uid) async {
+    try {
+      final persistedUid = _ownerStore.readOwnerUid();
+      final hasCacheFile = await _cacheFileExists();
+      final hasOrphanedCache =
+          uid != null && persistedUid == null && hasCacheFile;
+      final ownerChanged = persistedUid != null && persistedUid != uid;
+
+      if (hasOrphanedCache || ownerChanged) {
+        FirebaseConfig.log(
+          'UidCacheBarrier: cold-start cache owner $persistedUid -> $uid; wiping cache',
+        );
+        _startWipe(previousUid: persistedUid, observedUid: uid);
+        return;
+      }
+
+      await _markSafe(uid);
+    } catch (error, stack) {
+      FirebaseConfig.log(
+        'UidCacheBarrier: cold-start cache ownership check failed',
+        error: error,
+        stackTrace: stack,
+      );
+      if (!mounted) return;
+      state = UidCacheBarrierState(
+        phase: UidCacheBarrierPhase.failed,
+        safeUid: null,
+        observedUid: uid,
+        error: error,
+        stackTrace: stack,
+      );
+    }
+  }
+
   Future<void> _wipeForObservedUid(String? observedUid) async {
     try {
       await _wipe();
-      if (!mounted) return;
-      state = UidCacheBarrierState(
-        phase: UidCacheBarrierPhase.safe,
-        safeUid: observedUid,
-        observedUid: observedUid,
-      );
+      await _markSafe(observedUid);
     } catch (error, stack) {
       FirebaseConfig.log(
         'UidCacheBarrier: cache wipe failed',
@@ -163,6 +236,16 @@ class UidCacheBarrierNotifier extends StateNotifier<UidCacheBarrierState> {
       _wipeInFlight = null;
     }
   }
+
+  Future<void> _markSafe(String? uid) async {
+    await _ownerStore.saveOwnerUid(uid);
+    if (!mounted) return;
+    state = UidCacheBarrierState(
+      phase: UidCacheBarrierPhase.safe,
+      safeUid: uid,
+      observedUid: uid,
+    );
+  }
 }
 
 /// Activates the local-cache UID barrier.
@@ -172,11 +255,11 @@ class UidCacheBarrierNotifier extends StateNotifier<UidCacheBarrierState> {
 /// session, or recovery via email-link) the file must be deleted before
 /// providers serve rows from the previous user.
 ///
-/// First emission is treated as the cold-start baseline — we record the UID
-/// but do not wipe. Any subsequent emission with a different UID triggers
-/// the cache wipe. Identical UIDs (e.g. profile/email mutations from
-/// `linkWithCredential`) are ignored — the UID is preserved through
-/// linking, so cache state remains valid.
+/// First emission is compared with the persisted cache owner and any residual
+/// cache file before being published as safe. Subsequent emissions with a
+/// different UID also trigger the cache wipe. Identical UIDs (e.g.
+/// profile/email mutations from `linkWithCredential`) are ignored — the UID
+/// is preserved through linking, so cache state remains valid.
 final uidChangeListenerProvider = Provider<void>((ref) {
   ref.watch(uidCacheBarrierProvider);
 });

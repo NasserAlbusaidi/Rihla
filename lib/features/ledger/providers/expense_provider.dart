@@ -8,6 +8,7 @@ import '../../../core/services/money_serializer.dart';
 import '../../../core/services/cache/settlement_cache_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
+import '../../auth/services/uid_change_listener.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/services/event_participant_resolver.dart';
 import '../../groups/services/member_name_resolver.dart';
@@ -64,45 +65,48 @@ final eventExpensesProvider = StreamProvider.family<List<Expense>, EventRef>((
 ) {
   final service = ref.read(expenseServiceProvider);
   final cache = ref.read(expenseCacheRepositoryProvider);
-  return service.watchExpenses(eventRef.groupId, eventRef.eventId).asyncMap(
-    (expenses) async {
-      // Side effect: write to SQLite for BalanceCalculator (D-15)
-      // Catch errors — SQLite FK constraints may fail for Firestore-only events
-      // that have no corresponding row in the legacy trips table.
-      try {
-        await cache.cacheExpenses(eventRef.eventId, expenses);
-      } catch (_) {
-        // SQLite cache is non-critical; Firestore is the source of truth
+  final ownerUid = ref.watch(safeUidProvider);
+  return service.watchExpenses(eventRef.groupId, eventRef.eventId).asyncMap((
+    expenses,
+  ) async {
+    // Side effect: write to SQLite for BalanceCalculator (D-15)
+    // Catch errors — SQLite FK constraints may fail for Firestore-only events
+    // that have no corresponding row in the legacy trips table.
+    try {
+      if (ownerUid != null) {
+        await cache.cacheExpenses(ownerUid, eventRef.eventId, expenses);
       }
-      return expenses; // pass through unchanged
-    },
-  );
+    } catch (_) {
+      // SQLite cache is non-critical; Firestore is the source of truth
+    }
+    return expenses; // pass through unchanged
+  });
 });
 
 /// Firestore-backed settlement stream using [EventRef] as the family parameter.
 ///
 /// Includes an [asyncMap] SQLite side-write for BalanceCalculator (D-15).
-final eventSettlementsProvider =
-    StreamProvider.family<List<Settlement>, EventRef>((
+final eventSettlementsProvider = StreamProvider.family<List<Settlement>, EventRef>((
   ref,
   eventRef,
 ) {
   final service = ref.read(settlementServiceProvider);
   final cache = ref.read(settlementCacheRepositoryProvider);
-  return service
-      .watchSettlements(eventRef.groupId, eventRef.eventId)
-      .asyncMap(
-    (settlements) async {
-      // Side effect: write to SQLite for BalanceCalculator (D-15)
-      // Catch errors — SQLite FK constraints may fail for Firestore-only events
-      try {
-        await cache.cacheSettlements(eventRef.eventId, settlements);
-      } catch (_) {
-        // SQLite cache is non-critical; Firestore is the source of truth
+  final ownerUid = ref.watch(safeUidProvider);
+  return service.watchSettlements(eventRef.groupId, eventRef.eventId).asyncMap((
+    settlements,
+  ) async {
+    // Side effect: write to SQLite for BalanceCalculator (D-15)
+    // Catch errors — SQLite FK constraints may fail for Firestore-only events
+    try {
+      if (ownerUid != null) {
+        await cache.cacheSettlements(ownerUid, eventRef.eventId, settlements);
       }
-      return settlements; // pass through unchanged
-    },
-  );
+    } catch (_) {
+      // SQLite cache is non-critical; Firestore is the source of truth
+    }
+    return settlements; // pass through unchanged
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -118,52 +122,61 @@ final eventSettlementsProvider =
 ///
 /// Takes a record `({EventRef eventRef, Event event})` to carry both
 /// the EventRef (for provider lookups) and the Event (for participant data).
-final eventBalancesProvider = Provider.family<
-    AsyncValue<List<UserBalance>>,
-    ({EventRef eventRef, Event event})>((ref, params) {
-  final expensesAsync = ref.watch(eventExpensesProvider(params.eventRef));
-  final settlementsAsync =
-      ref.watch(eventSettlementsProvider(params.eventRef));
+final eventBalancesProvider =
+    Provider.family<
+      AsyncValue<List<UserBalance>>,
+      ({EventRef eventRef, Event event})
+    >((ref, params) {
+      final expensesAsync = ref.watch(eventExpensesProvider(params.eventRef));
+      final settlementsAsync = ref.watch(
+        eventSettlementsProvider(params.eventRef),
+      );
 
-  if (expensesAsync.isLoading || settlementsAsync.isLoading) {
-    if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
-      return const AsyncValue.loading();
-    }
-  }
+      if (expensesAsync.isLoading || settlementsAsync.isLoading) {
+        if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
+          return const AsyncValue.loading();
+        }
+      }
 
-  if (expensesAsync.hasError) {
-    return AsyncValue.error(expensesAsync.error!, expensesAsync.stackTrace!);
-  }
+      if (expensesAsync.hasError) {
+        return AsyncValue.error(
+          expensesAsync.error!,
+          expensesAsync.stackTrace!,
+        );
+      }
 
-  final expenses = expensesAsync.valueOrNull ?? [];
-  final settlements = settlementsAsync.valueOrNull ?? [];
+      final expenses = expensesAsync.valueOrNull ?? [];
+      final settlements = settlementsAsync.valueOrNull ?? [];
 
-  // Union participants with any former financial actor (Fix [3]). Without
-  // this, settlements involving UIDs not in event.participantIds drop the
-  // payer's contribution and break sum(netBalance) == 0 at the per-event view.
-  final members = ref.watch(groupMembersProvider(params.eventRef.groupId))
-      .valueOrNull ?? const [];
-  final resolution = buildEventParticipants(
-    event: params.event,
-    expenses: expenses,
-    settlements: settlements,
-    resolveDisplay: (uid, {String? fallbackName}) =>
-        MemberNameResolver.resolveEventScoped(
-          uid: uid,
-          event: params.event,
-          members: members,
-          fallbackName: fallbackName,
-        ),
-  );
+      // Union participants with any former financial actor (Fix [3]). Without
+      // this, settlements involving UIDs not in event.participantIds drop the
+      // payer's contribution and break sum(netBalance) == 0 at the per-event view.
+      final members =
+          ref
+              .watch(groupMembersProvider(params.eventRef.groupId))
+              .valueOrNull ??
+          const [];
+      final resolution = buildEventParticipants(
+        event: params.event,
+        expenses: expenses,
+        settlements: settlements,
+        resolveDisplay: (uid, {String? fallbackName}) =>
+            MemberNameResolver.resolveEventScoped(
+              uid: uid,
+              event: params.event,
+              members: members,
+              fallbackName: fallbackName,
+            ),
+      );
 
-  final balances = BalanceCalculator.calculateBalances(
-    expenses: expenses,
-    settlements: settlements,
-    participants: resolution.participants,
-  );
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: expenses,
+        settlements: settlements,
+        participants: resolution.participants,
+      );
 
-  return AsyncValue.data(balances);
-});
+      return AsyncValue.data(balances);
+    });
 
 // ---------------------------------------------------------------------------
 // Balance calculation engine (pure function -- in-memory)
@@ -300,8 +313,7 @@ class BalanceCalculator {
       if (s.recipientParticipantId != null &&
           settlementAdjustmentMap.containsKey(s.recipientParticipantId)) {
         settlementAdjustmentMap[s.recipientParticipantId!] =
-            settlementAdjustmentMap[s.recipientParticipantId!]! -
-            s.amount;
+            settlementAdjustmentMap[s.recipientParticipantId!]! - s.amount;
       }
     }
 

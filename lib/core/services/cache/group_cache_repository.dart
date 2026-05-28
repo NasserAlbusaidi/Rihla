@@ -19,39 +19,45 @@ final groupCacheRepositoryProvider = Provider<GroupCacheRepository>(
 /// Owned tables: `groups`, `group_members` (schema version 9).
 class GroupCacheRepository {
   /// Persist [group] to SQLite (insert or replace by PK).
-  Future<void> cacheGroup(Group group) async {
+  Future<void> cacheGroup(String ownerUid, Group group) async {
     final db = await LocalDatabase.database;
-    await db.insert(
-      'groups',
-      group.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('groups', {
+      ...group.toMap(),
+      'owner_uid': ownerUid,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Read all cached groups ordered by creation date (newest first).
-  Future<List<Group>> getCachedGroups() async {
+  Future<List<Group>> getCachedGroups(String ownerUid) async {
     final db = await LocalDatabase.database;
-    final maps = await db.query('groups', orderBy: 'created_at DESC');
+    final maps = await db.query(
+      'groups',
+      where: 'owner_uid = ?',
+      whereArgs: [ownerUid],
+      orderBy: 'created_at DESC',
+    );
     return maps.map(Group.fromMap).toList();
   }
 
   /// Persist a single [member] to SQLite (insert or replace by PK).
-  Future<void> cacheGroupMember(GroupMember member) async {
+  Future<void> cacheGroupMember(String ownerUid, GroupMember member) async {
     final db = await LocalDatabase.database;
-    await db.insert(
-      'group_members',
-      member.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('group_members', {
+      ...member.toMap(),
+      'owner_uid': ownerUid,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Read all cached members for [groupId] ordered by join time (oldest first).
-  Future<List<GroupMember>> getCachedGroupMembers(String groupId) async {
+  Future<List<GroupMember>> getCachedGroupMembers(
+    String ownerUid,
+    String groupId,
+  ) async {
     final db = await LocalDatabase.database;
     final maps = await db.query(
       'group_members',
-      where: 'group_id = ?',
-      whereArgs: [groupId],
+      where: 'owner_uid = ? AND group_id = ?',
+      whereArgs: [ownerUid, groupId],
       orderBy: 'joined_at ASC',
     );
     return maps.map(GroupMember.fromMap).toList();
@@ -62,17 +68,17 @@ class GroupCacheRepository {
   /// Deletes members first (explicit, for future schema resilience), then the
   /// group row. The SQLite schema declares ON DELETE CASCADE but we delete
   /// explicitly here to be safe with any future schema changes.
-  Future<void> deleteGroupCache(String groupId) async {
+  Future<void> deleteGroupCache(String ownerUid, String groupId) async {
     final db = await LocalDatabase.database;
     await db.delete(
       'group_members',
-      where: 'group_id = ?',
-      whereArgs: [groupId],
+      where: 'owner_uid = ? AND group_id = ?',
+      whereArgs: [ownerUid, groupId],
     );
     await db.delete(
       'groups',
-      where: 'id = ?',
-      whereArgs: [groupId],
+      where: 'owner_uid = ? AND id = ?',
+      whereArgs: [ownerUid, groupId],
     );
   }
 }

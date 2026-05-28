@@ -83,5 +83,33 @@ void main() {
       expect(rows, hasLength(1));
       expect(rows.first['name'], 'Test Group');
     });
+
+    test('fresh schema adds owner_uid to every cache table', () async {
+      await LocalDatabase.wipeAndReinitialize();
+      final db = await LocalDatabase.database;
+      const tables = [
+        'trips',
+        'expenses',
+        'settlements',
+        'participants',
+        'activity_logs',
+        'categories',
+        'groups',
+        'group_members',
+        'group_ledger',
+      ];
+
+      for (final table in tables) {
+        final info = await db.rawQuery('PRAGMA table_info($table)');
+        final columns = info.map((row) => row['name'] as String).toList();
+        expect(columns, contains('owner_uid'), reason: '$table owner filter');
+      }
+    });
+
+    test('cacheFileExists reports the recreated cache file', () async {
+      await LocalDatabase.wipeAndReinitialize();
+
+      expect(await LocalDatabase.cacheFileExists(), isTrue);
+    });
   });
 }

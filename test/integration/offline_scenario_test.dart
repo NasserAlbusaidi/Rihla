@@ -53,6 +53,7 @@ void main() {
 
     const groupId = 'grp-offline';
     const eventId = 'evt-offline';
+    const ownerUid = 'test-uid';
 
     // -----------------------------------------------------------------------
     // Scenario 1: expense write -> SQLite side-write verified
@@ -77,10 +78,10 @@ void main() {
         );
 
         // Cache the expense to SQLite — simulating the asyncMap side-write
-        await repo.cacheExpenses(eventId, [expense]);
+        await repo.cacheExpenses(ownerUid, eventId, [expense]);
 
         // Read back from SQLite
-        final cached = await repo.getExpenses(eventId);
+        final cached = await repo.getExpenses(ownerUid, eventId);
 
         // Verify SQLite record has correct Decimal amount matching what was written
         expect(cached.length, equals(1));
@@ -131,12 +132,15 @@ void main() {
         );
 
         // Cache both to SQLite — simulating asyncMap side-writes in production
-        await expenseRepo.cacheExpenses(eventId, [expense]);
-        await settlementRepo.cacheSettlements(eventId, [settlement]);
+        await expenseRepo.cacheExpenses(ownerUid, eventId, [expense]);
+        await settlementRepo.cacheSettlements(ownerUid, eventId, [settlement]);
 
         // Read from SQLite via the new split cache repositories
-        final cachedExpenses = await expenseRepo.getExpenses(eventId);
-        final cachedSettlements = await settlementRepo.getSettlements(eventId);
+        final cachedExpenses = await expenseRepo.getExpenses(ownerUid, eventId);
+        final cachedSettlements = await settlementRepo.getSettlements(
+          ownerUid,
+          eventId,
+        );
 
         // Feed cached data to BalanceCalculator
         final participants = [
@@ -227,10 +231,14 @@ void main() {
         );
 
         // Cache all to SQLite
-        await repo.cacheExpenses(eventId, [expense1, expense2, expense3]);
+        await repo.cacheExpenses(ownerUid, eventId, [
+          expense1,
+          expense2,
+          expense3,
+        ]);
 
         // Read from SQLite
-        final cached = await repo.getExpenses(eventId);
+        final cached = await repo.getExpenses(ownerUid, eventId);
 
         // Verify all 3 are present with correct amounts
         expect(cached.length, equals(3));

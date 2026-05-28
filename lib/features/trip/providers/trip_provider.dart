@@ -20,8 +20,13 @@ final userGroupsForParticipantProvider = Provider<List<String>>((ref) {
 /// @Deprecated('Will be migrated to Firestore stream in 04-05.')
 final tripLogisticsParticipantsProvider =
     StreamProvider.family<List<Participant>, String>((ref, tripId) async* {
+      final ownerUid = ref.watch(currentUserIdProvider);
+      if (ownerUid == null) {
+        yield const <Participant>[];
+        return;
+      }
       final repo = ref.read(participantCacheRepositoryProvider);
-      yield await repo.getCachedParticipants(tripId);
+      yield await repo.getCachedParticipants(ownerUid, tripId);
     });
 
 /// Provider for the current user's participant record in one known event.

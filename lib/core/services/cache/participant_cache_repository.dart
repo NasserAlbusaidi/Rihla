@@ -21,41 +21,46 @@ class ParticipantCacheRepository {
   ///
   /// Deletes existing rows for the trip first, then batch-inserts.
   Future<void> cacheParticipants(
+    String ownerUid,
     String tripId,
     List<Participant> participants,
   ) async {
     final db = await LocalDatabase.database;
-    await db.delete('participants', where: 'trip_id = ?', whereArgs: [tripId]);
+    await db.delete(
+      'participants',
+      where: 'owner_uid = ? AND trip_id = ?',
+      whereArgs: [ownerUid, tripId],
+    );
     if (participants.isEmpty) return;
     final syncedAt = DateTime.now().toIso8601String();
     final batch = db.batch();
     for (final p in participants) {
-      batch.insert(
-        'participants',
-        {
-          'id': p.id,
-          'trip_id': p.tripId,
-          'user_id': p.userId,
-          'role': p.role.value,
-          'display_name': p.displayName,
-          'avatar_url': p.avatarUrl,
-          'is_shadow': p.isShadow ? 1 : 0,
-          'joined_at': p.joinedAt.toIso8601String(),
-          'last_synced_at': syncedAt,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('participants', {
+        'id': p.id,
+        'owner_uid': ownerUid,
+        'trip_id': p.tripId,
+        'user_id': p.userId,
+        'role': p.role.value,
+        'display_name': p.displayName,
+        'avatar_url': p.avatarUrl,
+        'is_shadow': p.isShadow ? 1 : 0,
+        'joined_at': p.joinedAt.toIso8601String(),
+        'last_synced_at': syncedAt,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
 
   /// Read all cached participants for [tripId].
-  Future<List<Participant>> getCachedParticipants(String tripId) async {
+  Future<List<Participant>> getCachedParticipants(
+    String ownerUid,
+    String tripId,
+  ) async {
     final db = await LocalDatabase.database;
     final maps = await db.query(
       'participants',
-      where: 'trip_id = ?',
-      whereArgs: [tripId],
+      where: 'owner_uid = ? AND trip_id = ?',
+      whereArgs: [ownerUid, tripId],
     );
     return maps
         .map(
@@ -69,7 +74,8 @@ class ParticipantCacheRepository {
             displayName: map['display_name'] as String?,
             avatarUrl: map['avatar_url'] as String?,
             isShadow: (map['is_shadow'] as int?) == 1,
-            joinedAt: map['joined_at'] != null &&
+            joinedAt:
+                map['joined_at'] != null &&
                     (map['joined_at'] as String).isNotEmpty
                 ? DateTime.parse(map['joined_at'] as String)
                 : DateTime.now(),

@@ -9,6 +9,20 @@ import 'package:safar/features/auth/services/uid_change_listener.dart';
 
 class _MockUser extends Mock implements firebase_auth.User {}
 
+class _FakeCacheOwnerStore implements CacheOwnerStore {
+  String? ownerUid;
+  final savedOwnerUids = <String?>[];
+
+  @override
+  String? readOwnerUid() => ownerUid;
+
+  @override
+  Future<void> saveOwnerUid(String? uid) async {
+    ownerUid = uid;
+    savedOwnerUids.add(uid);
+  }
+}
+
 firebase_auth.User _userWithUid(String uid) {
   final user = _MockUser();
   when(() => user.uid).thenReturn(uid);
@@ -19,11 +33,19 @@ firebase_auth.User _userWithUid(String uid) {
 ProviderContainer _container({
   required Stream<firebase_auth.User?> userChanges,
   required CacheWipeFn wipe,
+  _FakeCacheOwnerStore? ownerStore,
+  CacheFileExistsFn? cacheFileExists,
 }) {
   final container = ProviderContainer(
     overrides: [
       authUserChangesProvider.overrideWith((ref) => userChanges),
       cacheWipeFnProvider.overrideWithValue(wipe),
+      cacheOwnerStoreProvider.overrideWithValue(
+        ownerStore ?? _FakeCacheOwnerStore(),
+      ),
+      cacheFileExistsProvider.overrideWithValue(
+        cacheFileExists ?? () async => false,
+      ),
     ],
   );
   container.listen<UidCacheBarrierState>(
@@ -39,12 +61,15 @@ void main() {
     late StreamController<firebase_auth.User?> userChanges;
     late int wipeCalls;
     late ProviderContainer container;
+    late _FakeCacheOwnerStore ownerStore;
 
     setUp(() {
       userChanges = StreamController<firebase_auth.User?>.broadcast();
       wipeCalls = 0;
+      ownerStore = _FakeCacheOwnerStore();
       container = _container(
         userChanges: userChanges.stream,
+        ownerStore: ownerStore,
         wipe: () async {
           wipeCalls++;
         },
@@ -57,7 +82,7 @@ void main() {
     });
 
     test(
-      'publishes the first emission as the safe cold-start baseline',
+      'publishes first emission when there is no prior owner and no cache file',
       () async {
         userChanges.add(_userWithUid('uid-1'));
         await pumpEventQueue();
@@ -69,6 +94,84 @@ void main() {
         );
         expect(container.read(safeUidProvider), 'uid-1');
         expect(container.read(uidProvider), 'uid-1');
+        expect(ownerStore.ownerUid, 'uid-1');
+      },
+    );
+
+    test(
+      'wipes before publishing first emission when persisted owner differs',
+      () async {
+        final wipeCompleter = Completer<void>();
+        ownerStore.ownerUid = 'uid-old';
+        container.dispose();
+        container = _container(
+          userChanges: userChanges.stream,
+          ownerStore: ownerStore,
+          cacheFileExists: () async => true,
+          wipe: () {
+            wipeCalls++;
+            return wipeCompleter.future;
+          },
+        );
+
+        userChanges.add(_userWithUid('uid-new'));
+        await pumpEventQueue();
+
+        expect(wipeCalls, 1);
+        expect(
+          container.read(uidCacheBarrierProvider).phase,
+          UidCacheBarrierPhase.wiping,
+        );
+        expect(container.read(safeUidProvider), isNull);
+        expect(ownerStore.ownerUid, 'uid-old');
+
+        wipeCompleter.complete();
+        await pumpEventQueue();
+
+        expect(
+          container.read(uidCacheBarrierProvider).phase,
+          UidCacheBarrierPhase.safe,
+        );
+        expect(container.read(safeUidProvider), 'uid-new');
+        expect(ownerStore.ownerUid, 'uid-new');
+      },
+    );
+
+    test(
+      'wipes before publishing first emission when cache file has no owner',
+      () async {
+        final wipeCompleter = Completer<void>();
+        container.dispose();
+        container = _container(
+          userChanges: userChanges.stream,
+          ownerStore: ownerStore,
+          cacheFileExists: () async => true,
+          wipe: () {
+            wipeCalls++;
+            return wipeCompleter.future;
+          },
+        );
+
+        userChanges.add(_userWithUid('uid-new'));
+        await pumpEventQueue();
+
+        expect(wipeCalls, 1);
+        expect(
+          container.read(uidCacheBarrierProvider).phase,
+          UidCacheBarrierPhase.wiping,
+        );
+        expect(container.read(safeUidProvider), isNull);
+        expect(ownerStore.ownerUid, isNull);
+
+        wipeCompleter.complete();
+        await pumpEventQueue();
+
+        expect(
+          container.read(uidCacheBarrierProvider).phase,
+          UidCacheBarrierPhase.safe,
+        );
+        expect(container.read(safeUidProvider), 'uid-new');
+        expect(ownerStore.ownerUid, 'uid-new');
       },
     );
 
@@ -77,6 +180,7 @@ void main() {
       container.dispose();
       container = _container(
         userChanges: userChanges.stream,
+        ownerStore: ownerStore,
         wipe: () {
           wipeCalls++;
           return wipeCompleter.future;
@@ -115,6 +219,7 @@ void main() {
         var failNext = true;
         container = _container(
           userChanges: userChanges.stream,
+          ownerStore: ownerStore,
           wipe: () async {
             wipeCalls++;
             if (failNext) {
@@ -157,6 +262,7 @@ void main() {
 
       expect(wipeCalls, 0);
       expect(container.read(safeUidProvider), 'uid-1');
+      expect(ownerStore.savedOwnerUids, ['uid-1']);
     });
   });
 }

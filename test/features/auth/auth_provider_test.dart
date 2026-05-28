@@ -4,6 +4,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/auth/services/uid_change_listener.dart';
+
+class _FakeCacheOwnerStore implements CacheOwnerStore {
+  String? ownerUid;
+
+  @override
+  String? readOwnerUid() => ownerUid;
+
+  @override
+  Future<void> saveOwnerUid(String? uid) async {
+    ownerUid = uid;
+  }
+}
+
+List<Override> _cacheBarrierOverrides() {
+  return [
+    cacheWipeFnProvider.overrideWithValue(() async {}),
+    cacheFileExistsProvider.overrideWithValue(() async => false),
+    cacheOwnerStoreProvider.overrideWithValue(_FakeCacheOwnerStore()),
+  ];
+}
 
 void main() {
   group('currentUserProvider', () {
@@ -11,8 +32,7 @@ void main() {
       final user = MockUser(uid: 'u1', isAnonymous: false);
       final container = ProviderContainer(
         overrides: [
-          authStateProvider
-              .overrideWith((_) => Stream<fa.User?>.value(user)),
+          authStateProvider.overrideWith((_) => Stream<fa.User?>.value(user)),
         ],
       );
       addTearDown(container.dispose);
@@ -25,9 +45,7 @@ void main() {
     test('returns null when authStateProvider has no value', () {
       final container = ProviderContainer(
         overrides: [
-          authStateProvider.overrideWith(
-            (_) => const Stream<fa.User?>.empty(),
-          ),
+          authStateProvider.overrideWith((_) => const Stream<fa.User?>.empty()),
         ],
       );
       addTearDown(container.dispose);
@@ -40,26 +58,34 @@ void main() {
       final user = MockUser(uid: 'u42');
       final container = ProviderContainer(
         overrides: [
-          authUserChangesProvider
-              .overrideWith((_) => Stream<fa.User?>.value(user)),
+          authUserChangesProvider.overrideWith(
+            (_) => Stream<fa.User?>.value(user),
+          ),
+          ..._cacheBarrierOverrides(),
         ],
       );
       addTearDown(container.dispose);
 
+      container.listen<String?>(uidProvider, (_, _) {});
       await container.read(authUserChangesProvider.future);
+      await pumpEventQueue();
       expect(container.read(uidProvider), 'u42');
     });
 
     test('returns null when user is null', () async {
       final container = ProviderContainer(
         overrides: [
-          authUserChangesProvider
-              .overrideWith((_) => Stream<fa.User?>.value(null)),
+          authUserChangesProvider.overrideWith(
+            (_) => Stream<fa.User?>.value(null),
+          ),
+          ..._cacheBarrierOverrides(),
         ],
       );
       addTearDown(container.dispose);
 
+      container.listen<String?>(uidProvider, (_, _) {});
       await container.read(authUserChangesProvider.future);
+      await pumpEventQueue();
       expect(container.read(uidProvider), isNull);
     });
   });
@@ -69,8 +95,9 @@ void main() {
       final user = MockUser(isAnonymous: true);
       final container = ProviderContainer(
         overrides: [
-          authUserChangesProvider
-              .overrideWith((_) => Stream<fa.User?>.value(user)),
+          authUserChangesProvider.overrideWith(
+            (_) => Stream<fa.User?>.value(user),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -87,8 +114,9 @@ void main() {
       );
       final container = ProviderContainer(
         overrides: [
-          authUserChangesProvider
-              .overrideWith((_) => Stream<fa.User?>.value(user)),
+          authUserChangesProvider.overrideWith(
+            (_) => Stream<fa.User?>.value(user),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -100,8 +128,9 @@ void main() {
     test('returns null when user is null', () async {
       final container = ProviderContainer(
         overrides: [
-          authUserChangesProvider
-              .overrideWith((_) => Stream<fa.User?>.value(null)),
+          authUserChangesProvider.overrideWith(
+            (_) => Stream<fa.User?>.value(null),
+          ),
         ],
       );
       addTearDown(container.dispose);

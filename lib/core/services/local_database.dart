@@ -8,9 +8,13 @@ class LocalDatabase {
   static Database? _database;
   static Completer<Database>? _initCompleter;
   static const String _databaseName = 'safar_cache.db';
-  static const int _databaseVersion =
-      9; // T4.N expense splits + tombstone group members
+  static const int _databaseVersion = 10; // cache owner isolation
   static String? _databasePathOverride;
+
+  static Future<String> _databasePath() async {
+    final databasesPath = await getDatabasesPath();
+    return _databasePathOverride ?? join(databasesPath, _databaseName);
+  }
 
   /// Get database instance (safe for concurrent access).
   ///
@@ -33,8 +37,7 @@ class LocalDatabase {
 
   /// Initialize the database
   static Future<Database> _initDatabase() async {
-    final databasesPath = await getDatabasesPath();
-    final path = _databasePathOverride ?? join(databasesPath, _databaseName);
+    final path = await _databasePath();
 
     return await openDatabase(
       path,
@@ -50,6 +53,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE trips (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         name TEXT NOT NULL,
         invite_code TEXT NOT NULL,
         leader_id TEXT NOT NULL,
@@ -67,6 +71,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE expenses (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         trip_id TEXT NOT NULL,
         payer_participant_id TEXT NOT NULL,
         amount TEXT NOT NULL,
@@ -89,6 +94,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE settlements (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         trip_id TEXT NOT NULL,
         payer_participant_id TEXT NOT NULL,
         recipient_participant_id TEXT NOT NULL,
@@ -107,6 +113,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE participants (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         trip_id TEXT NOT NULL,
         user_id TEXT,
         role TEXT NOT NULL DEFAULT 'MEMBER',
@@ -123,6 +130,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE activity_logs (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         trip_id TEXT NOT NULL,
         actor_id TEXT,
         target_participant_id TEXT,
@@ -142,6 +150,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE categories (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         trip_id TEXT NOT NULL,
         name TEXT NOT NULL,
         icon TEXT,
@@ -154,6 +163,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE groups (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         name TEXT NOT NULL,
         invite_code TEXT NOT NULL,
         created_by TEXT NOT NULL,
@@ -169,6 +179,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE group_members (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         group_id TEXT NOT NULL,
         user_id TEXT,
         display_name TEXT NOT NULL,
@@ -185,6 +196,7 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE group_ledger (
         id TEXT PRIMARY KEY,
+        owner_uid TEXT,
         group_id TEXT NOT NULL,
         member_id TEXT NOT NULL,
         counterparty_id TEXT NOT NULL,
@@ -200,22 +212,44 @@ class LocalDatabase {
     // Create indexes for faster queries
     await db.execute('CREATE INDEX idx_expenses_trip ON expenses(trip_id)');
     await db.execute(
+      'CREATE INDEX idx_expenses_owner_trip ON expenses(owner_uid, trip_id)',
+    );
+    await db.execute(
       'CREATE INDEX idx_settlements_trip ON settlements(trip_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_settlements_owner_trip ON settlements(owner_uid, trip_id)',
     );
 
     await db.execute(
       'CREATE INDEX idx_participants_trip ON participants(trip_id)',
     );
     await db.execute(
+      'CREATE INDEX idx_participants_owner_trip ON participants(owner_uid, trip_id)',
+    );
+    await db.execute(
       'CREATE INDEX idx_activity_trip ON activity_logs(trip_id)',
     );
+    await db.execute(
+      'CREATE INDEX idx_activity_owner_trip ON activity_logs(owner_uid, trip_id)',
+    );
     await db.execute('CREATE INDEX idx_categories_trip ON categories(trip_id)');
+    await db.execute(
+      'CREATE INDEX idx_categories_owner_trip ON categories(owner_uid, trip_id)',
+    );
     await db.execute('CREATE INDEX idx_groups_invite ON groups(invite_code)');
+    await db.execute('CREATE INDEX idx_groups_owner ON groups(owner_uid)');
     await db.execute(
       'CREATE INDEX idx_group_members_group ON group_members(group_id)',
     );
     await db.execute(
+      'CREATE INDEX idx_group_members_owner_group ON group_members(owner_uid, group_id)',
+    );
+    await db.execute(
       'CREATE INDEX idx_group_ledger_group ON group_ledger(group_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_group_ledger_owner_group ON group_ledger(owner_uid, group_id)',
     );
     await db.execute(
       'CREATE INDEX idx_group_ledger_pair ON group_ledger(group_id, member_id, counterparty_id)',
@@ -493,6 +527,90 @@ class LocalDatabase {
         // group_members with the current schema.
       }
     }
+
+    if (oldVersion < 10) {
+      for (final table in const [
+        'trips',
+        'expenses',
+        'settlements',
+        'participants',
+        'activity_logs',
+        'categories',
+        'groups',
+        'group_members',
+        'group_ledger',
+      ]) {
+        await _addColumnIfMissing(db, table, 'owner_uid TEXT');
+      }
+      await _createIndexIfTableExists(
+        db,
+        'expenses',
+        'CREATE INDEX IF NOT EXISTS idx_expenses_owner_trip ON expenses(owner_uid, trip_id)',
+      );
+      await _createIndexIfTableExists(
+        db,
+        'settlements',
+        'CREATE INDEX IF NOT EXISTS idx_settlements_owner_trip ON settlements(owner_uid, trip_id)',
+      );
+      await _createIndexIfTableExists(
+        db,
+        'participants',
+        'CREATE INDEX IF NOT EXISTS idx_participants_owner_trip ON participants(owner_uid, trip_id)',
+      );
+      await _createIndexIfTableExists(
+        db,
+        'activity_logs',
+        'CREATE INDEX IF NOT EXISTS idx_activity_owner_trip ON activity_logs(owner_uid, trip_id)',
+      );
+      await _createIndexIfTableExists(
+        db,
+        'categories',
+        'CREATE INDEX IF NOT EXISTS idx_categories_owner_trip ON categories(owner_uid, trip_id)',
+      );
+      await _createIndexIfTableExists(
+        db,
+        'groups',
+        'CREATE INDEX IF NOT EXISTS idx_groups_owner ON groups(owner_uid)',
+      );
+      await _createIndexIfTableExists(
+        db,
+        'group_members',
+        'CREATE INDEX IF NOT EXISTS idx_group_members_owner_group ON group_members(owner_uid, group_id)',
+      );
+      await _createIndexIfTableExists(
+        db,
+        'group_ledger',
+        'CREATE INDEX IF NOT EXISTS idx_group_ledger_owner_group ON group_ledger(owner_uid, group_id)',
+      );
+    }
+  }
+
+  static Future<void> _addColumnIfMissing(
+    Database db,
+    String table,
+    String columnDefinition,
+  ) async {
+    try {
+      await db.execute('ALTER TABLE $table ADD COLUMN $columnDefinition');
+    } catch (_) {
+      // Column already exists from fresh-schema or repeated migration paths.
+    }
+  }
+
+  static Future<void> _createIndexIfTableExists(
+    Database db,
+    String table,
+    String statement,
+  ) async {
+    final rows = await db.query(
+      'sqlite_master',
+      columns: const ['name'],
+      where: 'type = ? AND name = ?',
+      whereArgs: ['table', table],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    await db.execute(statement);
   }
 
   /// Close database and reset completer so next access re-initializes.
@@ -513,10 +631,14 @@ class LocalDatabase {
   /// fresh handle so it survives future migrations.
   static Future<void> wipeAndReinitialize() async {
     await close();
-    final databasesPath = await getDatabasesPath();
-    final path = _databasePathOverride ?? join(databasesPath, _databaseName);
+    final path = await _databasePath();
     await deleteDatabase(path);
     await database;
+  }
+
+  /// Whether the local cache file exists on disk.
+  static Future<bool> cacheFileExists() async {
+    return databaseExists(await _databasePath());
   }
 
   /// Override the database path in tests so parallel suites do not share locks.

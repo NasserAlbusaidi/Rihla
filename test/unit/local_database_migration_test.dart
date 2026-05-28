@@ -141,7 +141,137 @@ void main() {
         await tempDir.delete(recursive: true);
       },
     );
+
+    test(
+      'v10 migration adds owner_uid to every existing cache table',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'rihla-owner-migration-',
+        );
+        final legacy = await databaseFactoryFfi.openDatabase(
+          '${tempDir.path}/legacy-owner.db',
+          options: OpenDatabaseOptions(
+            version: 9,
+            onCreate: _createOwnerLegacyTables,
+            onUpgrade: _onUpgrade,
+          ),
+        );
+
+        await _onUpgrade(legacy, 9, 10);
+
+        const tables = [
+          'trips',
+          'expenses',
+          'settlements',
+          'participants',
+          'activity_logs',
+          'categories',
+          'groups',
+          'group_members',
+          'group_ledger',
+        ];
+        for (final table in tables) {
+          final result = await legacy.rawQuery('PRAGMA table_info($table)');
+          final columnNames = result
+              .map((row) => row['name'] as String)
+              .toList();
+          expect(columnNames, contains('owner_uid'), reason: table);
+        }
+        await legacy.close();
+        await tempDir.delete(recursive: true);
+      },
+    );
   });
+}
+
+Future<void> _createOwnerLegacyTables(Database db, int version) async {
+  await db.execute('''
+    CREATE TABLE trips (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      invite_code TEXT NOT NULL,
+      leader_id TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE expenses (
+      id TEXT PRIMARY KEY,
+      trip_id TEXT NOT NULL,
+      payer_participant_id TEXT NOT NULL,
+      amount TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      is_deleted INTEGER DEFAULT 0
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE settlements (
+      id TEXT PRIMARY KEY,
+      trip_id TEXT NOT NULL,
+      payer_participant_id TEXT NOT NULL,
+      recipient_participant_id TEXT NOT NULL,
+      amount TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      is_deleted INTEGER DEFAULT 0
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE participants (
+      id TEXT PRIMARY KEY,
+      trip_id TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'MEMBER',
+      joined_at TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE activity_logs (
+      id TEXT PRIMARY KEY,
+      trip_id TEXT NOT NULL,
+      category TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      log_text TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE categories (
+      id TEXT PRIMARY KEY,
+      trip_id TEXT NOT NULL,
+      name TEXT NOT NULL
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      invite_code TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      member_ids TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE group_members (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      user_id TEXT,
+      display_name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'MEMBER',
+      is_shadow INTEGER NOT NULL DEFAULT 0,
+      is_tombstone INTEGER NOT NULL DEFAULT 0,
+      joined_at TEXT NOT NULL
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE group_ledger (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      member_id TEXT NOT NULL,
+      counterparty_id TEXT NOT NULL,
+      net_amount_subunits INTEGER NOT NULL DEFAULT 0,
+      last_updated_at TEXT NOT NULL
+    )
+  ''');
 }
 
 /// Mirrors LocalDatabase._onCreate for isolated testing
@@ -297,6 +427,26 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
       );
     } catch (_) {
       // Column already exists from current-schema creation paths.
+    }
+  }
+
+  if (oldVersion < 10) {
+    for (final table in const [
+      'trips',
+      'expenses',
+      'settlements',
+      'participants',
+      'activity_logs',
+      'categories',
+      'groups',
+      'group_members',
+      'group_ledger',
+    ]) {
+      try {
+        await db.execute('ALTER TABLE $table ADD COLUMN owner_uid TEXT');
+      } catch (_) {
+        // Column already exists from current-schema creation paths.
+      }
     }
   }
 }

@@ -11,8 +11,7 @@ import '../../../features/activity/models/activity_log_model.dart';
 import '../local_database.dart';
 
 /// Riverpod provider for [ActivityLogCacheRepository].
-final activityLogCacheRepositoryProvider =
-    Provider<ActivityLogCacheRepository>(
+final activityLogCacheRepositoryProvider = Provider<ActivityLogCacheRepository>(
   (ref) => ActivityLogCacheRepository(),
 );
 
@@ -22,44 +21,49 @@ final activityLogCacheRepositoryProvider =
 class ActivityLogCacheRepository {
   /// Persist [logs] for [tripId], replacing the entire snapshot.
   Future<void> cacheActivityLogs(
+    String ownerUid,
     String tripId,
     List<ActivityLog> logs,
   ) async {
     final db = await LocalDatabase.database;
-    await db.delete('activity_logs', where: 'trip_id = ?', whereArgs: [tripId]);
+    await db.delete(
+      'activity_logs',
+      where: 'owner_uid = ? AND trip_id = ?',
+      whereArgs: [ownerUid, tripId],
+    );
     if (logs.isEmpty) return;
     final syncedAt = DateTime.now().toIso8601String();
     final batch = db.batch();
     for (final log in logs) {
-      batch.insert(
-        'activity_logs',
-        {
-          'id': log.id,
-          'trip_id': log.tripId,
-          'actor_id': log.actorId,
-          'target_participant_id': log.targetParticipantId,
-          'category': log.category,
-          'event_type': log.eventType,
-          'log_text': log.logText,
-          'metadata': jsonEncode(log.metadata),
-          'actor_name': log.actorName,
-          'actor_avatar': log.actorAvatar,
-          'created_at': log.createdAt.toIso8601String(),
-          'last_synced_at': syncedAt,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('activity_logs', {
+        'id': log.id,
+        'owner_uid': ownerUid,
+        'trip_id': log.tripId,
+        'actor_id': log.actorId,
+        'target_participant_id': log.targetParticipantId,
+        'category': log.category,
+        'event_type': log.eventType,
+        'log_text': log.logText,
+        'metadata': jsonEncode(log.metadata),
+        'actor_name': log.actorName,
+        'actor_avatar': log.actorAvatar,
+        'created_at': log.createdAt.toIso8601String(),
+        'last_synced_at': syncedAt,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
 
   /// Read cached activity logs for [tripId], newest first, capped at 50.
-  Future<List<ActivityLog>> getCachedActivityLogs(String tripId) async {
+  Future<List<ActivityLog>> getCachedActivityLogs(
+    String ownerUid,
+    String tripId,
+  ) async {
     final db = await LocalDatabase.database;
     final maps = await db.query(
       'activity_logs',
-      where: 'trip_id = ?',
-      whereArgs: [tripId],
+      where: 'owner_uid = ? AND trip_id = ?',
+      whereArgs: [ownerUid, tripId],
       orderBy: 'created_at DESC',
       limit: 50,
     );

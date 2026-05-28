@@ -19,37 +19,42 @@ final categoryCacheRepositoryProvider = Provider<CategoryCacheRepository>(
 class CategoryCacheRepository {
   /// Persist [categories] for [tripId], replacing the entire snapshot.
   Future<void> cacheCategories(
+    String ownerUid,
     String tripId,
     List<ExpenseCategory> categories,
   ) async {
     final db = await LocalDatabase.database;
-    await db.delete('categories', where: 'trip_id = ?', whereArgs: [tripId]);
+    await db.delete(
+      'categories',
+      where: 'owner_uid = ? AND trip_id = ?',
+      whereArgs: [ownerUid, tripId],
+    );
     if (categories.isEmpty) return;
     final syncedAt = DateTime.now().toIso8601String();
     final batch = db.batch();
     for (final cat in categories) {
-      batch.insert(
-        'categories',
-        {
-          'id': cat.id,
-          'trip_id': tripId,
-          'name': cat.name,
-          'icon': cat.icon,
-          'last_synced_at': syncedAt,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('categories', {
+        'id': cat.id,
+        'owner_uid': ownerUid,
+        'trip_id': tripId,
+        'name': cat.name,
+        'icon': cat.icon,
+        'last_synced_at': syncedAt,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
 
   /// Read all cached categories for [tripId].
-  Future<List<ExpenseCategory>> getCachedCategories(String tripId) async {
+  Future<List<ExpenseCategory>> getCachedCategories(
+    String ownerUid,
+    String tripId,
+  ) async {
     final db = await LocalDatabase.database;
     final maps = await db.query(
       'categories',
-      where: 'trip_id = ?',
-      whereArgs: [tripId],
+      where: 'owner_uid = ? AND trip_id = ?',
+      whereArgs: [ownerUid, tripId],
     );
     return maps
         .map(
