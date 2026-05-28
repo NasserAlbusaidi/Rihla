@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -523,6 +524,18 @@ class LocalDatabase {
   static Future<void> setDatabasePathForTesting(String? path) async {
     await close();
     _databasePathOverride = path;
+  }
+
+  /// Returns whether the cache database file exists on disk WITHOUT opening it.
+  ///
+  /// Used by the cold-start cache barrier (issue #45) to detect residual cache
+  /// from a v1.1 install before any provider touches SQLite. Honors
+  /// [_databasePathOverride] so tests see the same file the rest of the class
+  /// would operate on.
+  static Future<bool> cacheFileExists() async {
+    final override = _databasePathOverride;
+    final path = override ?? join(await getDatabasesPath(), _databaseName);
+    return File(path).existsSync();
   }
 
   /// Clear all cached data

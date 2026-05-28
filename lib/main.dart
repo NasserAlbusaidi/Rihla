@@ -18,9 +18,11 @@ import 'core/screens/splash_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
+import 'core/services/local_database.dart';
 import 'core/theme/tokens/color_tokens.dart';
 import 'core/services/app_messenger.dart';
 import 'core/services/deep_link_service.dart';
+import 'features/auth/services/cold_start_cache_barrier.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
@@ -90,7 +92,7 @@ void main() async {
           bundle: SentryAssetBundle(),
           child: ProviderScope(
             overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-            child: const _AuthGate(),
+            child: _AuthGate(prefs: prefs),
           ),
         ),
       );
@@ -98,12 +100,17 @@ void main() async {
   );
 }
 
-/// Gates the app on successful Firebase anonymous auth.
+/// Gates the app on successful Firebase anonymous auth AND the cold-start
+/// cache barrier (issue #45).
 ///
-/// Shows a retry screen if auth fails instead of crashing.
-/// On success, renders [SafarApp]. On retry success, transitions seamlessly.
+/// Shows a retry screen if either step fails instead of crashing. On success,
+/// renders [SafarApp]. The barrier runs strictly after [FirebaseConfig.ensureAnonymousSession]
+/// resolves and strictly before [SafarApp] mounts, which is what guarantees no
+/// cache repo or `asyncMap` side-write executes against the previous identity.
 class _AuthGate extends StatefulWidget {
-  const _AuthGate();
+  const _AuthGate({required this.prefs});
+
+  final SharedPreferences prefs;
 
   @override
   State<_AuthGate> createState() => _AuthGateState();
@@ -115,12 +122,22 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   void initState() {
     super.initState();
-    _authFuture = FirebaseConfig.ensureAnonymousSession();
+    _authFuture = _bootSequence();
+  }
+
+  Future<void> _bootSequence() async {
+    await FirebaseConfig.ensureAnonymousSession();
+    await runColdStartCacheBarrier(
+      prefs: widget.prefs,
+      currentUid: FirebaseConfig.auth.currentUser?.uid,
+      cacheFileExists: LocalDatabase.cacheFileExists,
+      wipe: LocalDatabase.wipeAndReinitialize,
+    );
   }
 
   void _retry() {
     setState(() {
-      _authFuture = FirebaseConfig.ensureAnonymousSession();
+      _authFuture = _bootSequence();
     });
   }
 
