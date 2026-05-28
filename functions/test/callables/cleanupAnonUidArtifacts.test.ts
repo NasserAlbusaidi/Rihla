@@ -1,6 +1,6 @@
 import functionsTest from 'firebase-functions-test';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { DocumentReference, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 import { cleanupAnonUidArtifacts } from '../../src/callables/cleanupAnonUidArtifacts';
@@ -176,7 +176,7 @@ describe('cleanupAnonUidArtifacts', () => {
 
     await expect(cleanupCall()).resolves.toMatchObject({
       groupsProcessed: 1,
-      groupsFailed: [],
+      cascadeFailed: [],
       authUserDeleted: true,
     });
 
@@ -308,10 +308,16 @@ describe('cleanupAnonUidArtifacts', () => {
     });
   });
 
-  test('per-group failure is returned while other groups still process', async () => {
+  // AC1 (#46 phase 1): per-group failure must NOT delete the old anon
+  // auth user and must NOT consume the cleanup intent. fcm/joinAttempts
+  // deletes run BEFORE the Auth-delete gate so that recoverable identity
+  // residue is scrubbed even when groups partially fail.
+  test('per-group failure preserves auth user and cleanup intent (#46 AC1)', async () => {
     const db = getFirestore();
     await seedAuthUsers();
     await seedCleanupIntent();
+    await db.doc('fcm_tokens/old-anon-uid').set({ token: 'stale' });
+    await db.doc('joinAttempts/old-anon-uid').set({ failCount: 3 });
     await seedGroup('good', ['old-anon-uid']);
     await seedMember('good', 'old-anon-uid');
     await seedGroup('bad', ['old-anon-uid']);
@@ -320,15 +326,105 @@ describe('cleanupAnonUidArtifacts', () => {
 
     const result = await cleanupCall() as {
       groupsProcessed: number;
-      groupsFailed: string[];
+      cascadeFailed: string[];
+      authUserDeleted: boolean;
+      fcmTokenDeleted: boolean;
+      joinAttemptsDeleted: boolean;
     };
 
+    expect(result.groupsProcessed).toBe(1);
+    expect(result.cascadeFailed).toEqual(['bad']);
+
+    // P0 zombie-auth bug fix: Auth.deleteUser is gated on cascadeFailed.length === 0
+    expect(result.authUserDeleted).toBe(false);
+    await expect(getAuth().getUser('old-anon-uid')).resolves.toBeDefined();
+
+    // Reorder: fcm/joinAttempts ARE attempted even when groups fail,
+    // so identity residue is scrubbed and a retry doesn't see it.
+    expect(result.fcmTokenDeleted).toBe(true);
+    expect(result.joinAttemptsDeleted).toBe(true);
+    expect((await db.doc('fcm_tokens/old-anon-uid').get()).exists).toBe(false);
+    expect((await db.doc('joinAttempts/old-anon-uid').get()).exists).toBe(false);
+
+    // Intent is preserved so the client can retry within the 15-min window
+    expect((await db.doc('recoveryCleanupIntents/old-anon-uid').get()).exists)
+      .toBe(true);
+
+    // Group state: good migrated, bad untouched
     const good = await db.doc('groups/good').get();
     const bad = await db.doc('groups/bad').get();
-    expect(result.groupsProcessed).toBe(1);
-    expect(result.groupsFailed).toEqual(['bad']);
     expect(good.data()?.memberIds).toEqual(['new-uid']);
     expect(bad.data()?.memberIds).toEqual(['old-anon-uid']);
+  });
+
+  // AC1b: fcm delete failure must enter cascadeFailed and gate Auth-delete.
+  test('fcm delete failure gates auth delete (#46 AC1b)', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await db.doc('fcm_tokens/old-anon-uid').set({ token: 'stale' });
+
+    const originalDelete = DocumentReference.prototype.delete;
+    const spy = jest
+      .spyOn(DocumentReference.prototype, 'delete')
+      .mockImplementation(function (this: DocumentReference) {
+        if (this.path === 'fcm_tokens/old-anon-uid') {
+          return Promise.reject(new Error('forced fcm delete failure'));
+        }
+        return originalDelete.call(this);
+      });
+
+    try {
+      const result = await cleanupCall() as {
+        cascadeFailed: string[];
+        authUserDeleted: boolean;
+        fcmTokenDeleted: boolean;
+      };
+
+      expect(result.cascadeFailed).toContain('fcm_tokens');
+      expect(result.authUserDeleted).toBe(false);
+      expect(result.fcmTokenDeleted).toBe(false);
+      await expect(getAuth().getUser('old-anon-uid')).resolves.toBeDefined();
+      expect((await db.doc('recoveryCleanupIntents/old-anon-uid').get()).exists)
+        .toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  // AC1c: joinAttempts delete failure must enter cascadeFailed and gate.
+  test('joinAttempts delete failure gates auth delete (#46 AC1c)', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await db.doc('joinAttempts/old-anon-uid').set({ failCount: 3 });
+
+    const originalDelete = DocumentReference.prototype.delete;
+    const spy = jest
+      .spyOn(DocumentReference.prototype, 'delete')
+      .mockImplementation(function (this: DocumentReference) {
+        if (this.path === 'joinAttempts/old-anon-uid') {
+          return Promise.reject(new Error('forced joinAttempts delete failure'));
+        }
+        return originalDelete.call(this);
+      });
+
+    try {
+      const result = await cleanupCall() as {
+        cascadeFailed: string[];
+        authUserDeleted: boolean;
+        joinAttemptsDeleted: boolean;
+      };
+
+      expect(result.cascadeFailed).toContain('joinAttempts');
+      expect(result.authUserDeleted).toBe(false);
+      expect(result.joinAttemptsDeleted).toBe(false);
+      await expect(getAuth().getUser('old-anon-uid')).resolves.toBeDefined();
+      expect((await db.doc('recoveryCleanupIntents/old-anon-uid').get()).exists)
+        .toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   test('fcm token for oldUid is deleted when present', async () => {
