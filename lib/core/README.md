@@ -31,17 +31,7 @@
 ## services/
 
 - **firestore_repository.dart**: `FirestoreRepository` — abstract base for all Firestore services. Production constructor uses `FirebaseConfig.firestore`; test constructor accepts `FakeFirebaseFirestore`. Helper: `eventSubcollection(groupId, eventId, module)` returns `groups/{groupId}/events/{eventId}/{module}`.
-- **local_database.dart**: `LocalDatabase` — SQLite offline cache via sqflite. DB: `safar_cache.db`, **version 9**. Tables: `trips` (FK target for active cache tables; no write surface), `expenses`, `settlements`, `participants`, `activity_logs`, `categories`, `groups`, `group_members`, `group_ledger`. Singleton with `Completer`-guarded initialization.
-### Domain Cache Repositories (`services/cache/`)
-
-Each file owns SQLite I/O for one domain of the local cache (`safar_cache.db` v9). Instance-based, provided via Riverpod.
-
-- **expense_cache_repository.dart**: `ExpenseCacheRepository` — ghost-row-free write via delete-all-for-event + batch insert. Consumed by `eventExpensesProvider.asyncMap` side-write (D-15).
-- **settlement_cache_repository.dart**: `SettlementCacheRepository` — same delete-then-insert pattern as expenses.
-- **participant_cache_repository.dart**: `ParticipantCacheRepository` — delete-all + batch-insert.
-- **activity_log_cache_repository.dart**: `ActivityLogCacheRepository` — delete-all + batch-insert, 50-row read cap.
-- **category_cache_repository.dart**: `CategoryCacheRepository` — delete-all + batch-insert.
-- **group_cache_repository.dart**: `GroupCacheRepository` — upsert + explicit cascade delete for groups and group_members.
+- _(SQLite cache removed in #50 — `local_database.dart` and the `services/cache/` repositories are gone. Offline reads/writes are served by the Firestore SDK's own offline persistence; `BalanceCalculator` consumes the live Firestore streams directly. Do not reintroduce a local cache.)_
 - **money_serializer.dart**: `MoneySerializer` — `Decimal` to/from integer subunits for Firestore storage. Currency scale map: OMR/KWD/BHD = 1000, USD/EUR/GBP/SAR/AED/QAR = 100, JPY = 1. Methods: `toSubunits()`, `fromSubunits()`. Only used at the Firestore read/write boundary.
 - **haptic_service.dart**: `HapticService` — static methods wrapping Flutter `HapticFeedback`. Patterns: `lightClick()`, `success()` (double medium tap), `warning()` (heavy), `selection()`, `medium()`.
 - **notification_service.dart**: `NotificationService` — FCM push notifications. `NotificationStatus` enum (`off`, `enabled`, `permissionDenied`, `error`). Handles permission requests, token save/refresh/remove to Firestore `fcm_tokens`. Providers: `notificationServiceProvider`, `notificationStatusProvider`.

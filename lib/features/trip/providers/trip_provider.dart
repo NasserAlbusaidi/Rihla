@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/types/event_ref.dart';
-import '../../../core/services/cache/participant_cache_repository.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
@@ -14,15 +13,6 @@ final userGroupsForParticipantProvider = Provider<List<String>>((ref) {
   final groupsAsync = ref.watch(userGroupsProvider);
   return groupsAsync.valueOrNull?.map((g) => g.id).toList() ?? [];
 });
-
-/// Trip participants — reads from SQLite cache.
-///
-/// @Deprecated('Will be migrated to Firestore stream in 04-05.')
-final tripLogisticsParticipantsProvider =
-    StreamProvider.family<List<Participant>, String>((ref, tripId) async* {
-      final repo = ref.read(participantCacheRepositoryProvider);
-      yield await repo.getCachedParticipants(tripId);
-    });
 
 /// Provider for the current user's participant record in one known event.
 ///

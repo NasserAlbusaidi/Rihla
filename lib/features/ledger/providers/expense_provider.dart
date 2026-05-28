@@ -3,9 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/split_mode.dart';
-import '../../../core/services/cache/expense_cache_repository.dart';
 import '../../../core/services/money_serializer.dart';
-import '../../../core/services/cache/settlement_cache_repository.dart';
 import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
 import '../../trip/models/trip_model.dart';
@@ -46,60 +44,23 @@ final settlementServiceProvider = Provider<SettlementService>(
 
 /// Firestore-backed expense stream using [EventRef] as the family parameter.
 ///
-/// Includes an [asyncMap] SQLite side-write so [BalanceCalculator] data is
-/// always fresh after each Firestore snapshot (D-15). The side-write uses
-/// [ExpenseCacheRepository.cacheExpenses] (migrated from BalanceCacheRepository
-/// in Plan 36-06).
-///
-/// **Why asyncMap over listen:** `asyncMap` keeps the stream pipeline intact
-/// and ensures SQLite writes complete before downstream subscribers receive
-/// the data. A separate `listen()` would create a dangling subscription
-/// outside Riverpod's lifecycle management.
-final eventExpensesProvider = StreamProvider.family<List<Expense>, EventRef>((
-  ref,
-  eventRef,
-) {
+/// Reads come straight from the Firestore `.snapshots()` stream; the Firestore
+/// SDK serves them from its own offline cache with no network (persistence is
+/// enabled in `firebase_config.dart`). [BalanceCalculator] consumes this stream
+/// directly — the local SQLite cache was removed in issue #50.
+final eventExpensesProvider =
+    StreamProvider.family<List<Expense>, EventRef>((ref, eventRef) {
   final service = ref.read(expenseServiceProvider);
-  final cache = ref.read(expenseCacheRepositoryProvider);
-  return service.watchExpenses(eventRef.groupId, eventRef.eventId).asyncMap(
-    (expenses) async {
-      // Side effect: write to SQLite for BalanceCalculator (D-15)
-      // Catch errors — SQLite FK constraints may fail for Firestore-only events
-      // that have no corresponding row in the legacy trips table.
-      try {
-        await cache.cacheExpenses(eventRef.eventId, expenses);
-      } catch (_) {
-        // SQLite cache is non-critical; Firestore is the source of truth
-      }
-      return expenses; // pass through unchanged
-    },
-  );
+  return service.watchExpenses(eventRef.groupId, eventRef.eventId);
 });
 
 /// Firestore-backed settlement stream using [EventRef] as the family parameter.
 ///
-/// Includes an [asyncMap] SQLite side-write for BalanceCalculator (D-15).
+/// Same Firestore-offline-backed read path as [eventExpensesProvider] (#50).
 final eventSettlementsProvider =
-    StreamProvider.family<List<Settlement>, EventRef>((
-  ref,
-  eventRef,
-) {
+    StreamProvider.family<List<Settlement>, EventRef>((ref, eventRef) {
   final service = ref.read(settlementServiceProvider);
-  final cache = ref.read(settlementCacheRepositoryProvider);
-  return service
-      .watchSettlements(eventRef.groupId, eventRef.eventId)
-      .asyncMap(
-    (settlements) async {
-      // Side effect: write to SQLite for BalanceCalculator (D-15)
-      // Catch errors — SQLite FK constraints may fail for Firestore-only events
-      try {
-        await cache.cacheSettlements(eventRef.eventId, settlements);
-      } catch (_) {
-        // SQLite cache is non-critical; Firestore is the source of truth
-      }
-      return settlements; // pass through unchanged
-    },
-  );
+  return service.watchSettlements(eventRef.groupId, eventRef.eventId);
 });
 
 // ---------------------------------------------------------------------------

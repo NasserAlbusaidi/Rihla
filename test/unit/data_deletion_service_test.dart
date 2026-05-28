@@ -24,7 +24,7 @@ void main() {
     expect(await service.deleteAccount(), DeletionResult.noUser);
   });
 
-  test('calls callable, wipes local cache, and signs out on success', () async {
+  test('calls the server callable then signs out on success', () async {
     final calls = <String>[];
     when(() => auth.currentUser).thenReturn(user);
     when(() => auth.signOut()).thenAnswer((_) async {
@@ -35,17 +35,16 @@ void main() {
       deleteAccountCallable: () async {
         calls.add('callable');
       },
-      wipeLocalCache: () async {
-        calls.add('wipe');
-      },
     );
 
     expect(await service.deleteAccount(), DeletionResult.ok);
-    expect(calls, ['callable', 'wipe', 'signOut']);
+    // Local SQLite wipe removed in #50 — Firestore is the source of truth and
+    // the SDK offline cache is handled by the UID-isolation barrier (PR 2).
+    expect(calls, ['callable', 'signOut']);
     verify(() => auth.signOut()).called(1);
   });
 
-  test('returns error when the callable fails', () async {
+  test('returns error when the callable fails (no sign-out)', () async {
     final calls = <String>[];
     when(() => auth.currentUser).thenReturn(user);
     final service = DataDeletionService(
@@ -54,32 +53,10 @@ void main() {
         calls.add('callable');
         throw StateError('boom');
       },
-      wipeLocalCache: () async {
-        calls.add('wipe');
-      },
     );
 
     expect(await service.deleteAccount(), DeletionResult.error);
     expect(calls, ['callable']);
-    verifyNever(() => auth.signOut());
-  });
-
-  test('returns error when local cache wipe fails', () async {
-    final calls = <String>[];
-    when(() => auth.currentUser).thenReturn(user);
-    final service = DataDeletionService(
-      auth: auth,
-      deleteAccountCallable: () async {
-        calls.add('callable');
-      },
-      wipeLocalCache: () async {
-        calls.add('wipe');
-        throw StateError('wipe failed');
-      },
-    );
-
-    expect(await service.deleteAccount(), DeletionResult.error);
-    expect(calls, ['callable', 'wipe']);
     verifyNever(() => auth.signOut());
   });
 
@@ -95,12 +72,9 @@ void main() {
       deleteAccountCallable: () async {
         calls.add('callable');
       },
-      wipeLocalCache: () async {
-        calls.add('wipe');
-      },
     );
 
     expect(await service.deleteAccount(), DeletionResult.error);
-    expect(calls, ['callable', 'wipe', 'signOut']);
+    expect(calls, ['callable', 'signOut']);
   });
 }

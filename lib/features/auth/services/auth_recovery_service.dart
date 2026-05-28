@@ -220,8 +220,9 @@ class AuthRecoveryService {
   /// Sign in fresh as the previously-linked user.
   ///
   /// Used by the Home "Restore from email" path (spec §4.2). The current
-  /// anonymous UID is replaced — the P2 cache invalidator must wipe
-  /// `safar_cache.db` before the new UID surfaces in any provider.
+  /// anonymous UID is replaced. Isolating the on-device Firestore cache
+  /// across this UID swap is a pending follow-up (#45 / PR 2); the old
+  /// SQLite-wipe path was removed with the cache in #50.
   Future<UserCredential> completeRecovery(
     String emailLink, {
     String? overrideEmail,

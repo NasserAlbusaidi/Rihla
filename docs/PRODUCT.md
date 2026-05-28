@@ -14,7 +14,7 @@ Rihla ("journey" in Arabic) is a Splitwise-style group expense splitter organise
 
 **Target market:** Oman / GCC first, then global. Default currency is OMR (Omani Rial, 3-decimal precision). Money math uses the `Decimal` package — no floats anywhere.
 
-**Tech footprint:** Flutter mobile app (`safar` package, Android `com.safar.safar`), Firebase backend (Firestore + Auth + Cloud Functions + FCM — **no Storage SDK use**), SQLite local cache for fast reads, Firestore offline persistence for write replay.
+**Tech footprint:** Flutter mobile app (`safar` package, Android `com.safar.safar`), Firebase backend (Firestore + Auth + Cloud Functions + FCM — **no Storage SDK use**). Firestore's own offline persistence is the only cache — it serves offline reads and replays queued writes; there is no separate local cache.
 
 ---
 
@@ -251,7 +251,7 @@ Empty state: a friendly prompt with the same Add Expense CTA from the hero card.
 - **Description** — free text.
 - **Category** — chip selection from the curated `ExpenseCategory` list.
 - **Split scope** — `Global · Personal · Custom`; choosing `Custom` opens a participant multi-select.
-- **Save** writes the expense, optimistically updates SQLite, enqueues a sync, and pops back to the Ledger.
+- **Save** writes the expense to Firestore — which persists it immediately and, when offline, queues it via its own offline persistence for automatic replay — then pops back to the Ledger.
 
 #### Edit Expense (`/...ledger/edit/:expId`)
 Identical form pre-populated from the existing expense. Includes a "Delete" affordance (soft-delete, logged in activity).
@@ -279,7 +279,7 @@ The same optimiser runs at both event scope (`/...ledger/settle-up`) and group s
 
 The user can launch the app, create groups, add expenses, and settle up while completely offline. The mechanics:
 
-- **Reads** — every provider reads from a Firestore `StreamProvider`. Firestore's local persistence (`persistenceEnabled: true`, `cacheSizeBytes: CACHE_SIZE_UNLIMITED`, configured in `FirebaseConfig.initialize()` before any read/write) serves the last snapshot when offline. Selected streams (`eventExpensesProvider`, `eventSettlementsProvider`, etc.) `asyncMap` snapshots into SQLite cache repositories under `lib/core/services/cache/` for fast local random-access reads by `BalanceCalculator`.
+- **Reads** — every provider reads from a Firestore `StreamProvider`. Firestore's local persistence (`persistenceEnabled: true`, `cacheSizeBytes: CACHE_SIZE_UNLIMITED`, configured in `FirebaseConfig.initialize()` before any read/write) serves the last snapshot when offline. `BalanceCalculator` reads the `eventExpensesProvider` / `eventSettlementsProvider` Firestore streams directly — there is no separate local cache.
 - **Writes** — service methods call Firestore directly. The Firestore SDK persists pending mutations locally and replays them automatically on reconnect — there is no custom sync queue in this codebase.
 - **Connectivity** — `ConnectivityNotifier` (`lib/core/providers/connectivity_provider.dart`) checks reachability every 60 seconds with a `Source.server` read against `inviteCodes` (a publicly-readable collection). State transitions between `online`, `offline`, and `syncing`.
 - **Seed-on-entry** — opening an event eagerly subscribes to its full data (expenses, settlements, participants) so the Ledger lands hot.
@@ -336,7 +336,7 @@ The following were intentionally removed in Phase 39 ("Strip to Shippable") and 
 - Payment processing
 - Chat / messaging tab
 
-The Firestore schema and SQLite cache still tolerate legacy keys for these features (silent `fromMap` ignore) so existing user data does not break, but no UI exposes them. The 3-page first-launch onboarding flow (gated by `onboardingComplete` in `AppSettings`) shipped separately and *is* part of v1.
+The Firestore schema still tolerates legacy keys for these features (silent `fromMap` ignore) so existing user data does not break, but no UI exposes them. The 3-page first-launch onboarding flow (gated by `onboardingComplete` in `AppSettings`) shipped separately and *is* part of v1.
 
 ---
 

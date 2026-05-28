@@ -19,24 +19,23 @@ Rihla ("Journey") is an offline-first Flutter mobile app for group coordination 
 │   StateNotifierProvider — mutable state (settings)      │
 └────────────┬──────────────────────────┬─────────────────┘
              │                          │
-┌────────────▼────────────┐  ┌──────────▼─────────────────┐
-│    Firebase Backend     │  │     SQLite (Local Cache)    │
-│  Firestore (primary)    │  │  LocalDatabase (sqflite)    │
-│  Firebase Auth (anon +  │  │  lib/core/services/cache/   │
-│    email-link recovery) │  │   instance-based repos,     │
-│  Cloud Functions (TS)   │  │   delete-all-then-batch-    │
-│  Firebase Messaging     │  │   insert pattern            │
-│  Firebase App Check     │  └────────────────────────────┘
-└─────────────────────────┘
+┌─────────────────────────▼───────────────────────────────┐
+│                     Firebase Backend                    │
+│  Firestore (primary; offline persistence is the ONLY    │
+│    cache — serves offline reads + replays queued writes)│
+│  Firebase Auth (anon + email-link recovery)             │
+│  Cloud Functions (TS)                                   │
+│  Firebase Messaging                                     │
+│  Firebase App Check                                     │
+└─────────────────────────────────────────────────────────┘
    (no Storage SDK — protected media via Cloud Functions if ever needed)
 ```
 
 ### Key Design Decisions
 
-- **Firebase as primary data store** — Firestore with `persistenceEnabled: true` and `cacheSizeBytes: CACHE_SIZE_UNLIMITED` handles offline writes automatically. The SDK replays pending mutations when connectivity returns; no manual sync queue is needed.
-- **SQLite as a secondary read cache** — Cache repositories under `lib/core/services/cache/` are instance-based Riverpod services consumed by `BalanceCalculator`. Written as a side effect of Firestore stream `asyncMap` pipelines (delete-all-then-batch-insert, ghost-row-free); never the source of truth.
+- **Firestore is the only cache** — Firestore with `persistenceEnabled: true` and `cacheSizeBytes: CACHE_SIZE_UNLIMITED` is the sole local cache. Its offline persistence serves offline reads from previously-fetched data and replays queued writes automatically when connectivity returns. There is no hand-rolled local cache and no manual sync queue. `BalanceCalculator` consumes the live Firestore streams directly.
 - **No login screen** — Firebase anonymous auth is established silently on first launch via `FirebaseConfig.ensureAnonymousSession()`. `_AuthGate` (`main.dart`) retries on `internal-error` for corrupted restored sessions. All Firestore security rules work against the anonymous UID.
-- **Opt-in email-link recovery** — `AuthRecoveryService` orchestrates link/send/recover; `UidChangeListener` wipes the local SQLite cache on UID swap so cross-UID data cannot leak; `cleanupAnonUidArtifacts` scrubs server-side leftovers from the abandoned anon UID after verifying a one-time cleanup intent created by that UID.
+- **Opt-in email-link recovery** — `AuthRecoveryService` orchestrates link/send/recover; `cleanupAnonUidArtifacts` scrubs server-side leftovers from the abandoned anon UID after verifying a one-time cleanup intent created by that UID. The old `UidChangeListener` that wiped the SQLite cache on UID swap was removed with the SQLite cache (#50). Cross-UID isolation of the Firestore SDK's own on-disk cache is a separate, not-yet-implemented follow-up (the UID-isolation barrier — issue #45 / PR 2); it is not yet enforced by any listener.
 - **Shared Firestore base class** — Services extend `FirestoreRepository` (which provides `eventSubcollection(groupId, eventId, module)` and a `withFirestore` test-injection constructor). Do not add new global repositories — extend the base class or an existing feature service.
 - **Feature-first code organisation** — Each feature is self-contained. No shared service layer.
 - **Immutable models** — All domain models (`Group`, `Event`, `Expense`, etc.) are immutable value types with `copyWith`.
@@ -55,13 +54,12 @@ lib/
 │   ├── providers/                # App-wide Riverpod providers (connectivity, sharedPreferences)
 │   ├── router/                   # GoRouter definition (AppRoutes, routerProvider)
 │   ├── services/                 # Shared infrastructure services
-│   │   └── cache/                # SQLite cache repositories (instance-based)
 │   ├── theme/                    # AppTheme + ThemeExtension token classes
 │   ├── types/                    # Shared typedefs (EventRef)
 │   └── utils/                    # Utility helpers
 ├── features/
 │   ├── activity/                 # Event-level + cross-group activity feeds
-│   ├── auth/                     # Anon session, email-link recovery, UidChangeListener
+│   ├── auth/                     # Anon session, email-link recovery
 │   ├── events/                   # Event lifecycle (create, list, detail)
 │   ├── groups/                   # Persistent groups (create, join, detail)
 │   ├── home/                     # Home dashboard + BottomNavShell
@@ -79,7 +77,7 @@ Each feature under `lib/features/` is independently structured:
 
 | Subdirectory  | Contents                                                        |
 |---------------|-----------------------------------------------------------------|
-| `models/`     | Immutable data classes with `fromDoc` (Firestore) / `fromMap` (SQLite) / `copyWith` |
+| `models/`     | Immutable data classes with `fromDoc` (Firestore) / `copyWith` |
 | `providers/`  | Riverpod providers and StateNotifiers for that feature          |
 | `screens/`    | Screen widgets (`ConsumerWidget` or `ConsumerStatefulWidget`)   |
 | `services/`   | Firestore CRUD classes extending `FirestoreRepository`          |
@@ -99,11 +97,7 @@ The app uses **Riverpod 2.x** with manually defined providers (no code generatio
 //    Family parameter is EventRef (a Dart record typedef)
 final eventExpensesProvider =
     StreamProvider.family<List<Expense>, EventRef>((ref, eventRef) {
-  return service.watchExpenses(eventRef.groupId, eventRef.eventId)
-    .asyncMap((expenses) async {
-      await cache.cacheExpenses(eventRef.eventId, expenses); // SQLite side-write
-      return expenses;
-    });
+  return service.watchExpenses(eventRef.groupId, eventRef.eventId);
 });
 
 // 2. Provider.family — derived state computed from multiple streams
@@ -128,8 +122,8 @@ final expenseLoadingProvider = StateProvider<bool>((ref) => false);
 | `settingsProvider` | `StateNotifierProvider<SettingsNotifier, AppSettings>` | User settings + device name |
 | `groupEventsProvider` | `StreamProvider.family<List<Event>, String>` | All events in a group |
 | `eventDetailProvider` | `StreamProvider.family<Event?, ({groupId, eventId})>` | Single event stream |
-| `eventExpensesProvider` | `StreamProvider.family<List<Expense>, EventRef>` | Event expenses with SQLite side-write |
-| `eventSettlementsProvider` | `StreamProvider.family<List<Settlement>, EventRef>` | Event settlements with SQLite side-write |
+| `eventExpensesProvider` | `StreamProvider.family<List<Expense>, EventRef>` | Event expenses (Firestore stream) |
+| `eventSettlementsProvider` | `StreamProvider.family<List<Settlement>, EventRef>` | Event settlements (Firestore stream) |
 | `eventBalancesProvider` | `Provider.family` | Computed balances via `BalanceCalculator` |
 | `eventUnifiedLedgerProvider` | `Provider.family<AsyncValue<List<Transaction>>, EventRef>` | Merged expenses + settlements |
 | `sharedPreferencesProvider` | `Provider<SharedPreferences>` | Injected via `ProviderScope.overrides` in `main()` |
@@ -155,8 +149,8 @@ This enables deep-link-safe data fetching: screens receive raw strings from GoRo
 Firestore snapshot
   │
   ▼ (GroupService / ExpenseService / etc.)
-StreamProvider.family.asyncMap
-  │ (side-write to SQLite via BalanceCacheRepository)
+StreamProvider.family
+  │
   ▼
 Riverpod provider graph
   │ (ref.watch)
@@ -258,36 +252,9 @@ class AppRoutes {
 
 ## 6. Offline Architecture
 
-### SQLite (`LocalDatabase`)
+There is no hand-rolled local cache. Firestore's own offline persistence is the only cache — it serves offline reads from previously-fetched data and replays queued writes automatically. The former `LocalDatabase` (`safar_cache.db`) and its `lib/core/services/cache/` repositories were removed in issue #50; `BalanceCalculator` now reads the live Firestore streams directly.
 
-File: `lib/core/services/local_database.dart`
-Database: `safar_cache.db`, schema **version 9** (T4.N split mode + split distribution columns on expenses, tombstone group members)
-
-Tables:
-
-| Table | Purpose |
-|-------|---------|
-| `trips` | FK target for active cache tables (`expenses`, `settlements`, `participants`, `activity_logs`, `categories` cascade on `trip_id`); no write surface |
-| `expenses` | Expense cache — keyed by `trip_id` (= Firestore event ID) |
-| `settlements` | Settlement cache |
-| `participants` | Participant cache |
-| `activity_logs` | Activity log cache |
-| `categories` | Expense category cache |
-| `groups` | Group cache |
-| `group_members` | Group member cache |
-| `group_ledger` | Group-level balance cache |
-
-All `expenses` and `settlements` rows include `is_deleted` and `deleted_at` for soft-delete support. `LocalDatabase` handles versioned migrations via `_onUpgrade`.
-
-### Cache repositories (`lib/core/services/cache/`)
-
-Instance-based Riverpod services (not static `CacheService`). Each repo bridges a Firestore stream to its SQLite table using a delete-all-then-batch-insert pattern (ghost-row-free). Called inside `StreamProvider.family.asyncMap` so SQLite is updated before downstream subscribers receive the data. `BalanceCalculator` consumes these for random-access reads.
-
-### `UidChangeListener`
-
-File: `lib/features/auth/services/uid_change_listener.dart`
-
-Subscribes to Firebase Auth state changes and wipes the local SQLite cache when the active UID changes (after email-link recovery swaps from the anonymous UID to the recovered one). Prevents cross-UID data leakage in the local cache. The server-side counterpart is the `cleanupAnonUidArtifacts` callable (v1.2.0+15) which scrubs FCM tokens, `joinAttempts`, and other anon-UID-keyed docs in Firestore.
+> **Cross-UID cache isolation (pending).** The old `UidChangeListener` wiped the SQLite cache on UID swap to keep one device's recovered account from reading the abandoned anon UID's cached data. It was removed with the SQLite cache (#50). Isolating the Firestore SDK's own on-disk cache across a UID swap is a separate, not-yet-implemented follow-up (the UID-isolation barrier — issue #45 / PR 2). The server-side `cleanupAnonUidArtifacts` callable (v1.2.0+15) still scrubs FCM tokens, `joinAttempts`, and other anon-UID-keyed docs in Firestore.
 
 ### `ConnectivityNotifier`
 
@@ -425,7 +392,7 @@ Result: minimal number of transfers to clear all debts.
 
 ### Group-Level Balances
 
-The `group_ledger` SQLite table accumulates `net_amount_subunits` per `(group_id, member_id, counterparty_id)` pair, tracking balances across all events in a group. `GroupBalanceProvider` (in `lib/features/groups/providers/group_balance_provider.dart`) computes these from Firestore-backed settlement streams.
+`GroupBalanceProvider` (in `lib/features/groups/providers/group_balance_provider.dart`) tracks balances across all events in a group, computed from the Firestore-backed settlement streams. There is no SQLite balance table — the computation runs over the live streams.
 
 ### Payments
 
@@ -445,7 +412,6 @@ Payment processing is out of scope for the shippable v1 surface. Ledger settleme
 | `firebase_messaging` | `^16.1.3` | Push notifications (FCM) |
 | `firebase_core` | `^4.6.0` | Firebase SDK initialisation |
 | `app_links` | `^7.0.0` | Deep-link and email-link handling |
-| `sqflite` | `^2.4.2` | Local SQLite cache (`safar_cache.db`) |
 | `decimal` | `^3.2.4` | Precise money arithmetic — no floating point |
 | `google_fonts` | `^8.0.2` | Geist / Geist Mono / Instrument Serif typefaces |
 | `flutter_animate` | `^4.5.0` | Micro-interaction animations |
@@ -462,4 +428,3 @@ Payment processing is out of scope for the shippable v1 surface. Ledger settleme
 | `intl` | `^0.20.2` | Date/number formatting, localisation |
 | `mocktail` | `^1.0.4` | Test mocking |
 | `fake_cloud_firestore` | `^4.1.0+1` | Firestore test injection |
-| `sqflite_common_ffi` | `^2.3.4` | SQLite in-memory testing |

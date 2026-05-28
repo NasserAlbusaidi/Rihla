@@ -83,7 +83,7 @@ Lookup material. Does not override the contract.
 
 ## Project Overview
 
-Rihla ("Journey") — Splitwise-style group expense splitter: persistent groups → events → ledger. Package `safar`, Android `com.safar.safar`, version per `pubspec.yaml`. Backend **Firebase only**: Firestore, Auth, Cloud Functions (Node 20/TS), FCM. No Firebase Storage SDK — protected media via Functions. SQLite is local read cache only; Firestore offline persistence handles queued writes. Anon auth on first launch + optional email-link recovery. Supabase migration is **complete — do not add Supabase keys**.
+Rihla ("Journey") — Splitwise-style group expense splitter: persistent groups → events → ledger. Package `safar`, Android `com.safar.safar`, version per `pubspec.yaml`. Backend **Firebase only**: Firestore, Auth, Cloud Functions (Node 20/TS), FCM. No Firebase Storage SDK — protected media via Functions. Firestore offline persistence handles offline reads and queued-write replay (the hand-rolled SQLite read-cache was removed in #50). Anon auth on first launch + optional email-link recovery. Supabase migration is **complete — do not add Supabase keys**.
 
 ## Essential Commands
 
@@ -104,7 +104,7 @@ Config injected via `--dart-define-from-file=config.json`, read with `const Stri
 
 ## Architecture
 
-Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widgets/ keys/`). Active: activity, auth, events, groups, home, ledger, onboarding, profile, settings, + legacy trip compat. **Gear/logistics/vault/memories stripped in Phase 39 — do not reintroduce** (related Functions/StorageGateway are dead code). Shared Firestore access via `FirestoreRepository` base or existing feature services — **no new global repositories**. State: Riverpod 2.x, no codegen (`StreamProvider(.family)` for Firestore/auth, `StateNotifierProvider` for complex state, `FutureProvider` one-shot, `Provider.family` for services). Streams side-write snapshots into SQLite via `asyncMap`; **the Firestore SDK replays offline writes — do not build a custom sync queue.** Deeper picture: `docs/ARCHITECTURE.md`.
+Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widgets/ keys/`). Active: activity, auth, events, groups, home, ledger, onboarding, profile, settings, + legacy trip compat. **Gear/logistics/vault/memories stripped in Phase 39 — do not reintroduce** (related Functions/StorageGateway are dead code). Shared Firestore access via `FirestoreRepository` base or existing feature services — **no new global repositories**. State: Riverpod 2.x, no codegen (`StreamProvider(.family)` for Firestore/auth, `StateNotifierProvider` for complex state, `FutureProvider` one-shot, `Provider.family` for services). **The Firestore SDK serves offline reads from its own persistence and replays offline writes — do not build a custom local cache or sync queue (the SQLite cache was removed in #50).** Deeper picture: `docs/ARCHITECTURE.md`.
 
 ## Do / Don't
 
@@ -135,7 +135,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 - Name-based members: creator adds names + picks own; joiner enters invite code + picks unclaimed name. Lives on `groups/{gid}/members/{uid}`, mirrored from `settingsProvider.deviceName`.
 - Event modules: only `ledger: true` after Phase 39; model silently ignores legacy keys for compat.
 - Group join: via `joinGroupByInviteCode` Function — atomic, validated, rate-limited 5/hr/UID, idempotent.
-- Account recovery (v1.2): optional email-link; `AuthRecoveryService` orchestrates; `UidChangeListener` wipes local SQLite on UID swap (prevents cross-UID leak); linked email permanent.
+- Account recovery (v1.2): optional email-link; `AuthRecoveryService` orchestrates; linked email permanent. **Cross-UID isolation of the Firestore on-device cache is an OPEN item (#45 / PR 2) — the SQLite-wipe `UidChangeListener` was removed with the cache in #50; do not assume cross-UID leak protection exists until #45 lands.**
 - Account deletion: Profile→Account→Delete → server cascade (auth, Firestore, FCM); Sentry redacts email PII.
 - Onboarding: 3-page, gated by `onboardingComplete` in `AppSettings`; router hard-redirects all non-onboarding routes until complete.
 - Auth: anon sign-in, no login screen. Deep links: `rihla.app/join/<code>` pre-fills code; recovery via App/Universal Links. Legal: `rihla.app/privacy|terms|delete-data`.
@@ -158,7 +158,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 
 ## Database
 
-Firestore is source of truth; SQLite `safar_cache.db` **v8** is cache only — no SQL migrations for server state; cache repos under `lib/core/services/cache/`, delete-all-then-batch-insert (ghost-row-free). Paths + security model: `security/firestore.rules` + `docs/ARCHITECTURE.md`. Functions: `functions/src/` (TS, Node 20), Jest under Java 21 + emulator.
+Firestore is source of truth; offline reads/writes are served by the **Firestore SDK's own offline persistence** (`persistenceEnabled`, unlimited cache, set in `firebase_config.dart`). The hand-rolled SQLite cache (`safar_cache.db`, `LocalDatabase`, `lib/core/services/cache/`) was **removed in #50 — do not reintroduce a local cache or `sqflite`; extend `FirestoreRepository`.** Paths + security model: `security/firestore.rules` + `docs/ARCHITECTURE.md`. Functions: `functions/src/` (TS, Node 20), Jest under Java 21 + emulator.
 
 ## CI/CD & Docs
 
