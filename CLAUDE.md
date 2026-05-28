@@ -17,7 +17,7 @@ Rihla — Flutter group expense splitter. Solo-dev. **The Operating Contract is 
 | Deeper system picture | `docs/ARCHITECTURE.md` |
 | Spec-verification worked examples | `docs/SPEC-VERIFICATION.md` |
 | Localization (ARB / RTL / `context.l10n`) | `docs/LOCALIZATION.md` + `docs/HOWTO-TRANSLATE.md` |
-| Cloud Functions (3 callables) | `docs/CLOUD-FUNCTIONS.md` |
+| Cloud Functions (9 callables across 4 files) | `docs/CLOUD-FUNCTIONS.md` |
 | Firestore security rules (by collection) | `docs/SECURITY-RULES.md` |
 | Anon auth + email-link recovery rationale | `docs/ACCOUNT-RECOVERY.md` |
 | First feature walkthrough (newcomers) | `docs/TUTORIAL-FIRST-FEATURE.md` |
@@ -137,7 +137,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 - Group join: via `joinGroupByInviteCode` Function — atomic, validated, rate-limited 5/hr/UID, idempotent.
 - Account recovery (v1.2): optional email-link; `AuthRecoveryService` orchestrates; `UidChangeListener` wipes local SQLite on UID swap (prevents cross-UID leak); linked email permanent.
 - Account deletion: Profile→Account→Delete → server cascade (auth, Firestore, FCM); Sentry redacts email PII.
-- Onboarding: 3-page, gated by `onboardingComplete` in `AppSettings`; router hard-redirects all non-onboarding routes until complete.
+- Onboarding: `OnboardingScreen` and the `onboardingComplete` flag in `AppSettings` exist but are **dead code** — the screen is not mounted by the router and no code reads the flag (see `integration_test/golden_path_test.dart:48`). Don't "wire it up" as if it's a bug; if you actually want first-launch onboarding, build the gate intentionally.
 - Auth: anon sign-in, no login screen. Deep links: `rihla.app/join/<code>` pre-fills code; recovery via App/Universal Links. Legal: `rihla.app/privacy|terms|delete-data`.
 - Routing landmines: GoRouter 13 declarative; direct-entry screens (deep links, recovery) must guard back — `if (!context.canPop()) go('/home')`; covered by `test/features/.../direct_entry_*`. `EventCommandCenter` (`/group/:gid/event/:eid`) is dead-but-kept (V5R-dots experiment) — UI jumps straight to `/event/:eid/ledger`. `BottomNavShell` stacks 3 tabs via `AnimatedOpacity`+`IgnorePointer`, **not** GoRouter-driven. Full tree: `app_router.dart`.
 
@@ -158,7 +158,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 
 ## Database
 
-Firestore is source of truth; SQLite `safar_cache.db` **v8** is cache only — no SQL migrations for server state; cache repos under `lib/core/services/cache/`, delete-all-then-batch-insert (ghost-row-free). Paths + security model: `security/firestore.rules` + `docs/ARCHITECTURE.md`. Functions: `functions/src/` (TS, Node 20), Jest under Java 21 + emulator.
+Firestore is source of truth; SQLite `safar_cache.db` **v9** is cache only — no SQL migrations for server state; cache repos under `lib/core/services/cache/`, delete-all-then-batch-insert (ghost-row-free). Paths + security model: `security/firestore.rules` + `docs/ARCHITECTURE.md`. Functions: `functions/src/` (TS, Node 20), Jest under Java 21 + emulator.
 
 ## CI/CD & Docs
 
