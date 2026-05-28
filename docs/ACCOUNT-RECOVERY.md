@@ -178,65 +178,34 @@ to the correct completion path. The flag is cleared after success.
 
 ---
 
-## 6. The UID-change problem and `UidChangeListener`
+## 6. The UID-change problem (FR-CACHE-1) — pending after #50
 
 When the recovery flow runs, the active Firebase UID changes from the
-anon `oldUid` to the recovered `newUid`. Everything in the local
-SQLite cache (`safar_cache.db`) was hydrated from Firestore reads done
-under `oldUid`. If we let the providers keep reading from that cache
-while serving the new user, we'd leak data across UIDs:
+anon `oldUid` to the recovered `newUid`. Any data the client read under
+`oldUid` that lingers in a local cache could be served to the new user —
+a cross-UID leak:
 
-> *"User A signs out, user B installs on the same device, signs in
-> with their email. Provider reads stale rows still cached against
-> A's groups. User B sees A's groups."*
+> *"User A signs out, user B installs on the same device, signs in with
+> their email. A provider reads stale rows cached against A's groups.
+> User B sees A's groups."*
 
-This is the **FR-CACHE-1** invariant. The fix is to wipe the SQLite
-file before any provider runs under the new UID.
+This is the **FR-CACHE-1** invariant.
 
-`lib/features/auth/services/uid_change_listener.dart`:
+**Status after #50.** The original fix was `UidChangeListener`, which
+wiped the SQLite cache (`safar_cache.db`) on UID change. Issue #50
+removed the SQLite cache entirely — it provided nothing over Firestore
+offline persistence and was itself the home of a separate cross-UID leak
+class — so that listener is gone.
 
-```dart
-final uidChangeListenerProvider = Provider<void>((ref) {
-  String? lastUid;
-  var seenInitial = false;
-  final wipe = ref.read(cacheWipeFnProvider);
-
-  ref.listen<AsyncValue<firebase_auth.User?>>(
-    authUserChangesProvider,
-    (previous, next) {
-      final newUid = next.valueOrNull?.uid;
-      if (!seenInitial) {
-        seenInitial = true;
-        lastUid = newUid;
-        return;
-      }
-      if (newUid == lastUid) return;
-      // UID actually changed — wipe the cache.
-      // ...
-      unawaited(wipe()...);
-    },
-  );
-});
-```
-
-Three design notes worth calling out:
-
-- **First emission is treated as the cold-start baseline.** The
-  listener records the current UID but does not wipe. Without this,
-  every app launch would wipe the cache (the auth state stream's
-  first emission triggers the listener).
-- **Identical UIDs are ignored.** `linkWithCredential` is a *profile
-  mutation* on the same UID — the auth stream re-emits but the UID
-  hasn't changed. We must not wipe in that case (the user is just
-  attaching an email; their groups are still theirs).
-- **Wipe failure is logged, not raised.** If `LocalDatabase.wipeAndReinitialize`
-  throws, we log to `FirebaseConfig` (which surfaces to Sentry). We
-  don't block the auth transition because the cache failing is less
-  bad than the user being unable to sign in.
-
-The listener is mounted by the app bootstrap and runs for the entire
-session. There is no manual call site — the auth state stream is the
-single source of truth for UID changes.
+The concern now lands on the **Firestore SDK's own on-disk offline
+cache** (`persistenceEnabled: true`), which is **not** cleared on a UID
+swap today. Sealing it — a boot-time identity barrier plus
+correctly-ordered `FirebaseFirestore.terminate()` + `clearPersistence()`
+(the API only permits clearing before startup or after termination) — is
+tracked as a **pending follow-up: issue #45 / PR 2.** Until that lands,
+FR-CACHE-1 is not fully guaranteed for the Firestore cache. The narrowing
+factor is that most Firestore reads are UID-scoped queries; the residual
+exposure is direct document-path reads of previously-cached docs.
 
 ---
 
@@ -410,10 +379,11 @@ Day N (recover path, on new device):
         → FirebaseAuth.signInWithEmailLink(...)  -- signs in as originalUid
         → returns UserCredential (uid = originalUid)
         → unawaited(cleanupAnonUidArtifacts(oldUid: tempUid, cleanupSecret))
-  UidChangeListener fires on the auth stream:
-    tempUid -> originalUid
-    → LocalDatabase.wipeAndReinitialize()  -- clears safar_cache.db
-  Riverpod providers re-evaluate under originalUid → groups appear.
+  Auth stream emits tempUid -> originalUid:
+    → Riverpod providers re-evaluate under originalUid → groups appear.
+    → (On-device Firestore cache is NOT cleared on this swap yet —
+       cross-UID isolation barrier is pending #45 / PR 2; the old
+       SQLite-wipe UidChangeListener was removed with the cache in #50.)
   Background:
     cleanupAnonUidArtifacts callable runs server-side:
       → For each group containing tempUid (likely none, since tempUid
@@ -437,8 +407,7 @@ launcher.
 | File | Role |
 |------|------|
 | `lib/features/auth/services/auth_recovery_service.dart` | Orchestrates link/recover/sign-out. Holds the pending-email + in-flight-op SharedPreferences keys. |
-| `lib/features/auth/services/uid_change_listener.dart` | Wipes the SQLite cache on UID change. |
-| `lib/features/auth/services/data_deletion_service.dart` | Wraps `deleteAccount` callable + cache wipe for the Profile delete flow. |
+| `lib/features/auth/services/data_deletion_service.dart` | Wraps the `deleteAccount` callable for the Profile delete flow. (Cross-UID cache isolation: #45 / PR 2 — `uid_change_listener.dart` was removed with the SQLite cache in #50.) |
 | `lib/features/auth/services/auth_email_link_config.dart` | Centralised `ActionCodeSettings` (URL, package name, Play / iOS metadata). |
 | `lib/features/auth/providers/auth_email_link_bootstrap_provider.dart` | Listens for incoming email links, dispatches to link vs recover. |
 | `lib/features/auth/providers/auth_provider.dart` | `authStateProvider`, `currentUserProvider` etc. |
@@ -457,6 +426,6 @@ launcher.
 
 - [CLOUD-FUNCTIONS.md](./CLOUD-FUNCTIONS.md) — reference for the two callables this design depends on
 - [SECURITY-RULES.md](./SECURITY-RULES.md) — why the rules can't do the cross-doc rewrites these flows need
-- [ARCHITECTURE.md § 6 Offline](./ARCHITECTURE.md) — how `safar_cache.db` slots into the data flow
+- [ARCHITECTURE.md § 6 Offline](./ARCHITECTURE.md) — how Firestore offline persistence serves the data flow
 - [PRODUCT.md § Identity & Auth](./PRODUCT.md) — user-facing summary
 - [RUNBOOK.md § T2 Functions error rate](./RUNBOOK.md) — incident response if the cleanup callable starts failing

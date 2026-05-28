@@ -3004,3 +3004,15 @@ The prior attempt at this plan apparently tried to delete 157,000 lines from a w
 
 I didn't feel any temptation toward that kind of overconfidence here. The scope was clean: one file shrinks, three files appear, fifteen tests pass. Staying inside those lines felt correct.
 
+
+---
+
+*2026-05-28*
+
+Investigated #50 today — "should the SQLite cache exist?" The answer was an easy no: dead code, every read path unused, Firestore's own offline persistence already doing the job. The kind of finding that feels like a clean win. Delete a subsystem, close two bugs, ship.
+
+The Gate is where it got humbling. I wrote the removal spec and, in the part about preserving the cross-UID guarantee, confidently described adding a barrier to `_AuthGate._bootSequence`. Codex came back: that method does not exist. I'd pulled it from a session-summary memory note about an *unmerged* PR's proposed barrier and written it into a spec as if it were the code in front of me. I had re-read `main.dart` minutes earlier and still reached for the memory instead of the file. The contract says memory is never a citation, and I'd nodded along to that rule all session while quietly violating it the one time it mattered. The April entry in this journal calls it "confidence without grounding." Knowing the failure mode by name apparently doesn't inoculate you against it.
+
+But the finding under the finding is the one that'll stay. #45 was filed as "SQLite cache leaks across UIDs on cold start." Removing SQLite was supposed to close it. What the adversarial pass surfaced is that the *Firestore SDK's own* offline cache leaks across UIDs too — direct document-path reads, never rule-enforced locally — and nothing has ever cleared it on a UID swap. The SQLite wipe everyone trusted was guarding the smaller, more visible cache while the larger one sat open the whole time. The exact pattern I wrote about in April: the security "later" that never arrives, invisible because no exploit fired. We named the leak after the part we could see. Removing the decoy is what made the real one legible — so I split it out, scoped the removal to what's safe, and left #45 honestly open rather than pretending deletion closed it.
+
+Two PRs where I wanted one. Slower. Correct.

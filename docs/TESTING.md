@@ -19,7 +19,7 @@ Minimum 80% raw line coverage. CI reads `coverage/lcov.info` directly with `lcov
 |------|----------|----------------|
 | Unit | `test/unit/` | Pure logic: calculators, formatters, services, providers, models |
 | Widget | `test/features/`, `test/shared/`, `test/core/` | Screen rendering and interaction with mocked providers |
-| Integration | `test/integration/` | Multi-layer flows: services + SQLite, Firestore round-trips, auth contracts |
+| Integration | `test/integration/` | Multi-layer flows: Firestore round-trips, auth contracts |
 | Helpers | `test/helpers/` | Shared test infrastructure (router, navigation) |
 
 ---
@@ -40,8 +40,6 @@ test/
 │   ├── group_join_test.dart            # Invite code lookup logic
 │   ├── activity_service_test.dart      # ActivityService with FakeFirebaseFirestore
 │   ├── android_manifest_test.dart      # Release manifest permissions
-│   ├── local_database_migration_test.dart # SQLite schema migrations (sqflite_common_ffi)
-│   ├── balance_cache_repository_test.dart # SQLite cache layer
 │   ├── connectivity_provider_test.dart # ConnectivityNotifier state machine
 │   ├── settings_notifier_test.dart     # SettingsNotifier (SharedPreferences)
 │   ├── color_tokens_test.dart          # AppColorTokens exact hex values
@@ -78,7 +76,6 @@ test/
 │       └── app_bootstrap_wiring_test.dart
 ├── integration/
 │   ├── happy_path_test.dart            # Full widget tree E2E with GoRouter
-│   ├── offline_scenario_test.dart      # SQLite side-write verification
 │   ├── firebase_auth_test.dart         # Anonymous auth behavioral contract
 │   └── firebase_money_roundtrip_test.dart # Decimal -> Firestore -> Decimal
 └── helpers/
@@ -161,10 +158,6 @@ Unit tests live in `test/unit/` and have no Flutter widget dependencies. They im
 **Model tests** (`test/unit/firebase_model_roundtrip_test.dart`, `test/unit/group_model_test.dart`):
 - `fromFirestore` / `toFirestore` round-trips
 - Default field values
-
-**SQLite migration** (`test/unit/local_database_migration_test.dart`):
-- Uses `sqflite_common_ffi` with an in-memory database
-- Verifies all expected columns exist after migration
 
 ### Writing a new unit test
 
@@ -371,26 +364,6 @@ SharedPreferences.setMockInitialValues({'device_name': 'Test User'});
 final prefs = await SharedPreferences.getInstance();
 ```
 
-### SQLite side-write verification (`test/integration/offline_scenario_test.dart`)
-
-Tests the pipeline: `ExpenseService` → `FakeFirebaseFirestore` → manual cache → `SQLite` → read back.
-
-Setup required:
-```dart
-setUpAll(() {
-  sqfliteFfiInit();
-  databaseFactory = databaseFactoryFfi;
-});
-
-setUp(() async {
-  await LocalDatabase.clearAll();
-});
-
-tearDownAll(() async {
-  await LocalDatabase.close();
-});
-```
-
 ### Firebase auth contract (`test/integration/firebase_auth_test.dart`)
 
 Uses `firebase_auth_mocks` package (`MockFirebaseAuth`, `MockUser`). No emulator dependency.
@@ -481,19 +454,6 @@ addTearDown(container.dispose);
 final value = container.read(someProvider);
 ```
 
-### sqflite_common_ffi (SQLite in tests)
-
-Required for any test that touches `LocalDatabase`:
-
-```dart
-setUpAll(() {
-  sqfliteFfiInit();
-  databaseFactory = databaseFactoryFfi;
-});
-```
-
-Without this, SQLite calls will throw on macOS/Linux test environments.
-
 ---
 
 ## Common Pitfalls
@@ -545,10 +505,6 @@ Use exact strings matching the current codebase. Two labels that have been renam
 |-------|---------|
 | `'TREASURY'` | `'SPENDING'` |
 | `'Audit Log'` | `'Ledger'` |
-
-### sqflite not initialized
-
-SQLite tests on non-mobile platforms fail with an unsupported platform error unless `sqfliteFfiInit()` and `databaseFactory = databaseFactoryFfi` are called in `setUpAll`.
 
 ### FakeFirebaseFirestore does not enforce security rules
 

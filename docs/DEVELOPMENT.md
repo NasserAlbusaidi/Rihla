@@ -107,31 +107,6 @@ final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
 final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
 ```
 
-### asyncMap side-write pattern (cache-on-success)
-
-When a Firestore stream also needs to populate the SQLite cache (for `BalanceCalculator`), use `asyncMap` inside the `StreamProvider`:
-
-```dart
-final eventExpensesProvider = StreamProvider.family<List<Expense>, EventRef>((
-  ref,
-  eventRef,
-) {
-  final service = ref.read(expenseServiceProvider);
-  final cache = ref.read(balanceCacheRepositoryProvider);
-  return service.watchExpenses(eventRef.groupId, eventRef.eventId)
-      .asyncMap((expenses) async {
-        try {
-          await cache.cacheExpenses(eventRef.eventId, expenses);
-        } catch (e) {
-          // SQLite cache is non-critical; Firestore is the source of truth
-        }
-        return expenses;
-      });
-});
-```
-
-This keeps the stream pipeline intact and guarantees SQLite is updated before downstream subscribers receive the data.
-
 ### Provider.family for derived state
 
 Use when you need to combine two or more async sources without creating a new stream. Combine with `AsyncValue` operators:
@@ -256,9 +231,7 @@ state.uri.queryParameters['memberId']
 
 ### How offline works
 
-Firestore's built-in offline persistence (`persistenceEnabled: true`, set in `FirebaseConfig.initialize()`) handles offline write replay automatically. No manual upload queue. Screens using `StreamProvider` continue to receive cached Firestore data while offline.
-
-The SQLite cache (`safar_cache.db` via `LocalDatabase`) is a secondary layer used specifically by `BalanceCalculator`, which needs random-access queries across expenses and settlements. Firestore streams side-write to SQLite via `asyncMap` (see section 3).
+Firestore's built-in offline persistence (`persistenceEnabled: true`, `cacheSizeBytes: CACHE_SIZE_UNLIMITED`, set in `FirebaseConfig.initialize()`) is the only cache. It serves offline reads from previously-fetched data and replays queued writes automatically. There is no hand-rolled local cache and no manual upload queue. Screens using `StreamProvider` continue to receive cached Firestore data while offline, and `BalanceCalculator` reads those same Firestore streams directly.
 
 ### ConnectivityNotifier
 
@@ -275,19 +248,7 @@ const OfflineBanner(),  // from lib/shared/widgets/offline_banner.dart
 
 2. **Writes:** No extra work — Firestore queues writes locally when offline and replays on reconnect. Service methods (`addExpense`, `createGroup`, etc.) can be called offline.
 
-3. **Balance calculations:** If your feature feeds `BalanceCalculator`, add a `cacheExpenses` / `cacheSettlements` call via `asyncMap` in the stream provider (see expense provider pattern above).
-
-4. **LocalDatabase schema:** If you need a new SQLite table for balance caching, add it in `LocalDatabase._onCreate` and `_onUpgrade`, and bump `_databaseVersion`. Current version is **9**.
-
-### LocalDatabase tables
-
-```
-trips, expenses, settlements, participants,
-activity_logs, categories,
-groups, group_members, group_ledger
-```
-
-All monetary amounts are stored as `TEXT` (Decimal string representation). Soft-delete columns (`is_deleted INTEGER`, `deleted_at TEXT`) on expenses and settlements.
+3. **Balance calculations:** No extra work — `BalanceCalculator` consumes the Firestore `StreamProvider`s directly, which are served from Firestore's offline cache when offline. There is no separate cache to populate.
 
 ---
 

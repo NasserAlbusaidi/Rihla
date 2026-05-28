@@ -55,8 +55,6 @@ dependencies:
   url_launcher: ^6.3.2
   app_settings: ^7.0.0
   intl: ^0.20.2
-  sqflite: ^2.4.2
-  path: ^1.9.1
   timeago: ^3.6.1
 
   # Export
@@ -93,7 +91,6 @@ dev_dependencies:
     sdk: flutter
   fake_cloud_firestore: ^4.1.0+1
   firebase_auth_mocks: ^0.15.1
-  sqflite_common_ffi: ^2.3.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
