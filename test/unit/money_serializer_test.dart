@@ -105,5 +105,46 @@ void main() {
         );
       });
     });
+
+    group('fractionDigits', () {
+      test('OMR returns 3', () {
+        expect(MoneySerializer.fractionDigits('OMR'), equals(3));
+      });
+
+      test('USD returns 2', () {
+        expect(MoneySerializer.fractionDigits('USD'), equals(2));
+      });
+
+      test('JPY returns 0', () {
+        expect(MoneySerializer.fractionDigits('JPY'), equals(0));
+      });
+
+      test('lowercase omr returns 3 (case-insensitive)', () {
+        expect(MoneySerializer.fractionDigits('omr'), equals(3));
+      });
+
+      test('unsupported XYZ throws ArgumentError', () {
+        expect(
+          () => MoneySerializer.fractionDigits('XYZ'),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
+    });
+
+    group('isSupported', () {
+      test('true for OMR/USD/JPY', () {
+        expect(MoneySerializer.isSupported('OMR'), isTrue);
+        expect(MoneySerializer.isSupported('USD'), isTrue);
+        expect(MoneySerializer.isSupported('JPY'), isTrue);
+      });
+
+      test('case-insensitive (lowercase usd)', () {
+        expect(MoneySerializer.isSupported('usd'), isTrue);
+      });
+
+      test('false for unsupported XYZ', () {
+        expect(MoneySerializer.isSupported('XYZ'), isFalse);
+      });
+    });
   });
 }
