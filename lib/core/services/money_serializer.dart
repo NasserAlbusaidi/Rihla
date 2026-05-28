@@ -33,6 +33,25 @@ class MoneySerializer {
         .toDecimal(scaleOnInfinitePrecision: 10);
   }
 
+  /// True if [currency] (case-insensitive) has a known subunit scale.
+  static bool isSupported(String currency) =>
+      _currencyScale.containsKey(currency.toUpperCase());
+
+  /// Fractional digits for [currency] (OMR→3, USD→2, JPY→0).
+  ///
+  /// Throws [ArgumentError] on an unsupported currency, consistent with
+  /// [toSubunits]/[fromSubunits]. Callers that must not throw (e.g. balance
+  /// math over untrusted Firestore data) should guard with [isSupported].
+  static int fractionDigits(String currency) {
+    var scale = _scale(currency); // scale is a power of ten (1, 100, 1000)
+    var digits = 0;
+    while (scale > 1) {
+      scale ~/= 10;
+      digits++;
+    }
+    return digits;
+  }
+
   static int _scale(String currency) {
     final scale = _currencyScale[currency.toUpperCase()];
     if (scale == null) {
