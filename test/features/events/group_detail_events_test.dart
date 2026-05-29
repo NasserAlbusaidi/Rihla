@@ -6,8 +6,6 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:safar/shared/animations/fade_in_list.dart';
-
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -279,9 +277,7 @@ void main() {
       expect(find.byKey(GroupKeys.eventsCountChip), findsNothing);
     });
 
-    testWidgets('event rows render without the legacy FadeInList wrapper', (
-      tester,
-    ) async {
+    testWidgets('event rows render', (tester) async {
       final events = [
         _makeEvent(id: 'evt-1', name: 'Beach Trip'),
         _makeEvent(id: 'evt-2', name: 'Mountain Hike', type: EventType.camping),
@@ -296,7 +292,6 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(FadeInList), findsNothing);
       expect(find.text('Beach Trip'), findsWidgets);
       expect(find.text('Mountain Hike'), findsWidgets);
     });
