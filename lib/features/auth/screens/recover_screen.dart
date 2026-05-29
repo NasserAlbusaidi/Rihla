@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/services/cache_uid_barrier.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/email_validators.dart';
@@ -46,6 +48,11 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
     if (groups.isEmpty) return true;
     final confirmed = await SignOutFirstDialog.show(context);
     if (confirmed != true) return false;
+    // Mark the on-device Firestore cache dirty BEFORE signing out the populated
+    // anon UID, so the eventual cold boot (after the deep-link recovery restarts
+    // the app) clears this UID's cached financials (#45). This off-table path
+    // does not restart here — recovery completes when the user taps the link.
+    await markFirestorePersistenceDirty(ref.read(sharedPreferencesProvider));
     try {
       // No linked email yet on this device — sign out the anon UID and
       // mint a fresh one before sending the recovery link. This mirrors
