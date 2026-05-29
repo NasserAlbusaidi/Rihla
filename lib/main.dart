@@ -20,6 +20,7 @@ import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/theme/tokens/color_tokens.dart';
 import 'core/services/app_messenger.dart';
+import 'core/services/cache_isolation_controller.dart';
 import 'core/services/deep_link_service.dart';
 import 'l10n/generated/app_localizations.dart';
 
@@ -167,12 +168,23 @@ class _SafarAppState extends ConsumerState<SafarApp> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // An in-session UID swap is restarting the app — don't build the router
+      // or start deep-link handling; the cold boot will do it fresh (#45).
+      if (ref.read(cacheIsolationProvider)) return;
       unawaited(DeepLinkService.instance.init(ref.read(routerProvider)));
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Cache-isolation overlay (#45): once an in-session UID swap engages
+    // isolation, cover the whole app BEFORE reading router/settings/bootstrap,
+    // so no cached financials from the outgoing UID can render during the swap
+    // → restart window. Read FIRST (R3 P2-1 ordering).
+    if (ref.watch(cacheIsolationProvider)) {
+      return const _CacheIsolationApp();
+    }
+
     final router = ref.watch(routerProvider);
     final settings = ref.watch(settingsProvider);
     // Activate bootstrap listeners (notification sync, etc.)
@@ -191,6 +203,24 @@ class _SafarAppState extends ConsumerState<SafarApp> {
         themeMode: settings.themeMode.toMaterialThemeMode(),
         routerConfig: router,
       ),
+    );
+  }
+}
+
+/// Opaque cover shown while an in-session UID swap restarts the app (#45).
+///
+/// Reuses [SplashScreen] so this brief pre-restart cover is visually identical
+/// to the cold boot that immediately follows, and so no cached financials from
+/// the outgoing UID can paint during the swap window.
+class _CacheIsolationApp extends StatelessWidget {
+  const _CacheIsolationApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      home: const SplashScreen(key: Key('cache-isolation-overlay')),
     );
   }
 }
