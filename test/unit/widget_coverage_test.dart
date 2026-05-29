@@ -1,102 +1,25 @@
 // Coverage-gap closing tests for shared and feature widgets.
 //
 // Targets:
-//   - AppTabBar (17 uncov)
 //   - ModuleHeader (27 uncov)
 //   - InviteCodeDisplay (21 uncov)
-//   - SmartModuleCard (18 uncov)
-//   - ShimmerPlaceholder (28 uncov lines in loading_button.dart)
 //   - OfflineBanner (7 uncov)
 //   - SkeletonLoader factory methods (6 uncov)
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
-import 'package:safar/shared/widgets/app_tab_bar.dart';
-import 'package:safar/shared/widgets/loading_button.dart';
 import 'package:safar/shared/widgets/module_header.dart';
 import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
-import 'package:safar/shared/widgets/smart_module_card.dart';
 import 'package:safar/features/groups/widgets/invite_code_display.dart';
 
-// ---------------------------------------------------------------------------
-// AppTabBar
-// ---------------------------------------------------------------------------
-
 void main() {
-  group('AppTabBar', () {
-    Widget buildTabBar({required List<String> tabs, Color? activeColor}) {
-      return MaterialApp(
-        theme: AppTheme.lightTheme,
-        home: Scaffold(
-          body: DefaultTabController(
-            length: tabs.length,
-            child: Builder(
-              builder: (context) {
-                final controller = DefaultTabController.of(context);
-                return AppTabBar(
-                  controller: controller,
-                  tabs: tabs,
-                  activeColor: activeColor,
-                );
-              },
-            ),
-          ),
-        ),
-      );
-    }
-
-    testWidgets('renders tab labels', (tester) async {
-      await tester.pumpWidget(buildTabBar(tabs: ['Alpha', 'Beta']));
-      await tester.pump();
-
-      expect(find.text('Alpha'), findsOneWidget);
-      expect(find.text('Beta'), findsOneWidget);
-    });
-
-    testWidgets('renders three tabs', (tester) async {
-      await tester.pumpWidget(buildTabBar(tabs: ['One', 'Two', 'Three']));
-      await tester.pump();
-
-      expect(find.text('One'), findsOneWidget);
-      expect(find.text('Two'), findsOneWidget);
-      expect(find.text('Three'), findsOneWidget);
-    });
-
-    testWidgets('renders with custom activeColor', (tester) async {
-      await tester.pumpWidget(
-        buildTabBar(tabs: ['X', 'Y'], activeColor: Colors.purple),
-      );
-      await tester.pump();
-
-      // Widget renders without error with custom color
-      expect(find.byType(TabBar), findsOneWidget);
-    });
-
-    testWidgets('renders TabBar widget', (tester) async {
-      await tester.pumpWidget(buildTabBar(tabs: ['Tab1', 'Tab2']));
-      await tester.pump();
-
-      expect(find.byType(TabBar), findsOneWidget);
-    });
-
-    testWidgets('tapping second tab does not throw', (tester) async {
-      await tester.pumpWidget(buildTabBar(tabs: ['A', 'B', 'C']));
-      await tester.pump();
-
-      await tester.tap(find.byKey(SharedKeys.appTabBarTab('B')));
-      await tester.pump();
-
-      expect(find.text('B'), findsOneWidget);
-    });
-  });
 
   // ---------------------------------------------------------------------------
   // ModuleHeader
@@ -325,201 +248,6 @@ void main() {
       await tester.pump();
 
       expect(shared, isTrue);
-    });
-  });
-
-
-  // ---------------------------------------------------------------------------
-  // SmartModuleCard
-  // ---------------------------------------------------------------------------
-
-  group('SmartModuleCard', () {
-    Widget wrap(Widget child) => MaterialApp(
-      theme: AppTheme.lightTheme,
-      home: Scaffold(body: child),
-    );
-
-    testWidgets('renders title text', (tester) async {
-      await tester.pumpWidget(
-        wrap(
-          SmartModuleCard(
-            icon: Iconsax.wallet_3,
-            title: 'Ledger',
-            description: 'Track expenses',
-            color: Colors.blue,
-            onTap: () {},
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Ledger'), findsOneWidget);
-    });
-
-    testWidgets('renders description when isEmpty and no summaryText', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          SmartModuleCard(
-            icon: Iconsax.bag_2,
-            title: 'Gear',
-            description: 'Packing list',
-            color: Colors.green,
-            onTap: () {},
-            isEmpty: true,
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Packing list'), findsOneWidget);
-    });
-
-    testWidgets('renders summaryText when not empty', (tester) async {
-      await tester.pumpWidget(
-        wrap(
-          SmartModuleCard(
-            icon: Iconsax.wallet_3,
-            title: 'Ledger',
-            description: 'Track expenses',
-            color: Colors.blue,
-            onTap: () {},
-            summaryText: '3 expenses',
-            isEmpty: false,
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('3 expenses'), findsOneWidget);
-    });
-
-    testWidgets('renders actionText when provided', (tester) async {
-      await tester.pumpWidget(
-        wrap(
-          SmartModuleCard(
-            icon: Iconsax.bag_2,
-            title: 'Gear',
-            description: 'Packing',
-            color: Colors.orange,
-            onTap: () {},
-            actionText: '2 items unclaimed',
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('2 items unclaimed'), findsOneWidget);
-    });
-
-    testWidgets('calls onTap when tapped', (tester) async {
-      var tapped = false;
-      await tester.pumpWidget(
-        wrap(
-          SmartModuleCard(
-            icon: Iconsax.wallet_3,
-            title: 'Module',
-            description: 'Desc',
-            color: Colors.purple,
-            onTap: () => tapped = true,
-          ),
-        ),
-      );
-      await tester.pump();
-
-      await tester.tap(find.byType(SmartModuleCard));
-      // Wait for the 500ms navigation debounce timer in _PressableWrapper
-      await tester.pump(const Duration(milliseconds: 600));
-
-      expect(tapped, isTrue);
-    });
-
-    testWidgets('renders icon', (tester) async {
-      await tester.pumpWidget(
-        wrap(
-          SmartModuleCard(
-            icon: Iconsax.car,
-            title: 'Logistics',
-            description: 'Cars and rooms',
-            color: Colors.teal,
-            onTap: () {},
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.byIcon(Iconsax.car), findsOneWidget);
-    });
-
-    testWidgets('renders chevron icon', (tester) async {
-      await tester.pumpWidget(
-        wrap(
-          SmartModuleCard(
-            icon: Iconsax.document_text,
-            title: 'Vault',
-            description: 'Store docs',
-            color: Colors.indigo,
-            onTap: () {},
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.byIcon(Iconsax.arrow_right_3), findsOneWidget);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // ShimmerPlaceholder (in loading_button.dart)
-  // ---------------------------------------------------------------------------
-
-  group('ShimmerPlaceholder', () {
-    Widget wrap(Widget child) => MaterialApp(
-      theme: AppTheme.lightTheme,
-      home: Scaffold(body: child),
-    );
-
-    testWidgets('renders with specified width and height', (tester) async {
-      await tester.pumpWidget(
-        wrap(const ShimmerPlaceholder(width: 200, height: 20)),
-      );
-      await tester.pump();
-
-      // AnimatedBuilder-based widget renders in the tree
-      expect(find.byType(ShimmerPlaceholder), findsOneWidget);
-    });
-
-    testWidgets('renders with custom borderRadius', (tester) async {
-      await tester.pumpWidget(
-        wrap(
-          const ShimmerPlaceholder(width: 100, height: 10, borderRadius: 16),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.byType(ShimmerPlaceholder), findsOneWidget);
-    });
-
-    testWidgets('animation runs without error on pump', (tester) async {
-      await tester.pumpWidget(
-        wrap(const ShimmerPlaceholder(width: 150, height: 15)),
-      );
-      // Run the shimmer animation for a frame
-      await tester.pump(const Duration(milliseconds: 500));
-
-      expect(find.byType(ShimmerPlaceholder), findsOneWidget);
-    });
-
-    testWidgets('disposes animation controller without error', (tester) async {
-      await tester.pumpWidget(
-        wrap(const ShimmerPlaceholder(width: 100, height: 12)),
-      );
-      await tester.pump();
-
-      // Replacing the widget tree causes dispose() to be called
-      await tester.pumpWidget(const MaterialApp(home: Scaffold()));
-      // No exception should be thrown
     });
   });
 

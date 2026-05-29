@@ -7,17 +7,12 @@
 - **wordmark_logo.dart**: Rihla wordmark for splash + brand surfaces.
 - **module_header.dart**: Gradient module top bar (back + title + action icons).
 - **section_header.dart**: Italic Instrument Serif section heading.
-- **app_tab_bar.dart**: Themed tab bar with pill indicator.
 - **offline_banner.dart**: Connectivity banner (watches `connectivityProvider`).
 - **empty_state_view.dart**: Placeholder for empty lists with optional CTA.
-- **smart_module_card.dart**: Context-aware module card (used by EventCommandCenter).
-- **search_filter_bar.dart**: Search input + filter chips.
-- **animated_currency_text.dart**: Animated number display with currency change transitions.
 - **loading_button.dart**: Button with loading spinner state.
 - **skeleton_loader.dart**: Named-factory skeleton layouts (`expenseList`, `eventCard`, `groupList`, `dashboardHero`, `generic`, …).
 - **skeleton_primitives.dart**: Reusable skeleton shapes used by the loaders above.
 - **grain_overlay.dart**: Subtle noise texture overlay (`assets/textures/grain.png`).
-- **dot_step_indicator.dart**: Step / page dots for onboarding.
 - **initials_circle.dart**: Legacy avatar circle (prefer `RAvatar` for new code).
 
 ### animations/
