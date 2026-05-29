@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,6 +17,13 @@ class _MockFirestore extends Mock implements FirebaseFirestore {}
 class _FakeActionCodeSettings extends Fake implements ActionCodeSettings {}
 
 class _FakeAuthCredential extends Fake implements AuthCredential {}
+
+class _NoopController implements CacheIsolationController {
+  @override
+  void engageIsolation() {}
+  @override
+  Future<void> restart() async {}
+}
 
 void main() {
   setUpAll(() {
@@ -51,6 +59,7 @@ void main() {
   AuthRecoveryService buildService() => AuthRecoveryService(
     auth: auth,
     prefs: prefs,
+    cacheIsolationController: _NoopController(),
     firestore: firestore,
     cleanupAnonUidArtifacts:
         ({required oldUid, required cleanupSecret}) async {},

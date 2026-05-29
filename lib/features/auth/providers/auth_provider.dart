@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../services/auth_recovery_service.dart';
+import 'cache_isolation_controller_provider.dart';
 
 /// Auth state provider — listens to Firebase auth changes.
 final authStateProvider = StreamProvider<firebase_auth.User?>((ref) {
@@ -59,7 +60,11 @@ final firebaseAuthProvider = Provider<firebase_auth.FirebaseAuth>((ref) {
 final authRecoveryServiceProvider = Provider<AuthRecoveryService>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final auth = ref.watch(firebaseAuthProvider);
-  return AuthRecoveryService(auth: auth, prefs: prefs);
+  return AuthRecoveryService(
+    auth: auth,
+    prefs: prefs,
+    cacheIsolationController: ref.read(cacheIsolationControllerProvider),
+  );
 });
 
 /// Auth service provider.
