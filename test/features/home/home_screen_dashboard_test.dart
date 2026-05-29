@@ -178,14 +178,6 @@ List<Override> _loadedOverrides() => [
       _toEntry(_testActivity2, 'Mountain Pals', 'g2'),
     ]),
   ),
-  weeklyGroupSpendingProvider.overrideWith(
-    (ref) => AsyncValue.data(
-      List.generate(7, (i) {
-        final date = DateTime(2026, 3, 24).add(Duration(days: i));
-        return (date: date, amount: Decimal.zero);
-      }),
-    ),
-  ),
   groupBalancesProvider.overrideWith(
     (ref, groupId) => AsyncValue.data(_testGroupBalances()),
   ),
@@ -283,14 +275,6 @@ void main() {
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
       ),
-      weeklyGroupSpendingProvider.overrideWith(
-        (ref) => AsyncValue.data(
-          List.generate(7, (i) {
-            final date = DateTime(2026, 3, 24).add(Duration(days: i));
-            return (date: date, amount: Decimal.zero);
-          }),
-        ),
-      ),
       groupBalancesProvider.overrideWith(
         (ref, groupId) => const AsyncValue.loading(),
       ),
@@ -346,14 +330,6 @@ void main() {
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
       ),
-      weeklyGroupSpendingProvider.overrideWith(
-        (ref) => AsyncValue.data(
-          List.generate(7, (i) {
-            final date = DateTime(2026, 3, 24).add(Duration(days: i));
-            return (date: date, amount: Decimal.zero);
-          }),
-        ),
-      ),
       groupBalancesProvider.overrideWith(
         (ref, groupId) => const AsyncValue.loading(),
       ),
@@ -402,14 +378,6 @@ void main() {
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
-      ),
-      weeklyGroupSpendingProvider.overrideWith(
-        (ref) => AsyncValue.data(
-          List.generate(7, (i) {
-            final date = DateTime(2026, 3, 24).add(Duration(days: i));
-            return (date: date, amount: Decimal.zero);
-          }),
-        ),
       ),
       groupBalancesProvider.overrideWith(
         (ref, groupId) => AsyncValue.data((
@@ -489,14 +457,6 @@ void main() {
               crossGroupActivityProvider.overrideWith(
                 (ref) => const AsyncValue.data([]),
               ),
-              weeklyGroupSpendingProvider.overrideWith(
-                (ref) => AsyncValue.data(
-                  List.generate(7, (i) {
-                    final date = DateTime(2026, 3, 24).add(Duration(days: i));
-                    return (date: date, amount: Decimal.zero);
-                  }),
-                ),
-              ),
               groupBalancesProvider.overrideWith(
                 (ref, groupId) => AsyncValue.data(
                   _testGroupBalances(net: Decimal.parse('-10.000')),
@@ -535,14 +495,6 @@ void main() {
             ),
             crossGroupActivityProvider.overrideWith(
               (ref) => const AsyncValue.data([]),
-            ),
-            weeklyGroupSpendingProvider.overrideWith(
-              (ref) => AsyncValue.data(
-                List.generate(7, (i) {
-                  final date = DateTime(2026, 3, 24).add(Duration(days: i));
-                  return (date: date, amount: Decimal.zero);
-                }),
-              ),
             ),
             groupBalancesProvider.overrideWith(
               (ref, groupId) => AsyncValue.data((
@@ -603,14 +555,6 @@ void main() {
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
-      ),
-      weeklyGroupSpendingProvider.overrideWith(
-        (ref) => AsyncValue.data(
-          List.generate(7, (i) {
-            final date = DateTime(2026, 3, 24).add(Duration(days: i));
-            return (date: date, amount: Decimal.zero);
-          }),
-        ),
       ),
       groupBalancesProvider.overrideWith(
         (ref, groupId) => AsyncValue.data(_testGroupBalances()),
