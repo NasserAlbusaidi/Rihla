@@ -167,3 +167,24 @@ The scrub is **server-side work**, not client work. `completeRecovery` only *inv
 ## Part 7 — Adversarial worked example (orthogonal axis: offline money-flow)
 > Anon **X** adds a 12.500 OMR expense **offline** (un-synced in the mutation queue). App killed. User recovers → **Y**. Recovery flushes (5s, offline → times out), sets dirty, swaps, awaits cleanup, restarts → cold-boot `clearPersistence()` → **X's queued write is dropped**.
 A cross-UID clear is destructive to the outgoing identity's un-synced writes; the 5s flush covers the online case; offline-at-swap loss is the correct confidentiality trade. Not a `BalanceCalculator` concern (remainder → alphabetically-last, `expense_provider.dart:225-242,357-373`, untouched). The inverse is **P2-3**: §3.2 does NOT clear on a bare null marker precisely to protect the upgrade rollout's same-UID unsynced writes.
+
+---
+
+## Part 8 — Implementation status (2026-05-29) + divergence
+
+**Landed on `fix/issue-45-firestore-cache-uid-barrier`** (1298 tests green, `flutter analyze` clean, CI-parity coverage 80.85% w/ goldens excluded):
+- Cold-start barrier core: `firestore_cache_gate.dart`, `cache_uid_barrier.dart` (`shouldClearCache` + `reconcile` + `markFirestorePersistenceDirty`), wired into `ensureAnonymousSession` with `forceClear` from the internal-error swap-bool.
+- In-session machinery: `cache_isolation_controller.dart` (seam + `cacheIsolationProvider`), `cache_isolation_controller_provider.dart` (`PlatformCacheIsolationController` + provider), `MainActivity.kt` MethodChannel `restart` (relaunch Intent + `Runtime.getRuntime().exit(0)`).
+- Swap flows rewritten: `completeRecovery`, `signOutCurrentDevice`, `deleteAccount` (engage → dirty → swap → restart); `RecoverScreen` pre-link sets dirty.
+- `SafarApp.build` overlay short-circuit + post-frame guard.
+
+### Divergence from §3.5 — "once isolated, always restart (finally) + clear op-state on every exit"
+**Why:** §3.5's literal *engage-first → restart-only-on-success* ordering ships a [P1] for the **common** recovery failure (expired/invalid link). Sequence: engage (overlay up, leaves torn down) → `signOut` → `signInWithEmailLink` **throws** → exception propagates with NO restart → user stranded on the `_CacheIsolationApp` splash. Worse, `inFlightOp` was never cleared, so the next cold boot's `authEmailLinkBootstrapProvider` re-dispatches `completeRecovery` on the **dead** link (`auth_email_link_bootstrap_provider.dart:148-152`) → fails → engages → strands again = **permanent loop** needing an app-data wipe.
+**Fix (implemented):** after `engageIsolation()`, a `finally` GUARANTEES `restart()` and clears `pendingEmail`+`inFlightOp` on **both** success and failure. A failed swap now restarts to a clean cold boot (fresh anon, dirty cache cleared, no stale op). `deleteAccount` engages isolation **only after** the cascade succeeds, so a failed cascade stays on a clean error path (no overlay); a post-cascade `signOut` failure is non-fatal (account already deleted) and still restarts.
+**Status:** ⚠️ this failure-path handling was authored in-session and has NOT been through a fresh-context gate. **Recommend `/codex` re-gate of the failure paths before merge** (the categories — auth + routing-via-restart — are inside the unconditional-gate set).
+
+### Pre-merge gate — RD-QA (device, blocks merge; CI cannot cover)
+1. **[§6.1 HIGH] Restart yields an un-started Firestore instance.** Validate `MainActivity.restartApp()` (`Runtime.getRuntime().exit(0)` + relaunch Intent) produces a genuine cold boot — script: anon X adds a ledger row → recover to Y → app restarts → X's ledger is gone *before* network. If it behaves like a rebirth, cold-start `clearPersistence()` throws → fall back to in-session `terminate()`.
+2. **[§6.2] `clearPersistence`-after-`Settings` ordering** holds on a real device/emulator (no other Firestore touch precedes the barrier on any boot path).
+3. **[§6.3] Overlay-reset fallback.** If `restart()` no-ops on some device the in-memory flag stays true → stuck splash. The `finally`-always-restart narrows this to "restart channel itself fails"; still define a watchdog/manual-restart affordance.
+4. **[§6.4] `firestorePersistenceDirty` durability** — the `setBool` is awaited before `restart()` (verified in code); confirm it survives the process kill on-device.
