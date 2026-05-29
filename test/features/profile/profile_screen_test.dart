@@ -399,10 +399,7 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Phase 26 tests — TDD RED phase
-  // These tests assert on widgets that do not exist yet. They will fail until
-  // Plan 01 (Wave 2) adds ProfileNotificationsSection, ProfileAboutSection,
-  // and ProfileSupportSection to ProfileScreen.
+  // Phase 26 tests — notification toggle + info tiles on ProfileScreen
   // ---------------------------------------------------------------------------
 
   group('ProfileScreen -- NOTIF-01', () {
