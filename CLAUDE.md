@@ -135,7 +135,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 - Name-based members: creator adds names + picks own; joiner enters invite code + picks unclaimed name. Lives on `groups/{gid}/members/{uid}`, mirrored from `settingsProvider.deviceName`.
 - Event modules: only `ledger: true` after Phase 39; model silently ignores legacy keys for compat.
 - Group join: via `joinGroupByInviteCode` Function — atomic, validated, rate-limited 5/hr/UID, idempotent.
-- Account recovery (v1.2): optional email-link; `AuthRecoveryService` orchestrates; linked email permanent. **Cross-UID isolation of the Firestore on-device cache is an OPEN item (#45 / PR 2) — the SQLite-wipe `UidChangeListener` was removed with the cache in #50; do not assume cross-UID leak protection exists until #45 lands.**
+- Account recovery (v1.2): optional email-link; `AuthRecoveryService` orchestrates; linked email permanent. **Cross-UID isolation of the Firestore on-device cache: fix IMPLEMENTED on draft PR #68 (cold-start `CacheUidBarrier` + in-session isolation overlay + true restart via `MainActivity` MethodChannel) but NOT on `main` — gated on device-QA #67 + a failure-path re-gate. Until #68 merges, do not assume cross-UID leak protection exists on main.**
 - Account deletion: Profile→Account→Delete → server cascade (auth, Firestore, FCM); Sentry redacts email PII.
 - Onboarding: 3-page, gated by `onboardingComplete` in `AppSettings`; router hard-redirects all non-onboarding routes until complete.
 - Auth: anon sign-in, no login screen. Deep links: `rihla.app/join/<code>` pre-fills code; recovery via App/Universal Links. Legal: `rihla.app/privacy|terms|delete-data`.
