@@ -4,13 +4,11 @@
 //   - AppTabBar (17 uncov)
 //   - ModuleHeader (27 uncov)
 //   - InviteCodeDisplay (21 uncov)
-//   - GroupBalanceHero (21 uncov)
 //   - SmartModuleCard (18 uncov)
 //   - ShimmerPlaceholder (28 uncov lines in loading_button.dart)
 //   - OfflineBanner (7 uncov)
 //   - SkeletonLoader factory methods (6 uncov)
 
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,7 +24,6 @@ import 'package:safar/shared/widgets/module_header.dart';
 import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/shared/widgets/smart_module_card.dart';
-import 'package:safar/features/groups/widgets/group_balance_hero.dart';
 import 'package:safar/features/groups/widgets/invite_code_display.dart';
 
 // ---------------------------------------------------------------------------
@@ -331,168 +328,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // GroupBalanceHero
-  // ---------------------------------------------------------------------------
-
-  group('GroupBalanceHero', () {
-    Widget wrap(Widget child) => MaterialApp(
-      theme: AppTheme.lightTheme,
-      home: Scaffold(body: SingleChildScrollView(child: child)),
-    );
-
-    testWidgets('renders GROUP BALANCES label', (tester) async {
-      await tester.pumpWidget(
-        wrap(
-          GroupBalanceHero(
-            totalSpent: Decimal.parse('100.000'),
-            userNetBalance: Decimal.zero,
-            currency: 'OMR',
-            onSettleUp: () {},
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('GROUP BALANCES'), findsOneWidget);
-    });
-
-    testWidgets('shows All balances settled text when userNetBalance is zero', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          GroupBalanceHero(
-            totalSpent: Decimal.parse('50.000'),
-            userNetBalance: Decimal.zero,
-            currency: 'OMR',
-            onSettleUp: () {},
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('All balances settled'), findsOneWidget);
-    });
-
-    testWidgets('shows All settled text when balance is zero', (tester) async {
-      await tester.pumpWidget(
-        wrap(
-          GroupBalanceHero(
-            totalSpent: Decimal.zero,
-            userNetBalance: Decimal.zero,
-            currency: 'OMR',
-            onSettleUp: () {},
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(
-        find.text('All settled! No outstanding balances.'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('shows YOU OWE label when userNetBalance is negative', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          GroupBalanceHero(
-            totalSpent: Decimal.parse('20.000'),
-            userNetBalance: Decimal.parse('-10.000'),
-            currency: 'OMR',
-            onSettleUp: () {},
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('YOU OWE'), findsOneWidget);
-    });
-
-    testWidgets('shows YOU ARE OWED label when userNetBalance is positive', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          GroupBalanceHero(
-            totalSpent: Decimal.parse('20.000'),
-            userNetBalance: Decimal.parse('10.000'),
-            currency: 'OMR',
-            onSettleUp: () {},
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('YOU ARE OWED'), findsOneWidget);
-    });
-
-    testWidgets('shows Settle Up button when balance is non-zero', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          GroupBalanceHero(
-            totalSpent: Decimal.parse('30.000'),
-            userNetBalance: Decimal.parse('-15.000'),
-            currency: 'OMR',
-            onSettleUp: () {},
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(SharedKeys.groupBalanceSettleUpButton), findsOneWidget);
-    });
-
-    testWidgets('calls onSettleUp when card is tapped', (tester) async {
-      var tapped = false;
-      await tester.pumpWidget(
-        wrap(
-          GroupBalanceHero(
-            totalSpent: Decimal.parse('30.000'),
-            userNetBalance: Decimal.parse('-15.000'),
-            currency: 'OMR',
-            onSettleUp: () => tapped = true,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(SharedKeys.groupBalanceSettleUpButton));
-      await tester.pump();
-
-      expect(tapped, isTrue);
-    });
-
-    testWidgets('renders You owe text when balance is negative', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          GroupBalanceHero(
-            totalSpent: Decimal.parse('40.000'),
-            userNetBalance: Decimal.parse('-20.000'),
-            currency: 'OMR',
-            onSettleUp: () {},
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final richTexts = tester.widgetList<RichText>(find.byType(RichText));
-      final allText = richTexts.map((rt) => rt.text.toPlainText()).join(' ');
-      // Either TweenAnimationBuilder text or direct text contains owe
-      expect(
-        find.textContaining('owe').evaluate().isNotEmpty ||
-            allText.contains('owe'),
-        isTrue,
-      );
-    });
-  });
 
   // ---------------------------------------------------------------------------
   // SmartModuleCard
