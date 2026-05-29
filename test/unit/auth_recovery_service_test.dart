@@ -432,6 +432,44 @@ void main() {
       expect(breadcrumbs, hasLength(1));
     });
 
+    test(
+      'records a breadcrumb and continues when cleanup-intent creation fails',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async => credential);
+        var cleanupInvoked = false;
+        final breadcrumbs = <Map<String, Object?>>[];
+        final service = buildService(
+          cleanupIntentFactory: (_) async =>
+              throw StateError('intent boom for foo@example.com'),
+          cleanupAnonUidArtifacts:
+              ({required oldUid, required cleanupSecret}) async {
+                cleanupInvoked = true;
+              },
+          recoveryCleanupFailureRecorder: ({required message, required data}) {
+            breadcrumbs.add({'message': message, ...data});
+          },
+        );
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeRecovery(link);
+
+        expect(result, same(credential));
+        expect(
+          breadcrumbs.single['message'],
+          'Recovery cleanup intent creation failed',
+        );
+        // No secret was produced, so the cleanup callable must be skipped.
+        expect(cleanupInvoked, isFalse);
+        expect(breadcrumbs.single.toString(), isNot(contains('foo@example.com')));
+      },
+    );
+
     test('cleanup failure breadcrumb excludes email PII', () async {
       final credential = _MockUserCredential();
       when(
