@@ -343,6 +343,17 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  test('deletion attempt counters are not readable or writable by clients', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('deletionAttempts/owner').get());
+    await assertFails(owner.collection('deletionAttempts').get());
+    await assertFails(owner.doc('deletionAttempts/owner').set({
+      count: 1,
+      windowStart: new Date(),
+      expiresAt: new Date(),
+    }));
+  });
+
   test('recovery cleanup intent can only be created by the retiring UID', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
     const member = testEnv.authenticatedContext('member').firestore();

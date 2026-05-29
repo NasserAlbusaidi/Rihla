@@ -19,6 +19,10 @@ const deletedMemberName = 'Deleted member';
 const deletedUserSentinel = 'deleted-user';
 const batchLimit = 450;
 
+// #73: per-UID invocation rate limit (compensating control for soft App Check).
+const DELETION_ATTEMPT_LIMIT = 5;
+const DELETION_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
+
 export interface DeleteAccountOutput {
   groupsProcessed: number;
   tombstoneIds: string[];
@@ -85,6 +89,38 @@ function assertNoInput(data: unknown): void {
     return;
   }
   throw new HttpsError('invalid-argument', 'deleteAccount does not accept input.');
+}
+
+function isTimestamp(value: unknown): value is Timestamp {
+  return value instanceof Timestamp;
+}
+
+// #73: per-UID invocation rate limit. Counts EVERY invocation (success, no-op, or
+// failure) and throttles before any cascade work, because a deleted user's
+// unexpired ID token can still authenticate (the callable layer does not check
+// revocation) — failure-counting would not bound replays. `expiresAt` drives a
+// Firestore TTL so the counter doc (a short-lived pseudonymous marker keyed by UID,
+// no profile data) self-reaps. The handler never mutates the counter again, so the
+// deletion cascade and its error surface stay unchanged.
+async function enforceDeletionRateLimit(db: Firestore, uid: string): Promise<void> {
+  const ref = db.doc(`deletionAttempts/${uid}`);
+  await db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const data = (await tx.get(ref)).data() ?? {};
+    const windowStart = data.windowStart;
+    const inWindow = isTimestamp(windowStart)
+      && now.toMillis() - windowStart.toMillis() < DELETION_ATTEMPT_WINDOW_MS;
+    const count = inWindow && typeof data.count === 'number' ? data.count : 0;
+    if (count >= DELETION_ATTEMPT_LIMIT) {
+      throw new HttpsError('resource-exhausted', 'Too many deletion attempts. Try again later.');
+    }
+    const nextWindowStart = inWindow ? (windowStart as Timestamp) : now;
+    tx.set(ref, {
+      count: count + 1,
+      windowStart: nextWindowStart,
+      expiresAt: Timestamp.fromMillis(nextWindowStart.toMillis() + DELETION_ATTEMPT_WINDOW_MS),
+    }, { merge: true });
+  });
 }
 
 function generateTombstoneId(): string {
@@ -479,15 +515,22 @@ export const deleteAccount = onCall<unknown, Promise<DeleteAccountOutput>>(
   // #46: bump timeout + memory so the per-group cascade has 9 min of
   // headroom on accounts with many groups (default callable timeout is
   // 60s; default memory 256MiB).
-  { enforceAppCheck: true, timeoutSeconds: 540, memory: '1GiB' },
+  // #73: soft App Check (verify-if-present, do not hard-reject) so deletion — a
+  // self-scoped GDPR-erasure action (UID from request.auth only; see assertNoInput)
+  // — works on attestation-failing devices (Play Integrity failure / no Play
+  // Services / MDM). enforceDeletionRateLimit is the compensating control.
+  { enforceAppCheck: false, timeoutSeconds: 540, memory: '1GiB' },
   async (request: CallableRequest<unknown>) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign-in required.');
     }
-    assertNoInput(request.data);
 
     const uid = request.auth.uid;
     const db = getFirestore();
+    // #73: throttle before assertNoInput + cascade so malformed and replayed
+    // authenticated calls are both counted.
+    await enforceDeletionRateLimit(db, uid);
+    assertNoInput(request.data);
     const output: DeleteAccountOutput = {
       groupsProcessed: 0,
       tombstoneIds: [],
