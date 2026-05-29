@@ -16,7 +16,4 @@
 - **initials_circle.dart**: Legacy avatar circle (prefer `RAvatar` for new code).
 
 ### animations/
-- **fade_in_list.dart**: Staggered fade-in for list items.
-- **staggered_grid.dart**: Staggered grid animation.
 - **tap_bounce.dart**: Tap feedback bounce.
-- **animations.dart**: Barrel export.
