@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:safar/core/services/money_serializer.dart';
 import 'package:safar/core/utils/formatters.dart';
 
 void main() {
@@ -90,6 +91,48 @@ void main() {
       final now = DateTime(2023, 10, 10, 12, 0);
       final date = DateTime(2023, 9, 10, 8, 0);
       expect(AppFormatters.formatRelativeDate(date, now: now), '10/9');
+    });
+  });
+
+  group('formatCurrency multi-currency precision (#63)', () {
+    test('JPY: 0 decimal places, yen symbol', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('1234'), 'JPY'), '¥ 1234');
+      // 0dp rounds the fraction away.
+      expect(AppFormatters.formatCurrency(Decimal.parse('1234.4'), 'JPY'), '¥ 1234');
+    });
+
+    test('QAR: 2 decimal places, riyal symbol', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'QAR'), 'ر.ق 50.00');
+    });
+
+    test('KWD: 3 decimal places, dinar symbol', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'KWD'), 'د.ك 50.000');
+    });
+
+    test('BHD: 3 decimal places, dinar symbol', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'BHD'), 'د.ب 50.000');
+    });
+
+    test('OMR/USD unchanged (regression guard)', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('10'), 'OMR'), 'ر.ع. 10.000');
+      expect(AppFormatters.formatCurrency(Decimal.parse('25.5'), 'USD'), '\$ 25.50');
+    });
+
+    test('currencyConfig.decimals matches MoneySerializer.fractionDigits '
+        'for every supported currency (drift guard)', () {
+      const supported = [
+        'OMR', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'JPY', 'KWD', 'BHD', 'QAR',
+      ];
+      for (final code in supported) {
+        final config = AppFormatters.currencyConfig[code];
+        expect(config, isNotNull, reason: '$code missing from currencyConfig');
+        expect(
+          config!.decimals,
+          MoneySerializer.fractionDigits(code),
+          reason: '$code: currencyConfig decimals (${config.decimals}) != '
+              'fractionDigits (${MoneySerializer.fractionDigits(code)})',
+        );
+      }
     });
   });
 
