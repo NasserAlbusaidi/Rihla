@@ -14,7 +14,6 @@
 ### services/
 - **expense_service.dart**: Firestore CRUD at `groups/{gid}/events/{eid}/expenses`. `Decimal` ↔ integer-subunit serialization via `MoneySerializer`, `isDeleted` + `deletedAt` soft delete, immutable `createdBy` ownership (B1). Supports `splitMode` + `splitDistribution` for non-equal splits.
 - **settlement_service.dart**: Settlement recording at `groups/{gid}/events/{eid}/settlements` (event-scoped) or `groups/{gid}/settlements` (group-scoped). **Append-only** — corrections create new offsetting rows (B3).
-- **ocr_service.dart**: Receipt OCR helper (no Firebase Storage SDK use — the Storage client surface was retired in v1.2).
 
 ### screens/
 - **add_expense_screen.dart**, **edit_expense_screen.dart**, **ledger_screen.dart**, **settle_up_screen.dart**
