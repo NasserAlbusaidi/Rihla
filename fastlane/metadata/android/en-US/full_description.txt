@@ -1,15 +1,33 @@
-say goodbye to messy spreadsheets and awkward money conversations. Rihla is the modern companion for group travel, designed to make expense tracking seamless and fair.
+Rihla is the easiest way to split bills and track group expenses with friends, family, and roommates — and see exactly who owes who, across every trip you take together.
 
-Key Features:
+Most bill splitters forget your group the moment a trip ends. Rihla keeps a permanent group for your people, so balances carry over from one trip to the next. One tap shows who owes whom across every outing your group has ever shared — no more starting from zero.
 
-Smart Splitting: Easily split bills equally or by custom amounts for every purchase.
+WHY RIHLA
 
-Multi-Currency Support: Add expenses in any currency; we handle the math.
+• Persistent groups, not one-off trips. Keep a group for your friends and start a new trip, dinner, or outing inside it anytime. Balances add up across all of them.
+• Settle up with the fewest payments. Rihla works out the simplest set of transfers to clear everyone's debts — for a single trip or across the whole group.
+• Split it any way you like. Share an expense evenly, by weighted shares, by exact amounts, or by percentage — across everyone, a chosen few, or just yourself.
+• Works fully offline. Add expenses and settle up with no signal — everything syncs automatically the moment you're back online.
+• Start in seconds. No account, no email, no password. Rihla is ready the instant you open it.
+• Made for the Gulf. Built around the Omani Rial and tracked to the baisa with full 3-decimal precision.
+• English and Arabic. Fully localized with complete right-to-left support.
 
-Works Offline: No signal? No problem. Add expenses anywhere, and they sync when you’re back online.
+EVERYTHING YOU NEED TO SHARE EXPENSES
 
-Receipt Vault: Snap photos of your receipts so you never lose track of spending.
+• Invite friends with a short 6-character code, a QR scan, or a link that drops them straight into the group.
+• Tag expenses by category — food, lodging, transit, groceries, activities, and more — so you can see where the money went.
+• Follow every expense and payment as it happens, with a clear activity log for each event, each group, and across all your groups.
+• Turn on push notifications for new expenses and payments, and switch them off anytime.
+• Optionally link an email to recover your groups and history if you switch or reset your device.
+• Choose light or dark mode, or let Rihla follow your device.
 
-Fair Settlements: Know exactly who owes whom and settle up with a single click.
+PERFECT FOR
 
-Why Rihla? Whether you're on a weekend road trip or a month-long backpacking adventure, Safar keeps your group's finances organized so you can focus on the journey, not the receipts.
+• Trips and holidays with friends
+• Roommates splitting rent and shared bills
+• Dinners and restaurant bills with the group
+• Any group that shares costs again and again
+
+Stop doing the math in your head. Rihla tracks shared expenses, tells you who owes who, and settles up with the fewest possible payments — so money never gets in the way of the people you share it with.
+
+Rihla means "journey." Start yours.
