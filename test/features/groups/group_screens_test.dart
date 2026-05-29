@@ -55,7 +55,7 @@ final _testMembers = [
 /// Balances stub with non-zero balance — Alice is owed money by Bob.
 ///
 /// Used for the balance toggle and settle-up navigation tests.
-/// totalSpent > 0 so GroupBalanceHero is rendered (D-19).
+/// totalSpent > 0 so the balance hero is rendered (D-19).
 final _membersWithBalances = (
   balances: <UserBalance>[
     UserBalance(
@@ -87,7 +87,7 @@ final _membersWithBalances = (
 ///
 /// groupBalancesProvider now drives the Members & Balances section.
 /// Even with no expenses, we supply the two members with zero balances
-/// so GroupMemberBalanceCard renders both names.
+/// so the members & balances section renders both names.
 final _membersWithZeroBalance = (
   balances: <UserBalance>[
     UserBalance(
