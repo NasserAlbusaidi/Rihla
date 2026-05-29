@@ -110,12 +110,4 @@ void main() {
       expect(container.read(linkedEmailProvider), isNull);
     });
   });
-
-  group('AuthService', () {
-    test('authServiceProvider returns a service instance', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      expect(container.read(authServiceProvider), isA<AuthService>());
-    });
-  });
 }

@@ -2,12 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/expense_category_model.dart';
 
-/// Loading state for category operations.
-final categoryLoadingProvider = StateProvider<bool>((ref) => false);
-
-/// Error state for category operations.
-final categoryErrorProvider = StateProvider<String?>((ref) => null);
-
 /// Default expense categories (hardcoded, no backend).
 ///
 /// Custom categories via the legacy backend have been removed. These are the
@@ -67,43 +61,3 @@ const _defaultCategories = [
     isDefault: true,
   ),
 ];
-
-/// Category service provider.
-final categoryServiceProvider = Provider<CategoryService>((ref) {
-  return CategoryService(ref);
-});
-
-/// Service for managing expense categories.
-///
-/// Custom category CRUD has been removed. Only default categories are
-/// available. Create/update/delete methods return success/failure but are
-/// no-ops for default categories.
-class CategoryService {
-  // ignore: unused_field
-  final Ref _ref;
-  CategoryService(this._ref);
-
-  Future<ExpenseCategory?> createCategory({
-    required String tripId,
-    required String name,
-    String icon = 'other',
-    String color = '#22C55E',
-  }) async {
-    // Custom categories not supported in this version.
-    // Return null to indicate creation was not performed.
-    return null;
-  }
-
-  Future<bool> updateCategory({
-    required String categoryId,
-    String? name,
-    String? icon,
-    String? color,
-  }) async {
-    return false;
-  }
-
-  Future<bool> deleteCategory(String categoryId) async {
-    return false;
-  }
-}
