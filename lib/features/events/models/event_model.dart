@@ -214,17 +214,10 @@ class Event {
     );
   }
 
-  /// True when [endDate] is in the past. Same logic as Trip.isPast.
+  /// True when [endDate] is in the past.
   bool get isPast {
     if (endDate == null) return false;
     return DateTime.now().isAfter(endDate!);
-  }
-
-  /// True when now is between [startDate] and [endDate]. Same logic as Trip.isOngoing.
-  bool get isOngoing {
-    if (startDate == null || endDate == null) return false;
-    final now = DateTime.now();
-    return now.isAfter(startDate!) && now.isBefore(endDate!);
   }
 
   @override

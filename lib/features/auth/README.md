@@ -1,7 +1,7 @@
 ## auth/ — Anonymous Firebase Auth + Email-Link Recovery
 
 ### providers/
-- **auth_provider.dart**: `authStateProvider` (Firebase auth stream), `currentUserProvider`, `currentUserIdProvider`, `authServiceProvider`, `authRecoveryServiceProvider`, `dataDeletionServiceProvider`. `AuthService` handles token checks and `isAuthenticated`.
+- **auth_provider.dart**: `authStateProvider` (Firebase auth stream), `currentUserProvider`, `currentUserIdProvider`, `authRecoveryServiceProvider`, `dataDeletionServiceProvider`.
 - **auth_email_link_bootstrap_provider.dart**: One-shot bootstrap that consumes an in-flight email-link op (`opLink` vs `opRecover`) stored in SharedPreferences and routes the cold/warm-start handler through `AuthRecoveryService` to complete linking or recovery.
 
 ### services/

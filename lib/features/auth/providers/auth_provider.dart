@@ -61,19 +61,3 @@ final authRecoveryServiceProvider = Provider<AuthRecoveryService>((ref) {
   final auth = ref.watch(firebaseAuthProvider);
   return AuthRecoveryService(auth: auth, prefs: prefs);
 });
-
-/// Auth service provider.
-final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService();
-});
-
-/// Minimal authentication service for anonymous auth.
-class AuthService {
-  /// Get current session token (Firebase ID token).
-  Future<String?> get currentToken async {
-    return await FirebaseConfig.currentUser?.getIdToken();
-  }
-
-  /// Check if user is authenticated.
-  bool get isAuthenticated => FirebaseConfig.currentUser != null;
-}

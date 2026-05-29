@@ -21,9 +21,6 @@ export '../../../core/types/event_ref.dart'; // re-export so existing importers 
 /// Loading state for expense operations
 final expenseLoadingProvider = StateProvider<bool>((ref) => false);
 
-/// Error state for expense operations
-final expenseErrorProvider = StateProvider<String?>((ref) => null);
-
 // ---------------------------------------------------------------------------
 // Service providers (NEW Firestore-backed services)
 // ---------------------------------------------------------------------------
