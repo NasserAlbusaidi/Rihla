@@ -16,9 +16,6 @@ abstract final class SharedKeys {
   static const inviteCodeCopyButton = Key('shared_invite_code_copy_button');
   static const inviteCodeShareButton = Key('shared_invite_code_share_button');
 
-  // AppTabBar — parameterized by tab label since tabs vary per screen
-  static Key appTabBarTab(String label) => Key('shared_tab_bar_tab_$label');
-
   // LoadingButton — parameterized by label
   static Key loadingButton(String label) => Key('shared_loading_button_$label');
 }
