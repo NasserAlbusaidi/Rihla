@@ -161,6 +161,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // #73: per-UID deletion-invocation rate-limit counters. Server-only (the
+    // deleteAccount callable writes them via the Admin SDK, which bypasses rules);
+    // clients can never read or write. A Firestore TTL on `expiresAt` reaps them.
+    match /deletionAttempts/{userId} {
+      allow read, write: if false;
+    }
+
     // Recovery cleanup intents are one-time bearer secrets. The retiring
     // anonymous UID writes its own intent before sign-out; the callable verifies
     // and consumes it after email-link recovery. Clients never read or delete

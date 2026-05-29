@@ -1,6 +1,6 @@
 import functionsTest from 'firebase-functions-test';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 import { deleteAccount } from '../../src/callables/deleteAccount';
@@ -23,7 +23,7 @@ async function clearAuthUsers(): Promise<void> {
 
 async function clearGlobalDocs(): Promise<void> {
   const db = getFirestore();
-  for (const collection of ['fcm_tokens', 'joinAttempts']) {
+  for (const collection of ['fcm_tokens', 'joinAttempts', 'deletionAttempts']) {
     const docs = await db.collection(collection).listDocuments();
     await Promise.all(docs.map((doc) => doc.delete()));
   }
@@ -411,5 +411,62 @@ describe('deleteAccount', () => {
     });
     expect((await db.doc(`fcm_tokens/${deletedUid}`).get()).exists).toBe(false);
     expect((await db.doc(`joinAttempts/${deletedUid}`).get()).exists).toBe(false);
+  });
+
+  // #73: per-UID invocation rate limit (compensating control for soft App Check).
+  test('rejects with resource-exhausted once the per-UID limit is reached', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('groupA', deletedUid);
+    await seedMember('groupA', otherUid);
+    // Counter already at the limit, window still open.
+    await db.doc(`deletionAttempts/${deletedUid}`).set({
+      count: 5,
+      windowStart: Timestamp.now(),
+      expiresAt: Timestamp.fromMillis(Timestamp.now().toMillis() + 60 * 60 * 1000),
+    });
+
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'resource-exhausted' });
+
+    // Cascade must NOT have run: the group still lists the UID and the auth user lives.
+    expect((await db.doc('groups/groupA').get()).data()?.memberIds).toContain(deletedUid);
+    await expect(getAuth().getUser(deletedUid)).resolves.toMatchObject({ uid: deletedUid });
+  });
+
+  test('writes a TTL-bearing counter on a normal deletion', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('groupA', deletedUid);
+    await seedMember('groupA', otherUid);
+
+    await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    const counter = (await db.doc(`deletionAttempts/${deletedUid}`).get()).data();
+    expect(counter?.count).toBeGreaterThanOrEqual(1);
+    expect(counter?.expiresAt).toBeInstanceOf(Timestamp);
+    expect((counter?.expiresAt as Timestamp).toMillis())
+      .toBeGreaterThan((counter?.windowStart as Timestamp).toMillis());
+  });
+
+  test('resets the counter when the prior window has elapsed', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('groupA', deletedUid);
+    await seedMember('groupA', otherUid);
+    // Stale window (2h ago) at the limit — must not block; counter resets to 1.
+    await db.doc(`deletionAttempts/${deletedUid}`).set({
+      count: 5,
+      windowStart: Timestamp.fromMillis(Timestamp.now().toMillis() - 2 * 60 * 60 * 1000),
+      expiresAt: Timestamp.fromMillis(Timestamp.now().toMillis() - 60 * 60 * 1000),
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.groupsProcessed).toBe(1);
+    expect((await db.doc(`deletionAttempts/${deletedUid}`).get()).data()?.count).toBe(1);
   });
 });
