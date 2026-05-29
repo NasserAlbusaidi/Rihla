@@ -176,6 +176,36 @@ describe('joinGroupByInviteCode', () => {
     expect(deleted.data()?.updatedAt).toBe('stable');
   });
 
+  test('join is rejected when the group is soft-deleted (#78 race with deleteAccount Phase C)', async () => {
+    const db = getFirestore();
+    // deleteAccount Phase C soft-deletes an owner-only orphan group
+    // (isDeleted: true). A join racing that commit must not resurrect the dead
+    // group by arrayUnion-ing a member into it.
+    await seedEvent('active');
+    await db.doc('groups/g1').update({ isDeleted: true, deletedAt: new Date() });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).rejects.toMatchObject({ code: 'not-found' });
+
+    // No membership written: memberIds unchanged, member doc not created.
+    const groupSnap = await db.doc('groups/g1').get();
+    expect(groupSnap.data()?.memberIds).toEqual(['owner']);
+    const memberSnap = await db.doc('groups/g1/members/alice').get();
+    expect(memberSnap.exists).toBe(false);
+    // No event fanout into the dead group's events.
+    const active = await db.doc('groups/g1/events/active').get();
+    expect(active.data()?.participantIds).toEqual(['owner']);
+
+    // Intentional, asserted so it stays visible: a valid code pointing at a
+    // soft-deleted group is a lookup failure (code 'not-found' ∈ isLookupFailure),
+    // so it counts toward the 5/hr lock exactly like an invalid code.
+    const attemptSnap = await db.doc('joinAttempts/alice').get();
+    expect(attemptSnap.exists).toBe(true);
+    expect(attemptSnap.data()?.failCount).toBe(1);
+  });
+
   test('already-member re-join heals stale event participantIds', async () => {
     const db = getFirestore();
     await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });

@@ -241,6 +241,16 @@ export const joinGroupByInviteCode = onCall<
         }
 
         const groupData = groupSnap.data() ?? {};
+        // #78: reject joins into a soft-deleted group. deleteAccount Phase C
+        // soft-deletes an owner-only orphan group (isDeleted: true); a join
+        // racing that commit must not resurrect it by arrayUnion-ing a member.
+        // Placed before the event loop and both writes so the whole transaction
+        // aborts. 'not-found' mirrors the missing-group throw above (no
+        // deleted-vs-never-existed leak) and is intentionally counted as a
+        // lookup failure toward the join rate limit, exactly like an invalid code.
+        if (groupData.isDeleted === true) {
+          throw new HttpsError('not-found', 'Group not found.');
+        }
         const memberIds = getMemberIds(groupData);
 
         const eventFanoutUpdates: EventFanoutUpdate[] = [];
