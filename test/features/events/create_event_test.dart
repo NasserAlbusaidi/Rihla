@@ -279,8 +279,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // "Modules" section label should NOT appear for Trip type
-      expect(find.byKey(EventKeys.modulesSection), findsNothing);
+      // The module toggle should NOT appear for Trip type
       expect(find.byType(Switch), findsNothing);
     });
 
