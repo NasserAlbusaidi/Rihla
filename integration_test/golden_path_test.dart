@@ -45,9 +45,8 @@ void main() {
     await _shot('01-cold-boot');
 
     if (find.byKey(const Key('home_screen')).evaluate().isNotEmpty) {
-      // OnboardingScreen is currently dead code — not mounted by the router or
-      // any gate widget. Cold boot lands straight on home. Kept in the test in
-      // case onboarding is re-wired later.
+      // OnboardingScreen was removed (#56) — cold boot lands straight on home.
+      // This branch is kept defensively in case onboarding is ever re-wired.
       _log('Landed on home directly (no onboarding mount).');
     } else {
       await _shot('02-onboarding-p1');
