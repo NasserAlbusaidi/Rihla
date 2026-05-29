@@ -72,6 +72,44 @@ void main() {
     });
   });
 
+  group('RAmount — multi-currency precision (#63)', () {
+    testWidgets('JPY renders 0 decimal places', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('1234'), currency: 'JPY')),
+      );
+      expect(_renderedText(tester), 'JPY 1234');
+    });
+
+    testWidgets('KWD renders 3 decimal places', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('50'), currency: 'KWD')),
+      );
+      expect(_renderedText(tester), 'KWD 50.000');
+    });
+
+    testWidgets('BHD renders 3 decimal places', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('50'), currency: 'BHD')),
+      );
+      expect(_renderedText(tester), 'BHD 50.000');
+    });
+
+    testWidgets('QAR renders 2 decimal places', (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('50'), currency: 'QAR')),
+      );
+      expect(_renderedText(tester), 'QAR 50.00');
+    });
+
+    testWidgets('unknown currency falls back to 2 decimal places',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(RAmount(value: Decimal.parse('50'), currency: 'XYZ')),
+      );
+      expect(_renderedText(tester), 'XYZ 50.00');
+    });
+  });
+
   group('RAmount — sign mode', () {
     testWidgets('positive shows + prefix', (tester) async {
       await tester.pumpWidget(

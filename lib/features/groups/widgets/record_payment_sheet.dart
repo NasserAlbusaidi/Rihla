@@ -68,7 +68,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
     super.initState();
     _amountController = TextEditingController(
       text: widget.suggestedAmount.toStringAsFixed(
-        widget.currency == 'OMR' ? 3 : 2,
+        AppFormatters.currencyConfig[widget.currency]?.decimals ?? 2,
       ),
     );
     _noteController = TextEditingController();
