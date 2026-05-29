@@ -3,13 +3,11 @@
 ### models/
 - **expense_model.dart**: `Expense`, `ExpenseScope` enum (global/subGroup/personal/custom). Amount as Decimal
 - **settlement_model.dart**: Payment settlement record
-- **transaction_model.dart**: Unified ledger line (expense + settlement)
 - **expense_category_model.dart**: Categories (meals, transport, etc.)
 
 ### providers/
 - **expense_provider.dart**: Expense list, CRUD, real-time streams
 - **category_provider.dart**: Category list and cache
-- **ledger_provider.dart**: Unified transaction ledger
 
 ### services/
 - **expense_service.dart**: Firestore CRUD at `groups/{gid}/events/{eid}/expenses`. `Decimal` ↔ integer-subunit serialization via `MoneySerializer`, `isDeleted` + `deletedAt` soft delete, immutable `createdBy` ownership (B1). Supports `splitMode` + `splitDistribution` for non-equal splits.
