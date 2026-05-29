@@ -17,4 +17,4 @@
 - **add_expense_screen.dart**, **edit_expense_screen.dart**, **ledger_screen.dart**, **settle_up_screen.dart**
 
 ### widgets/
-- **expense_card.dart**, **amount_input_section.dart**, **category_selection_step.dart**, **member_balances_section.dart**, **recent_expenses_section.dart**, **recorded_settlements_section.dart**, **settlement_row.dart**, **settlement_tile.dart**, **settlement_summary_card.dart**, **spending_summary_section.dart**, **split_scope_selector.dart**, **custom_split_sheet.dart**, **ledger_search_sheet.dart**, **transaction_list.dart**, **ledger_hero_card.dart**, **expense_success_dialog.dart**
+- **amount_input_section.dart**, **category_selection_step.dart**, **member_balances_section.dart**, **spending_summary_section.dart**, **split_scope_selector.dart**, **custom_split_sheet.dart**, **ledger_search_sheet.dart**, **transaction_list.dart**, **ledger_hero_card.dart**, **expense_success_dialog.dart**
