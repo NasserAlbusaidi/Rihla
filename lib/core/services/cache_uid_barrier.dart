@@ -27,6 +27,15 @@ bool shouldClearCache({
 }) =>
     forceClear || dirty || (lastActiveUid != null && lastActiveUid != currentUid);
 
+/// Marks the on-device Firestore cache as belonging to an outgoing UID, so the
+/// next cold-start [CacheUidBarrier.reconcile] clears it.
+///
+/// Set by in-session swap paths (recovery / sign-out / deletion) BEFORE the
+/// auth change. The returned future MUST be awaited before triggering the
+/// restart so the flag is flushed to disk and the cold boot observes it (§6.4).
+Future<void> markFirestorePersistenceDirty(SharedPreferences prefs) =>
+    prefs.setBool(kFirestorePersistenceDirtyKey, true);
+
 /// Cold-start cache barrier: the single site that clears Firestore persistence.
 ///
 /// Runs inside `FirebaseConfig.ensureAnonymousSession` after the session settles
