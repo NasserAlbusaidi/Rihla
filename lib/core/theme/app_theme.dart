@@ -12,13 +12,7 @@ import 'tokens/typography_tokens.dart';
 /// - Sans (Geist) — body, title, label, button text
 /// - Mono (Geist Mono, tabular figures) — accessed via [AppTypography.mono]
 ///   when needed inline (money widgets, timestamps); not part of [TextTheme].
-///
-/// `fontFamily` constant retained for backward compatibility — its value
-/// now resolves to Geist instead of Plus Jakarta Sans.
 class AppTheme {
-  /// Default sans family — points at [AppTypography.sansFamily].
-  static const String fontFamily = AppTypography.sansFamily;
-
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,

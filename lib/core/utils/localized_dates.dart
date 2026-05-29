@@ -38,15 +38,6 @@ String formatDateRangeShort(
   return '';
 }
 
-String formatTimelineDayLabel(BuildContext context, DateTime ts, DateTime now) {
-  final today = DateTime(now.year, now.month, now.day);
-  final day = DateTime(ts.year, ts.month, ts.day);
-  final diff = today.difference(day).inDays;
-  if (diff == 0) return context.l10n.timelineToday;
-  if (diff == 1) return context.l10n.timelineYesterday;
-  return formatShortMonthDay(context, ts);
-}
-
 String formatRelativeShort(BuildContext context, DateTime when) {
   final delta = DateTime.now().difference(when);
   if (delta.inMinutes < 1) return context.l10n.activityRelativeJustNow;

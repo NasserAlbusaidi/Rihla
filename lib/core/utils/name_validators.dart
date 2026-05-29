@@ -7,7 +7,6 @@
 /// when the rules reject the write.
 library;
 
-const int kDisplayNameMinLength = 1;
 const int kDisplayNameMaxLength = 32;
 const String _reservedFormerMemberSuffix =
     ' (former '

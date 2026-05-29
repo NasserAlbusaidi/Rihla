@@ -15,11 +15,6 @@ class HapticService {
     await HapticFeedback.mediumImpact();
   }
 
-  /// Longer, single heavy vibration for warnings or errors.
-  static Future<void> warning() async {
-    await HapticFeedback.heavyImpact();
-  }
-
   /// Selection changed (for segmented controls or tabs).
   static Future<void> selection() async {
     await HapticFeedback.selectionClick();
