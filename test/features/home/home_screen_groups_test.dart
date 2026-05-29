@@ -37,14 +37,6 @@ List<Override> _overrides(List<Group> groups) => [
     )),
   ),
   crossGroupActivityProvider.overrideWith((ref) => const AsyncValue.data([])),
-  weeklyGroupSpendingProvider.overrideWith(
-    (ref) => AsyncValue.data(
-      List.generate(7, (i) {
-        final date = DateTime(2026, 3, 24).add(Duration(days: i));
-        return (date: date, amount: Decimal.zero);
-      }),
-    ),
-  ),
   groupBalancesProvider.overrideWith(
     (ref, groupId) => AsyncValue.data((
       balances: <UserBalance>[],
