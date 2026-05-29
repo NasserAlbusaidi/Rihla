@@ -151,8 +151,6 @@ class NotificationService {
     await _cancelSubscriptions();
   }
 
-  bool get isInitialized => _initialized;
-
   void _setStatus(NotificationStatus status) {
     _ref.read(notificationStatusProvider.notifier).state = status;
   }

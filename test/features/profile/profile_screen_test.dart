@@ -96,7 +96,6 @@ List<Override> _phase26Overrides({
   final mockNotifService = MockNotificationService();
   when(mockNotifService.initialize).thenAnswer((_) async => true);
   when(mockNotifService.removeToken).thenAnswer((_) async {});
-  when(() => mockNotifService.isInitialized).thenReturn(false);
 
   return [
     if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
