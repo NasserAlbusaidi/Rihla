@@ -221,11 +221,16 @@ style hash on `codeUnits`), so the same name always picks the same
 color across upgrades.
 
 ```dart
-RAvatar(displayName: 'Sarah', size: 40)
+RAvatar(name: 'Sarah', size: 40)
 ```
 
-Falls back to a generic person glyph when `displayName` is empty.
+Falls back to a generic person glyph when `name` is empty.
 Prefer this over building avatar circles by hand.
+
+> **Invariant (DEC-3, design review 2026-05-30 — issue #149):** a user's identity
+> color is name-derived and deterministic. The optional `hue` override exists for
+> non-identity decoration only — never pass it to force a per-user color, and never
+> randomize. One stable color per person, everywhere, is a protected design rule.
 
 ### `CoverArt`
 
