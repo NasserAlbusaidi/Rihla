@@ -1057,26 +1057,32 @@ class _SplitPreviewCard extends StatelessWidget {
                     runSpacing: 2,
                     children: [
                       Text(
-                        l10n.editorSplitSummary(
-                          expenseScopeDisplayName(scope, l10n),
-                          count,
-                        ),
+                        // With fewer than two people there is no split, so show
+                        // just the scope — not "{scope} · 1 way", which reads as
+                        // a finished split beside the "pick ≥2" hint (#152).
+                        count >= 2
+                            ? l10n.editorSplitSummary(
+                                expenseScopeDisplayName(scope, l10n),
+                                count,
+                              )
+                            : expenseScopeDisplayName(scope, l10n),
                         style: AppTypography.sans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: colors.textPrimary,
                         ),
                       ),
-                      Text(
-                        l10n.editorEachAmount(
-                          AppFormatters.formatCurrency(each, currency),
+                      if (count >= 2)
+                        Text(
+                          l10n.editorEachAmount(
+                            AppFormatters.formatCurrency(each, currency),
+                          ),
+                          style: AppTypography.sans(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                     ],
                   ),
                 ),

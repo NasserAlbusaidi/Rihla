@@ -112,11 +112,44 @@ void main() {
       const TextSelection(baseOffset: 0, extentOffset: 1),
     );
   });
+
+  testWidgets('one eligible participant shows one coherent split state (#152)', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester, event: _soloEvent);
+
+    await tester.enterText(find.byType(TextField).first, '5');
+    await tester.pump();
+
+    // The method card correctly notes a split method needs 2+ people…
+    expect(find.text('Pick at least two people to split.'), findsOneWidget);
+    // …so the preview must NOT simultaneously claim a finished "1 way · X each"
+    // split. RED today: editorSplitSummary renders "Equally · 1 way" and
+    // editorEachAmount renders "5.000 each".
+    expect(find.textContaining('1 way'), findsNothing);
+    expect(find.textContaining('each'), findsNothing);
+  });
 }
+
+/// A single-participant event: the split preview and the split-method card
+/// must not contradict each other at count == 1 (#152).
+final _soloEvent = Event(
+  id: 'event-1',
+  name: 'Solo trip',
+  type: EventType.trip,
+  groupId: 'group-1',
+  createdBy: 'uid-yasmin',
+  participantIds: const ['uid-yasmin'],
+  participantNames: const {'uid-yasmin': 'Yasmin Khan'},
+  modules: const EventModules(),
+  startDate: DateTime(2026, 3, 21),
+  createdAt: DateTime(2026, 3, 20),
+);
 
 Future<void> _pumpAddExpenseScreen(
   WidgetTester tester, {
   Locale locale = const Locale('en'),
+  Event? event,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -127,7 +160,7 @@ Future<void> _pumpAddExpenseScreen(
         eventDetailProvider((
           groupId: 'group-1',
           eventId: 'event-1',
-        )).overrideWith((ref) => Stream.value(_event)),
+        )).overrideWith((ref) => Stream.value(event ?? _event)),
         tripCategoriesProvider(
           'event-1',
         ).overrideWith((ref) => Stream.value(_categories)),
