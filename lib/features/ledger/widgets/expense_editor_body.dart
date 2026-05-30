@@ -639,13 +639,18 @@ class _AmountHero extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                context.l10n.editorAmountLabel(currency),
-                style: AppTypography.mono(
-                  fontSize: 10,
-                  letterSpacing: 1.6,
-                  color: labelColor,
-                  fontWeight: FontWeight.w700,
+              // Forced LTR like the amount Row below — otherwise the composite
+              // 'المبلغ · OMR' inherits the ambient RTL and scrambles (#150).
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  context.l10n.editorAmountLabel(currency),
+                  style: AppTypography.mono(
+                    fontSize: 10,
+                    letterSpacing: 1.6,
+                    color: labelColor,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -712,6 +717,11 @@ class _AmountHero extends StatelessWidget {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              // The transparent overlay field only types digits; disabling
+              // interactive selection stops iOS selection handles from sticking
+              // over the amount label (#150). Programmatic select-default-zero
+              // still works (it sets controller.selection directly).
+              enableInteractiveSelection: false,
               textDirection: TextDirection.ltr,
               inputFormatters: [
                 LocalizedDecimalTextInputFormatter(

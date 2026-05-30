@@ -51,6 +51,29 @@ void main() {
     expect(Directionality.of(tester.element(fractionText)), TextDirection.ltr);
   });
 
+  testWidgets('renders the amount label left-to-right under Arabic locale', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester, locale: const Locale('ar'));
+
+    final labelText = find.text('المبلغ · OMR');
+    expect(labelText, findsOneWidget);
+    // RED today: the label sits outside the hero's LTR Directionality, so the
+    // composite 'المبلغ · OMR' inherits RTL and scrambles (#150).
+    expect(Directionality.of(tester.element(labelText)), TextDirection.ltr);
+  });
+
+  testWidgets('amount field disables interactive selection (no stuck handles)', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester);
+
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    // RED today: enableInteractiveSelection is null (default true), so the
+    // transparent overlay field shows iOS selection handles over the label.
+    expect(field.enableInteractiveSelection, isFalse);
+  });
+
   testWidgets('selects the default zero when amount field is focused', (
     tester,
   ) async {
