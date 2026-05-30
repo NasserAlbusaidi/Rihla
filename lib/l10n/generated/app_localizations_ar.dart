@@ -1398,17 +1398,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String activityRelativeMinutes(int count) {
-    return '$count د';
+    return '$count دقيقة';
   }
 
   @override
   String activityRelativeHours(int count) {
-    return '$count س';
+    return '$count ساعة';
   }
 
   @override
   String activityRelativeDays(int count) {
-    return '$count ي';
+    return '$count يوم';
   }
 
   @override
