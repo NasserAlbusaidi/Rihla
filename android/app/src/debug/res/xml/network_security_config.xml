@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DEBUG-ONLY. Permits cleartext HTTP to the local Firebase emulator suite so
+     on-device debug builds (e.g. the marketing-screenshot capture reached via
+     `adb reverse`, which points at localhost:9099/8080) can refresh auth tokens
+     and stream Firestore. Firebase bakes in a cleartext exception for the AVD
+     alias 10.0.2.2 but not for localhost/127.0.0.1. This file lives in
+     src/debug and is absent from release AABs — production stays cleartext-deny. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
