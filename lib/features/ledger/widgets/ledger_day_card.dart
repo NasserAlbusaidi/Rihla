@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/models/split_mode.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
@@ -197,7 +198,7 @@ class _ExpenseRow extends StatelessWidget {
     final isPayer = expense.payerParticipantId == currentParticipantId;
     final l10n = context.l10n;
     final payerName = isPayer ? l10n.ledgerYou : payerDisplayName;
-    final splitIds = expense.customSplitParticipants;
+    final splitIds = _effectiveSplitIds(expense);
     final splitCount = splitIds?.length ?? participantCount;
     final share = _userShare(expense);
 
@@ -277,12 +278,47 @@ class _ExpenseRow extends StatelessWidget {
     );
   }
 
+  /// Who shares this expense, mirroring `BalanceCalculator`'s recipient
+  /// selection by scope. A non-custom expense persists
+  /// `customSplitParticipants: []` (the writer coalesces null -> []), so the
+  /// raw field cannot be read as "split 0 ways". Returning null means "fall
+  /// back to all participants" (the build/`_userShare` default). (#125)
+  static List<String>? _effectiveSplitIds(Expense expense) {
+    switch (expense.scope) {
+      case ExpenseScope.personal:
+        // Only the payer is responsible — no redistribution.
+        return [expense.payerParticipantId];
+      case ExpenseScope.custom:
+        final ids = expense.customSplitParticipants;
+        // Empty custom list falls back to all, matching BalanceCalculator.
+        return (ids != null && ids.isNotEmpty) ? ids : null;
+      case ExpenseScope.global:
+      case ExpenseScope.subGroup:
+        // Split across everyone; customSplitParticipants is ignored.
+        return null;
+    }
+  }
+
+  /// True for shares/exact/percent splits. `BalanceCalculator` allocates these
+  /// via `splitDistribution`; the row only renders an equal per-head share, so
+  /// it omits the share line here rather than showing a misleading equal
+  /// figure it cannot reproduce. (#125)
+  static bool _isNonEqualSplit(Expense expense) {
+    final mode = expense.splitMode;
+    final distribution = expense.splitDistribution;
+    return mode != null &&
+        mode != SplitMode.equally &&
+        distribution != null &&
+        distribution.isNotEmpty;
+  }
+
   Decimal _userShare(Expense expense) {
     if (participantCount == 0 || currentParticipantId == null) {
       return Decimal.zero;
     }
+    if (_isNonEqualSplit(expense)) return Decimal.zero;
     final isPayer = expense.payerParticipantId == currentParticipantId;
-    final splitIds = expense.customSplitParticipants;
+    final splitIds = _effectiveSplitIds(expense);
     final isInSplit = splitIds?.contains(currentParticipantId) ?? true;
     final splitCount = splitIds?.length ?? participantCount;
     if (splitCount == 0) return Decimal.zero;
