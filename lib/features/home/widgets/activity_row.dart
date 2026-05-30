@@ -35,7 +35,10 @@ class ActivityRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          // Top-align so the avatar pins to the first line when a long
+          // actor + verb phrase wraps to two lines, rather than floating to
+          // the vertical centre against the taller text column (#159).
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             RAvatar(name: activity.actorName, size: 36),
             const SizedBox(width: 12),

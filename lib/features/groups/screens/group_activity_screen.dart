@@ -420,7 +420,9 @@ class _ActivityRow extends StatelessWidget {
       child: Column(
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            // Top-align so the category icon pins to the first line when a
+            // long actor + verb phrase wraps to two lines (#159).
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _CategoryIcon(type: log.type),
               const SizedBox(width: 12),
