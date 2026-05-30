@@ -151,6 +151,8 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 - Test fixtures lag label changes: `'SPENDING'` not `'TREASURY'`, `'Ledger'` not `'Audit Log'`.
 - App Check: `RIHLA_APP_CHECK_READY` repo var gates release CI; `RIHLA_CONFIRM_APP_CHECK_READY=yes` gates the local script. Both required.
 - Java split: Android = 17, Firebase emulator/Functions = 21. Goldens are macOS-only — don't regenerate on Linux.
+- Releasing: **never hand-edit the `pubspec.yaml` version.** `tool/release.sh <patch|minor|major>` bumps it at tag time (`build = current+1`, tag `vX.Y.Z`, no build in tag), commits `chore(release): vX`, and pushes main+tag; CI builds the tagged commit. Leave `main` at the last-released version — a manual pre-bump makes `release.sh minor` emit the wrong semver (1.4.0 instead of 1.3.0). #128 ("bump past +16") closes at tag time, not via a hand commit.
+- **Don't flip `docs/PRODUCTION-READINESS.md`'s `- [ ] Firebase production state is not aligned with this branch yet.` to `[x]`** (nor add `- [x] Firebase Functions are deployed in production.`) — `test/unit/release_workflow_gate_test.dart` pins that blocker OPEN until the formal deploy ceremony (`RIHLA_FIREBASE_DEPLOY_APPROVED_SHA` + a recorded `check_firebase_prod_state.sh rihla-safar` PASS vs the release SHA). Verifying prod via the Firebase CLI/REST is **not** the same as satisfying the ceremony; flipping it turns CI red.
 
 ## Testing
 
