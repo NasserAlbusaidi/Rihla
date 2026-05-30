@@ -1177,14 +1177,23 @@ class _ParticipantSplitTile extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          Text(
-            AppFormatters.formatCurrency(share, currency),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.mono(
-              fontSize: 11,
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w600,
+          // Wrapped LTR so the amount can't bidi-reorder in Arabic, and scaled
+          // to fit the fixed tile instead of truncating to an unreadable
+          // ellipsis (#151). Currency notation (symbol vs code) is #144.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                AppFormatters.formatCurrency(share, currency),
+                maxLines: 1,
+                softWrap: false,
+                style: AppTypography.mono(
+                  fontSize: 11,
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],

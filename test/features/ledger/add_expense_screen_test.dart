@@ -74,6 +74,29 @@ void main() {
     expect(field.enableInteractiveSelection, isFalse);
   });
 
+  testWidgets('split-preview tile shows the per-person amount in full, LTR (#151)', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester, locale: const Locale('ar'));
+
+    await tester.enterText(find.byType(TextField).first, '5');
+    await tester.pump();
+
+    // each = 5 / 2 participants = 2.500. The tile must show the full figure,
+    // not the ellipsized / bidi-scrambled 'ر.ع. 2.5...' it rendered in a fixed
+    // 78px box. (Notation symbol-vs-OMR is #144; here we only fix readability.)
+    // The summary line is 'ر.ع. 2.500 لكل شخص' (different exact string), so the
+    // per-tile amount is the exact 'ر.ع. 2.500' matches.
+    final amount = find.text('ر.ع. 2.500');
+    expect(amount, findsWidgets);
+    // RED today: the amount Text has overflow: ellipsis and no LTR wrapper.
+    expect(
+      tester.widget<Text>(amount.first).overflow,
+      isNot(TextOverflow.ellipsis),
+    );
+    expect(Directionality.of(tester.element(amount.first)), TextDirection.ltr);
+  });
+
   testWidgets('selects the default zero when amount field is focused', (
     tester,
   ) async {
