@@ -18,8 +18,9 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// Widget tests for GroupSettleUpScreen — single-page wireframe layout.
 ///
-/// Layout (Hi_GroupSettle): italic headline → 2 summary chips →
-/// optimized transfer cards → "Each person's net" → inline payment history.
+/// Layout (Hi_GroupSettle): italic headline (carries the transfer count) →
+/// total chip → optimized transfer cards → "Each person's net" → inline
+/// payment history. The redundant transfer-count chip was removed in #158.
 
 const _groupId = 'grp-1';
 
@@ -160,18 +161,25 @@ Widget _wrap(
 
 void main() {
   group('GroupSettleUpScreen', () {
-    testWidgets('shows screen title and transfer summary chip', (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          const GroupSettleUpScreen(groupId: _groupId),
-          balancesAsync: AsyncValue.data(_balancesOwed),
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'shows screen title and the transfer count in the headline, not a '
+      'redundant chip (#158)',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('Settle Up'), findsOneWidget);
-      expect(find.text('1 transfer'), findsOneWidget);
-    });
+        expect(find.text('Settle Up'), findsOneWidget);
+        // The count lives in the italic headline ("One transfer, …") …
+        expect(find.textContaining('One transfer'), findsOneWidget);
+        // … and no longer in a separate summary pill (#158).
+        expect(find.text('1 transfer'), findsNothing);
+      },
+    );
 
     testWidgets('renders italic headline and "total" chip', (tester) async {
       await tester.pumpWidget(
