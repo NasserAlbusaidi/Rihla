@@ -106,12 +106,12 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '5');
     await tester.pump();
 
-    // each = 5 / 2 participants = 2.500. The tile must show the full figure,
-    // not the ellipsized / bidi-scrambled 'ر.ع. 2.5...' it rendered in a fixed
-    // 78px box. (Notation symbol-vs-OMR is #144; here we only fix readability.)
-    // The summary line is 'ر.ع. 2.500 لكل شخص' (different exact string), so the
-    // per-tile amount is the exact 'ر.ع. 2.500' matches.
-    final amount = find.text('ر.ع. 2.500');
+    // each = 5 / 2 participants = 2.500. Money now renders code-first 'OMR 2.500'
+    // (#144) — the Latin code + Western digits is itself what stops the bidi
+    // scrambling this test guards; it must still show in full (no ellipsis) and
+    // be wrapped LTR. The summary line is 'OMR 2.500 لكل شخص' (different exact
+    // string), so find.text('OMR 2.500') matches only the per-tile amount(s).
+    final amount = find.text('OMR 2.500');
     expect(amount, findsWidgets);
     // RED today: the amount Text has overflow: ellipsis and no LTR wrapper.
     expect(

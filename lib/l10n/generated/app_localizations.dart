@@ -3017,13 +3017,13 @@ abstract class AppLocalizations {
   /// No description provided for @eventYouOweAmount.
   ///
   /// In en, this message translates to:
-  /// **'You owe {amount} {currency}'**
+  /// **'You owe {currency} {amount}'**
   String eventYouOweAmount(Object amount, Object currency);
 
   /// No description provided for @eventYouAreOwedAmount.
   ///
   /// In en, this message translates to:
-  /// **'You are owed {amount} {currency}'**
+  /// **'You are owed {currency} {amount}'**
   String eventYouAreOwedAmount(Object amount, Object currency);
 
   /// No description provided for @groupNameLabel.

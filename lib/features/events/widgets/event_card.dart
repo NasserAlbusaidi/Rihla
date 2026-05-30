@@ -183,7 +183,7 @@ class EventCard extends ConsumerWidget {
     // When personalBalance is provided, show total as secondary info
     if (personalBalance != null) {
       return Text(
-        '${totalSpent.toStringAsFixed(3)} OMR',
+        'OMR ${totalSpent.toStringAsFixed(3)}',
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
@@ -193,7 +193,7 @@ class EventCard extends ConsumerWidget {
     }
     // When no personalBalance, show the total as the primary financial line
     return Text(
-      '${totalSpent.toStringAsFixed(3)} OMR',
+      'OMR ${totalSpent.toStringAsFixed(3)}',
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w700,

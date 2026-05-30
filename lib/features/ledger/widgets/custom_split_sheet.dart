@@ -1060,6 +1060,9 @@ class _StatusPill extends StatelessWidget {
     final (text, color) = _statusFor(colors);
     return Text(
       text,
+      // #144: money status ('−OMR 2.500') stays LTR even in Arabic so the
+      // sign / code / amount don't reorder.
+      textDirection: TextDirection.ltr,
       style: AppTypography.mono(
         fontSize: 12,
         fontWeight: FontWeight.w600,

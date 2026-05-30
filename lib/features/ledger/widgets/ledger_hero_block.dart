@@ -124,18 +124,25 @@ class LedgerHeroStatement extends StatelessWidget {
     return WidgetSpan(
       alignment: PlaceholderAlignment.baseline,
       baseline: TextBaseline.alphabetic,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 3),
-            child: Text('${sign}OMR', style: prefixStyle),
-          ),
-          Text(whole, style: numStyle),
-          if (frac.isNotEmpty) Text(frac, style: fractionStyle),
-        ],
+      // #144: force LTR so the code / whole / fraction pieces and the
+      // directional padding don't reverse under an Arabic (RTL) ambient
+      // direction. Wrapping in Directionality (not just Row.textDirection)
+      // also gives the child Text widgets an LTR base direction.
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 3),
+              child: Text('${sign}OMR', style: prefixStyle),
+            ),
+            Text(whole, style: numStyle),
+            if (frac.isNotEmpty) Text(frac, style: fractionStyle),
+          ],
+        ),
       ),
     );
   }

@@ -1181,14 +1181,14 @@
       }
     }
   },
-  "eventYouOweAmount": "You owe {amount} {currency}",
+  "eventYouOweAmount": "You owe {currency} {amount}",
   "@eventYouOweAmount": {
     "placeholders": {
       "amount": {},
       "currency": {}
     }
   },
-  "eventYouAreOwedAmount": "You are owed {amount} {currency}",
+  "eventYouAreOwedAmount": "You are owed {currency} {amount}",
   "@eventYouAreOwedAmount": {
     "placeholders": {
       "amount": {},

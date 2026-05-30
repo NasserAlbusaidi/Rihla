@@ -420,8 +420,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Total spent should be formatted with 3 decimal places and currency
-      expect(find.text('25.500 OMR'), findsOneWidget);
+      // Total spent: 3 decimal places, code-first (#144)
+      expect(find.text('OMR 25.500'), findsOneWidget);
     });
 
     testWidgets('shows 0.000 OMR when event has no expenses', (tester) async {
@@ -447,9 +447,73 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Zero total with correct formatting.
+      // Zero total, code-first (#144).
       // findsWidgets because amount text appears in multiple widget tree nodes.
-      expect(find.text('0.000 OMR'), findsWidgets);
+      expect(find.text('OMR 0.000'), findsWidgets);
+    });
+  });
+
+  group('EventCard personal-balance notation (#144)', () {
+    Future<void> pump(
+      WidgetTester tester, {
+      required Decimal personalBalance,
+      Locale? locale,
+    }) async {
+      final event = _makeEvent(id: 'evt-bal');
+      final eventRef = _eventRef(event);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            eventExpensesProvider(
+              eventRef,
+            ).overrideWith((ref) => Stream.value(const [])),
+          ],
+          child: MaterialApp(
+            locale: locale,
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: EventCard(
+                event: event,
+                onTap: () {},
+                personalBalance: personalBalance,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('EN "you owe" row is code-first', (tester) async {
+      await pump(tester, personalBalance: Decimal.parse('-5.5'));
+      expect(find.text('You owe OMR 5.500'), findsOneWidget);
+      expect(find.text('You owe 5.500 OMR'), findsNothing); // old suffix gone
+    });
+
+    testWidgets('EN "you are owed" row is code-first', (tester) async {
+      await pump(tester, personalBalance: Decimal.parse('5.5'));
+      expect(find.text('You are owed OMR 5.500'), findsOneWidget);
+    });
+
+    testWidgets('AR "you owe" row is code-first, no symbol', (tester) async {
+      await pump(
+        tester,
+        personalBalance: Decimal.parse('-5.5'),
+        locale: const Locale('ar'),
+      );
+      expect(find.text('أنت مدين OMR 5.500'), findsOneWidget);
+      expect(find.textContaining('ر.ع.'), findsNothing);
+    });
+
+    testWidgets('AR "you are owed" row is code-first', (tester) async {
+      await pump(
+        tester,
+        personalBalance: Decimal.parse('5.5'),
+        locale: const Locale('ar'),
+      );
+      expect(find.text('مستحق لك OMR 5.500'), findsOneWidget);
     });
   });
 }

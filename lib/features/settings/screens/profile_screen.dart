@@ -16,7 +16,6 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/formatters.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_amount.dart';
@@ -1102,8 +1101,8 @@ class _PrefIconLetter extends StatelessWidget {
 // ──────────────────────────── Preference row label helpers
 
 String _currencyTrailing(String code) {
-  final symbol = AppFormatters.currencyConfig[code]?.symbol;
-  return symbol == null ? code : '$code · $symbol';
+  // #144: ISO code only — no composite 'code · symbol'.
+  return code;
 }
 
 String _languageTrailing(String code) {

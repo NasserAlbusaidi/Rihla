@@ -1779,12 +1779,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String eventYouOweAmount(Object amount, Object currency) {
-    return 'أنت مدين $amount $currency';
+    return 'أنت مدين $currency $amount';
   }
 
   @override
   String eventYouAreOwedAmount(Object amount, Object currency) {
-    return 'مستحق لك $amount $currency';
+    return 'مستحق لك $currency $amount';
   }
 
   @override

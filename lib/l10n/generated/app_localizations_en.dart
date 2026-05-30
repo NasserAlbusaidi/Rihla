@@ -1727,12 +1727,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String eventYouOweAmount(Object amount, Object currency) {
-    return 'You owe $amount $currency';
+    return 'You owe $currency $amount';
   }
 
   @override
   String eventYouAreOwedAmount(Object amount, Object currency) {
-    return 'You are owed $amount $currency';
+    return 'You are owed $currency $amount';
   }
 
   @override
