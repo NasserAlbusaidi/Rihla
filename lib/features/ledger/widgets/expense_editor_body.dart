@@ -623,7 +623,16 @@ class _AmountHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final parts = amount.split('.');
     final whole = parts.first.isEmpty ? '0' : parts.first;
-    final fraction = parts.length > 1 ? '.${parts.last}' : '';
+    final rawFraction = parts.length > 1 ? parts.last : '';
+    final decimals = AppFormatters.currencyConfig[currency]?.decimals ?? 3;
+    // Pad the DISPLAYED fraction to the currency's precision so the live field
+    // matches the 3dp shown in the saved expense and summaries (#156). This is
+    // display-only: the parsed/persisted Decimal comes from the (transparent)
+    // controller, never this string, so padding here cannot change the written
+    // value. The untouched default '0' stays a clean unpadded 'OMR 0'.
+    final fraction = (amount != '0' && decimals > 0)
+        ? '.${rawFraction.padRight(decimals, '0')}'
+        : (rawFraction.isEmpty ? '' : '.$rawFraction');
     final colors = context.colors;
 
     // The label color is deliberately darker than textSecondary — at fontSize
@@ -639,13 +648,18 @@ class _AmountHero extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                context.l10n.editorAmountLabel(currency),
-                style: AppTypography.mono(
-                  fontSize: 10,
-                  letterSpacing: 1.6,
-                  color: labelColor,
-                  fontWeight: FontWeight.w700,
+              // Forced LTR like the amount Row below — otherwise the composite
+              // 'المبلغ · OMR' inherits the ambient RTL and scrambles (#150).
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  context.l10n.editorAmountLabel(currency),
+                  style: AppTypography.mono(
+                    fontSize: 10,
+                    letterSpacing: 1.6,
+                    color: labelColor,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -712,6 +726,11 @@ class _AmountHero extends StatelessWidget {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              // The transparent overlay field only types digits; disabling
+              // interactive selection stops iOS selection handles from sticking
+              // over the amount label (#150). Programmatic select-default-zero
+              // still works (it sets controller.selection directly).
+              enableInteractiveSelection: false,
               textDirection: TextDirection.ltr,
               inputFormatters: [
                 LocalizedDecimalTextInputFormatter(
@@ -1047,26 +1066,32 @@ class _SplitPreviewCard extends StatelessWidget {
                     runSpacing: 2,
                     children: [
                       Text(
-                        l10n.editorSplitSummary(
-                          expenseScopeDisplayName(scope, l10n),
-                          count,
-                        ),
+                        // With fewer than two people there is no split, so show
+                        // just the scope — not "{scope} · 1 way", which reads as
+                        // a finished split beside the "pick ≥2" hint (#152).
+                        count >= 2
+                            ? l10n.editorSplitSummary(
+                                expenseScopeDisplayName(scope, l10n),
+                                count,
+                              )
+                            : expenseScopeDisplayName(scope, l10n),
                         style: AppTypography.sans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: colors.textPrimary,
                         ),
                       ),
-                      Text(
-                        l10n.editorEachAmount(
-                          AppFormatters.formatCurrency(each, currency),
+                      if (count >= 2)
+                        Text(
+                          l10n.editorEachAmount(
+                            AppFormatters.formatCurrency(each, currency),
+                          ),
+                          style: AppTypography.sans(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -1167,14 +1192,23 @@ class _ParticipantSplitTile extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          Text(
-            AppFormatters.formatCurrency(share, currency),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.mono(
-              fontSize: 11,
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w600,
+          // Wrapped LTR so the amount can't bidi-reorder in Arabic, and scaled
+          // to fit the fixed tile instead of truncating to an unreadable
+          // ellipsis (#151). Currency notation (symbol vs code) is #144.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                AppFormatters.formatCurrency(share, currency),
+                maxLines: 1,
+                softWrap: false,
+                style: AppTypography.mono(
+                  fontSize: 11,
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],

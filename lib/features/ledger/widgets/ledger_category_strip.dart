@@ -85,13 +85,32 @@ class _AllChip extends StatelessWidget {
             width: 1,
           ),
         ),
-        child: Text(
-          '${context.l10n.ledgerAllFilter} · $count',
-          style: AppTypography.sans(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w500,
-            color: active ? colors.scaffoldBackground : colors.ink2,
-          ),
+        // Label and count are separate spans; the count is LTR-isolated so the
+        // old "label · N" string can't collapse into "All 20" in Arabic (#155).
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.ledgerAllFilter,
+              style: AppTypography.sans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: active ? colors.scaffoldBackground : colors.ink2,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                '($count)',
+                style: AppTypography.sans(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: active ? colors.scaffoldBackground : colors.ink2,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -154,7 +173,7 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-/// Special-case chip rendered when there are no expenses — dashed "All · 0"
+/// Special-case chip rendered when there are no expenses — an "All (0)" pill
 /// with an inline italic helper "categories appear as you log them".
 class LedgerCategoryStripEmpty extends StatelessWidget {
   const LedgerCategoryStripEmpty({super.key});
@@ -173,13 +192,30 @@ class LedgerCategoryStripEmpty extends StatelessWidget {
               borderRadius: BorderRadius.circular(9999),
               border: Border.all(color: colors.rule2, width: 1),
             ),
-            child: Text(
-              '${context.l10n.ledgerAllFilter} · 0',
-              style: AppTypography.sans(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: colors.textSecondary,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.l10n.ledgerAllFilter,
+                  style: AppTypography.sans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    '(0)',
+                    style: AppTypography.sans(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 10),

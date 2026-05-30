@@ -20,8 +20,8 @@ enum AmountTone { auto, sage, rust, ink }
 /// - Optional sign: `+` for positive (sage), `−` (U+2212) for negative (rust).
 /// - OMR shows 3 decimals (baisa); other currencies show 2.
 ///
-/// Tabular figures and slashed zero are applied via [AppTypography.mono] so
-/// columns of amounts align across rows.
+/// Tabular figures are applied via [AppTypography.mono] so columns of amounts
+/// align across rows (the zero is plain/un-slashed — #148).
 ///
 /// ```dart
 /// RAmount(

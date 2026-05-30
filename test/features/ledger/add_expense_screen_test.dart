@@ -46,9 +46,79 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '٠٫٥');
     await tester.pump();
 
-    final fractionText = find.text('.5');
+    // Padded to OMR's 3dp precision (#156); still LTR.
+    final fractionText = find.text('.500');
     expect(fractionText, findsOneWidget);
     expect(Directionality.of(tester.element(fractionText)), TextDirection.ltr);
+  });
+
+  testWidgets('renders the amount label left-to-right under Arabic locale', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester, locale: const Locale('ar'));
+
+    final labelText = find.text('المبلغ · OMR');
+    expect(labelText, findsOneWidget);
+    // RED today: the label sits outside the hero's LTR Directionality, so the
+    // composite 'المبلغ · OMR' inherits RTL and scrambles (#150).
+    expect(Directionality.of(tester.element(labelText)), TextDirection.ltr);
+  });
+
+  testWidgets('amount field disables interactive selection (no stuck handles)', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester);
+
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    // RED today: enableInteractiveSelection is null (default true), so the
+    // transparent overlay field shows iOS selection handles over the label.
+    expect(field.enableInteractiveSelection, isFalse);
+  });
+
+  testWidgets('displayed amount pads trailing zeros to currency precision (#156)', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester);
+
+    await tester.enterText(find.byType(TextField).first, '2.5');
+    await tester.pump();
+
+    // RED today: the hero shows the raw '.5', mismatching the 3dp shown
+    // everywhere else. The pad is display-only…
+    expect(find.text('.500'), findsOneWidget);
+    // …the (transparent) controller — the source of the persisted Decimal —
+    // still holds the raw '2.5', so the write path is provably untouched.
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    expect(field.controller?.text, '2.5');
+  });
+
+  testWidgets('default zero is not padded (#156)', (tester) async {
+    await _pumpAddExpenseScreen(tester);
+    // The untouched default stays a clean 'OMR 0', not 'OMR 0.000'.
+    expect(find.text('.000'), findsNothing);
+  });
+
+  testWidgets('split-preview tile shows the per-person amount in full, LTR (#151)', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester, locale: const Locale('ar'));
+
+    await tester.enterText(find.byType(TextField).first, '5');
+    await tester.pump();
+
+    // each = 5 / 2 participants = 2.500. The tile must show the full figure,
+    // not the ellipsized / bidi-scrambled 'ر.ع. 2.5...' it rendered in a fixed
+    // 78px box. (Notation symbol-vs-OMR is #144; here we only fix readability.)
+    // The summary line is 'ر.ع. 2.500 لكل شخص' (different exact string), so the
+    // per-tile amount is the exact 'ر.ع. 2.500' matches.
+    final amount = find.text('ر.ع. 2.500');
+    expect(amount, findsWidgets);
+    // RED today: the amount Text has overflow: ellipsis and no LTR wrapper.
+    expect(
+      tester.widget<Text>(amount.first).overflow,
+      isNot(TextOverflow.ellipsis),
+    );
+    expect(Directionality.of(tester.element(amount.first)), TextDirection.ltr);
   });
 
   testWidgets('selects the default zero when amount field is focused', (
@@ -66,11 +136,44 @@ void main() {
       const TextSelection(baseOffset: 0, extentOffset: 1),
     );
   });
+
+  testWidgets('one eligible participant shows one coherent split state (#152)', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester, event: _soloEvent);
+
+    await tester.enterText(find.byType(TextField).first, '5');
+    await tester.pump();
+
+    // The method card correctly notes a split method needs 2+ people…
+    expect(find.text('Pick at least two people to split.'), findsOneWidget);
+    // …so the preview must NOT simultaneously claim a finished "1 way · X each"
+    // split. RED today: editorSplitSummary renders "Equally · 1 way" and
+    // editorEachAmount renders "5.000 each".
+    expect(find.textContaining('1 way'), findsNothing);
+    expect(find.textContaining('each'), findsNothing);
+  });
 }
+
+/// A single-participant event: the split preview and the split-method card
+/// must not contradict each other at count == 1 (#152).
+final _soloEvent = Event(
+  id: 'event-1',
+  name: 'Solo trip',
+  type: EventType.trip,
+  groupId: 'group-1',
+  createdBy: 'uid-yasmin',
+  participantIds: const ['uid-yasmin'],
+  participantNames: const {'uid-yasmin': 'Yasmin Khan'},
+  modules: const EventModules(),
+  startDate: DateTime(2026, 3, 21),
+  createdAt: DateTime(2026, 3, 20),
+);
 
 Future<void> _pumpAddExpenseScreen(
   WidgetTester tester, {
   Locale locale = const Locale('en'),
+  Event? event,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -81,7 +184,7 @@ Future<void> _pumpAddExpenseScreen(
         eventDetailProvider((
           groupId: 'group-1',
           eventId: 'event-1',
-        )).overrideWith((ref) => Stream.value(_event)),
+        )).overrideWith((ref) => Stream.value(event ?? _event)),
         tripCategoriesProvider(
           'event-1',
         ).overrideWith((ref) => Stream.value(_categories)),
