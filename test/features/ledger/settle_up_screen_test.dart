@@ -3,6 +3,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -45,7 +46,7 @@ void main() {
     ),
   ];
 
-  Widget buildScreen(FakeFirebaseFirestore fakeDb) {
+  Widget buildScreen(FakeFirebaseFirestore fakeDb, {Locale? locale}) {
     return ProviderScope(
       overrides: [
         currentUserIdProvider.overrideWithValue('bob'),
@@ -64,6 +65,7 @@ void main() {
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: const SettleUpScreen(groupId: groupId, eventId: eventId),
@@ -103,5 +105,23 @@ void main() {
     expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
     expect(snap.docs.first.data()['payerName'], equals('Bob'));
     expect(snap.docs.first.data()['recipientName'], equals('Alice'));
+  });
+
+  testWidgets('back arrow is mirrored under Arabic RTL (#126)', (tester) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(buildScreen(fakeDb, locale: const Locale('ar')));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Iconsax.arrow_left_2), findsOneWidget);
+    final mirrored = tester
+        .widgetList<Transform>(
+          find.ancestor(
+            of: find.byIcon(Iconsax.arrow_left_2),
+            matching: find.byType(Transform),
+          ),
+        )
+        .any((t) => t.transform.getRow(0).x == -1.0);
+    expect(mirrored, isTrue);
   });
 }

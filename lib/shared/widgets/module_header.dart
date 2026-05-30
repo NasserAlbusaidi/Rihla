@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/keys/shared_keys.dart';
 import '../../core/theme/tokens/domain_aliases.dart';
+import 'directional_icon.dart';
 
 class ModuleHeader extends StatelessWidget {
   final String title;
@@ -203,7 +204,7 @@ class _LightBackButton extends StatelessWidget {
           width: 48,
           height: 48,
           alignment: Alignment.center,
-          child: Icon(
+          child: DirectionalIcon(
             Iconsax.arrow_left,
             color: context.colors.textPrimary,
             size: 20,
@@ -234,7 +235,11 @@ class _DarkBackButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(8 + 2),
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
-          child: const Icon(Iconsax.arrow_left, color: Colors.white, size: 20),
+          child: const DirectionalIcon(
+            Iconsax.arrow_left,
+            color: Colors.white,
+            size: 20,
+          ),
         ),
       ),
     );

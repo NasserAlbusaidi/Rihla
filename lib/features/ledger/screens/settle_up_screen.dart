@@ -9,6 +9,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -351,7 +352,7 @@ class _SettleUpTopBar extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: IconButton(
                 tooltip: context.l10n.commonBack,
-                icon: const Icon(Iconsax.arrow_left_2, size: 20),
+                icon: const DirectionalIcon(Iconsax.arrow_left_2, size: 20),
                 color: context.colors.textPrimary,
                 onPressed: () {
                   if (context.canPop()) {
