@@ -343,6 +343,17 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  test('deletion attempt counters are not readable or writable by clients', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('deletionAttempts/owner').get());
+    await assertFails(owner.collection('deletionAttempts').get());
+    await assertFails(owner.doc('deletionAttempts/owner').set({
+      count: 1,
+      windowStart: new Date(),
+      expiresAt: new Date(),
+    }));
+  });
+
   test('recovery cleanup intent can only be created by the retiring UID', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
     const member = testEnv.authenticatedContext('member').firestore();
@@ -887,5 +898,117 @@ describe('Publish readiness Firestore rules', () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
 
     await assertFails(owner.doc('groups/g1/settlements/gset1').delete());
+  });
+
+  // --- #48 shared-settlement-core characterization ---
+  // These lock the 9 predicates shared by validEventSettlementBase and
+  // validGroupSettlementBase. They must be green BEFORE the validSettlementCore
+  // extraction (current behavior) and stay green AFTER (preservation proof).
+  // Each negative doc is otherwise-valid so the only failing predicate is the
+  // one under test (assertFails reports permission-denied, not the reason).
+
+  test('settlement rejects non-positive amount in both scopes', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setZero').set(
+      validSettlement({ id: 'setZero', amountFils: 0 }),
+    ));
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setNeg').set(
+      validSettlement({ id: 'setNeg', amountFils: -1 }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetZero').set(
+      validGroupSettlement({ id: 'gsetZero', amountFils: 0 }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetNeg').set(
+      validGroupSettlement({ id: 'gsetNeg', amountFils: -1 }),
+    ));
+  });
+
+  test('settlement rejects invalid currency type and length in both scopes', async () => {
+    // validCurrency (rules:48) only checks `is string && size() == 3`, so a bogus
+    // 3-letter code like 'ZZZ' PASSES by design (see #48 plan, Gate [P2]). We
+    // assert only the two real rejections: non-string, and wrong length.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setCurType').set(
+      validSettlement({ id: 'setCurType', currency: 123 }),
+    ));
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setCurLen').set(
+      validSettlement({ id: 'setCurLen', currency: 'US' }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetCurType').set(
+      validGroupSettlement({ id: 'gsetCurType', currency: 123 }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetCurLen').set(
+      validGroupSettlement({ id: 'gsetCurLen', currency: 'EURO' }),
+    ));
+  });
+
+  test('settlement rejects payer equal to recipient in both scopes', async () => {
+    // 'owner' is a valid participant (event) and member (group) in both scopes,
+    // so the only failing predicate is payerParticipantId != recipientParticipantId.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setSelf').set(
+      validSettlement({ id: 'setSelf', payerParticipantId: 'owner', recipientParticipantId: 'owner' }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetSelf').set(
+      validGroupSettlement({ id: 'gsetSelf', payerParticipantId: 'owner', recipientParticipantId: 'owner' }),
+    ));
+  });
+
+  test('settlement rejects non-string note in both scopes', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setNote').set(
+      validSettlement({ id: 'setNote', note: 123 }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetNote').set(
+      validGroupSettlement({ id: 'gsetNote', note: 123 }),
+    ));
+  });
+
+  test('settlement rejects missing settledAt in both scopes', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setNoSettledAt').set(
+      withoutField(validSettlement({ id: 'setNoSettledAt' }), 'settledAt'),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetNoSettledAt').set(
+      withoutField(validGroupSettlement({ id: 'gsetNoSettledAt' }), 'settledAt'),
+    ));
+  });
+
+  // --- #48 scope-shape characterization ---
+  // These stay OUT of validSettlementCore but are touched by the edit. They prove
+  // keys().hasOnly and the group-only predicates remain in the per-scope validators.
+
+  test('settlement rejects unknown extra key in both scopes', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setExtra').set(
+      validSettlement({ id: 'setExtra', surprise: 'x' }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetExtra').set(
+      validGroupSettlement({ id: 'gsetExtra', surprise: 'x' }),
+    ));
+  });
+
+  test('group settlement rejects eventId not equal to groupId (sentinel lock for #71)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/settlements/gsetBadEventId').set(
+      validGroupSettlement({ id: 'gsetBadEventId', eventId: 'e1' }),
+    ));
+  });
+
+  test('group settlement rejects scope other than group', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/settlements/gsetBadScope').set(
+      validGroupSettlement({ id: 'gsetBadScope', scope: 'personal' }),
+    ));
+  });
+
+  test('group settlement rejects invalid payer and recipient display names', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/settlements/gsetCtrlPayer').set(
+      validGroupSettlement({ id: 'gsetCtrlPayer', payerName: 'Bad\nName' }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gsetLongRecipient').set(
+      validGroupSettlement({ id: 'gsetLongRecipient', recipientName: 'A'.repeat(33) }),
+    ));
   });
 });

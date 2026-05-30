@@ -29,53 +29,6 @@ Future<void> _seedEvent(FakeFirebaseFirestore db) async {
 }
 
 void main() {
-  group('EventService.addParticipant', () {
-    test('appends to participantIds and writes participantNames key',
-        () async {
-      final db = FakeFirebaseFirestore();
-      await _seedEvent(db);
-
-      final service = EventService.withFirestore(db);
-      await service.addParticipant(
-        groupId: _groupId,
-        eventId: _eventId,
-        participantId: 'uid-new',
-        displayName: 'Carol',
-      );
-
-      final snap = await _eventRef(db).get();
-      final data = snap.data()!;
-
-      expect(
-        (data['participantIds'] as List).cast<String>(),
-        containsAll(['uid-creator', 'uid-existing', 'uid-new']),
-      );
-      expect(data['participantNames'], {
-        'uid-creator': 'Alice',
-        'uid-existing': 'Bob',
-        'uid-new': 'Carol',
-      });
-      expect(data['updatedAt'], isNotNull);
-    });
-
-    test('is a no-op-ish second add (arrayUnion dedupes)', () async {
-      final db = FakeFirebaseFirestore();
-      await _seedEvent(db);
-      final service = EventService.withFirestore(db);
-
-      await service.addParticipant(
-        groupId: _groupId,
-        eventId: _eventId,
-        participantId: 'uid-existing',
-        displayName: 'Bob',
-      );
-
-      final snap = await _eventRef(db).get();
-      final ids = (snap.data()!['participantIds'] as List).cast<String>();
-      expect(ids.where((id) => id == 'uid-existing').length, 1);
-    });
-  });
-
   group('EventService.createEvent', () {
     test('writes a doc with toFirestoreMap and returns the populated Event',
         () async {
@@ -194,31 +147,6 @@ void main() {
       final data = (await _eventRef(db).get()).data()!;
       expect(data['updatedAt'], isNotNull);
       expect(data['name'], 'Beach Day'); // unchanged
-    });
-  });
-
-  group('EventService.removeParticipant', () {
-    test('removes from participantIds and deletes the participantNames key',
-        () async {
-      final db = FakeFirebaseFirestore();
-      await _seedEvent(db);
-      final service = EventService.withFirestore(db);
-
-      await service.removeParticipant(
-        groupId: _groupId,
-        eventId: _eventId,
-        participantId: 'uid-existing',
-      );
-
-      final snap = await _eventRef(db).get();
-      final data = snap.data()!;
-
-      expect(
-        (data['participantIds'] as List).cast<String>(),
-        ['uid-creator'],
-      );
-      expect(data['participantNames'], {'uid-creator': 'Alice'});
-      expect(data['updatedAt'], isNotNull);
     });
   });
 }

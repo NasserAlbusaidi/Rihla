@@ -11,7 +11,6 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
-import 'package:safar/features/groups/widgets/group_stats_grid.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
@@ -401,51 +400,5 @@ void main() {
       expect(find.byType(GroupSettlementTile), findsOneWidget);
       expect(find.text('Settle Up'), findsOneWidget);
     });
-
-    testWidgets(
-      'GroupStatsGrid shows "You owe" subtitle for negative balance',
-      (tester) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.lightTheme,
-            home: Scaffold(
-              body: GroupStatsGrid(
-                userNetBalance: Decimal.parse('-5.000'),
-                groupTotal: Decimal.parse('20.000'),
-                activeMembers: 2,
-                eventCount: 1,
-                currency: 'OMR',
-              ),
-            ),
-          ),
-        );
-        await tester.pump();
-
-        expect(find.text('You owe'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'GroupStatsGrid shows "Owed to you" subtitle for positive balance',
-      (tester) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.lightTheme,
-            home: Scaffold(
-              body: GroupStatsGrid(
-                userNetBalance: Decimal.parse('5.000'),
-                groupTotal: Decimal.parse('20.000'),
-                activeMembers: 2,
-                eventCount: 1,
-                currency: 'OMR',
-              ),
-            ),
-          ),
-        );
-        await tester.pump();
-
-        expect(find.text('Owed to you'), findsOneWidget);
-      },
-    );
   });
 }

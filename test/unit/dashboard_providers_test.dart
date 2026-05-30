@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -9,7 +8,6 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
-import 'package:safar/features/ledger/models/expense_model.dart';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -141,145 +139,4 @@ void main() {
       expect(result.valueOrNull!.length, equals(5));
     });
   });
-
-  // ---------------------------------------------------------------------------
-  // weeklyGroupSpendingProvider
-  // ---------------------------------------------------------------------------
-  group('weeklyGroupSpendingProvider', () {
-    test('returns 7 day entries (Mon-Sun) for current week', () async {
-      final container = ProviderContainer(
-        overrides: [userGroupsProvider.overrideWith((_) => Stream.value([]))],
-      );
-      addTearDown(container.dispose);
-
-      container.listen(
-        weeklyGroupSpendingProvider,
-        (_, _) {},
-        fireImmediately: true,
-      );
-      await _pump(container);
-
-      final result = container.read(weeklyGroupSpendingProvider);
-      expect(result, isA<AsyncData<List<DailySpending>>>());
-      final week = result.valueOrNull!;
-
-      // Always returns exactly 7 entries
-      expect(week.length, equals(7));
-
-      // First entry is Monday (weekday == 1)
-      expect(week.first.date.weekday, equals(DateTime.monday));
-      // Last entry is Sunday (weekday == 7)
-      expect(week.last.date.weekday, equals(DateTime.sunday));
-    });
-
-    test('returns Decimal.zero for days with no expenses', () async {
-      final container = ProviderContainer(
-        overrides: [userGroupsProvider.overrideWith((_) => Stream.value([]))],
-      );
-      addTearDown(container.dispose);
-
-      container.listen(
-        weeklyGroupSpendingProvider,
-        (_, _) {},
-        fireImmediately: true,
-      );
-      await _pump(container);
-
-      final result = container.read(weeklyGroupSpendingProvider);
-      expect(result, isA<AsyncData<List<DailySpending>>>());
-      final week = result.valueOrNull!;
-
-      // All amounts should be zero when no groups (hence no expenses)
-      for (final day in week) {
-        expect(day.amount, equals(Decimal.zero));
-      }
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // ARCH-02: weeklyGroupSpendingProvider fan-out bounded to O(G)
-  // ---------------------------------------------------------------------------
-  group(
-    'ARCH-02: weeklyGroupSpendingProvider does not watch eventExpensesProvider',
-    () {
-      test(
-        'weeklyGroupSpendingProvider resolves via weeklyGroupExpensesProvider, not eventExpensesProvider',
-        () async {
-          final group1 = _makeGroup(id: 'g1', name: 'Group 1');
-
-          // Inject a known in-range expense via weeklyGroupExpensesProvider override.
-          // If the provider resolves through weeklyGroupExpensesProvider (O(G)),
-          // this expense will appear in the weekly total.
-          // If it still fans out through eventExpensesProvider (O(G×E)),
-          // the weeklyGroupExpensesProvider override would be bypassed and the
-          // expense would NOT appear — the test would fail.
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
-          final weekday = today.weekday;
-          final monday = today.subtract(Duration(days: weekday - 1));
-          // Use Wednesday of the current week so the date is within Mon-Sun
-          final wednesday = monday.add(const Duration(days: 2));
-
-          final testExpense = Expense(
-            id: 'exp-arch02',
-            tripId: 'e1',
-            payerParticipantId: 'p1',
-            amount: Decimal.parse('25.000'),
-            scope: ExpenseScope.global,
-            createdAt: wednesday,
-          );
-
-          final container = ProviderContainer(
-            overrides: [
-              userGroupsProvider.overrideWith((_) => Stream.value([group1])),
-              // Override the per-group aggregate provider — O(G) boundary.
-              weeklyGroupExpensesProvider(
-                'g1',
-              ).overrideWith((_) => Stream.value([testExpense])),
-            ],
-          );
-          addTearDown(container.dispose);
-
-          container.listen(
-            weeklyGroupSpendingProvider,
-            (_, _) {},
-            fireImmediately: true,
-          );
-          await _pump(container);
-
-          final result = container.read(weeklyGroupSpendingProvider);
-          expect(result, isA<AsyncData<List<DailySpending>>>());
-          final week = result.valueOrNull!;
-
-          // The expense on Wednesday should appear in the weekly totals.
-          final wednesdayEntry = week.firstWhere(
-            (d) => d.date.weekday == DateTime.wednesday,
-          );
-          expect(
-            wednesdayEntry.amount,
-            equals(Decimal.parse('25.000')),
-            reason:
-                'weeklyGroupSpendingProvider must source from '
-                'weeklyGroupExpensesProvider, not eventExpensesProvider',
-          );
-
-          // Total across the week equals the single expense amount.
-          final total = week.fold(Decimal.zero, (sum, d) => sum + d.amount);
-          expect(total, equals(Decimal.parse('25.000')));
-        },
-      );
-
-      test(
-        'weeklyGroupExpensesProvider is a StreamProvider.family keyed by groupId',
-        () {
-          // Structural assertion: weeklyGroupExpensesProvider must be a
-          // StreamProvider.family<List<Expense>, String> — not a flat provider.
-          // We verify this by checking that calling it with a groupId compiles
-          // and returns a ProviderListenable.
-          final provider = weeklyGroupExpensesProvider('some-group-id');
-          expect(provider, isNotNull);
-        },
-      );
-    },
-  );
 }

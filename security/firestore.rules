@@ -53,6 +53,22 @@ service cloud.firestore {
       return value is int && value > 0;
     }
 
+    // Settlement predicates shared by event-scope and group-scope settlements
+    // (#48). The scope-specific shape — allowed keys, doc/parent-id binding,
+    // participant set, scope literal, and group display names — stays in the
+    // per-scope validators below; only these scope-agnostic field checks live here.
+    function validSettlementCore(data) {
+      return data.createdBy is string
+        && data.createdBy.size() > 0
+        && data.payerParticipantId != data.recipientParticipantId
+        && positiveInt(data.amountFils)
+        && validCurrency(data.currency)
+        && nullableString(data.note)
+        && data.isDeleted is bool
+        && (data.deletedAt == null || data.deletedAt is string)
+        && data.settledAt is string;
+    }
+
     function groupPath(groupId) {
       return /databases/$(database)/documents/groups/$(groupId);
     }
@@ -142,6 +158,13 @@ service cloud.firestore {
     }
 
     match /joinAttempts/{userId} {
+      allow read, write: if false;
+    }
+
+    // #73: per-UID deletion-invocation rate-limit counters. Server-only (the
+    // deleteAccount callable writes them via the Admin SDK, which bypasses rules);
+    // clients can never read or write. A Firestore TTL on `expiresAt` reaps them.
+    match /deletionAttempts/{userId} {
       allow read, write: if false;
     }
 
@@ -499,17 +522,9 @@ service cloud.firestore {
             ])
             && data.id == docId
             && data.eventId == eventId
-            && data.createdBy is string
-            && data.createdBy.size() > 0
             && data.payerParticipantId in participants()
             && data.recipientParticipantId in participants()
-            && data.payerParticipantId != data.recipientParticipantId
-            && positiveInt(data.amountFils)
-            && validCurrency(data.currency)
-            && nullableString(data.note)
-            && data.isDeleted is bool
-            && (data.deletedAt == null || data.deletedAt is string)
-            && data.settledAt is string;
+            && validSettlementCore(data);
           }
 
           function validEventSettlementCreate() {
@@ -686,21 +701,17 @@ service cloud.firestore {
           ])
           && data.id == settlementId
           && data.groupId == groupId
+          // Group settlements reuse the Settlement model with eventId pinned to
+          // groupId as a sentinel (group-level, not tied to any event). Migrating
+          // this overloaded field is tracked in #71 — do not relax this binding
+          // without that schema change.
           && data.eventId == groupId
-          && data.createdBy is string
-          && data.createdBy.size() > 0
           && data.scope == 'group'
           && data.payerParticipantId in groupData(groupId).memberIds
           && data.recipientParticipantId in groupData(groupId).memberIds
-          && data.payerParticipantId != data.recipientParticipantId
-          && positiveInt(data.amountFils)
-          && validCurrency(data.currency)
-          && nullableString(data.note)
           && isValidNullableDisplayName(data.payerName)
           && isValidNullableDisplayName(data.recipientName)
-          && data.isDeleted is bool
-          && (data.deletedAt == null || data.deletedAt is string)
-          && data.settledAt is string;
+          && validSettlementCore(data);
         }
 
         function validGroupSettlementCreate() {

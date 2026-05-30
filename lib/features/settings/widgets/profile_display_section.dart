@@ -15,7 +15,7 @@ import 'theme_picker_sheet.dart';
 /// label reflects the current [AppThemeMode] — "System • Following device",
 /// "Light", or "Dark".
 ///
-/// Tile style mirrors [ProfileAboutSection] — same card container, same
+/// Tile style mirrors the other profile cards — same card container, same
 /// icon-container + label + trailing layout.
 class ProfileDisplaySection extends ConsumerWidget {
   const ProfileDisplaySection({super.key});

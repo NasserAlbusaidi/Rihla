@@ -18,6 +18,10 @@ class AppFormatters {
     'GBP': CurrencyConfig(symbol: '£', decimals: 2),
     'AED': CurrencyConfig(symbol: 'د.إ', decimals: 2),
     'SAR': CurrencyConfig(symbol: 'ر.س', decimals: 2),
+    'QAR': CurrencyConfig(symbol: 'ر.ق', decimals: 2),
+    'JPY': CurrencyConfig(symbol: '¥', decimals: 0),
+    'KWD': CurrencyConfig(symbol: 'د.ك', decimals: 3),
+    'BHD': CurrencyConfig(symbol: 'د.ب', decimals: 3),
   };
 
   /// Format amount for display (OMR uses 3 decimal places)

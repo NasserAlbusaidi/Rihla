@@ -47,4 +47,4 @@
 
 ## keys/
 
-- **shared_keys.dart**: `SharedKeys` — abstract final class of semantic `Key` constants for testing and accessibility. Covers: ModuleHeader, OfflineBanner, EmptyStateView, GroupBalanceHero, InviteCodeDisplay, AppTabBar (parameterized), LoadingButton (parameterized).
+- **shared_keys.dart**: `SharedKeys` — abstract final class of semantic `Key` constants for testing and accessibility. Covers: ModuleHeader, OfflineBanner, EmptyStateView, InviteCodeDisplay, LoadingButton (parameterized).

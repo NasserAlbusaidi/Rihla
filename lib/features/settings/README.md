@@ -8,7 +8,7 @@
 
 ### widgets/
 - **edit_name_bottom_sheet.dart** — display-name editor with validation matching `security/firestore.rules`.
-- **profile_about_section.dart**, **profile_stats_section.dart**, **profile_notifications_section.dart**, **profile_display_section.dart**, **profile_support_section.dart**.
+- **profile_display_section.dart** — Theme tile that opens `ThemePickerSheet`.
 - **theme_picker_sheet.dart** — light / dark / system.
 - **currency_picker_sheet.dart** — OMR / AED / SAR / USD / EUR / GBP. "Default for new trips" copy.
 - **language_picker_sheet.dart** — English selected; Arabic locked with "Coming soon" badge until full i18n lands.

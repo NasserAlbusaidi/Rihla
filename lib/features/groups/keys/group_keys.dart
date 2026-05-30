@@ -79,8 +79,6 @@ abstract final class GroupKeys {
 
   // Parameterized keys for list items
   static Key groupCard(String groupId) => Key('group_card_$groupId');
-  static Key memberBalanceCard(String memberId) =>
-      Key('group_member_balance_card_$memberId');
   static Key settlementTile(String id) => Key('group_settlement_tile_$id');
 
   // Phase 29 — Group Management

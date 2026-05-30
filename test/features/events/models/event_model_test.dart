@@ -334,33 +334,6 @@ void main() {
         isFalse,
       );
     });
-
-    test('isOngoing requires both startDate and endDate', () {
-      expect(withDates().isOngoing, isFalse);
-      expect(withDates(start: DateTime(2020)).isOngoing, isFalse);
-      expect(withDates(end: DateTime(2030)).isOngoing, isFalse);
-    });
-
-    test('isOngoing returns true when now is between start and end', () {
-      final ongoing = withDates(
-        start: DateTime.now().subtract(const Duration(days: 1)),
-        end: DateTime.now().add(const Duration(days: 1)),
-      );
-      expect(ongoing.isOngoing, isTrue);
-    });
-
-    test('isOngoing returns false outside the window', () {
-      final past = withDates(
-        start: DateTime(2020, 1, 1),
-        end: DateTime(2020, 1, 2),
-      );
-      final future = withDates(
-        start: DateTime.now().add(const Duration(days: 10)),
-        end: DateTime.now().add(const Duration(days: 20)),
-      );
-      expect(past.isOngoing, isFalse);
-      expect(future.isOngoing, isFalse);
-    });
   });
 
   group('Event equality + toString', () {

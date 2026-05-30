@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/tokens/color_tokens.dart';
 import '../../core/theme/tokens/domain_aliases.dart';
 import '../../core/theme/tokens/typography_tokens.dart';
+import '../../core/utils/formatters.dart';
 
 /// Color tone variants for [RAmount].
 ///
@@ -81,7 +82,7 @@ class RAmount extends StatelessWidget {
     final isNegative = v < Decimal.zero;
 
     final color = _resolveColor(colors, isPositive, isNegative);
-    final decimalPlaces = currency == 'OMR' ? 3 : 2;
+    final decimalPlaces = AppFormatters.currencyConfig[currency]?.decimals ?? 2;
 
     final abs = v.abs();
     final formatted = abs.toStringAsFixed(decimalPlaces);

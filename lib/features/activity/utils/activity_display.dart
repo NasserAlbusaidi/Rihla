@@ -43,14 +43,3 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
     _ => log.description,
   };
 }
-
-String localizedGroupActivityTitle(AppLocalizations l10n, String type) {
-  return switch (type) {
-    'group_settlement' => l10n.activityTitlePaymentRecorded,
-    'event_created' => l10n.activityTitleEventCreated,
-    'event_deleted' => l10n.activityTitleEventRemoved,
-    'member_joined' => l10n.activityTitleMemberJoined,
-    'member_left' => l10n.activityTitleMemberLeft,
-    _ => l10n.activityTitleGeneric,
-  };
-}
