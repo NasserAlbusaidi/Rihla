@@ -32,6 +32,12 @@ bundle exec fastlane android listing    # icon + graphic + screenshots + text
 Both lanes are AAB-safe — they never touch the binary or release notes, so they
 won't interfere with an in-flight closed-testing review.
 
+## Release notes
+
+Release notes (changelogs) are **entered manually in Play Console** per release —
+there is no `changelogs/` metadata and no lane uploads them (`skip_upload_changelogs`
+is set everywhere). No `video.txt`/promo-video field is managed here either.
+
 ## Pulling current Play state
 
 If the on-Play listing has drifted (someone edited via the web UI), pull it
