@@ -19,7 +19,6 @@ void main() {
             body: GroupSettlementSummaryCard(
               totalPending: Decimal.parse('12.000'),
               currency: 'OMR',
-              transferCount: 2,
             ),
           ),
         ),

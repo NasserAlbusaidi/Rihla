@@ -95,7 +95,6 @@ class SettleUpPageBody extends StatelessWidget {
           GroupSettlementSummaryCard(
             totalPending: totalPending,
             currency: currency,
-            transferCount: optimalSettlements.length,
           ),
           if (allSettled) ...[
             const SizedBox(height: 32),
