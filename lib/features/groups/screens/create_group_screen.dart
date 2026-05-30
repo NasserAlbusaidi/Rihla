@@ -445,7 +445,7 @@ class _ReadOnlyCurrencyField extends StatelessWidget {
             border: Border(bottom: BorderSide(color: colors.ink2)),
           ),
           child: Text(
-            'OMR · ر.ع.',
+            'OMR',
             style: AppTypography.sans(
               fontSize: 17,
               color: colors.textPrimary,

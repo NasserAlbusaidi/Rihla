@@ -43,23 +43,33 @@ void main() {
       expect(AppFormatters.formatOMR(Decimal.parse('-0.001')), '-0.001 OMR');
     });
 
-    test('formatCurrency: Should format with correct symbol and decimals', () {
+    test('formatCurrency: code-first ISO code with correct decimals (#144)', () {
       expect(
         AppFormatters.formatCurrency(Decimal.parse('10'), 'OMR'),
-        'ر.ع. 10.000',
+        'OMR 10.000',
       );
       expect(
         AppFormatters.formatCurrency(Decimal.parse('25.5'), 'USD'),
-        '\$ 25.50',
+        'USD 25.50',
       );
       expect(
         AppFormatters.formatCurrency(Decimal.parse('99.99'), 'EUR'),
-        '€ 99.99',
+        'EUR 99.99',
       );
       expect(
         AppFormatters.formatCurrency(Decimal.parse('100'), 'AED'),
-        'د.إ 100.00',
+        'AED 100.00',
       );
+    });
+
+    test('formatCurrency: never emits a currency symbol (#144 regression)', () {
+      // The symbol path (ر.ع., $, €, ¥, …) is dead for amount display.
+      for (final code in ['OMR', 'USD', 'EUR', 'AED', 'JPY', 'KWD']) {
+        final out = AppFormatters.formatCurrency(Decimal.parse('12'), code);
+        expect(out.startsWith('$code '), isTrue, reason: '$code not code-first');
+        final symbol = AppFormatters.currencyConfig[code]!.symbol;
+        expect(out.contains(symbol), isFalse, reason: '$code still shows symbol');
+      }
     });
 
     test('formatCurrency: Should fallback for unknown currency', () {
@@ -95,27 +105,27 @@ void main() {
   });
 
   group('formatCurrency multi-currency precision (#63)', () {
-    test('JPY: 0 decimal places, yen symbol', () {
-      expect(AppFormatters.formatCurrency(Decimal.parse('1234'), 'JPY'), '¥ 1234');
+    test('JPY: 0 decimal places, code-first', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('1234'), 'JPY'), 'JPY 1234');
       // 0dp rounds the fraction away.
-      expect(AppFormatters.formatCurrency(Decimal.parse('1234.4'), 'JPY'), '¥ 1234');
+      expect(AppFormatters.formatCurrency(Decimal.parse('1234.4'), 'JPY'), 'JPY 1234');
     });
 
-    test('QAR: 2 decimal places, riyal symbol', () {
-      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'QAR'), 'ر.ق 50.00');
+    test('QAR: 2 decimal places, code-first', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'QAR'), 'QAR 50.00');
     });
 
-    test('KWD: 3 decimal places, dinar symbol', () {
-      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'KWD'), 'د.ك 50.000');
+    test('KWD: 3 decimal places, code-first', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'KWD'), 'KWD 50.000');
     });
 
-    test('BHD: 3 decimal places, dinar symbol', () {
-      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'BHD'), 'د.ب 50.000');
+    test('BHD: 3 decimal places, code-first', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('50'), 'BHD'), 'BHD 50.000');
     });
 
-    test('OMR/USD unchanged (regression guard)', () {
-      expect(AppFormatters.formatCurrency(Decimal.parse('10'), 'OMR'), 'ر.ع. 10.000');
-      expect(AppFormatters.formatCurrency(Decimal.parse('25.5'), 'USD'), '\$ 25.50');
+    test('OMR/USD precision unchanged, code-first (regression guard)', () {
+      expect(AppFormatters.formatCurrency(Decimal.parse('10'), 'OMR'), 'OMR 10.000');
+      expect(AppFormatters.formatCurrency(Decimal.parse('25.5'), 'USD'), 'USD 25.50');
     });
 
     test('currencyConfig.decimals matches MoneySerializer.fractionDigits '

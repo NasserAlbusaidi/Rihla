@@ -526,8 +526,8 @@
   "eventLoadFailedTitle": "تعذّر تحميل الفعالية",
   "eventMissingMessage": "ربما تم حذفها، أو أن الرابط غير صحيح.",
   "eventSemanticCard": "{eventName}، {count, plural, =0{لا أشخاص} =1{شخص واحد} =2{شخصان} few{{count} أشخاص} many{{count} شخصًا} other{{count} شخص}}",
-  "eventYouOweAmount": "أنت مدين {amount} {currency}",
-  "eventYouAreOwedAmount": "مستحق لك {amount} {currency}",
+  "eventYouOweAmount": "أنت مدين {currency} {amount}",
+  "eventYouAreOwedAmount": "مستحق لك {currency} {amount}",
 
   "groupNameLabel": "اسم المجموعة",
   "groupNameHint": "مثال: رحلة العائلة",
