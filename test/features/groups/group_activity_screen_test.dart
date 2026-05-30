@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -392,6 +393,28 @@ void main() {
       expect(_richTextContaining('Alice'), findsOneWidget);
       expect(_richTextContaining('Weekend Trip'), findsOneWidget);
     });
+
+    testWidgets(
+      'settlement activity uses the money/wallet glyph, not a bare chevron '
+      '(#160)',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        final prefs = await SharedPreferences.getInstance();
+
+        await _seedActivities(fakeDb, 'grp-icon', [
+          _todayActivity(), // group_settlement
+        ]);
+
+        await tester.pumpWidget(
+          _buildActivityScreen(groupId: 'grp-icon', fakeDb: fakeDb, prefs: prefs),
+        );
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Iconsax.wallet_3), findsOneWidget);
+        expect(find.byIcon(Iconsax.arrow_right_3), findsNothing);
+      },
+    );
 
     testWidgets('no Load more button present (infinite scroll replaces it)', (
       tester,

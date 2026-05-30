@@ -521,7 +521,10 @@ class _CategoryIcon extends StatelessWidget {
       'group_settlement' => (
         sageSoft,
         colors.success,
-        Iconsax.arrow_right_3,
+        // Money/wallet glyph (matches the settle-up total chip, #157) — not a
+        // bare chevron, which read as navigation amid the other category
+        // glyphs (#160).
+        Iconsax.wallet_3,
         false,
       ),
       'event_created' => (
