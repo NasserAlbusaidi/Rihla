@@ -97,6 +97,10 @@ starts a new run.
   - Evidence: `functions/src/callables/joinGroupByInviteCode.ts` sets `enforceAppCheck: true`.
   - Evidence: `tool/check_release_readiness.sh` fails if callable App Check enforcement is removed.
   - Evidence: `tool/check_release_readiness.sh` also requires `RIHLA_CONFIRM_APP_CHECK_READY=yes` so Console enrolment stays an explicit release assertion.
+- [x] `deleteAccount` runs with `enforceAppCheck: false` **by design** — accepted posture, not a regression.
+  - Evidence: `functions/src/callables/deleteAccount.ts` sets `{ enforceAppCheck: false }` (vs `true` on `joinGroupByInviteCode` and `cleanupAnonUidArtifacts`).
+  - Rationale: GDPR right-to-erasure must succeed on attestation-failing devices (Play Integrity failure / no Play Services / MDM). Hard App Check enforcement previously **blocked** erasure — see #73 (`docs/plans/2026-05-29-issue-73-appcheck-deletion-fallback.md`); it was deliberately softened to verify-if-present.
+  - Why it stays safe: the callable takes **no input** (`assertNoInput`), is **self-scoped** (uid from `request.auth` only), is idempotent, and is rate-limited by `enforceDeletionRateLimit` (5 attempts/hour/UID) — the compensating control. Do **not** re-enable App Check on this callable without reopening #73.
 - [x] Join callable display-name validation matches the Firestore rules contract.
   - Evidence: `functions/src/callables/joinGroupByInviteCode.ts` rejects over-32-character names and control characters before Admin SDK writes.
   - Evidence: `functions/test/callables/joinGroupByInviteCode.test.ts` covers missing-name fallback, over-length rejection, and control-character rejection.
