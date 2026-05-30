@@ -16,6 +16,7 @@ import 'core/models/app_settings_model.dart';
 import 'core/router/app_router.dart';
 import 'core/screens/splash_screen.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/font_bootstrap.dart';
 import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/theme/tokens/color_tokens.dart';
@@ -37,6 +38,10 @@ const bool _useFirebaseEmulator = bool.fromEnvironment(
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Brand fonts are bundled assets; disable google_fonts CDN fetching and
+  // register their OFL licenses (#103).
+  configureBundledFonts();
 
   await SentryFlutter.init(
     (options) {

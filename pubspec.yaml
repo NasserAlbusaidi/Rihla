@@ -115,6 +115,32 @@ flutter:
 
   assets:
     - assets/textures/grain.png
+    # Bundled-font licenses (SIL OFL 1.1) — registered at runtime via LicenseRegistry.
+    - assets/fonts/OFL-Geist.txt
+    - assets/fonts/OFL-GeistMono.txt
+    - assets/fonts/OFL-ReemKufi.txt
+    - assets/fonts/OFL-InstrumentSerif.txt
+
+  # Brand typography — bundled so first-launch branding works offline and never
+  # hits the Google Fonts CDN (#103). Geist / Geist Mono / Reem Kufi are variable
+  # (wght axis); TextStyle.fontWeight drives the axis directly. Family names MUST
+  # match the const strings in lib/core/theme/tokens/typography_tokens.dart
+  # byte-for-byte (sansFamily / monoFamily / reemKufiFamily / displayFamily).
+  fonts:
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/Geist-Variable.ttf
+    - family: Geist Mono
+      fonts:
+        - asset: assets/fonts/GeistMono-Variable.ttf
+    - family: Reem Kufi
+      fonts:
+        - asset: assets/fonts/ReemKufi-Variable.ttf
+    - family: Instrument Serif
+      fonts:
+        - asset: assets/fonts/InstrumentSerif-Regular.ttf
+        - asset: assets/fonts/InstrumentSerif-Italic.ttf
+          style: italic
 
   # To add more assets to your application, add entries to the assets section:
   # assets:

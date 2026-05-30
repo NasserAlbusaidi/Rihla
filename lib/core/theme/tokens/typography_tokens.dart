@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Three-family typography system for the saffron travel-journal direction.
 ///
@@ -16,7 +15,8 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTypography {
   const AppTypography._();
 
-  /// Geist family name as used by `google_fonts.getFont`.
+  /// Geist family name. Matches the `family:` declared in `pubspec.yaml`
+  /// `flutter: fonts:` for the bundled `Geist[wght].ttf` variable face.
   static const String sansFamily = 'Geist';
 
   /// Instrument Serif family name (italic by default in display helpers).
@@ -25,7 +25,7 @@ class AppTypography {
   /// Geist Mono family name.
   static const String monoFamily = 'Geist Mono';
 
-  /// Reem Kufi family name as used by `google_fonts.getFont`.
+  /// Reem Kufi family name. Bundled `ReemKufi[wght].ttf` variable face.
   static const String reemKufiFamily = 'Reem Kufi';
 
   /// Tabular-numeric feature set — keeps money columns aligned.
@@ -46,8 +46,8 @@ class AppTypography {
     double? height,
     bool italic = true,
   }) {
-    return GoogleFonts.getFont(
-      displayFamily,
+    return TextStyle(
+      fontFamily: displayFamily,
       fontSize: fontSize,
       fontWeight: fontWeight,
       fontStyle: italic ? FontStyle.italic : FontStyle.normal,
@@ -73,8 +73,8 @@ class AppTypography {
     double? letterSpacing,
     double? height,
   }) {
-    return GoogleFonts.getFont(
-      reemKufiFamily,
+    return TextStyle(
+      fontFamily: reemKufiFamily,
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -92,8 +92,8 @@ class AppTypography {
     double? height,
     bool tabularNums = false,
   }) {
-    return GoogleFonts.getFont(
-      sansFamily,
+    return TextStyle(
+      fontFamily: sansFamily,
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -114,8 +114,8 @@ class AppTypography {
     double? letterSpacing,
     double? height,
   }) {
-    return GoogleFonts.getFont(
-      monoFamily,
+    return TextStyle(
+      fontFamily: monoFamily,
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
