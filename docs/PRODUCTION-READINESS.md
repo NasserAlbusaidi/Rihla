@@ -321,3 +321,44 @@ npx --yes firebase-tools@15.8.0 firestore:indexes --project rihla-safar --databa
 
 For Firestore rules, fetch the active release through the Firebase Rules API and
 diff it against `security/firestore.rules`.
+
+## Promoting the Play Store track (`first` → production)
+
+**Chosen path: manual promotion in Play Console.** The release pipeline
+(`release_android.yml`, `fastlane/Fastfile` `TRACK = "first"`) intentionally
+uploads to the closed **`first`** track only — there is **no** automated
+production-track step. Going public stays a deliberate human gate. (Issue #129.)
+
+Promotion reuses the **exact AAB already tested on `first`** — no rebuild, no new
+version code. The CI readiness gates (`RIHLA_BACKEND_RELEASE_READY`,
+`RIHLA_APP_CHECK_READY`, `RIHLA_REAL_DEVICE_QA_READY`, matching
+`RIHLA_RELEASE_APPROVED_SHA`) already passed when that build was uploaded to
+`first`, so they are not re-asserted at promotion time.
+
+Before promoting:
+
+1. Let the `first` build soak until it's demonstrably stable: crash-free
+   sessions > 99%, **zero** open P0 Sentry issues for that version code.
+2. Confirm the version code you intend to promote is the one that passed
+   real-device QA (`docs/REAL-DEVICE-QA.md`).
+
+Promote:
+
+3. Play Console → **Production** → **Create new release** → **Add from library**
+   (or **Promote release** from the `first` track) → select the tested build.
+   This carries the same AAB + version code into production.
+4. Roll out in stages: **5% → 25% → 100%**, watching Android vitals / Sentry
+   between each step. Halt and use the Play Console rollback/halt control if
+   crash rate spikes.
+5. Release notes are entered manually in the Production release (CI uploads none
+   — see `fastlane/README.md`).
+
+If a production build must be built fresh instead of promoting the tested
+artifact, it needs a **fresh version code** (bump past the live `first` build in
+`pubspec.yaml`) and a full re-run of the readiness gates — promotion of the
+already-tested AAB is preferred precisely to avoid shipping an unverified binary.
+
+Revisit automating a `production` track in CI (gated by a separate
+`RIHLA_PRODUCTION_RELEASE_READY` repo variable) only once the manual cadence is
+well understood; until then manual promotion is the safer default for a
+single-maintainer launch.
