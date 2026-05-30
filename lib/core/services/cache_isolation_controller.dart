@@ -9,6 +9,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// restart window (#45 §3.7).
 final cacheIsolationProvider = StateProvider<bool>((ref) => false);
 
+/// Set true when [CacheIsolationController.restart] cannot complete the native
+/// process restart — the channel is absent or threw. The isolation overlay
+/// watches this to immediately surface a manual restart affordance, so a failed
+/// `restart()` can never leave the user stranded on an opaque cover with no
+/// escape (#45 §6.3). The dirty flag is already persisted before the swap, so
+/// any cold boot (including a user-forced relaunch) still clears the outgoing
+/// UID's cache regardless of how the restart resolves.
+final cacheIsolationRestartFailedProvider = StateProvider<bool>((ref) => false);
+
 /// Seam over the in-session cache-isolation window.
 ///
 /// Services depend on this abstraction (not the concrete Riverpod/MethodChannel

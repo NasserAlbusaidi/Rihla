@@ -88,5 +88,35 @@ void main() {
       expect(calls, hasLength(1));
       expect(calls.single.method, 'restart');
     });
+
+    test(
+      'restart that throws does NOT propagate and flips the restart-failed flag '
+      'so the overlay can surface a manual escape (#45 §6.3)',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final controller = container.read(cacheIsolationControllerProvider);
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(kCacheIsolationChannel, (call) async {
+              throw PlatformException(
+                code: 'no_handler',
+                message: 'no native restart handler on this platform',
+              );
+            });
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(kCacheIsolationChannel, null);
+        });
+
+        expect(container.read(cacheIsolationRestartFailedProvider), isFalse);
+
+        // Must NOT throw — a propagating restart() strands the isolation
+        // overlay with no escape (the codex re-gate [P1]).
+        await controller.restart();
+
+        expect(container.read(cacheIsolationRestartFailedProvider), isTrue);
+      },
+    );
   });
 }

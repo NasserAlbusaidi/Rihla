@@ -319,11 +319,36 @@ class AuthRecoveryService {
 
       return result;
     } finally {
-      // MUST clear before restart: a stale inFlightOp would make the next
-      // boot's bootstrap re-enter recovery and loop on a dead link (R3 P2-4).
-      await clearPendingEmail();
-      await clearInFlightOp();
+      // Clear the op-state (a stale inFlightOp would make the next boot's
+      // bootstrap re-enter recovery and loop on a dead link — R3 P2-4), then
+      // restart. Each step is independently guarded so a failed prefs write can
+      // NEVER skip restart() and strand the overlay (codex re-gate [P2]); the
+      // restart() itself is fail-safe (surfaces a manual affordance on channel
+      // failure), so it always runs last.
+      await _safeClearRecoveryOpState();
       await _cacheIsolationController.restart();
+    }
+  }
+
+  /// Best-effort clear of the recovery op-state. Each removal is guarded on its
+  /// own so one failing prefs write neither skips the other nor blocks the
+  /// guaranteed restart in [completeRecovery]'s `finally`.
+  Future<void> _safeClearRecoveryOpState() async {
+    try {
+      await clearPendingEmail();
+    } catch (error, stackTrace) {
+      FirebaseConfig.log(
+        'Recovery: clearPendingEmail failed (${error.runtimeType})',
+        stackTrace: stackTrace,
+      );
+    }
+    try {
+      await clearInFlightOp();
+    } catch (error, stackTrace) {
+      FirebaseConfig.log(
+        'Recovery: clearInFlightOp failed (${error.runtimeType})',
+        stackTrace: stackTrace,
+      );
     }
   }
 

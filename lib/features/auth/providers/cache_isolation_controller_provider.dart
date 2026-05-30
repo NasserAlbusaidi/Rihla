@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/app_bootstrap_provider.dart';
 import '../../../core/services/cache_isolation_controller.dart';
 import '../../../core/services/notification_service.dart';
@@ -42,7 +43,24 @@ class PlatformCacheIsolationController implements CacheIsolationController {
   }
 
   @override
-  Future<void> restart() => _channel.invokeMethod<void>('restart');
+  Future<void> restart() async {
+    try {
+      await _channel.invokeMethod<void>('restart');
+    } catch (error, stackTrace) {
+      // The native restart channel is absent (iOS / a build without the
+      // handler) or threw. Do NOT rethrow — a propagating restart() leaves the
+      // isolation overlay mounted with no escape. Flip the failed flag so the
+      // overlay surfaces a manual restart affordance instead. The dirty flag is
+      // already set before the swap, so any cold boot still clears the outgoing
+      // UID's cache (#45 §6.3 / codex re-gate [P1]).
+      FirebaseConfig.log(
+        'Cache isolation: native restart failed (${error.runtimeType}) — '
+        'surfacing manual restart affordance',
+        stackTrace: stackTrace,
+      );
+      _ref.read(cacheIsolationRestartFailedProvider.notifier).state = true;
+    }
+  }
 }
 
 final cacheIsolationControllerProvider = Provider<CacheIsolationController>((

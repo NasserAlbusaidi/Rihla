@@ -22,6 +22,7 @@ import 'core/theme/tokens/color_tokens.dart';
 import 'core/services/app_messenger.dart';
 import 'core/services/cache_isolation_controller.dart';
 import 'core/services/deep_link_service.dart';
+import 'features/auth/providers/cache_isolation_controller_provider.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
@@ -212,15 +213,62 @@ class _SafarAppState extends ConsumerState<SafarApp> {
 /// Reuses [SplashScreen] so this brief pre-restart cover is visually identical
 /// to the cold boot that immediately follows, and so no cached financials from
 /// the outgoing UID can paint during the swap window.
-class _CacheIsolationApp extends StatelessWidget {
+///
+/// A `restart()` is expected within moments. If it fails (the channel is absent
+/// or threw — flagged via [cacheIsolationRestartFailedProvider]) or silently
+/// no-ops past [_restartWatchdog], the cover swaps to a manual restart
+/// affordance so the overlay can never strand the user with no escape
+/// (#45 §6.3). The dirty flag was persisted before the swap, so a cold boot
+/// from a manual relaunch still clears the outgoing UID's cache.
+class _CacheIsolationApp extends ConsumerStatefulWidget {
   const _CacheIsolationApp();
 
   @override
+  ConsumerState<_CacheIsolationApp> createState() => _CacheIsolationAppState();
+}
+
+class _CacheIsolationAppState extends ConsumerState<_CacheIsolationApp> {
+  static const _restartWatchdog = Duration(seconds: 6);
+  Timer? _watchdog;
+  bool _watchdogElapsed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _watchdog = Timer(_restartWatchdog, () {
+      if (mounted) setState(() => _watchdogElapsed = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _watchdog?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final restartFailed = ref.watch(cacheIsolationRestartFailedProvider);
+    final showManualRestart = restartFailed || _watchdogElapsed;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const SplashScreen(key: Key('cache-isolation-overlay')),
+      home: showManualRestart
+          ? SplashScreen(
+              key: const Key('cache-isolation-restart'),
+              hasError: true,
+              onRetry: () {
+                // Re-attempt the native restart. Clear the failed flag first so
+                // a fresh failure can re-trigger the affordance.
+                ref
+                    .read(cacheIsolationRestartFailedProvider.notifier)
+                    .state = false;
+                unawaited(
+                  ref.read(cacheIsolationControllerProvider).restart(),
+                );
+              },
+            )
+          : const SplashScreen(key: Key('cache-isolation-overlay')),
     );
   }
 }
