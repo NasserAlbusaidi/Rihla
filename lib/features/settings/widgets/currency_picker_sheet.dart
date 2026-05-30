@@ -6,7 +6,6 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/currency_display_name.dart';
-import '../../../core/utils/formatters.dart';
 
 /// Bottom sheet for picking the default currency used when creating new trips.
 ///
@@ -71,7 +70,7 @@ class CurrencyPickerSheet extends ConsumerWidget {
                       value: code,
                       title: Text(currencyDisplayName(code, l10n)),
                       subtitle: Text(
-                        '$code · ${AppFormatters.currencyConfig[code]?.symbol ?? ''}',
+                        code, // #144: ISO code only — no 'code · symbol'
                         style: TextStyle(color: colors.textSecondary),
                       ),
                     ),

@@ -106,7 +106,7 @@ void main() {
       expect(find.text('⛺'), findsOneWidget);
       expect(find.text('⌂'), findsOneWidget);
       expect(find.text('Default currency'), findsOneWidget);
-      expect(find.text('OMR · ر.ع.'), findsOneWidget);
+      expect(find.text('OMR'), findsOneWidget);
       expect(find.text("You're the creator."), findsOneWidget);
     });
 

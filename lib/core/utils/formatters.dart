@@ -29,12 +29,17 @@ class AppFormatters {
     return '${amount.toStringAsFixed(3)} OMR';
   }
 
-  /// Format amount with the given currency code.
+  /// Format amount with the given currency, code-first (#144).
+  ///
+  /// One app-wide rule: `<ISO_CODE> <amount>` (e.g. `OMR 12.450`), Western
+  /// digits, LTR — in every locale. The `symbol` field is intentionally NOT
+  /// used for amount display: money renders in Geist Mono, which has no Arabic
+  /// glyphs, so an Arabic symbol would break alignment and bidi. Precision
+  /// still comes from the currency config.
   static String formatCurrency(Decimal amount, String currencyCode) {
     final config = currencyConfig[currencyCode];
     final decimals = config?.decimals ?? 3;
-    final symbol = config?.symbol ?? currencyCode;
-    return '$symbol ${amount.toStringAsFixed(decimals)}';
+    return '$currencyCode ${amount.toStringAsFixed(decimals)}';
   }
 
   /// Format a date as "Mar 15" (short month abbreviation + day, no year).
