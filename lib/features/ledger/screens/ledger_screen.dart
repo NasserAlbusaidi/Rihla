@@ -467,7 +467,9 @@ class _CoverHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _PaperIconButton(
-                  icon: Iconsax.arrow_left,
+                  icon: Directionality.of(context) == TextDirection.rtl
+                      ? Iconsax.arrow_right
+                      : Iconsax.arrow_left,
                   tooltip: context.l10n.ledgerBackTooltip,
                   onTap: () {
                     HapticService.lightClick();
