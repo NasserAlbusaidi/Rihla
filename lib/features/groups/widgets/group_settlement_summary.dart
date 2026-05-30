@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -36,7 +37,7 @@ class GroupSettlementSummaryCard extends StatelessWidget {
           label: context.l10n.settleUpSummaryTotal(
             AppFormatters.formatCurrency(totalPending, currency),
           ),
-          monogram: currency.isNotEmpty ? currency[0] : r'$',
+          icon: Iconsax.wallet_3,
         ),
       ],
     );
@@ -48,12 +49,12 @@ class _SettlementChip extends StatelessWidget {
     super.key,
     required this.label,
     this.dotColor,
-    this.monogram,
+    this.icon,
   });
 
   final String label;
   final Color? dotColor;
-  final String? monogram;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -76,14 +77,11 @@ class _SettlementChip extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
             )
-          else if (monogram != null)
-            Text(
-              monogram!,
-              style: TextStyle(
-                color: context.colors.ink2,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
+          else if (icon != null)
+            Icon(
+              icon,
+              size: 12,
+              color: context.colors.ink2,
             ),
           const SizedBox(width: 8),
           Text(

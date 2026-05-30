@@ -35,6 +35,32 @@ void main() {
     });
   });
 
+  group('tabular number features (#148: no slashed zero in money)', () {
+    test('feature set keeps tabular figures but drops the slashed zero', () {
+      expect(
+        AppTypography.tabularNumberFeatures,
+        contains(const FontFeature.tabularFigures()),
+      );
+      expect(
+        AppTypography.tabularNumberFeatures,
+        isNot(contains(const FontFeature.slashedZero())),
+        reason: 'a slashed 0 reads as Ø/null on money figures (#148)',
+      );
+    });
+
+    test('mono() money style renders a plain (un-slashed) zero', () {
+      final style = AppTypography.mono(fontSize: 14);
+      expect(
+        style.fontFeatures,
+        isNot(contains(const FontFeature.slashedZero())),
+      );
+      expect(
+        style.fontFeatures,
+        contains(const FontFeature.tabularFigures()),
+      );
+    });
+  });
+
   group('AppTypography.display (Instrument Serif)', () {
     test('uses the bundled Instrument Serif family, italic by default, w400', () {
       final style = AppTypography.display(fontSize: 28);

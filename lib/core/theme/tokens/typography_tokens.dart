@@ -29,9 +29,11 @@ class AppTypography {
   static const String reemKufiFamily = 'Reem Kufi';
 
   /// Tabular-numeric feature set — keeps money columns aligned.
+  ///
+  /// Deliberately omits `slashedZero()`: a slashed `0` reads as Ø/null on
+  /// monetary figures and invite codes (#148).
   static const List<FontFeature> tabularNumberFeatures = [
     FontFeature.tabularFigures(),
-    FontFeature.slashedZero(),
   ];
 
   /// Italic display style — Instrument Serif.
@@ -103,7 +105,7 @@ class AppTypography {
     );
   }
 
-  /// Mono style — Geist Mono with tabular figures and slashed zero.
+  /// Mono style — Geist Mono with tabular figures (plain, un-slashed zero).
   ///
   /// Use for money amounts, currency codes, dates, version strings, and
   /// any small uppercase caption ("EST. 2025", "ACTIVE JOURNEYS").
