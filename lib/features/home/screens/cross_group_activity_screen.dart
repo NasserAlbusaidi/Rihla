@@ -323,7 +323,9 @@ class _ActivityRow extends StatelessWidget {
         child: Column(
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              // Top-align so the category icon pins to the first line when a
+              // long actor + verb phrase wraps to two lines (#159).
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _CategoryIcon(type: log.type),
                 const SizedBox(width: 12),
@@ -416,7 +418,9 @@ class _CategoryIcon extends StatelessWidget {
       'group_settlement' => (
         colors.cardSoft,
         colors.success,
-        Iconsax.arrow_right_3,
+        // Money/wallet glyph, not a navigation chevron (#160) — matches the
+        // group activity feed and the settle-up total chip.
+        Iconsax.wallet_3,
       ),
       'event_created' => (
         colors.saffronSoft,
