@@ -9,6 +9,8 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/config/firebase_config.dart';
+import '../../../core/services/cache_isolation_controller.dart';
+import '../../../core/services/cache_uid_barrier.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import 'auth_email_link_config.dart';
 
@@ -42,16 +44,15 @@ class AuthRecoveryService {
   AuthRecoveryService({
     required FirebaseAuth auth,
     required SharedPreferences prefs,
+    required CacheIsolationController cacheIsolationController,
     FirebaseFirestore? firestore,
-    Future<void> Function()? anonymousSessionFactory,
     CleanupAnonUidArtifacts? cleanupAnonUidArtifacts,
     CleanupIntentFactory? cleanupIntentFactory,
     RecoveryCleanupFailureRecorder? recoveryCleanupFailureRecorder,
   }) : _auth = auth,
        _prefs = prefs,
+       _cacheIsolationController = cacheIsolationController,
        _firestore = firestore,
-       _anonymousSessionFactory =
-           anonymousSessionFactory ?? FirebaseConfig.ensureAnonymousSession,
        _cleanupAnonUidArtifacts =
            cleanupAnonUidArtifacts ??
            (({required oldUid, required cleanupSecret}) =>
@@ -78,8 +79,8 @@ class AuthRecoveryService {
 
   final FirebaseAuth _auth;
   final SharedPreferences _prefs;
+  final CacheIsolationController _cacheIsolationController;
   final FirebaseFirestore? _firestore;
-  final Future<void> Function() _anonymousSessionFactory;
   final CleanupAnonUidArtifacts _cleanupAnonUidArtifacts;
   final CleanupIntentFactory _cleanupIntentFactory;
   final RecoveryCleanupFailureRecorder _recoveryCleanupFailureRecorder;
@@ -217,12 +218,16 @@ class AuthRecoveryService {
     return result;
   }
 
-  /// Sign in fresh as the previously-linked user.
+  /// Sign in fresh as the previously-linked user, then restart (#45).
   ///
   /// Used by the Home "Restore from email" path (spec §4.2). The current
-  /// anonymous UID is replaced. Isolating the on-device Firestore cache
-  /// across this UID swap is a pending follow-up (#45 / PR 2); the old
-  /// SQLite-wipe path was removed with the cache in #50.
+  /// anonymous UID is replaced, so this is a cross-UID swap: engage the
+  /// cache-isolation overlay FIRST (covers all cached UI + tears down the
+  /// leaf subscription holders), flush pending writes, mark the on-device
+  /// Firestore cache dirty BEFORE the auth change, swap, then await the
+  /// server cleanup to its natural terminal state and trigger a true restart.
+  /// The cold boot's cache barrier clears the outgoing UID's cache before the
+  /// first read.
   Future<UserCredential> completeRecovery(
     String emailLink, {
     String? overrideEmail,
@@ -239,67 +244,124 @@ class AuthRecoveryService {
     final oldUid = retiringUser != null && retiringUser.isAnonymous
         ? retiringUser.uid
         : null;
-    String? cleanupSecret;
-    if (oldUid != null && oldUid.isNotEmpty) {
+
+    // Cover cached UI and stop the leaf subscriptions before any auth change.
+    _cacheIsolationController.engageIsolation();
+
+    // Once isolation is engaged, the overlay covers everything until a restart.
+    // The finally GUARANTEES that restart — and clears the op-state first — on
+    // BOTH success and failure, so a failed swap (e.g. an expired link) can
+    // never strand the user on the overlay or loop the bootstrap on a dead
+    // link next boot (divergence from plan §3.5; see #45 plan "Failure paths").
+    try {
+      String? cleanupSecret;
+      if (oldUid != null && oldUid.isNotEmpty) {
+        try {
+          cleanupSecret = await _cleanupIntentFactory(oldUid);
+        } catch (error, stackTrace) {
+          _recoveryCleanupFailureRecorder(
+            message: 'Recovery cleanup intent creation failed',
+            data: {'errorType': error.runtimeType.toString()},
+          );
+          FirebaseConfig.log(
+            'Recovery: cleanup intent creation failed (${error.runtimeType})',
+            stackTrace: stackTrace,
+          );
+        }
+      }
       try {
-        cleanupSecret = await _cleanupIntentFactory(oldUid);
-      } catch (error, stackTrace) {
-        _recoveryCleanupFailureRecorder(
-          message: 'Recovery cleanup intent creation failed',
-          data: {'errorType': error.runtimeType.toString()},
-        );
+        final firestore = _firestore ?? FirebaseFirestore.instance;
+        await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
+      } on TimeoutException {
         FirebaseConfig.log(
-          'Recovery: cleanup intent creation failed (${error.runtimeType})',
-          stackTrace: stackTrace,
+          'Recovery: waitForPendingWrites timed out after '
+          '${pendingWritesTimeout.inSeconds}s — continuing recovery',
         );
       }
-    }
-    try {
-      final firestore = _firestore ?? FirebaseFirestore.instance;
-      await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
-    } on TimeoutException {
-      FirebaseConfig.log(
-        'Recovery: waitForPendingWrites timed out after '
-        '${pendingWritesTimeout.inSeconds}s — continuing recovery',
+
+      // Durable cross-restart marker: the cold boot clears the cache even if
+      // the process dies before restart(). Awaited so it is flushed (§6.4).
+      await markFirestorePersistenceDirty(_prefs);
+
+      await _auth.signOut();
+      final result = await _auth.signInWithEmailLink(
+        email: email,
+        emailLink: emailLink,
       );
+      FirebaseConfig.log('Recovery: recovered uid ${result.user?.uid}');
+
+      if (oldUid != null &&
+          oldUid.isNotEmpty &&
+          cleanupSecret != null &&
+          result.user?.uid != oldUid) {
+        // Await the scrub to its natural terminal state (no custom cap — the
+        // callable's ~70s client timeout bounds it). The server completes the
+        // scrub regardless of the imminent restart (gen2 onCall is not aborted
+        // by client disconnect), so this is byte-for-byte main's scrub outcome
+        // and restart cannot truncate a scrub main would have finished (§3.6).
+        try {
+          await _cleanupAnonUidArtifacts(
+            oldUid: oldUid,
+            cleanupSecret: cleanupSecret,
+          );
+          FirebaseConfig.log('Recovery: anon uid cleanup completed');
+        } catch (error, stackTrace) {
+          _recoveryCleanupFailureRecorder(
+            message: 'Recovery anon uid cleanup failed',
+            data: {'errorType': error.runtimeType.toString()},
+          );
+          FirebaseConfig.log(
+            'Recovery: anon uid cleanup failed (${error.runtimeType})',
+            stackTrace: stackTrace,
+          );
+        }
+      }
+
+      return result;
+    } finally {
+      // Clear the op-state (a stale inFlightOp would make the next boot's
+      // bootstrap re-enter recovery and loop on a dead link — R3 P2-4), then
+      // restart. Each step is independently guarded so a failed prefs write can
+      // NEVER skip restart() and strand the overlay (codex re-gate [P2]); the
+      // restart() itself is fail-safe (surfaces a manual affordance on channel
+      // failure), so it always runs last.
+      await _safeClearRecoveryOpState();
+      await _cacheIsolationController.restart();
     }
-    await _auth.signOut();
-    final result = await _auth.signInWithEmailLink(
-      email: email,
-      emailLink: emailLink,
-    );
-    await clearPendingEmail();
-    await clearInFlightOp();
-    FirebaseConfig.log('Recovery: recovered uid ${result.user?.uid}');
-    if (oldUid != null &&
-        oldUid.isNotEmpty &&
-        cleanupSecret != null &&
-        result.user?.uid != oldUid) {
-      unawaited(
-        _cleanupAnonUidArtifacts(oldUid: oldUid, cleanupSecret: cleanupSecret)
-            .then((_) {
-              FirebaseConfig.log('Recovery: anon uid cleanup completed');
-            })
-            .catchError((Object error, StackTrace stackTrace) {
-              _recoveryCleanupFailureRecorder(
-                message: 'Recovery anon uid cleanup failed',
-                data: {'errorType': error.runtimeType.toString()},
-              );
-              FirebaseConfig.log(
-                'Recovery: anon uid cleanup failed (${error.runtimeType})',
-                stackTrace: stackTrace,
-              );
-            }),
-      );
-    }
-    return result;
   }
 
-  /// Sign out the current device. Linked-email users only (OD-2).
+  /// Best-effort clear of the recovery op-state. Each removal is guarded on its
+  /// own so one failing prefs write neither skips the other nor blocks the
+  /// guaranteed restart in [completeRecovery]'s `finally`.
+  Future<void> _safeClearRecoveryOpState() async {
+    try {
+      await clearPendingEmail();
+    } catch (error, stackTrace) {
+      FirebaseConfig.log(
+        'Recovery: clearPendingEmail failed (${error.runtimeType})',
+        stackTrace: stackTrace,
+      );
+    }
+    try {
+      await clearInFlightOp();
+    } catch (error, stackTrace) {
+      FirebaseConfig.log(
+        'Recovery: clearInFlightOp failed (${error.runtimeType})',
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Sign out the current device, then restart (#45). Linked-email users only
+  /// (OD-2).
   ///
-  /// Awaits pending Firestore writes (default 5s timeout per spec §7.6)
-  /// before signing out so unsynced local edits aren't lost. Then signs
-  /// out and ensures a fresh anonymous session via [FirebaseConfig].
+  /// Sign-out swaps the linked UID for a fresh anonymous one, so it is a
+  /// cross-UID swap: engage the cache-isolation overlay first, flush pending
+  /// writes (default 5s) so unsynced edits aren't lost, mark the cache dirty,
+  /// sign out, then trigger a true restart. The cold boot re-mints the anon
+  /// session and the barrier clears the outgoing UID's cache. There is no
+  /// in-session anon mint — it would run `clearPersistence()` on a started
+  /// Firestore instance, which throws (P1-1).
   Future<void> signOutCurrentDevice({
     Duration pendingWritesTimeout = const Duration(seconds: 5),
   }) async {
@@ -310,16 +372,23 @@ class AuthRecoveryService {
         'signOutCurrentDevice requires a user with a linked email',
       );
     }
+    _cacheIsolationController.engageIsolation();
+    // finally guarantees the restart even if signOut throws, so the overlay
+    // can never strand the user (divergence from plan §3.5; see plan doc).
     try {
-      final firestore = _firestore ?? FirebaseFirestore.instance;
-      await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
-    } on TimeoutException {
-      FirebaseConfig.log(
-        'Recovery: waitForPendingWrites timed out after '
-        '${pendingWritesTimeout.inSeconds}s — signing out anyway',
-      );
+      try {
+        final firestore = _firestore ?? FirebaseFirestore.instance;
+        await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
+      } on TimeoutException {
+        FirebaseConfig.log(
+          'Recovery: waitForPendingWrites timed out after '
+          '${pendingWritesTimeout.inSeconds}s — signing out anyway',
+        );
+      }
+      await markFirestorePersistenceDirty(_prefs);
+      await _auth.signOut();
+    } finally {
+      await _cacheIsolationController.restart();
     }
-    await _auth.signOut();
-    await _anonymousSessionFactory();
   }
 }

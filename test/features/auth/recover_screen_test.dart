@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/services/cache_uid_barrier.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/screens/recover_screen.dart';
@@ -12,6 +14,7 @@ import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockRecoveryService extends Mock implements AuthRecoveryService {}
 
@@ -52,12 +55,14 @@ GoRouter _buildRouter() {
 Widget _wrap({
   required _MockRecoveryService service,
   required _MockFirebaseAuth firebaseAuth,
+  required SharedPreferences prefs,
   required List<Group> groups,
 }) {
   return ProviderScope(
     overrides: [
       authRecoveryServiceProvider.overrideWithValue(service),
       firebaseAuthProvider.overrideWithValue(firebaseAuth),
+      sharedPreferencesProvider.overrideWithValue(prefs),
       userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
     ],
     child: MaterialApp.router(
@@ -87,16 +92,24 @@ Future<void> _typeAndSubmit(WidgetTester tester, String email) async {
 void main() {
   late _MockRecoveryService service;
   late _MockFirebaseAuth firebaseAuth;
+  late SharedPreferences prefs;
 
-  setUp(() {
+  setUp(() async {
     service = _MockRecoveryService();
     firebaseAuth = _MockFirebaseAuth();
     when(() => firebaseAuth.signOut()).thenAnswer((_) async {});
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    prefs = await SharedPreferences.getInstance();
   });
 
   testWidgets('rejects empty email', (tester) async {
     await tester.pumpWidget(
-      _wrap(service: service, firebaseAuth: firebaseAuth, groups: []),
+      _wrap(
+        service: service,
+        firebaseAuth: firebaseAuth,
+        prefs: prefs,
+        groups: [],
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -109,7 +122,12 @@ void main() {
 
   testWidgets('direct entry back button routes home', (tester) async {
     await tester.pumpWidget(
-      _wrap(service: service, firebaseAuth: firebaseAuth, groups: []),
+      _wrap(
+        service: service,
+        firebaseAuth: firebaseAuth,
+        prefs: prefs,
+        groups: [],
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -125,7 +143,12 @@ void main() {
     when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
 
     await tester.pumpWidget(
-      _wrap(service: service, firebaseAuth: firebaseAuth, groups: []),
+      _wrap(
+        service: service,
+        firebaseAuth: firebaseAuth,
+        prefs: prefs,
+        groups: [],
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -143,6 +166,7 @@ void main() {
       _wrap(
         service: service,
         firebaseAuth: firebaseAuth,
+        prefs: prefs,
         groups: [_stubGroup('g1')],
       ),
     );
@@ -163,15 +187,20 @@ void main() {
     verifyNever(() => firebaseAuth.signOut());
   });
 
-  testWidgets('on a populated device, confirming signs out then proceeds', (
-    tester,
-  ) async {
+  testWidgets('on a populated device, confirming marks dirty before signOut '
+      'then proceeds', (tester) async {
     when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
+    // Capture the dirty flag at the moment signOut runs to prove ordering.
+    bool? dirtyAtSignOut;
+    when(() => firebaseAuth.signOut()).thenAnswer((_) async {
+      dirtyAtSignOut = prefs.getBool(kFirestorePersistenceDirtyKey);
+    });
 
     await tester.pumpWidget(
       _wrap(
         service: service,
         firebaseAuth: firebaseAuth,
+        prefs: prefs,
         groups: [_stubGroup('g1')],
       ),
     );
@@ -187,6 +216,8 @@ void main() {
     await tester.tap(find.byKey(const Key('signOutFirst.confirm')));
     await tester.pumpAndSettle();
 
+    expect(dirtyAtSignOut, isTrue);
+    expect(prefs.getBool(kFirestorePersistenceDirtyKey), isTrue);
     verify(() => firebaseAuth.signOut()).called(1);
     verify(() => service.sendRecoveryLink('foo@example.com')).called(1);
     expect(find.text('PENDING:foo@example.com'), findsOneWidget);
@@ -198,7 +229,12 @@ void main() {
     ).thenThrow(firebase_auth.FirebaseAuthException(code: 'user-not-found'));
 
     await tester.pumpWidget(
-      _wrap(service: service, firebaseAuth: firebaseAuth, groups: []),
+      _wrap(
+        service: service,
+        firebaseAuth: firebaseAuth,
+        prefs: prefs,
+        groups: [],
+      ),
     );
     await tester.pumpAndSettle();
 
