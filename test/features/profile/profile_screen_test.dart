@@ -205,6 +205,49 @@ void main() {
     });
   });
 
+  group('ProfileScreen — IDENT handle (#163)', () {
+    testWidgets(
+      'no-name handle reads as a label, not a cut-off email (no "@traveller")',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              profileStatsProvider.overrideWith((ref) => _statsData()),
+            ],
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        // The '@traveller' fallback read like a truncated email ('traveller@').
+        expect(find.text('@traveller'), findsNothing);
+        expect(find.text('no name yet'), findsOneWidget);
+      },
+    );
+
+    testWidgets('shows the @handle once a name is set', (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Alice'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            profileStatsProvider.overrideWith((ref) => _statsData()),
+          ],
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.text('@alice'), findsOneWidget);
+    });
+  });
+
   group('ProfileScreen — InitialsCircle', () {
     testWidgets('shows correct initials for a single word name', (
       tester,

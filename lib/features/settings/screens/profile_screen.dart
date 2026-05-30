@@ -327,7 +327,10 @@ class _IdentityCard extends StatelessWidget {
     final l10n = context.l10n;
     final hasName = name.trim().isNotEmpty;
     final displayName = hasName ? name : l10n.profileSetYourName;
-    final handle = hasName ? '@${_slug(name)}' : '@traveller';
+    // When no name is set there is no real @handle to share. A literal
+    // '@traveller' fallback read like a truncated email ('traveller@'), so
+    // show a plain, non-@ label instead (#163).
+    final handle = hasName ? '@${_slug(name)}' : l10n.profileHandlePlaceholder;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
