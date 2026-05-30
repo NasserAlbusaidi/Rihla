@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/tokens/color_tokens.dart';
 import '../theme/tokens/typography_tokens.dart';
@@ -65,8 +64,7 @@ class _LoadingBody extends StatelessWidget {
                 const SizedBox(height: 14),
                 Text(
                   'your shared journey',
-                  style: GoogleFonts.getFont(
-                    AppTypography.sansFamily,
+                  style: AppTypography.sans(
                     fontSize: 14,
                     color: colors.textSecondary,
                   ),
@@ -130,8 +128,7 @@ class _ErrorBody extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               "We couldn't start the app.",
-              style: GoogleFonts.getFont(
-                AppTypography.sansFamily,
+              style: AppTypography.sans(
                 fontSize: 13,
                 color: colors.textSecondary,
               ),
@@ -154,8 +151,7 @@ class _ErrorBody extends StatelessWidget {
               ),
               child: Text(
                 'Try again',
-                style: GoogleFonts.getFont(
-                  AppTypography.sansFamily,
+                style: AppTypography.sans(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: colors.textOnPrimary,
