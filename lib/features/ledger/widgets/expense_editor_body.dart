@@ -623,7 +623,16 @@ class _AmountHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final parts = amount.split('.');
     final whole = parts.first.isEmpty ? '0' : parts.first;
-    final fraction = parts.length > 1 ? '.${parts.last}' : '';
+    final rawFraction = parts.length > 1 ? parts.last : '';
+    final decimals = AppFormatters.currencyConfig[currency]?.decimals ?? 3;
+    // Pad the DISPLAYED fraction to the currency's precision so the live field
+    // matches the 3dp shown in the saved expense and summaries (#156). This is
+    // display-only: the parsed/persisted Decimal comes from the (transparent)
+    // controller, never this string, so padding here cannot change the written
+    // value. The untouched default '0' stays a clean unpadded 'OMR 0'.
+    final fraction = (amount != '0' && decimals > 0)
+        ? '.${rawFraction.padRight(decimals, '0')}'
+        : (rawFraction.isEmpty ? '' : '.$rawFraction');
     final colors = context.colors;
 
     // The label color is deliberately darker than textSecondary — at fontSize

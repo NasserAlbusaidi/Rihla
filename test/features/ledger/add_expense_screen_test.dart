@@ -46,7 +46,8 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '٠٫٥');
     await tester.pump();
 
-    final fractionText = find.text('.5');
+    // Padded to OMR's 3dp precision (#156); still LTR.
+    final fractionText = find.text('.500');
     expect(fractionText, findsOneWidget);
     expect(Directionality.of(tester.element(fractionText)), TextDirection.ltr);
   });
@@ -72,6 +73,29 @@ void main() {
     // RED today: enableInteractiveSelection is null (default true), so the
     // transparent overlay field shows iOS selection handles over the label.
     expect(field.enableInteractiveSelection, isFalse);
+  });
+
+  testWidgets('displayed amount pads trailing zeros to currency precision (#156)', (
+    tester,
+  ) async {
+    await _pumpAddExpenseScreen(tester);
+
+    await tester.enterText(find.byType(TextField).first, '2.5');
+    await tester.pump();
+
+    // RED today: the hero shows the raw '.5', mismatching the 3dp shown
+    // everywhere else. The pad is display-only…
+    expect(find.text('.500'), findsOneWidget);
+    // …the (transparent) controller — the source of the persisted Decimal —
+    // still holds the raw '2.5', so the write path is provably untouched.
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    expect(field.controller?.text, '2.5');
+  });
+
+  testWidgets('default zero is not padded (#156)', (tester) async {
+    await _pumpAddExpenseScreen(tester);
+    // The untouched default stays a clean 'OMR 0', not 'OMR 0.000'.
+    expect(find.text('.000'), findsNothing);
   });
 
   testWidgets('split-preview tile shows the per-person amount in full, LTR (#151)', (
