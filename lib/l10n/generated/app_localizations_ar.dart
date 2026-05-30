@@ -251,6 +251,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileSetYourName => 'عيّن اسمك';
 
   @override
+  String get profileHandlePlaceholder => 'بدون اسم بعد';
+
+  @override
   String get profileFinishRecovery => 'أكمل استعادة الحساب';
 
   @override

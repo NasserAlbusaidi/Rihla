@@ -32,7 +32,11 @@ class MockNotificationService extends Mock implements NotificationService {}
 // Test helpers
 // ---------------------------------------------------------------------------
 
-Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
+Widget _buildTestApp(
+  Widget widget, {
+  List<Override> overrides = const [],
+  Locale? locale,
+}) {
   final router = GoRouter(
     initialLocation: '/profile',
     routes: [GoRoute(path: '/profile', builder: (ctx, state) => widget)],
@@ -42,6 +46,7 @@ Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
     overrides: overrides,
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
+      locale: locale,
       routerConfig: router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -202,6 +207,49 @@ void main() {
 
       expect(find.byKey(ProfileKeys.setNamePrompt), findsOneWidget);
       expect(find.text('Set your name'), findsOneWidget);
+    });
+  });
+
+  group('ProfileScreen — IDENT handle (#163)', () {
+    testWidgets(
+      'no-name handle reads as a label, not a cut-off email (no "@traveller")',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              profileStatsProvider.overrideWith((ref) => _statsData()),
+            ],
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        // The '@traveller' fallback read like a truncated email ('traveller@').
+        expect(find.text('@traveller'), findsNothing);
+        expect(find.text('no name yet'), findsOneWidget);
+      },
+    );
+
+    testWidgets('shows the @handle once a name is set', (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Alice'});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            profileStatsProvider.overrideWith((ref) => _statsData()),
+          ],
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.text('@alice'), findsOneWidget);
     });
   });
 
@@ -539,6 +587,32 @@ void main() {
       expect(find.byKey(ProfileKeys.versionTile), findsOneWidget);
       expect(find.textContaining('v2.2.0'), findsOneWidget);
     });
+
+    testWidgets(
+      'footer is an English brand lockup, NOT localized, even under Arabic '
+      '(#162 — decision: brand lockup)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'مستخدم',
+        });
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: _phase26Overrides(prefs: prefs, version: '2.2.0'),
+            locale: const Locale('ar'),
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        // The brand lockup stays English on a fully-Arabic screen by design.
+        // If a future change localizes the tagline, this fails on purpose —
+        // reopen the #162 decision rather than silently flipping it.
+        expect(_textContaining('RIHLA'), findsOneWidget);
+        expect(_textContaining('BUILT FOR JOURNEYS'), findsOneWidget);
+      },
+    );
   });
 
   group('ProfileScreen -- INFO-02', () {

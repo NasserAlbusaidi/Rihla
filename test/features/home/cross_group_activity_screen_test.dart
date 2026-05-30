@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -147,6 +148,46 @@ void main() {
       expect(find.textContaining('created an event'), findsOneWidget);
       expect(find.textContaining('joined the group'), findsOneWidget);
     });
+
+    testWidgets(
+      'settlement entry uses the wallet glyph (#160) in a top-aligned row '
+      '(#159)',
+      (tester) async {
+        final log = _makeActivity(
+          's1',
+          'Alice',
+          'recorded a settlement',
+          type: 'group_settlement',
+        );
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const CrossGroupActivityScreen(),
+            overrides: _baseOverrides(
+              activityOverride: AsyncValue.data([
+                _makeEntry(log, 'Trip A', 'g1'),
+              ]),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // #160: money glyph, not a bare chevron.
+        expect(find.byIcon(Iconsax.wallet_3), findsOneWidget);
+        expect(find.byIcon(Iconsax.arrow_right_3), findsNothing);
+
+        // #159: the icon's row top-aligns so it pins to the first line.
+        final row = tester.widget<Row>(
+          find
+              .ancestor(
+                of: find.byIcon(Iconsax.wallet_3),
+                matching: find.byType(Row),
+              )
+              .first,
+        );
+        expect(row.crossAxisAlignment, CrossAxisAlignment.start);
+      },
+    );
 
     testWidgets('shows error state on error', (tester) async {
       await tester.pumpWidget(

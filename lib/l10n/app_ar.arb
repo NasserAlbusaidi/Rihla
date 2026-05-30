@@ -97,6 +97,7 @@
   "profileTitle": "الملف الشخصي",
   "profileAnonymousTraveller": "مسافر مجهول",
   "profileSetYourName": "عيّن اسمك",
+  "profileHandlePlaceholder": "بدون اسم بعد",
   "profileFinishRecovery": "أكمل استعادة الحساب",
   "profileRecoverySubtitle": "يوجد رابط استعادة قيد الانتظار. أدخل البريد الذي أُرسل إليه.",
 

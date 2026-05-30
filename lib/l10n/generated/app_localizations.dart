@@ -572,6 +572,12 @@ abstract class AppLocalizations {
   /// **'Set your name'**
   String get profileSetYourName;
 
+  /// Shown on the identity chip in place of an @handle when the user has not set a name. Deliberately not @-prefixed so it does not read as a cut-off email (#163).
+  ///
+  /// In en, this message translates to:
+  /// **'no name yet'**
+  String get profileHandlePlaceholder;
+
   /// Title of the pending-recovery banner shown when a magic link is waiting to be completed.
   ///
   /// In en, this message translates to:

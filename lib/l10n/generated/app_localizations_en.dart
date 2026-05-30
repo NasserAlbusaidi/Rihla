@@ -251,6 +251,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileSetYourName => 'Set your name';
 
   @override
+  String get profileHandlePlaceholder => 'no name yet';
+
+  @override
   String get profileFinishRecovery => 'Finish account recovery';
 
   @override
