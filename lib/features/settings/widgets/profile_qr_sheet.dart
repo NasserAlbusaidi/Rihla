@@ -11,7 +11,7 @@ import '../keys/profile_keys.dart';
 
 /// T3.K — profile handle QR sheet.
 ///
-/// Encodes `https://rihla.app/u/<handle>` for in-person handle exchange.
+/// Encodes `https://rihla-safar.web.app/u/<handle>` for in-person handle exchange.
 /// No inbound routing today — handles aren't claimable yet — so the QR
 /// is a visual artifact. Wires alongside the group invite QR (T3.J) so
 /// the qr_flutter integration is amortised across both surfaces.
@@ -42,7 +42,7 @@ class _ProfileQrSheet extends StatelessWidget {
 
   String get _handleSlug =>
       handle.startsWith('@') ? handle.substring(1) : handle;
-  Uri get _profileUri => Uri.parse('https://rihla.app/u/$_handleSlug');
+  Uri get _profileUri => Uri.parse('https://rihla-safar.web.app/u/$_handleSlug');
 
   @override
   Widget build(BuildContext context) {
