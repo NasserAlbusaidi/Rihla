@@ -47,12 +47,15 @@ List<LedgerDayGroup> groupTimelineByDay(
   final groups = <String, List<LedgerTimelineItem>>{};
   final dateByLabel = <String, DateTime>{};
   final order = <String>[];
-  final monthFormat = DateFormat.MMM(l10n.localeName);
+  // MMMd yields the locale's natural day/month order (e.g. en "May 19",
+  // ar "19 مايو") with Western digits — matching Activity (#154). The old
+  // MMM + manual " ${ts.day}" concat forced month-day everywhere.
+  final monthDayFormat = DateFormat.MMMd(l10n.localeName);
   for (final item in items) {
     final ts = item.date;
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
-    final monthDay = '${monthFormat.format(ts)} ${ts.day}';
+    final monthDay = monthDayFormat.format(ts);
     final label = diff == 0
         ? '${l10n.timelineToday} · $monthDay'
         : diff == 1
