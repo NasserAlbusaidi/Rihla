@@ -137,6 +137,10 @@ binding falls back to the English value at runtime.
 - Split-mode display names are prefixed `splitMode<Variant>` and listed in `splitModeDisplayName` (see § 5).
 - Locale autonyms — `languageEnglish` ("English"), `languageArabic` ("العربية") — are intentionally identical across both ARBs so the picker shows each language in its own script.
 
+### Intentionally English (do not localize)
+
+- **Settings footer brand lockup** — `RIHLA · v<version> · BUILT FOR JOURNEYS` (`_VersionStamp` in `profile_screen.dart`) is a **brand lockup**, not copy. It stays English in every locale, including Arabic, by decision (#162). It is deliberately *not* routed through `context.l10n`. Pinned by `profile_screen_test.dart` ("#162") — if you decide to localize the tagline, reopen that decision and update the test, don't silently flip it.
+
 ### Placeholders
 
 Single-value substitution uses `{}` and an `@<key>.placeholders` block:
