@@ -661,4 +661,34 @@ void main() {
       expect(find.textContaining('1 event'), findsOneWidget);
     });
   });
+
+  group('HomeScreen dashboard - settings subscription (#107)', () {
+    testWidgets(
+      'greeting reacts to deviceName change (.select targets the right field)',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildTestApp(
+            const HomeScreen(),
+            overrides: _loadedOverrides(),
+            prefs: prefs,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Empty prefs => blank deviceName => greeting uses the fallback name.
+        expect(find.textContaining('RUA'), findsNothing);
+
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(HomeScreen)),
+        );
+        await container.read(settingsProvider.notifier).setDeviceName('Rua');
+        await tester.pumpAndSettle();
+
+        // settingsProvider.select((s) => s.deviceName) must still rebuild the
+        // greeting when deviceName changes — guards against selecting the
+        // wrong field while narrowing the subscription.
+        expect(find.textContaining('RUA'), findsOneWidget);
+      },
+    );
+  });
 }
