@@ -45,6 +45,9 @@ jobs:
       - name: Build Functions
         run: npm --prefix functions run build
 
+      - name: Lint Functions
+        run: npm --prefix functions run lint
+
       - name: Audit Functions production dependencies
         run: npm --prefix functions audit --omit=dev --audit-level=low
 

@@ -24,6 +24,10 @@ const JOIN_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
 const JOIN_ATTEMPT_LOCK_MS = 60 * 60 * 1000;
 const JOIN_ATTEMPT_LIMIT = 5;
 const DISPLAY_NAME_MAX_LENGTH = 32;
+// Intentionally matches control characters to REJECT them in display names —
+// the server-side counterpart to isValidDisplayName, kept aligned with
+// firestore.rules. The control chars are the validation target, not a mistake.
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHARACTER_PATTERN = /[\x00-\x1F\x7F]/u;
 
 function normalizeInviteCode(inviteCode: unknown): string {
