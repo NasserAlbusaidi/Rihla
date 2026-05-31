@@ -40,8 +40,9 @@ first. The rest of this assumes the app launches when you press Run.
 Open the Profile screen in the running app and find the
 **Notifications** section. It currently renders one tile — the **Push
 notifications** toggle backed by `pushNotificationsEnabled`. (A
-`weeklyDigestEnabled` field also exists on `AppSettings` but is not yet
-surfaced in the UI; we'll leave that alone.)
+`weeklyDigestEnabled` field also exists on `AppSettings` but is not
+surfaced anywhere in the reachable UI — its only call site is the
+archived `onboarding_screen.dart` — so we'll leave it alone.)
 
 You're going to add a second toggle, **Sound feedback**
 (`soundFeedbackEnabled`), which:
@@ -98,8 +99,8 @@ sandwich. Here's the picture before we touch any code:
 ┌──────────┴──────────────────────────────────────────────────┐
 │ 5. ProfileScreen widgets (consumer)                         │
 │    lib/features/settings/screens/profile_screen.dart        │
-│    lib/features/settings/widgets/profile_*_section.dart     │
-│    — Display the toggle. Wire the switch's onChanged.       │
+│    — The _PreferencesCard / _NotificationPrefRow private    │
+│      widgets display the toggle and wire its onChanged.     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -342,19 +343,20 @@ If you need a refresher on the ARB pipeline, see
 
 ## Step 6 — Wire the switch into Profile
 
-Open `lib/features/settings/widgets/profile_notifications_section.dart`.
-This widget already renders the existing push-notifications tile. Read
-the existing pattern carefully — at the top of `build` it watches
-`settingsProvider` for the current value, and the toggle calls
-`setPushNotificationsEnabled` on the notifier.
+Open `lib/features/settings/screens/profile_screen.dart` and find the
+`_PreferencesCard` widget (around line 644). The push-notifications
+toggle is the `_NotificationPrefRow` row at the top of its `rows:`
+list. Read the existing pattern carefully — `build` watches
+`settingsProvider` for the current value, and the row's `onChanged`
+calls `setPushNotificationsEnabled` on the notifier.
 
-The existing tile uses a custom-styled `Container` wrapping a row
-because it also handles a permission-denied state. For the tutorial
-we'll use a plain `SwitchListTile` — match the styled shape as a
-follow-up if you want consistency.
+The existing row uses a custom-styled `_NotificationPrefRow` (wrapping a
+`Switch.adaptive`) because it also handles a permission-denied state.
+For the tutorial we'll use a plain `SwitchListTile` — match the styled
+shape as a follow-up if you want consistency.
 
-Inside the `Column` rendered by `build`, add a `SwitchListTile` below
-the existing tile:
+Inside the `_PreferencesCard`'s `rows:` list, add a `SwitchListTile`
+below the existing tile:
 
 ```dart
 SwitchListTile(
@@ -377,13 +379,14 @@ Three things to notice:
   — reuse it.
 - **`context.l10n`** comes from the extension. You don't need to
   import `AppLocalizations` directly.
-- **`HapticService.selection()`** matches the existing two switches.
-  Small consistency wins.
+- **`HapticService.selection()`** matches the existing
+  push-notifications switch. Small consistency wins.
 
 Save the file. The app has hot-reloaded.
 
 In the running app, swipe over to Profile and look at the
-Notifications section. You should now see three switches. Toggle the
+Notifications section. You should now see two switches (push
+notifications and your new sound-feedback toggle). Toggle the
 new one — the animation runs. Restart the app (press `R` in the
 Flutter console for full restart). The toggle's position is preserved.
 
@@ -411,10 +414,10 @@ Switch back to English when you're done.
 
 ## Step 8 — Write a test
 
-Open `test/features/settings/` and find the existing profile-screen
-tests (or `profile_screen_test.dart` if it exists). The pattern uses
-`pumpRihlaApp` (from `test/helpers/`) which registers Riverpod
-overrides and localization delegates.
+There is no `profile_screen_test.dart` in `test/features/settings/`
+today; create one. Use `pumpRihlaApp` (from `test/helpers/`) as your
+harness — it registers Riverpod overrides and localization delegates.
+See the existing `profile_qr_sheet_test.dart` for the pattern.
 
 Add a new test:
 
@@ -423,14 +426,14 @@ testWidgets('sound feedback toggle persists through SettingsNotifier', (tester) 
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
-  await pumpRihlaApp(
-    tester,
-    overrides: [
-      sharedPreferencesProvider.overrideWithValue(prefs),
-    ],
-    child: const ProfileScreen(),
-  );
-  await tester.pumpAndSettle();
+  // `child` is the positional second argument. The helper overrides
+  // `sharedPreferencesProvider` itself from `getInstance()`, so don't
+  // re-override it here.
+  await pumpRihlaApp(tester, const ProfileScreen());
+  // NOT pumpAndSettle — the helper warns it hangs on the real
+  // ConnectivityNotifier's Timer.periodic. Use bounded pumps.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
 
   // The new switch is initially off.
   final soundSwitch = find.byWidgetPredicate(
@@ -445,7 +448,8 @@ testWidgets('sound feedback toggle persists through SettingsNotifier', (tester) 
 
   // Tap it.
   await tester.tap(soundSwitch);
-  await tester.pumpAndSettle();
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
 
   // The switch is now on AND SharedPreferences was written.
   expect(
@@ -466,8 +470,9 @@ It should pass. If it fails:
 
 - *"AppLocalizations.of returned null"* — you forgot to use
   `pumpRihlaApp`, or your test didn't register the delegates.
-- *"SharedPreferences must be overridden"* — you didn't override
-  `sharedPreferencesProvider`. See [TESTING.md § Common Pitfalls](./TESTING.md).
+- *"SharedPreferences must be overridden"* — you forgot
+  `SharedPreferences.setMockInitialValues({})` in the test; the helper
+  reads `getInstance()` itself. See [TESTING.md § Common Pitfalls](./TESTING.md).
 - *"finder couldn't find a widget matching predicate"* — the test
   ran before the UI settled, or your label spelling differs from
   the ARB value.
@@ -504,7 +509,7 @@ git add lib/core/models/app_settings_model.dart \
         lib/l10n/app_en.arb \
         lib/l10n/app_ar.arb \
         lib/l10n/generated/ \
-        lib/features/settings/widgets/profile_notifications_section.dart \
+        lib/features/settings/screens/profile_screen.dart \
         test/features/settings/
 
 git commit -m "feat(settings): add sound feedback toggle in profile notifications"

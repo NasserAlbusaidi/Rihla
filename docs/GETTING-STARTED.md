@@ -127,9 +127,9 @@ flutter run -d iPhone\ 16     --dart-define-from-file=config.json   # iOS simula
 On launch, `main()` initializes in this sequence inside `SentryFlutter.init`:
 
 1. **Firebase** — `FirebaseConfig.initialize()` sets up Firestore offline persistence
-2. **Anonymous auth** — `FirebaseConfig.ensureAnonymousSession()` restores or creates a session
-3. **SharedPreferences** — loaded and injected into the Riverpod scope
-4. **`runApp`** — `SafarApp` mounts
+2. **SharedPreferences** — loaded and injected into the Riverpod scope
+3. **`runApp`** — mounts `_AuthGate` (the gate, not `SafarApp` directly)
+4. **Anonymous auth** — `_AuthGate` calls `FirebaseConfig.ensureAnonymousSession()` in its `initState` to restore or create a session; on success it renders `SafarApp`
 
 There is no login screen. A Firebase anonymous UID is assigned silently on first launch and persisted across restarts.
 

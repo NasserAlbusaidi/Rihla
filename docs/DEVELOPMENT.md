@@ -204,7 +204,7 @@ Nest it inside the appropriate parent `GoRoute` — event module routes go under
 | Route type | Transition |
 |---|---|
 | Module screens (most routes) | `_sharedAxisTransition` — Material 3 horizontal SharedAxisTransition |
-| `/onboarding`, `/home`, `/profile`, `/activity` | `FadeTransition` |
+| `/home`, `/profile`, `/activity` | `FadeTransition` |
 | `/create-group`, `/join-group` | Slide-up (Offset(0,1) → zero) |
 
 ### No `state.extra`, no `goNamed`, no `Navigator.push`
@@ -332,17 +332,6 @@ ModuleHeader(
   subtitle: 'SPENDING',
   useDarkTheme: true,
   actions: [/* icon buttons */],
-  bottom: AppTabBar(...),  // optional tab bar below title
-)
-```
-
-**`AppTabBar`** — pill-indicator tab bar. Requires a `TabController`.
-
-```dart
-AppTabBar(
-  controller: _tabController,
-  tabs: const ['Unpacked', 'Packed'],
-  activeColor: AppColorTokens.light.moduleLedger,  // optional override
 )
 ```
 
@@ -382,10 +371,6 @@ LoadingButton(
 
 **`OfflineBanner`** — self-contained offline indicator, place at top of Scaffold body.
 
-**`SearchFilterBar`** — expandable search input with optional filter chips.
-
-**`SmartModuleCard`** — module card for EventCommandCenter with summary/empty/action states.
-
 ---
 
 ## 7. Financial Code
@@ -416,15 +401,17 @@ final amount = MoneySerializer.fromSubunits(subunitsInt, 'OMR');
 // 10500 → Decimal('10.500')
 ```
 
-Supported currencies: OMR (1000 subunits), USD/EUR/GBP/SAR/AED/QAR (100), JPY/KWD/BHD (1/1000).
+Supported currencies: OMR (1000 subunits), USD/EUR/GBP/SAR/AED/QAR (100), JPY (1), KWD/BHD (1000).
+
+MoneySerializer knows 10 currencies, but writes currently pin currency to OMR pending #61 — only OMR is exercised at runtime.
 
 ### Formatting
 
 ```dart
 AppFormatters.formatOMR(amount)                  // "10.500 OMR"
-AppFormatters.formatCurrency(amount, 'USD')      // "$ 10.00"
+AppFormatters.formatCurrency(amount, 'USD')      // "USD 10.00" (code-first, #144 — never a symbol)
 AppFormatters.formatRelativeDate(date)           // "2 days ago"
-AppFormatters.formatShortMonthDay(date)          // "Mar 15"
+AppFormatters.formatShortMonthDay(date, localeTag)            // "Mar 15"
 ```
 
 ### BalanceCalculator

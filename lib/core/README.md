@@ -11,10 +11,10 @@
 
 ## theme/
 
-- **app_theme.dart**: Material 3 `ThemeData` (light mode). Typography: Geist (sans), Geist Mono (tabular figures, money), Instrument Serif italic (display + section headers) via `google_fonts`. Registers `AppColorTokens`, `AppSpacingTokens`, `AppShadowTokens` as `ThemeExtension`s. Class: `AppTheme`.
+- **app_theme.dart**: Material 3 `ThemeData` — `AppTheme.lightTheme` and `AppTheme.darkTheme` (dark is an untuned saffron-direction stub per the in-file comment). Typography: Geist (sans), Geist Mono (tabular figures, money), Instrument Serif italic (Latin display), Reem Kufi (Arabic display via `AppTypography.arabicDisplay`) via `AppTypography` (`tokens/typography_tokens.dart`); faces are bundled native assets (#103), not fetched from the google_fonts CDN — runtime fetching is disabled in `font_bootstrap.dart`. Registers `AppColorTokens`, `AppSpacingTokens`, `AppShadowTokens` as `ThemeExtension`s. Class: `AppTheme`.
 - **tokens/color_tokens.dart**: `AppColorTokens extends ThemeExtension<AppColorTokens>` — Saffron palette: paper background, saffron primary, sage success, rust error, success/error/disabled/focus states, `moduleLedger` accent (the only colored module post-Phase 39), category + avatar slot colours, header gradient colors. Singleton: `AppColorTokens.light`.
 - **tokens/spacing_tokens.dart**: `AppSpacingTokens extends ThemeExtension<AppSpacingTokens>` — `space4` through `space32`, border radii (`radiusSmall`, `radiusMedium`, `radiusLarge`), `buttonHeight`. Singleton: `AppSpacingTokens.standard`.
-- **tokens/shadow_tokens.dart**: `AppShadowTokens extends ThemeExtension<AppShadowTokens>` — three elevation levels: `flat` (none), `raised` (subtle), `floating` (modal). Gray-900 base. Singleton: `AppShadowTokens.standard`.
+- **tokens/shadow_tokens.dart**: `AppShadowTokens extends ThemeExtension<AppShadowTokens>` — three elevation levels: `flat` (none), `raised` (subtle), `floating` (modal). Singletons: `AppShadowTokens.light` (gray-900 #111827 base) and `AppShadowTokens.dark` (pure-black base).
 - **tokens/domain_aliases.dart**: `BuildContext` extension methods for terse token access: `context.colors`, `context.spacing`, `context.shadows`. Uses `Theme.of(this).extension<T>()!`.
 - **error_widgets.dart**: `NetworkErrorWidget` — reusable error state widget with factory constructors: `loadingError()`, `offline()`. Retry callback support. Uses Iconsax icons.
 
@@ -25,7 +25,7 @@
 ## providers/
 
 - **app_bootstrap_provider.dart**: `appBootstrapProvider` — syncs notification opt-in/out state. Listens to `settingsProvider.pushNotificationsEnabled` and initializes/removes FCM token accordingly.
-- **connectivity_provider.dart**: `connectivityProvider` (`StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>`). Enum: `online`, `offline`, `syncing`. Checks connectivity every 60s by pinging Firestore (`inviteCodes` collection, `Source.server`).
+- **connectivity_provider.dart**: `connectivityProvider` (`StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>`). Enum: `online`, `offline`, `syncing`. Checks connectivity every 60s by pinging Firestore (the current user's `fcm_tokens/{uid}` doc, `Source.server`).
 - **settings_provider.dart**: `sharedPreferencesProvider` (must be overridden in `main()`), `settingsServiceProvider`, `settingsProvider` (`StateNotifierProvider<SettingsNotifier, AppSettings>`). `SettingsNotifier` exposes setters for theme, language, currency, push notifications, device name. Device name changes propagate to Firestore group member records.
 
 ## services/
@@ -33,7 +33,7 @@
 - **firestore_repository.dart**: `FirestoreRepository` — abstract base for all Firestore services. Production constructor uses `FirebaseConfig.firestore`; test constructor accepts `FakeFirebaseFirestore`. Helper: `eventSubcollection(groupId, eventId, module)` returns `groups/{groupId}/events/{eventId}/{module}`.
 - _(SQLite cache removed in #50 — `local_database.dart` and the `services/cache/` repositories are gone. Offline reads/writes are served by the Firestore SDK's own offline persistence; `BalanceCalculator` consumes the live Firestore streams directly. Do not reintroduce a local cache.)_
 - **money_serializer.dart**: `MoneySerializer` — `Decimal` to/from integer subunits for Firestore storage. Currency scale map: OMR/KWD/BHD = 1000, USD/EUR/GBP/SAR/AED/QAR = 100, JPY = 1. Methods: `toSubunits()`, `fromSubunits()`. Only used at the Firestore read/write boundary.
-- **haptic_service.dart**: `HapticService` — static methods wrapping Flutter `HapticFeedback`. Patterns: `lightClick()`, `success()` (double medium tap), `warning()` (heavy), `selection()`, `medium()`.
+- **haptic_service.dart**: `HapticService` — static methods wrapping Flutter `HapticFeedback`. Patterns: `lightClick()`, `success()` (double medium tap), `selection()`, `medium()`.
 - **notification_service.dart**: `NotificationService` — FCM push notifications. `NotificationStatus` enum (`off`, `enabled`, `permissionDenied`, `error`). Handles permission requests, token save/refresh/remove to Firestore `fcm_tokens`. Providers: `notificationServiceProvider`, `notificationStatusProvider`.
 - **settings_service.dart**: `SettingsService` — SharedPreferences persistence layer for `AppSettings`. Keys: `settings_theme`, `settings_language`, `settings_currency`, `settings_push_notifications`, `settings_device_name`. Methods: `loadSettings()`, individual save methods.
 

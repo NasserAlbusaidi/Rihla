@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Overview
 
-Rihla ("Journey") is a Flutter mobile app for group and event coordination. Package name is `safar`, Android ID is `com.safar.safar`. Current version: **1.2.0+16**. Backend is Firebase-only: Firestore, Firebase Auth (anon + optional email-link recovery), Cloud Functions (Node 20 / TypeScript), FCM, and App Check — **no Storage SDK use** (protected media, when needed, routes through Cloud Functions). The app keeps SQLite caches for fast local reads while relying on Firestore offline persistence for queued writes.
+Rihla ("Journey") is a Flutter mobile app for group and event coordination. Package name is `safar`, Android ID is `com.safar.safar`. Current version: **1.2.0+16** — the first production Play release candidate (prior +N builds were alpha/closed-test only). Backend is Firebase-only: Firestore, Firebase Auth (anon + optional email-link recovery), Cloud Functions (Node 20 / TypeScript), FCM, and App Check — **no Storage SDK use** (protected media, when needed, routes through Cloud Functions). Offline reads and queued-write replay are both served entirely by the Firestore SDK's own offline persistence. There is no local SQLite cache (the hand-rolled cache was removed in #50 — do not reintroduce sqflite or a custom sync queue).
 
 v1.2.0+15 backend additions: `joinGroupByInviteCode` now fans the joiner into existing event `participantIds` server-side; new `cleanupAnonUidArtifacts` callable scrubs anon-UID leftovers after email-link recovery.
 
@@ -47,7 +47,7 @@ Firebase platform config files are `android/app/google-services.json` and `ios/R
 
 Each feature under `lib/features/` is self-contained with `models/`, `providers/`, `screens/`, `services/`, and optionally `widgets/`. Shared Firestore access should go through `FirestoreRepository` or existing feature services instead of new global repositories.
 
-Active features: `activity`, `auth` (anon session + email-link recovery), `events`, `groups`, `home`, `ledger`, `onboarding` (restored in v1.2), `settings`, and legacy `trip` compatibility models/providers. Gear, logistics, vault, and memories were stripped in Phase 39 — do not reintroduce.
+Active features: `activity`, `auth` (anon session + email-link recovery), `events`, `groups`, `home`, `ledger`, `onboarding` (archived/unreachable — the screen exists but is not in the route tree; deletion tracked in #56), `settings`, and legacy `trip` compatibility models/providers. Gear, logistics, vault, and memories were stripped in Phase 39 — do not reintroduce.
 
 ### State Management: Riverpod
 
@@ -57,7 +57,7 @@ Providers are defined manually (not code-gen). Key provider patterns:
 - `FutureProvider` for one-shot async reads
 - `Provider.family` for services and derived state
 
-Financial and activity streams often side-write successful Firestore snapshots into SQLite cache repositories. Firestore handles offline write replay; do not recreate a custom network sync queue for new writes.
+The Firestore SDK serves offline reads from its own persistence and replays offline writes; do not recreate a custom local cache or network sync queue for new writes (the hand-rolled SQLite cache was removed in #50).
 
 ### Routing: GoRouter (Declarative)
 
@@ -66,8 +66,7 @@ All navigation uses GoRouter declarative routing. Do not add imperative `Navigat
 Current route tree:
 
 ```
-/ (splash — redirects to /home if onboarded, else /onboarding)
-/onboarding
+/ (splash — redirects to /home)
 /home                             (BottomNavShell wraps Groups/Activity/Profile)
 /activity                         (CrossGroupActivityScreen — also nav tab 1)
 /profile                          (ProfileScreen — also nav tab 2)
@@ -93,7 +92,7 @@ Current route tree:
     /settings                     (EventSettingsScreen)
 ```
 
-Routes use `CustomTransitionPage` in `lib/core/router/app_router.dart` with the shared `_sharedAxisTransition` (Material 3 `SharedAxisTransition`, horizontal) for module-level routes. `/onboarding`, `/home`, `/profile`, `/activity` use `FadeTransition`; `/create-group` and `/join-group` use slide-up.
+Routes use `CustomTransitionPage` in `lib/core/router/app_router.dart` with the shared `_sharedAxisTransition` (Material 3 `SharedAxisTransition`, horizontal) for module-level routes. `/home`, `/profile`, `/activity` use `FadeTransition`; `/create-group` and `/join-group` use slide-up.
 
 `BottomNavShell` renders three tabs by stacking screens with `AnimatedOpacity` + `IgnorePointer` (state-preserving): index 0 Groups (HomeScreen), 1 Activity (CrossGroupActivityScreen), 2 Profile (ProfileScreen). Tab switching is not GoRouter-driven.
 
@@ -103,13 +102,12 @@ Screens receive `groupId`/`eventId` as strings from GoRouter path parameters. Ev
 
 ### Offline / Sync
 
-Data flow: Firestore streams/providers fetch live data, cache repositories persist snapshots into SQLite for fast local reads, and Firestore's SDK handles offline write replay.
+Data flow: Firestore streams/providers fetch live data, and the Firestore SDK's own offline persistence serves offline reads and replays offline writes. There is no local SQLite cache.
 
-- `LocalDatabase` (sqflite): `safar_cache.db` **version 9** with tables for trips, expenses, settlements, participants, activity_logs, categories, groups, group_members, and group_ledger. Writes use a delete-all-then-batch-insert pattern (ghost-row-free).
-- Cache repositories live under `lib/core/services/cache/` and are instance-based Riverpod providers. Each owns SQLite I/O for one domain.
+- Cross-UID cache isolation operates on the Firestore SDK cache and is enforced by `CacheUidBarrier` (cold-start) + `FirestoreCacheGate` + an in-session isolation overlay (`CacheIsolationController`) so a prior UID's cached data cannot leak after an auth swap (#68).
 - `FirestoreRepository` is the shared base for Firestore services and exposes `eventSubcollection(groupId, eventId, module)` plus a `withFirestore` test-injection constructor.
 - `ConnectivityNotifier` checks online status every 60 seconds with a `Source.server` read against `inviteCodes`.
-- **No Firebase Storage SDK use.** Protected media (when needed) goes through Cloud Functions. Account-recovery's `UidChangeListener` wipes the local SQLite cache when Firebase Auth swaps UIDs so cross-UID data cannot leak.
+- **No Firebase Storage SDK use.** Protected media (when needed) goes through Cloud Functions.
 
 ### Shared Widgets (`lib/shared/widgets/`)
 
@@ -120,16 +118,11 @@ Reusable UI components used across features:
 - `WordmarkLogo` — Rihla wordmark
 - `ModuleHeader` — gradient module header
 - `SectionHeader` — italic Instrument Serif section heading
-- `AppTabBar` — pill-indicator tab bar
+- `DirectionalIcon` — RTL-aware nav arrows/chevrons (flips for Arabic)
 - `OfflineBanner` — connectivity indicator (watches `connectivityProvider`)
 - `EmptyStateView` — consistent empty states with optional CTA
-- `SearchFilterBar` — expandable search + filter chips
-- `SmartModuleCard` — module cards on `EventCommandCenter`
-- `AnimatedCurrencyText` — animated number transition for money
 - `LoadingButton` / `SkeletonLoader` / `SkeletonPrimitives` — loading states
 - `GrainOverlay` — texture layer (`assets/textures/grain.png`)
-- `DotStepIndicator` — onboarding page dots
-- `InitialsCircle` — legacy avatar fallback
 
 ### Design Tokens (`lib/core/theme/`)
 
@@ -140,11 +133,11 @@ Theme tokens are `ThemeExtension`s registered in `AppTheme`:
 
 Use `context.colors`, `context.spacing`, and `context.shadows` from `tokens/domain_aliases.dart` in UI code. Avoid hardcoded `Color(0xFF...)` literals outside token definitions — CI's hardcoded-color lint rejects them.
 
-Typography: **Geist** (sans), **Geist Mono** (tabular figures for money), **Instrument Serif** italic (display + section headers) — all via `google_fonts`.
+Typography: **Geist** (sans), **Geist Mono** (tabular figures for money), **Instrument Serif** italic (display + section headers) — bundled as native app assets (`assets/fonts/`, declared in `pubspec.yaml`). google_fonts runtime CDN fetching is disabled (`allowRuntimeFetching = false` in `font_bootstrap.dart`) — a regression guard from #103.
 
 ### Page Transitions
 
-Transitions are handled by `CustomTransitionPage` in `lib/core/router/app_router.dart`. The shared `_sharedAxisTransition` function provides Material 3 `SharedAxisTransition` (horizontal) for all module-level routes. Slide-up is used for `/create-group` and `/join-group`. `/onboarding`, `/home`, `/profile`, `/activity` use `FadeTransition`. `lib/core/utils/page_transitions.dart` was deleted in Phase 19.
+Transitions are handled by `CustomTransitionPage` in `lib/core/router/app_router.dart`. The shared `_sharedAxisTransition` function provides Material 3 `SharedAxisTransition` (horizontal) for all module-level routes. Slide-up is used for `/create-group` and `/join-group`. `/home`, `/profile`, `/activity` use `FadeTransition`. `lib/core/utils/page_transitions.dart` was deleted in Phase 19.
 
 ### Financial Calculations
 
@@ -158,10 +151,10 @@ All money math uses the `decimal` package (not `double`). Default currency is OM
 - **Display-name validation**: 1-32 chars, no control chars, unified across client and rules via `isValidDisplayName`.
 - **Event modules**: `EventModules` only carries `ledger` after Phase 39. Legacy keys (gear/logistics/vault/memories) are silently ignored from existing data.
 - **Group join**: routed through the `joinGroupByInviteCode` Cloud Function (`functions/src/callables/`) — atomic, validated, rate-limited (5 attempts/hour per UID), idempotent on re-join.
-- **Account recovery (v1.2)**: Optional email-link recovery via Firebase Auth. `AuthRecoveryService` (`lib/features/auth/services/auth_recovery_service.dart`) orchestrates link/send/recover. `UidChangeListener` wipes the local SQLite cache on UID swap. App Links + Universal Links route the magic link back into the app. Linked email is permanent in v1.2.
-- **Account deletion**: `DataDeletionService` calls the `deleteAccount` Cloud Function. The function scrubs Firestore identity/PII references, preserves ledger rows with tombstone members, deletes FCM/join-attempt docs, then deletes the Firebase Auth user. The client wipes SQLite with `LocalDatabase.wipeAndReinitialize()` and signs out.
-- **Onboarding**: 3-page first-launch flow gated by `AppSettings.onboardingComplete` (SharedPreferences). Router hard-redirects every non-onboarding route to `/onboarding` until complete. Restored in v1.2.
-- **Multi-currency**: Expenses support currency metadata and Decimal math. Convert to integer subunits only at Firestore read/write boundaries via `MoneySerializer`.
+- **Account recovery (v1.2)**: Optional email-link recovery via Firebase Auth. `AuthRecoveryService` (`lib/features/auth/services/auth_recovery_service.dart`) orchestrates link/send/recover. On UID swap, `CacheUidBarrier` + `FirestoreCacheGate` enforce cross-UID isolation of the Firestore SDK cache so prior-UID data cannot leak (#68). App Links + Universal Links route the magic link back into the app. Linked email is permanent in v1.2.
+- **Account deletion**: `DataDeletionService` calls the `deleteAccount` Cloud Function. The function scrubs Firestore identity/PII references, preserves ledger rows with tombstone members, deletes FCM/join-attempt docs, then deletes the Firebase Auth user. The client engages cache isolation / marks the Firestore SDK cache dirty via `CacheIsolationController` + `CacheUidBarrier`, then signs out.
+- **Onboarding**: archived and not in the route tree. `OnboardingScreen` exists but is imported nowhere, and `appRouteRedirect` only maps splash → `/home` (it does **not** gate on `onboardingComplete`). The `onboardingComplete` flag is retained only for legacy reads. Deletion tracked in #56.
+- **Currency**: Money math is Decimal-based and currency-aware, but writes are currently pinned to OMR — the picker and `MoneySerializer` support more codes, yet persisted expenses/settlements hardcode `'OMR'` pending #61. Do not describe multi-currency as a live feature. Convert to integer subunits only at Firestore read/write boundaries via `MoneySerializer`.
 - **Push notifications**: Firebase Cloud Messaging (FCM). Token storage at `fcm_tokens/{uid}`. Opt-in only.
 - **Auth**: Firebase anonymous sign-in. No login screen — `_AuthGate` calls `FirebaseConfig.ensureAnonymousSession()` and retries on `internal-error` for corrupted restored sessions.
 - **Deep links**: `rihla-safar.web.app/join/<code>` opens the join-group flow with the code pre-filled. Email-link recovery URLs route back via App Links / Universal Links.
@@ -175,7 +168,7 @@ Firestore is the source of truth. Core paths:
 - `groups/{gid}/activityLogs/{aid}` and `groups/{gid}/events/{eid}/activityLogs/{aid}`
 - `inviteCodes/{code}`, `fcm_tokens/{uid}`, `joinAttempts/{uid}` (rate-limit)
 
-Security rules in `security/firestore.rules` enforce display-name validation, the C-Hierarchy event light/admin update split, server-only invite codes, expense `createdBy` immutability, and append-only settlements. SQLite is a local cache only; **do not** add SQL migrations for server state.
+Security rules in `security/firestore.rules` enforce display-name validation, the C-Hierarchy event light/admin update split, server-only invite codes, expense `createdBy` immutability, and append-only settlements. There is no local SQL store; offline reads/writes are served by the Firestore SDK's own persistence — **do not** add a local cache or SQL migrations.
 
 ## Testing
 

@@ -4,6 +4,86 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-05-31
+
+**First public production release on Google Play.** Earlier `1.2.0+12 … +16`
+builds were closed-test / alpha-track only; this is the first time the app and
+its backend reach production users. Everything below merged to `main` after the
+closed-test `1.2.0+16` cut. Two subsystems described in those earlier entries are
+gone by 1.3.0: the hand-rolled SQLite cache (removed, #50) and first-launch
+onboarding (archived out of the route tree, #56).
+
+### Added
+- **Arabic localization + full RTL.** Complete Arabic translation across
+  settings, profile, ledger, groups, and activity, with RTL-aware layout,
+  mirrored navigation glyphs, and a language toggle. Amount entry stays LTR.
+  (#34–#38)
+
+### Changed
+- **Currency notation unified to ISO codes — code-first, every locale.** Amounts
+  render with the ISO currency code rather than a glyph (Geist Mono ships no
+  Arabic glyphs); the symbol path is retired. (#144)
+- **Brand fonts bundled as native app assets.** Geist / Geist Mono / Instrument
+  Serif ship inside the binary instead of being fetched from the Google Fonts CDN
+  at runtime — no first-paint network dependency. (#103)
+- **Deep links and legal pages standardized on `rihla-safar.web.app`.** The dead
+  bare `rihla.app` host was dropped everywhere — link parser, profile QR, App
+  Links, iOS entitlements, and the privacy/terms/delete-data URLs. (#130)
+- **`deleteAccount` App Check posture made explicit.** The deletion callable
+  verifies App Check if present but does not hard-enforce it, so GDPR erasure
+  still succeeds on attestation-failing devices; it stays safe via no-input,
+  self-scoped, idempotent, rate-limited controls. (#73, #132)
+
+### Fixed
+- **Ledger split count and per-person share are correct by scope.** Global /
+  equal-split expenses no longer display "split 0 ways"; each scope computes the
+  right participant count and share. (#125)
+- **Partial account deletion is surfaced with a guaranteed retry** instead of
+  silently leaving a half-deleted account. (#46, #77)
+- **Join rejects soft-deleted groups** rather than attaching to a tombstoned
+  group. (#78)
+- **RTL and display polish.** Back-arrow glyphs mirror in Arabic on ledger /
+  create-event / settle-up; the GROUPS header gap was widened so the RTL
+  call-to-action no longer collides with the first balance; two design-review
+  passes resolved RTL, localization, and money-display defects. (#126, #161,
+  #148, #150–#163)
+- **Settled-balance bar renders intentionally**, and the redundant settle-up
+  avatar ring was dropped. (#146, #147)
+
+### Removed
+- **Hand-rolled SQLite cache.** `safar_cache.db`, `LocalDatabase`, `sqflite`, and
+  the UID-change cache-wipe listener are gone — the Firestore SDK's own offline
+  persistence now serves offline reads and replays queued writes. (#50)
+- **Large dead-code purge.** Receipts/OCR, the three-step add-expense flow, the
+  legacy transaction ledger, settle-up orphans, the previous home-dashboard
+  cluster, orphaned group / profile / shared widgets, activity shims, trip
+  back-compat, the animations barrel, dead constants, an orphaned SVG, and unused
+  dependencies were all deleted. (#81–#96)
+
+### Security
+- **Cross-UID isolation of the Firestore on-device cache.** A cold-start
+  `CacheUidBarrier`, a `FirestoreCacheGate`, and a restart-based isolation
+  controller stop one anonymous session's cached data from leaking into the next
+  after account recovery. (#45, #68)
+- **`deletionAttempts.expiresAt` TTL reconciled** as a Firestore field override,
+  so rate-limit records self-expire. (#131)
+- Production **Functions dependency audit** clean at low-or-higher severity; an
+  ESLint flat config was added and wired into CI. (#55, #64)
+
+### Performance
+- **Event activity feed paginated.** The previously unbounded activity-log stream
+  is replaced with cursor-based pagination — 50-item pages with infinite scroll.
+  (#109)
+- **Home dashboard.** Cross-group owed/owes folded into a single
+  `CrossGroupBalance` pass, the settings subscription narrowed with `.select`,
+  and a redundant per-event `ref.watch` dropped. (#107, #108, #110, #112)
+
+### Internal
+- **Key decisions recorded as ADRs** — settlement-name resolution, additive
+  event-participant adds, and Western numerals in Arabic text. (#48, #57, #145)
+- Play Store listing copy replaced with verified English + Arabic text (no
+  unverified feature claims). (#141)
+
 ## [1.2.0+16] — 2026-05-17
 
 Account deletion + ledger identity polish. Closes two of the largest
@@ -77,7 +157,7 @@ failure — Play registers AAB version codes even on failed uploads).
 
 ## [1.2.0] — 2026-05-14 (Play build 1.2.0+12)
 
-First Play Store release. Adds account recovery, hardens backend rules,
+First Play Store upload (closed-test / alpha track). Adds account recovery, hardens backend rules,
 ships the Sprint 1/2 UI surfaces, and finishes pre-launch polish.
 
 ### Added
