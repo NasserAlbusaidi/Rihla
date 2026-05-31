@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +25,9 @@ import '../utils/activity_display.dart';
 ///   1. Top bar — back · italic event name · "ACTIVITY" mono caption
 ///   2. Day-grouped card-wrapped sections
 ///   3. Rows: category icon (MONEY/GEAR/DOCS) · actor + logText · timeago
-class ActivityFeedScreen extends ConsumerWidget {
+const _kPageSize = 50;
+
+class ActivityFeedScreen extends ConsumerStatefulWidget {
   const ActivityFeedScreen({
     super.key,
     required this.groupId,
@@ -35,11 +38,74 @@ class ActivityFeedScreen extends ConsumerWidget {
   final String eventId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final eventRef = (groupId: groupId, eventId: eventId);
-    final eventAsync = ref.watch(eventDetailProvider(eventRef));
-    final activityAsync = ref.watch(eventActivityProvider(eventRef));
+  ConsumerState<ActivityFeedScreen> createState() =>
+      _ActivityFeedScreenState();
+}
 
+class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
+  final List<ActivityLog> _activities = [];
+  DocumentSnapshot? _lastDocument;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  bool _initialError = false;
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
+    _loadPage();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200 && _hasMore && !_isLoadingMore) {
+      _loadPage();
+    }
+  }
+
+  Future<void> _loadPage() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final snap = await ref
+          .read(activityServiceProvider)
+          .fetchActivityPageRaw(
+            widget.groupId,
+            widget.eventId,
+            startAfter: _lastDocument,
+            limit: _kPageSize,
+          );
+      final newLogs = snap.docs
+          .map((doc) => ActivityLog.fromFirestore({...doc.data(), 'id': doc.id}))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _activities.addAll(newLogs);
+        if (snap.docs.isNotEmpty) _lastDocument = snap.docs.last;
+        _hasMore = snap.docs.length == _kPageSize; // compare to the request limit
+        _isLoadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      final isInitial = _activities.isEmpty;
+      setState(() {
+        if (isInitial) _initialError = true; // initial failure -> error+retry view
+        _isLoadingMore = false; // later-page failure -> keep loaded rows
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final eventAsync = ref.watch(eventDetailProvider(eventRef));
     return Scaffold(
       key: ActivityKeys.screen,
       backgroundColor: context.colors.scaffoldBackground,
@@ -59,14 +125,7 @@ class ActivityFeedScreen extends ConsumerWidget {
                 ),
                 data: (event) {
                   if (event == null) return const _NotFoundView();
-                  return activityAsync.when(
-                    loading: () => const _LoadingShimmer(),
-                    error: (_, _) => _ErrorView(
-                      onRetry: () =>
-                          ref.invalidate(eventActivityProvider(eventRef)),
-                    ),
-                    data: (logs) => _Body(logs: logs),
-                  );
+                  return _buildActivityBody(context);
                 },
               ),
             ),
@@ -75,31 +134,52 @@ class ActivityFeedScreen extends ConsumerWidget {
       ),
     );
   }
-}
 
-// ──────────────────────────── Body / list
-
-class _Body extends StatelessWidget {
-  const _Body({required this.logs});
-  final List<ActivityLog> logs;
-
-  @override
-  Widget build(BuildContext context) {
-    if (logs.isEmpty) {
+  Widget _buildActivityBody(BuildContext context) {
+    if (_initialError && _activities.isEmpty) {
+      return _ErrorView(
+        onRetry: () {
+          setState(() => _initialError = false);
+          _loadPage();
+        },
+      );
+    }
+    if (_isLoadingMore && _activities.isEmpty) return const _LoadingShimmer();
+    if (_activities.isEmpty) {
       return EmptyStateView(
         icon: Iconsax.activity,
         title: context.l10n.activityNoActivityTitle,
         message: context.l10n.activityEventEmptyMessage,
       );
     }
-    final days = _groupByDay(context, logs, DateTime.now());
+    final days = _groupByDay(context, _activities, DateTime.now());
     return ListView.builder(
+      key: ActivityKeys.feedList,
+      controller: _scrollController,
       padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
-      itemCount: days.length,
-      itemBuilder: (ctx, i) => Padding(
-        padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
-        child: _DaySection(label: days[i].label, entries: days[i].entries),
-      ),
+      itemCount: days.length + (_hasMore ? 1 : 0),
+      itemBuilder: (ctx, i) {
+        if (i == days.length) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: context.colors.primary,
+                ),
+              ),
+            ),
+          );
+        }
+        return Padding(
+          key: ValueKey('activity-day-${days[i].label}'),
+          padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
+          child: _DaySection(label: days[i].label, entries: days[i].entries),
+        );
+      },
     );
   }
 }
@@ -399,6 +479,7 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return EmptyStateView(
+      key: ActivityKeys.errorView,
       icon: Iconsax.activity,
       title: context.l10n.activityLoadFailedTitle,
       message: context.l10n.activityLoadFailedMessage,
