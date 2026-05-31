@@ -1,7 +1,7 @@
 # Rihla — Product Specification
 
 > Source-of-truth product description for the v1 launch build.
-> Last reconciled 2026-05-16 from the live codebase (v1.2.0+15).
+> Last reconciled 2026-05-31 from the live codebase (v1.2.0+16).
 > Every behaviour below is grounded in actual screens/services — no aspirational features.
 
 ---
@@ -60,6 +60,7 @@ Group ──< Event ──< Expense
   - **personal** — payer eats it themselves (does not redistribute).
   - **custom** — split among an explicit subset.
   - **subGroup** — legacy; back-compat falls through to global.
+- Orthogonal to scope, each expense carries a `splitMode` ∈ `{ equally, shares, exact, percent }` with an optional `splitDistribution` map — scope picks WHO shares, `splitMode` picks HOW the amount divides.
 - Rounding: per-head share is truncated to 3 decimals; the deterministic last recipient (sorted alphabetically) absorbs the residual so `sum(shares) == amount` exactly. No rounding errors leak.
 
 ### Settlement
@@ -97,8 +98,7 @@ The role check pattern used throughout the app: `currentUserId == group.createdB
 The app uses GoRouter. Every route is declarative; deep links work without preloaded state. See `lib/core/router/app_router.dart`.
 
 ```
-/  (splash)                         → /home if onboarded, else /onboarding
-/onboarding                         (3-page first-launch flow)
+/  (splash)                         → /home (unconditional; no onboarding gate)
 /home                               (HomeScreen, wrapped in BottomNavShell)
 /profile                            (ProfileScreen)
    /link-email                      (LinkEmailScreen — opt-in account recovery)
@@ -127,7 +127,7 @@ The app uses GoRouter. Every route is declarative; deep links work without prelo
       /settings                     (EventSettingsScreen)
 ```
 
-Page transitions: module routes use Material 3 `SharedAxisTransition` (horizontal); `/onboarding`, `/home`, `/profile`, and `/activity` fade; `/create-group` and `/join-group` slide up.
+Page transitions: module routes use Material 3 `SharedAxisTransition` (horizontal); `/home`, `/profile`, and `/activity` fade; `/create-group` and `/join-group` slide up.
 
 > Note: `/event/:eid` (EventCommandCenter) is reachable in the router but the UI never navigates to it — event cards now jump straight to `/event/:eid/ledger`. This was intentional after Phase 39 reduced events to a single module. EventCommandCenter remains as dead-but-not-orphaned code.
 
@@ -152,7 +152,7 @@ There are 17 screens in the app. They fall into five clusters.
 ### 7.1 Entry & Shell
 
 #### Splash (`/`)
-Brand-coloured warm-sand frame shown for the duration of Firebase + SharedPreferences hydration. `_AuthGate` (`main.dart`) ensures a Firebase anonymous session before render and retries on `internal-error` for corrupted restored sessions. The router then redirects to `/onboarding` if `onboardingComplete` is false in `AppSettings`, otherwise to `/home`. No user interaction.
+Brand-coloured warm-sand frame shown for the duration of Firebase + SharedPreferences hydration. `_AuthGate` (`main.dart`) ensures a Firebase anonymous session before render and retries on `internal-error` for corrupted restored sessions. The router then redirects unconditionally to `/home`. Onboarding is archived and not wired into the route tree (deletion tracked in #56); `onboardingComplete` is a retained legacy flag the router ignores. No user interaction.
 
 #### Home Dashboard (`/home`, tab 0)
 The core landing screen. Sections (top → bottom):
@@ -179,7 +179,7 @@ Sections:
 - **Support** — contact / FAQ surface.
 
 #### Cross-Group Activity (`/activity`, tab 1)
-A flat reverse-chronological feed merging activity from every group the user is in. Expense, settlement, and group-event entries are interleaved. Tapping an entry jumps to the relevant group/event. Empty state: *"No activity yet — Activity from all your groups will appear here."*
+A merged reverse-chronological view of the 5 most-recent activity entries across all the user's groups (`crossGroupActivityProvider` caps at top 5; no load-more on this tab). Tapping an entry jumps to the relevant group/event. The per-event `ActivityFeedScreen` is separately cursor-paginated (50/page, #109). Empty state: *"No activity yet — Activity from all your groups will appear here."*
 
 ### 7.2 Group Lifecycle
 
@@ -336,7 +336,7 @@ The following were intentionally removed in Phase 39 ("Strip to Shippable") and 
 - Payment processing
 - Chat / messaging tab
 
-The Firestore schema still tolerates legacy keys for these features (silent `fromMap` ignore) so existing user data does not break, but no UI exposes them. The 3-page first-launch onboarding flow (gated by `onboardingComplete` in `AppSettings`) shipped separately and *is* part of v1.
+The Firestore schema still tolerates legacy keys for these features (silent `fromMap` ignore) so existing user data does not break, but no UI exposes them. The `OnboardingScreen` exists as archived code but is NOT reachable in v1 — the router has no `/onboarding` route and never gates on `onboardingComplete`. Deletion is tracked in #56.
 
 ---
 
@@ -346,8 +346,8 @@ The Firestore schema still tolerates legacy keys for these features (silent `fro
 - **No iOS CI.** Android-only release pipeline. iOS builds are manual; iOS launch soft-deferred ~weeks behind Android Production.
 - **No general multi-device account workflow.** Anonymous UIDs are device-bound unless the user has linked and restored through email-link recovery.
 - **Soft-delete only** for expenses, events, groups, and settlements where supported — they remain in Firestore until retention tooling exists.
-- **OMR-only.** Group `currency` field exists in the schema and the spec is locked (`docs/design/group-currency.md`), but the UI still hardcodes display formatting to OMR pending implementation.
-- **Orphan anon-UID cleanup is partial.** After email-link recovery, `cleanupAnonUidArtifacts` (added in v1.2.0+15) removes most artifacts from the abandoned anon UID, but UIDs with downstream references in `memberIds` / `participantIds` remain in Firestore and require a future server-side reconciliation pass.
+- **OMR-pinned writes.** A currency-default picker (OMR/AED/SAR/USD/EUR/GBP) ships in Profile and `MoneySerializer` handles 10 currencies, but group/expense creation still hardcodes `'OMR'` (`create_group_screen.dart`), so all live data is OMR pending #61.
+- **Orphan anon-UID cleanup is partial.** After email-link recovery, `cleanupAnonUidArtifacts` (added in v1.2.0+16) removes most artifacts from the abandoned anon UID, but UIDs with downstream references in `memberIds` / `participantIds` remain in Firestore and require a future server-side reconciliation pass.
 
 ---
 
@@ -362,7 +362,7 @@ The Firestore schema still tolerates legacy keys for these features (silent `fro
 | **Member** | Any user in a group who isn't the creator. |
 | **Net balance** | `paid − owed + settlement_adjustment` for a participant within a scope. Positive = others owe you. |
 | **Settle up** | Record one or more payments that bring net balances closer to zero. |
-| **Soft delete** | `is_deleted = true` flag instead of row removal; preserves audit trail. |
+| **Soft delete** | `isDeleted = true` flag instead of row removal; preserves audit trail. |
 
 ---
 

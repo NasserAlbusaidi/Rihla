@@ -108,7 +108,7 @@ Current values (from `lib/firebase_options.dart`):
 
 ### 3d. Firebase initialization
 
-Firebase is initialized in `lib/core/config/firebase_config.dart` via `FirebaseConfig.initialize()`, called first in `main()` before any other service. Firestore offline persistence is enabled with unlimited cache size. Anonymous auth is established immediately after initialization via `FirebaseConfig.ensureAnonymousSession()`.
+Firebase is initialized in `lib/core/config/firebase_config.dart` via `FirebaseConfig.initialize()`, called first in `main()` before any other service. Firestore offline persistence is enabled with unlimited cache size. Anonymous auth is established at app startup by `_AuthGate` (`lib/main.dart`), which calls `FirebaseConfig.ensureAnonymousSession()` and retries on a corrupted restored session before mounting `SafarApp`.
 
 ---
 
@@ -232,7 +232,8 @@ workflow also refuses non-`v*` refs and refuses tag commits that are not
 contained in `origin/main`, so a manual dispatch must target the release tag. It
 then runs `flutter analyze`, tests with 80% raw coverage enforcement, a
 hardcoded color lint, builds the AAB, and uploads to the Play Store Closed
-Testing (alpha track).
+Testing (custom "first" track). Promotion to the production track is a separate
+manual Play Console step, not done by CI.
 
 Before tagging or manually dispatching a release, run the read-only GitHub
 governance check:

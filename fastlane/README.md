@@ -15,12 +15,22 @@ service account that has Play access, and drop it there.
 
 ## Editing the listing
 
-Listing assets and text live under `fastlane/metadata/android/en-US/`:
+Two locales are managed: `fastlane/metadata/android/en-US/` (English) and
+`fastlane/metadata/android/ar/` (Arabic). The `listing` lane pushes **both** —
+edit the Arabic files too, or your en-US-only change ships alongside the existing
+Arabic copy.
+
+English assets and text live under `fastlane/metadata/android/en-US/`:
 
 - `title.txt` / `short_description.txt` / `full_description.txt` — listing text
 - `images/icon.png` — 512×512 listing icon (PNG or JPEG)
 - `images/featureGraphic.jpeg` — 1024×500 banner
 - `images/phoneScreenshots/*.png` — 1–8 screenshots, named `1_en-US.png`..`8_en-US.png`
+
+Arabic assets live under `fastlane/metadata/android/ar/`:
+
+- `title.txt` / `short_description.txt` / `full_description.txt` — Arabic listing text
+- `images/phoneScreenshots/*.png` — screenshots named `1_ar.png`..`6_ar.png`
 
 Edit any of those, then push:
 

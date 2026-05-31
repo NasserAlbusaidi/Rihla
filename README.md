@@ -2,7 +2,7 @@
 
 **Rihla** ("Journey" in Arabic) is a Flutter mobile app for group coordination and event planning. Users create or join persistent groups — friend circles, travel crews — then spin up events inside those groups (trips, camping weekends, dinners, or custom types). The app tracks finances at both the group and event level, so friends can settle up across multiple outings rather than one at a time.
 
-Package: `safar` · Android ID: `com.safar.safar` · Version: 1.2.0+16
+Package: `safar` · Android ID: `com.safar.safar` · Version: see `pubspec.yaml`
 
 ---
 
@@ -10,14 +10,13 @@ Package: `safar` · Android ID: `com.safar.safar` · Version: 1.2.0+16
 
 - **Groups** — Create or join persistent groups with a 6-character invite code. Group financial history accumulates across every event in the group.
 - **Events** — Spin up typed events (trip, camping, travel, night/day out, custom) inside a group. After Phase 39, every event surfaces a single Ledger module; event taps land on the Ledger directly.
-- **Ledger** — Split expenses four ways (`global`, `personal`, `custom`, legacy `subGroup`) across four modes (`equally`, `shares`, `exact`, `percent`). All money math uses the `decimal` package (default OMR, 3 decimal places; 9 currencies supported). Settlement optimization finds the minimum number of transactions.
+- **Ledger** — Split expenses four ways (`global`, `personal`, `custom`, legacy `subGroup`) across four modes (`equally`, `shares`, `exact`, `percent`). All money math uses the `decimal` package — default OMR, 3 decimal places. OMR is the only currency actually written today (writes are pinned to `OMR` pending #61); a picker offers 6 codes (OMR/AED/SAR/USD/EUR/GBP) and the serializer's scale map covers 10, but neither reaches the write path yet. Settlement optimization finds the minimum number of transactions.
 - **Activity feeds** — Cross-group, group-level, and event-level activity timelines.
-- **Offline-first** — Firestore offline persistence handles queued writes; SQLite (`safar_cache.db`, v8) caches snapshots for fast local balance calculations.
-- **Account recovery (v1.2)** — Optional email-link recovery. Link an email from Profile, restore on a new device with a one-tap magic link. UID-change listener wipes the local cache so anonymous data cannot leak across sessions.
+- **Offline-first** — the Firestore SDK's own offline persistence (unlimited cache) serves offline reads and replays queued writes. There is no hand-rolled local cache (the SQLite cache was removed in #50).
+- **Account recovery (v1.2)** — Optional email-link recovery. Link an email from Profile, restore on a new device with a one-tap magic link. Cross-UID isolation of the Firestore on-device cache (cold-start `CacheUidBarrier` + `FirestoreCacheGate` + restart-based `CacheIsolationController`, #68) prevents anonymous data leaking across sessions.
 - **In-app account deletion** — Server-side cascade across Firebase Auth, Firestore, and FCM tokens.
 - **Push notifications** — Firebase Cloud Messaging (FCM), opt-in only.
 - **Frictionless auth** — Firebase anonymous sign-in on first launch; no login screen.
-- **First-launch onboarding** — Restored 3-page intro flow gated by `AppSettings.onboardingComplete`.
 
 ---
 
@@ -29,14 +28,14 @@ Package: `safar` · Android ID: `com.safar.safar` · Version: 1.2.0+16
 | State management | Riverpod 2.x (`flutter_riverpod ^2.4.9`) |
 | Navigation | GoRouter (`^13.2.0`) + `app_links ^7.0.0` for deep links |
 | Backend | Firebase — Firestore, Auth, Cloud Functions, FCM (no Storage SDK use) |
-| Local cache | SQLite via `sqflite ^2.4.2` (v8 schema, `safar_cache.db`) |
+| Offline | Firestore SDK offline persistence (unlimited cache, no local DB) |
 | Financial math | `decimal ^3.2.4` |
 | Error tracking | Sentry (`sentry_flutter ^9.0.0`) |
 | Typography | Geist + Geist Mono + Instrument Serif via `google_fonts ^8.0.2` |
-| Animations | `flutter_animate ^4.5.0`, `animations ^2.0.0` |
+| Animations | `flutter_animate ^4.5.0` |
 | Icons | `iconsax ^0.0.8` |
 | QR codes | `qr_flutter ^4.1.0` |
-| Testing | `mocktail`, `fake_cloud_firestore`, `firebase_auth_mocks`, `sqflite_common_ffi` |
+| Testing | `mocktail`, `fake_cloud_firestore`, `firebase_auth_mocks` |
 
 ---
 
@@ -78,21 +77,22 @@ lib/
 │   ├── models/                   # Shared models (AppSettings, SplitMode)
 │   ├── providers/                # Cross-feature providers (connectivity, settings, bootstrap)
 │   ├── router/                   # GoRouter definition (app_router.dart)
-│   ├── services/                 # FirestoreRepository, LocalDatabase, cache/, money serializer,
-│   │                             # haptic, notification, deep-link handler
+│   ├── services/                 # FirestoreRepository, FirestoreCacheGate/CacheUidBarrier
+│   │                             # (cross-UID isolation), money serializer, haptic,
+│   │                             # notification, deep-link handler
 │   ├── theme/                    # AppTheme + ThemeExtension tokens (color/spacing/shadow)
 │   ├── types/                    # EventRef typedef + shared enums
 │   └── utils/                    # Formatters, helpers
 ├── features/                     # Feature-first modules
 │   ├── activity/                 # Cross-group activity feed
-│   ├── auth/                     # Anonymous session, email-link recovery, UID-change listener
+│   ├── auth/                     # Anonymous session, email-link recovery
 │   ├── events/                   # Event creation + (bypassed) EventCommandCenter
 │   ├── groups/                   # Persistent groups, invite flow, group settle-up
 │   ├── home/                     # Dashboard, BottomNavShell (3 tabs)
 │   ├── ledger/                   # Expense splitting + settlement (single visible event module)
-│   ├── onboarding/               # 3-page first-launch intro
+│   ├── onboarding/               # 3-page intro — archived/unreachable, not in router (#56)
 │   ├── settings/                 # Profile, pickers (currency/language/split/theme), QR sheets
-│   └── trip/                     # Legacy compatibility models/providers (SQLite cache)
+│   └── trip/                     # Legacy compatibility models/providers
 └── shared/
     ├── animations/               # Fade-in list, staggered grid, tap-bounce
     └── widgets/                  # CoverArt, RAmount, RAvatar, ModuleHeader, SectionHeader,
