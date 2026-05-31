@@ -662,6 +662,18 @@ abstract class AppLocalizations {
   /// **'Delete account'**
   String get deleteAccountConfirm;
 
+  /// Title of the dialog shown when account deletion partially completed and can be retried.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion didn\'t finish'**
+  String get deleteAccountRetryTitle;
+
+  /// Body copy explaining a partial account deletion that converges on retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Some of your account data was removed, but the deletion didn\'t finish. Your account is still signed in. Retrying will complete it.'**
+  String get deleteAccountRetryContent;
+
   /// Title of the SignOutConfirmDialog confirming local sign-out.
   ///
   /// In en, this message translates to:

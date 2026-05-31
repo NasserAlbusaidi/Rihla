@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,7 +15,12 @@ typedef DeleteAccountCallable = Future<void> Function();
 
 /// Outcome of an in-app deletion attempt. The UI maps each case to a
 /// different snack/dialog.
-enum DeletionResult { ok, noUser, error }
+///
+/// [partial] is the convergent-on-retry case: the server scrubbed some (or all)
+/// data but threw before finishing (a per-group cascade failure, or the final
+/// Auth-user delete failing). The session stays valid and a retry converges, so
+/// the UI re-prompts to retry rather than signing out.
+enum DeletionResult { ok, noUser, error, partial }
 
 /// Server-side account deletion.
 ///
@@ -52,12 +58,15 @@ class DataDeletionService {
     try {
       await _deleteAccountCallable();
     } catch (error, stack) {
+      final result = _classifyFailure(error);
       FirebaseConfig.log(
-        'Deletion: server cascade failed',
+        result == DeletionResult.partial
+            ? 'Deletion: partial server cascade (convergent on retry)'
+            : 'Deletion: server cascade failed',
         error: error,
         stackTrace: stack,
       );
-      return DeletionResult.error;
+      return result;
     }
 
     // Cascade succeeded — the account is gone server-side. Engage isolation,
@@ -80,6 +89,29 @@ class DataDeletionService {
     }
     return DeletionResult.ok;
   }
+}
+
+/// Distinguishes a convergent partial deletion from a hard failure.
+///
+/// The server throws `HttpsError('internal', …, DeleteAccountOutput)` in two
+/// convergent cases: a per-group cascade failure (`cascadeFailed` non-empty) or
+/// a fully-scrubbed-but-Auth-alive failure (`cascadeFailed` empty,
+/// `authUserDeleted: false`). Both carry the typed output in `details` and
+/// converge on retry. Every other error (rate limit, auth, malformed input,
+/// network) is a generic, non-convergent failure.
+///
+/// We require `cascadeFailed` to actually be a List (it's always a string array
+/// in both convergent cases, possibly empty) rather than merely present — a
+/// malformed platform response should fail loud as a generic error, not be
+/// mistaken for a retryable partial on a destructive path.
+DeletionResult _classifyFailure(Object error) {
+  if (error is FirebaseFunctionsException &&
+      error.code == 'internal' &&
+      error.details is Map &&
+      (error.details as Map)['cascadeFailed'] is List) {
+    return DeletionResult.partial;
+  }
+  return DeletionResult.error;
 }
 
 final dataDeletionServiceProvider = Provider<DataDeletionService>((ref) {
