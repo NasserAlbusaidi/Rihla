@@ -403,6 +403,14 @@
   "@deleteAccountConfirm": {
     "description": "Destructive confirm button on the DeleteAccountDialog."
   },
+  "deleteAccountRetryTitle": "Deletion didn't finish",
+  "@deleteAccountRetryTitle": {
+    "description": "Title of the dialog shown when account deletion partially completed and can be retried."
+  },
+  "deleteAccountRetryContent": "Some of your account data was removed, but the deletion didn't finish. Your account is still signed in. Retrying will complete it.",
+  "@deleteAccountRetryContent": {
+    "description": "Body copy explaining a partial account deletion that converges on retry."
+  },
 
   "signOutTitle": "Sign out of this device?",
   "@signOutTitle": {

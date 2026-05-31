@@ -94,7 +94,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       },
       color: context.colors.primary,
       child: CustomScrollView(
-        cacheExtent: 2000,
         slivers: [
           SliverToBoxAdapter(child: _GreetingStrip(name: _firstName())),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
@@ -195,7 +194,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   }
 
   String _firstName() {
-    final raw = ref.watch(settingsProvider).deviceName;
+    final raw = ref.watch(settingsProvider.select((s) => s.deviceName));
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return context.l10n.homeTravellerFallback;
     return trimmed.split(RegExp(r'\s+')).first;
@@ -395,7 +394,7 @@ class _TopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final deviceName = ref.watch(settingsProvider).deviceName;
+    final deviceName = ref.watch(settingsProvider.select((s) => s.deviceName));
     return SafeArea(
       bottom: false,
       child: Padding(
