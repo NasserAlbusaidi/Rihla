@@ -38,8 +38,11 @@ identified — rollback the active track to the previous build.
 ### T2 — Cloud Functions error rate above 5% (rolling 15m)
 
 Symptom: Firebase Console → Functions → `joinGroupByInviteCode`,
-`cleanupAnonUidArtifacts`, account-deletion cascade, or FCM token cleanup
-shows >5% errors over 15 minutes. Note that `cleanupAnonUidArtifacts`
+`cleanupAnonUidArtifacts`, or `deleteAccount` (the account-deletion cascade)
+shows >5% errors over 15 minutes. (FCM token cleanup is not a standalone
+Function — it runs inside the `deleteAccount` and `cleanupAnonUidArtifacts`
+cascades, so watch their error rates / Sentry rather than a separate panel.)
+Note that `cleanupAnonUidArtifacts`
 runs fire-and-forget after email-link recovery — failures land in Sentry
 breadcrumbs rather than blocking the user, so watch the Sentry channel
 for cleanup-callable errors specifically. **First check:** open

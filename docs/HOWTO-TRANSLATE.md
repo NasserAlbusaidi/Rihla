@@ -332,7 +332,8 @@ the same pattern.
 
 3. **Add a picker option.** Open
    `lib/features/settings/widgets/language_picker_sheet.dart` and add a
-   `RadioListTile<String>` for `'fr'`:
+   `RadioListTile<String>` for `'fr'` as a child of the existing
+   `RadioGroup<String>`'s `Column`:
 
    ```dart
    RadioListTile<String>(
@@ -340,6 +341,11 @@ the same pattern.
      title: Text(context.l10n.languageFrench),
    ),
    ```
+
+   The parent `RadioGroup<String>` already owns `groupValue` (the current
+   `languageCode`) and `onChanged` (which calls `setLanguage`), so the new
+   tile carries only `value:` and `title:` — do **not** add per-tile
+   `groupValue`/`onChanged`.
 
 4. **Add autonym keys** `languageFrench` (and any future-locale
    autonyms) to both `app_en.arb` and `app_ar.arb` (and `app_fr.arb`).
@@ -366,7 +372,7 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 import '../helpers/pump_rihla_app.dart';
 
 testWidgets('welcome screen renders in English', (tester) async {
-  await pumpRihlaApp(tester, child: const WelcomeScreen());
+  await pumpRihlaApp(tester, const WelcomeScreen());
 
   expect(find.text('Welcome to Rihla'), findsOneWidget);
 });
@@ -374,8 +380,8 @@ testWidgets('welcome screen renders in English', (tester) async {
 testWidgets('welcome screen renders in Arabic', (tester) async {
   await pumpRihlaApp(
     tester,
+    const WelcomeScreen(),
     locale: const Locale('ar'),
-    child: const WelcomeScreen(),
   );
 
   expect(find.text('مرحبًا بك في رحلة'), findsOneWidget);
@@ -424,7 +430,7 @@ grep -nE "SnackBar\(content: Text\([\"']|title: const? Text\([\"']" lib/features
 | Arabic word order via multi-span | `Text.rich(TextSpan(text: prefix, children: [...]))` |
 | Nav glyphs in RTL | `DirectionalIcon(...)`, not `Icon(...)` |
 | Directional spacing | `EdgeInsetsDirectional` / `AlignmentDirectional` |
-| Locale flip tested | `pumpRihlaApp(tester, locale: const Locale('ar'), ...)` |
+| Locale flip tested | `pumpRihlaApp(tester, widget, locale: const Locale('ar'))` |
 | Commit | `feat(l10n): ...` with ARB + generated + screen + tests together |
 
 ---

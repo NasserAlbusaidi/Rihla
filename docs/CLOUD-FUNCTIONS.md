@@ -2,7 +2,9 @@
 
 Reference for the three Firebase Cloud Functions Rihla ships. All three
 are HTTPS callables under the v2 API (`firebase-functions/v2/https`),
-deployed to `us-central1`, and enforce App Check.
+deployed to `us-central1`. `joinGroupByInviteCode` and
+`cleanupAnonUidArtifacts` enforce App Check; `deleteAccount` runs with
+App Check in verify-if-present (soft) mode.
 
 | Callable | File | Purpose |
 |----------|------|---------|
@@ -65,8 +67,11 @@ interface JoinGroupByInviteCodeOutput {
 4. **Rate-limit gate.** Checks `joinAttempts/{uid}.lockedUntil`. If a
    lock is active, throws `resource-exhausted` `"Too many attempts. Try again later."`
 5. **Atomic transaction.** Reads `inviteCodes/{code}`, the target
-   group, the caller's member doc, and the events subcollection. If
-   the group exists and the caller isn't yet a member, writes:
+   group, the caller's member doc, and the events subcollection. A join
+   targeting a soft-deleted group (`isDeleted === true`) is rejected with
+   `not-found` `"Group not found."` (#78) and counts as a lookup failure
+   toward the rate limit, mirroring an invalid code. If the group exists
+   and the caller isn't yet a member, writes:
    - `groups/{gid}.memberIds` += `uid` (arrayUnion)
    - `groups/{gid}/members/{uid}` = full member doc
    - For each non-deleted event: add `uid` to `participantIds` and set
@@ -99,7 +104,7 @@ interface JoinGroupByInviteCodeOutput {
 | `invalid-argument` | displayName must be between 1 and 32 characters. | Length out of bounds. |
 | `invalid-argument` | displayName contains invalid characters. | Contains a control character. |
 | `not-found` | Invalid invite code. | Code regex matches but no `inviteCodes/*` doc exists. Counts toward the rate-limit. |
-| `not-found` | Group not found. | Invite doc points to a missing group. |
+| `not-found` | Group not found. | Invite doc points to a missing group, or the target group is soft-deleted (`isDeleted === true`, #78). Counts toward the rate-limit. |
 | `failed-precondition` | Invite code is malformed. | `inviteCodes/{code}.groupId` not a string. |
 | `failed-precondition` | Group membership data is malformed. | `memberIds` not an array of strings. |
 | `failed-precondition` | Event `{id}` participantIds data is malformed. | Event participantIds malformed. |
@@ -153,7 +158,11 @@ interface CleanupAnonUidArtifactsInput {
 
 interface CleanupAnonUidArtifactsOutput {
   groupsProcessed: number;
-  groupsFailed: string[];
+  // step identifiers that failed during the cascade: a group id, or the
+  // literal sentinels 'fcm_tokens' / 'joinAttempts'. While non-empty,
+  // the callable refuses to delete the old anon Auth user or consume the
+  // cleanup intent.
+  cascadeFailed: string[];
   authUserDeleted: boolean;
   fcmTokenDeleted: boolean;
   joinAttemptsDeleted: boolean;
@@ -166,16 +175,16 @@ interface CleanupAnonUidArtifactsOutput {
 2. **Input validation.** `oldUid` must be a non-empty string and must
    differ from the caller's current UID. `cleanupSecret` must be a
    32-128 character one-time secret.
-3. **Cleanup intent precondition.** Before sign-out, the retiring
+3. **Recovery precondition.** Calls `getAuth().getUser(newUid)` and
+   verifies the user is linked to either `'password'` or `'emailLink'`
+   provider. A pure-anon UID may not call this — there is nothing to
+   recover into. `failed-precondition` if missing.
+4. **Cleanup intent precondition.** Before sign-out, the retiring
    anonymous UID writes `recoveryCleanupIntents/{oldUid}` with the
    secret. The callable verifies that document exists, matches the
    supplied secret, and is no older than 15 minutes. Without this, any
    recovered user who can see another anon UID could try to migrate that
    user's artifacts.
-4. **Recovery precondition.** Calls `getAuth().getUser(newUid)` and
-   verifies the user is linked to either `'password'` or `'emailLink'`
-   provider. A pure-anon UID may not call this — there is nothing to
-   recover into. `failed-precondition` if missing.
 5. **Per-group cleanup transaction.** For every group where
    `memberIds` contains `oldUid`:
    - Rewrite `memberIds`: `[..., oldUid, ...]` → `[..., newUid, ...]`
@@ -187,13 +196,17 @@ interface CleanupAnonUidArtifactsOutput {
    - For each event in the group: rewrite `participantIds`,
      `participantNames` keys, and `createdBy` analogously. Same for
      each non-deleted expense's `createdBy`.
-6. **Auth + keyed-artifact cleanup.** Deletes the Auth user for
-   `oldUid` (ignores `auth/user-not-found`). Deletes
-   `fcm_tokens/{oldUid}`, `joinAttempts/{oldUid}`, and the consumed
-   cleanup intent when present.
-7. **Returns** counts and a list of group IDs that failed (other
-   groups continue). Per-group failures land in `groupsFailed` so the
-   client can show a partial-success banner.
+6. **Keyed-artifact + gated Auth cleanup.** Deletes
+   `fcm_tokens/{oldUid}` and `joinAttempts/{oldUid}` (failures are
+   appended to `cascadeFailed`). Then, only if `cascadeFailed` is empty,
+   deletes the old anon Auth user (ignoring `auth/user-not-found`) and
+   deletes the consumed cleanup intent. On any failure the Auth user and
+   intent are preserved so the client can retry within the 15-minute
+   window.
+7. **Returns** counts and a list of step identifiers that failed (other
+   groups continue). Per-step failures land in `cascadeFailed` —
+   group ids, or the sentinels `'fcm_tokens'` / `'joinAttempts'` — so
+   the client can show a partial-success banner.
 
 ### Errors
 
@@ -210,8 +223,10 @@ interface CleanupAnonUidArtifactsOutput {
 | `failed-precondition` | groups/{gid}/events/{eid}.{field} is malformed. | Schema violation in an event doc. |
 
 Per-group transaction failures are logged and added to
-`groupsFailed` — they do **not** abort the rest of the cleanup. The
-callable returns a partial success.
+`cascadeFailed` — they do **not** abort the rest of the cleanup. The
+callable returns a partial success. A non-empty `cascadeFailed` (whether
+a group id or a `'fcm_tokens'` / `'joinAttempts'` sentinel) blocks the
+old anon Auth-user delete and the cleanup-intent consumption.
 
 ### Client wrapper
 
@@ -235,10 +250,11 @@ in Sentry breadcrumbs rather than blocking the user.
 
 ### Operational notes
 
-- `cleanupAnonUidArtifacts` did not exist before v1.2.0+15. Earlier
-  recovered users have residual anon-UID artifacts in their groups.
-  See `docs/PRODUCT.md § Known Limitations` for the partial-cleanup
-  caveat.
+- `cleanupAnonUidArtifacts` was introduced as part of the
+  account-recovery work (#46). Earlier recovered users have residual
+  anon-UID artifacts in their groups. See `docs/PRODUCT.md § Known
+  Limitations` for the partial-cleanup caveat (which pins the
+  introducing build).
 - The callable runs **after** the new UID is established; it cannot be
   rolled back. If per-group cleanup fails, the one-time intent remains
   until it expires so a support retry can use the same secret.
@@ -263,6 +279,10 @@ interface DeleteAccountOutput {
   activityLogsScrubbed: number;
   membersDeleted: number;
   groupsOrphanedAndSoftDeleted: number;
+  // group ids (or the sentinels 'fcm_tokens' / 'joinAttempts') whose
+  // scrub failed. While non-empty, the Auth user is preserved and the
+  // callable throws.
+  cascadeFailed: string[];
   fcmTokenDeleted: boolean;
   joinAttemptsDeleted: boolean;
   authUserDeleted: boolean;
@@ -272,11 +292,18 @@ interface DeleteAccountOutput {
 ### Behaviour
 
 1. **Auth gate.** Throws `unauthenticated` if `request.auth` is null.
-2. **Input gate.** Accepts only `null` or `{}`. Anything else →
+2. **Rate-limit gate.** `enforceDeletionRateLimit` throws
+   `resource-exhausted` `"Too many deletion attempts. Try again later."`
+   if the UID has invoked deletion more than 5 times in a rolling
+   60-minute window (#73). Runs **before** the input gate so malformed
+   and replayed calls are both counted.
+3. **Input gate.** Accepts only `null` or `{}`. Anything else →
    `invalid-argument`.
-3. **Per-group cascade.** For each group where `memberIds` contains
+4. **Per-group cascade.** For each group where `memberIds` contains
    the caller's UID:
-   - Generate a unique 8-char tombstone ID (`deleted-xxxxxxxx`).
+   - Derive a deterministic tombstone ID `deleted-<sha1(uid)[:8]>`
+     (deterministic so a retried cascade reuses the same identity;
+     collisions get a `-2`, `-3`… suffix).
    - Create `groups/{gid}/members/{tombstoneId}` with
      `displayName: "Deleted member"`, `role: 'MEMBER'`,
      `isTombstone: true`. Preserves `joinedAt` from the old member doc.
@@ -296,13 +323,20 @@ interface DeleteAccountOutput {
    - For each activity log: rewrite `actorId`/`actorName`, rewrite
      metadata, and replace the descriptive text with
      `"Deleted member activity"`.
-4. **Top-level cleanup.** Deletes `fcm_tokens/{uid}` and
+5. **Top-level cleanup.** Deletes `fcm_tokens/{uid}` and
    `joinAttempts/{uid}` if they exist.
-5. **Auth user deletion.** Calls `getAuth().deleteUser(uid)`. If the
-   user is already gone (`auth/user-not-found`),
-   `output.authUserDeleted = false`. Any other failure throws
-   `internal` with the cleanup output attached.
-6. **Returns** a tally of everything scrubbed for client display +
+6. **Partial-failure gate.** If any group/fcm/joinAttempts scrub failed,
+   their identifiers land in `cascadeFailed`. While `cascadeFailed` is
+   non-empty the callable **preserves the Auth user** and throws
+   `internal` `"Account deletion did not finish; please try again."`
+   with the partial output in `details` — it does **not** return a
+   partial success. The session stays valid so the client can retry the
+   idempotent cascade.
+7. **Auth user deletion.** Only when `cascadeFailed` is empty, calls
+   `getAuth().deleteUser(uid)`. If the user is already gone
+   (`auth/user-not-found`), `output.authUserDeleted = false`. Any other
+   failure throws `internal` with the cleanup output attached.
+8. **Returns** a tally of everything scrubbed for client display +
    audit logging.
 
 ### Why a tombstone instead of hard delete?
@@ -327,9 +361,11 @@ chunk is internally consistent.
 | Code | Message | When |
 |------|---------|------|
 | `unauthenticated` | Sign-in required. | No `request.auth`. |
+| `resource-exhausted` | Too many deletion attempts. Try again later. | More than 5 deletion invocations per UID in a rolling 60-minute window (#73). Thrown before any cascade. |
 | `invalid-argument` | deleteAccount does not accept input. | Non-empty/non-null `request.data`. |
 | `failed-precondition` | `<path>` is malformed. | `memberIds` schema violation in a group doc. |
 | `not-found` | Group `{id}` no longer exists. | A group disappeared mid-cascade. |
+| `internal` | Account deletion did not finish; please try again. | One or more group/fcm/joinAttempts scrubs failed; Auth user preserved, partial output in `details`, client must retry. |
 | `internal` | Account data was scrubbed, but the Auth user could not be deleted. | Auth deletion failed for a non-`user-not-found` reason. `details` payload carries the partial output. |
 
 ### Client wrapper
@@ -349,14 +385,18 @@ routes to the post-deletion empty state.
 
 ## App Check
 
-All three callables ship with `{ enforceAppCheck: true }`. The client
-must hold a valid App Check token (Play Integrity on Android, App
-Attest / DeviceCheck on iOS) or the callable returns
-`unauthenticated` before any logic runs.
+`joinGroupByInviteCode` and `cleanupAnonUidArtifacts` ship with
+`{ enforceAppCheck: true }`. The client must hold a valid App Check
+token (Play Integrity on Android, App Attest / DeviceCheck on iOS) or
+the callable returns `unauthenticated` before any logic runs.
+`deleteAccount` ships with `{ enforceAppCheck: false }` (#73) so a
+self-scoped account deletion still works on devices that fail Play
+Integrity / App Attest; a per-UID deletion rate limit (5/hr) is the
+compensating control.
 
 Debug builds and the emulator suite bypass enforcement when
 `FirebaseConfig.initialize(useDebugAppCheck: true)` is called — see
-`lib/main.dart:48-50`. The release pipeline gates on the
+`lib/main.dart:56`. The release pipeline gates on the
 `RIHLA_APP_CHECK_READY` repo variable and the commit-bound
 `RIHLA_RELEASE_APPROVED_SHA` variable to prevent shipping a build that
 would 100% fail App Check or reusing stale release approvals on a newer
@@ -378,7 +418,7 @@ flutter run --dart-define-from-file=config.json
 ```
 
 The emulator suite binds Functions to port 5001. The Flutter side
-(`lib/main.dart:56-67`) auto-detects Android emulators (uses
+(`lib/main.dart:62-71`) auto-detects Android emulators (uses
 `10.0.2.2`) vs. iOS simulators / desktop (uses `localhost`).
 
 ### Run callable tests
@@ -408,15 +448,15 @@ matches the current commit, and the App Check repo variables agree.
 
 | File | Lines | Notes |
 |------|-------|-------|
-| `functions/src/index.ts` | 9 | Region + exports |
-| `functions/src/admin.ts` | 3 | `initializeApp()` side-effect |
-| `functions/src/callables/joinGroupByInviteCode.ts` | 313 | Invite-code redemption + event fan-out |
-| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 271 | Anon→recovered UID migration |
-| `functions/src/callables/deleteAccount.ts` | 551 | Account deletion cascade + tombstones |
+| `functions/src/index.ts` | 8 | Region + exports |
+| `functions/src/admin.ts` | 5 | `initializeApp()` side-effect |
+| `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
+| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 374 | Anon→recovered UID migration |
+| `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |
 | `functions/package.json` | — | Node 20 / TypeScript / Jest |
 | `functions/jest.config.js` | — | Test config |
-| `lib/core/services/firebase_functions_service.dart` | 20 | Flutter client wrapper |
-| `security/firestore.rules` | 725 | Companion rules; see [SECURITY-RULES.md](./SECURITY-RULES.md) |
+| `lib/core/services/firebase_functions_service.dart` | 24 | Flutter client wrapper |
+| `security/firestore.rules` | 755 | Companion rules; see [SECURITY-RULES.md](./SECURITY-RULES.md) |
 
 ---
 

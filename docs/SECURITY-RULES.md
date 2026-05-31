@@ -19,6 +19,8 @@ explicitly allowed is refused.
 | `fcm_tokens/{userId}` | owner only | owner only | owner only | owner only |
 | `inviteCodes/{code}` | ❌ (callable only) | group creator, with companion group write | ❌ (immutable) | group creator, with companion group delete |
 | `joinAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
+| `deletionAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
+| `recoveryCleanupIntents/{oldUid}` | ❌ (callable only) | retiring UID, secret 32-128 chars | retiring UID (same shape) | ❌ (callable only) |
 | `groups/{gid}` | members | self, valid initial doc | creator metadata / member-list refresh / self-leave / creator-remove | creator |
 | `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | self-leave or creator-remove |
 | `groups/{gid}/activity/{aid}` | members | members (actor must be self) | ❌ | ❌ |
@@ -171,6 +173,45 @@ match /joinAttempts/{userId} {
 Read and written only by the `joinGroupByInviteCode` callable to
 enforce the 5-failures-per-hour lockout. Clients never see lockout
 state directly; they get back `resource-exhausted` from the callable.
+
+### 4.3a `deletionAttempts/{userId}`
+
+Fully sealed to clients:
+
+```
+match /deletionAttempts/{userId} {
+  allow read, write: if false;
+}
+```
+
+Written only by the `deleteAccount` callable (via the Admin SDK, which
+bypasses these rules) to enforce a per-UID deletion-invocation rate
+limit (#73). Clients can never read or write these counters. A Firestore
+TTL on `expiresAt` reaps the rows.
+
+### 4.3b `recoveryCleanupIntents/{oldUid}`
+
+Not sealed — the retiring anonymous UID may write a one-time bearer
+secret (`validCleanupIntent`):
+
+```
+match /recoveryCleanupIntents/{oldUid} {
+  allow create, update: if validCleanupIntent();
+  allow get, list, delete: if false;
+}
+```
+
+`validCleanupIntent` requires:
+
+- Caller is signed in and `request.auth.uid == {oldUid}` (only the
+  retiring UID can write its own intent)
+- Exact key set `{secret, createdAt}`
+- `secret` is a string of length 32–128
+- `createdAt` is a timestamp
+
+`get`, `list`, and `delete` are denied to clients. The intent is read
+and consumed server-side by the `cleanupAnonUidArtifacts` callable,
+which performs the UID rewrite after email-link recovery.
 
 ### 4.4 `groups/{gid}`
 
@@ -411,9 +452,13 @@ This prevents accidentally exposing future child collections.
 
 ### 4.7 `groups/{gid}/events/{eid}/settlements/{sid}` (B3 override)
 
-Even though the polymorphic `{module}` rule above already disallows
-updates and deletes for settlements (no `validSettlementUpdate`
-exists), the rules add an explicit match to make B3 visible:
+The polymorphic `{module}` create rule above never references a
+settlement-update validator, and this explicit `allow update/delete: if
+false` enforces B3. Note: `validEventSettlementUpdate` /
+`validGroupSettlementUpdate` are defined in the rules file but are
+intentionally left unwired (dead) — B3 keeps settlements append-only, so
+no `allow update` clause ever calls them. The rules add this explicit
+match to make B3 visible:
 
 ```
 match /settlements/{settlementId} {

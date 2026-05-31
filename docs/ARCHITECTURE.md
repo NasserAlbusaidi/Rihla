@@ -35,7 +35,7 @@ Rihla ("Journey") is an offline-first Flutter mobile app for group coordination 
 
 - **Firestore is the only cache** — Firestore with `persistenceEnabled: true` and `cacheSizeBytes: CACHE_SIZE_UNLIMITED` is the sole local cache. Its offline persistence serves offline reads from previously-fetched data and replays queued writes automatically when connectivity returns. There is no hand-rolled local cache and no manual sync queue. `BalanceCalculator` consumes the live Firestore streams directly.
 - **No login screen** — Firebase anonymous auth is established silently on first launch via `FirebaseConfig.ensureAnonymousSession()`. `_AuthGate` (`main.dart`) retries on `internal-error` for corrupted restored sessions. All Firestore security rules work against the anonymous UID.
-- **Opt-in email-link recovery** — `AuthRecoveryService` orchestrates link/send/recover; `cleanupAnonUidArtifacts` scrubs server-side leftovers from the abandoned anon UID after verifying a one-time cleanup intent created by that UID. The old `UidChangeListener` that wiped the SQLite cache on UID swap was removed with the SQLite cache (#50). Cross-UID isolation of the Firestore SDK's own on-disk cache is a separate, not-yet-implemented follow-up (the UID-isolation barrier — issue #45 / PR 2); it is not yet enforced by any listener.
+- **Opt-in email-link recovery** — `AuthRecoveryService` orchestrates link/send/recover; `cleanupAnonUidArtifacts` scrubs server-side leftovers from the abandoned anon UID after verifying a one-time cleanup intent created by that UID. The old `UidChangeListener` that wiped the SQLite cache on UID swap was removed with the SQLite cache (#50). Cross-UID isolation of the Firestore SDK on-disk cache is LIVE on main (#68): a cold-start `CacheUidBarrier` + `FirestoreCacheGate` (`lib/core/services/`) plus an in-session isolation overlay clear the prior anon UID's cache on a UID swap.
 - **Shared Firestore base class** — Services extend `FirestoreRepository` (which provides `eventSubcollection(groupId, eventId, module)` and a `withFirestore` test-injection constructor). Do not add new global repositories — extend the base class or an existing feature service.
 - **Feature-first code organisation** — Each feature is self-contained. No shared service layer.
 - **Immutable models** — All domain models (`Group`, `Event`, `Expense`, etc.) are immutable value types with `copyWith`.
@@ -64,7 +64,7 @@ lib/
 │   ├── groups/                   # Persistent groups (create, join, detail)
 │   ├── home/                     # Home dashboard + BottomNavShell
 │   ├── ledger/                   # Expenses, settlements, balance calculator
-│   ├── onboarding/               # 3-page first-launch flow (gated by AppSettings)
+│   ├── onboarding/               # Archived/unreachable OnboardingScreen — not in the route tree (deletion tracked #56); not a live first-launch flow
 │   ├── profile/                  # ProfileScreen, link-email flow
 │   ├── settings/                 # Theme, notifications, device name
 │   └── trip/                     # Legacy compatibility models/providers (do not extend)
@@ -125,7 +125,6 @@ final expenseLoadingProvider = StateProvider<bool>((ref) => false);
 | `eventExpensesProvider` | `StreamProvider.family<List<Expense>, EventRef>` | Event expenses (Firestore stream) |
 | `eventSettlementsProvider` | `StreamProvider.family<List<Settlement>, EventRef>` | Event settlements (Firestore stream) |
 | `eventBalancesProvider` | `Provider.family` | Computed balances via `BalanceCalculator` |
-| `eventUnifiedLedgerProvider` | `Provider.family<AsyncValue<List<Transaction>>, EventRef>` | Merged expenses + settlements |
 | `sharedPreferencesProvider` | `Provider<SharedPreferences>` | Injected via `ProviderScope.overrides` in `main()` |
 | `appBootstrapProvider` | `Provider<void>` | Push notification lifecycle sync |
 
@@ -182,7 +181,7 @@ Firestore's offline persistence (`persistenceEnabled: true`, `cacheSizeBytes: CA
 
 ### Connectivity Check
 
-`ConnectivityNotifier` pings Firestore every 60 seconds with `Source.server` against the `inviteCodes` collection (publicly readable). State transitions between `online`, `offline`, and `syncing`. The `OfflineBanner` widget subscribes to `connectivityProvider`.
+`ConnectivityNotifier` pings Firestore every 60 seconds with `Source.server` against the current user's `fcm_tokens/{uid}` document. State transitions between `online`, `offline`, and `syncing`. The `OfflineBanner` widget subscribes to `connectivityProvider`.
 
 ---
 
@@ -193,8 +192,7 @@ Routing is handled entirely by **GoRouter 13.x** with declarative routes. No `Na
 ### Route Tree
 
 ```
-/ (splash — auto-redirect to /home if onboarded, else /onboarding)
-├── /onboarding            (FadeTransition — 3-page first-launch flow)
+/ (splash — auto-redirect to /home)
 ├── /home                  (FadeTransition — BottomNavShell tab 0)
 ├── /profile               (FadeTransition — BottomNavShell tab 2)
 │   └── /link-email        (LinkEmailScreen)
@@ -205,7 +203,7 @@ Routing is handled entirely by **GoRouter 13.x** with declarative routes. No `Na
 ├── /create-group          (slide-up)
 ├── /join-group            (slide-up)
 ├── /join/:code            (deep-link entry into JoinGroupScreen)
-└── /group/:gid            (SharedAxisTransition — GroupDetailScreen)
+└── /group/:gid            (fade + directional slide — GroupDetailScreen)
     ├── /settings          (GroupSettingsScreen)
     ├── /settle-up         (GroupSettleUpScreen, ?memberId query param)
     ├── /activity          (GroupActivityScreen)
@@ -224,13 +222,13 @@ Routing is handled entirely by **GoRouter 13.x** with declarative routes. No `Na
 
 | Route | Transition |
 |-------|-----------|
-| `/onboarding`, `/home`, `/profile`, `/activity` | `FadeTransition` |
+| `/home`, `/profile`, `/activity` | `FadeTransition` |
 | `/create-group`, `/join-group` | Slide-up (`Offset(0,1)` → zero) |
-| All other module routes | Material 3 `SharedAxisTransition` (horizontal) via `_sharedAxisTransition` builder |
+| All other module routes | Hand-rolled fade + directional slide via the `_sharedAxisTransition` builder (no `animations` package) |
 
 ### Splash Redirect
 
-The splash route redirects to `/onboarding` if `onboardingComplete` is false in `AppSettings`, otherwise to `/home`. `_AuthGate` ensures a Firebase anonymous session (with `internal-error` retry for corrupted restored sessions) before `SafarApp` renders.
+The splash route redirects unconditionally to `/home`; `appRouteRedirect` does not gate on `onboardingComplete`. `_AuthGate` ensures a Firebase anonymous session (with `internal-error` retry for corrupted restored sessions) before `SafarApp` renders.
 
 ### Direct-entry back guards
 
@@ -254,7 +252,7 @@ class AppRoutes {
 
 There is no hand-rolled local cache. Firestore's own offline persistence is the only cache — it serves offline reads from previously-fetched data and replays queued writes automatically. The former `LocalDatabase` (`safar_cache.db`) and its `lib/core/services/cache/` repositories were removed in issue #50; `BalanceCalculator` now reads the live Firestore streams directly.
 
-> **Cross-UID cache isolation (pending).** The old `UidChangeListener` wiped the SQLite cache on UID swap to keep one device's recovered account from reading the abandoned anon UID's cached data. It was removed with the SQLite cache (#50). Isolating the Firestore SDK's own on-disk cache across a UID swap is a separate, not-yet-implemented follow-up (the UID-isolation barrier — issue #45 / PR 2). The server-side `cleanupAnonUidArtifacts` callable (v1.2.0+15) still scrubs FCM tokens, `joinAttempts`, and other anon-UID-keyed docs in Firestore.
+> **Cross-UID cache isolation (live).** The old `UidChangeListener` wiped the SQLite cache on UID swap to keep one device's recovered account from reading the abandoned anon UID's cached data. It was removed with the SQLite cache (#50). Cross-UID isolation of the Firestore SDK on-disk cache is LIVE on main (#68): a cold-start `CacheUidBarrier` + `FirestoreCacheGate` (`lib/core/services/`) plus an in-session isolation overlay clear the prior anon UID's cache on a UID swap. The server-side `cleanupAnonUidArtifacts` callable (v1.2.0+15) still scrubs FCM tokens, `joinAttempts`, and other anon-UID-keyed docs in Firestore.
 
 ### `ConnectivityNotifier`
 
@@ -285,7 +283,7 @@ Three `ThemeExtension` classes are registered in `AppTheme.lightTheme.extensions
 
 | Class | File | Contents |
 |-------|------|----------|
-| `AppColorTokens` | `lib/core/theme/tokens/color_tokens.dart` | 38 typed `Color` fields + 2 computed `LinearGradient` getters |
+| `AppColorTokens` | `lib/core/theme/tokens/color_tokens.dart` | 54 typed `Color` fields + 2 computed `LinearGradient` getters |
 | `AppSpacingTokens` | `lib/core/theme/tokens/spacing_tokens.dart` | 7 spacing values (4–32dp), 3 border radii, button height |
 | `AppShadowTokens` | `lib/core/theme/tokens/shadow_tokens.dart` | 3 elevation levels (`flat`, `raised`, `floating`) |
 
@@ -315,26 +313,28 @@ Saffron travel-journal direction (v2.0). Semantic groupings: `primary` → saffr
 
 | Token | Family | Use |
 |-------|--------|-----|
-| `sans` | **Geist** (google_fonts) | Default UI text, labels, buttons |
+| `sans` | **Geist** | Default UI text, labels, buttons |
 | `mono` | **Geist Mono** (tabular figures, slashed zero) | All money amounts, dates, codes |
 | display italic | **Instrument Serif** | Display + section headers |
+
+Geist / Geist Mono / Instrument Serif are bundled as native `assets/fonts/` TTFs (#103), not fetched from the `google_fonts` CDN at runtime.
 
 ### Shared Widgets (`lib/shared/widgets/`)
 
 | Widget | Purpose |
 |--------|---------|
 | `ModuleHeader` | Dark gradient header used across all module screens |
-| `AppTabBar` | Tab bar with teal gradient pill indicator |
+| `RAmount` | Money display (mono figures, currency-aware) |
+| `RAvatar` | People avatars (initials fallback from display name) |
+| `DirectionalIcon` | RTL-aware navigation arrows / row chevrons |
 | `OfflineBanner` | Amber connectivity indicator, watches `connectivityProvider` |
 | `EmptyStateView` | Consistent empty states with optional CTA |
-| `SearchFilterBar` | Expandable search with filter chip row |
-| `SmartModuleCard` | Module cards on `EventCommandCenter` |
+| `SectionHeader` | Section heading row |
+| `CoverArt` | Group/event cover artwork |
+| `WordmarkLogo` | Rihla wordmark |
 | `LoadingButton` | Button with loading spinner state |
 | `SkeletonLoader` / `SkeletonPrimitives` | Shimmer skeleton loading states |
-| `AnimatedCurrencyText` | Currency display with value-change animation |
 | `GrainOverlay` | Texture layer (grain.png asset) |
-| `InitialsCircle` | Avatar fallback from display name initials |
-| `DotStepIndicator` | Step/page indicator for multi-step flows |
 
 ---
 
@@ -358,14 +358,14 @@ Primary currency is **OMR** (Omani Rial, 3 decimal places).
 
 ### `BalanceCalculator`
 
-Defined in `lib/features/ledger/providers/expense_provider.dart` (line 163). Pure function — no side effects, no providers. The remainder from rounding goes to the **alphabetically-last recipient** so `sum(shares) == amount` exactly. Do not change this without updating `test/unit/balance_calculations_test.dart`.
+Defined in `lib/features/ledger/providers/expense_provider.dart` (line 121). Pure function — no side effects, no providers. The remainder from rounding goes to the **alphabetically-last recipient** so `sum(shares) == amount` exactly. Do not change this without updating `test/unit/balance_calculations_test.dart`.
 
 **`calculateBalances()`** processes four expense scopes:
 
 | Scope | Split logic |
 |-------|-------------|
 | `global` | Split evenly among all event participants |
-| `subGroup` | Split among members of the specified `SubGroup` |
+| `subGroup` | Legacy scope (logistics removed in Phase 39) — back-compat fallback that splits evenly among all event participants, same as `global` |
 | `personal` | No split — payer is solely responsible |
 | `custom` | Split among a specified subset of `customSplitParticipants` |
 
@@ -411,20 +411,25 @@ Payment processing is out of scope for the shippable v1 surface. Ledger settleme
 | `firebase_app_check` | `^0.4.3` | App Check tokens for callable/backend protection |
 | `firebase_messaging` | `^16.1.3` | Push notifications (FCM) |
 | `firebase_core` | `^4.6.0` | Firebase SDK initialisation |
+| `cloud_functions` | `^6.2.0` | Callable Cloud Functions (join group, recovery, deletion) |
 | `app_links` | `^7.0.0` | Deep-link and email-link handling |
 | `decimal` | `^3.2.4` | Precise money arithmetic — no floating point |
-| `google_fonts` | `^8.0.2` | Geist / Geist Mono / Instrument Serif typefaces |
+| `google_fonts` | `^8.0.2` | Font config helper (runtime fetch disabled; brand faces are bundled assets, #103) |
 | `flutter_animate` | `^4.5.0` | Micro-interaction animations |
-| `animations` | `^2.0.0` | Material 3 page transitions |
 | `shimmer` | `^3.0.0` | Skeleton loading shimmer effect |
+| `skeletonizer` | `^2.1.3` | Skeleton loading scaffolds |
 | `sentry_flutter` | `^9.0.0` | Error monitoring and performance tracing |
 | `shared_preferences` | `^2.5.4` | Settings persistence (device name, theme, etc.) |
 | `qr_flutter` | `^4.1.0` | Invite-code QR rendering |
 | `url_launcher` | `^6.3.2` | External links and settings/help actions |
-| `pdf` / `csv` | `^3.11.1` / `^6.0.0` | Ledger export |
 | `share_plus` | `^10.1.4` | Native share sheet |
 | `timeago` | `^3.6.1` | Relative timestamps |
 | `uuid` | `^4.3.3` | UUID generation for Firestore document IDs |
 | `intl` | `^0.20.2` | Date/number formatting, localisation |
+| `iconsax` | `^0.0.8` | Icon set |
+| `app_settings` | `^7.0.0` | Open OS settings (notification permissions) |
+| `package_info_plus` | `^8.2.1` | App version/build metadata |
+| `haptic_feedback` | `^0.6.4+3` | Haptic feedback |
 | `mocktail` | `^1.0.4` | Test mocking |
 | `fake_cloud_firestore` | `^4.1.0+1` | Firestore test injection |
+| `firebase_auth_mocks` | `^0.15.1` | Firebase Auth test injection |
