@@ -147,4 +147,57 @@ void main() {
     );
     expect(find.byKey(const Key('deleteAccount.home')), findsNothing);
   });
+
+  // #77: a partial result re-prompts with a durable retry dialog (not just a
+  // snack). Retrying re-invokes the convergent deletion; success then navigates.
+  testWidgets('partial deletion re-prompts; retry re-invokes then succeeds', (
+    tester,
+  ) async {
+    final results = <DeletionResult>[DeletionResult.partial, DeletionResult.ok];
+    var call = 0;
+    when(
+      () => service.deleteAccount(),
+    ).thenAnswer((_) async => results[call++]);
+
+    await tester.pumpWidget(await _wrap(service: service, email: null));
+    await tester.pumpAndSettle();
+    await _openDialog(tester);
+
+    await tester.tap(find.byKey(const Key('deleteAccount.confirm')));
+    await tester.pumpAndSettle();
+
+    // First call → partial → retry dialog up, not navigated home.
+    expect(find.byKey(const Key('deleteAccount.partialRetry')), findsOneWidget);
+    expect(find.byKey(const Key('deleteAccount.home')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('deleteAccount.partialRetry')));
+    await tester.pumpAndSettle();
+
+    // Second call → ok → success snack + home.
+    verify(() => service.deleteAccount()).called(2);
+    expect(find.text('Account deleted.'), findsOneWidget);
+    expect(find.byKey(const Key('deleteAccount.home')), findsOneWidget);
+  });
+
+  testWidgets('partial deletion: dismissing the retry dialog stays put', (
+    tester,
+  ) async {
+    when(
+      () => service.deleteAccount(),
+    ).thenAnswer((_) async => DeletionResult.partial);
+
+    await tester.pumpWidget(await _wrap(service: service, email: null));
+    await tester.pumpAndSettle();
+    await _openDialog(tester);
+
+    await tester.tap(find.byKey(const Key('deleteAccount.confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('deleteAccount.partialRetry')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('deleteAccount.partialDismiss')));
+    await tester.pumpAndSettle();
+
+    verify(() => service.deleteAccount()).called(1);
+    expect(find.byKey(const Key('deleteAccount.home')), findsNothing);
+  });
 }
