@@ -168,6 +168,8 @@ List<Override> _loadedOverrides() => [
   crossGroupBalanceProvider.overrideWith(
     (ref) => AsyncValue.data((
       net: Decimal.parse('-5.500'),
+      owedToUser: Decimal.zero,
+      userOwes: Decimal.zero,
       groupCount: 2,
       isLoading: false,
     )),
@@ -268,6 +270,8 @@ void main() {
       crossGroupBalanceProvider.overrideWith(
         (ref) => AsyncValue.data((
           net: Decimal.zero,
+          owedToUser: Decimal.zero,
+          userOwes: Decimal.zero,
           groupCount: 0,
           isLoading: false,
         )),
@@ -323,6 +327,8 @@ void main() {
       crossGroupBalanceProvider.overrideWith(
         (ref) => AsyncValue.data((
           net: Decimal.zero,
+          owedToUser: Decimal.zero,
+          userOwes: Decimal.zero,
           groupCount: 0,
           isLoading: false,
         )),
@@ -372,6 +378,8 @@ void main() {
       crossGroupBalanceProvider.overrideWith(
         (ref) => AsyncValue.data((
           net: Decimal.zero,
+          owedToUser: Decimal.zero,
+          userOwes: Decimal.zero,
           groupCount: 1,
           isLoading: false,
         )),
@@ -450,6 +458,8 @@ void main() {
               crossGroupBalanceProvider.overrideWith(
                 (ref) => AsyncValue.data((
                   net: Decimal.parse('-5.500'),
+                  owedToUser: Decimal.zero,
+                  userOwes: Decimal.zero,
                   groupCount: 1,
                   isLoading: false,
                 )),
@@ -489,6 +499,8 @@ void main() {
             crossGroupBalanceProvider.overrideWith(
               (ref) => AsyncValue.data((
                 net: Decimal.zero,
+                owedToUser: Decimal.zero,
+                userOwes: Decimal.zero,
                 groupCount: 1,
                 isLoading: false,
               )),
@@ -549,6 +561,8 @@ void main() {
       crossGroupBalanceProvider.overrideWith(
         (ref) => AsyncValue.data((
           net: Decimal.zero,
+          owedToUser: Decimal.zero,
+          userOwes: Decimal.zero,
           groupCount: 1,
           isLoading: false,
         )),

@@ -259,4 +259,122 @@ void main() {
       },
     );
   });
+
+  // ---------------------------------------------------------------------------
+  // crossGroupBalanceProvider — owed/owes split (#110)
+  //
+  // The split is folded into the same fan-out that sums `net`. Invariant:
+  // net == owedToUser - userOwes (exact partition of each group's netBalance).
+  // ---------------------------------------------------------------------------
+  group('crossGroupBalanceProvider owed/owes split (#110)', () {
+    const uid = 'uid-user';
+
+    ProviderContainer containerFor(Map<String, AsyncValue<GroupBalances>> gb) {
+      final groups = gb.keys
+          .map((id) => _makeGroup(id: id, name: 'Group $id'))
+          .toList();
+      return ProviderContainer(
+        overrides: [
+          userGroupsProvider.overrideWith((_) => Stream.value(groups)),
+          currentUserIdProvider.overrideWith((_) => uid),
+          for (final entry in gb.entries)
+            groupBalancesProvider(entry.key).overrideWith((_) => entry.value),
+        ],
+      );
+    }
+
+    AsyncValue<GroupBalances> dataOf(Decimal net) => AsyncValue.data(
+      _makeGroupBalances(
+        balances: [_makeUserBalance(participantId: uid, netBalance: net)],
+      ),
+    );
+
+    test('all-positive groups => owedToUser sums, userOwes zero', () async {
+      final container = containerFor({
+        'g1': dataOf(Decimal.parse('10.000')),
+        'g2': dataOf(Decimal.parse('20.000')),
+      });
+      addTearDown(container.dispose);
+      container.listen(
+        crossGroupBalanceProvider,
+        (_, _) {},
+        fireImmediately: true,
+      );
+      await _pump(container);
+
+      final data = container.read(crossGroupBalanceProvider).valueOrNull!;
+      expect(data.owedToUser, equals(Decimal.parse('30.000')));
+      expect(data.userOwes, equals(Decimal.zero));
+      expect(data.net, equals(data.owedToUser - data.userOwes));
+    });
+
+    test(
+      'all-negative groups => userOwes sums |net|, owedToUser zero',
+      () async {
+        final container = containerFor({
+          'g1': dataOf(Decimal.parse('-10.000')),
+          'g2': dataOf(Decimal.parse('-5.000')),
+        });
+        addTearDown(container.dispose);
+        container.listen(
+          crossGroupBalanceProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
+        await _pump(container);
+
+        final data = container.read(crossGroupBalanceProvider).valueOrNull!;
+        expect(data.owedToUser, equals(Decimal.zero));
+        expect(data.userOwes, equals(Decimal.parse('15.000')));
+        expect(data.net, equals(data.owedToUser - data.userOwes));
+      },
+    );
+
+    test('mixed groups => split partitions net (invariant holds)', () async {
+      final container = containerFor({
+        'g1': dataOf(Decimal.parse('15.000')),
+        'g2': dataOf(Decimal.parse('-5.000')),
+      });
+      addTearDown(container.dispose);
+      container.listen(
+        crossGroupBalanceProvider,
+        (_, _) {},
+        fireImmediately: true,
+      );
+      await _pump(container);
+
+      final data = container.read(crossGroupBalanceProvider).valueOrNull!;
+      expect(data.owedToUser, equals(Decimal.parse('15.000')));
+      expect(data.userOwes, equals(Decimal.parse('5.000')));
+      expect(data.net, equals(Decimal.parse('10.000')));
+      expect(data.net, equals(data.owedToUser - data.userOwes));
+    });
+
+    test(
+      'partial-loading with net==0 still reports the accumulated split',
+      () async {
+        // g1 +5, g2 -5 (net cancels to 0), g3 still loading. The
+        // `anyLoading && net == 0` branch must return owed=5/owes=5, NOT zeros
+        // — otherwise the split bar collapses to the empty/gray state.
+        final container = containerFor({
+          'g1': dataOf(Decimal.parse('5.000')),
+          'g2': dataOf(Decimal.parse('-5.000')),
+          'g3': const AsyncValue.loading(),
+        });
+        addTearDown(container.dispose);
+        container.listen(
+          crossGroupBalanceProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
+        await _pump(container);
+
+        final data = container.read(crossGroupBalanceProvider).valueOrNull!;
+        expect(data.net, equals(Decimal.zero));
+        expect(data.isLoading, isTrue);
+        expect(data.owedToUser, equals(Decimal.parse('5.000')));
+        expect(data.userOwes, equals(Decimal.parse('5.000')));
+      },
+    );
+  });
 }

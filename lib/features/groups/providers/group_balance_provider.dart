@@ -445,7 +445,14 @@ final currentUserIdProvider = Provider<String?>((ref) {
 /// - [groupCount]: Total number of groups the user belongs to.
 /// - [isLoading]: True if some group balance data is still loading (UI can
 ///   show partial data with a loading indicator).
-typedef CrossGroupBalance = ({Decimal net, int groupCount, bool isLoading});
+typedef CrossGroupBalance =
+    ({
+      Decimal net,
+      Decimal owedToUser,
+      Decimal userOwes,
+      int groupCount,
+      bool isLoading,
+    });
 
 // ---------------------------------------------------------------------------
 // crossGroupBalanceProvider
@@ -473,6 +480,8 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
   if (uid == null) {
     return AsyncValue.data((
       net: Decimal.zero,
+      owedToUser: Decimal.zero,
+      userOwes: Decimal.zero,
       groupCount: 0,
       isLoading: false,
     ));
@@ -489,12 +498,16 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
   if (groups.isEmpty) {
     return AsyncValue.data((
       net: Decimal.zero,
+      owedToUser: Decimal.zero,
+      userOwes: Decimal.zero,
       groupCount: 0,
       isLoading: false,
     ));
   }
 
   var net = Decimal.zero;
+  var owedToUser = Decimal.zero;
+  var userOwes = Decimal.zero;
   var anyLoading = false;
 
   for (final group in groups) {
@@ -508,18 +521,28 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
     final userBalance = balances.balances
         .where((b) => b.participantId == uid)
         .firstOrNull;
-    net = net + (userBalance?.netBalance ?? Decimal.zero);
+    final groupNet = userBalance?.netBalance ?? Decimal.zero;
+    net = net + groupNet;
+    if (groupNet > Decimal.zero) {
+      owedToUser += groupNet;
+    } else if (groupNet < Decimal.zero) {
+      userOwes += groupNet.abs();
+    }
   }
 
   if (anyLoading && net == Decimal.zero) {
     return AsyncValue.data((
       net: Decimal.zero,
+      owedToUser: owedToUser,
+      userOwes: userOwes,
       groupCount: groups.length,
       isLoading: true,
     ));
   }
   return AsyncValue.data((
     net: net,
+    owedToUser: owedToUser,
+    userOwes: userOwes,
     groupCount: groups.length,
     isLoading: anyLoading,
   ));

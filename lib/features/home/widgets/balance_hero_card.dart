@@ -8,7 +8,6 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
-import '../../groups/providers/group_provider.dart';
 import '../keys/home_keys.dart';
 
 /// Cross-group balance hero, saffron-direction styling.
@@ -33,33 +32,17 @@ class BalanceHeroCard extends ConsumerWidget {
   }
 }
 
-class _LoadedCard extends ConsumerWidget {
+class _LoadedCard extends StatelessWidget {
   const _LoadedCard({required this.balance});
   final CrossGroupBalance balance;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colors = context.colors;
-    final uid = ref.watch(currentUserIdProvider);
-    final groupsAsync = ref.watch(userGroupsProvider);
-    final groups = groupsAsync.valueOrNull ?? const [];
-
-    // Walk groups to derive (owedToUser, userOwes) totals for the split bar.
-    var owedToUser = Decimal.zero;
-    var userOwes = Decimal.zero;
-    for (final group in groups) {
-      final gb = ref.watch(groupBalancesProvider(group.id)).valueOrNull;
-      if (gb == null || uid == null) continue;
-      final entry = gb.balances
-          .where((b) => b.participantId == uid)
-          .firstOrNull;
-      final net = entry?.netBalance ?? Decimal.zero;
-      if (net > Decimal.zero) {
-        owedToUser += net;
-      } else if (net < Decimal.zero) {
-        userOwes += net.abs();
-      }
-    }
+    // owed/owes split is folded into crossGroupBalanceProvider's existing
+    // fan-out (#110) — no second walk over groupBalancesProvider here.
+    final owedToUser = balance.owedToUser;
+    final userOwes = balance.userOwes;
 
     final net = balance.net;
     final isPositive = net > Decimal.zero;
