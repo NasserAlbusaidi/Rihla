@@ -14,9 +14,9 @@ import '../models/group_model.dart';
 
 /// T3.J — group invite QR sheet.
 ///
-/// Encodes a Firebase-hosted universal link until the custom `rihla.app`
-/// domain is wired to Hosting. Falls back gracefully to the
-/// 6-char code displayed in monospace for manual entry.
+/// Encodes a `rihla-safar.web.app` universal link (the canonical Hosting
+/// domain). Falls back gracefully to the 6-char code displayed in monospace
+/// for manual entry.
 Future<void> showGroupInviteQrSheet(
   BuildContext context, {
   required Group group,

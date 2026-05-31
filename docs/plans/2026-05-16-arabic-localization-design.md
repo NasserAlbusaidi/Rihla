@@ -190,7 +190,7 @@ Add to `docs/PRODUCTION-READINESS.md`:
 - **Onboarding 3-page flow**: English-only. Acceptable — runs before user can toggle.
 - **Recover / LinkEmail flows**: English-only. **Known inconsistency** for Arabic-toggled users who hit account recovery. Flag prominently; address in follow-up if it trips real users.
 - **Play Store listing**: English-only. No Arabic title, description, or screenshots.
-- **Legal pages** (`rihla.app/privacy`, `/terms`, `/delete-data`): English-only web pages.
+- **Legal pages** (`rihla-safar.web.app/privacy`, `/terms`, `/delete-data`): English-only web pages.
 - **Eastern Arabic numerals** (`١٢٣٤`): not in scope.
 - **Hijri calendar**: not in scope.
 

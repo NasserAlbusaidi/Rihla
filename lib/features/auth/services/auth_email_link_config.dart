@@ -21,7 +21,7 @@ class AuthEmailLinkConfig {
     'RIHLA_AUTH_LINK_DOMAIN',
     defaultValue: 'rihla-safar.firebaseapp.com',
   );
-  // Reserved for a future real custom Hosting domain (e.g. `auth.rihla.app`).
+  // Reserved for a future real custom Hosting domain (e.g. `auth.example.com`).
   // Setting it via --dart-define switches both the continue URL and the
   // `linkDomain` field below to that domain.
   static const customFirebaseHostingDomain = String.fromEnvironment(

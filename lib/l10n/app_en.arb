@@ -285,7 +285,7 @@
     "placeholders": {
       "email": {
         "type": "String",
-        "example": "feedback@rihla.app"
+        "example": "feedback@example.com"
       }
     }
   },
