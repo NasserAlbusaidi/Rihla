@@ -7,6 +7,10 @@ abstract final class HomeKeys {
   // Header
   static const yourGroupsHeader = Key('home_your_groups_header');
 
+  // Spacing seam: gap below the GROUPS header so the new-group CTA and the
+  // first row's balance don't read as one unit in RTL (#161).
+  static const groupsHeaderGap = Key('home_groups_header_gap');
+
   // Actions
   static const createGroupFab = Key('home_create_group_fab');
   static const profileAvatar = Key('home_profile_avatar');
