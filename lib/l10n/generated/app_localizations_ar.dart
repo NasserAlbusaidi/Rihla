@@ -298,6 +298,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get deleteAccountConfirm => 'حذف الحساب';
 
   @override
+  String get deleteAccountRetryTitle => 'لم يكتمل الحذف';
+
+  @override
+  String get deleteAccountRetryContent =>
+      'تمت إزالة بعض بيانات حسابك، لكن لم يكتمل الحذف. لا يزال حسابك مُسجَّل الدخول. ستؤدي إعادة المحاولة إلى إكماله.';
+
+  @override
   String get signOutTitle => 'تسجيل الخروج من هذا الجهاز؟';
 
   @override

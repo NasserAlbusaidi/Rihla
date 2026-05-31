@@ -24,6 +24,7 @@ import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/data_deletion_service.dart';
 import '../../auth/widgets/delete_account_dialog.dart';
+import '../../auth/widgets/delete_account_retry_dialog.dart';
 import '../../auth/widgets/sign_out_confirm_dialog.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
@@ -756,19 +757,37 @@ class _AccountCard extends ConsumerWidget {
   const _AccountCard();
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final confirmed = await DeleteAccountDialog.show(context);
+    if (confirmed != true || !context.mounted) return;
+    await _runDeletion(context, ref);
+  }
+
+  /// Runs the deletion and reacts to the outcome. A [DeletionResult.partial]
+  /// (server scrubbed some data but threw before finishing; convergent on
+  /// retry) re-prompts with a durable retry dialog and recurses on confirm, so
+  /// the user always has a guaranteed path to finish a torn deletion (#77).
+  Future<void> _runDeletion(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
-    final confirmed = await DeleteAccountDialog.show(context);
-    if (confirmed != true) return;
     final result = await ref.read(dataDeletionServiceProvider).deleteAccount();
-    final message = switch (result) {
-      DeletionResult.ok => l10n.profileDeletionOk,
-      DeletionResult.noUser => l10n.profileDeletionNoUser,
-      DeletionResult.error => l10n.profileDeletionError,
-    };
-    messenger.showSnackBar(SnackBar(content: Text(message)));
-    if (result == DeletionResult.ok && context.mounted) {
-      context.go(AppRoutes.home);
+    if (!context.mounted) return;
+    switch (result) {
+      case DeletionResult.ok:
+        messenger.showSnackBar(SnackBar(content: Text(l10n.profileDeletionOk)));
+        context.go(AppRoutes.home);
+      case DeletionResult.noUser:
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.profileDeletionNoUser)),
+        );
+      case DeletionResult.error:
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.profileDeletionError)),
+        );
+      case DeletionResult.partial:
+        final retry = await DeleteAccountRetryDialog.show(context);
+        if (retry == true && context.mounted) {
+          await _runDeletion(context, ref);
+        }
     }
   }
 

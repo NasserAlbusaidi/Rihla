@@ -298,6 +298,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteAccountConfirm => 'Delete account';
 
   @override
+  String get deleteAccountRetryTitle => 'Deletion didn\'t finish';
+
+  @override
+  String get deleteAccountRetryContent =>
+      'Some of your account data was removed, but the deletion didn\'t finish. Your account is still signed in. Retrying will complete it.';
+
+  @override
   String get signOutTitle => 'Sign out of this device?';
 
   @override
