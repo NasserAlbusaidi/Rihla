@@ -1,9 +1,9 @@
 /// Outbound URLs and contact addresses surfaced from the UI.
 ///
 /// These constants centralise every link the app opens externally (help,
-/// legal, feedback, tipping). Legal/help pages live on the Firebase Hosting
-/// default domain until `rihla.app` is wired to Firebase Hosting — at which
-/// point these can be flipped back to the bare `rihla.app` host.
+/// legal, feedback, tipping). Legal/help pages live on `rihla-safar.web.app`,
+/// the canonical Firebase Hosting domain (the bare `rihla.app` domain was
+/// dropped in #130 — do not reintroduce it).
 class AppLinks {
   const AppLinks._();
 

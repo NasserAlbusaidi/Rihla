@@ -96,8 +96,8 @@ ships the Sprint 1/2 UI surfaces, and finishes pre-launch polish.
 - **Custom split editor** in Add/Edit Expense — shares, exact, percent.
 - **Ledger search sheet.**
 - **Sprint 2 picker sheets** — base currency, language, default split mode.
-- **Deep links.** `rihla.app/join/<code>` opens the join-group flow.
-- **Legal pages** hosted at `rihla.app/privacy`, `/terms`, `/delete-data`.
+- **Deep links.** `rihla-safar.web.app/join/<code>` opens the join-group flow.
+- **Legal pages** hosted at `rihla-safar.web.app/privacy`, `/terms`, `/delete-data`.
 
 ### Changed
 - **Group join** moved to a callable backend (atomic, validated, RLS-safe).

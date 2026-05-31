@@ -164,7 +164,7 @@ All money math uses the `decimal` package (not `double`). Default currency is OM
 - **Multi-currency**: Expenses support currency metadata and Decimal math. Convert to integer subunits only at Firestore read/write boundaries via `MoneySerializer`.
 - **Push notifications**: Firebase Cloud Messaging (FCM). Token storage at `fcm_tokens/{uid}`. Opt-in only.
 - **Auth**: Firebase anonymous sign-in. No login screen — `_AuthGate` calls `FirebaseConfig.ensureAnonymousSession()` and retries on `internal-error` for corrupted restored sessions.
-- **Deep links**: `rihla.app/join/<code>` opens the join-group flow with the code pre-filled. Email-link recovery URLs route back via App Links / Universal Links.
+- **Deep links**: `rihla-safar.web.app/join/<code>` opens the join-group flow with the code pre-filled. Email-link recovery URLs route back via App Links / Universal Links.
 
 ## Database
 

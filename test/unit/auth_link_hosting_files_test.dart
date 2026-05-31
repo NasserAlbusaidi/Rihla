@@ -85,6 +85,12 @@ void main() {
     expect(manifest, contains('android:pathPrefix="/__/auth/links"'));
     expect(manifest, contains('android:host="rihla-safar.web.app"'));
     expect(manifest, contains('android:pathPrefix="/join"'));
+    // #130: the dead rihla.app host must not reappear, and the four live
+    // autoVerify App Links (auth firebaseapp, web.app /join, firebaseapp /join)
+    // must survive intact — guard the count so deleting the web.app filter or
+    // re-adding rihla.app both fail here, not just a string-fragment match.
+    expect(manifest, isNot(contains('android:host="rihla.app"')));
+    expect('android:autoVerify="true"'.allMatches(manifest).length, 3);
   });
 
   test('iOS entitlements declare Universal Links for auth and invites', () {
@@ -95,6 +101,8 @@ void main() {
     expect(entitlements, contains('com.apple.developer.associated-domains'));
     expect(entitlements, contains('applinks:rihla-safar.firebaseapp.com'));
     expect(entitlements, contains('applinks:rihla-safar.web.app'));
+    // #130: the dead rihla.app associated-domain must not reappear.
+    expect(entitlements, isNot(contains('applinks:rihla.app')));
   });
 
   test('Firebase Hosting rewrites invite links to a browser fallback', () {
