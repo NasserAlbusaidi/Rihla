@@ -49,6 +49,10 @@ onboarding (archived out of the route tree, #56).
   #148, #150–#163)
 - **Settled-balance bar renders intentionally**, and the redundant settle-up
   avatar ring was dropped. (#146, #147)
+- **Event settle-up no longer fails with `PERMISSION_DENIED`.** The
+  event-settlement Firestore rule now permits and validates the
+  `payerName`/`recipientName` the client writes, mirroring the group-settlement
+  rule — this also unblocks deleting groups that carry event debts. (#185)
 
 ### Removed
 - **Hand-rolled SQLite cache.** `safar_cache.db`, `LocalDatabase`, `sqflite`, and
