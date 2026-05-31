@@ -71,8 +71,13 @@ List<Override> _baseOverrides({
   crossGroupActivityProvider.overrideWith((ref) => activityOverride),
   userGroupsProvider.overrideWith((ref) => Stream.value([])),
   crossGroupBalanceProvider.overrideWith(
-    (ref) =>
-        AsyncValue.data((net: Decimal.zero, groupCount: 0, isLoading: false)),
+    (ref) => AsyncValue.data((
+      net: Decimal.zero,
+      owedToUser: Decimal.zero,
+      userOwes: Decimal.zero,
+      groupCount: 0,
+      isLoading: false,
+    )),
   ),
   groupBalancesProvider.overrideWith(
     (ref, groupId) => AsyncValue.data((

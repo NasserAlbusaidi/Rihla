@@ -44,6 +44,8 @@ void main() {
             crossGroupBalanceProvider.overrideWith(
               (ref) => AsyncValue.data((
                 net: Decimal.parse('-5.500'),
+                owedToUser: Decimal.zero,
+                userOwes: Decimal.zero,
                 groupCount: 2,
                 isLoading: false,
               )),
@@ -65,6 +67,8 @@ void main() {
             crossGroupBalanceProvider.overrideWith(
               (ref) => AsyncValue.data((
                 net: Decimal.parse('3.250'),
+                owedToUser: Decimal.zero,
+                userOwes: Decimal.zero,
                 groupCount: 1,
                 isLoading: false,
               )),
@@ -88,6 +92,8 @@ void main() {
               crossGroupBalanceProvider.overrideWith(
                 (ref) => AsyncValue.data((
                   net: Decimal.zero,
+                  owedToUser: Decimal.zero,
+                  userOwes: Decimal.zero,
                   groupCount: 3,
                   isLoading: false,
                 )),
@@ -126,6 +132,8 @@ void main() {
             crossGroupBalanceProvider.overrideWith(
               (ref) => AsyncValue.data((
                 net: Decimal.zero,
+                owedToUser: Decimal.zero,
+                userOwes: Decimal.zero,
                 groupCount: 0,
                 isLoading: false,
               )),
@@ -137,5 +145,33 @@ void main() {
 
       expect(find.byKey(HomeKeys.balanceHeroCard), findsOneWidget);
     });
+
+    testWidgets(
+      'Test 6: split legend reads owedToUser/userOwes from the record (#110)',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(
+            child: const BalanceHeroCard(),
+            overrides: [
+              crossGroupBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data((
+                  net: Decimal.parse('5.000'),
+                  owedToUser: Decimal.parse('12.000'),
+                  userOwes: Decimal.parse('7.000'),
+                  groupCount: 2,
+                  isLoading: false,
+                )),
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+
+        // Legend amounts come straight off the record — the old per-group
+        // re-walk (which used userGroupsProvider, overridden empty here) is gone.
+        expect(find.textContaining('12.000'), findsOneWidget);
+        expect(find.textContaining('7.000'), findsOneWidget);
+      },
+    );
   });
 }

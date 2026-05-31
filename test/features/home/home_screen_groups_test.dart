@@ -32,6 +32,8 @@ List<Override> _overrides(List<Group> groups) => [
   crossGroupBalanceProvider.overrideWith(
     (ref) => AsyncValue.data((
       net: Decimal.zero,
+      owedToUser: Decimal.zero,
+      userOwes: Decimal.zero,
       groupCount: groups.length,
       isLoading: false,
     )),
