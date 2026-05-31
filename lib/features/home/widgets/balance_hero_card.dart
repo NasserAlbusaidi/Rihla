@@ -213,7 +213,10 @@ class _SplitBar extends StatelessWidget {
                 flex: (negFraction * 1000).round(),
                 child: Container(color: colors.error),
               ),
-            if (!hasAny) Expanded(child: Container(color: colors.rule)),
+            // Settled: a full-width bar in the settled/sage tone — an
+            // intentional "all square" zeroed state (#146), not the ambiguous
+            // gray rule that read as a half-built element.
+            if (!hasAny) Expanded(child: Container(color: colors.success)),
           ],
         ),
       ),

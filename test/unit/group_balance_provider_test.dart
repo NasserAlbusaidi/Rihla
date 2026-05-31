@@ -524,4 +524,117 @@ void main() {
       },
     );
   });
+
+  // ---------------------------------------------------------------------------
+  // perEventBreakdown participant-set invariant (#112)
+  //
+  // The breakdown is participantIds-only; the aggregate folds in former
+  // financial actors. After dedup'ing the breakdown's data source onto the
+  // pre-built maps, this distinction must still hold. This test fails if the
+  // breakdown is ever re-sourced from the formerActors-inclusive set.
+  // ---------------------------------------------------------------------------
+  group('groupBalancesProvider perEventBreakdown vs aggregate (#112)', () {
+    const groupId = 'group-1';
+
+    test(
+      'former-member payer appears in aggregate but NOT in per-event breakdown',
+      () async {
+        // event-a: clean expense paid by a CURRENT member (deterministic).
+        // event-b: expense paid by uid-former, who is NOT a group member and
+        // NOT in event-b.participantIds — so they are a "former financial
+        // actor" folded into the aggregate, but excluded from the breakdown.
+        final eventA = _makeEvent(
+          id: 'event-a',
+          groupId: groupId,
+          participantIds: ['uid-1', 'uid-2'],
+          participantNames: {'uid-1': 'Alice', 'uid-2': 'Bob'},
+        );
+        final eventB = _makeEvent(
+          id: 'event-b',
+          groupId: groupId,
+          participantIds: ['uid-1', 'uid-2'],
+          participantNames: {'uid-1': 'Alice', 'uid-2': 'Bob'},
+        );
+
+        final expensesA = [
+          _makeExpense(
+            id: 'exp-a',
+            payerParticipantId: 'uid-1',
+            amount: Decimal.parse('20.000'),
+            tripId: 'event-a',
+          ),
+        ];
+        final expensesB = [
+          _makeExpense(
+            id: 'exp-b',
+            payerParticipantId: 'uid-former',
+            amount: Decimal.parse('30.000'),
+            tripId: 'event-b',
+          ),
+        ];
+
+        // uid-former is intentionally absent from members (the
+        // difference(liveMemberIds) former-actor path, since _makeMember has
+        // no tombstone flag).
+        final members = [
+          _makeMember(userId: 'uid-1', groupId: groupId, displayName: 'Alice'),
+          _makeMember(userId: 'uid-2', groupId: groupId, displayName: 'Bob'),
+        ];
+
+        final container = ProviderContainer(
+          overrides: [
+            groupEventsProvider(
+              groupId,
+            ).overrideWith((_) => Stream.value([eventA, eventB])),
+            groupMembersProvider(
+              groupId,
+            ).overrideWith((_) => Stream.value(members)),
+            eventExpensesProvider((
+              groupId: groupId,
+              eventId: 'event-a',
+            )).overrideWith((_) => Stream.value(expensesA)),
+            eventExpensesProvider((
+              groupId: groupId,
+              eventId: 'event-b',
+            )).overrideWith((_) => Stream.value(expensesB)),
+            eventSettlementsProvider((
+              groupId: groupId,
+              eventId: 'event-a',
+            )).overrideWith((_) => Stream.value([])),
+            eventSettlementsProvider((
+              groupId: groupId,
+              eventId: 'event-b',
+            )).overrideWith((_) => Stream.value([])),
+            groupSettlementsProvider(
+              groupId,
+            ).overrideWith((_) => Stream.value([])),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pumpUntilData(container, groupId);
+        final data = container
+            .read(groupBalancesProvider(groupId))
+            .valueOrNull!;
+
+        // Aggregate INCLUDES the former actor (event-b split 3 ways: paid 30,
+        // owes 10 => net +20).
+        final former = data.balances
+            .where((b) => b.participantId == 'uid-former')
+            .toList();
+        expect(former, hasLength(1));
+        expect(former.single.netBalance, equals(Decimal.parse('20.000')));
+
+        // Breakdown EXCLUDES the former actor entirely (participantIds-only).
+        expect(data.perEventBreakdown.containsKey('uid-former'), isFalse);
+
+        // A current participant's breakdown is unaffected (event-a: 20 split
+        // 2 ways, uid-1 paid => net +10).
+        expect(
+          data.perEventBreakdown['uid-1']?['event-a'],
+          equals(Decimal.parse('10.000')),
+        );
+      },
+    );
+  });
 }

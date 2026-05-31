@@ -332,7 +332,11 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
   // Step 7: Compute per-event breakdown (RESEARCH Pattern 4). This drill-down
   // intentionally keeps using event.participantIds only; aggregate balances
   // above are the authoritative settle-up participant set.
-  final perEventBreakdown = _buildPerEventBreakdown(events, ref, groupId);
+  final perEventBreakdown = _buildPerEventBreakdown(
+    events,
+    expensesByEvent,
+    eventSettlementsByEvent,
+  );
 
   final memberNames = <String, String>{};
   final memberRawNames = <String, String>{};
@@ -368,21 +372,21 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
 /// [Event.participantNames] (UID-based per D-04). Only events with at least
 /// one participant are included.
 ///
-/// This function intentionally calls [ref.watch] — it is only ever called from
-/// within the [groupBalancesProvider] Provider.family body where this is safe.
+/// Reuses the per-event expense/settlement maps the caller already built from
+/// its own `ref.watch` fan-out — no redundant re-watch here (#112). The
+/// participant set stays [Event.participantIds]-only on purpose: the aggregate
+/// balances above fold in former financial actors, but the drill-down does not.
 Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
   List<Event> events,
-  Ref ref,
-  String groupId,
+  Map<String, List<Expense>> expensesByEvent,
+  Map<String, List<Settlement>> eventSettlementsByEvent,
 ) {
   final breakdown = <String, Map<String, Decimal>>{};
 
   for (final event in events) {
-    final eventRef = (groupId: groupId, eventId: event.id);
-    final expenses =
-        ref.watch(eventExpensesProvider(eventRef)).valueOrNull ?? [];
+    final expenses = expensesByEvent[event.id] ?? const <Expense>[];
     final settlements =
-        ref.watch(eventSettlementsProvider(eventRef)).valueOrNull ?? [];
+        eventSettlementsByEvent[event.id] ?? const <Settlement>[];
 
     // Build participants for this event only (UID-based per D-04)
     final participants = event.participantIds

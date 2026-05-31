@@ -303,11 +303,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
       decoration: BoxDecoration(
         color: isPayer ? context.colors.saffronTint : context.colors.cardSoft,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: isPayer
-              ? context.colors.primary.withValues(alpha: 0.35)
-              : context.colors.rule2,
-        ),
+        // #147: uniform border (matches _MiniAvatar). Payer/payee is carried by
+        // the background tint + the names row below — not a redundant ring color.
+        border: Border.all(color: context.colors.rule2),
       ),
       child: Center(
         child: Text(
