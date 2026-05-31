@@ -391,6 +391,14 @@ chevron each in `profile_display_section.dart`,
 - `Text` aligns to the start edge by default (left in LTR, right in RTL). No manual flip needed.
 - Bottom sheets, dialogs, and snackbars inherit the app's directionality through `MaterialApp` — no extra wiring.
 
+### 8.4 Numerals: Western everywhere for non-money text (DEC-5 / #145)
+
+**Rule:** every non-money number — dates, counts, relative time, badges — renders in **Western digits (0–9)** in all locales, including Arabic. Money already renders Western (`227.600`) and stays that way. There is **no** Arabic-Indic (٠–٩) path anywhere in the app.
+
+**Why:** money is the trust anchor and is locked Western; mixing Arabic-Indic dates/counts beside Western money on the same screen (the pre-decision state — `١٨ مايو` next to `12 ي`) reads as a rendering bug, not as localization. One numeral system per screen is the cheapest way to look intentional. Rejected: Arabic-Indic for non-money (recreates the mixed-script screens) and a hybrid rule (Indic dates / Western counts — hardest to keep consistent, no payoff).
+
+**Implementing:** date/relative-time helpers (`lib/core/utils/localized_dates.dart`) and count-bearing ARB strings must not emit Arabic-Indic digits. `intl` under `ar` already emits Western digits for these helpers, so the default is correct — the work is to *not* introduce Indic conversion. Governs BUG-8 (relative time), BUG-9 (dates), BUG-10 (filter count). Full record: `docs/adr/ADR-0003-arabic-numerals.md`.
+
 ---
 
 ## 9. Multi-text-span composition (Arabic word order)
