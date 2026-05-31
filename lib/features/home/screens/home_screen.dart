@@ -128,7 +128,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               onActionTap: () => _showCreateOrJoinSheet(context),
             ).animate().fadeIn(delay: 500.ms),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 6)),
+          const SliverToBoxAdapter(
+            child: SizedBox(key: HomeKeys.groupsHeaderGap, height: 14),
+          ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(

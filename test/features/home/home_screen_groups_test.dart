@@ -166,6 +166,22 @@ void main() {
       expect(find.text('GroupDetail:gXYZ'), findsOneWidget);
     });
 
+    testWidgets('groups header gap is wide enough to disambiguate the '
+        'new-group CTA from the first row balance (#161)', (tester) async {
+      await tester.pumpWidget(
+        _buildTestApp(
+          prefs: prefs,
+          overrides: _overrides([_makeGroup('g1', 'Desert Crew')]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final gap = tester.widget<SizedBox>(
+        find.byKey(HomeKeys.groupsHeaderGap),
+      );
+      expect(gap.height, greaterThanOrEqualTo(12));
+    });
+
     testWidgets('bottom nav has 3 tabs: Groups, Activity, Profile', (
       tester,
     ) async {
