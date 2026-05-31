@@ -4,23 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
-import '../../../core/types/event_ref.dart';
 import '../models/activity_log_model.dart';
 
 final activityServiceProvider = Provider<ActivityService>(
   (ref) => ActivityService(),
 );
-
-/// NEW: Firestore-backed stream of activity logs for an event.
-///
-/// Ordered by createdAt descending (most recent first).
-/// Use this for all new code.
-final eventActivityProvider =
-    StreamProvider.family<List<ActivityLog>, EventRef>((ref, eventRef) {
-      return ref
-          .read(activityServiceProvider)
-          .watchActivityLogs(eventRef.groupId, eventRef.eventId);
-    });
 
 /// Firestore-backed service for activity log operations.
 ///
@@ -31,21 +19,6 @@ class ActivityService extends FirestoreRepository {
 
   @visibleForTesting
   ActivityService.withFirestore(super.db) : super.withFirestore();
-
-  /// Stream of activity logs for an event, ordered by createdAt descending.
-  Stream<List<ActivityLog>> watchActivityLogs(String groupId, String eventId) {
-    return eventSubcollection(groupId, eventId, 'activity_logs')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map(
-                (doc) =>
-                    ActivityLog.fromFirestore({...doc.data(), 'id': doc.id}),
-              )
-              .toList(),
-        );
-  }
 
   /// Cursor-paginated fetch of event activity logs (50/page, D-34 parity with
   /// the group feed). Returns the raw [QuerySnapshot] so callers read
