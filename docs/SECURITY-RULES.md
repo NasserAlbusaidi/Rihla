@@ -286,6 +286,18 @@ Additional constraints:
 This is the "any participant can update event metadata" path: rename
 the event, extend the date range, add a description, add a participant.
 
+> **Decision (#57): additive participant-add is the intended collaboration model.**
+> Any event participant may *add* members to an event; removing and renaming are
+> admin-only. This is deliberate — events are collaborative and people on a trip
+> routinely add each other. **Abuse boundary:** added IDs are constrained to
+> **existing group members** — the light path calls `validEventUpdateCommon()` →
+> `validEventBase()`, which enforces `participantIds.hasOnly(groupMembers())`. So
+> the blast radius is in-group griefing (a member adding another member to an
+> event), never outsider injection. The join fan-out (`joinGroupByInviteCode`) is
+> a *self*-add, not a third-party add. If this ever needs tightening, move adds
+> behind `validEventAdminUpdate` or a controlled callable rather than widening the
+> light path. Full record: `docs/adr/ADR-0002-event-participant-add.md`.
+
 #### Update — admin path (`validEventAdminUpdate`)
 
 Event creator **OR** group creator. May edit a superset:
