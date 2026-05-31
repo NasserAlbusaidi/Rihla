@@ -170,6 +170,11 @@ describe('Publish readiness Firestore rules', () => {
       amountFils: 5000,
       currency: 'OMR',
       note: null,
+      // #185: the client (settlement_service.dart addSettlement) writes
+      // payerName/recipientName on EVERY event settlement. Mirror that here so
+      // the suite exercises the real write shape, matching validGroupSettlement.
+      payerName: 'Member',
+      recipientName: 'Owner',
       isDeleted: false,
       deletedAt: null,
       settledAt: new Date().toISOString(),
@@ -1009,6 +1014,52 @@ describe('Publish readiness Firestore rules', () => {
     ));
     await assertFails(member.doc('groups/g1/settlements/gsetLongRecipient').set(
       validGroupSettlement({ id: 'gsetLongRecipient', recipientName: 'A'.repeat(33) }),
+    ));
+  });
+
+  // --- #185 event-settlement display-name parity ---
+  // validEventSettlementBase omitted payerName/recipientName from hasOnly while
+  // the client writes them on every event settlement -> PERMISSION_DENIED, event
+  // settle-up broken. These lock the event rule to the group rule's name handling.
+
+  test('event settlement create accepts the full client key-set incl payer/recipient names', async () => {
+    // Regression lock for #185: built from settlement_service.dart addSettlement's
+    // exact key-set, independent of the validSettlement() builder so a future
+    // builder refactor cannot silently drop this coverage.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setNames').set({
+      id: 'setNames',
+      eventId: 'e1',
+      payerParticipantId: 'member',
+      recipientParticipantId: 'owner',
+      payerName: 'Member',
+      recipientName: 'Owner',
+      amountFils: 5000,
+      currency: 'OMR',
+      note: null,
+      isDeleted: false,
+      deletedAt: null,
+      settledAt: new Date().toISOString(),
+      createdBy: 'member',
+    }));
+  });
+
+  test('event settlement accepts null payer and recipient display names', async () => {
+    // Pre-name-field docs and name-less rows render as 'Someone'; null must stay
+    // allowed via isValidNullableDisplayName.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setNullNames').set(
+      validSettlement({ id: 'setNullNames', payerName: null, recipientName: null }),
+    ));
+  });
+
+  test('event settlement rejects invalid payer and recipient display names', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setCtrlPayer').set(
+      validSettlement({ id: 'setCtrlPayer', payerName: 'Bad\nName' }),
+    ));
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setLongRecipient').set(
+      validSettlement({ id: 'setLongRecipient', recipientName: 'A'.repeat(33) }),
     ));
   });
 });
