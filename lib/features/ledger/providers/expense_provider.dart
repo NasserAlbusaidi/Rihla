@@ -316,7 +316,7 @@ class BalanceCalculator {
     // encodes values verbatim, so a forged/unvalidated write can persist one.
     // Treat it as an invalid exact split (equal-split fallback) rather than let
     // it (or the residual close-out below) emit a negative owed. Server-side
-    // value validation is the complementary fix tracked in #191.
+    // value validation is the complementary fix tracked in #192.
     if (distribution.values.any((value) => value < Decimal.zero)) {
       debugPrint(
         'Negative exact split entry for expense ${expense.id}; falling back to equal split.',
