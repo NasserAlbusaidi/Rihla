@@ -206,6 +206,29 @@ describe('joinGroupByInviteCode', () => {
     expect(attemptSnap.data()?.failCount).toBe(1);
   });
 
+  test('join is rejected while deleteGroup is quiescing the group (#205)', async () => {
+    const db = getFirestore();
+    await seedEvent('active');
+    await db.doc('groups/g1').update({
+      isDeleted: false,
+      deletingInProgress: true,
+      deleteLockedAt: new Date(),
+      deleteLockedBy: 'owner',
+    });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).rejects.toMatchObject({ code: 'not-found' });
+
+    const groupSnap = await db.doc('groups/g1').get();
+    expect(groupSnap.data()?.memberIds).toEqual(['owner']);
+    const memberSnap = await db.doc('groups/g1/members/alice').get();
+    expect(memberSnap.exists).toBe(false);
+    const active = await db.doc('groups/g1/events/active').get();
+    expect(active.data()?.participantIds).toEqual(['owner']);
+  });
+
   test('already-member re-join heals stale event participantIds', async () => {
     const db = getFirestore();
     await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });

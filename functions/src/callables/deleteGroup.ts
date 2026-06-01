@@ -1,6 +1,7 @@
 import {
   DocumentData,
   DocumentReference,
+  FieldValue,
   Firestore,
   Timestamp,
   WriteBatch,
@@ -269,6 +270,20 @@ class BatchWriter {
   }
 }
 
+const DELETE_GROUP_PAUSE_AFTER_LOCK_MS = 'DELETE_GROUP_PAUSE_AFTER_LOCK_MS';
+
+function resolvePauseAfterLockMs(): number {
+  return Number(process.env[DELETE_GROUP_PAUSE_AFTER_LOCK_MS]) || 0;
+}
+
+async function pauseAfterLockIfRequested(): Promise<void> {
+  const pauseMs = resolvePauseAfterLockMs();
+  if (pauseMs <= 0) return;
+  await new Promise((resolve) => {
+    setTimeout(resolve, pauseMs);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Rate limit (mirror deleteAccount.ts enforceDeletionRateLimit, own counter)
 // ---------------------------------------------------------------------------
@@ -304,6 +319,47 @@ async function enforceDeleteGroupRateLimit(db: Firestore, uid: string): Promise<
   });
 }
 
+async function acquireDeleteGroupLock(
+  db: Firestore,
+  groupRef: DocumentReference,
+  uid: string,
+): Promise<boolean> {
+  return db.runTransaction(async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    if (!groupSnap.exists) {
+      throw new HttpsError('not-found', 'Group not found.');
+    }
+
+    const groupData = groupSnap.data() ?? {};
+    if (groupData.isDeleted === true) {
+      return true;
+    }
+    if (groupData.createdBy !== uid) {
+      throw new HttpsError('permission-denied', 'Only the group creator can delete the group.');
+    }
+    if (groupData.deletingInProgress === true) {
+      return false;
+    }
+
+    const now = Timestamp.now();
+    tx.update(groupRef, {
+      deletingInProgress: true,
+      deleteLockedAt: now,
+      deleteLockedBy: uid,
+      updatedAt: now,
+    });
+    return false;
+  });
+}
+
+async function clearDeleteGroupLock(groupRef: DocumentReference): Promise<void> {
+  await groupRef.update({
+    deletingInProgress: false,
+    deleteLockedAt: FieldValue.delete(),
+    deleteLockedBy: FieldValue.delete(),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Balance recompute (mirror group_balance_provider.dart + BalanceCalculator)
 // ---------------------------------------------------------------------------
@@ -319,6 +375,31 @@ function isLiveDoc(data: DocumentData): boolean {
   return data.isDeleted === false;
 }
 
+function timestampMillis(value: unknown): number | null {
+  if (value instanceof Timestamp) return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  if (
+    value != null
+    && typeof value === 'object'
+    && 'toMillis' in value
+    && typeof value.toMillis === 'function'
+  ) {
+    const millis = value.toMillis();
+    return typeof millis === 'number' ? millis : null;
+  }
+  return null;
+}
+
+function isEventInDeleteBalanceScope(
+  data: DocumentData,
+  includeSoftDeletedSinceMs: number | null,
+): boolean {
+  if (isLiveDoc(data)) return true;
+  if (includeSoftDeletedSinceMs == null || data.isDeleted !== true) return false;
+  const deletedAtMs = timestampMillis(data.deletedAt);
+  return deletedAtMs != null && deletedAtMs >= includeSoftDeletedSinceMs;
+}
+
 function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }
@@ -332,6 +413,11 @@ async function recomputeNet(
   db: Firestore,
   groupRef: DocumentReference,
 ): Promise<RecomputeResult> {
+  const groupSnap = await groupRef.get();
+  const groupData = groupSnap.data() ?? {};
+  const includeSoftDeletedSinceMs =
+    groupData.deletingInProgress === true ? timestampMillis(groupData.deleteLockedAt) : null;
+
   // liveMemberIds: a member is live unless explicitly tombstoned.
   const membersSnap = await groupRef.collection('members').get();
   const liveMemberIds = new Set<string>();
@@ -349,8 +435,12 @@ async function recomputeNet(
 
   // Skip soft-deleted events wholesale (the client drops them at
   // event_provider.dart:42 — their live children must NOT enter the balance).
+  // Exception: when resuming a #205 deleteGroup lock, include events already
+  // soft-deleted after the lock was acquired so a partially flushed cascade can
+  // be retried idempotently.
   const eventsSnap = await groupRef.collection('events').get();
-  const liveEventDocs = eventsSnap.docs.filter((doc) => isLiveDoc(doc.data()));
+  const liveEventDocs = eventsSnap.docs.filter((doc) =>
+    isEventInDeleteBalanceScope(doc.data(), includeSoftDeletedSinceMs));
 
   for (const eventDoc of liveEventDocs) {
     const eventData = eventDoc.data();
@@ -489,58 +579,65 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
     const uid = request.auth.uid;
     const db = getFirestore();
     const groupRef = db.doc(`groups/${groupId}`);
-    const groupSnap = await groupRef.get();
-    if (!groupSnap.exists) {
-      throw new HttpsError('not-found', 'Group not found.');
-    }
-    const groupData = groupSnap.data() ?? {};
 
-    // Idempotent no-op: re-deleting an already-soft-deleted group is success.
-    if (groupData.isDeleted === true) {
+    const alreadyDeleted = await acquireDeleteGroupLock(db, groupRef, uid);
+    if (alreadyDeleted) {
       return { groupId, mode: 'softDelete', eventsSoftDeleted: 0, alreadyDeleted: true };
     }
 
-    if (groupData.createdBy !== uid) {
-      throw new HttpsError('permission-denied', 'Only the group creator can delete the group.');
+    let finalizeStarted = false;
+    try {
+      // Throttle before the (potentially large) balance recompute so replays are
+      // bounded. The lock is cleared below if the throttle rejects.
+      await enforceDeleteGroupRateLimit(db, uid);
+      await pauseAfterLockIfRequested();
+
+      const { net, liveEventRefs } = await recomputeNet(db, groupRef);
+      const outstanding = [...net.entries()].filter(([, value]) => !value.isZero());
+      if (outstanding.length > 0) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Group has unsettled balances and cannot be deleted.',
+        );
+      }
+
+      // Soft-delete the live events + the group doc. Children (expenses /
+      // settlements) and the invite code are KEPT: the records are the
+      // append-only audit trail; a stale invite code is rejected at join time
+      // (joinGroupByInviteCode.ts:255). memberIds is left intact so group
+      // settlement reads stay authorized and re-runs are idempotent.
+      const now = Timestamp.now();
+      const writer = new BatchWriter(db);
+      finalizeStarted = true;
+      for (const eventRef of liveEventRefs) {
+        await writer.update(eventRef, { isDeleted: true, deletedAt: now, updatedAt: now });
+      }
+      await writer.update(groupRef, {
+        isDeleted: true,
+        deletedAt: now,
+        updatedAt: now,
+        deletingInProgress: false,
+        deleteFinalizedAt: now,
+      });
+      await writer.flush();
+
+      logger.info('deleteGroup soft-deleted group', {
+        uid,
+        groupId,
+        eventsSoftDeleted: liveEventRefs.length,
+      });
+
+      return {
+        groupId,
+        mode: 'softDelete',
+        eventsSoftDeleted: liveEventRefs.length,
+        alreadyDeleted: false,
+      };
+    } catch (error) {
+      if (!finalizeStarted) {
+        await clearDeleteGroupLock(groupRef);
+      }
+      throw error;
     }
-
-    // Throttle before the (potentially large) balance recompute so replays are
-    // bounded.
-    await enforceDeleteGroupRateLimit(db, uid);
-
-    const { net, liveEventRefs } = await recomputeNet(db, groupRef);
-    const outstanding = [...net.entries()].filter(([, value]) => !value.isZero());
-    if (outstanding.length > 0) {
-      throw new HttpsError(
-        'failed-precondition',
-        'Group has unsettled balances and cannot be deleted.',
-      );
-    }
-
-    // Soft-delete the live events + the group doc. Children (expenses /
-    // settlements) and the invite code are KEPT: the records are the
-    // append-only audit trail; a stale invite code is rejected at join time
-    // (joinGroupByInviteCode.ts:255). memberIds is left intact so group
-    // settlement reads stay authorized and re-runs are idempotent.
-    const now = Timestamp.now();
-    const writer = new BatchWriter(db);
-    for (const eventRef of liveEventRefs) {
-      await writer.update(eventRef, { isDeleted: true, deletedAt: now, updatedAt: now });
-    }
-    await writer.update(groupRef, { isDeleted: true, deletedAt: now, updatedAt: now });
-    await writer.flush();
-
-    logger.info('deleteGroup soft-deleted group', {
-      uid,
-      groupId,
-      eventsSoftDeleted: liveEventRefs.length,
-    });
-
-    return {
-      groupId,
-      mode: 'softDelete',
-      eventsSoftDeleted: liveEventRefs.length,
-      alreadyDeleted: false,
-    };
   },
 );
