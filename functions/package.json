@@ -18,6 +18,7 @@
     "test:coverage": "jest --coverage --runInBand"
   },
   "dependencies": {
+    "decimal.js": "^10.6.0",
     "firebase-admin": "^13.8.0",
     "firebase-functions": "^7.2.5"
   },
