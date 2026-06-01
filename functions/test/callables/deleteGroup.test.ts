@@ -176,9 +176,28 @@ const groupSnap = async (groupId: string) =>
 const docExists = async (path: string): Promise<boolean> =>
   (await getFirestore().doc(path).get()).exists;
 
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+async function waitFor(
+  predicate: () => Promise<boolean>,
+  label: string,
+  timeoutMs = 1000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await predicate()) return;
+    await sleep(25);
+  }
+  throw new Error(`Timed out waiting for ${label}`);
+}
+
 beforeEach(async () => {
   delete process.env.DELETE_GROUP_BATCH_LIMIT;
   delete process.env.DELETE_ACCOUNT_BATCH_LIMIT;
+  delete process.env.DELETE_GROUP_PAUSE_AFTER_LOCK_MS;
   await clearFirestore();
   await clearGlobalDocs();
   jest.restoreAllMocks();
@@ -634,5 +653,180 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     const evDeleted = await db.doc('groups/g/events/e459').get();
     expect(evDeleted.data()?.isDeleted).toBe(true);
     expect(await docExists('groups/g/events/e459/expenses/x459')).toBe(true);
+  });
+
+  test('18. #205 quiesces writes before recomputing and finalizing deleteGroup', async () => {
+    process.env.DELETE_GROUP_PAUSE_AFTER_LOCK_MS = '300';
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      scope: 'personal',
+      payerParticipantId: OWNER,
+      amountFils: 1000,
+    });
+
+    const pending = wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    await waitFor(
+      async () => (await groupSnap('g')).data()?.deletingInProgress === true,
+      'deleteGroup quiesce lock',
+    );
+
+    const locked = (await groupSnap('g')).data();
+    expect(locked?.isDeleted).toBe(false);
+    expect(locked?.deletingInProgress).toBe(true);
+    expect(locked?.deleteLockedAt).toBeTruthy();
+    expect(locked?.deleteLockedBy).toBe(OWNER);
+
+    const result = await pending;
+    expect(result).toMatchObject({ mode: 'softDelete', alreadyDeleted: false });
+
+    const finalized = (await groupSnap('g')).data();
+    expect(finalized?.isDeleted).toBe(true);
+    expect(finalized?.deletingInProgress).toBe(false);
+    expect(finalized?.deleteFinalizedAt).toBeTruthy();
+  });
+
+  test('19. #205 failed balance gate clears the quiesce marker', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 12000,
+      splitMode: 'exact',
+      scope: 'custom',
+      customSplitParticipants: [OWNER, MEMBER],
+      splitDistribution: { [OWNER]: 6000, [MEMBER]: 6000 },
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    const group = (await groupSnap('g')).data();
+    expect(group?.isDeleted).toBe(false);
+    expect(group?.deletingInProgress).toBe(false);
+    expect(group?.deleteLockedAt).toBeUndefined();
+    expect(group?.deleteLockedBy).toBeUndefined();
+  });
+
+  test('20. #205 owner retry resumes a quiesced partial finalize idempotently', async () => {
+    const deleteLockedAt = new Date('2026-02-01T00:00:00.000Z');
+    const eventDeletedAt = new Date('2026-02-01T00:00:01.000Z');
+    await seedGroup('g', {
+      deletingInProgress: true,
+      deleteLockedAt,
+      deleteLockedBy: OWNER,
+    });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1', {
+      isDeleted: true,
+      deletedAt: eventDeletedAt,
+      updatedAt: eventDeletedAt,
+    });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 12000,
+      splitMode: 'exact',
+      scope: 'custom',
+      customSplitParticipants: [OWNER, MEMBER],
+      splitDistribution: { [OWNER]: 6000, [MEMBER]: 6000 },
+    });
+    await seedGroupSettlement('g', 's1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 6000,
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(res).toMatchObject({ mode: 'softDelete', alreadyDeleted: false });
+    const group = (await groupSnap('g')).data();
+    expect(group?.isDeleted).toBe(true);
+    expect(group?.deletingInProgress).toBe(false);
+  });
+
+  test('21. #205 failed owner retry does not clear another invocation lock', async () => {
+    process.env.DELETE_GROUP_PAUSE_AFTER_LOCK_MS = '3000';
+    const db = getFirestore();
+    await db.doc(`deleteGroupAttempts/${OWNER}`).set({
+      count: 4,
+      windowStart: new Date(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      scope: 'personal',
+      payerParticipantId: OWNER,
+      amountFils: 1000,
+    });
+
+    const firstDelete = wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    await waitFor(
+      async () => (await groupSnap('g')).data()?.deletingInProgress === true,
+      'first deleteGroup quiesce lock',
+    );
+
+    try {
+      await expect(wrapped({
+        data: { groupId: 'g' },
+        auth: { uid: OWNER },
+      } as any)).rejects.toMatchObject({ code: 'resource-exhausted' });
+
+      const duringFirstDelete = (await groupSnap('g')).data();
+      expect(duringFirstDelete?.isDeleted).toBe(false);
+      expect(duringFirstDelete?.deletingInProgress).toBe(true);
+      expect(duringFirstDelete?.deleteLockedBy).toBe(OWNER);
+    } finally {
+      await expect(firstDelete).resolves.toMatchObject({
+        mode: 'softDelete',
+        alreadyDeleted: false,
+      });
+    }
+  });
+
+  test('22. #205 failed owner retry clears observed stale lock after balance gate', async () => {
+    const deleteLockedAt = new Date('2026-02-01T00:00:00.000Z');
+    await seedGroup('g', {
+      deletingInProgress: true,
+      deleteLockedAt,
+      deleteLockedBy: OWNER,
+    });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 12000,
+      splitMode: 'exact',
+      scope: 'custom',
+      customSplitParticipants: [OWNER, MEMBER],
+      splitDistribution: { [OWNER]: 6000, [MEMBER]: 6000 },
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    const group = (await groupSnap('g')).data();
+    expect(group?.isDeleted).toBe(false);
+    expect(group?.deletingInProgress).toBe(false);
+    expect(group?.deleteLockedAt).toBeUndefined();
+    expect(group?.deleteLockedBy).toBeUndefined();
   });
 });

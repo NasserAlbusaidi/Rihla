@@ -81,6 +81,14 @@ service cloud.firestore {
       return getAfter(groupPath(groupId)).data;
     }
 
+    function groupAllowsClientWrites(groupId) {
+      return exists(groupPath(groupId))
+        && (!groupData(groupId).keys().hasAny(['isDeleted'])
+          || groupData(groupId).isDeleted == false)
+        && (!groupData(groupId).keys().hasAny(['deletingInProgress'])
+          || groupData(groupId).deletingInProgress == false);
+    }
+
     function isGroupMember(groupId) {
       return signedIn()
         && exists(groupPath(groupId))
@@ -99,6 +107,13 @@ service cloud.firestore {
 
     function eventData(groupId, eventId) {
       return get(eventPath(groupId, eventId)).data;
+    }
+
+    function eventAllowsClientWrites(groupId, eventId) {
+      return groupAllowsClientWrites(groupId)
+        && exists(eventPath(groupId, eventId))
+        && (!eventData(groupId, eventId).keys().hasAny(['isDeleted'])
+          || eventData(groupId, eventId).isDeleted == false);
     }
 
     function isEventParticipant(groupId, eventId) {
@@ -275,10 +290,11 @@ service cloud.firestore {
 
       allow read: if isMember();
       allow create: if validGroupCreate();
-      allow update: if validCreatorMetadataUpdate()
-        || validMemberIdsRefresh()
-        || validSelfLeave()
-        || validCreatorRemoveMember();
+      allow update: if groupAllowsClientWrites(groupId)
+        && (validCreatorMetadataUpdate()
+          || validMemberIdsRefresh()
+          || validSelfLeave()
+          || validCreatorRemoveMember());
       // #190: group deletion is server-authoritative. The deleteGroup callable
       // (Admin SDK, rules-bypassing) recomputes net balances across all events +
       // group settlements, refuses on any non-zero net, then SOFT-deletes the
@@ -345,6 +361,7 @@ service cloud.firestore {
 
         function validEventCreate() {
           return isGroupMember(groupId)
+            && groupAllowsClientWrites(groupId)
             && request.resource.data.keys().hasOnly([
               'name',
               'type',
@@ -379,6 +396,7 @@ service cloud.firestore {
 
         function validEventLightUpdate() {
           return requesterIsParticipant()
+            && eventAllowsClientWrites(groupId, eventId)
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly([
                 'name',
@@ -399,6 +417,7 @@ service cloud.firestore {
 
         function validEventAdminUpdate() {
           return requesterIsEventAdmin()
+            && eventAllowsClientWrites(groupId, eventId)
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly([
                 'name',
@@ -482,6 +501,7 @@ service cloud.firestore {
           function validExpenseCreate() {
             return module == 'expenses'
               && isEventParticipant(groupId, eventId)
+              && eventAllowsClientWrites(groupId, eventId)
               && validExpenseBase(request.resource.data)
               && request.resource.data.createdBy == request.auth.uid
               && request.resource.data.isDeleted == false
@@ -499,6 +519,7 @@ service cloud.firestore {
           function validExpenseUpdate() {
             return module == 'expenses'
               && isEventParticipant(groupId, eventId)
+              && eventAllowsClientWrites(groupId, eventId)
               && requesterIsRecordCreator()
               && request.resource.data.createdBy == resource.data.createdBy
               && request.resource.data.diff(resource.data).affectedKeys()
@@ -555,6 +576,7 @@ service cloud.firestore {
           function validEventSettlementCreate() {
             return module == 'settlements'
               && isEventParticipant(groupId, eventId)
+              && eventAllowsClientWrites(groupId, eventId)
               && validEventSettlementBase(request.resource.data)
               && request.resource.data.createdBy == request.auth.uid
               && request.resource.data.isDeleted == false
@@ -564,6 +586,7 @@ service cloud.firestore {
           function validEventSettlementUpdate() {
             return module == 'settlements'
               && isEventParticipant(groupId, eventId)
+              && eventAllowsClientWrites(groupId, eventId)
               && requesterIsRecordCreator()
               && request.resource.data.createdBy == resource.data.createdBy
               && request.resource.data.diff(resource.data).affectedKeys()
@@ -580,6 +603,7 @@ service cloud.firestore {
           function validActivityCreate() {
             return module == 'activity_logs'
               && isEventParticipant(groupId, eventId)
+              && eventAllowsClientWrites(groupId, eventId)
               && request.resource.data.keys().hasOnly([
                 'id',
                 'eventId',
@@ -634,6 +658,7 @@ service cloud.firestore {
 
         function validMemberCreate() {
           return isGroupMember(groupId)
+            && groupAllowsClientWrites(groupId)
             && request.resource.data.keys().hasOnly([
               'id',
               'userId',
@@ -654,6 +679,7 @@ service cloud.firestore {
 
         function validSelfDisplayNameUpdate() {
           return isGroupMember(groupId)
+            && groupAllowsClientWrites(groupId)
             && resource.data.userId == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['displayName'])
@@ -663,6 +689,7 @@ service cloud.firestore {
         function validMemberDelete() {
           return signedIn()
             && exists(groupPath(groupId))
+            && groupAllowsClientWrites(groupId)
             && (
               (groupExistsAfter()
                 && resource.data.userId == request.auth.uid
@@ -682,6 +709,7 @@ service cloud.firestore {
       match /activity/{activityId} {
         function validGroupActivityCreate() {
           return isGroupMember(groupId)
+            && groupAllowsClientWrites(groupId)
             && request.resource.data.keys().hasOnly([
               'id',
               'type',
@@ -741,6 +769,7 @@ service cloud.firestore {
 
         function validGroupSettlementCreate() {
           return isGroupMember(groupId)
+            && groupAllowsClientWrites(groupId)
             && validGroupSettlementBase(request.resource.data)
             && request.resource.data.createdBy == request.auth.uid
             && request.resource.data.isDeleted == false
@@ -749,6 +778,7 @@ service cloud.firestore {
 
         function validGroupSettlementUpdate() {
           return isGroupMember(groupId)
+            && groupAllowsClientWrites(groupId)
             && requesterIsRecordCreator()
             && request.resource.data.createdBy == resource.data.createdBy
             && request.resource.data.diff(resource.data).affectedKeys()

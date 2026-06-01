@@ -142,6 +142,18 @@ describe('Publish readiness Firestore rules', () => {
     });
   }
 
+  async function updateSeedGroup(overrides: Record<string, unknown>): Promise<void> {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('groups/g1').update(overrides);
+    });
+  }
+
+  async function updateSeedEvent(overrides: Record<string, unknown>): Promise<void> {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('groups/g1/events/e1').update(overrides);
+    });
+  }
+
   function validExpense(overrides: Record<string, unknown> = {}): Record<string, unknown> {
     return {
       id: 'exp1',
@@ -490,6 +502,115 @@ describe('Publish readiness Firestore rules', () => {
         deletedAt: new Date(),
       }),
     );
+  });
+
+  test('#205 soft-deleted group rejects stale client writes while preserving reads', async () => {
+    await updateSeedGroup({
+      isDeleted: true,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1').get());
+    await assertFails(owner.doc('groups/g1').update({
+      name: 'Zombie Crew',
+      updatedAt: new Date(),
+    }));
+    await assertFails(owner.doc('groups/g1/events/e-after').set(
+      validEvent({
+        name: 'After Delete',
+        createdBy: 'owner',
+        participantIds: ['owner'],
+        participantNames: { owner: 'Owner' },
+      }),
+    ));
+    await assertFails(member.doc('groups/g1/members/member').update({
+      displayName: 'Late Rename',
+    }));
+    await assertFails(member.doc('groups/g1/activity/a-after').set({
+      id: 'a-after',
+      type: 'manual',
+      actorId: 'member',
+      actorName: 'Member',
+      description: 'late activity',
+      metadata: {},
+      timestamp: new Date().toISOString(),
+    }));
+    await assertFails(member.doc('groups/g1/settlements/gset-after').set(
+      validGroupSettlement({ id: 'gset-after', createdBy: 'member' }),
+    ));
+  });
+
+  test('#205 soft-deleted event rejects stale event writes while preserving reads', async () => {
+    await updateSeedEvent({
+      isDeleted: true,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1/events/e1').get());
+    await assertFails(member.doc('groups/g1/events/e1').update({
+      name: 'Zombie Event',
+      updatedAt: new Date(),
+    }));
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp-after').set(
+      validExpense({ id: 'exp-after', createdBy: 'member' }),
+    ));
+    await assertFails(member.doc('groups/g1/events/e1/settlements/set-after').set(
+      validSettlement({ id: 'set-after', createdBy: 'member' }),
+    ));
+    await assertFails(member.doc('groups/g1/events/e1/activity_logs/a-after').set({
+      id: 'a-after',
+      eventId: 'e1',
+      category: 'ledger',
+      eventType: 'expense.created',
+      logText: 'late activity',
+      actorId: 'member',
+      actorName: 'Member',
+      metadata: {},
+      createdAt: new Date().toISOString(),
+    }));
+  });
+
+  test('#205 deleteGroup quiesce marker rejects writes before final isDeleted', async () => {
+    await updateSeedGroup({
+      isDeleted: false,
+      deletingInProgress: true,
+      deleteLockedAt: new Date(),
+      deleteLockedBy: 'owner',
+      updatedAt: new Date(),
+    });
+
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1').get());
+    await assertFails(owner.doc('groups/g1').update({
+      name: 'During Delete',
+      updatedAt: new Date(),
+    }));
+    await assertFails(owner.doc('groups/g1/events/e-during').set(
+      validEvent({
+        name: 'During Delete',
+        createdBy: 'owner',
+        participantIds: ['owner'],
+        participantNames: { owner: 'Owner' },
+      }),
+    ));
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp-during').set(
+      validExpense({ id: 'exp-during', createdBy: 'member' }),
+    ));
+    await assertFails(member.doc('groups/g1/events/e1/settlements/set-during').set(
+      validSettlement({ id: 'set-during', createdBy: 'member' }),
+    ));
+    await assertFails(member.doc('groups/g1/settlements/gset-during').set(
+      validGroupSettlement({ id: 'gset-during', createdBy: 'member' }),
+    ));
   });
 
   test('non-member cannot add another user or drop existing members while joining', async () => {

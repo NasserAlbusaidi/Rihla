@@ -206,6 +206,65 @@ describe('joinGroupByInviteCode', () => {
     expect(attemptSnap.data()?.failCount).toBe(1);
   });
 
+  test('join is rejected while deleteGroup is quiescing the group (#205)', async () => {
+    const db = getFirestore();
+    await seedEvent('active');
+    await db.doc('groups/g1').update({
+      isDeleted: false,
+      deletingInProgress: true,
+      deleteLockedAt: new Date(),
+      deleteLockedBy: 'owner',
+    });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).rejects.toMatchObject({ code: 'not-found' });
+
+    const groupSnap = await db.doc('groups/g1').get();
+    expect(groupSnap.data()?.memberIds).toEqual(['owner']);
+    const memberSnap = await db.doc('groups/g1/members/alice').get();
+    expect(memberSnap.exists).toBe(false);
+    const active = await db.doc('groups/g1/events/active').get();
+    expect(active.data()?.participantIds).toEqual(['owner']);
+  });
+
+  test('quiesced group returns not-found before the event-count guard (#205)', async () => {
+    const db = getFirestore();
+    const batch = db.batch();
+    for (let i = 0; i < 401; i += 1) {
+      batch.set(db.doc(`groups/g1/events/e${i}`), {
+        id: `e${i}`,
+        groupId: 'g1',
+        name: `Event ${i}`,
+        type: 'trip',
+        createdBy: 'owner',
+        participantIds: ['owner'],
+        participantNames: { owner: 'Owner' },
+        modules: { ledger: true },
+        isDeleted: false,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: 'stable',
+      });
+    }
+    await batch.commit();
+    await db.doc('groups/g1').update({
+      isDeleted: false,
+      deletingInProgress: true,
+      deleteLockedAt: new Date(),
+      deleteLockedBy: 'owner',
+    });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).rejects.toMatchObject({ code: 'not-found' });
+
+    const attemptSnap = await db.doc('joinAttempts/alice').get();
+    expect(attemptSnap.exists).toBe(true);
+    expect(attemptSnap.data()?.failCount).toBe(1);
+  });
+
   test('already-member re-join heals stale event participantIds', async () => {
     const db = getFirestore();
     await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
