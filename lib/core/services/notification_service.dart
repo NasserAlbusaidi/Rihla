@@ -25,15 +25,48 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 
 /// Service for handling push notifications via Firebase Cloud Messaging.
 class NotificationService {
-  NotificationService(this._ref);
+  NotificationService(
+    this._ref, {
+    FirebaseMessaging? messaging,
+    FirebaseFirestore? firestore,
+    String? Function()? currentUserId,
+    Stream<String>? tokenRefresh,
+    Stream<RemoteMessage>? foregroundMessages,
+    Stream<RemoteMessage>? openedMessages,
+  }) : _messaging = messaging,
+       _firestoreOverride = firestore,
+       _currentUserIdOverride = currentUserId,
+       _tokenRefreshOverride = tokenRefresh,
+       _foregroundMessagesOverride = foregroundMessages,
+       _openedMessagesOverride = openedMessages;
 
   final Ref _ref;
 
   FirebaseMessaging? _messaging;
+  final FirebaseFirestore? _firestoreOverride;
+  final String? Function()? _currentUserIdOverride;
+  final Stream<String>? _tokenRefreshOverride;
+  final Stream<RemoteMessage>? _foregroundMessagesOverride;
+  final Stream<RemoteMessage>? _openedMessagesOverride;
   bool _initialized = false;
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<RemoteMessage>? _messageSubscription;
   StreamSubscription<RemoteMessage>? _messageOpenedSubscription;
+
+  FirebaseFirestore get _firestore =>
+      _firestoreOverride ?? FirebaseConfig.firestore;
+
+  String? get _currentUserId =>
+      _currentUserIdOverride?.call() ?? FirebaseConfig.currentUser?.uid;
+
+  Stream<String> get _tokenRefresh =>
+      _tokenRefreshOverride ?? _messaging!.onTokenRefresh;
+
+  Stream<RemoteMessage> get _foregroundMessages =>
+      _foregroundMessagesOverride ?? FirebaseMessaging.onMessage;
+
+  Stream<RemoteMessage> get _openedMessages =>
+      _openedMessagesOverride ?? FirebaseMessaging.onMessageOpenedApp;
 
   /// Initialize Firebase Messaging. Call only after the user has opted in.
   Future<bool> initialize() async {
@@ -58,14 +91,11 @@ class NotificationService {
         _setStatus(NotificationStatus.enabled);
         await _saveToken();
 
-        _tokenRefreshSubscription ??= _messaging!.onTokenRefresh.listen(
-          _onTokenRefresh,
-        );
-        _messageSubscription ??= FirebaseMessaging.onMessage.listen(
+        _tokenRefreshSubscription ??= _tokenRefresh.listen(_onTokenRefresh);
+        _messageSubscription ??= _foregroundMessages.listen(
           _onForegroundMessage,
         );
-        _messageOpenedSubscription ??= FirebaseMessaging.onMessageOpenedApp
-            .listen(_onMessageTap);
+        _messageOpenedSubscription ??= _openedMessages.listen(_onMessageTap);
         return true;
       }
 
@@ -88,10 +118,10 @@ class NotificationService {
       final token = await _messaging!.getToken();
       if (token == null) return;
 
-      final userId = FirebaseConfig.currentUser?.uid;
+      final userId = _currentUserId;
       if (userId == null) return;
 
-      await FirebaseConfig.firestore.collection('fcm_tokens').doc(userId).set({
+      await _firestore.collection('fcm_tokens').doc(userId).set({
         'user_id': userId,
         'token': token,
         'platform': defaultTargetPlatform.name,
@@ -105,11 +135,11 @@ class NotificationService {
 
   /// Handle token refresh.
   Future<void> _onTokenRefresh(String token) async {
-    final userId = FirebaseConfig.currentUser?.uid;
+    final userId = _currentUserId;
     if (userId == null) return;
 
     try {
-      await FirebaseConfig.firestore.collection('fcm_tokens').doc(userId).set({
+      await _firestore.collection('fcm_tokens').doc(userId).set({
         'user_id': userId,
         'token': token,
         'platform': defaultTargetPlatform.name,
@@ -131,12 +161,9 @@ class NotificationService {
   Future<void> removeToken() async {
     try {
       _messaging ??= FirebaseMessaging.instance;
-      final userId = FirebaseConfig.currentUser?.uid;
+      final userId = _currentUserId;
       if (userId != null) {
-        await FirebaseConfig.firestore
-            .collection('fcm_tokens')
-            .doc(userId)
-            .delete();
+        await _firestore.collection('fcm_tokens').doc(userId).delete();
       }
     } catch (e) {
       if (kDebugMode) debugPrint('FCM: Token removal failed: $e');

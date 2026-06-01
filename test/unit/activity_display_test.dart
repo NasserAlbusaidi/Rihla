@@ -43,6 +43,66 @@ void main() {
       expect(localizedEventActivityText(ar, log), 'أضاف قيدًا ماليًا');
     });
 
+    test('localizes every known event activity branch', () {
+      final en = AppLocalizationsEn();
+
+      final cases = <({String category, String eventType, String expected})>[
+        (
+          category: 'money',
+          eventType: 'update',
+          expected: en.activityEventMoneyUpdated,
+        ),
+        (
+          category: 'MONEY',
+          eventType: 'DELETE',
+          expected: en.activityEventMoneyDeleted,
+        ),
+        (
+          category: 'GEAR',
+          eventType: 'CREATE',
+          expected: en.activityEventGearCreated,
+        ),
+        (
+          category: 'GEAR',
+          eventType: 'UPDATE',
+          expected: en.activityEventGearUpdated,
+        ),
+        (
+          category: 'GEAR',
+          eventType: 'DELETE',
+          expected: en.activityEventGearDeleted,
+        ),
+        (
+          category: 'DOCS',
+          eventType: 'CREATE',
+          expected: en.activityEventDocsCreated,
+        ),
+        (
+          category: 'DOCS',
+          eventType: 'UPDATE',
+          expected: en.activityEventDocsUpdated,
+        ),
+        (
+          category: 'DOCS',
+          eventType: 'DELETE',
+          expected: en.activityEventDocsDeleted,
+        ),
+      ];
+
+      for (final testCase in cases) {
+        expect(
+          localizedEventActivityText(
+            en,
+            _eventLog(
+              category: testCase.category,
+              eventType: testCase.eventType,
+            ),
+          ),
+          testCase.expected,
+        );
+      }
+    });
+
     test('preserves legacy event fallback text for unknown rows', () {
       final en = AppLocalizationsEn();
       final log = _eventLog(
@@ -64,6 +124,52 @@ void main() {
 
       expect(localizedGroupActivityText(en, log), 'created Beach Trip');
       expect(localizedGroupActivityText(ar, log), 'أنشأ Beach Trip');
+    });
+
+    test('localizes group activity generic and settlement branches', () {
+      final en = AppLocalizationsEn();
+
+      expect(
+        localizedGroupActivityText(en, _groupLog(type: 'group_settlement')),
+        en.activityGroupSettlementDescription,
+      );
+      expect(
+        localizedGroupActivityText(en, _groupLog(type: 'event_created')),
+        en.activityGroupEventCreatedGeneric,
+      );
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(
+            type: 'event_deleted',
+            metadata: const {'eventName': 'Old Plan'},
+          ),
+        ),
+        en.activityGroupEventDeleted('Old Plan'),
+      );
+      expect(
+        localizedGroupActivityText(en, _groupLog(type: 'event_deleted')),
+        en.activityGroupEventDeletedGeneric,
+      );
+      expect(
+        localizedGroupActivityText(en, _groupLog(type: 'member_joined')),
+        en.activityGroupMemberJoined,
+      );
+      expect(
+        localizedGroupActivityText(en, _groupLog(type: 'member_left')),
+        en.activityGroupMemberLeft,
+      );
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(
+            type: 'member_left',
+            description: 'legacy removal text',
+            metadata: const {'memberAction': 'removed'},
+          ),
+        ),
+        'legacy removal text',
+      );
     });
 
     test('localizes member removal without misattributing the actor', () {

@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -46,32 +50,152 @@ void main() {
     ),
   ];
 
-  Widget buildScreen(FakeFirebaseFirestore fakeDb, {Locale? locale}) {
-    return ProviderScope(
-      overrides: [
-        currentUserIdProvider.overrideWithValue('bob'),
-        eventDetailProvider(
-          eventRef,
-        ).overrideWith((ref) => Stream.value(event)),
-        eventExpensesProvider(
-          eventRef,
-        ).overrideWith((ref) => Stream.value(expenses)),
-        eventSettlementsProvider(
-          eventRef,
-        ).overrideWith((ref) => Stream.value(const <Settlement>[])),
-        settlementServiceProvider.overrideWithValue(
-          SettlementService.withFirestore(fakeDb),
-        ),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.lightTheme,
-        locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: const SettleUpScreen(groupId: groupId, eventId: eventId),
+  Widget buildScreen(
+    FakeFirebaseFirestore fakeDb, {
+    Locale? locale,
+    String? currentUid = 'bob',
+    Stream<Event?>? eventStream,
+    Stream<List<Expense>>? expensesStream,
+    Stream<List<Settlement>>? settlementsStream,
+    SettlementService? settlementService,
+    bool router = false,
+  }) {
+    final overrides = [
+      currentUserIdProvider.overrideWithValue(currentUid),
+      eventDetailProvider(
+        eventRef,
+      ).overrideWith((ref) => eventStream ?? Stream.value(event)),
+      eventExpensesProvider(
+        eventRef,
+      ).overrideWith((ref) => expensesStream ?? Stream.value(expenses)),
+      eventSettlementsProvider(eventRef).overrideWith(
+        (ref) => settlementsStream ?? Stream.value(const <Settlement>[]),
+      ),
+      groupMembersProvider(groupId).overrideWith((ref) => Stream.value([])),
+      settlementServiceProvider.overrideWithValue(
+        settlementService ?? SettlementService.withFirestore(fakeDb),
+      ),
+    ];
+
+    final child = router
+        ? MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            locale: locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: GoRouter(
+              initialLocation:
+                  '/group/$groupId/event/$eventId/ledger/settle-up',
+              routes: [
+                GoRoute(
+                  path: '/home',
+                  builder: (_, _) => const Scaffold(body: Text('Home')),
+                ),
+                GoRoute(
+                  path: '/group/:gid/event/:eid/ledger',
+                  builder: (_, state) => Scaffold(
+                    body: Text('Ledger:${state.pathParameters['eid']}'),
+                  ),
+                ),
+                GoRoute(
+                  path: '/group/:gid/event/:eid/ledger/settle-up',
+                  builder: (_, state) => SettleUpScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : MaterialApp(
+            theme: AppTheme.lightTheme,
+            locale: locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const SettleUpScreen(groupId: groupId, eventId: eventId),
+          );
+
+    return ProviderScope(overrides: overrides, child: child);
+  }
+
+  testWidgets('shows loading state while event is loading', (tester) async {
+    final fakeDb = FakeFirebaseFirestore();
+    final controller = StreamController<Event?>();
+    addTearDown(controller.close);
+
+    await tester.pumpWidget(
+      buildScreen(fakeDb, eventStream: controller.stream),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('missing event state routes home', (tester) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(
+      buildScreen(
+        fakeDb,
+        eventStream: Stream<Event?>.value(null),
+        router: true,
       ),
     );
-  }
+    await tester.pumpAndSettle();
+
+    expect(find.text('This event no longer exists'), findsOneWidget);
+
+    await tester.tap(find.text('Go Home'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home'), findsOneWidget);
+  });
+
+  testWidgets('shows loading state while expenses are loading', (tester) async {
+    final fakeDb = FakeFirebaseFirestore();
+    final controller = StreamController<List<Expense>>();
+    addTearDown(controller.close);
+
+    await tester.pumpWidget(
+      buildScreen(fakeDb, expensesStream: controller.stream),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('expense error state retry stays on error UI', (tester) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(
+      buildScreen(
+        fakeDb,
+        expensesStream: Stream<List<Expense>>.error(StateError('load failed')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't load balances."), findsOneWidget);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't load balances."), findsOneWidget);
+  });
+
+  testWidgets('direct-entry back button routes to event ledger', (
+    tester,
+  ) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(buildScreen(fakeDb, router: true));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Iconsax.arrow_left_2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ledger:event-1'), findsOneWidget);
+  });
 
   testWidgets('records settlement with resolved participant names', (
     tester,
@@ -107,6 +231,83 @@ void main() {
     expect(snap.docs.first.data()['recipientName'], equals('Alice'));
   });
 
+  testWidgets('zero settlement amount shows validation snackbar', (
+    tester,
+  ) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(buildScreen(fakeDb));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(GroupKeys.settleUpRecordPaymentButton),
+    );
+    await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tap to edit amount'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '0');
+    await tester.ensureVisible(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Amount must be greater than zero'), findsOneWidget);
+  });
+
+  testWidgets('too-large settlement amount shows outstanding snackbar', (
+    tester,
+  ) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(buildScreen(fakeDb));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(GroupKeys.settleUpRecordPaymentButton),
+    );
+    await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tap to edit amount'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '11.000');
+    await tester.ensureVisible(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Amount cannot exceed the outstanding balance'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('settlement write failure shows failure snackbar', (
+    tester,
+  ) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(
+      buildScreen(fakeDb, settlementService: _FailingSettlementService()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(GroupKeys.settleUpRecordPaymentButton),
+    );
+    await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        "Couldn't record settlement. Check your connection and try again.",
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('back arrow is mirrored under Arabic RTL (#126)', (tester) async {
     final fakeDb = FakeFirebaseFirestore();
 
@@ -124,4 +325,24 @@ void main() {
         .any((t) => t.transform.getRow(0).x == -1.0);
     expect(mirrored, isTrue);
   });
+}
+
+class _FailingSettlementService extends SettlementService {
+  _FailingSettlementService() : super.withFirestore(FakeFirebaseFirestore());
+
+  @override
+  Future<Settlement> addSettlement({
+    required String groupId,
+    required String eventId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required Decimal amount,
+    required String createdBy,
+    String currency = 'OMR',
+    String? payerName,
+    String? recipientName,
+    String? note,
+  }) {
+    throw StateError('write failed');
+  }
 }

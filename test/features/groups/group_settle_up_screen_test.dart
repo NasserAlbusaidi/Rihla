@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -11,6 +17,8 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
+import 'package:safar/features/groups/services/group_activity_service.dart';
+import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
@@ -132,6 +140,7 @@ Widget _wrap(
   List<Event>? events,
   List<Settlement>? settlements,
   String? currentUid,
+  List<Override> extraOverrides = const [],
 }) {
   return ProviderScope(
     overrides: [
@@ -146,6 +155,7 @@ Widget _wrap(
         _groupId,
       ).overrideWith((_) => Stream.value(events ?? [])),
       currentUserIdProvider.overrideWithValue(currentUid),
+      ...extraOverrides,
     ],
     child: MediaQuery(
       data: const MediaQueryData(disableAnimations: true),
@@ -159,8 +169,175 @@ Widget _wrap(
   );
 }
 
+class _RecordingGroupSettlementService extends GroupSettlementService {
+  _RecordingGroupSettlementService({this.throwOnAdd = false})
+    : super.withFirestore(FakeFirebaseFirestore());
+
+  final bool throwOnAdd;
+  final addCalls =
+      <
+        ({
+          String groupId,
+          String payerParticipantId,
+          String recipientParticipantId,
+          Decimal amount,
+          String createdBy,
+          String currency,
+          String? note,
+          String? payerName,
+          String? recipientName,
+        })
+      >[];
+
+  @override
+  Future<Settlement> addGroupSettlement({
+    required String groupId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required Decimal amount,
+    required String createdBy,
+    String currency = 'OMR',
+    String? note,
+    String? payerName,
+    String? recipientName,
+  }) async {
+    if (throwOnAdd) {
+      throw StateError('write failed');
+    }
+    addCalls.add((
+      groupId: groupId,
+      payerParticipantId: payerParticipantId,
+      recipientParticipantId: recipientParticipantId,
+      amount: amount,
+      createdBy: createdBy,
+      currency: currency,
+      note: note,
+      payerName: payerName,
+      recipientName: recipientName,
+    ));
+    return Settlement(
+      id: 'recorded-${addCalls.length}',
+      tripId: groupId,
+      payerParticipantId: payerParticipantId,
+      recipientParticipantId: recipientParticipantId,
+      amount: amount,
+      settledAt: DateTime(2026, 4, 1),
+      payerName: payerName,
+      recipientName: recipientName,
+      scope: 'group',
+      groupId: groupId,
+    );
+  }
+}
+
+class _RecordingGroupActivityService extends GroupActivityService {
+  _RecordingGroupActivityService()
+    : super.withFirestore(FakeFirebaseFirestore());
+
+  final logCalls =
+      <
+        ({
+          String groupId,
+          String type,
+          String actorId,
+          String actorName,
+          String description,
+          Map<String, dynamic>? metadata,
+        })
+      >[];
+
+  @override
+  void logGroupEvent({
+    required String groupId,
+    required String type,
+    required String actorId,
+    required String actorName,
+    required String description,
+    Map<String, dynamic>? metadata,
+  }) {
+    logCalls.add((
+      groupId: groupId,
+      type: type,
+      actorId: actorId,
+      actorName: actorName,
+      description: description,
+      metadata: metadata,
+    ));
+  }
+}
+
+Widget _wrapWithGroupStream(Stream<Group?> groupStream) {
+  final router = GoRouter(
+    initialLocation: '/group/$_groupId/settle-up',
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (_, _) => const Scaffold(body: Text('Home')),
+      ),
+      GoRoute(
+        path: '/group/:gid/settle-up',
+        builder: (_, state) =>
+            GroupSettleUpScreen(groupId: state.pathParameters['gid']!),
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      groupDetailProvider(_groupId).overrideWith((_) => groupStream),
+      groupBalancesProvider(
+        _groupId,
+      ).overrideWith((_) => AsyncValue.data(_balancesOwed)),
+      groupSettlementsProvider(
+        _groupId,
+      ).overrideWith((_) => Stream.value(const <Settlement>[])),
+      groupEventsProvider(
+        _groupId,
+      ).overrideWith((_) => Stream.value(const <Event>[])),
+      currentUserIdProvider.overrideWithValue('uid-bob'),
+    ],
+    child: MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: MaterialApp.router(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
+    ),
+  );
+}
+
 void main() {
   group('GroupSettleUpScreen', () {
+    testWidgets('shows loading indicator while group is loading', (
+      tester,
+    ) async {
+      final controller = StreamController<Group?>();
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(_wrapWithGroupStream(controller.stream));
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('missing group empty state routes home', (tester) async {
+      await tester.pumpWidget(_wrapWithGroupStream(Stream<Group?>.value(null)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('This group is no longer available'), findsOneWidget);
+      expect(
+        find.text('You may have been removed. Tap below to go back home.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Go Home'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+    });
+
     testWidgets(
       'shows screen title and the transfer count in the headline, not a '
       'redundant chip (#158)',
@@ -337,6 +514,11 @@ void main() {
       await tester.pump();
 
       expect(find.text('Retry'), findsOneWidget);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+
+      expect(find.text('Retry'), findsOneWidget);
     });
 
     testWidgets('Mark paid opens record payment sheet', (tester) async {
@@ -377,6 +559,156 @@ void main() {
       expect(find.byKey(GroupKeys.notNowButton), findsNothing);
     });
 
+    testWidgets('recording a payment writes settlement and activity log', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Bobby'});
+      final prefs = await SharedPreferences.getInstance();
+      final settlementService = _RecordingGroupSettlementService();
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          currentUid: 'uid-bob',
+          extraOverrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupSettlementServiceProvider.overrideWithValue(settlementService),
+            groupActivityServiceProvider.overrideWithValue(activityService),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'bank receipt');
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Settlement recorded.'), findsOneWidget);
+      expect(settlementService.addCalls, hasLength(1));
+      expect(settlementService.addCalls.single.groupId, _groupId);
+      expect(settlementService.addCalls.single.payerParticipantId, 'uid-bob');
+      expect(
+        settlementService.addCalls.single.recipientParticipantId,
+        'uid-alice',
+      );
+      expect(settlementService.addCalls.single.amount, Decimal.parse('7.750'));
+      expect(settlementService.addCalls.single.createdBy, 'uid-bob');
+      expect(settlementService.addCalls.single.note, 'bank receipt');
+      expect(activityService.logCalls, hasLength(1));
+      expect(activityService.logCalls.single.type, 'group_settlement');
+      expect(activityService.logCalls.single.actorName, 'Bobby');
+      expect(activityService.logCalls.single.metadata, {
+        'amount': '7.75',
+        'recipientId': 'uid-alice',
+      });
+    });
+
+    testWidgets('recording zero amount shows validation snackbar', (
+      tester,
+    ) async {
+      final settlementService = _RecordingGroupSettlementService();
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          currentUid: 'uid-bob',
+          extraOverrides: [
+            groupSettlementServiceProvider.overrideWithValue(settlementService),
+            groupActivityServiceProvider.overrideWithValue(activityService),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tap to edit amount'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), '0');
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Amount must be greater than zero'), findsOneWidget);
+      expect(settlementService.addCalls, isEmpty);
+      expect(activityService.logCalls, isEmpty);
+    });
+
+    testWidgets('recording too much shows outstanding amount snackbar', (
+      tester,
+    ) async {
+      final settlementService = _RecordingGroupSettlementService();
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          currentUid: 'uid-bob',
+          extraOverrides: [
+            groupSettlementServiceProvider.overrideWithValue(settlementService),
+            groupActivityServiceProvider.overrideWithValue(activityService),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tap to edit amount'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), '8.000');
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Amount cannot exceed the outstanding balance'),
+        findsOneWidget,
+      );
+      expect(settlementService.addCalls, isEmpty);
+      expect(activityService.logCalls, isEmpty);
+    });
+
+    testWidgets('settlement service failure shows failure snackbar', (
+      tester,
+    ) async {
+      final settlementService = _RecordingGroupSettlementService(
+        throwOnAdd: true,
+      );
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          currentUid: 'uid-bob',
+          extraOverrides: [
+            groupSettlementServiceProvider.overrideWithValue(settlementService),
+            groupActivityServiceProvider.overrideWithValue(activityService),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          "Couldn't record settlement. Check your connection and try again.",
+        ),
+        findsOneWidget,
+      );
+      expect(activityService.logCalls, isEmpty);
+    });
+
     testWidgets('renders with preSelectedMemberId without crashing', (
       tester,
     ) async {
@@ -407,6 +739,77 @@ void main() {
 
       expect(find.byType(GroupSettlementTile), findsOneWidget);
       expect(find.text('Settle Up'), findsOneWidget);
+
+      await tester.tap(find.byType(GroupSettlementTile));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Camping Weekend'), findsOneWidget);
+    });
+
+    testWidgets('renders fallback label for unknown long event id', (
+      tester,
+    ) async {
+      const longEventId = 'missing-event-id-123456';
+      final balances = (
+        balances: _balancesOwed.balances,
+        totalSpent: _balancesOwed.totalSpent,
+        eventCount: _balancesOwed.eventCount,
+        perEventBreakdown: <String, Map<String, Decimal>>{
+          'uid-alice': {longEventId: Decimal.parse('7.750')},
+          'uid-bob': {longEventId: Decimal.parse('-7.750')},
+        },
+        memberNames: _balancesOwed.memberNames,
+        memberRawNames: _balancesOwed.memberRawNames,
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(balances),
+          currentUid: 'uid-bob',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(GroupSettlementTile));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Event ...123456'), findsOneWidget);
+    });
+
+    testWidgets('truncates long event names in breakdown labels', (
+      tester,
+    ) async {
+      final longNameEvent = Event(
+        id: 'event-1',
+        name: 'A very long event name that should truncate',
+        type: EventType.trip,
+        groupId: _groupId,
+        createdBy: 'uid-alice',
+        participantIds: const ['uid-alice', 'uid-bob'],
+        participantNames: const {'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+        modules: const EventModules(),
+        startDate: DateTime(2026, 4, 2),
+        createdAt: DateTime(2026, 4, 1),
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          events: [longNameEvent],
+          currentUid: 'uid-bob',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(GroupSettlementTile));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('A very long event name that...'),
+        findsOneWidget,
+      );
     });
   });
 }

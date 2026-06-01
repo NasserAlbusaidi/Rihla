@@ -78,6 +78,19 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   // Form submission
   // ---------------------------------------------------------------------------
 
+  String? _resolveCurrentUid() {
+    final providerUid = ref.read(currentUserIdProvider);
+    if (providerUid != null && providerUid.isNotEmpty) return providerUid;
+
+    try {
+      final firebaseUid = FirebaseConfig.currentUser?.uid;
+      return firebaseUid != null && firebaseUid.isNotEmpty ? firebaseUid : null;
+    } catch (_) {
+      // Firebase can be uninitialized in widget tests that override identity.
+      return null;
+    }
+  }
+
   Future<void> _submitForm(List<GroupMember> members) async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -91,7 +104,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       return;
     }
 
-    ref.read(eventLoadingProvider.notifier).state = true;
     ref.read(eventErrorProvider.notifier).state = null;
 
     // Build participantNames map from selected members (immutable pattern)
@@ -100,8 +112,18 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         if (_selectedParticipantIds.contains(m.userId)) m.userId: m.displayName,
     });
 
-    // Current Firebase UID for createdBy
-    final uid = FirebaseConfig.currentUser?.uid ?? '';
+    final uid = _resolveCurrentUid();
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.eventCreateFailed),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
+    ref.read(eventLoadingProvider.notifier).state = true;
 
     try {
       final event = await ref
@@ -123,7 +145,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
       // Log event_created activity (D-14) — fire-and-forget, no await
       try {
-        final actorId = FirebaseConfig.currentUser?.uid ?? '';
+        final actorId = uid;
         final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
             ? ref.read(settingsProvider).deviceName
             : 'Someone';

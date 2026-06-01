@@ -361,6 +361,49 @@ class GroupService extends FirestoreRepository {
         .read(firebaseFunctionsServiceProvider)
         .deleteGroup(groupId: groupId);
   }
+
+  /// Reactive stream of all non-deleted groups for one user.
+  ///
+  /// Uses the existing `memberIds arrayContains` + `createdAt DESC` query, then
+  /// filters `isDeleted` in memory so legacy groups without the field remain
+  /// visible (#190).
+  Stream<List<Group>> watchUserGroups(String uid) {
+    return db
+        .collection('groups')
+        .where('memberIds', arrayContains: uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(Group.fromDoc)
+              .where((group) => !group.isDeleted)
+              .toList(),
+        );
+  }
+
+  /// Reactive stream of all members in a specific group.
+  Stream<List<GroupMember>> watchMembers(String groupId) {
+    return db
+        .collection('groups')
+        .doc(groupId)
+        .collection('members')
+        .orderBy('joinedAt')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => GroupMember.fromDoc(doc, groupId))
+              .toList(),
+        );
+  }
+
+  /// Reactive stream for one group document.
+  Stream<Group?> watchGroup(String groupId) {
+    return db
+        .collection('groups')
+        .doc(groupId)
+        .snapshots()
+        .map((doc) => doc.exists ? Group.fromDoc(doc) : null);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -386,23 +429,7 @@ final userGroupsProvider = StreamProvider<List<Group>>((ref) {
   final uid = userAsync.valueOrNull?.uid;
   if (uid == null) return Stream.value([]);
 
-  return FirebaseConfig.firestore
-      .collection('groups')
-      .where('memberIds', arrayContains: uid)
-      .orderBy('createdAt', descending: true)
-      .snapshots()
-      // #190: hide server soft-deleted groups (the deleteGroup callable sets
-      // isDeleted:true) IN-MEMORY rather than via a `where('isDeleted', ==
-      // false)` query. A server equality filter would exclude every
-      // pre-existing group whose doc predates this field (legacy v1.3.0
-      // installs), silently hiding them until a backfill ran. Group.fromDoc
-      // defaults a missing isDeleted to false, so legacy groups stay visible
-      // and only genuinely soft-deleted groups are dropped — no backfill, no
-      // composite index needed.
-      .map((snapshot) => snapshot.docs
-          .map(Group.fromDoc)
-          .where((group) => !group.isDeleted)
-          .toList());
+  return ref.watch(groupServiceProvider).watchUserGroups(uid);
 });
 
 /// Reactive stream of all members in a specific group.
@@ -412,17 +439,7 @@ final groupMembersProvider = StreamProvider.family<List<GroupMember>, String>((
   ref,
   groupId,
 ) {
-  return FirebaseConfig.firestore
-      .collection('groups')
-      .doc(groupId)
-      .collection('members')
-      .orderBy('joinedAt')
-      .snapshots()
-      .map(
-        (snapshot) => snapshot.docs
-            .map((doc) => GroupMember.fromDoc(doc, groupId))
-            .toList(),
-      );
+  return ref.watch(groupServiceProvider).watchMembers(groupId);
 });
 
 /// Reactive stream for a single group by ID.
@@ -432,9 +449,5 @@ final groupDetailProvider = StreamProvider.family<Group?, String>((
   ref,
   groupId,
 ) {
-  return FirebaseConfig.firestore
-      .collection('groups')
-      .doc(groupId)
-      .snapshots()
-      .map((doc) => doc.exists ? Group.fromDoc(doc) : null);
+  return ref.watch(groupServiceProvider).watchGroup(groupId);
 });

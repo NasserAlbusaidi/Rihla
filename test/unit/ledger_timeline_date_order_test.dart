@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/utils/ledger_timeline.dart';
 import 'package:safar/l10n/generated/app_localizations_ar.dart';
+import 'package:safar/l10n/generated/app_localizations_en.dart';
 
 /// #154 — Ledger day labels must match Activity (day-month order) under
 /// Arabic, e.g. `19 مايو`, not the month-day `مايو 19` the manual concat
@@ -12,22 +14,36 @@ import 'package:safar/l10n/generated/app_localizations_ar.dart';
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('ar');
+    await initializeDateFormatting('en');
   });
 
-  test('groupTimelineByDay renders day-month order with Western digits (ar)', () {
-    final item = LedgerExpenseItem(
-      Expense(
-        id: 'e1',
-        tripId: 'event-1',
-        payerParticipantId: 'p1',
-        amount: Decimal.parse('5.000'),
-        scope: ExpenseScope.global,
-        customSplitParticipants: const [],
-        splitMode: SplitMode.equally,
-        splitDistribution: const {},
-        createdAt: DateTime(2026, 5, 19),
-      ),
+  Expense expense(String id, DateTime createdAt) {
+    return Expense(
+      id: id,
+      tripId: 'event-1',
+      payerParticipantId: 'p1',
+      amount: Decimal.parse('5.000'),
+      scope: ExpenseScope.global,
+      customSplitParticipants: const [],
+      splitMode: SplitMode.equally,
+      splitDistribution: const {},
+      createdAt: createdAt,
     );
+  }
+
+  Settlement settlement(String id, DateTime settledAt) {
+    return Settlement(
+      id: id,
+      tripId: 'event-1',
+      payerParticipantId: 'p1',
+      recipientParticipantId: 'p2',
+      amount: Decimal.parse('2.000'),
+      settledAt: settledAt,
+    );
+  }
+
+  test('groupTimelineByDay renders day-month order with Western digits (ar)', () {
+    final item = LedgerExpenseItem(expense('e1', DateTime(2026, 5, 19)));
     // `now` is several days later so the bare month-day branch is hit
     // (no "Today"/"Yesterday" prefix).
     final groups = groupTimelineByDay(
@@ -41,5 +57,50 @@ void main() {
     expect(label, contains('19 مايو')); // day-month
     expect(label, isNot(contains('مايو 19'))); // not month-day
     expect(label, contains('19')); // Western digit, not ١٩
+  });
+
+  test('groupTimelineByDay labels today and yesterday and preserves order', () {
+    final todayExpense = LedgerExpenseItem(
+      expense('today', DateTime(2026, 5, 25, 18)),
+    );
+    final yesterdaySettlement = LedgerSettlementItem(
+      settlement('yesterday', DateTime(2026, 5, 24, 9)),
+    );
+    final groups = groupTimelineByDay(
+      [todayExpense, yesterdaySettlement],
+      DateTime(2026, 5, 25, 20),
+      l10n: AppLocalizationsEn(),
+    );
+
+    expect(groups, hasLength(2));
+    expect(groups[0].label, startsWith('Today · '));
+    expect(groups[0].dateOnly, DateTime(2026, 5, 25));
+    expect(groups[0].items.single, same(todayExpense));
+    expect(groups[1].label, startsWith('Yesterday · '));
+    expect(groups[1].dateOnly, DateTime(2026, 5, 24));
+    expect(groups[1].items.single, same(yesterdaySettlement));
+    expect(yesterdaySettlement.date, DateTime(2026, 5, 24, 9));
+  });
+
+  test('formatEventDateRange handles null, one-sided, and full ranges', () {
+    final l10n = AppLocalizationsEn();
+
+    expect(formatEventDateRange(null, null, l10n: l10n), isNull);
+    expect(
+      formatEventDateRange(DateTime(2026, 5, 5), null, l10n: l10n),
+      'MAY 5',
+    );
+    expect(
+      formatEventDateRange(null, DateTime(2026, 5, 8), l10n: l10n),
+      'MAY 8',
+    );
+    expect(
+      formatEventDateRange(
+        DateTime(2026, 5, 5),
+        DateTime(2026, 5, 8),
+        l10n: l10n,
+      ),
+      'MAY 5 ${l10n.timelineRangeSeparator} MAY 8',
+    );
   });
 }
