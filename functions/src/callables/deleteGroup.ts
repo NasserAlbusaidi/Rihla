@@ -326,7 +326,7 @@ async function acquireDeleteGroupLock(
 ): Promise<{
   alreadyDeleted: boolean;
   createdLock: boolean;
-  lockedAt: Timestamp | null;
+  lockedAtMs: number | null;
   lockedBy: string | null;
 }> {
   return db.runTransaction(async (tx) => {
@@ -340,7 +340,7 @@ async function acquireDeleteGroupLock(
       return {
         alreadyDeleted: true,
         createdLock: false,
-        lockedAt: null,
+        lockedAtMs: null,
         lockedBy: null,
       };
     }
@@ -351,8 +351,10 @@ async function acquireDeleteGroupLock(
       return {
         alreadyDeleted: false,
         createdLock: false,
-        lockedAt: null,
-        lockedBy: null,
+        lockedAtMs: timestampMillis(groupData.deleteLockedAt),
+        lockedBy: typeof groupData.deleteLockedBy === 'string'
+          ? groupData.deleteLockedBy
+          : null,
       };
     }
 
@@ -366,22 +368,30 @@ async function acquireDeleteGroupLock(
     return {
       alreadyDeleted: false,
       createdLock: true,
-      lockedAt: now,
+      lockedAtMs: now.toMillis(),
       lockedBy: uid,
     };
   });
 }
 
-async function clearOwnedDeleteGroupLock(
+async function clearDeleteGroupLockForFailure(
   groupRef: DocumentReference,
   lock: {
     createdLock: boolean;
-    lockedAt: Timestamp | null;
+    lockedAtMs: number | null;
     lockedBy: string | null;
   },
+  error: unknown,
 ): Promise<void> {
-  if (!lock.createdLock || lock.lockedAt == null || lock.lockedBy == null) return;
-  const lockedAt = lock.lockedAt;
+  const canClearObservedLock = isHttpsErrorCode(error, 'failed-precondition');
+  if (
+    (!lock.createdLock && !canClearObservedLock)
+    || lock.lockedAtMs == null
+    || lock.lockedBy == null
+  ) {
+    return;
+  }
+  const lockedAtMs = lock.lockedAtMs;
   const lockedBy = lock.lockedBy;
 
   await groupRef.firestore.runTransaction(async (tx) => {
@@ -390,7 +400,7 @@ async function clearOwnedDeleteGroupLock(
     if (
       groupData.deletingInProgress !== true
       || groupData.deleteLockedBy !== lockedBy
-      || timestampMillis(groupData.deleteLockedAt) !== lockedAt.toMillis()
+      || timestampMillis(groupData.deleteLockedAt) !== lockedAtMs
     ) {
       return;
     }
@@ -400,6 +410,15 @@ async function clearOwnedDeleteGroupLock(
       deleteLockedBy: FieldValue.delete(),
     });
   });
+}
+
+function isHttpsErrorCode(error: unknown, code: string): boolean {
+  return (
+    error != null
+    && typeof error === 'object'
+    && 'code' in error
+    && (error as { code?: unknown }).code === code
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -677,7 +696,7 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
       };
     } catch (error) {
       if (!finalizeStarted) {
-        await clearOwnedDeleteGroupLock(groupRef, lock);
+        await clearDeleteGroupLockForFailure(groupRef, lock, error);
       }
       throw error;
     }

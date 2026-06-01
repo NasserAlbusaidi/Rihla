@@ -20,6 +20,8 @@ Issue: #205, follow-up to #190.
 4. While the marker is active, client writes under the group must fail even though `isDeleted` is still `false`.
 5. If the balance gate fails, the callable must clear the quiesce marker and leave the group active.
 6. If the balance gate passes, the callable must finalize `isDeleted:true` and leave a finalized timestamp.
+7. A retry that only observes an existing quiesce marker must not clear it on throttling or other pre-balance failures.
+8. A retry that reaches the balance gate and fails with unsettled balances must clear the same observed quiesce marker so the group can be settled again.
 
 ## Design
 
@@ -34,6 +36,12 @@ The callable finalizes by setting `isDeleted:true`, `deletingInProgress:false`, 
 
 Idempotence: if the creator retries while `deletingInProgress:true`, the callable resumes the delete instead of aborting. During that retry, balance recompute includes events that were already soft-deleted at or after `deleteLockedAt`; this keeps a partially flushed event cascade from making its own group-scope settlement offsets look outstanding.
 
+Lock cleanup is ownership-sensitive:
+
+- a fresh invocation may clear only the lock it created, compared by `deleteLockedAt` and `deleteLockedBy`.
+- a retry that merely observed an existing lock may clear that unchanged marker only after the balance gate returns `FAILED_PRECONDITION`.
+- a retry that fails before the balance gate, including `resource-exhausted`, must leave the observed marker in place because another invocation may still be finalizing.
+
 ## Tests
 
 - `functions/test/firestore-rules-publish-readiness.test.ts`
@@ -44,5 +52,7 @@ Idempotence: if the creator retries while `deletingInProgress:true`, the callabl
   - with a test pause after lock acquisition, `deleteGroup` exposes `deletingInProgress:true` before finalize, then ends with `isDeleted:true` and `deletingInProgress:false`.
   - failed balance gate clears the quiesce marker and keeps `isDeleted:false`.
   - owner retry resumes a quiesced partial finalize and includes events soft-deleted after the lock in the balance fold.
+  - failed owner retry on an observed quiesce marker clears the marker when the balance gate proves the group still has outstanding balances.
+  - failed owner retry before the balance gate does not clear another invocation's marker.
 - `functions/test/callables/joinGroupByInviteCode.test.ts`
   - joining a group with `deletingInProgress:true` rejects as `not-found` and performs no member/event fanout writes.

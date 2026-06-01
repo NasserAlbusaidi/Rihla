@@ -800,4 +800,33 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
       });
     }
   });
+
+  test('22. #205 failed owner retry clears observed stale lock after balance gate', async () => {
+    const deleteLockedAt = new Date('2026-02-01T00:00:00.000Z');
+    await seedGroup('g', {
+      deletingInProgress: true,
+      deleteLockedAt,
+      deleteLockedBy: OWNER,
+    });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 12000,
+      splitMode: 'exact',
+      scope: 'custom',
+      customSplitParticipants: [OWNER, MEMBER],
+      splitDistribution: { [OWNER]: 6000, [MEMBER]: 6000 },
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    const group = (await groupSnap('g')).data();
+    expect(group?.isDeleted).toBe(false);
+    expect(group?.deletingInProgress).toBe(false);
+    expect(group?.deleteLockedAt).toBeUndefined();
+    expect(group?.deleteLockedBy).toBeUndefined();
+  });
 });
