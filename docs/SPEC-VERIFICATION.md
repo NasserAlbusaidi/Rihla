@@ -42,6 +42,10 @@ Don't write "verified file paths" in your head. State, in the spec or in the con
 
 - **Distrust your own earlier claims in the same session.** The deeper a session runs, the more layered the assumptions. Re-verify load-bearing claims in the moment, not on recall. Iteration rounds (v2 → v3 → v4 → v5) create compounding momentum where each verified piece feels load-bearing for the next round; codex starts each round from zero, which is structurally why it catches what in-session verification misses. Treat each new round as v1.
 
+- **A green test suite is not the Gate — assert the client's actual write payload, not the rule's own shape.** A rules/emulator test that builds its fixture from the rule's allowed shape will pass against a rule that is wrong for what the client *actually writes*. Build failing tests on money/rules from the **service write-map** (the exact key set the client serializes), not from the model or the rule itself.
+
+  **Worked example (#185):** `validEventSettlementBase` (`security/firestore.rules`) omitted `payerName`/`recipientName` from its `hasOnly` set, but `settlement_service.dart` writes those keys on event settlements → `PERMISSION_DENIED`, which broke event settle-up and blocked group deletion. The emulator rules suite was **green** because every fixture asserted the rule's own self-consistent shape. The Gate caught it; the RED regression (PR #187, fix `a615ded`) was rebuilt from `settlement_service.dart`'s exact write map. A passed suite can coexist with a violated contract — which is also why "tests pass" never substitutes for the Gate.
+
 ---
 
 ## Before declaring ready — fresh-context review is non-optional
