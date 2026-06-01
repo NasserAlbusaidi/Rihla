@@ -115,9 +115,10 @@ void main() {
       () {
         // participants = the per-event universe the server builds; `ghost` is
         // excluded (not a participantId, not a payer/settlement actor).
-        // splitDistribution carries an extra `ghost` key the rules never
-        // constrain (validExpenseSplit only checks `splitDistribution is map`).
-        // The client drops it; the server gate MUST too.
+        // splitDistribution carries an extra `ghost` key. #191 now rejects new
+        // forged writes like this at the rules boundary; this parity test still
+        // documents how legacy/Admin-written malformed docs are read. The
+        // client drops the ghost key; the server gate MUST too.
         final balances = BalanceCalculator.calculateBalances(
           participants: [participant('owner'), participant('member')],
           expenses: [

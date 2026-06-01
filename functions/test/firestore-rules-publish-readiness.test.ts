@@ -915,6 +915,84 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
+  test('#191 expenses reject splitDistribution keys outside event participants', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expShares').set(
+      validExpense({
+        id: 'expShares',
+        splitMode: 'shares',
+        splitDistribution: { owner: 1, member: 1 },
+      }),
+    ));
+
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expGhostCreate').set(
+      validExpense({
+        id: 'expGhostCreate',
+        splitMode: 'shares',
+        splitDistribution: { owner: 1, ghost: 1 },
+      }),
+    ));
+
+    const ref = member.doc('groups/g1/events/e1/expenses/expUpdateGhost');
+    await assertSucceeds(ref.set(validExpense({ id: 'expUpdateGhost' })));
+    await assertFails(ref.update({
+      splitMode: 'percent',
+      splitDistribution: { owner: 50000, ghost: 50000 },
+    }));
+  });
+
+  test('#191 stale splitDistribution after participant removal can still be archived', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const ref = owner.doc('groups/g1/events/e1/expenses/expStale');
+
+    await assertSucceeds(ref.set(validExpense({
+      id: 'expStale',
+      createdBy: 'owner',
+      splitMode: 'shares',
+      splitDistribution: { owner: 1, member: 1 },
+    })));
+    await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+      participantIds: ['owner'],
+      updatedAt: new Date(),
+    }));
+
+    await assertFails(ref.update({
+      amountFils: 24000,
+    }));
+    await assertSucceeds(ref.update({
+      note: 'archival note',
+    }));
+    await assertSucceeds(ref.update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
+
+  test('#191 stale payer after participant removal remains soft-delete denied by design', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const ref = owner.doc('groups/g1/events/e1/expenses/expStalePayer');
+
+    await assertSucceeds(ref.set(validExpense({
+      id: 'expStalePayer',
+      createdBy: 'owner',
+      payerParticipantId: 'member',
+      splitMode: 'shares',
+      splitDistribution: { owner: 1, member: 1 },
+    })));
+    await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+      participantIds: ['owner'],
+      updatedAt: new Date(),
+    }));
+
+    // #191 only relaxes unchanged stale splitDistribution keys. The existing
+    // payerParticipantId participant guard still re-runs on every update.
+    await assertFails(ref.update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
+
   test('expenses allow soft delete but deny hard delete', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
     const ref = member.doc('groups/g1/events/e1/expenses/exp1');
