@@ -449,14 +449,16 @@ service cloud.firestore {
             return eventData(groupId, eventId).participantIds;
           }
 
-          function validExpenseSplit(data) {
+          function validExpenseSplit(data, enforceParticipantKeys) {
             return (!data.keys().hasAny(['splitMode'])
                 || data.splitMode in ['equally', 'shares', 'exact', 'percent'])
               && (!data.keys().hasAny(['splitDistribution'])
-                || data.splitDistribution is map);
+                || (data.splitDistribution is map
+                  && (!enforceParticipantKeys
+                    || data.splitDistribution.keys().hasOnly(participants()))));
           }
 
-          function validExpenseBase(data) {
+          function validExpenseBase(data, enforceParticipantKeys) {
             return data.keys().hasOnly([
               'id',
               'eventId',
@@ -488,7 +490,7 @@ service cloud.firestore {
             && nullableString(data.subGroupId)
             && data.customSplitParticipants is list
             && data.customSplitParticipants.hasOnly(participants())
-            && validExpenseSplit(data)
+            && validExpenseSplit(data, enforceParticipantKeys)
             && nullableString(data.receiptUrl)
             && nullableString(data.categoryId)
             && nullableString(data.description)
@@ -502,7 +504,7 @@ service cloud.firestore {
             return module == 'expenses'
               && isEventParticipant(groupId, eventId)
               && eventAllowsClientWrites(groupId, eventId)
-              && validExpenseBase(request.resource.data)
+              && validExpenseBase(request.resource.data, true)
               && request.resource.data.createdBy == request.auth.uid
               && request.resource.data.isDeleted == false
               && request.resource.data.deletedAt == null;
@@ -514,6 +516,20 @@ service cloud.firestore {
               && resource.data.isDeleted == false
               && request.resource.data.isDeleted == true
               && request.resource.data.deletedAt is string;
+          }
+
+          function affectsExpenseAllocation() {
+            return request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny([
+                'payerParticipantId',
+                'amountFils',
+                'currency',
+                'scope',
+                'subGroupId',
+                'customSplitParticipants',
+                'splitMode',
+                'splitDistribution'
+              ]);
           }
 
           function validExpenseUpdate() {
@@ -539,7 +555,7 @@ service cloud.firestore {
                   'isDeleted',
                   'deletedAt'
                 ])
-              && validExpenseBase(request.resource.data)
+              && validExpenseBase(request.resource.data, affectsExpenseAllocation())
               && (
                 (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
                   && request.resource.data.isDeleted == resource.data.isDeleted
