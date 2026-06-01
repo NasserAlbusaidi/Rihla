@@ -310,6 +310,20 @@ class BalanceCalculator {
     Map<String, Decimal> distribution,
     String currency,
   ) {
+    // A negative exact entry is never a valid split — you cannot owe a negative
+    // share. The custom split sheet strips minus signs, but firestore.rules
+    // only checks `splitDistribution is map` (not its sign) and the service
+    // encodes values verbatim, so a forged/unvalidated write can persist one.
+    // Treat it as an invalid exact split (equal-split fallback) rather than let
+    // it (or the residual close-out below) emit a negative owed. Server-side
+    // value validation is the complementary fix tracked in #191.
+    if (distribution.values.any((value) => value < Decimal.zero)) {
+      debugPrint(
+        'Negative exact split entry for expense ${expense.id}; falling back to equal split.',
+      );
+      return _allocateEqual(expense.amount, distribution.keys, currency);
+    }
+
     final total = distribution.values.fold(
       Decimal.zero,
       (sum, value) => sum + value,
@@ -322,7 +336,46 @@ class BalanceCalculator {
       return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
-    return Map<String, Decimal>.from(distribution);
+    final residual = expense.amount - total;
+    if (residual == Decimal.zero) {
+      return Map<String, Decimal>.from(distribution);
+    }
+    // An in-tolerance (±_splitTolerance) sum drift is closed onto the
+    // alphabetically-last recipient so sum(owed) == amount exactly — the same
+    // remainder contract _allocateEqual/_allocateWeighted use. Without this the
+    // residual escapes and conservation (sum(netBalance) == 0) breaks.
+    //
+    // For an OVER-allocation (residual < 0) the alphabetically-last recipient
+    // can be a 0.000 entry — the custom split sheet emits one for any blank
+    // participant (custom_split_sheet.dart:241-246) — and subtracting the
+    // residual there would persist a negative owed (a non-payer turned phantom
+    // creditor). So close the residual onto the alphabetically-last recipient
+    // that can absorb it without going negative. For an under-allocation
+    // (residual > 0) every recipient qualifies, so this is the last key —
+    // identical to the prior contract.
+    final sortedKeys = distribution.keys.toList()..sort();
+    String? target;
+    for (var i = sortedKeys.length - 1; i >= 0; i--) {
+      if (distribution[sortedKeys[i]]! + residual >= Decimal.zero) {
+        target = sortedKeys[i];
+        break;
+      }
+    }
+    if (target == null) {
+      // No recipient can absorb the residual non-negatively — the distribution
+      // cannot represent `amount` with non-negative owed. Unreachable for an
+      // in-tolerance drift on a positive amount, but treat as invalid with the
+      // same posture as the out-of-tolerance guard rather than emit a negative.
+      debugPrint(
+        'Exact split residual cannot be absorbed non-negatively for expense '
+        '${expense.id}; falling back to equal split.',
+      );
+      return _allocateEqual(expense.amount, distribution.keys, currency);
+    }
+    return {
+      for (final key in sortedKeys)
+        key: key == target ? distribution[key]! + residual : distribution[key]!,
+    };
   }
 
   static Map<String, Decimal> _allocatePercent(
