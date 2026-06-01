@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -77,6 +78,19 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   // Form submission
   // ---------------------------------------------------------------------------
 
+  String? _resolveCurrentUid() {
+    final providerUid = ref.read(currentUserIdProvider);
+    if (providerUid != null && providerUid.isNotEmpty) return providerUid;
+
+    try {
+      final firebaseUid = FirebaseConfig.currentUser?.uid;
+      return firebaseUid != null && firebaseUid.isNotEmpty ? firebaseUid : null;
+    } catch (_) {
+      // Firebase can be uninitialized in widget tests that override identity.
+      return null;
+    }
+  }
+
   Future<void> _submitForm(List<GroupMember> members) async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -90,7 +104,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       return;
     }
 
-    ref.read(eventLoadingProvider.notifier).state = true;
     ref.read(eventErrorProvider.notifier).state = null;
 
     // Build participantNames map from selected members (immutable pattern)
@@ -99,9 +112,18 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         if (_selectedParticipantIds.contains(m.userId)) m.userId: m.displayName,
     });
 
-    // Current Firebase UID for createdBy. Uses the provider seam so tests and
-    // route-scoped screens don't need to initialize Firebase Auth directly.
-    final uid = ref.read(currentUserIdProvider) ?? '';
+    final uid = _resolveCurrentUid();
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.eventCreateFailed),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
+    ref.read(eventLoadingProvider.notifier).state = true;
 
     try {
       final event = await ref

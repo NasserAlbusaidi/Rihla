@@ -98,7 +98,7 @@ Widget _wrapCreateRouted({
   required SharedPreferences prefs,
   required EventService eventService,
   required GroupActivityService activityService,
-  String currentUserId = 'uid-creator',
+  String? currentUserId = 'uid-creator',
 }) {
   final router = GoRouter(
     initialLocation: '/create',
@@ -149,7 +149,9 @@ void main() {
   late SharedPreferences prefs;
 
   setUpAll(() async {
-    SharedPreferences.setMockInitialValues({'device_name': 'Test User'});
+    SharedPreferences.setMockInitialValues({
+      'settings_device_name': 'Test User',
+    });
     prefs = await SharedPreferences.getInstance();
   });
 
@@ -559,7 +561,7 @@ void main() {
             groupId: 'group-1',
             type: 'event_created',
             actorId: 'uid-creator',
-            actorName: 'Someone',
+            actorName: 'Test User',
             description: 'created Beach Day',
             metadata: {'eventId': 'event-created', 'eventName': 'Beach Day'},
           ),
@@ -567,6 +569,37 @@ void main() {
         expect(find.text('EventHub:event-created'), findsOneWidget);
       },
     );
+
+    testWidgets('submit without an authenticated uid does not write', (
+      tester,
+    ) async {
+      final eventService = _MockEventService();
+      final activityService = _MockGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrapCreateRouted(
+          prefs: prefs,
+          eventService: eventService,
+          activityService: activityService,
+          currentUserId: null,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'Beach Day');
+      await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+      await tester.tap(find.byKey(EventKeys.createEventButton));
+      await tester.pump();
+
+      expect(
+        find.text(
+          "Couldn't create event. Check your connection and try again.",
+        ),
+        findsOneWidget,
+      );
+      verifyZeroInteractions(eventService);
+      verifyZeroInteractions(activityService);
+    });
 
     testWidgets('submit failure shows create-event error snack bar', (
       tester,
