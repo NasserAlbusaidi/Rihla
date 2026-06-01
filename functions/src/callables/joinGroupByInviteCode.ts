@@ -226,22 +226,10 @@ export const joinGroupByInviteCode = onCall<
         }
 
         const groupRef = db.doc(`groups/${resolvedGroupId}`);
-        const memberRef = groupRef.collection('members').doc(uid);
-        const eventsQuery = groupRef.collection('events');
-        const [groupSnap, memberSnap, eventsSnap] = await Promise.all([
-          tx.get(groupRef),
-          tx.get(memberRef),
-          tx.get(eventsQuery),
-        ]);
+        const groupSnap = await tx.get(groupRef);
 
         if (!groupSnap.exists) {
           throw new HttpsError('not-found', 'Group not found.');
-        }
-        if (eventsSnap.size > 400) {
-          throw new HttpsError(
-            'failed-precondition',
-            'Group has too many events to join safely.',
-          );
         }
 
         const groupData = groupSnap.data() ?? {};
@@ -253,6 +241,19 @@ export const joinGroupByInviteCode = onCall<
         // lookup failure toward the join rate limit, exactly like an invalid code.
         if (groupData.isDeleted === true || groupData.deletingInProgress === true) {
           throw new HttpsError('not-found', 'Group not found.');
+        }
+
+        const memberRef = groupRef.collection('members').doc(uid);
+        const eventsQuery = groupRef.collection('events');
+        const [memberSnap, eventsSnap] = await Promise.all([
+          tx.get(memberRef),
+          tx.get(eventsQuery),
+        ]);
+        if (eventsSnap.size > 400) {
+          throw new HttpsError(
+            'failed-precondition',
+            'Group has too many events to join safely.',
+          );
         }
         const memberIds = getMemberIds(groupData);
 

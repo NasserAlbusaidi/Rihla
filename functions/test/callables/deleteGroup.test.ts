@@ -754,4 +754,50 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect(group?.isDeleted).toBe(true);
     expect(group?.deletingInProgress).toBe(false);
   });
+
+  test('21. #205 failed owner retry does not clear another invocation lock', async () => {
+    process.env.DELETE_GROUP_PAUSE_AFTER_LOCK_MS = '3000';
+    const db = getFirestore();
+    await db.doc(`deleteGroupAttempts/${OWNER}`).set({
+      count: 4,
+      windowStart: new Date(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      scope: 'personal',
+      payerParticipantId: OWNER,
+      amountFils: 1000,
+    });
+
+    const firstDelete = wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    await waitFor(
+      async () => (await groupSnap('g')).data()?.deletingInProgress === true,
+      'first deleteGroup quiesce lock',
+    );
+
+    try {
+      await expect(wrapped({
+        data: { groupId: 'g' },
+        auth: { uid: OWNER },
+      } as any)).rejects.toMatchObject({ code: 'resource-exhausted' });
+
+      const duringFirstDelete = (await groupSnap('g')).data();
+      expect(duringFirstDelete?.isDeleted).toBe(false);
+      expect(duringFirstDelete?.deletingInProgress).toBe(true);
+      expect(duringFirstDelete?.deleteLockedBy).toBe(OWNER);
+    } finally {
+      await expect(firstDelete).resolves.toMatchObject({
+        mode: 'softDelete',
+        alreadyDeleted: false,
+      });
+    }
+  });
 });

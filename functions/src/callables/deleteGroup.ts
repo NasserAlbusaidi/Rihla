@@ -323,7 +323,12 @@ async function acquireDeleteGroupLock(
   db: Firestore,
   groupRef: DocumentReference,
   uid: string,
-): Promise<boolean> {
+): Promise<{
+  alreadyDeleted: boolean;
+  createdLock: boolean;
+  lockedAt: Timestamp | null;
+  lockedBy: string | null;
+}> {
   return db.runTransaction(async (tx) => {
     const groupSnap = await tx.get(groupRef);
     if (!groupSnap.exists) {
@@ -332,13 +337,23 @@ async function acquireDeleteGroupLock(
 
     const groupData = groupSnap.data() ?? {};
     if (groupData.isDeleted === true) {
-      return true;
+      return {
+        alreadyDeleted: true,
+        createdLock: false,
+        lockedAt: null,
+        lockedBy: null,
+      };
     }
     if (groupData.createdBy !== uid) {
       throw new HttpsError('permission-denied', 'Only the group creator can delete the group.');
     }
     if (groupData.deletingInProgress === true) {
-      return false;
+      return {
+        alreadyDeleted: false,
+        createdLock: false,
+        lockedAt: null,
+        lockedBy: null,
+      };
     }
 
     const now = Timestamp.now();
@@ -348,15 +363,42 @@ async function acquireDeleteGroupLock(
       deleteLockedBy: uid,
       updatedAt: now,
     });
-    return false;
+    return {
+      alreadyDeleted: false,
+      createdLock: true,
+      lockedAt: now,
+      lockedBy: uid,
+    };
   });
 }
 
-async function clearDeleteGroupLock(groupRef: DocumentReference): Promise<void> {
-  await groupRef.update({
-    deletingInProgress: false,
-    deleteLockedAt: FieldValue.delete(),
-    deleteLockedBy: FieldValue.delete(),
+async function clearOwnedDeleteGroupLock(
+  groupRef: DocumentReference,
+  lock: {
+    createdLock: boolean;
+    lockedAt: Timestamp | null;
+    lockedBy: string | null;
+  },
+): Promise<void> {
+  if (!lock.createdLock || lock.lockedAt == null || lock.lockedBy == null) return;
+  const lockedAt = lock.lockedAt;
+  const lockedBy = lock.lockedBy;
+
+  await groupRef.firestore.runTransaction(async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    const groupData = groupSnap.data() ?? {};
+    if (
+      groupData.deletingInProgress !== true
+      || groupData.deleteLockedBy !== lockedBy
+      || timestampMillis(groupData.deleteLockedAt) !== lockedAt.toMillis()
+    ) {
+      return;
+    }
+    tx.update(groupRef, {
+      deletingInProgress: false,
+      deleteLockedAt: FieldValue.delete(),
+      deleteLockedBy: FieldValue.delete(),
+    });
   });
 }
 
@@ -580,8 +622,8 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
     const db = getFirestore();
     const groupRef = db.doc(`groups/${groupId}`);
 
-    const alreadyDeleted = await acquireDeleteGroupLock(db, groupRef, uid);
-    if (alreadyDeleted) {
+    const lock = await acquireDeleteGroupLock(db, groupRef, uid);
+    if (lock.alreadyDeleted) {
       return { groupId, mode: 'softDelete', eventsSoftDeleted: 0, alreadyDeleted: true };
     }
 
@@ -635,7 +677,7 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
       };
     } catch (error) {
       if (!finalizeStarted) {
-        await clearDeleteGroupLock(groupRef);
+        await clearOwnedDeleteGroupLock(groupRef, lock);
       }
       throw error;
     }
