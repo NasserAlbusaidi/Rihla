@@ -497,9 +497,9 @@ Future<void> deleteGroup({required String groupId}) async {
 - **Harness:** `firebase-functions-test` `wrap(deleteGroup)`, Admin SDK vs the Firestore emulator (mirror `deleteAccount.test.ts` seed helpers).
 - **runCommand:** `cd functions && npm run test:emulator -- deleteGroup.test.ts`
 
-| # | Case | Currently-failing assertion |
+| # | Case | Initial RED assertion |
 |---|---|---|
-| 1 | missing auth | `await expect(wrapped({data:{groupId:'g'}})).rejects.toMatchObject({code:'unauthenticated'})` — *fails now: module not found* |
+| 1 | missing auth | `await expect(wrapped({data:{groupId:'g'}})).rejects.toMatchObject({code:'unauthenticated'})` — originally fails before `deleteGroup` exists/exports |
 | 2 | non-creator | group `createdBy:'owner'`, caller `member` → `rejects … {code:'permission-denied'}` |
 | 3 | missing group | `groupId:'ghost'` → `rejects … {code:'not-found'}` |
 | 4 | invalid groupId | `''` and `'a/b'` → `rejects … {code:'invalid-argument'}` |

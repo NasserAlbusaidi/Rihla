@@ -78,7 +78,7 @@ void main() {
 
   test(
     'createGroup persists isDeleted:false + deletedAt:null (producer fix, '
-    'HARD REQ #6) — FAILS today: createGroup omits them',
+    'HARD REQ #6)',
     () async {
       SharedPreferences.setMockInitialValues({
         'settings_device_name': 'Owner',
@@ -123,8 +123,7 @@ void main() {
 
   test(
     'visibility filter excludes isDeleted:true, keeps isDeleted:false AND '
-    'legacy docs with no isDeleted field (Group.fromDoc defaults false) — '
-    'FAILS today: no isDeleted getter',
+    'legacy docs with no isDeleted field (Group.fromDoc defaults false)',
     () async {
       final db = FakeFirebaseFirestore();
       await db.doc('groups/gLegacy').set(

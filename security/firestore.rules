@@ -214,9 +214,10 @@ service cloud.firestore {
             'currency',
             'createdAt',
             'updatedAt',
-            // #190: the create-path producer writes the soft-delete pair so the
-            // userGroupsProvider `isDeleted == false` filter does not hide the
-            // new group. A group can never be created already-deleted.
+            // #190: the create-path producer writes the soft-delete pair. The
+            // userGroupsProvider hides soft-deleted groups with an in-memory
+            // !group.isDeleted filter so legacy field-absent groups stay visible.
+            // A group can never be created already-deleted.
             'isDeleted',
             'deletedAt'
           ])

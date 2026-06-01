@@ -41,7 +41,7 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 //      local balance pre-check is UX-only). This REVERSES the pre-#190
 //      fail-closed-on-null guard.
 //
-// RED reasons against current code:
+// Original RED reasons before #190 was implemented:
 //   - case 1: `GroupService.deleteGroup` (group_provider.dart:352-371) builds a
 //     WriteBatch that deletes member docs + invite code + group doc directly →
 //     the injected fake's group doc is GONE → ASSERTION fail.
@@ -120,7 +120,7 @@ void main() {
   // -------------------------------------------------------------------------
   test(
     'case 1: deleteGroup performs NO direct client Firestore delete '
-    '(server-authoritative) — FAILS today (client batch-deletes the docs)',
+    '(server-authoritative)',
     () async {
       final fakeDb = FakeFirebaseFirestore();
       await fakeDb.doc('groups/g').set({
