@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -256,6 +257,10 @@ class GroupDangerSection extends ConsumerWidget {
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
+    // UX-only short-circuit: when balances are LOADED and outstanding, show the
+    // settle-up hint without a round-trip. On the null/loading path we fall
+    // through and let the SERVER decide — it is the sole authority (#190 HARD
+    // REQ #8). Never skip the callable just because the local balance is null.
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
     if (balances != null) {
@@ -275,6 +280,18 @@ class GroupDangerSection extends ConsumerWidget {
     try {
       await ref.read(groupServiceProvider).deleteGroup(groupId: groupId);
       router.go('/home');
+    } on FirebaseFunctionsException catch (e) {
+      // Group already gone server-side → treat as success and navigate home.
+      if (e.code == 'not-found') {
+        router.go('/home');
+        return;
+      }
+      if (context.mounted) {
+        final message = e.code == 'failed-precondition'
+            ? context.l10n.groupSettleBeforeDeleting
+            : context.l10n.groupFailedDelete(e.message ?? e.code);
+        messenger.showSnackBar(SnackBar(content: Text(message)));
+      }
     } catch (e) {
       if (context.mounted) {
         messenger.showSnackBar(

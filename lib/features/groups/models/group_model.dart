@@ -16,6 +16,14 @@ class Group {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
+  /// Soft-delete flag. Group deletion is server-authoritative (#190): the
+  /// `deleteGroup` callable flips this to `true` (it never hard-deletes the
+  /// doc). `userGroupsProvider` filters `!group.isDeleted` in memory so
+  /// soft-deleted groups drop off Home while legacy field-absent groups and
+  /// append-only money records stay reachable.
+  final bool isDeleted;
+  final DateTime? deletedAt;
+
   const Group({
     required this.id,
     required this.name,
@@ -25,6 +33,8 @@ class Group {
     this.currency = 'OMR',
     required this.createdAt,
     this.updatedAt,
+    this.isDeleted = false,
+    this.deletedAt,
   });
 
   /// Create Group from a Firestore document snapshot.
@@ -43,6 +53,10 @@ class Group {
       updatedAt: data['updatedAt'] != null
           ? (data['updatedAt'] as Timestamp).toDate()
           : null,
+      isDeleted: data['isDeleted'] as bool? ?? false,
+      deletedAt: data['deletedAt'] != null
+          ? (data['deletedAt'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -60,6 +74,10 @@ class Group {
       updatedAt: map['updated_at'] != null
           ? DateTime.parse(map['updated_at'] as String)
           : null,
+      isDeleted: (map['is_deleted'] as int?) == 1,
+      deletedAt: map['deleted_at'] != null
+          ? DateTime.parse(map['deleted_at'] as String)
+          : null,
     );
   }
 
@@ -74,6 +92,8 @@ class Group {
       'currency': currency,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      'is_deleted': isDeleted ? 1 : 0,
+      'deleted_at': deletedAt?.toIso8601String(),
       'synced_at': DateTime.now().toIso8601String(),
     };
   }
@@ -88,6 +108,8 @@ class Group {
     String? currency,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isDeleted,
+    DateTime? deletedAt,
   }) {
     return Group(
       id: id ?? this.id,
@@ -98,6 +120,8 @@ class Group {
       currency: currency ?? this.currency,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 

@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../models/group_member_model.dart';
 import '../models/group_model.dart';
@@ -124,6 +125,11 @@ class GroupService extends FirestoreRepository {
       'createdBy': uid,
       'memberIds': [uid],
       'currency': currency,
+      // #190 HARD REQ #6: new groups carry explicit soft-delete state. Rules
+      // require this pair; userGroupsProvider still filters in memory so legacy
+      // field-absent groups remain visible.
+      'isDeleted': false,
+      'deletedAt': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -339,35 +345,21 @@ class GroupService extends FirestoreRepository {
     await batch.commit();
   }
 
-  /// Delete a group and all its member documents atomically.
+  /// Delete a group (server-authoritative, #190).
   ///
-  /// Steps:
-  /// 1. Fetch all member subcollection docs
-  /// 2. Read group doc to get invite code
-  /// 3. Batch delete: all member docs + invite code doc + group doc
+  /// Routes through the `deleteGroup` Cloud callable, which recomputes per-actor
+  /// net balances exactly as [BalanceCalculator], refuses with
+  /// `failed-precondition` on any non-zero net, then SOFT-deletes the group +
+  /// its events (keeping the append-only expense/settlement records reachable).
+  /// The client performs NO direct Firestore writes — the direct delete path is
+  /// locked at the rules layer (`allow delete: if false;`).
   ///
-  /// Does NOT cascade-delete events (orphaned events are invisible
-  /// without group membership). Firestore batch limit is 500 ops —
-  /// safe for groups with <498 members.
+  /// Throws [FirebaseFunctionsException]; callers (the danger section) map the
+  /// code to a user-facing message.
   Future<void> deleteGroup({required String groupId}) async {
-    final membersSnap = await db
-        .collection('groups')
-        .doc(groupId)
-        .collection('members')
-        .get();
-
-    final groupDoc = await db.collection('groups').doc(groupId).get();
-    final inviteCode = groupDoc.data()?['inviteCode'] as String?;
-
-    final batch = db.batch();
-    for (final memberDoc in membersSnap.docs) {
-      batch.delete(memberDoc.reference);
-    }
-    if (inviteCode != null) {
-      batch.delete(db.collection('inviteCodes').doc(inviteCode));
-    }
-    batch.delete(db.collection('groups').doc(groupId));
-    await batch.commit();
+    await _ref
+        .read(firebaseFunctionsServiceProvider)
+        .deleteGroup(groupId: groupId);
   }
 }
 
@@ -399,7 +391,18 @@ final userGroupsProvider = StreamProvider<List<Group>>((ref) {
       .where('memberIds', arrayContains: uid)
       .orderBy('createdAt', descending: true)
       .snapshots()
-      .map((snapshot) => snapshot.docs.map(Group.fromDoc).toList());
+      // #190: hide server soft-deleted groups (the deleteGroup callable sets
+      // isDeleted:true) IN-MEMORY rather than via a `where('isDeleted', ==
+      // false)` query. A server equality filter would exclude every
+      // pre-existing group whose doc predates this field (legacy v1.3.0
+      // installs), silently hiding them until a backfill ran. Group.fromDoc
+      // defaults a missing isDeleted to false, so legacy groups stay visible
+      // and only genuinely soft-deleted groups are dropped — no backfill, no
+      // composite index needed.
+      .map((snapshot) => snapshot.docs
+          .map(Group.fromDoc)
+          .where((group) => !group.isDeleted)
+          .toList());
 });
 
 /// Reactive stream of all members in a specific group.

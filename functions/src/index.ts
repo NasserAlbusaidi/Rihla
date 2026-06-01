@@ -6,3 +6,4 @@ setGlobalOptions({ region: 'us-central1' });
 export { joinGroupByInviteCode } from './callables/joinGroupByInviteCode';
 export { cleanupAnonUidArtifacts } from './callables/cleanupAnonUidArtifacts';
 export { deleteAccount } from './callables/deleteAccount';
+export { deleteGroup } from './callables/deleteGroup';

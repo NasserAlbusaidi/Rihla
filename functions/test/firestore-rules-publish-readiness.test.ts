@@ -103,6 +103,10 @@ describe('Publish readiness Firestore rules', () => {
       currency: 'OMR',
       createdAt: new Date(),
       updatedAt: new Date(),
+      // #190: the create-path producer writes the soft-delete pair; validGroupCreate
+      // now requires it.
+      isDeleted: false,
+      deletedAt: null,
       ...overrides,
     };
   }
@@ -244,6 +248,9 @@ describe('Publish readiness Firestore rules', () => {
       currency: 'OMR',
       createdAt: new Date(),
       updatedAt: new Date(),
+      // #190: producer writes the soft-delete pair (validGroupCreate requires it).
+      isDeleted: false,
+      deletedAt: null,
     });
     batch.set(db.doc('inviteCodes/NEW123'), {
       groupId: 'new-group',
@@ -385,7 +392,14 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(owner.doc('recoveryCleanupIntents/owner').delete());
   });
 
-  test('creator can atomically delete group, member docs, and invite code', async () => {
+  // #190: group deletion is server-authoritative (deleteGroup callable, Admin
+  // SDK). The direct client delete path is locked (`allow delete: if false;`)
+  // so the balance-zero gate + soft-delete cascade cannot be bypassed by a
+  // tampered client. These two cases were `assertSucceeds` pre-#190 and are
+  // flipped to `assertFails` here (spec §8.2 cases 1-2). RED against the
+  // current rule (`allow delete: if isCreator();`): the delete SUCCEEDS, so
+  // `assertFails` rejects.
+  test('creator can NO LONGER client-delete group + member docs + invite code (server-only, #190)', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
     const batch = owner.batch();
     batch.delete(owner.doc('groups/g1/members/owner'));
@@ -393,10 +407,10 @@ describe('Publish readiness Firestore rules', () => {
     batch.delete(owner.doc('inviteCodes/ABC123'));
     batch.delete(owner.doc('groups/g1'));
 
-    await assertSucceeds(batch.commit());
+    await assertFails(batch.commit());
   });
 
-  test('creator can delete group when legacy invite code lookup is missing', async () => {
+  test('creator can NO LONGER client-delete group when legacy invite code lookup is missing (#190)', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await ctx.firestore().doc('inviteCodes/ABC123').delete();
     });
@@ -408,7 +422,74 @@ describe('Publish readiness Firestore rules', () => {
     batch.delete(owner.doc('inviteCodes/ABC123'));
     batch.delete(owner.doc('groups/g1'));
 
-    await assertSucceeds(batch.commit());
+    await assertFails(batch.commit());
+  });
+
+  // #190 §8.2 cases 3-5: the new server-authoritative delete lock + the
+  // isDeleted create-path producer gate, folded here from the standalone
+  // firestore-rules-delete-group-lock.test.ts (deleted; this is the consolidated
+  // owner). RED against current rules: case 3 SUCCEEDS today (creator can
+  // delete), `deleteGroupAttempts` does not exist as a server-only match, and
+  // `validGroupCreate.hasOnly` rejects `isDeleted`/`deletedAt` so case 5's
+  // assertSucceeds fails.
+  test('creator cannot client-delete the bare group doc (server-only, #190)', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1').delete());
+  });
+
+  test('member cannot delete the group doc (#190)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1').delete());
+  });
+
+  test('deleteGroupAttempts counters are not readable or writable by clients (#190)', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('deleteGroupAttempts/owner').get());
+    await assertFails(owner.collection('deleteGroupAttempts').get());
+    await assertFails(
+      owner.doc('deleteGroupAttempts/owner').set({
+        count: 1,
+        windowStart: new Date(),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      }),
+    );
+  });
+
+  test('validGroupCreate permits isDeleted:false/deletedAt:null and rejects isDeleted:true on create (#190 HARD REQ #6)', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const baseGroup = {
+      id: 'g-new',
+      name: 'Fresh Crew',
+      inviteCode: 'NEW123',
+      createdBy: 'owner',
+      memberIds: ['owner'],
+      currency: 'OMR',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Producer fix: createGroup writes isDeleted:false + deletedAt:null. The
+    // widened hasOnly + the `isDeleted == false && deletedAt == null` assertion
+    // must permit this. RED today: hasOnly rejects the two extra keys.
+    await assertSucceeds(
+      owner.doc('groups/g-new').set({
+        ...baseGroup,
+        isDeleted: false,
+        deletedAt: null,
+      }),
+    );
+
+    // A group created already-deleted is forbidden (the producer must write
+    // false; soft-delete only happens server-side via the callable update).
+    await assertFails(
+      owner.doc('groups/g-new-2').set({
+        ...baseGroup,
+        id: 'g-new-2',
+        inviteCode: 'NEW456',
+        isDeleted: true,
+        deletedAt: new Date(),
+      }),
+    );
   });
 
   test('non-member cannot add another user or drop existing members while joining', async () => {

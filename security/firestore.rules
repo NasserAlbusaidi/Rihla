@@ -168,6 +168,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // #190: per-UID deleteGroup-invocation rate-limit counters. Server-only (the
+    // deleteGroup callable writes them via the Admin SDK); clients never touch.
+    // A Firestore TTL on `expiresAt` reaps them. Mirrors deletionAttempts.
+    match /deleteGroupAttempts/{userId} {
+      allow read, write: if false;
+    }
+
     // Recovery cleanup intents are one-time bearer secrets. The retiring
     // anonymous UID writes its own intent before sign-out; the callable verifies
     // and consumes it after email-link recovery. Clients never read or delete
@@ -206,7 +213,13 @@ service cloud.firestore {
             'memberIds',
             'currency',
             'createdAt',
-            'updatedAt'
+            'updatedAt',
+            // #190: the create-path producer writes the soft-delete pair. The
+            // userGroupsProvider hides soft-deleted groups with an in-memory
+            // !group.isDeleted filter so legacy field-absent groups stay visible.
+            // A group can never be created already-deleted.
+            'isDeleted',
+            'deletedAt'
           ])
           && request.resource.data.id == groupId
           && isValidDisplayName(request.resource.data.name)
@@ -215,7 +228,9 @@ service cloud.firestore {
           && request.resource.data.memberIds == [request.auth.uid]
           && validCurrency(request.resource.data.currency)
           && request.resource.data.createdAt is timestamp
-          && request.resource.data.updatedAt is timestamp;
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.isDeleted == false
+          && request.resource.data.deletedAt == null;
       }
 
       function validCreatorMetadataUpdate() {
@@ -264,7 +279,13 @@ service cloud.firestore {
         || validMemberIdsRefresh()
         || validSelfLeave()
         || validCreatorRemoveMember();
-      allow delete: if isCreator();
+      // #190: group deletion is server-authoritative. The deleteGroup callable
+      // (Admin SDK, rules-bypassing) recomputes net balances across all events +
+      // group settlements, refuses on any non-zero net, then SOFT-deletes the
+      // group + its events (isDeleted:true) while keeping the append-only
+      // expense/settlement records reachable. The callable UPDATES the group doc
+      // (never deletes it), so a direct client delete must be forbidden.
+      allow delete: if false;
 
       match /events/{eventId} {
         function groupMembers() {
