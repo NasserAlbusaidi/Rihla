@@ -39,6 +39,8 @@ Terse, action-first, no trailing summaries, don't re-explain what the code alrea
 
 `MEMORY.md` / auto-memory exists so you don't re-ask the user things already settled (preferences, prior decisions). It is **never a citation.** Any claim sourced from memory, CLAUDE.md, or a code comment that touches a write path, money math, routing, or schema must be re-confirmed against code (`grep`/`Read`) before it enters a plan or spec. Memory orients; code decides. Do not resolve this toward "trust memory" because re-checking is friction — re-checking is the job.
 
+**Same rule for agent/doc output — scoped to merge/done/release-state claims.** Any "PR merged", commit SHA, "QA passed", or deploy/release-gate claim — from memory, a delegated agent, an issue comment, or a doc — gets one mechanical check before you repeat or act on it: `git cat-file -t <sha>` / `gh pr view <n> --json state,mergeCommitOid`. Agents fabricate completed work that passes plausibility (hallucinated merge SHAs `4f3e8d9`/`51c5ce4` that were never git objects; an invented QA run with a fake anon UID written into a release-gate doc) — this is the project's signature failure mode. Scope the check to merge/done/release-state — **not** every agent-added identifier; the one-sentence-diff path stays exempt.
+
 ## The Gate — fresh-context review before implementation
 
 A plan/spec authored in-session ships its author's blind spots into the implementation. The in-session checklist below does not catch this on its own: every worked example in `docs/SPEC-VERIFICATION.md` is a logged case where the embedded check missed it and an independent fresh-context reviewer caught it. The checklist is the reviewer's rubric, not a substitute for the reviewer.
@@ -74,6 +76,7 @@ Run while writing the spec; report results out loud. Full reasoning + worked exa
 - Commits: conventional (`feat(scope):` …); match `git log --oneline -20`.
 - PRs: review the whole branch diff (`git diff main...HEAD`), not the last commit.
 - In doubt about scope: smaller change + follow-up, don't bundle.
+- **No Schrödinger's fix.** A fix is in exactly one state: an open PR, merged, or explicitly deferred to a named milestone. Never the resting state of a `git stash` or an unpushed local branch — that's invisible debt that reads as "almost done" forever. (The hardening fan-out left #104 in `stash@{0}` and 6 branches unpushed; all 9 audit issues sat OPEN, 0 merged.)
 
 ---
 
@@ -126,7 +129,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 
 ## Financial Calculations — landmines
 
-`decimal` package, never `double`. Default OMR (3dp); also USD/EUR/GBP/SAR/AED/QAR. `BalanceCalculator` lives in `lib/features/ledger/providers/expense_provider.dart` (**not** a separate file — people hunt for a `balance_calculator.dart` that doesn't exist). Scopes: global/subGroup(legacy)/personal/custom. Splits: equally/shares/exact/percent. **Rounding remainder → alphabetically-last recipient** so `sum(shares)==amount` — don't move without updating `balance_calculations_test.dart`. Settlement opt: greedy min-transactions. `MoneySerializer` converts `Decimal`↔integer subunits **only at the Firestore boundary**; inside the app stay in `Decimal`. Scale: OMR/KWD/BHD=1000, USD/EUR/GBP/SAR/AED/QAR=100, **JPY=1** (easy to forget).
+`decimal` package, never `double`. Default OMR (3dp); also USD/EUR/GBP/SAR/AED/QAR. `BalanceCalculator` lives in `lib/features/ledger/providers/expense_provider.dart` (**not** a separate file — people hunt for a `balance_calculator.dart` that doesn't exist). Scopes: global/subGroup(legacy)/personal/custom. Splits: equally/shares/exact/percent. **Rounding remainder → alphabetically-last recipient** so `sum(shares)==amount` — don't move without updating `balance_calculations_test.dart`. Settlement opt: greedy min-transactions. `MoneySerializer` converts `Decimal`↔integer subunits **only at the Firestore boundary**; inside the app stay in `Decimal`. Scale: OMR/KWD/BHD=1000, USD/EUR/GBP/SAR/AED/QAR=100, **JPY=1** (easy to forget). `_allocateExact` (and every allocator) **must never emit a negative owed** — `firestore.rules` only checks `splitDistribution is map`, not value signs or sum, so a forged/unvalidated write can persist negatives or a tolerance-drift over-allocation; the calculator defends (negative entry → equal-split fallback; in-tolerance residual closes onto the alphabetically-last recipient that can absorb it without going negative). Server-side `splitDistribution` value validation is #192.
 
 ## Key Invariants
 

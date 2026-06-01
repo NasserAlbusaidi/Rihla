@@ -42,7 +42,7 @@ test/
 │   ├── android_manifest_test.dart      # Release manifest permissions
 │   ├── connectivity_provider_test.dart # ConnectivityNotifier state machine
 │   ├── settings_notifier_test.dart     # SettingsNotifier (SharedPreferences)
-│   ├── color_tokens_test.dart          # AppColorTokens exact hex values
+│   ├── dark_theme_contrast_test.dart   # AppColorTokens contrast / exact hex
 │   ├── design_tokens_test.dart         # Spacing/theme token system
 │   ├── provider_tests.dart             # Provider wiring and initial states
 │   └── ...                             # Additional model and widget unit tests
@@ -59,26 +59,33 @@ test/
 │   │   └── create_join_group_test.dart
 │   ├── events/
 │   │   ├── event_command_center_test.dart
-│   │   ├── event_module_list_test.dart
+│   │   ├── event_settings_screen_test.dart
 │   │   ├── group_detail_events_test.dart
 │   │   └── create_event_test.dart
 │   ├── ledger/
-│   │   └── payer_currency_rewiring_test.dart
-│   ├── profile/
-│   │   └── profile_screen_test.dart
-│   └── ledger_test.dart                # LedgerScreen + SettleUpScreen
+│   │   ├── settle_up_screen_test.dart
+│   │   ├── add_expense_screen_test.dart
+│   │   ├── ledger_screen_overflow_test.dart
+│   │   └── ledger_split_ways_test.dart
+│   └── profile/
+│       └── profile_screen_test.dart
 ├── shared/
 │   └── widgets/
-│       ├── grain_overlay_test.dart
-│       └── animated_currency_text_test.dart
+│       ├── r_amount_test.dart
+│       ├── r_avatar_test.dart
+│       ├── offline_banner_test.dart
+│       ├── wordmark_logo_test.dart
+│       └── grain_overlay_test.dart
 ├── core/
 │   └── providers/
 │       └── app_bootstrap_wiring_test.dart
+├── architecture/
+│   └── no_cache_service_test.dart      # asserts the SQLite cache stays removed (#50)
 ├── integration/
-│   ├── happy_path_test.dart            # Full widget tree E2E with GoRouter
 │   ├── firebase_auth_test.dart         # Anonymous auth behavioral contract
 │   └── firebase_money_roundtrip_test.dart # Decimal -> Firestore -> Decimal
 └── helpers/
+    ├── pump_rihla_app.dart             # canonical app-boot helper (overrides sharedPreferencesProvider; never call pumpAndSettle after it)
     ├── test_router.dart                # Shared GoRouter with stub routes
     └── navigation_test.dart            # Router navigation assertions
 ```
@@ -146,7 +153,7 @@ Unit tests live in `test/unit/` and have no Flutter widget dependencies. They im
 
 **AppFormatters** (`test/unit/formatters_test.dart`):
 - `formatOMR` — 3 decimal places, rounding, negatives, zero
-- `formatCurrency` — symbol lookup, unknown currency fallback
+- `formatCurrency` — code-first ISO-code prefix (e.g. "OMR 12.450"), decimals from currency config, unknown currency falls back to 3dp (symbol is intentionally never used — #144)
 - `formatRelativeDate` — Today/Yesterday/N days ago/dd/mm
 - `formatShortMonthDay` — "Mar 15", no leading zero on day
 
@@ -155,7 +162,7 @@ Unit tests live in `test/unit/` and have no Flutter widget dependencies. They im
 - Verify `MoneySerializer.toSubunits` is used for amount storage (not raw Decimal/double)
 - Verify soft-delete flags (`isDeleted: false` on create)
 
-**Model tests** (`test/unit/firebase_model_roundtrip_test.dart`, `test/unit/group_model_test.dart`):
+**Model tests** (`test/unit/group_model_test.dart`, `test/features/events/models/event_model_test.dart`):
 - `fromFirestore` / `toFirestore` round-trips
 - Default field values
 
@@ -293,9 +300,6 @@ eventExpensesProvider(eventRef).overrideWith((ref) => Stream.value(expenses)),
 eventSettlementsProvider(eventRef).overrideWith(
   (ref) => Stream.value(const <Settlement>[]),
 ),
-eventSubGroupsProvider(eventRef).overrideWith(
-  (ref) => Stream.value(const <SubGroup>[]),
-),
 ```
 
 **LedgerScreen**:
@@ -303,10 +307,6 @@ eventSubGroupsProvider(eventRef).overrideWith(
 eventDetailProvider(_eventRef).overrideWith((ref) => Stream.value(event)),
 eventExpensesProvider(_eventRef).overrideWith((ref) => Stream.value(expenses)),
 eventSettlementsProvider(_eventRef).overrideWith((ref) => Stream.value(settlements)),
-eventSubGroupsProvider(_eventRef).overrideWith((ref) => Stream.value(subGroups)),
-eventUnifiedLedgerProvider(_eventRef).overrideWith(
-  (ref) => const AsyncValue.data(<Transaction>[]),
-),
 ```
 
 
@@ -353,9 +353,9 @@ expect(find.text('Create Group'), findsOneWidget);
 
 Integration tests in `test/integration/` test cross-layer interactions without a real Firebase project.
 
-### Happy path E2E (`test/integration/happy_path_test.dart`)
+### Full-tree boot E2E (`test/helpers/pump_rihla_app.dart`, `test/unit/app_router_test.dart`)
 
-Renders the full app with `MaterialApp.router` and the real `routerProvider`. Exercises the splash → home redirect with mocked auth and group providers.
+The `pumpRihlaApp` helper renders the full app with `MaterialApp.router` and the real `routerProvider`. It is the canonical full-tree boot path — every app-booting test uses it. Splash → home redirect behavior is exercised here and pinned in `test/unit/app_router_test.dart`, with mocked auth and group providers. The helper overrides `sharedPreferencesProvider`; never call `pumpAndSettle` after it (the `ConnectivityNotifier` timer hangs it).
 
 Key pattern: `SharedPreferences.setMockInitialValues` must be called before `SharedPreferences.getInstance()`:
 
@@ -533,7 +533,15 @@ Tests run in the `Android Release` GitHub Actions workflow (`.github/workflows/r
 - name: Run Tests with Coverage
   run: |
     rm -f coverage/lcov.info
-    flutter test --coverage
+    flutter test --coverage \
+      test/architecture \
+      test/core \
+      test/features \
+      test/helpers \
+      test/integration \
+      test/shared \
+      test/unit \
+      test/widget_test.dart
 ```
 
 ### Static analysis (runs before tests)
@@ -543,23 +551,13 @@ Tests run in the `Android Release` GitHub Actions workflow (`.github/workflows/r
   run: flutter analyze --no-fatal-infos
 ```
 
-### Hardcoded color lint
+### Theme purity check
 
-A custom CI step rejects any `Color(0xFF...)` literal outside the token system files:
+A CI step enforces token usage. It runs `tool/check_theme_purity.sh`, which rejects hardcoded `Color(0xFF...)` literals (and direct `AppColorTokens.light.*` / `.textMuted` reads) unless they carry a preceding `// design-token-justified:` comment. It exempts `lib/core/theme/tokens/`, `lib/core/theme/app_theme.dart`, and `lib/main.dart`:
 
 ```yaml
-- name: Hardcoded color lint
-  run: |
-    VIOLATIONS=$(grep -rn "Color(0x" lib/ \
-      --include="*.dart" \
-      | grep -v "lib/core/theme/app_theme.dart" \
-      | grep -v "lib/core/theme/tokens/" \
-      | grep -v "lib/features/ledger/models/expense_category_model.dart" \
-      | wc -l | tr -d ' ')
-    if [ "$VIOLATIONS" -gt "0" ]; then
-      echo "::error::$VIOLATIONS hardcoded Color(0xFF...) literal(s) found outside the token system."
-      exit 1
-    fi
+- name: Theme purity check
+  run: bash tool/check_theme_purity.sh
 ```
 
 ### find.text() regression warning
@@ -584,7 +582,7 @@ After running `flutter test --coverage`, CI enforces the 80% threshold on the ra
 - name: Check Coverage Threshold (80%)
   run: |
     COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 \
-      | awk '/lines\.\.\.\.\.\.\.:/ { gsub("%", "", $2); print $2; exit }')
+      | awk '/lines/ && /%/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9.]+%$/) { gsub("%", "", $i); print $i; exit } }')
     if ! awk -v coverage="$COVERAGE" 'BEGIN { exit (coverage >= 80.0) ? 0 : 1 }'; then
       echo "::error::Raw coverage ${COVERAGE}% is below 80% threshold"
       exit 1

@@ -9,6 +9,15 @@
 | **Supersedes** | The non-interactive `_ReadOnlyCurrencyField` placeholder on the create-group screen |
 | **Followed by** | Multi-currency + FX (post-launch v2.0) — out of scope here |
 
+> **⚠️ Post-#50 / #61 update (2026-05-31):** This spec predates two changes.
+> (1) The SQLite cache was **removed in #50** — every `safar_cache.db` /
+> `cacheSettlements()` / `v8 → v9` migration item below (task **T14** and the
+> matching Done-Criteria lines) is **obsolete**; settlement-currency persistence
+> is now Firestore-only, covered by T10's `toFirestore` / `fromFirestore` path.
+> (2) `OnboardingScreen` is **archived/unreachable (#56)**, so the
+> "onboarding currency list" items are moot. The rules, model, editor-payload,
+> and picker wire-through — the substance of still-open **#61** — stands.
+
 ## 1. Problem
 
 Currency is half-wired. The plumbing exists:

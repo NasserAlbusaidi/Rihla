@@ -99,7 +99,7 @@ starts a new run.
   - Evidence: `tool/check_release_readiness.sh` also requires `RIHLA_CONFIRM_APP_CHECK_READY=yes` so Console enrolment stays an explicit release assertion.
 - [x] `deleteAccount` runs with `enforceAppCheck: false` **by design** — accepted posture, not a regression.
   - Evidence: `functions/src/callables/deleteAccount.ts` sets `{ enforceAppCheck: false }` (vs `true` on `joinGroupByInviteCode` and `cleanupAnonUidArtifacts`).
-  - Rationale: GDPR right-to-erasure must succeed on attestation-failing devices (Play Integrity failure / no Play Services / MDM). Hard App Check enforcement previously **blocked** erasure — see #73 (`docs/plans/2026-05-29-issue-73-appcheck-deletion-fallback.md`); it was deliberately softened to verify-if-present.
+  - Rationale: GDPR right-to-erasure must succeed on attestation-failing devices (Play Integrity failure / no Play Services / MDM). Hard App Check enforcement previously **blocked** erasure — see #73; it was deliberately softened to verify-if-present.
   - Why it stays safe: the callable takes **no input** (`assertNoInput`), is **self-scoped** (uid from `request.auth` only), is idempotent, and is rate-limited by `enforceDeletionRateLimit` (5 attempts/hour/UID) — the compensating control. Do **not** re-enable App Check on this callable without reopening #73.
 - [x] Join callable display-name validation matches the Firestore rules contract.
   - Evidence: `functions/src/callables/joinGroupByInviteCode.ts` rejects over-32-character names and control characters before Admin SDK writes.
@@ -252,8 +252,8 @@ Historical external actions completed on or before 2026-05-16:
   `groups/{gid}/members/{uid}` docs) and cannot be safely auto-pruned by
   the fire-and-forget `cleanupAnonUidArtifacts` callable. Build a
   server-side reconciliation tool (or expand the callable to traverse
-  references) before the next batch of recoveries lands. Inspection tool:
-  `tool/inspect_orphan_anon_uids.js`.
+  references) before the next batch of recoveries lands. No inspection or
+  reconciliation tool exists in the repo yet — build one before relying on it.
 - **Complete the Android RD-QA matrix.** RD-01..09 cells in
   `docs/REAL-DEVICE-QA.md` are still empty; gate command above will block
   the next release tag until they're filled with concrete evidence.

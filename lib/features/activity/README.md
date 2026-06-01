@@ -1,6 +1,7 @@
 ## activity/ — Activity Feed
 
 - **models/activity_log_model.dart**: Activity entry across events
-- **services/activity_service.dart**: Activity stream queries
+- **services/activity_service.dart**: Cursor-paginated activity-log fetch (fetchActivityPageRaw, 50/page) + addActivityLog writer
 - **screens/activity_feed_screen.dart**: Timeline of participant actions
-- **widgets/timeline_card.dart**
+- **keys/activity_keys.dart**: Widget keys for the activity feed
+- **utils/activity_display.dart**: Display formatting helpers for activity rows

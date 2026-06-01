@@ -178,7 +178,7 @@ to the correct completion path. The flag is cleared after success.
 
 ---
 
-## 6. The UID-change problem (FR-CACHE-1) — pending after #50
+## 6. The UID-change problem (FR-CACHE-1) — sealed (#68)
 
 When the recovery flow runs, the active Firebase UID changes from the
 anon `oldUid` to the recovered `newUid`. Any data the client read under
@@ -191,21 +191,25 @@ a cross-UID leak:
 
 This is the **FR-CACHE-1** invariant.
 
-**Status after #50.** The original fix was `UidChangeListener`, which
+**Status (#68).** The original fix was `UidChangeListener`, which
 wiped the SQLite cache (`safar_cache.db`) on UID change. Issue #50
 removed the SQLite cache entirely — it provided nothing over Firestore
 offline persistence and was itself the home of a separate cross-UID leak
 class — so that listener is gone.
 
-The concern now lands on the **Firestore SDK's own on-disk offline
-cache** (`persistenceEnabled: true`), which is **not** cleared on a UID
-swap today. Sealing it — a boot-time identity barrier plus
-correctly-ordered `FirebaseFirestore.terminate()` + `clearPersistence()`
-(the API only permits clearing before startup or after termination) — is
-tracked as a **pending follow-up: issue #45 / PR 2.** Until that lands,
-FR-CACHE-1 is not fully guaranteed for the Firestore cache. The narrowing
-factor is that most Firestore reads are UID-scoped queries; the residual
-exposure is direct document-path reads of previously-cached docs.
+The concern then landed on the **Firestore SDK's own on-disk offline
+cache** (`persistenceEnabled: true`). That cache is now cleared on
+**every** UID swap via a cold-start identity barrier (`CacheUidBarrier`
++ `FirestoreCacheGate` in `lib/core/services/`), plus an in-session
+isolation overlay and a true native restart
+(`cache_isolation_controller.dart` / the `MainActivity` restart
+channel). Because the API only permits `clearPersistence()` before
+startup or after `FirebaseFirestore.terminate()`, the clear runs at the
+next cold boot; a durable dirty flag (`markFirestorePersistenceDirty`)
+makes that clear crash-safe across the restart even if the process dies
+mid-swap. FR-CACHE-1 is **enforced on main**. The only residual item is
+on-device eviction re-confirmation against a release AAB during RD-QA
+(#40) — a verification task, not a code gap.
 
 ---
 
@@ -373,17 +377,21 @@ Day N (recover path, on new device):
     → DeepLinkService routes the URL
       → reads inFlightOp = 'recover'
       → AuthRecoveryService.completeRecovery(emailLink)
+        → cacheIsolationController.engageIsolation()  -- overlay covers UI until restart
         → create recoveryCleanupIntents/{tempUid} with one-time secret
         → waitForPendingWrites(timeout: 5s)
+        → markFirestorePersistenceDirty(prefs)  -- durable cross-restart cache-clear marker
         → FirebaseAuth.signOut()  -- discards tempUid session
         → FirebaseAuth.signInWithEmailLink(...)  -- signs in as originalUid
         → returns UserCredential (uid = originalUid)
         → unawaited(cleanupAnonUidArtifacts(oldUid: tempUid, cleanupSecret))
+        → finally: cacheIsolationController.restart()  -- GUARANTEES a true native restart
   Auth stream emits tempUid -> originalUid:
     → Riverpod providers re-evaluate under originalUid → groups appear.
-    → (On-device Firestore cache is NOT cleared on this swap yet —
-       cross-UID isolation barrier is pending #45 / PR 2; the old
-       SQLite-wipe UidChangeListener was removed with the cache in #50.)
+    → (Before the swap, the isolation overlay is engaged and the Firestore
+       cache is marked dirty; after sign-in the flow triggers a true native
+       restart, and the cold-boot CacheUidBarrier clears the outgoing UID's
+       on-device Firestore cache — cross-UID isolation is enforced, #68.)
   Background:
     cleanupAnonUidArtifacts callable runs server-side:
       → For each group containing tempUid (likely none, since tempUid
@@ -407,7 +415,8 @@ launcher.
 | File | Role |
 |------|------|
 | `lib/features/auth/services/auth_recovery_service.dart` | Orchestrates link/recover/sign-out. Holds the pending-email + in-flight-op SharedPreferences keys. |
-| `lib/features/auth/services/data_deletion_service.dart` | Wraps the `deleteAccount` callable for the Profile delete flow. (Cross-UID cache isolation: #45 / PR 2 — `uid_change_listener.dart` was removed with the SQLite cache in #50.) |
+| `lib/features/auth/services/data_deletion_service.dart` | Wraps the `deleteAccount` callable for the Profile delete flow. (Deletion teardown is treated as a cross-UID swap: it engages `CacheIsolationController` and marks the Firestore SDK cache dirty so the cold boot clears it — cross-UID isolation is live, #68. The legacy SQLite-wipe `uid_change_listener.dart` was removed with the SQLite cache in #50.) |
+| `lib/core/services/cache_uid_barrier.dart`, `firestore_cache_gate.dart`, `cache_isolation_controller.dart` | The shipped cross-UID barrier: cold-start identity reconcile + `clearPersistence`, in-session isolation overlay, and the native restart channel (#68). |
 | `lib/features/auth/services/auth_email_link_config.dart` | Centralised `ActionCodeSettings` (URL, package name, Play / iOS metadata). |
 | `lib/features/auth/providers/auth_email_link_bootstrap_provider.dart` | Listens for incoming email links, dispatches to link vs recover. |
 | `lib/features/auth/providers/auth_provider.dart` | `authStateProvider`, `currentUserProvider` etc. |
@@ -415,7 +424,7 @@ launcher.
 | `lib/features/auth/screens/link_email_sent_screen.dart` | Post-send "Check your email" screen. |
 | `lib/features/auth/screens/recover_screen.dart` | Home → Recover entry. |
 | `lib/features/auth/screens/recover_pending_screen.dart` | Post-send waiting screen on the recover side. |
-| `lib/main.dart:118` | `_AuthGate.ensureAnonymousSession()` — establishes the first UID. |
+| `lib/main.dart` (`_AuthGateState.initState`, ~line 125) | `FirebaseConfig.ensureAnonymousSession()` — establishes the first UID (and the cold-boot `CacheUidBarrier` runs inside it). |
 | `functions/src/callables/cleanupAnonUidArtifacts.ts` | Server-side UID migration. |
 | `functions/src/callables/deleteAccount.ts` | Server-side cascade delete. |
 | `security/firestore.rules` | Owner-only and member-only invariants per UID. |

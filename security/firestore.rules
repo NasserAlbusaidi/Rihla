@@ -516,6 +516,8 @@ service cloud.firestore {
               'amountFils',
               'currency',
               'note',
+              'payerName',
+              'recipientName',
               'isDeleted',
               'deletedAt',
               'settledAt'
@@ -524,6 +526,8 @@ service cloud.firestore {
             && data.eventId == eventId
             && data.payerParticipantId in participants()
             && data.recipientParticipantId in participants()
+            && isValidNullableDisplayName(data.payerName)
+            && isValidNullableDisplayName(data.recipientName)
             && validSettlementCore(data);
           }
 

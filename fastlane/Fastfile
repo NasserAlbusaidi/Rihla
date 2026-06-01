@@ -37,4 +37,43 @@ platform :android do
       skip_upload_screenshots: true,
     )
   end
+
+  # ── Production promotion ──────────────────────────────────────────────────
+  # Promote the build already live on the closed "first" track UP to Production
+  # without rebuilding — same AAB, same versionCode, no new upload. Run locally,
+  # same as the listing lanes (Homebrew Ruby + secrets/play-key.json present):
+  #
+  #   bundle exec fastlane android promote_to_production                  # 10% staged rollout (default)
+  #   bundle exec fastlane android promote_to_production rollout:1.0      # full (100%) rollout
+  #   bundle exec fastlane android promote_to_production status:draft     # stage a Production DRAFT to publish by hand in Console
+  #   bundle exec fastlane android promote_to_production version_code:18  # pin a specific build (default: whatever is on "first")
+  #
+  # Preconditions, independent of this lane:
+  #   1. The service account has the "Release to production" permission.
+  #   2. Production is unlocked for the app — personal Play accounts must finish
+  #      the closed-testing requirement (>=12 testers, >=14 days) first; until
+  #      then the promotion is rejected no matter the config.
+  desc "Promote the current 'first'-track build to Production (no rebuild). Defaults to a 10% staged rollout."
+  lane :promote_to_production do |options|
+    status = options[:status] || "inProgress"
+
+    params = {
+      json_key: PLAY_KEY,
+      package_name: PACKAGE,
+      track: TRACK,
+      track_promote_to: "production",
+      track_promote_release_status: status,
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    }
+    # rollout only applies to a staged (inProgress) rollout; omit it for draft/completed.
+    params[:rollout] = (options[:rollout] || "0.1") if status == "inProgress"
+    params[:version_code] = options[:version_code].to_i if options[:version_code]
+
+    supply(params)
+  end
 end

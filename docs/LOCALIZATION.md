@@ -1,13 +1,14 @@
 # Localization
 
 How Rihla wires Flutter `gen-l10n` codegen, ARB translation files, and
-RTL/LTR direction together. Reference for the multi-PR Arabic rollout
-(PR1 → PR2a → PR2b → PR3 → PR4) and any future language addition.
+RTL/LTR direction together. Reference for the shipped English + Arabic
+localization (Arabic merged app-wide 2026-05-19) and any future language
+addition. Historical commit SHAs below (`3c77602`, `9e40ebe`, `815a86c`,
+`be3e9fa`) are kept as provenance for the original rollout.
 
 For the step-by-step recipe ("translate this screen", "add a new
 language"), see [HOWTO-TRANSLATE.md](./HOWTO-TRANSLATE.md). For deeper
-design rationale, see CLAUDE.md § OPERATING CONTRACT and `docs/plans/`
-for the in-flight l10n plan.
+design rationale, see CLAUDE.md § OPERATING CONTRACT.
 
 ---
 
@@ -36,7 +37,7 @@ Three things make codegen run:
 |------|---------|--------|
 | `pubspec.yaml` | `flutter: generate: true` | Tells the Flutter tool to invoke `gen-l10n` on `pub get` / `run` / `build`. |
 | `l10n.yaml` (repo root) | `arb-dir`, `template-arb-file`, `output-localization-file`, `output-dir`, `nullable-getter: false` | Configures source/destination paths and emits non-nullable `AppLocalizations.of(context)`. |
-| `lib/main.dart:182-188` | `MaterialApp.router(locale, localizationsDelegates, supportedLocales)` | Hooks the generated bindings into the app shell. |
+| `lib/main.dart:200-211` | `MaterialApp.router(locale, localizationsDelegates, supportedLocales)` | Hooks the generated bindings into the app shell (locale/delegates/supportedLocales at 204-206). |
 
 The generated files under `lib/l10n/generated/` are **committed** to the
 repo so cold clones build without re-running codegen. If you edit an
@@ -119,10 +120,10 @@ intent for translators. Arabic does not duplicate the descriptions.
 
 ### Current coverage
 
-PR2a (the most recently shipped localization PR) brought Arabic up to
-parity with English on the Settings + Profile surfaces. Other surfaces
-(Ledger, Groups, Home, Auth) still hardcode English; they land in
-PR2b / PR3 / PR4 per the active rollout plan.
+Arabic localization shipped across all surfaces (activity, auth, events,
+groups, home, ledger, settings) — `context.l10n` is wired throughout
+those feature dirs, not just Settings/Profile. `app_ar.arb` currently
+covers ~684 of the ~1039 keys in `app_en.arb`.
 
 The Arabic file enables only what has been translated — adding a new
 key to `app_en.arb` does **not** automatically translate it. If a key
@@ -139,7 +140,7 @@ binding falls back to the English value at runtime.
 
 ### Intentionally English (do not localize)
 
-- **Settings footer brand lockup** — `RIHLA · v<version> · BUILT FOR JOURNEYS` (`_VersionStamp` in `profile_screen.dart`) is a **brand lockup**, not copy. It stays English in every locale, including Arabic, by decision (#162). It is deliberately *not* routed through `context.l10n`. Pinned by `profile_screen_test.dart` ("#162") — if you decide to localize the tagline, reopen that decision and update the test, don't silently flip it.
+- **Settings footer brand lockup** — `RIHLA · v<version> · BUILT FOR JOURNEYS` (`_VersionStamp` in `lib/features/settings/screens/profile_screen.dart`) is a **brand lockup**, not copy. It stays English in every locale, including Arabic, by decision (#162). It is deliberately *not* routed through `context.l10n`. Pinned by `test/features/profile/profile_screen_test.dart` ("#162") — if you decide to localize the tagline, reopen that decision and update the test, don't silently flip it.
 
 ### Placeholders
 
@@ -163,10 +164,10 @@ At call sites the generated binding becomes a typed function:
 ## 4. App wiring (main.dart)
 
 ```dart
-// lib/main.dart:24
+// lib/main.dart:27
 import 'l10n/generated/app_localizations.dart';
 
-// lib/main.dart:182-194
+// lib/main.dart:200-211
 return MaterialApp.router(
   title: 'Rihla',
   scaffoldMessengerKey: appMessengerKey,
@@ -379,11 +380,13 @@ glyph whose meaning depends on left/right orientation.
 `Iconsax.setting`, `Iconsax.box`, category icons). Mirroring those
 makes them look broken.
 
-PR2a migrated nine call sites to `DirectionalIcon`: the back button in
-`_GhostIcon`, six row chevrons in `profile_screen.dart`, and one
-chevron each in `profile_display_section.dart`,
-`profile_about_section.dart`, and `profile_support_section.dart`
-(commit `9e40ebe`).
+The Arabic rollout migrated the directional glyphs to `DirectionalIcon`:
+the back button in `_GhostIcon`, row chevrons in
+`lib/features/settings/screens/profile_screen.dart`, and the chevron in
+`lib/features/settings/widgets/profile_display_section.dart` (commit
+`9e40ebe`). The About/Support content lives inside `profile_screen.dart`
+itself — there are no separate `profile_about_section.dart` /
+`profile_support_section.dart` files.
 
 ### 8.3 What you do **not** need to do
 
@@ -474,7 +477,7 @@ with this.
 | `lib/l10n/app_en.arb` | Template; every key starts here |
 | `lib/l10n/app_ar.arb` | Arabic translations |
 | `lib/l10n/generated/app_localizations*.dart` | Generated bindings; committed |
-| `lib/main.dart:182-188` | `MaterialApp.router` locale + delegates + supportedLocales |
+| `lib/main.dart:200-211` | `MaterialApp.router` locale + delegates + supportedLocales |
 | `lib/core/extensions/build_context_l10n.dart` | `context.l10n` shorthand |
 | `lib/core/providers/settings_provider.dart:148` | `localeProvider` derived from `languageCode` |
 | `lib/core/providers/settings_provider.dart:35` | `SettingsNotifier.setLanguage` |

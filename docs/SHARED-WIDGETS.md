@@ -38,28 +38,13 @@ optional subtitle, and an action slot.
 |----------|------|-------|
 | `title` | `String` | Required. Display text. |
 | `subtitle` | `String?` | Optional uppercase overline (e.g. event name). |
-| `useDarkTheme` | `bool` | Toggles the dark gradient variant; default true. |
+| `useDarkTheme` | `bool` | Toggles the dark gradient variant; default false. |
 | `actions` | `List<Widget>?` | Right-aligned icon buttons. |
-| `bottom` | `PreferredSizeWidget?` | Tab bar slot. Use `AppTabBar`. |
+| `bottom` | `PreferredSizeWidget?` | Tab bar slot. |
 
 Back button uses `DirectionalIcon` so it mirrors in RTL. Wraps the
 header in a `GoRouter`-aware pop fallback to `/home` for direct-entry
 deep links.
-
-### `AppTabBar`
-
-Pill-indicator tab bar tuned to the saffron palette. Requires a
-`TabController` from the parent.
-
-```dart
-AppTabBar(
-  controller: _tabController,
-  tabs: const ['Unpacked', 'Packed'],
-  activeColor: context.colors.moduleLedger, // optional accent override
-)
-```
-
-Triggers `HapticService.selection()` on tab change.
 
 ### `OfflineBanner` (ConsumerWidget)
 
@@ -93,44 +78,6 @@ EmptyStateView(
 )
 ```
 
-### `SearchFilterBar` (StatefulWidget)
-
-Expandable search input plus a filter chip row. Stateful because it
-manages its own expand/collapse, the text controller, and chip
-selection.
-
-| Property | Type | Notes |
-|----------|------|-------|
-| `hintText` | `String` | Field placeholder. |
-| `onQueryChanged` | `void Function(String)` | Debounced via the field controller. |
-| `filterChips` | `List<String>` | Optional chip labels. |
-| `selectedFilter` | `String?` | Controlled selection. |
-| `onFilterSelected` | `void Function(String?)?` | Chip-tap callback. |
-
-Triggers `HapticService.selection()` on chip taps.
-
-### `SmartModuleCard`
-
-Module card used on `EventCommandCenter`. Renders three states from
-the same surface: data summary, empty hint, or "needs attention." Wraps
-its content in `TapBounce` for press feedback.
-
-```dart
-SmartModuleCard(
-  icon: Iconsax.receipt,
-  title: 'Ledger',
-  summaryText: '5 expenses · OMR 24.300',
-  description: 'Track shared spending and settle up.',
-  actionText: null,
-  color: context.colors.moduleLedger,
-  onTap: () => context.push('/group/$gid/event/$eid/ledger'),
-)
-```
-
-`EventCommandCenter` itself is dead-but-kept code (UI bypasses to the
-ledger). `SmartModuleCard` survives because anything else in the app
-that ever needs a module-shaped card should reuse it.
-
 ### `LoadingButton`
 
 52dp primary button with a spinner state. The label collapses to a
@@ -156,9 +103,14 @@ jump when data lands. All variants wrap children in `Shimmer.fromColors`.
 | `SkeletonLoader.expenseList()` | Ledger expense rows with trailing amount |
 | `SkeletonLoader.eventCard()` | Event cards on group detail |
 | `SkeletonLoader.groupList()` | Group rows with avatar |
+| `SkeletonLoader.cardList()` | Generic card rows |
 | `SkeletonLoader.generic()` | Plain fallback |
 
 Use the variant that matches the screen you're loading.
+
+`SkeletonLoader.gearList()`, `.photoGrid()`, and `.documentList()` are
+dead-but-kept leftovers of the Gear / Memories / Documents modules
+stripped in Phase 39 — don't use them.
 
 ### `SkeletonPrimitives`
 
@@ -168,30 +120,13 @@ skeleton when none of the named variants match:
 | Class | Use |
 |-------|-----|
 | `SkeletonCircle` | Avatar / icon placeholders |
-| `SkeletonBox` | Generic rectangle |
-| `SkeletonLine` | Single line of text |
-| `SkeletonStack` | Vertical group |
+| `SkeletonBar` | Single line of text |
+| `SkeletonBlock` | Generic rectangle |
+| `SkeletonRow` | Horizontal group |
+| `SkeletonCard` | Card placeholder |
 
 Always wrap your composition in `Shimmer.fromColors` (or use the
 `SkeletonLoader` wrapper) — the primitives only render fills.
-
-### `AnimatedCurrencyText`
-
-Smoothly lerps between two `Decimal` values over 600ms (easeOutCubic).
-Color snaps based on the animated value's sign — sage for positive,
-rust for negative, neutral ink for zero. Used on the Home balance hero
-and group balance cards.
-
-```dart
-AnimatedCurrencyText(
-  value: balance.netBalance,
-  currency: 'OMR',
-  size: 32,
-)
-```
-
-Tracks the previous value internally so each transition starts from
-the old number, not zero.
 
 ### `RAmount`
 
@@ -201,17 +136,19 @@ decimal part at 0.55×.
 
 ```dart
 RAmount(
-  amount: Decimal.parse('10.500'),
+  value: Decimal.parse('10.500'),
   currency: 'OMR',
   size: 24,
-  tone: RAmountTone.auto, // auto | positive | negative | neutral
-  showSign: true,
+  tone: AmountTone.auto, // auto | sage | rust | ink
+  sign: true,
 )
 ```
 
-`tone: auto` defers to the sign of the value. Override explicitly when
-the meaning isn't tied to positivity (e.g., totals, where positive
-doesn't mean "good").
+`tone: AmountTone.auto` defers to the sign of the value (sage positive,
+rust negative, ink neutral). Override explicitly when the meaning isn't
+tied to positivity (e.g., totals, where positive doesn't mean "good").
+Also exposes `showCurrency` (default `true`) and `weight` (default
+`FontWeight.w500`).
 
 ### `RAvatar`
 
@@ -245,21 +182,6 @@ CoverArt(event: event, size: 96)
 
 Pure paint — no asset roundtrip. Renders the same way offline.
 
-### `RouteMark`
-
-Rihla's chosen brand mark — a dashed S-curve from a small origin (filled
-ink dot) to a saffron destination pin with cream center. Reads as
-"trip" without spelling it out. Renders inside a square box of `size`;
-defaults pull from the active palette.
-
-```dart
-RouteMark(size: 24)
-RouteMark(size: 96, monochrome: true) // for themed Android icons
-```
-
-Set `monochrome` for Android themed icon contexts where a second color
-isn't available.
-
 ### `WordmarkLogo`
 
 The italic "Rihla" wordmark with a saffron underline flourish. Used on
@@ -269,22 +191,6 @@ splash, onboarding, and the top bar wordmark. Flourish width tracks
 ```dart
 WordmarkLogo(size: 32)
 ```
-
-### `DotStepIndicator`
-
-Dot-based step indicator. Three states per dot — completed, active,
-upcoming. Set `showCheckmarks: true` to fill completed dots with a
-check icon.
-
-```dart
-DotStepIndicator(
-  stepCount: 3,
-  currentStep: _step,
-  showCheckmarks: true, // D-27 on Add Expense; false for onboarding (D-29)
-)
-```
-
-Used on the Add Expense multi-step flow and the onboarding pager.
 
 ### `SectionHeader`
 
@@ -332,34 +238,6 @@ icons (gear, heart, box) — mirroring them looks broken. See
 
 ## 3. Animations (`lib/shared/animations/`)
 
-### `FadeInList`
-
-Staggered fade-in for list children. D-04: 350ms easeOutCubic with a
-50ms stagger, 12dp slide-up plus opacity.
-
-```dart
-FadeInList(
-  children: expenses.map((e) => ExpenseTile(expense: e)).toList(),
-)
-```
-
-Honors `MediaQuery.disableAnimations` — when the user has reduced
-motion enabled (or the test harness disables animations), the children
-render in a plain `Column` with no `Animate` wrappers.
-
-### `StaggeredGrid`
-
-Same idea for grid layouts. D-06: 400ms with a 60ms stagger,
-easeOutQuart. Used on the event-type picker grid.
-
-```dart
-StaggeredGrid(
-  children: eventTypes.map((t) => EventTypeCard(type: t)).toList(),
-)
-```
-
-Also honors `disableAnimations`.
-
 ### `TapBounce`
 
 Press-scale animation wrapper. D-05: 120ms easeInOut, scales to 0.97
@@ -370,17 +248,12 @@ before `super.dispose()` to avoid ticker leaks.
 ```dart
 TapBounce(
   onTap: _handleTap,
-  child: SmartModuleCard(...),
+  child: Card(...),
 )
 ```
 
 When `onTap` is null or `enabled: false`, returns `child` unwrapped so
 the bounce doesn't fire on disabled surfaces.
-
-### `animations.dart`
-
-Barrel export for the three animations above. Import this when a file
-uses two or more.
 
 ---
 
@@ -413,16 +286,10 @@ When you do promote a widget:
 lib/shared/
 ├── README.md                          # Short index (this doc supersedes it)
 ├── animations/
-│   ├── animations.dart                # Barrel export
-│   ├── fade_in_list.dart              # FadeInList
-│   ├── staggered_grid.dart            # StaggeredGrid
 │   └── tap_bounce.dart                # TapBounce
 └── widgets/
-    ├── animated_currency_text.dart    # AnimatedCurrencyText
-    ├── app_tab_bar.dart               # AppTabBar
     ├── cover_art.dart                 # CoverArt
     ├── directional_icon.dart          # DirectionalIcon
-    ├── dot_step_indicator.dart        # DotStepIndicator
     ├── empty_state_view.dart          # EmptyStateView
     ├── grain_overlay.dart             # GrainOverlay
     ├── loading_button.dart            # LoadingButton
@@ -430,12 +297,9 @@ lib/shared/
     ├── offline_banner.dart            # OfflineBanner (ConsumerWidget)
     ├── r_amount.dart                  # RAmount
     ├── r_avatar.dart                  # RAvatar
-    ├── route_mark.dart                # RouteMark
-    ├── search_filter_bar.dart         # SearchFilterBar (StatefulWidget)
     ├── section_header.dart            # SectionHeader
     ├── skeleton_loader.dart           # SkeletonLoader
-    ├── skeleton_primitives.dart       # SkeletonCircle / Box / Line / Stack
-    ├── smart_module_card.dart         # SmartModuleCard
+    ├── skeleton_primitives.dart       # SkeletonCircle / Bar / Block / Row / Card
     └── wordmark_logo.dart             # WordmarkLogo
 ```
 
