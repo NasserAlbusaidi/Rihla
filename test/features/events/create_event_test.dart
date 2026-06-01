@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -12,10 +13,17 @@ import 'package:safar/features/events/models/event_type_config.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/create_event_screen.dart';
 import 'package:safar/features/events/screens/event_type_picker_screen.dart';
+import 'package:safar/features/events/services/event_service.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+
+class _MockEventService extends Mock implements EventService {}
+
+class _MockGroupActivityService extends Mock implements GroupActivityService {}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -82,6 +90,53 @@ Widget _wrapCreate(Widget child, SharedPreferences prefs) {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: child,
+    ),
+  );
+}
+
+Widget _wrapCreateRouted({
+  required SharedPreferences prefs,
+  required EventService eventService,
+  required GroupActivityService activityService,
+  String currentUserId = 'uid-creator',
+}) {
+  final router = GoRouter(
+    initialLocation: '/create',
+    routes: [
+      GoRoute(
+        path: '/create',
+        builder: (_, _) => const CreateEventScreen(
+          groupId: 'group-1',
+          eventType: EventType.trip,
+        ),
+      ),
+      GoRoute(
+        path: '/group/:gid/event/:eid',
+        builder: (_, state) =>
+            Scaffold(body: Text('EventHub:${state.pathParameters['eid']}')),
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      currentUserIdProvider.overrideWithValue(currentUserId),
+      eventServiceProvider.overrideWithValue(eventService),
+      groupActivityServiceProvider.overrideWithValue(activityService),
+      groupMembersProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupDetailProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+      eventLoadingProvider.overrideWith((ref) => false),
+    ],
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
     ),
   );
 }
@@ -399,6 +454,169 @@ void main() {
               'All participants should be deselected after Select All toggle',
         );
       }
+    });
+
+    testWidgets('submit with no participants shows validation snack bar', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrapCreate(
+          const CreateEventScreen(
+            groupId: 'group-1',
+            eventType: EventType.trip,
+          ),
+          prefs,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'Beach Day');
+      await tester.tap(find.byKey(EventKeys.selectAllButton));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+      await tester.tap(find.byKey(EventKeys.createEventButton));
+      await tester.pump();
+
+      expect(find.text('Select at least one participant.'), findsOneWidget);
+    });
+
+    testWidgets(
+      'valid submit creates event with current uid and routes to hub',
+      (tester) async {
+        final eventService = _MockEventService();
+        final activityService = _MockGroupActivityService();
+        final createdEvent = Event(
+          id: 'event-created',
+          name: 'Beach Day',
+          type: EventType.trip,
+          groupId: 'group-1',
+          createdBy: 'uid-creator',
+          participantIds: const ['uid-creator', 'uid-member'],
+          participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+          modules: const EventModules(),
+          createdAt: DateTime(2026, 6, 1),
+        );
+
+        when(
+          () => eventService.createEvent(
+            groupId: 'group-1',
+            name: 'Beach Day',
+            type: EventType.trip,
+            participantIds: const ['uid-creator', 'uid-member'],
+            participantNames: const {
+              'uid-creator': 'Alice',
+              'uid-member': 'Bob',
+            },
+            createdBy: 'uid-creator',
+            startDate: null,
+            endDate: null,
+            modules: null,
+          ),
+        ).thenAnswer((_) async => createdEvent);
+        when(
+          () => activityService.logGroupEvent(
+            groupId: any(named: 'groupId'),
+            type: any(named: 'type'),
+            actorId: any(named: 'actorId'),
+            actorName: any(named: 'actorName'),
+            description: any(named: 'description'),
+            metadata: any(named: 'metadata'),
+          ),
+        ).thenReturn(null);
+
+        await tester.pumpWidget(
+          _wrapCreateRouted(
+            prefs: prefs,
+            eventService: eventService,
+            activityService: activityService,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextFormField), 'Beach Day');
+        await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+        await tester.tap(find.byKey(EventKeys.createEventButton));
+        await tester.pumpAndSettle();
+
+        verify(
+          () => eventService.createEvent(
+            groupId: 'group-1',
+            name: 'Beach Day',
+            type: EventType.trip,
+            participantIds: const ['uid-creator', 'uid-member'],
+            participantNames: const {
+              'uid-creator': 'Alice',
+              'uid-member': 'Bob',
+            },
+            createdBy: 'uid-creator',
+            startDate: null,
+            endDate: null,
+            modules: null,
+          ),
+        ).called(1);
+        verify(
+          () => activityService.logGroupEvent(
+            groupId: 'group-1',
+            type: 'event_created',
+            actorId: 'uid-creator',
+            actorName: 'Someone',
+            description: 'created Beach Day',
+            metadata: {'eventId': 'event-created', 'eventName': 'Beach Day'},
+          ),
+        ).called(1);
+        expect(find.text('EventHub:event-created'), findsOneWidget);
+      },
+    );
+
+    testWidgets('submit failure shows create-event error snack bar', (
+      tester,
+    ) async {
+      final eventService = _MockEventService();
+      final activityService = _MockGroupActivityService();
+      when(
+        () => eventService.createEvent(
+          groupId: 'group-1',
+          name: 'Beach Day',
+          type: EventType.trip,
+          participantIds: const ['uid-creator', 'uid-member'],
+          participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+          createdBy: 'uid-creator',
+          startDate: null,
+          endDate: null,
+          modules: null,
+        ),
+      ).thenThrow(StateError('network down'));
+
+      await tester.pumpWidget(
+        _wrapCreateRouted(
+          prefs: prefs,
+          eventService: eventService,
+          activityService: activityService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'Beach Day');
+      await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+      await tester.tap(find.byKey(EventKeys.createEventButton));
+      await tester.pump();
+
+      expect(
+        find.text(
+          "Couldn't create event. Check your connection and try again.",
+        ),
+        findsOneWidget,
+      );
+      verifyNever(
+        () => activityService.logGroupEvent(
+          groupId: any(named: 'groupId'),
+          type: any(named: 'type'),
+          actorId: any(named: 'actorId'),
+          actorName: any(named: 'actorName'),
+          description: any(named: 'description'),
+          metadata: any(named: 'metadata'),
+        ),
+      );
     });
   });
 }

@@ -1,6 +1,9 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:safar/core/theme/font_bootstrap.dart';
 
 /// Guards the offline-branding contract from #103: the four brand faces are
 /// bundled as app assets and resolved natively, never fetched from the Google
@@ -35,8 +38,14 @@ void main() {
     test('every AppTypography family const is declared in pubspec fonts', () {
       // The const family literals the helpers use, byte-for-byte.
       expect(tokens, contains("static const String sansFamily = 'Geist';"));
-      expect(tokens, contains("static const String monoFamily = 'Geist Mono';"));
-      expect(tokens, contains("static const String reemKufiFamily = 'Reem Kufi';"));
+      expect(
+        tokens,
+        contains("static const String monoFamily = 'Geist Mono';"),
+      );
+      expect(
+        tokens,
+        contains("static const String reemKufiFamily = 'Reem Kufi';"),
+      );
       expect(
         tokens,
         contains("static const String displayFamily = 'Instrument Serif';"),
@@ -52,28 +61,42 @@ void main() {
       }
     });
 
-    test('every declared font asset exists, is non-empty, and is referenced', () {
-      for (final assets in families.values) {
-        for (final asset in assets) {
-          final file = File(asset);
-          expect(file.existsSync(), isTrue, reason: 'missing font asset: $asset');
-          expect(file.lengthSync(), greaterThan(0), reason: 'empty font asset: $asset');
-          expect(
-            pubspec,
-            contains('asset: $asset'),
-            reason: 'pubspec.yaml must reference font asset: $asset',
-          );
+    test(
+      'every declared font asset exists, is non-empty, and is referenced',
+      () {
+        for (final assets in families.values) {
+          for (final asset in assets) {
+            final file = File(asset);
+            expect(
+              file.existsSync(),
+              isTrue,
+              reason: 'missing font asset: $asset',
+            );
+            expect(
+              file.lengthSync(),
+              greaterThan(0),
+              reason: 'empty font asset: $asset',
+            );
+            expect(
+              pubspec,
+              contains('asset: $asset'),
+              reason: 'pubspec.yaml must reference font asset: $asset',
+            );
+          }
         }
-      }
-    });
+      },
+    );
 
     test('OFL licenses are bundled and registered for attribution', () {
       for (final license in licenseAssets) {
         final file = File(license);
         expect(file.existsSync(), isTrue, reason: 'missing license: $license');
         expect(file.readAsStringSync(), contains('SIL OPEN FONT LICENSE'));
-        expect(pubspec, contains('- $license'),
-            reason: 'license must be a bundled asset: $license');
+        expect(
+          pubspec,
+          contains('- $license'),
+          reason: 'license must be a bundled asset: $license',
+        );
       }
       final bootstrap = read('lib/core/theme/font_bootstrap.dart');
       expect(bootstrap, contains('LicenseRegistry.addLicense'));
@@ -96,6 +119,28 @@ void main() {
             'GoogleFonts.getFont fetches from the CDN at runtime — breaks offline '
             'first-launch branding (#103). Use AppTypography helpers (native fonts).',
       );
+    });
+
+    test('configureBundledFonts disables google_fonts runtime fetching', () {
+      GoogleFonts.config.allowRuntimeFetching = true;
+
+      configureBundledFonts();
+
+      expect(GoogleFonts.config.allowRuntimeFetching, isFalse);
+    });
+
+    test('configureBundledFonts registers bundled OFL licenses', () async {
+      configureBundledFonts();
+
+      final seenPackages = <String>{};
+      await for (final entry in LicenseRegistry.licenses) {
+        seenPackages.addAll(entry.packages);
+        if (families.keys.every(seenPackages.contains)) {
+          break;
+        }
+      }
+
+      expect(seenPackages, containsAll(families.keys));
     });
   });
 }

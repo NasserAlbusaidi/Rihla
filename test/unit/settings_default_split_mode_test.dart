@@ -48,6 +48,13 @@ void main() {
       expect(SplitMode.percent.storageKey, 'percent');
     });
 
+    test('label is stable for every variant', () {
+      expect(SplitMode.equally.label, 'Equal');
+      expect(SplitMode.shares.label, 'Shares');
+      expect(SplitMode.exact.label, 'Exact amounts');
+      expect(SplitMode.percent.label, 'Percent');
+    });
+
     test('all modes are available after T4.N', () {
       for (final mode in SplitMode.values) {
         expect(mode.isAvailable, isTrue, reason: '$mode should be available');

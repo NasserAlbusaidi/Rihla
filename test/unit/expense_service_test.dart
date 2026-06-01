@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/models/split_mode.dart';
@@ -47,37 +48,34 @@ void main() {
         },
       );
 
-      test(
-        'uses MoneySerializer.toSubunits to store amountFils',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
+      test('uses MoneySerializer.toSubunits to store amountFils', () async {
+        const groupId = 'g1';
+        const eventId = 'e1';
 
-          // OMR 10.500 = 10500 fils (1000 subunits per OMR)
-          final expense = await service.addExpense(
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            amount: Decimal.parse('10.500'),
-          );
+        // OMR 10.500 = 10500 fils (1000 subunits per OMR)
+        final expense = await service.addExpense(
+          createdBy: 'test-uid',
+          groupId: groupId,
+          eventId: eventId,
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('10.500'),
+        );
 
-          final snap = await fakeDb
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('expenses')
-              .doc(expense.id)
-              .get();
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
 
-          expect(snap.data()!['amountFils'], equals(10500));
-          expect(snap.data()!['currency'], equals('OMR'));
+        expect(snap.data()!['amountFils'], equals(10500));
+        expect(snap.data()!['currency'], equals('OMR'));
 
-          // Verify round-trip: amount field on returned Expense
-          expect(expense.amount, equals(Decimal.parse('10.500')));
-        },
-      );
+        // Verify round-trip: amount field on returned Expense
+        expect(expense.amount, equals(Decimal.parse('10.500')));
+      });
 
       test('writes a MONEY activity log when an expense is created', () async {
         const groupId = 'g1';
@@ -120,6 +118,28 @@ void main() {
         expect(metadata, containsPair('currency', 'OMR'));
         expect(metadata, containsPair('payerParticipantId', 'p1'));
       });
+
+      test('rejects an empty createdBy uid before writing', () async {
+        await expectLater(
+          service.addExpense(
+            createdBy: '',
+            groupId: 'g1',
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            amount: Decimal.parse('5.000'),
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .get();
+        expect(snap.docs, isEmpty);
+      });
     });
 
     group('watchExpenses', () {
@@ -138,9 +158,7 @@ void main() {
             description: 'Lunch',
           );
 
-          final expenses = await service
-              .watchExpenses(groupId, eventId)
-              .first;
+          final expenses = await service.watchExpenses(groupId, eventId).first;
 
           expect(expenses, hasLength(1));
           expect(expenses.first.description, equals('Lunch'));
@@ -148,74 +166,122 @@ void main() {
         },
       );
 
-      test(
-        'filters out soft-deleted expenses (isDeleted=true)',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
+      test('filters out soft-deleted expenses (isDeleted=true)', () async {
+        const groupId = 'g1';
+        const eventId = 'e1';
 
-          final expense = await service.addExpense(
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            amount: Decimal.parse('5.000'),
-          );
+        final expense = await service.addExpense(
+          createdBy: 'test-uid',
+          groupId: groupId,
+          eventId: eventId,
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('5.000'),
+        );
 
-          await service.deleteExpense(
-            groupId: groupId,
-            eventId: eventId,
-            expenseId: expense.id,
-          );
+        await service.deleteExpense(
+          groupId: groupId,
+          eventId: eventId,
+          expenseId: expense.id,
+        );
 
-          final expenses = await service
-              .watchExpenses(groupId, eventId)
-              .first;
+        final expenses = await service.watchExpenses(groupId, eventId).first;
 
-          // Soft-deleted expenses filtered by the query (isDeleted=false)
-          expect(expenses, isEmpty);
-        },
-      );
+        // Soft-deleted expenses filtered by the query (isDeleted=false)
+        expect(expenses, isEmpty);
+      });
     });
 
     group('updateExpense', () {
-      test(
-        'updates expense fields using Firestore update',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
+      test('updates expense fields using Firestore update', () async {
+        const groupId = 'g1';
+        const eventId = 'e1';
 
-          final expense = await service.addExpense(
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            amount: Decimal.parse('5.000'),
-            description: 'Old description',
-          );
+        final expense = await service.addExpense(
+          createdBy: 'test-uid',
+          groupId: groupId,
+          eventId: eventId,
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('5.000'),
+          description: 'Old description',
+        );
 
-          await service.updateExpense(
-            groupId: groupId,
-            eventId: eventId,
-            expenseId: expense.id,
-            description: 'New description',
-            amount: Decimal.parse('7.500'),
-          );
+        await service.updateExpense(
+          groupId: groupId,
+          eventId: eventId,
+          expenseId: expense.id,
+          description: 'New description',
+          amount: Decimal.parse('7.500'),
+        );
 
-          final snap = await fakeDb
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('expenses')
-              .doc(expense.id)
-              .get();
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
 
-          expect(snap.data()!['description'], equals('New description'));
-          // OMR 7.500 = 7500 fils
-          expect(snap.data()!['amountFils'], equals(7500));
-        },
-      );
+        expect(snap.data()!['description'], equals('New description'));
+        // OMR 7.500 = 7500 fils
+        expect(snap.data()!['amountFils'], equals(7500));
+      });
+
+      test('updates scope, split, note, category, and payer fields', () async {
+        final expense = await service.addExpense(
+          createdBy: 'test-uid',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('20.000'),
+        );
+
+        await service.updateExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          expenseId: expense.id,
+          scope: ExpenseScope.custom,
+          customSplitParticipants: ['p2', 'p3'],
+          splitMode: SplitMode.shares,
+          splitDistribution: {
+            'p2': Decimal.fromInt(2),
+            'p3': Decimal.fromInt(1),
+          },
+          note: 'Paid from shared cash',
+          categoryId: 'food',
+          payerParticipantId: 'p2',
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
+        final data = snap.data()!;
+
+        expect(data['scope'], 'custom');
+        expect(data['customSplitParticipants'], ['p2', 'p3']);
+        expect(data['splitMode'], 'shares');
+        expect(data['splitDistribution'], {'p2': 2, 'p3': 1});
+        expect(data['note'], 'Paid from shared cash');
+        expect(data['categoryId'], 'food');
+        expect(data['payerParticipantId'], 'p2');
+      });
+
+      test('throws when updating a missing expense', () async {
+        await expectLater(
+          service.updateExpense(
+            groupId: 'g1',
+            eventId: 'e1',
+            expenseId: 'missing-expense',
+            description: 'Will fail',
+          ),
+          throwsA(isA<FirebaseException>()),
+        );
+      });
     });
 
     group('deleteExpense', () {
@@ -252,6 +318,17 @@ void main() {
           expect(snap.data()!['deletedAt'], isNotNull);
         },
       );
+
+      test('throws when deleting a missing expense', () async {
+        await expectLater(
+          service.deleteExpense(
+            groupId: 'g1',
+            eventId: 'e1',
+            expenseId: 'missing-expense',
+          ),
+          throwsA(isA<FirebaseException>()),
+        );
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -283,24 +360,24 @@ void main() {
                 .collection('expenses')
                 .doc(id)
                 .set({
-              'id': id,
-              'eventId': eventId,
-              'payerParticipantId': 'p1',
-              'amountFils': 5000,
-              'currency': 'OMR',
-              'scope': 'global',
-              'customSplitParticipants': [],
-              'isDeleted': false,
-              'deletedAt': null,
-              'createdAt': time.toIso8601String(),
-            });
+                  'id': id,
+                  'eventId': eventId,
+                  'payerParticipantId': 'p1',
+                  'amountFils': 5000,
+                  'currency': 'OMR',
+                  'scope': 'global',
+                  'customSplitParticipants': [],
+                  'isDeleted': false,
+                  'deletedAt': null,
+                  'createdAt': time.toIso8601String(),
+                });
           }
 
           await insertWithTime('exp-past', pastTime);
           await insertWithTime('exp-in-range', inRangeTime);
           await insertWithTime('exp-future', futureTime);
 
-          final startUtc = DateTime.utc(2025, 1, 6);  // Monday
+          final startUtc = DateTime.utc(2025, 1, 6); // Monday
           final endExclusiveUtc = DateTime.utc(2025, 1, 13); // next Monday
 
           final results = await service
@@ -317,49 +394,46 @@ void main() {
         },
       );
 
-      test(
-        'watchExpensesInRange excludes soft-deleted expenses',
-        () async {
-          const groupId = 'g2';
-          const eventId = 'e2';
+      test('watchExpensesInRange excludes soft-deleted expenses', () async {
+        const groupId = 'g2';
+        const eventId = 'e2';
 
-          final inRangeTime = DateTime.utc(2025, 1, 8);
+        final inRangeTime = DateTime.utc(2025, 1, 8);
 
-          await fakeDb
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('expenses')
-              .doc('exp-deleted')
-              .set({
-            'id': 'exp-deleted',
-            'eventId': eventId,
-            'payerParticipantId': 'p1',
-            'amountFils': 3000,
-            'currency': 'OMR',
-            'scope': 'global',
-            'customSplitParticipants': [],
-            'isDeleted': true,
-            'deletedAt': DateTime.utc(2025, 1, 9).toIso8601String(),
-            'createdAt': inRangeTime.toIso8601String(),
-          });
+        await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('expenses')
+            .doc('exp-deleted')
+            .set({
+              'id': 'exp-deleted',
+              'eventId': eventId,
+              'payerParticipantId': 'p1',
+              'amountFils': 3000,
+              'currency': 'OMR',
+              'scope': 'global',
+              'customSplitParticipants': [],
+              'isDeleted': true,
+              'deletedAt': DateTime.utc(2025, 1, 9).toIso8601String(),
+              'createdAt': inRangeTime.toIso8601String(),
+            });
 
-          final startUtc = DateTime.utc(2025, 1, 6);
-          final endExclusiveUtc = DateTime.utc(2025, 1, 13);
+        final startUtc = DateTime.utc(2025, 1, 6);
+        final endExclusiveUtc = DateTime.utc(2025, 1, 13);
 
-          final results = await service
-              .watchExpensesInRange(
-                groupId: groupId,
-                eventId: eventId,
-                startUtc: startUtc,
-                endExclusiveUtc: endExclusiveUtc,
-              )
-              .first;
+        final results = await service
+            .watchExpensesInRange(
+              groupId: groupId,
+              eventId: eventId,
+              startUtc: startUtc,
+              endExclusiveUtc: endExclusiveUtc,
+            )
+            .first;
 
-          expect(results, isEmpty);
-        },
-      );
+        expect(results, isEmpty);
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -397,7 +471,10 @@ void main() {
 
           expect(restored.id, equals(original.id));
           expect(restored.amount, equals(original.amount));
-          expect(restored.payerParticipantId, equals(original.payerParticipantId));
+          expect(
+            restored.payerParticipantId,
+            equals(original.payerParticipantId),
+          );
           expect(restored.isDeleted, isFalse);
         },
       );
@@ -408,7 +485,11 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('split mode persistence', () {
-      Future<Map<String, dynamic>> readDoc(String gid, String eid, String xid) async {
+      Future<Map<String, dynamic>> readDoc(
+        String gid,
+        String eid,
+        String xid,
+      ) async {
         final snap = await fakeDb
             .collection('groups')
             .doc(gid)
@@ -420,29 +501,34 @@ void main() {
         return snap.data()!;
       }
 
-      test('addExpense writes splitMode + shares distribution for non-equal splits',
-          () async {
-        const groupId = 'g1';
-        const eventId = 'e1';
+      test(
+        'addExpense writes splitMode + shares distribution for non-equal splits',
+        () async {
+          const groupId = 'g1';
+          const eventId = 'e1';
 
-        final expense = await service.addExpense(
-          createdBy: 'test-uid',
-          groupId: groupId,
-          eventId: eventId,
-          payerParticipantId: 'p1',
-          amount: Decimal.parse('30.000'),
-          splitMode: SplitMode.shares,
-          splitDistribution: {
-            'p1': Decimal.fromInt(2),
-            'p2': Decimal.fromInt(1),
-            'p3': Decimal.fromInt(1),
-          },
-        );
+          final expense = await service.addExpense(
+            createdBy: 'test-uid',
+            groupId: groupId,
+            eventId: eventId,
+            payerParticipantId: 'p1',
+            amount: Decimal.parse('30.000'),
+            splitMode: SplitMode.shares,
+            splitDistribution: {
+              'p1': Decimal.fromInt(2),
+              'p2': Decimal.fromInt(1),
+              'p3': Decimal.fromInt(1),
+            },
+          );
 
-        final data = await readDoc(groupId, eventId, expense.id);
-        expect(data['splitMode'], equals('shares'));
-        expect(data['splitDistribution'], equals({'p1': 2, 'p2': 1, 'p3': 1}));
-      });
+          final data = await readDoc(groupId, eventId, expense.id);
+          expect(data['splitMode'], equals('shares'));
+          expect(
+            data['splitDistribution'],
+            equals({'p1': 2, 'p2': 1, 'p3': 1}),
+          );
+        },
+      );
 
       test('addExpense encodes exact amounts as currency subunits', () async {
         final expense = await service.addExpense(
@@ -462,8 +548,10 @@ void main() {
         final data = await readDoc('g1', 'e1', expense.id);
         expect(data['splitMode'], equals('exact'));
         // OMR has 3 decimals so 15.000 → 15000 fils.
-        expect(data['splitDistribution'],
-            equals({'p1': 15000, 'p2': 10000, 'p3': 5000}));
+        expect(
+          data['splitDistribution'],
+          equals({'p1': 15000, 'p2': 10000, 'p3': 5000}),
+        );
       });
 
       test('addExpense scales percent values by 1000 for storage', () async {
@@ -483,24 +571,29 @@ void main() {
 
         final data = await readDoc('g1', 'e1', expense.id);
         expect(data['splitMode'], equals('percent'));
-        expect(data['splitDistribution'],
-            equals({'p1': 33333, 'p2': 33333, 'p3': 33334}));
-      });
-
-      test('addExpense omits splitMode/splitDistribution for equally', () async {
-        final expense = await service.addExpense(
-          createdBy: 'test-uid',
-          groupId: 'g1',
-          eventId: 'e1',
-          payerParticipantId: 'p1',
-          amount: Decimal.parse('10.000'),
-          splitMode: SplitMode.equally,
+        expect(
+          data['splitDistribution'],
+          equals({'p1': 33333, 'p2': 33333, 'p3': 33334}),
         );
-
-        final data = await readDoc('g1', 'e1', expense.id);
-        expect(data.containsKey('splitMode'), isFalse);
-        expect(data.containsKey('splitDistribution'), isFalse);
       });
+
+      test(
+        'addExpense omits splitMode/splitDistribution for equally',
+        () async {
+          final expense = await service.addExpense(
+            createdBy: 'test-uid',
+            groupId: 'g1',
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            amount: Decimal.parse('10.000'),
+            splitMode: SplitMode.equally,
+          );
+
+          final data = await readDoc('g1', 'e1', expense.id);
+          expect(data.containsKey('splitMode'), isFalse);
+          expect(data.containsKey('splitDistribution'), isFalse);
+        },
+      );
 
       test('updateExpense clearSplit removes both fields', () async {
         final expense = await service.addExpense(
@@ -530,27 +623,35 @@ void main() {
         expect(data.containsKey('splitDistribution'), isFalse);
       });
 
-      test('round-trip: addExpense → fromFirestore restores distribution',
-          () async {
-        final expense = await service.addExpense(
-          createdBy: 'test-uid',
-          groupId: 'g1',
-          eventId: 'e1',
-          payerParticipantId: 'p1',
-          amount: Decimal.parse('30.000'),
-          splitMode: SplitMode.exact,
-          splitDistribution: {
-            'p1': Decimal.parse('20.000'),
-            'p2': Decimal.parse('10.000'),
-          },
-        );
+      test(
+        'round-trip: addExpense → fromFirestore restores distribution',
+        () async {
+          final expense = await service.addExpense(
+            createdBy: 'test-uid',
+            groupId: 'g1',
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            amount: Decimal.parse('30.000'),
+            splitMode: SplitMode.exact,
+            splitDistribution: {
+              'p1': Decimal.parse('20.000'),
+              'p2': Decimal.parse('10.000'),
+            },
+          );
 
-        final data = await readDoc('g1', 'e1', expense.id);
-        final restored = Expense.fromFirestore({...data, 'id': expense.id});
-        expect(restored.splitMode, equals(SplitMode.exact));
-        expect(restored.splitDistribution!['p1'], equals(Decimal.parse('20.000')));
-        expect(restored.splitDistribution!['p2'], equals(Decimal.parse('10.000')));
-      });
+          final data = await readDoc('g1', 'e1', expense.id);
+          final restored = Expense.fromFirestore({...data, 'id': expense.id});
+          expect(restored.splitMode, equals(SplitMode.exact));
+          expect(
+            restored.splitDistribution!['p1'],
+            equals(Decimal.parse('20.000')),
+          );
+          expect(
+            restored.splitDistribution!['p2'],
+            equals(Decimal.parse('10.000')),
+          );
+        },
+      );
     });
   });
 }

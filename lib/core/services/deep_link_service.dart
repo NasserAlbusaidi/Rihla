@@ -7,6 +7,9 @@ import 'package:go_router/go_router.dart';
 class DeepLinkService {
   DeepLinkService._(this._appLinks);
 
+  @visibleForTesting
+  DeepLinkService.withAppLinks(this._appLinks);
+
   static final DeepLinkService instance = DeepLinkService._(AppLinks());
   static final RegExp _inviteCodePattern = RegExp(r'^[A-Z0-9]{6}$');
   static const Set<String> _universalJoinHosts = {

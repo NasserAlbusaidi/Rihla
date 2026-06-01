@@ -3,7 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -100,8 +99,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         if (_selectedParticipantIds.contains(m.userId)) m.userId: m.displayName,
     });
 
-    // Current Firebase UID for createdBy
-    final uid = FirebaseConfig.currentUser?.uid ?? '';
+    // Current Firebase UID for createdBy. Uses the provider seam so tests and
+    // route-scoped screens don't need to initialize Firebase Auth directly.
+    final uid = ref.read(currentUserIdProvider) ?? '';
 
     try {
       final event = await ref
@@ -123,7 +123,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
       // Log event_created activity (D-14) — fire-and-forget, no await
       try {
-        final actorId = FirebaseConfig.currentUser?.uid ?? '';
+        final actorId = uid;
         final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
             ? ref.read(settingsProvider).deviceName
             : 'Someone';

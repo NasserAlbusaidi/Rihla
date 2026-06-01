@@ -23,6 +23,52 @@ class EventService extends FirestoreRepository {
   @visibleForTesting
   EventService.withFirestore(super.db) : super.withFirestore();
 
+  /// Reactive stream of all non-deleted events in a group.
+  ///
+  /// Sort order per D-25:
+  ///   - Events without a startDate sort to the top (null-date first).
+  ///   - All others sorted by createdAt descending (newest first).
+  ///
+  /// The Firestore query filters isDeleted=false and orders by createdAt DESC.
+  /// Client-side sort overrides the order for null-date events (D-25).
+  Stream<List<Event>> watchGroupEvents(String groupId) {
+    return db
+        .collection('groups')
+        .doc(groupId)
+        .collection('events')
+        .where('isDeleted', isEqualTo: false)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) {
+          final events = snap.docs.map(Event.fromDoc).toList();
+          events.sort((a, b) {
+            if (a.startDate == null && b.startDate == null) {
+              return b.createdAt.compareTo(a.createdAt);
+            }
+            if (a.startDate == null) return -1;
+            if (b.startDate == null) return 1;
+            return b.createdAt.compareTo(a.createdAt);
+          });
+          return List.unmodifiable(events);
+        });
+  }
+
+  /// Reactive stream for a single event by compound key.
+  ///
+  /// Returns null if the event does not exist or has been hard-deleted.
+  Stream<Event?> watchEvent({
+    required String groupId,
+    required String eventId,
+  }) {
+    return db
+        .collection('groups')
+        .doc(groupId)
+        .collection('events')
+        .doc(eventId)
+        .snapshots()
+        .map((doc) => doc.exists ? Event.fromDoc(doc) : null);
+  }
+
   /// Create a new event in Firestore.
   ///
   /// Steps:
