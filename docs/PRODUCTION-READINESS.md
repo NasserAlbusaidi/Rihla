@@ -1,6 +1,6 @@
 # Production Readiness
 
-Last verified: 2026-05-20 (`codex/release-hardening-1-0`, PR #39)
+Last verified: 2026-06-01 (`release/android-public-hardening-2026-06-01`)
 
 This checklist tracks the remaining launch gates for the Firebase project
 `rihla-safar` and the mobile apps. Treat checked items as verified from the
@@ -27,15 +27,17 @@ For a full iOS + Android release, omit `RIHLA_SKIP_IOS_QA=yes` and replace the
 iOS `Deferred ...` matrix cells with passing physical-device evidence.
 
 Current branch status: local code gates pass for the hardening branch, but the
-Firebase production-state audit does not yet pass for this branch because the
-new Firestore rules and Functions have not been deployed. v1.2 launches
-Android-only on Google Play; iOS is soft-deferred to follow within weeks of
-Android Production. The remaining release gates are backend deploy/re-audit,
-Android-only physical-device QA (`docs/REAL-DEVICE-QA.md` with
+consolidated release audit does not pass yet. On 2026-06-01, the audit passed
+Functions install/audit/build, emulator tests, Flutter analyzer, theme purity,
+navigation smoke tests, full Flutter coverage (88.3% raw line coverage), and
+the Android release AAB build (56.5 MB). It failed on external release state:
+Firebase production is still behind the branch, Android real-device QA is still
+incomplete, and `RIHLA_RELEASE_APPROVED_SHA` does not match the target commit.
+v1.3 launches Android-only on Google Play; iOS is soft-deferred to follow
+within weeks of Android Production. The remaining release gates are backend
+deploy/re-audit, Android-only physical-device QA (`docs/REAL-DEVICE-QA.md` with
 `RIHLA_SKIP_IOS_QA=yes`), and final commit-bound CI release-confirmation repo
-variables. GitHub branch-protection governance is configured, but the
-consolidated audit will continue to fail until the backend, device QA, and
-release-variable gates are recorded as passing.
+variables.
 
 GitHub also runs `.github/workflows/readiness_check.yml` on `main` pushes and
 pull requests. That workflow covers the local non-deploy gates only; it does not
@@ -143,11 +145,13 @@ starts a new run.
     ```bash
     bash tool/check_firebase_prod_state.sh rihla-safar
     ```
-  - Latest gate result (2026-05-20, PR #39): Firestore database, indexes, and both
-    Hosting domains passed. Firestore rules failed because production lacks
-    the current branch's `recoveryCleanupIntents/{oldUid}` rule block and
-    latest display-name validation. Functions failed because production is
-    missing `deleteAccount`.
+  - Latest gate result (2026-06-01, `release/android-public-hardening-2026-06-01`):
+    Firestore database and both Hosting domains passed. Firestore indexes
+    failed because production lacks the `deleteGroupAttempts.expiresAt` TTL
+    field override. Firestore rules failed because production is missing the
+    current delete-group write locks, soft-delete rules, and split-distribution
+    participant-key validation. Functions failed because production is missing
+    `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
 - [ ] Real-device QA is not complete (Android-only for v1.2).
@@ -156,7 +160,10 @@ starts a new run.
     ```bash
     RIHLA_SKIP_IOS_QA=yes bash tool/check_real_device_qa_gate.sh
     ```
-  - Latest gate result (2026-05-20, PR #39): no physical Android device detected; matrix iOS cells filled with `Deferred — v1.2 Android-only`; Android cells and evidence still empty for RD-01..RD-09.
+  - Latest gate result (2026-06-01, `release/android-public-hardening-2026-06-01`):
+    no physical Android device detected; matrix iOS cells filled with
+    `Deferred — v1.2 Android-only`; Android cells and evidence still empty for
+    RD-01..RD-09.
   - v1.2.0+15 carry-over: post-launch bugs found on +14 (group-detail back button, event settlement names, `currentUserIdProvider` reactivity, App Check on join callable, join-event-sync, anon-UID cleanup) are all resolved on `main` and documented in `docs/REAL-DEVICE-QA.md` § "Resolved on fix/post-launch-qa-v1.2".
   - Required Android matrix (RD-01..09):
     - Create group, join group by invite code, delete group.
@@ -166,13 +173,21 @@ starts a new run.
     - Notification opt-in and opt-out: token is written on enable and removed on disable.
     - Arabic RTL golden path.
   - iOS re-activation: when iOS ships, unset `RIHLA_SKIP_IOS_QA` and replace `Deferred ...` cells with `Pass ...` and concrete iOS evidence.
-- [ ] Android release workflow external confirmations are not set.
+- [ ] Android release workflow external confirmations must be re-confirmed for the target commit.
   - `.github/workflows/release_android.yml` now refuses to upload unless `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, and `RIHLA_REAL_DEVICE_QA_READY` repository variables are all set to `yes`.
   - It also requires `RIHLA_RELEASE_APPROVED_SHA` to match the exact commit being uploaded, so stale `yes` variables from a previous release cannot authorize a newer tag.
   - The upload job now refuses non-`v*` refs and refuses tag commits that are
     not contained in `origin/main`, so manual dispatches must target a release
     tag on the protected branch history.
-  - Leave these unset until the production-state audit, App Check Console enrolment, and physical-device QA matrix pass for the target commit.
+  - Latest gate result (2026-06-01, `release/android-public-hardening-2026-06-01`):
+    `RIHLA_BACKEND_RELEASE_READY`, `RIHLA_APP_CHECK_READY`, and
+    `RIHLA_REAL_DEVICE_QA_READY` were `yes`, but
+    `RIHLA_RELEASE_APPROVED_SHA=f03a89a15b03f9c873bdfa08158a31357c869061`
+    did not match target commit
+    `51f358e727a58ec260b0783c54535becd568b3cb`.
+  - Reconfirm or reset these variables only after the production-state audit,
+    App Check Console enrolment, and physical-device QA matrix pass for the
+    final target commit.
 - [x] GitHub release governance is configured.
   - Gate command:
     ```bash
