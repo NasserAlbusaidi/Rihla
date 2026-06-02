@@ -222,7 +222,7 @@ describe('cleanupAnonUidArtifacts', () => {
     expect(newMember.data()?.joinedAt).toBeDefined();
   });
 
-  test('createdBy is rewritten on group, active event, and active expense only', async () => {
+  test('createdBy is rewritten on group, active event, active expense, and settlements', async () => {
     const db = getFirestore();
     await seedAuthUsers();
     await seedCleanupIntent();
@@ -261,7 +261,9 @@ describe('cleanupAnonUidArtifacts', () => {
     expect(deletedEvent.data()?.createdBy).toBe('old-anon-uid');
     expect(activeExpense.data()?.createdBy).toBe('new-uid');
     expect(deletedExpense.data()?.createdBy).toBe('old-anon-uid');
-    expect(settlement.data()?.createdBy).toBe('old-anon-uid');
+    // #216: settlement createdBy migrates (settlements are append-only live
+    // financial records; the recovered user must retain ownership of them).
+    expect(settlement.data()?.createdBy).toBe('new-uid');
   });
 
   test('event participantIds and participantNames replace oldUid with calling UID', async () => {
@@ -285,6 +287,175 @@ describe('cleanupAnonUidArtifacts', () => {
       'new-uid': 'Old Name',
       owner: 'Owner',
     });
+  });
+
+  // #216: the recovery cascade must migrate the FINANCIAL ledger surface
+  // (expense payer/split/customSplit + event & group settlement payer/recipient/
+  // createdBy) oldUid -> newUid, otherwise the balance engine treats the
+  // now-deleted oldUid as a "former financial actor" and splits the recovered
+  // user into two. These are MIGRATE semantics (repoint UID refs only), NOT the
+  // scrub semantics of deleteAccount — display names / notes are left intact.
+  test('#216 active expense payer/split/customSplit migrate oldUid -> newUid', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid'], { createdBy: 'owner' });
+    await seedMember('g1', 'old-anon-uid');
+    await seedEvent('g1', 'e1', {
+      participantIds: ['old-anon-uid', 'owner'],
+      participantNames: { 'old-anon-uid': 'Old Name', owner: 'Owner' },
+    });
+    await db.doc('groups/g1/events/e1/expenses/x1').set({
+      id: 'x1',
+      createdBy: 'old-anon-uid',
+      payerParticipantId: 'old-anon-uid',
+      splitDistribution: { 'old-anon-uid': 1500, owner: 1500 },
+      customSplitParticipants: ['old-anon-uid', 'owner'],
+      isDeleted: false,
+    });
+
+    await cleanupCall();
+
+    const x1 = (await db.doc('groups/g1/events/e1/expenses/x1').get()).data();
+    expect(x1?.payerParticipantId).toBe('new-uid');
+    expect(x1?.createdBy).toBe('new-uid');
+    expect(x1?.splitDistribution).toEqual({ 'new-uid': 1500, owner: 1500 });
+    expect(x1?.customSplitParticipants).toEqual(['new-uid', 'owner']);
+  });
+
+  test('#216 splitDistribution collision sums subunits; customSplit dedupes', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    // Both oldUid and newUid are members of the same group/expense — the
+    // collision case deleteAccount.renameMapKey would silently clobber.
+    await seedGroup('g1', ['old-anon-uid', 'new-uid', 'owner']);
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old' });
+    await seedMember('g1', 'new-uid', { displayName: 'New' });
+    await seedEvent('g1', 'e1', {
+      participantIds: ['old-anon-uid', 'new-uid', 'owner'],
+      participantNames: {
+        'old-anon-uid': 'Old',
+        'new-uid': 'New',
+        owner: 'Owner',
+      },
+    });
+    await db.doc('groups/g1/events/e1/expenses/x1').set({
+      id: 'x1',
+      createdBy: 'owner',
+      payerParticipantId: 'owner',
+      // exact split, amount 3000 subunits; old=1000 + new=500 must MERGE to 1500
+      // so sum stays 3000 (conservation) — not be clobbered to 1000.
+      splitDistribution: { 'old-anon-uid': 1000, 'new-uid': 500, owner: 1500 },
+      customSplitParticipants: ['old-anon-uid', 'new-uid', 'owner'],
+      isDeleted: false,
+    });
+
+    await cleanupCall();
+
+    const x1 = (await db.doc('groups/g1/events/e1/expenses/x1').get()).data();
+    const dist = x1?.splitDistribution as Record<string, number>;
+    expect(dist['old-anon-uid']).toBeUndefined();
+    expect(dist['new-uid']).toBe(1500);
+    expect(dist.owner).toBe(1500);
+    // conservation: total subunits unchanged
+    expect(Object.values(dist).reduce((a, b) => a + b, 0)).toBe(3000);
+    // custom split collapses the duplicated person to a single head
+    expect(x1?.customSplitParticipants).toEqual(['new-uid', 'owner']);
+  });
+
+  test('#216 event settlement payer/recipient/createdBy migrate; names preserved', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid']);
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old Name' });
+    await seedEvent('g1', 'e1');
+    // oldUid as payer
+    await db.doc('groups/g1/events/e1/settlements/s1').set({
+      id: 's1',
+      payerParticipantId: 'old-anon-uid',
+      recipientParticipantId: 'owner',
+      payerName: 'Old Name',
+      recipientName: 'Owner',
+      createdBy: 'old-anon-uid',
+      isDeleted: false,
+    });
+    // oldUid as recipient
+    await db.doc('groups/g1/events/e1/settlements/s2').set({
+      id: 's2',
+      payerParticipantId: 'owner',
+      recipientParticipantId: 'old-anon-uid',
+      payerName: 'Owner',
+      recipientName: 'Old Name',
+      createdBy: 'owner',
+      isDeleted: false,
+    });
+
+    await cleanupCall();
+
+    const s1 = (await db.doc('groups/g1/events/e1/settlements/s1').get()).data();
+    expect(s1?.payerParticipantId).toBe('new-uid');
+    expect(s1?.recipientParticipantId).toBe('owner');
+    expect(s1?.createdBy).toBe('new-uid');
+    // migrate-not-scrub: denormalized display name is the SAME person, untouched
+    expect(s1?.payerName).toBe('Old Name');
+    expect(s1?.recipientName).toBe('Owner');
+
+    const s2 = (await db.doc('groups/g1/events/e1/settlements/s2').get()).data();
+    expect(s2?.payerParticipantId).toBe('owner');
+    expect(s2?.recipientParticipantId).toBe('new-uid');
+    expect(s2?.createdBy).toBe('owner');
+    expect(s2?.recipientName).toBe('Old Name');
+  });
+
+  test('#216 group-level settlement payer/recipient/createdBy migrate', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid']);
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old Name' });
+    await db.doc('groups/g1/settlements/gs1').set({
+      id: 'gs1',
+      payerParticipantId: 'owner',
+      recipientParticipantId: 'old-anon-uid',
+      payerName: 'Owner',
+      recipientName: 'Old Name',
+      createdBy: 'old-anon-uid',
+      isDeleted: false,
+    });
+
+    await cleanupCall();
+
+    const gs1 = (await db.doc('groups/g1/settlements/gs1').get()).data();
+    expect(gs1?.recipientParticipantId).toBe('new-uid');
+    expect(gs1?.createdBy).toBe('new-uid');
+    expect(gs1?.payerParticipantId).toBe('owner');
+    expect(gs1?.recipientName).toBe('Old Name');
+  });
+
+  test('#216 soft-deleted expense financial fields are NOT migrated (inert residual)', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid']);
+    await seedMember('g1', 'old-anon-uid');
+    await seedEvent('g1', 'e1');
+    await db.doc('groups/g1/events/e1/expenses/xdel').set({
+      id: 'xdel',
+      createdBy: 'old-anon-uid',
+      payerParticipantId: 'old-anon-uid',
+      splitDistribution: { 'old-anon-uid': 1000 },
+      isDeleted: true,
+    });
+
+    await cleanupCall();
+
+    const xdel = (await db.doc('groups/g1/events/e1/expenses/xdel').get()).data();
+    // Soft-deleted expenses never feed balances; left active-only by design
+    // (matches the existing createdBy policy). The oldUid ref is inert.
+    expect(xdel?.payerParticipantId).toBe('old-anon-uid');
+    expect(xdel?.createdBy).toBe('old-anon-uid');
   });
 
   test('deleted anon auth user returns authUserDeleted true', async () => {

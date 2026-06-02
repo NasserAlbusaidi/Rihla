@@ -86,6 +86,68 @@ function replaceUid(values: string[], oldUid: string, newUid: string): string[] 
   return next;
 }
 
+function toFiniteNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+// #216: rename the `oldUid` key of a splitDistribution map to `newUid`.
+// Unlike deleteAccount's renameMapKey (which renames uid -> a FRESH tombstone
+// id that never collides), recovery renames oldUid -> newUid, and newUid may
+// ALREADY be a key (the "both UIDs are members" case). On collision we SUM the
+// persisted integer subunits — provably conservation-safe: the calculator reads
+// splitDistribution only for exact/shares/percent (all additive, equally is
+// excluded) and the from-persisted reconstruction is linear, so the merged
+// person's combined share and the denominator total are both preserved. A plain
+// overwrite (renameMapKey) would silently DROP newUid's share — a money bug.
+// Returns a new map (immutable); null when the input is not a plain object.
+function mergeUidMapKey(
+  value: unknown,
+  oldUid: string,
+  newUid: string,
+): { value: Record<string, unknown>; changed: boolean } | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const source = value as Record<string, unknown>;
+  if (!Object.prototype.hasOwnProperty.call(source, oldUid)) {
+    return { value: { ...source }, changed: false };
+  }
+  const next: Record<string, unknown> = { ...source };
+  const oldValue = next[oldUid];
+  delete next[oldUid];
+  if (Object.prototype.hasOwnProperty.call(source, newUid)) {
+    // Collision: sum subunits. toFiniteNumber zeroes a forged non-numeric value
+    // rather than emit NaN — legitimate data is always a number.
+    next[newUid] = toFiniteNumber(source[newUid]) + toFiniteNumber(oldValue);
+  } else {
+    next[newUid] = oldValue;
+  }
+  return { value: next, changed: true };
+}
+
+// #216: migrate the UID-keyed attribution fields of a settlement doc oldUid ->
+// newUid. MIGRATE semantics (repoint ids only) — payerName/recipientName are
+// denormalized display strings for the SAME recovered person and are left
+// untouched (contrast deleteAccount, which scrubs them to "Deleted member"
+// because the person is gone). Returns null when nothing matches.
+function settlementMigrationUpdate(
+  data: DocumentData,
+  oldUid: string,
+  newUid: string,
+): Record<string, unknown> | null {
+  const update: Record<string, unknown> = {};
+  if (data.payerParticipantId === oldUid) {
+    update.payerParticipantId = newUid;
+  }
+  if (data.recipientParticipantId === oldUid) {
+    update.recipientParticipantId = newUid;
+  }
+  if (data.createdBy === oldUid) {
+    update.createdBy = newUid;
+  }
+  return Object.keys(update).length > 0 ? update : null;
+}
+
 function hasEmailProvider(providerData: Array<{ providerId: string }>): boolean {
   return providerData.some((provider) => (
     provider.providerId === 'password' || provider.providerId === 'emailLink'
@@ -173,6 +235,13 @@ async function processGroup(
     const expenseSnaps = await Promise.all(
       activeEventSnaps.map((eventSnap) => tx.get(eventSnap.ref.collection('expenses'))),
     );
+    // #216: settlement reads MUST stay in the read phase — every tx.get below
+    // precedes the first write (tx.update(groupRef)), per Firestore's
+    // all-reads-before-writes transaction rule.
+    const eventSettlementSnaps = await Promise.all(
+      activeEventSnaps.map((eventSnap) => tx.get(eventSnap.ref.collection('settlements'))),
+    );
+    const groupSettlementsSnap = await tx.get(groupRef.collection('settlements'));
     const actions: string[] = [];
     const nextMemberIds = replaceUid(memberIds, oldUid, newUid);
     const groupUpdate: Record<string, unknown> = {
@@ -230,15 +299,84 @@ async function processGroup(
       }
     }
 
+    // #216: migrate the FINANCIAL attribution of each active expense in each
+    // active event — createdBy (ownership), payerParticipantId (feeds totalPaid
+    // + eventFinancialUids), customSplitParticipants (custom-scope head set,
+    // dedup on collision via replaceUid), and splitDistribution keys (owed
+    // allocation, sum-merge on collision). Soft-deleted expenses are skipped:
+    // they never feed balances (the read path filters isDeleted=false), so their
+    // oldUid refs are an inert residual — same active-only policy as createdBy.
     activeEventSnaps.forEach((eventSnap, index) => {
       for (const expenseSnap of expenseSnaps[index].docs) {
         const expenseData = expenseSnap.data() ?? {};
-        if (expenseData.isDeleted !== true && expenseData.createdBy === oldUid) {
-          tx.update(expenseSnap.ref, { createdBy: newUid });
-          actions.push(`expenses.${eventSnap.id}.${expenseSnap.id}.createdBy`);
+        if (expenseData.isDeleted === true) {
+          continue;
+        }
+        const expenseUpdate: Record<string, unknown> = {};
+        if (expenseData.createdBy === oldUid) {
+          expenseUpdate.createdBy = newUid;
+        }
+        if (expenseData.payerParticipantId === oldUid) {
+          expenseUpdate.payerParticipantId = newUid;
+        }
+        if (
+          Array.isArray(expenseData.customSplitParticipants)
+          && (expenseData.customSplitParticipants as unknown[]).includes(oldUid)
+        ) {
+          expenseUpdate.customSplitParticipants = replaceUid(
+            expenseData.customSplitParticipants as string[],
+            oldUid,
+            newUid,
+          );
+        }
+        const mergedDistribution = mergeUidMapKey(
+          expenseData.splitDistribution,
+          oldUid,
+          newUid,
+        );
+        if (mergedDistribution?.changed) {
+          expenseUpdate.splitDistribution = mergedDistribution.value;
+        }
+        if (Object.keys(expenseUpdate).length > 0) {
+          tx.update(expenseSnap.ref, expenseUpdate);
+          actions.push(`expenses.${eventSnap.id}.${expenseSnap.id}`);
         }
       }
     });
+
+    // #216: migrate event-level settlements (per active event) and group-level
+    // settlements. Settlements are append-only live financial records read by
+    // the balance engine; an un-migrated payer/recipient id strands the
+    // recovered user's money under the about-to-be-deleted oldUid. The whole
+    // collection is read (settlement docs' own isDeleted is not gated — they are
+    // append-only, so none are effectively deleted, matching deleteAccount).
+    // This tx.update writes THROUGH the `allow update: if false` append-only
+    // rule via the Admin SDK (rules-bypassing) — clients still cannot mutate
+    // settlements; only this server identity-migration can.
+    activeEventSnaps.forEach((eventSnap, index) => {
+      for (const settlementSnap of eventSettlementSnaps[index].docs) {
+        const update = settlementMigrationUpdate(
+          settlementSnap.data() ?? {},
+          oldUid,
+          newUid,
+        );
+        if (update) {
+          tx.update(settlementSnap.ref, update);
+          actions.push(`settlements.${eventSnap.id}.${settlementSnap.id}`);
+        }
+      }
+    });
+    for (const settlementSnap of groupSettlementsSnap.docs) {
+      const update = settlementMigrationUpdate(
+        settlementSnap.data() ?? {},
+        oldUid,
+        newUid,
+      );
+      if (update) {
+        tx.update(settlementSnap.ref, update);
+        actions.push(`settlements.group.${settlementSnap.id}`);
+      }
+    }
 
     return actions;
   });
