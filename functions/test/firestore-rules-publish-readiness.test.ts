@@ -1342,4 +1342,167 @@ describe('Publish readiness Firestore rules', () => {
       validSettlement({ id: 'setLongRecipient', recipientName: 'A'.repeat(33) }),
     ));
   });
+
+  // ===========================================================================
+  // #192 — splitDistribution value-domain: non-negative integers only.
+  // Spec: docs/plans/2026-06-02-rules-value-domain-hardening.md
+  // The check is enforced in the create/update wrappers (unconditional on
+  // create, diff-gated on update) so a legacy/forged negative doc stays
+  // soft-deletable. Today rules only check `splitDistribution is map`.
+  // ===========================================================================
+  test('#192 expense create with valid non-negative shares splitDistribution is allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expPos').set(
+      validExpense({ id: 'expPos', splitMode: 'shares', splitDistribution: { owner: 2, member: 3 } }),
+    ));
+  });
+
+  test('#192 expense create with a negative splitDistribution value is denied', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expNeg').set(
+      validExpense({ id: 'expNeg', splitMode: 'shares', splitDistribution: { owner: 2, member: -3 } }),
+    ));
+  });
+
+  test('#192 expense create with an empty splitDistribution map is allowed (preserved)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expEmpty').set(
+      validExpense({ id: 'expEmpty', splitMode: 'shares', splitDistribution: {} }),
+    ));
+  });
+
+  test('#192 expense update that re-sends a negative splitDistribution is denied', async () => {
+    await seedExpense({ id: 'expU', createdBy: 'member', splitMode: 'shares', splitDistribution: { owner: 2, member: 3 } });
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expU').update({
+      splitDistribution: { owner: 5, member: -2 },
+    }));
+  });
+
+  test('#192 soft-delete of a legacy expense with a negative splitDistribution is still allowed (no regression)', async () => {
+    await seedExpense({ id: 'expDel', createdBy: 'member', splitMode: 'shares', splitDistribution: { owner: 2, member: -3 } });
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expDel').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
+
+  // ===========================================================================
+  // #193 — settlement currency: allow-list (matches MoneySerializer scale keys)
+  // + group-settlement cross-currency equality with the owning group.
+  // Event-settlement cross-currency equality is DEFERRED to #61 (event
+  // settle-up hardcodes 'OMR'; the equality would be a tautology-today /
+  // landmine-tomorrow). Today validCurrency only checks `size() == 3`.
+  // ===========================================================================
+  test('#193 event settlement with a supported currency is allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setOmr').set(
+      validSettlement({ id: 'setOmr', currency: 'OMR' }),
+    ));
+  });
+
+  test('#193 event settlement with an unsupported 3-char currency is denied', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setXyz').set(
+      validSettlement({ id: 'setXyz', currency: 'XYZ' }),
+    ));
+  });
+
+  test('#193 event settlement with a lowercase currency code is denied', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setLower').set(
+      validSettlement({ id: 'setLower', currency: 'omr' }),
+    ));
+  });
+
+  test('#193 group settlement with currency matching the group currency is allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/settlements/gsetMatch').set(
+      validGroupSettlement({ id: 'gsetMatch', currency: 'OMR' }),
+    ));
+  });
+
+  test('#193 group settlement with a supported-but-divergent currency is denied', async () => {
+    // Group g1 currency is OMR; USD is in the allow-list but mismatches the group.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/settlements/gsetUsd').set(
+      validGroupSettlement({ id: 'gsetUsd', currency: 'USD' }),
+    ));
+  });
+
+  test('#193 event settlement with a divergent supported currency is allowed (cross-currency equality deferred to #61)', async () => {
+    // Documents the deliberate deferral: event settle-up hardcodes OMR, so the
+    // event-side equality would be a tautology until #61 lands multi-currency.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setUsd').set(
+      validSettlement({ id: 'setUsd', currency: 'USD' }),
+    ));
+  });
+
+  // ===========================================================================
+  // #194 — free text (note/description/categoryId/receiptUrl/subGroupId):
+  // bounded (<=280) + control-char-free. Enforced in create wrappers
+  // (unconditional) and the expense update wrapper (diff-gated). Settlements
+  // are append-only (no update path) so settlement note is create-only.
+  // Today these fields pass bare `nullableString` (type only).
+  // ===========================================================================
+  test('#194 expense create with a normal description is allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expDesc').set(
+      validExpense({ id: 'expDesc', description: 'Team dinner at the souq' }),
+    ));
+  });
+
+  test('#194 expense create with a control character in description is denied', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expCtrl').set(
+      validExpense({ id: 'expCtrl', description: 'line1\nline2' }),
+    ));
+  });
+
+  test('#194 expense create with a description over 280 chars is denied', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expLong').set(
+      validExpense({ id: 'expLong', description: 'a'.repeat(281) }),
+    ));
+  });
+
+  test('#194 event settlement create with a control character in note is denied', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setNote').set(
+      validSettlement({ id: 'setNote', note: 'paid\nback' }),
+    ));
+  });
+
+  test('#194 event settlement create with a note over 280 chars is denied', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setNoteLong').set(
+      validSettlement({ id: 'setNoteLong', note: 'a'.repeat(281) }),
+    ));
+  });
+
+  test('#194 group settlement create with a control character in note is denied', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/settlements/gsetNote').set(
+      validGroupSettlement({ id: 'gsetNote', note: 'a\tb' }),
+    ));
+  });
+
+  test('#194 expense update that changes description to a control-char value is denied', async () => {
+    await seedExpense({ id: 'expEdit', createdBy: 'member' });
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expEdit').update({
+      description: 'bad\nvalue',
+    }));
+  });
+
+  test('#194 soft-delete of a legacy expense with an over-280 description is still allowed (no regression)', async () => {
+    await seedExpense({ id: 'expLongDel', createdBy: 'member', description: 'a'.repeat(500) });
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expLongDel').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    }));
+  });
 });
