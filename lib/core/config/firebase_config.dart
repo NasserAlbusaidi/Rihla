@@ -66,9 +66,12 @@ class FirebaseConfig {
   /// is null immediately after `initializeApp()` even when a session
   /// IS persisted — causing a new anonymous UID on every restart.
   ///
+  /// A restored session's token is verified but NEVER discarded on failure
+  /// (#213): a transient error must not mint a fresh UID and orphan an anon
+  /// user's data — see [recoverRestoredSessionIfNeeded].
+  ///
   /// After the session settles, runs the cold-start cache barrier (#45): if the
-  /// booted UID differs from the last-active UID, or a swap demonstrably
-  /// happened this boot (`internal-error` retry), or an in-session swap left the
+  /// booted UID differs from the last-active UID, or an in-session swap left the
   /// dirty flag set, it clears the Firestore SDK on-device cache BEFORE the
   /// first read. Skipped via [runCacheBarrier] = false for in-session reauth,
   /// where `clearPersistence()` would throw on the already-started instance.
@@ -77,6 +80,8 @@ class FirebaseConfig {
     FirebaseAuth? authOverride,
     SharedPreferences? prefs,
     FirestoreCacheGate? cacheGate,
+    @visibleForTesting
+    Future<void> Function(User restoredUser)? verifyTokenOverride,
   }) async {
     final authInstance = authOverride ?? auth;
     var swapped = false;
@@ -85,12 +90,13 @@ class FirebaseConfig {
     final restoredUser = await authInstance.authStateChanges().first;
     if (restoredUser != null) {
       log('Firebase session restored (uid: ${restoredUser.uid})');
+      // `MockUser.getIdToken` cannot throw, so an `internal-error` cannot be
+      // driven through this path in tests without a seam (#213 regression
+      // coverage). The override is test-only; production uses getIdToken().
       swapped = await recoverRestoredSessionIfNeeded(
-        verifyToken: () async {
-          await restoredUser.getIdToken();
-        },
-        signOut: authInstance.signOut,
-        signInAnonymously: () => _signInAnonymously(authInstance),
+        verifyToken: () => verifyTokenOverride != null
+            ? verifyTokenOverride(restoredUser)
+            : restoredUser.getIdToken().then((_) {}),
       );
     } else {
       log('No persisted Firebase session — signing in anonymously');
@@ -144,34 +150,38 @@ class FirebaseConfig {
     }
   }
 
+  /// Verifies the restored session's ID token and records the result. Returns
+  /// `false` always — it never discards the session.
+  ///
+  /// #213: a transient `getIdToken()` failure (App Check / Play Integrity
+  /// rejection, or a network/backend hiccup during refresh) surfaces as
+  /// `FirebaseAuthException` — most often `internal-error`, the SDK's catch-all.
+  /// This must NEVER trigger `signOut()` + `signInAnonymously()`: for an
+  /// anonymous user with no linked email, signing out mints a brand-new UID and
+  /// irreversibly orphans all of their data under the abandoned UID. Keep the
+  /// session — the SDK refreshes the token lazily once connectivity / App Check
+  /// recovers, and Firestore offline persistence serves cached reads meanwhile.
+  /// The UID is preserved throughout, so nothing is lost.
+  ///
+  /// Returns `bool` (always `false`) to keep the cache-barrier `forceClear`
+  /// plumbing in [ensureAnonymousSession] intact; removing that plumbing is a
+  /// separate follow-up now that this path can no longer produce a swap.
   @visibleForTesting
   static Future<bool> recoverRestoredSessionIfNeeded({
     required Future<void> Function() verifyToken,
-    required Future<void> Function() signOut,
-    required Future<void> Function() signInAnonymously,
   }) async {
     try {
       await verifyToken();
       log('Firebase restored session token verified');
       return false;
     } on FirebaseAuthException catch (e, stackTrace) {
-      if (e.code != 'internal-error') {
-        log(
-          'Firebase restored session token check failed: ${e.code} — ${e.message}',
-          error: e,
-          stackTrace: stackTrace,
-        );
-        return false;
-      }
-
       log(
-        'Firebase restored session token is invalid; creating a fresh anonymous session',
+        'Firebase restored session token check failed (session kept): '
+        '${e.code} — ${e.message}',
         error: e,
         stackTrace: stackTrace,
       );
-      await signOut();
-      await signInAnonymously();
-      return true;
+      return false;
     }
   }
 
