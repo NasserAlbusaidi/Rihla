@@ -142,14 +142,16 @@ final activeJourneysProvider =
     final events = eventsAsync.valueOrNull;
     if (events == null) continue;
 
+    final activeEvents = events
+        .where((event) => !event.isDeleted && _isActive(event, now))
+        .toList(growable: false);
+    if (activeEvents.isEmpty) continue;
+
     final balancesAsync = ref.watch(groupBalancesProvider(group.id));
     final breakdown = balancesAsync.valueOrNull?.perEventBreakdown ?? const {};
     final userEventBalances = breakdown[uid] ?? const <String, Decimal>{};
 
-    for (final event in events) {
-      if (event.isDeleted) continue;
-      if (!_isActive(event, now)) continue;
-
+    for (final event in activeEvents) {
       entries.add(ActiveJourneyEntry(
         eventId: event.id,
         groupId: group.id,
