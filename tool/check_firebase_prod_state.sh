@@ -81,6 +81,7 @@ normalize_indexes() {
     .indexes |= sort_by(.collectionGroup)
     | (.indexes[]?.fields) |= map(select(.fieldPath != "__name__"))
     | del(.indexes[]?.density)
+    | .fieldOverrides |= (. // [] | sort_by(.collectionGroup, .fieldPath))
   '
 }
 
