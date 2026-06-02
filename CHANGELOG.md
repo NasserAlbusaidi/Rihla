@@ -4,6 +4,24 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] — 2026-06-02
+
+Hotfix release. Fixes a critical data-loss bug affecting anonymous accounts,
+shipped alongside a server-side account-recovery fix deployed the same day.
+
+### Fixed
+- **Anonymous sessions are no longer wiped on a transient auth error.** A
+  restored anonymous session whose ID token failed to verify (e.g. a transient
+  Firebase `internal-error`) was treated as corruption and replaced with a fresh
+  anonymous UID, orphaning all of the user's groups, events, and expenses under
+  the old UID. The restored session is now always kept; a token-check failure
+  never signs out or mints a new UID. (#213)
+- **Account recovery no longer splits balances across a dead UID** (server-side,
+  deployed 2026-06-02 — applies to all clients). The email-link recovery cascade
+  now migrates the full expense/settlement ledger from the retiring anonymous
+  UID to the recovered account, so a recovered user no longer appears as two
+  people. (#216)
+
 ## [1.3.1] — 2026-06-02
 
 Post-launch hardening release — no new features. Server-trust boundary,
