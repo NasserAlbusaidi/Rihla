@@ -15,6 +15,20 @@ service cloud.firestore {
       return value == null || value is string;
     }
 
+    // #194 - bounded, control-char-free free text (expense description/note/
+    // categoryId/receiptUrl/subGroupId and settlement note). '*' (not '+') so
+    // empty string stays allowed; <= 280 chars; rejects \x00-\x1f and \x7f
+    // (same charset as isValidDisplayName). Enforced in the create/update
+    // WRAPPERS (diff-gated on update), never in the shared base validators, so
+    // legacy >280 / control-char docs stay soft-deletable — the bases keep the
+    // type-only nullableString check.
+    function validFreeText(value) {
+      return value == null
+        || (value is string
+          && value.size() <= 280
+          && value.matches('^[^\\x00-\\x1f\\x7f]*$'));
+    }
+
     // E1 - display-name validation.
     //
     // Accepts non-empty strings between 1 and 32 chars (inclusive). Rejects
@@ -45,8 +59,16 @@ service cloud.firestore {
         && !names.values().join('\n').matches('(^|.*\\n)[^\\n]* \\(former member\\)(\\n.*|$)');
     }
 
+    // #193 - currency must be one of the codes MoneySerializer can scale
+    // (lib/core/services/money_serializer.dart). Tightening this shared
+    // predicate also constrains expense create/update and group create/metadata
+    // to the same allow-list — intended and consistent; the app only ever
+    // writes these UPPERCASE codes. Drops the old size()==3 check (all entries
+    // are 3 chars). Rejects unsupported (e.g. 'XYZ') and lowercase codes whose
+    // read path would otherwise throw ArgumentError in MoneySerializer.
     function validCurrency(value) {
-      return value is string && value.size() == 3;
+      return value is string
+        && value in ['OMR', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'JPY', 'KWD', 'BHD', 'QAR'];
     }
 
     function positiveInt(value) {
@@ -458,6 +480,48 @@ service cloud.firestore {
                     || data.splitDistribution.keys().hasOnly(participants()))));
           }
 
+          // #192 - splitDistribution values are non-negative integers. Firestore
+          // Rules has no numeric fold, so coerce the int list to a string with
+          // join(',') and assert it is only digits and commas (no '-', '.', or
+          // 'e'). Enforced in the create/update WRAPPERS (unconditional create,
+          // diff-gated update) — NOT inside validExpenseSplit, which re-runs
+          // wholesale on every update including soft-delete; gating here keeps a
+          // legacy/forged negative doc soft-deletable. HONEST RESIDUAL: sum ==
+          // amount is NOT enforced (no numeric fold); the client allocator owns
+          // that. An all-positive over-allocation still passes the rules.
+          function splitValuesNonNegative(d) {
+            return !d.keys().hasAny(['splitDistribution'])
+              || d.splitDistribution.values().size() == 0
+              || d.splitDistribution.values().join(',').matches('^[0-9,]+$');
+          }
+
+          // #194 - free-text fields present on every expense create map
+          // (expense_service.dart writes all of them). Bounds + charset; the
+          // base keeps nullableString for the type guarantee.
+          function validExpenseFreeText(d) {
+            return validFreeText(d.description)
+              && validFreeText(d.note)
+              && validFreeText(d.categoryId)
+              && validFreeText(d.receiptUrl)
+              && validFreeText(d.subGroupId);
+          }
+
+          // #194 - on update, re-validate a free-text field only when the diff
+          // touches it, so unchanged legacy values are never re-checked (keeps
+          // soft-delete of legacy long / control-char docs working).
+          function expenseFreeTextDiffOk() {
+            return (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['description'])
+                || validFreeText(request.resource.data.description))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['note'])
+                || validFreeText(request.resource.data.note))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['categoryId'])
+                || validFreeText(request.resource.data.categoryId))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['receiptUrl'])
+                || validFreeText(request.resource.data.receiptUrl))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['subGroupId'])
+                || validFreeText(request.resource.data.subGroupId));
+          }
+
           function validExpenseBase(data, enforceParticipantKeys) {
             return data.keys().hasOnly([
               'id',
@@ -505,6 +569,8 @@ service cloud.firestore {
               && isEventParticipant(groupId, eventId)
               && eventAllowsClientWrites(groupId, eventId)
               && validExpenseBase(request.resource.data, true)
+              && splitValuesNonNegative(request.resource.data)
+              && validExpenseFreeText(request.resource.data)
               && request.resource.data.createdBy == request.auth.uid
               && request.resource.data.isDeleted == false
               && request.resource.data.deletedAt == null;
@@ -556,6 +622,9 @@ service cloud.firestore {
                   'deletedAt'
                 ])
               && validExpenseBase(request.resource.data, affectsExpenseAllocation())
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitDistribution'])
+                || splitValuesNonNegative(request.resource.data))
+              && expenseFreeTextDiffOk()
               && (
                 (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
                   && request.resource.data.isDeleted == resource.data.isDeleted
@@ -594,6 +663,7 @@ service cloud.firestore {
               && isEventParticipant(groupId, eventId)
               && eventAllowsClientWrites(groupId, eventId)
               && validEventSettlementBase(request.resource.data)
+              && validFreeText(request.resource.data.note)
               && request.resource.data.createdBy == request.auth.uid
               && request.resource.data.isDeleted == false
               && request.resource.data.deletedAt == null;
@@ -780,6 +850,12 @@ service cloud.firestore {
           && data.recipientParticipantId in groupData(groupId).memberIds
           && isValidNullableDisplayName(data.payerName)
           && isValidNullableDisplayName(data.recipientName)
+          // #193 - group settle-up writes the owning group's currency by
+          // construction (group_settle_up_screen.dart), so a divergent code is a
+          // crafted write. Event-settlement equality is DEFERRED to #61 (event
+          // settle-up hardcodes 'OMR'; equality would be a tautology until
+          // multi-currency lands, then a denial bug unless that hardcode moves).
+          && data.currency == groupData(groupId).currency
           && validSettlementCore(data);
         }
 
@@ -787,6 +863,7 @@ service cloud.firestore {
           return isGroupMember(groupId)
             && groupAllowsClientWrites(groupId)
             && validGroupSettlementBase(request.resource.data)
+            && validFreeText(request.resource.data.note)
             && request.resource.data.createdBy == request.auth.uid
             && request.resource.data.isDeleted == false
             && request.resource.data.deletedAt == null;
