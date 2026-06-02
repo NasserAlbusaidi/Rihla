@@ -4,6 +4,31 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] — 2026-06-02
+
+Post-launch hardening release — no new features. Server-trust boundary,
+money-safety, and soft-delete invariants are tightened, plus a home-screen
+performance fix. The public `1.3.0+18` client deletes groups client-side; this
+build routes deletion through a server callable, so the backend was deployed
+ahead of this release.
+
+### Changed
+- **Group deletion is now server-authoritative.** A `deleteGroup` Cloud callable
+  refuses while any balance is unsettled and soft-deletes the group and its
+  events in one server transaction, replacing the former client-side batch
+  delete. (#190)
+- **Home skips balance aggregation for groups with no active events**, dropping
+  redundant Firestore listeners on the home screen.
+
+### Fixed
+- **Exact-split never emits a negative owed.** Renormalization at the rounding
+  boundary closes the residual onto the alphabetically-last recipient that can
+  absorb it without going negative. (#195)
+- **Hardened Firestore soft-delete write locks** and cleaned up stale
+  `deleteGroup` retry locks so a failed attempt can't strand a group. (#205)
+- **Server-side validation of `splitDistribution` participant keys.** (#191)
+- **Create-event UID guard** keeps events attributed to the correct actor.
+
 ## [1.3.0] — 2026-05-31
 
 **First public production release on Google Play.** Earlier `1.2.0+12 … +16`
