@@ -1,8 +1,18 @@
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/config/firebase_config.dart';
+import 'package:safar/core/services/cache_uid_barrier.dart';
+import 'package:safar/core/services/firestore_cache_gate.dart';
+
+class _RecordingCacheGate implements FirestoreCacheGate {
+  int clearCount = 0;
+
+  @override
+  Future<void> clearPersistence() async => clearCount++;
+}
 
 /// Behavioral tests for Firebase anonymous auth (DATA-05).
 ///
@@ -83,30 +93,87 @@ void main() {
       expect(emittedUser.uid, isNotEmpty);
     });
 
-    test(
-      'internal-error during restored token check starts a fresh session',
-      () async {
-        var didSignOut = false;
-        var didSignIn = false;
+    // #213: the recovery path can no longer sign out or mint a new UID — the
+    // closures were removed entirely, so the "no discard" guarantee is now
+    // structural. These tests pin that any token-verification failure is
+    // non-destructive (returns false → forceClear stays false → cache kept).
 
+    test(
+      'internal-error during restored token check KEEPS the session '
+      '(#213 regression)',
+      () async {
         final recovered = await FirebaseConfig.recoverRestoredSessionIfNeeded(
           verifyToken: () async {
             throw FirebaseAuthException(
               code: 'internal-error',
-              message: 'bad persisted token',
+              message: 'transient token refresh failure',
             );
-          },
-          signOut: () async {
-            didSignOut = true;
-          },
-          signInAnonymously: () async {
-            didSignIn = true;
           },
         );
 
-        expect(recovered, isTrue);
-        expect(didSignOut, isTrue);
-        expect(didSignIn, isTrue);
+        expect(recovered, isFalse);
+      },
+    );
+
+    test(
+      'any other auth error during restored token check also keeps the session',
+      () async {
+        final recovered = await FirebaseConfig.recoverRestoredSessionIfNeeded(
+          verifyToken: () async {
+            throw FirebaseAuthException(
+              code: 'network-request-failed',
+              message: 'offline at cold boot',
+            );
+          },
+        );
+
+        expect(recovered, isFalse);
+      },
+    );
+
+    test('a healthy restored token keeps the session', () async {
+      final recovered = await FirebaseConfig.recoverRestoredSessionIfNeeded(
+        verifyToken: () async {},
+      );
+
+      expect(recovered, isFalse);
+    });
+
+    test(
+      'ensureAnonymousSession: internal-error on a restored session keeps the '
+      'SAME uid and does NOT wipe the cache (#213 end-to-end)',
+      () async {
+        SharedPreferences.setMockInitialValues(
+          {kLastActiveUidKey: 'restored-uid'},
+        );
+        final prefs = await SharedPreferences.getInstance();
+        final gate = _RecordingCacheGate();
+        final auth = MockFirebaseAuth(
+          signedIn: true,
+          mockUser: MockUser(uid: 'restored-uid', isAnonymous: true),
+        );
+        var verifyAttempts = 0;
+
+        await FirebaseConfig.ensureAnonymousSession(
+          authOverride: auth,
+          prefs: prefs,
+          cacheGate: gate,
+          verifyTokenOverride: (_) async {
+            verifyAttempts++;
+            throw FirebaseAuthException(
+              code: 'internal-error',
+              message: 'App Check rejection during token refresh',
+            );
+          },
+        );
+
+        // The override actually fired (proves we exercised the catch path —
+        // not a vacuous pass), the uid is unchanged, and the cache was NOT
+        // cleared (the #213 data-loss wipe).
+        expect(verifyAttempts, 1);
+        expect(auth.currentUser!.uid, 'restored-uid');
+        expect(gate.clearCount, 0);
+        expect(prefs.getString(kLastActiveUidKey), 'restored-uid');
       },
     );
   });

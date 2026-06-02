@@ -103,7 +103,7 @@ Config injected via `--dart-define-from-file=config.json`, read with `const Stri
 
 ## Bootstrap Order
 
-`main()` inside `SentryFlutter.init`: Firebase → optional emulator → SharedPreferences → `runApp`. `_AuthGate` ensures anon session (retries on `internal-error` for corrupted restored sessions) before `SafarApp`. `sharedPreferencesProvider` throws by default; overridden in `ProviderScope.overrides` and in tests.
+`main()` inside `SentryFlutter.init`: Firebase → optional emulator → SharedPreferences → `runApp`. `_AuthGate` ensures anon session before `SafarApp`. **A restored session whose token won't verify is KEPT, never discarded (#213): `recoverRestoredSessionIfNeeded` must never `signOut`+`signInAnonymously` on a token-check failure — for a no-email anon user that mints a new UID and irreversibly orphans all their data. It only ever returns `false`.** `sharedPreferencesProvider` throws by default; overridden in `ProviderScope.overrides` and in tests.
 
 ## Architecture
 
