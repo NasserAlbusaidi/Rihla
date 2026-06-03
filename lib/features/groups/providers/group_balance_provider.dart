@@ -312,17 +312,29 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     ...groupScopedSettlementAdj.keys,
   };
 
+  // Resolve every uid once, then derive display + raw name maps from it.
+  // Same-named LIVE members get a render-only ` (#last4)` discriminator (#196);
+  // raw names stay raw because they feed the settlement write path.
+  final displaysByUid = <String, MemberDisplay>{
+    for (final uid in allUids)
+      uid: MemberNameResolver.resolveGroupScoped(
+        uid: uid,
+        members: members,
+        fallbackName: uidToFallbackName[uid],
+      ),
+  };
+  final memberNames = MemberNameResolver.disambiguate(displaysByUid);
+  final memberRawNames = <String, String>{
+    for (final entry in displaysByUid.entries) entry.key: entry.value.rawName,
+  };
+
   final balances = allUids.map((uid) {
-    final display = MemberNameResolver.resolveGroupScoped(
-      uid: uid,
-      members: members,
-      fallbackName: uidToFallbackName[uid],
-    );
     final eventNet = netBalancePerUid[uid] ?? Decimal.zero;
     final groupSettlementNet = groupScopedSettlementAdj[uid] ?? Decimal.zero;
     return UserBalance(
       participantId: uid,
-      displayName: MemberNameResolver.format(display),
+      displayName:
+          memberNames[uid] ?? MemberNameResolver.format(displaysByUid[uid]!),
       totalPaid: totalPaidPerUid[uid] ?? Decimal.zero,
       totalOwed: totalOwedPerUid[uid] ?? Decimal.zero,
       netBalance: eventNet + groupSettlementNet,
@@ -337,18 +349,6 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     expensesByEvent,
     eventSettlementsByEvent,
   );
-
-  final memberNames = <String, String>{};
-  final memberRawNames = <String, String>{};
-  for (final uid in allUids) {
-    final display = MemberNameResolver.resolveGroupScoped(
-      uid: uid,
-      members: members,
-      fallbackName: uidToFallbackName[uid],
-    );
-    memberNames[uid] = MemberNameResolver.format(display);
-    memberRawNames[uid] = display.rawName;
-  }
 
   return AsyncValue.data((
     balances: balances,

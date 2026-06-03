@@ -93,18 +93,29 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final groupMembers =
         ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ?? [];
 
+    final displaysByUid = <String, MemberDisplay>{
+      for (final id in event.participantIds)
+        id: MemberNameResolver.resolveEventScoped(
+          uid: id,
+          event: event,
+          members: groupMembers,
+        ),
+    };
+    // Render-only disambiguation for same-named participants (#196); raw names
+    // stay raw because they feed the settlement write path.
+    final userDisplayNames = MemberNameResolver.disambiguate(displaysByUid);
+    final userRawNames = <String, String>{
+      for (final entry in displaysByUid.entries) entry.key: entry.value.rawName,
+    };
+
     final participants = event.participantIds.map((id) {
-      final display = MemberNameResolver.resolveEventScoped(
-        uid: id,
-        event: event,
-        members: groupMembers,
-      );
       return Participant(
         id: id,
         tripId: event.id,
         role: ParticipantRole.member,
         joinedAt: event.createdAt,
-        displayName: MemberNameResolver.format(display),
+        displayName: userDisplayNames[id] ??
+            MemberNameResolver.format(displaysByUid[id]!),
       );
     }).toList();
 
@@ -125,18 +136,6 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     settlements: settlements,
                     participants: participants,
                   );
-
-                  final userDisplayNames = <String, String>{};
-                  final userRawNames = <String, String>{};
-                  for (final uid in event.participantIds) {
-                    final display = MemberNameResolver.resolveEventScoped(
-                      uid: uid,
-                      event: event,
-                      members: groupMembers,
-                    );
-                    userDisplayNames[uid] = MemberNameResolver.format(display);
-                    userRawNames[uid] = display.rawName;
-                  }
 
                   final optimalSettlements =
                       BalanceCalculator.calculateOptimalSettlements(

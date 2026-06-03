@@ -169,10 +169,10 @@ class SettleUpPageBody extends StatelessWidget {
                     settlement: settlement,
                     fromRawName:
                         rawNames[fromUserId] ??
-                        MemberNameResolver.stripFormerSuffix(fromName),
+                        MemberNameResolver.stripDiscriminator(fromName),
                     toRawName:
                         rawNames[toUserId] ??
-                        MemberNameResolver.stripFormerSuffix(toName),
+                        MemberNameResolver.stripDiscriminator(toName),
                     fromUserId: fromUserId,
                     toUserId: toUserId,
                     suggestedAmount: amount,

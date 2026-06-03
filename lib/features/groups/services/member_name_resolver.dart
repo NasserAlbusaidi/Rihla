@@ -78,6 +78,56 @@ final class MemberNameResolver {
         : value;
   }
 
+  /// Returns a uid → display-string map where any LIVE member whose name
+  /// collides with another LIVE member's name gets a stable
+  /// ` (#<last4-of-uid>)` discriminator appended (the whole uid if ≤ 4 chars),
+  /// so same-named people are distinguishable in settle-up UI (#196).
+  ///
+  /// Collisions are counted over LIVE entries only (a lone live member beside a
+  /// same-named former member stays undiscriminated — the former already
+  /// carries ` (former member)`). Former members are never discriminated.
+  /// The suffix is render-only and MUST NOT be persisted: write paths read raw
+  /// names, and [stripDiscriminator] is the defensive guard for the fallback.
+  /// Returns a fresh map; the input is never mutated.
+  static Map<String, String> disambiguate(Map<String, MemberDisplay> byUid) {
+    final liveCounts = <String, int>{};
+    for (final display in byUid.values) {
+      if (display.isFormer) continue;
+      final key = display.rawName.trim().toLowerCase();
+      liveCounts[key] = (liveCounts[key] ?? 0) + 1;
+    }
+
+    return {
+      for (final entry in byUid.entries)
+        entry.key: _withDiscriminator(entry.key, entry.value, liveCounts),
+    };
+  }
+
+  static String _withDiscriminator(
+    String uid,
+    MemberDisplay display,
+    Map<String, int> liveCounts,
+  ) {
+    final formatted = format(display);
+    if (display.isFormer) return formatted;
+    final key = display.rawName.trim().toLowerCase();
+    if ((liveCounts[key] ?? 0) <= 1) return formatted;
+    return '$formatted${_discriminatorFor(uid)}';
+  }
+
+  static String _discriminatorFor(String uid) {
+    final tail = uid.length <= 4 ? uid : uid.substring(uid.length - 4);
+    return ' (#$tail)';
+  }
+
+  /// Strips a render-only discriminator (and any former-member suffix) so the
+  /// write path never persists ` (#…)`. Order matters: former suffix first,
+  /// then a trailing ` (#…)` (mirrors how [disambiguate]/[format] compose).
+  static String stripDiscriminator(String value) {
+    final withoutFormer = stripFormerSuffix(value);
+    return withoutFormer.replaceFirst(RegExp(r' \(#[^)]*\)$'), '');
+  }
+
   static GroupMember? _findMember(
     String uid,
     List<GroupMember> members, {
