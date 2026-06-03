@@ -61,6 +61,13 @@ SKILL.md
 .clone/worktrees/
 .agent/
 
+# Exceptions (force-added, version-controlled): load-bearing agent tooling whose
+# discipline is referenced by CLAUDE.md (The Gate / Memory). Tracked despite the
+# .claude/ and SKILL.md blanket-ignores above:
+#   .claude/skills/run-the-gate/{SKILL.md,reviewer-prompt.md}
+#   .claude/workflows/verified-sweep.js
+# settings.local.json, scheduled_tasks.lock, worktrees/ stay ignored.
+
 # Local release/test artifacts
 *.aab
 [0-9][0-9]_*.png
