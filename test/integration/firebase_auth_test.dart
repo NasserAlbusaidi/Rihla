@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -174,6 +176,53 @@ void main() {
         expect(auth.currentUser!.uid, 'restored-uid');
         expect(gate.clearCount, 0);
         expect(prefs.getString(kLastActiveUidKey), 'restored-uid');
+      },
+    );
+
+    test(
+      'ensureAnonymousSession does NOT block the first frame on a slow/hung '
+      'token verify for a restored session (#105)',
+      () async {
+        // The verify performs a network token refresh (getIdToken →
+        // securetoken.googleapis.com) that can hang on a slow/offline cold
+        // start. Pre-#105 it was awaited, so the session never settled and the
+        // user stared at the splash unable to reach offline-cached data they
+        // already own. Model the hung refresh with a future that never
+        // completes and assert the session still settles.
+        SharedPreferences.setMockInitialValues(
+          {kLastActiveUidKey: 'restored-uid'},
+        );
+        final prefs = await SharedPreferences.getInstance();
+        final gate = _RecordingCacheGate();
+        final auth = MockFirebaseAuth(
+          signedIn: true,
+          mockUser: MockUser(uid: 'restored-uid', isAnonymous: true),
+        );
+        final hungVerify = Completer<void>();
+        var verifyStarted = false;
+
+        await FirebaseConfig.ensureAnonymousSession(
+          authOverride: auth,
+          prefs: prefs,
+          cacheGate: gate,
+          verifyTokenOverride: (_) {
+            verifyStarted = true;
+            return hungVerify.future;
+          },
+        ).timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => fail(
+            'ensureAnonymousSession blocked on the token verify (#105 regression)',
+          ),
+        );
+
+        // The verify was kicked off in the background, but the session settled
+        // without waiting for it — the user reaches their offline data.
+        expect(verifyStarted, isTrue);
+        expect(auth.currentUser!.uid, 'restored-uid');
+
+        // Let the dangling background verify resolve so no future is left pending.
+        hungVerify.complete();
       },
     );
   });
