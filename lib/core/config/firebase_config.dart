@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -84,19 +85,32 @@ class FirebaseConfig {
     Future<void> Function(User restoredUser)? verifyTokenOverride,
   }) async {
     final authInstance = authOverride ?? auth;
-    var swapped = false;
+    // Stays false: since #213 the restored-session verify is non-destructive
+    // and can no longer produce a swap (removing this plumbing is a #213
+    // follow-up). The no-session branch never swaps either.
+    const swapped = false;
 
     // Wait for auth state restoration from disk (fires once on startup).
     final restoredUser = await authInstance.authStateChanges().first;
     if (restoredUser != null) {
       log('Firebase session restored (uid: ${restoredUser.uid})');
+      // #105: do NOT await the token verify. `getIdToken()` performs a network
+      // refresh (securetoken.googleapis.com) that would block the first frame
+      // on a slow/offline cold start — keeping the user from offline-cached
+      // Firestore data they already own, purely to detect a rare bad-session
+      // case. Since #213 the verify is non-destructive (always returns false,
+      // never swaps), so there is nothing to wait for: fire it in the
+      // background. The SDK refreshes the token lazily once connectivity
+      // recovers. `swapped` therefore stays false on the restored path.
       // `MockUser.getIdToken` cannot throw, so an `internal-error` cannot be
       // driven through this path in tests without a seam (#213 regression
       // coverage). The override is test-only; production uses getIdToken().
-      swapped = await recoverRestoredSessionIfNeeded(
-        verifyToken: () => verifyTokenOverride != null
-            ? verifyTokenOverride(restoredUser)
-            : restoredUser.getIdToken().then((_) {}),
+      unawaited(
+        recoverRestoredSessionIfNeeded(
+          verifyToken: () => verifyTokenOverride != null
+              ? verifyTokenOverride(restoredUser)
+              : restoredUser.getIdToken().then((_) {}),
+        ),
       );
     } else {
       log('No persisted Firebase session — signing in anonymously');
@@ -178,6 +192,17 @@ class FirebaseConfig {
       log(
         'Firebase restored session token check failed (session kept): '
         '${e.code} — ${e.message}',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    } catch (e, stackTrace) {
+      // #105: this now runs unawaited, so a non-auth error must not escape as
+      // an unhandled async error. The session is kept regardless (#213) and the
+      // SDK refreshes the token lazily once connectivity / App Check recovers.
+      log(
+        'Firebase restored session token check failed with non-auth error '
+        '(session kept): $e',
         error: e,
         stackTrace: stackTrace,
       );
