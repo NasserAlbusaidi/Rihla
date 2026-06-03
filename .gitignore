@@ -70,6 +70,9 @@ functions/lib/
 functions/node_modules/
 functions/coverage/
 
+# Firestore security-rule test deps
+test_rules/node_modules/
+
 # Local debug + analyzer dumps
 firestore-debug.log
 analyze_output*.txt

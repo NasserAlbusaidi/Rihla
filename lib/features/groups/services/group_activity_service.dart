@@ -64,11 +64,15 @@ class GroupActivityService extends FirestoreRepository {
     DocumentSnapshot? startAfter,
     int limit = 50,
   }) async {
-    var query = _activityRef(groupId)
-        .orderBy('timestamp', descending: true)
-        .limit(limit);
-    if (startAfter != null) query = query.startAfterDocument(startAfter);
-    final snap = await query.get();
+    var query = _activityRef(groupId).orderBy('timestamp', descending: true);
+    // Apply startAfterDocument BEFORE limit: fake_cloud_firestore evaluates query
+    // clauses in call order and returns the wrong slice (or throws "document
+    // specified wasn't found") if limit precedes the cursor.
+    // Real Firestore is order-insensitive, so production is unaffected either way.
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+    final snap = await query.limit(limit).get();
     return snap.docs
         .map(
           (doc) =>
@@ -86,11 +90,15 @@ class GroupActivityService extends FirestoreRepository {
     DocumentSnapshot? startAfter,
     int limit = 50,
   }) async {
-    var query = _activityRef(groupId)
-        .orderBy('timestamp', descending: true)
-        .limit(limit);
-    if (startAfter != null) query = query.startAfterDocument(startAfter);
-    return query.get();
+    var query = _activityRef(groupId).orderBy('timestamp', descending: true);
+    // Apply startAfterDocument BEFORE limit: fake_cloud_firestore evaluates query
+    // clauses in call order and returns the wrong slice (or throws "document
+    // specified wasn't found") if limit precedes the cursor.
+    // Real Firestore is order-insensitive, so production is unaffected either way.
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+    return query.limit(limit).get();
   }
 
   /// Fire-and-forget activity log write (D-33).
