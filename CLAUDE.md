@@ -41,6 +41,8 @@ Terse, action-first, no trailing summaries, don't re-explain what the code alrea
 
 **Same rule for agent/doc output — scoped to merge/done/release-state claims.** Any "PR merged", commit SHA, "QA passed", or deploy/release-gate claim — from memory, a delegated agent, an issue comment, or a doc — gets one mechanical check before you repeat or act on it: `git cat-file -t <sha>` / `gh pr view <n> --json state,mergeCommitOid`. Agents fabricate completed work that passes plausibility (hallucinated merge SHAs `4f3e8d9`/`51c5ce4` that were never git objects; an invented QA run with a fake anon UID written into a release-gate doc) — this is the project's signature failure mode. Scope the check to merge/done/release-state — **not** every agent-added identifier; the one-sentence-diff path stays exempt.
 
+**Destructive batch sweeps get an adversarial refute, not a spot-check.** When a fan-out/triage verdict drives an *irreversible* action across many items — closing issues, deleting branches, dropping stashes — re-checking only the ones you happen to act on is not enough: it let a half-done #223 (sign-validation shipped, sum-validation never written) reach a `close`. Run every `already-done`/`drop`/`safe-to-delete` verdict through a **fresh skeptic prompted to refute it** (find the unmerged commit / the unmet acceptance box) before acting; only verdicts that survive get executed. `.claude/workflows/verified-sweep.js` encodes this (investigate → refute → act); reach for it on any multi-item close/delete sweep.
+
 ## The Gate — fresh-context review before implementation
 
 A plan/spec authored in-session ships its author's blind spots into the implementation. The in-session checklist below does not catch this on its own: every worked example in `docs/SPEC-VERIFICATION.md` is a logged case where the embedded check missed it and an independent fresh-context reviewer caught it. The checklist is the reviewer's rubric, not a substitute for the reviewer.
@@ -76,6 +78,8 @@ Run while writing the spec; report results out loud. Full reasoning + worked exa
 - Commits: conventional (`feat(scope):` …); match `git log --oneline -20`.
 - PRs: review the whole branch diff (`git diff main...HEAD`), not the last commit.
 - In doubt about scope: smaller change + follow-up, don't bundle.
+- **Merge hygiene kills ghost-debt at the source.** Every PR body carries `Closes #N` (partial → `Refs #N` + name the unmet boxes, issue stays open re-scoped); the repo auto-deletes head branches on merge (`delete_branch_on_merge`). So merged work never leaves orphaned refs + stale-open issues for a later archaeology sweep — the kind that found 16 dead branches and 2 falsely-open issues in one sitting. `.github/pull_request_template.md` carries the ritual.
+- **Surface the fan-out plan before launching a large workflow.** A multi-agent / high-token workflow states its clusters in one line *before* spending, so scope can be redirected before the cost — not narrated after it.
 - **No Schrödinger's fix.** A fix is in exactly one state: an open PR, merged, or explicitly deferred to a named milestone. Never the resting state of a `git stash` or an unpushed local branch — that's invisible debt that reads as "almost done" forever. (The hardening fan-out left #104 in `stash@{0}` and 6 branches unpushed; all 9 audit issues sat OPEN, 0 merged.)
 
 ---
