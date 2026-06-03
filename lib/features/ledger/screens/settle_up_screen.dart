@@ -303,6 +303,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             note: note,
           );
 
+      ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

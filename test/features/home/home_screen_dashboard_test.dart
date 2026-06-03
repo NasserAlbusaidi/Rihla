@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,6 +114,22 @@ Widget _buildTestApp(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       ...overrides,
+      // #104: the home dashboard now reads the one-shot balance variants.
+      // Bridge them to whatever the live providers were overridden to, so the
+      // existing per-test data/loading overrides keep driving the UI. A
+      // never-completing future preserves the loading-state assertions.
+      crossGroupBalanceOnceProvider.overrideWith(
+        (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
+              data: (d) => d,
+              orElse: () => Completer<CrossGroupBalance>().future,
+            ),
+      ),
+      groupBalancesOnceProvider.overrideWith(
+        (ref, gid) => ref.watch(groupBalancesProvider(gid)).maybeWhen(
+              data: (d) => d,
+              orElse: () => Completer<GroupBalances>().future,
+            ),
+      ),
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,

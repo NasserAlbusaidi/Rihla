@@ -45,6 +45,20 @@ class SettlementService extends FirestoreRepository {
         );
   }
 
+  /// One-shot read of non-deleted settlements for an event — the same query as
+  /// [watchSettlements] but a single `.get()`. Used by the home dashboard's
+  /// one-shot balance aggregation (#104) so the per-event listeners are not held
+  /// open session-long. Served from the Firestore offline cache when offline.
+  Future<List<Settlement>> getSettlements(String groupId, String eventId) async {
+    final snap = await eventSubcollection(groupId, eventId, 'settlements')
+        .where('isDeleted', isEqualTo: false)
+        .orderBy('settledAt', descending: true)
+        .get();
+    return snap.docs
+        .map((doc) => Settlement.fromFirestore({...doc.data(), 'id': doc.id}))
+        .toList();
+  }
+
   /// Creates a new settlement document in Firestore and returns the resulting
   /// [Settlement] object.
   ///

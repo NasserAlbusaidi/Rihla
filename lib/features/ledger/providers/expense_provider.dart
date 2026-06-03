@@ -21,6 +21,22 @@ export '../../../core/types/event_ref.dart'; // re-export so existing importers 
 /// Loading state for expense operations
 final expenseLoadingProvider = StateProvider<bool>((ref) => false);
 
+/// Liveness lever for the one-shot home balance aggregation (#104).
+///
+/// The home dashboard reads per-event expenses/settlements ONE-SHOT (no live
+/// listener), so an event-level money write is invisible to the home aggregate
+/// (`groupBalancesOnceProvider`) until this revision bumps. The four event-level
+/// write callsites bump it after a successful write: add / update / soft-delete
+/// expense, and add event settlement.
+///
+/// Group-level settlements need NO bump — `groupBalancesOnceProvider` watches the
+/// LIVE `groupSettlementsProvider`, which surfaces them itself.
+///
+/// ⚠️ Any NEW event-level expense/settlement write path must bump this, or the
+/// home balance silently goes stale (money-wrong for the settle-up screen).
+/// See docs/plans/perf-home-balance-104/spec.md §5 Phase 3.
+final ledgerRevisionProvider = StateProvider<int>((ref) => 0);
+
 // ---------------------------------------------------------------------------
 // Service providers (NEW Firestore-backed services)
 // ---------------------------------------------------------------------------

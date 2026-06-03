@@ -122,6 +122,7 @@ class EditExpenseScreen extends ConsumerWidget {
         );
 
     ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
+    ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
     HapticService.success();
 
     final ctx = ref.context;
@@ -152,6 +153,7 @@ class EditExpenseScreen extends ConsumerWidget {
           expenseId: expense.id,
         );
     ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
+    ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
     HapticService.success();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

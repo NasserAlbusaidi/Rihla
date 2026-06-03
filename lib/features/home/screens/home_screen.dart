@@ -90,6 +90,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(userGroupsProvider);
+        // #104: refresh the one-shot home balance aggregate on pull-to-refresh.
+        ref.invalidate(crossGroupBalanceOnceProvider);
         await ref.read(userGroupsProvider.future);
       },
       color: context.colors.primary,
@@ -582,7 +584,7 @@ class _GroupRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final uid = ref.watch(currentUserIdProvider);
-    final balancesAsync = ref.watch(groupBalancesProvider(group.id));
+    final balancesAsync = ref.watch(groupBalancesOnceProvider(group.id));
     final balances = balancesAsync.valueOrNull;
     final userNet = (balances == null || uid == null)
         ? Decimal.zero

@@ -147,7 +147,11 @@ final activeJourneysProvider =
         .toList(growable: false);
     if (activeEvents.isEmpty) continue;
 
-    final balancesAsync = ref.watch(groupBalancesProvider(group.id));
+    // One-shot home aggregation (#104): the per-event breakdown comes from the
+    // FutureProvider variant so the Active-journeys strip holds no live
+    // per-event listeners. The active-window filter above still watches the
+    // LIVE groupEventsProvider, so event add/remove refreshes the strip.
+    final balancesAsync = ref.watch(groupBalancesOnceProvider(group.id));
     final breakdown = balancesAsync.valueOrNull?.perEventBreakdown ?? const {};
     final userEventBalances = breakdown[uid] ?? const <String, Decimal>{};
 

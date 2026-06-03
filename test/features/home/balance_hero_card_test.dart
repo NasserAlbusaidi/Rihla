@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +22,14 @@ void main() {
         currentUserIdProvider.overrideWithValue('test-user-id'),
         userGroupsProvider.overrideWith((ref) => Stream.value([])),
         ...overrides,
+        // #104: BalanceHeroCard now reads the one-shot variant. Bridge it to the
+        // per-test crossGroupBalanceProvider override; loading stays loading.
+        crossGroupBalanceOnceProvider.overrideWith(
+          (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
+                data: (d) => d,
+                orElse: () => Completer<CrossGroupBalance>().future,
+              ),
+        ),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
