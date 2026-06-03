@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/core/theme/tokens/color_tokens.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/shared/widgets/skeleton_primitives.dart';
+
+// `Skeletonizer` is abstract (the concrete widget is a private `_Skeletonizer`),
+// so `find.byType(Skeletonizer)` never matches — match the public supertype.
+final _skeletonizer = find.byWidgetPredicate((w) => w is Skeletonizer);
 
 void main() {
   // ---------------------------------------------------------------------------
@@ -257,7 +261,7 @@ void main() {
   // SkeletonLoader — named factory variants
   // ---------------------------------------------------------------------------
   group('SkeletonLoader.dashboardHero', () {
-    testWidgets('renders Shimmer with SkeletonBlock children', (tester) async {
+    testWidgets('renders Skeletonizer with SkeletonBlock children', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme,
@@ -272,14 +276,14 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byType(Shimmer), findsOneWidget);
+      expect(_skeletonizer, findsOneWidget);
       expect(find.byType(SkeletonBlock), findsWidgets);
     });
   });
 
   group('SkeletonLoader.eventCard', () {
     testWidgets(
-      'renders Shimmer with SkeletonCircle, SkeletonBar, and SkeletonBlock',
+      'renders Skeletonizer with SkeletonCircle, SkeletonBar, and SkeletonBlock',
       (tester) async {
         await tester.pumpWidget(
           MaterialApp(
@@ -295,7 +299,7 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.byType(Shimmer), findsOneWidget);
+        expect(_skeletonizer, findsOneWidget);
         expect(find.byType(SkeletonCircle), findsAtLeastNWidgets(1));
         expect(find.byType(SkeletonBar), findsAtLeastNWidgets(1));
         expect(find.byType(SkeletonBlock), findsAtLeastNWidgets(1));
@@ -304,7 +308,7 @@ void main() {
   });
 
   group('SkeletonLoader.groupList', () {
-    testWidgets('renders Shimmer with SkeletonRow children', (tester) async {
+    testWidgets('renders Skeletonizer with SkeletonRow children', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme,
@@ -319,14 +323,14 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byType(Shimmer), findsOneWidget);
+      expect(_skeletonizer, findsOneWidget);
       expect(find.byType(SkeletonRow), findsAtLeastNWidgets(1));
     });
   });
 
   group('SkeletonLoader.expenseList', () {
     testWidgets(
-      'renders Shimmer with SkeletonRow children matching expense layout',
+      'renders Skeletonizer with SkeletonRow children matching expense layout',
       (tester) async {
         await tester.pumpWidget(
           MaterialApp(
@@ -342,7 +346,7 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.byType(Shimmer), findsOneWidget);
+        expect(_skeletonizer, findsOneWidget);
         expect(find.byType(SkeletonRow), findsAtLeastNWidgets(1));
         expect(find.byType(SkeletonBar), findsAtLeastNWidgets(1));
       },
@@ -351,7 +355,7 @@ void main() {
 
   group('SkeletonLoader.gearList', () {
     testWidgets(
-      'renders Shimmer with SkeletonBlock checkbox and SkeletonBar items',
+      'renders Skeletonizer with SkeletonBlock checkbox and SkeletonBar items',
       (tester) async {
         await tester.pumpWidget(
           MaterialApp(
@@ -367,7 +371,7 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.byType(Shimmer), findsOneWidget);
+        expect(_skeletonizer, findsOneWidget);
         expect(find.byType(SkeletonBlock), findsAtLeastNWidgets(1));
         expect(find.byType(SkeletonBar), findsAtLeastNWidgets(1));
       },
@@ -375,7 +379,7 @@ void main() {
   });
 
   group('SkeletonLoader.generic', () {
-    testWidgets('renders Shimmer wrapping SkeletonCard items', (tester) async {
+    testWidgets('renders Skeletonizer wrapping SkeletonCard items', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme,
@@ -390,14 +394,14 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byType(Shimmer), findsOneWidget);
+      expect(_skeletonizer, findsOneWidget);
       expect(find.byType(SkeletonCard), findsAtLeastNWidgets(1));
     });
   });
 
   group('SkeletonLoader shimmer colors', () {
     testWidgets(
-      'gradient contains AppColorTokens.light.inputFill and AppColorTokens.light.cardSurface',
+      'ShimmerEffect uses AppColorTokens.light.inputFill and cardSurface',
       (tester) async {
         await tester.pumpWidget(
           MaterialApp(
@@ -413,10 +417,10 @@ void main() {
         );
         await tester.pump();
 
-        final shimmer = tester.widget<Shimmer>(find.byType(Shimmer));
-        final gradient = shimmer.gradient as LinearGradient;
-        expect(gradient.colors, contains(AppColorTokens.light.inputFill));
-        expect(gradient.colors, contains(AppColorTokens.light.cardSurface));
+        final skeletonizer = tester.widget<Skeletonizer>(_skeletonizer);
+        final effect = skeletonizer.effect! as ShimmerEffect;
+        expect(effect.colors, contains(AppColorTokens.light.inputFill));
+        expect(effect.colors, contains(AppColorTokens.light.cardSurface));
       },
     );
   });
@@ -436,7 +440,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.byType(Shimmer), findsOneWidget);
+      expect(_skeletonizer, findsOneWidget);
     });
 
     testWidgets('documentList still renders', (tester) async {
@@ -453,7 +457,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.byType(Shimmer), findsOneWidget);
+      expect(_skeletonizer, findsOneWidget);
     });
   });
 }
