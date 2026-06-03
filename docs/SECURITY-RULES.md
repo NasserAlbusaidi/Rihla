@@ -99,6 +99,60 @@ for money movement.
 The expense rules permit updates and soft-deletes by the creator; only
 settlements are absolute.
 
+### Identity rewrites vs. financial immutability (Admin-SDK maintenance)
+
+B1 (immutable `createdBy`) and B3 (append-only settlements) bind **peers**.
+Two callables write *through* those rules via the Admin SDK, which bypasses
+the rule engine entirely (see the §1 header and §5): `cleanupAnonUidArtifacts`
+repoints a recovered user's `oldUid → newUid` (same human, after email-link
+recovery — §4.3b), and `deleteAccount` repoints a departing `uid → tombstone`
+(§4.3a). Neither is gated by B1/B3.
+
+The contract that keeps server-side re-identification safe — **and that no
+rule enforces** — is: *these callables may repoint **identity** fields, but
+they never alter a monetary amount, its currency, or the payer→recipient
+direction of a settlement.* A future cleanup/deletion refactor that wrote an
+amount field would silently corrupt money with no rule to stop it, so it is
+pinned here.
+
+**Identity fields the Admin SDK MAY rewrite** (verified against the callables):
+
+| Field (record) | Peer rule | `cleanupAnonUidArtifacts` (recovery) | `deleteAccount` (deletion) |
+|---|---|---|---|
+| `createdBy` (group/event/expense/settlement) | immutable (B1) | `oldUid→newUid` | `uid→` sentinel (group keeps a remaining real creator if any) |
+| `memberIds` (group) | admin-update shape only | `oldUid→newUid` (dedup) | `uid` removed / tombstoned |
+| `participantIds` (event) | light/admin update | `oldUid→newUid` (dedup) | `uid→` tombstone |
+| `participantNames` **keys** (event) | — | key `oldUid→newUid` | key `uid→` tombstone |
+| `payerParticipantId` (expense/settlement) | set at create; not the B1 key | `oldUid→newUid` | `uid→` tombstone |
+| `recipientParticipantId` (settlement) | set at create | `oldUid→newUid` | `uid→` tombstone |
+| `customSplitParticipants` (expense) | — | `oldUid→newUid` (dedup) | — |
+| `splitDistribution` **keys** (expense) | values ≥ 0 (#192) | key `oldUid→newUid`; **sum-merge** on collision | key `uid→` tombstone |
+| `payerName` / `recipientName` (settlement, denormalized) | — | left untouched (same person) | scrubbed to `Deleted member` |
+| member subdoc `id` / `userId` | — | copied to `newUid` doc, old deleted | tombstoned |
+
+**Financial fields that NEVER change — even under the Admin SDK** (these appear
+in **no** update map in either callable):
+
+| Field | Records | Guarantee |
+|---|---|---|
+| `amountFils` | expense, settlement | the monetary value (integer subunits via `MoneySerializer`) is never written by recovery or deletion |
+| `currency` | expense, settlement | never rewritten |
+| `scope` / `splitMode` | expense (`scope` also settlement) | never rewritten |
+| `splitDistribution` **values** | expense | only keys are renamed; values are preserved, and recovery **sums** colliding subunits so the share total / denominator is conserved — never re-weighted |
+| payer→recipient **pairing/direction** | settlement | the pair is only *relabeled* (`oldUid→newUid` or `uid→`tombstone); it is never swapped, so "who owes whom" is preserved |
+
+Peer creates are additionally floored by the rules — `positiveInt(amountFils)`
+and `payerParticipantId != recipientParticipantId` (settlement create),
+non-negative `splitDistribution` values (#192). The Admin SDK is not bound by
+those floors; the table above is the discipline that substitutes for them on
+the server paths.
+
+> Sources (verify before relying): rewrites — `functions/src/callables/cleanupAnonUidArtifacts.ts`
+> (`settlementMigrationUpdate`, `mergeUidMapKey`, `processGroup`) and
+> `functions/src/callables/deleteAccount.ts` (`renameMapKey`, the expense /
+> settlement / event / group update builders). Field names —
+> `Expense.toFirestore` / `Settlement.toFirestore` in `lib/features/ledger/models/`.
+
 ### Soft delete is one-way
 
 For collections that support soft delete (events, expenses), the
@@ -523,7 +577,9 @@ allow delete: if false;  // B3
 ## 5. What the rules do **not** enforce
 
 These are conscious omissions; the listed callable or invariant carries
-the check instead.
+the check instead. For what the `deleteAccount` and `cleanupAnonUidArtifacts`
+callables may and may not rewrite once they bypass the rules, see
+[Identity rewrites vs. financial immutability](#identity-rewrites-vs-financial-immutability-admin-sdk-maintenance) in §3.
 
 | Concern | Why not in rules | Carried by |
 |---------|------------------|------------|
