@@ -14,15 +14,16 @@ import '../keys/home_keys.dart';
 ///
 /// White card on paper, italic header, big sage/rust amount, mini split bar
 /// showing the relative weight of "owed to you" vs "you owe", and a legend
-/// row beneath. The figures come from [crossGroupBalanceProvider]; the
-/// split-bar derivation walks each group's per-user balance to split the
-/// net into positive and negative components.
+/// row beneath. The figures come from [crossGroupBalanceOnceProvider] (one-shot
+/// reads, #104 — the home tree holds no per-event listeners); the split-bar
+/// derivation walks each group's per-user balance to split the net into positive
+/// and negative components.
 class BalanceHeroCard extends ConsumerWidget {
   const BalanceHeroCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balanceAsync = ref.watch(crossGroupBalanceProvider);
+    final balanceAsync = ref.watch(crossGroupBalanceOnceProvider);
 
     return balanceAsync.when(
       loading: SkeletonLoader.dashboardHero,
@@ -39,7 +40,7 @@ class _LoadedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    // owed/owes split is folded into crossGroupBalanceProvider's existing
+    // owed/owes split is folded into crossGroupBalanceOnceProvider's existing
     // fan-out (#110) — no second walk over groupBalancesProvider here.
     final owedToUser = balance.owedToUser;
     final userOwes = balance.userOwes;

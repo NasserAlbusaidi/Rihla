@@ -9,6 +9,7 @@ import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/group_activity_log_model.dart';
+import '../models/group_member_model.dart';
 import '../services/group_activity_service.dart';
 import '../services/group_settlement_service.dart';
 import '../services/member_name_resolver.dart';
@@ -158,14 +159,37 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     allEventSettlements.addAll(settlementsAsync.valueOrNull ?? []);
   }
 
-  final allSettlements = <Settlement>[
-    ...allEventSettlements,
-    ...(groupSettlementsAsync.valueOrNull ?? []),
-  ];
-
   // Proceed with available data even if some events are still loading —
   // returning AsyncValue.loading() here deadlocks the balance card when
   // new events have zero expenses.
+  return AsyncValue.data(
+    computeGroupBalances(
+      events: events,
+      members: members,
+      allExpenses: allExpenses,
+      allEventSettlements: allEventSettlements,
+      groupSettlements: groupSettlementsAsync.valueOrNull ?? const [],
+    ),
+  );
+});
+
+/// Pure reduction from a group's events, members, and money records to a
+/// [GroupBalances]. Extracted from [groupBalancesProvider] (#104) so the live
+/// streaming path and the one-shot home path ([groupBalancesOnceProvider])
+/// compute identical money — never diverge. Contains NO `ref`/provider reads:
+/// callers assemble the inputs (live `ref.watch` or one-shot `.get()`) and pass
+/// them in.
+GroupBalances computeGroupBalances({
+  required List<Event> events,
+  required List<GroupMember> members,
+  required List<Expense> allExpenses,
+  required List<Settlement> allEventSettlements,
+  required List<Settlement> groupSettlements,
+}) {
+  final allSettlements = <Settlement>[
+    ...allEventSettlements,
+    ...groupSettlements,
+  ];
 
   final uidToFallbackName = <String, String>{};
   for (final event in events) {
@@ -283,7 +307,6 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
   }
 
   final groupScopedSettlementAdj = <String, Decimal>{};
-  final groupSettlements = groupSettlementsAsync.valueOrNull ?? const [];
   for (final settlement in groupSettlements) {
     final payerId = settlement.payerParticipantId;
     final recipientId = settlement.recipientParticipantId;
@@ -350,15 +373,15 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
     eventSettlementsByEvent,
   );
 
-  return AsyncValue.data((
+  return (
     balances: balances,
     totalSpent: BalanceCalculator.calculateTotalExpenses(allExpenses),
     eventCount: events.length,
     perEventBreakdown: perEventBreakdown,
     memberNames: memberNames,
     memberRawNames: memberRawNames,
-  ));
-});
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helper: per-event breakdown
@@ -546,4 +569,102 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
     groupCount: groups.length,
     isLoading: anyLoading,
   ));
+});
+
+// ---------------------------------------------------------------------------
+// One-shot home aggregation (#104) — kills the O(G×E) permanent listener leak
+// ---------------------------------------------------------------------------
+
+// [ledgerRevisionProvider] (the liveness lever) lives in expense_provider.dart
+// alongside the write services; this file imports it already.
+
+/// One-shot variant of [groupBalancesProvider] for the always-mounted home
+/// dashboard (#104).
+///
+/// The LIST inputs (events, members, group settlements) stay LIVE — they are
+/// O(G) listeners, not the O(G×E) leak, and reusing the existing stream
+/// providers inherits the #190 `isDeleted` group filter and the D-25 null-date
+/// event sort unchanged (no re-implementation, no divergence). Only the
+/// O(G×E) per-event expense/settlement reads are one-shot `.get()`.
+///
+/// Calls the SAME [computeGroupBalances] as the live provider, so the home
+/// headline and the OUTBOUND in-group settle-up screen can never diverge.
+final groupBalancesOnceProvider = FutureProvider.autoDispose
+    .family<GroupBalances, String>((ref, groupId) async {
+  // Register all stream dependencies SYNCHRONOUSLY (before any await) so the
+  // provider re-runs when a list emits or the ledger revision bumps.
+  final eventsFut = ref.watch(groupEventsProvider(groupId).future);
+  final membersFut = ref.watch(groupMembersProvider(groupId).future);
+  final groupSettlementsFut =
+      ref.watch(groupSettlementsProvider(groupId).future);
+  ref.watch(ledgerRevisionProvider);
+
+  final events = await eventsFut;
+  final members = await membersFut;
+  final groupSettlements = await groupSettlementsFut;
+
+  final expenseService = ref.read(expenseServiceProvider);
+  final settlementService = ref.read(settlementServiceProvider);
+  final allExpenses = <Expense>[];
+  final allEventSettlements = <Settlement>[];
+  for (final event in events) {
+    allExpenses.addAll(await expenseService.getExpenses(groupId, event.id));
+    allEventSettlements
+        .addAll(await settlementService.getSettlements(groupId, event.id));
+  }
+
+  return computeGroupBalances(
+    events: events,
+    members: members,
+    allExpenses: allExpenses,
+    allEventSettlements: allEventSettlements,
+    groupSettlements: groupSettlements,
+  );
+});
+
+/// One-shot variant of [crossGroupBalanceProvider] for [BalanceHeroCard] (#104).
+///
+/// Reduces identically to the live provider: sums each group's per-user net
+/// scalar ([UserBalance.netBalance], which already folds settlements), then
+/// sign-splits that scalar into owed/owes. It does NOT sum `totalPaid` slices —
+/// that would drop settlement effects.
+final crossGroupBalanceOnceProvider =
+    FutureProvider.autoDispose<CrossGroupBalance>((ref) async {
+  final uid = ref.watch(currentUserIdProvider);
+  if (uid == null) {
+    return (
+      net: Decimal.zero,
+      owedToUser: Decimal.zero,
+      userOwes: Decimal.zero,
+      groupCount: 0,
+      isLoading: false,
+    );
+  }
+
+  final groups = await ref.watch(userGroupsProvider.future);
+  var net = Decimal.zero;
+  var owedToUser = Decimal.zero;
+  var userOwes = Decimal.zero;
+  for (final group in groups) {
+    final balances = await ref.watch(groupBalancesOnceProvider(group.id).future);
+    final groupNet = balances.balances
+            .where((b) => b.participantId == uid)
+            .firstOrNull
+            ?.netBalance ??
+        Decimal.zero;
+    net = net + groupNet;
+    if (groupNet > Decimal.zero) {
+      owedToUser += groupNet;
+    } else if (groupNet < Decimal.zero) {
+      userOwes += groupNet.abs();
+    }
+  }
+
+  return (
+    net: net,
+    owedToUser: owedToUser,
+    userOwes: userOwes,
+    groupCount: groups.length,
+    isLoading: false,
+  );
 });

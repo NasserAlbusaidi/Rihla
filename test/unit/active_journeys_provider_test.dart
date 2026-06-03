@@ -90,7 +90,7 @@ void main() {
             groupEventsProvider(
               groupId,
             ).overrideWith((_) => Stream.value([oldEvent])),
-            groupBalancesProvider(groupId).overrideWith((_) {
+            groupBalancesOnceProvider(groupId).overrideWith((_) {
               fail('inactive groups should not aggregate balances');
             }),
           ],
@@ -123,9 +123,9 @@ void main() {
           groupEventsProvider(
             groupId,
           ).overrideWith((_) => Stream.value([activeEvent])),
-          groupBalancesProvider(
+          groupBalancesOnceProvider(
             groupId,
-          ).overrideWith((_) => AsyncValue.data(balances)),
+          ).overrideWith((_) => balances),
         ],
       );
       addTearDown(container.dispose);

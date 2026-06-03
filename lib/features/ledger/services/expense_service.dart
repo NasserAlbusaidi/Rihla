@@ -45,6 +45,22 @@ class ExpenseService extends FirestoreRepository {
         );
   }
 
+  /// One-shot read of non-deleted expenses for an event — the same query as
+  /// [watchExpenses] but a single `.get()` instead of a live `.snapshots()`
+  /// listener. Used by the home dashboard's one-shot balance aggregation (#104)
+  /// so the O(G×E) per-event listeners are not held open for the whole session.
+  /// Served from the Firestore offline cache (incl. pending local writes) when
+  /// offline, same as the stream.
+  Future<List<Expense>> getExpenses(String groupId, String eventId) async {
+    final snap = await eventSubcollection(groupId, eventId, 'expenses')
+        .where('isDeleted', isEqualTo: false)
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snap.docs
+        .map((doc) => Expense.fromFirestore({...doc.data(), 'id': doc.id}))
+        .toList();
+  }
+
   /// ARCH-03: Server-side Firestore range query on `createdAt` (ISO-8601 string).
   ///
   /// Returns a real-time stream of non-deleted expenses whose `createdAt`

@@ -45,6 +45,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       throw StateError('Cannot add expense without an authenticated user.');
     }
 
+    // #104: captured before the await so the home-balance refresh fires even if
+    // this screen is disposed during the write.
+    final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
     ref.read(expenseLoadingProvider.notifier).state = true;
     try {
       final expense = await ref
@@ -65,6 +68,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             createdBy: currentUid,
           );
 
+      ledgerRevision.state++; // #104: refresh the one-shot home balance
       if (!mounted) return;
       await _showSuccessDialog(expense);
     } finally {
