@@ -5,7 +5,7 @@ import '../../core/theme/tokens/domain_aliases.dart';
 /// Composable skeleton building blocks for content-aware loading placeholders.
 ///
 /// All primitives use the active theme's `cardSurface` as fill color. The
-/// shimmer animation is handled by the parent [Shimmer.fromColors] in
+/// shimmer animation is handled by the parent [Skeletonizer] in
 /// [SkeletonLoader] — children only need an opaque fill.
 ///
 /// See [SkeletonLoader] for named factory variants that assemble these

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import 'skeleton_primitives.dart';
 import '../../core/theme/tokens/domain_aliases.dart';
@@ -9,9 +9,10 @@ import '../../core/theme/tokens/domain_aliases.dart';
 /// Named factory variants produce content-aware skeletons that mirror real
 /// widget layouts, preventing layout jump when data loads.
 ///
-/// All variants wrap their children in [Shimmer.fromColors] using the active
-/// theme's warm-neutral tokens: `baseColor` uses `context.colors.inputFill`
-/// and `highlightColor` uses `context.colors.cardSurface`.
+/// All variants wrap their children in a [Skeletonizer] driving a
+/// [ShimmerEffect] over the active theme's warm-neutral tokens: `baseColor`
+/// uses `context.colors.inputFill` and `highlightColor` uses
+/// `context.colors.cardSurface`. (Migrated off the `shimmer` package — #111.)
 ///
 /// ## Named factories (content-aware)
 /// - [SkeletonLoader.dashboardHero] — balance hero card + stats row
@@ -283,9 +284,11 @@ class SkeletonLoader extends StatelessWidget {
   /// theme via `context.colors` inside the nearest BuildContext.
   static Widget card() {
     return Builder(
-      builder: (context) => Shimmer.fromColors(
-        baseColor: context.colors.inputFill,
-        highlightColor: context.colors.cardSurface,
+      builder: (context) => Skeletonizer(
+        effect: ShimmerEffect(
+          baseColor: context.colors.inputFill,
+          highlightColor: context.colors.cardSurface,
+        ),
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: context.spacing.space24,
@@ -303,9 +306,12 @@ class SkeletonLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: context.colors.inputFill, // warm-neutral base (theme-aware)
-      highlightColor: context.colors.cardSurface, // warm-neutral highlight (theme-aware)
+    return Skeletonizer(
+      effect: ShimmerEffect(
+        baseColor: context.colors.inputFill, // warm-neutral base (theme-aware)
+        highlightColor:
+            context.colors.cardSurface, // warm-neutral highlight (theme-aware)
+      ),
       child: SingleChildScrollView(
         // NeverScrollableScrollPhysics prevents user scroll while keeping
         // Column items clipped to bounded parent height (e.g. inside Expanded).
