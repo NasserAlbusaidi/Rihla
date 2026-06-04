@@ -697,4 +697,31 @@ void main() {
       expect(find.text('Finish account recovery'), findsOneWidget);
     });
   });
+
+  group('ProfileScreen — currency removed (#61 OMR-only)', () {
+    testWidgets('preferences show no currency row (Language still present)', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(prefs: prefs),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      // 1.0 is OMR-only: the orphaned currency picker was removed (it wrote a
+      // preference no write path ever read). The Preferences section still
+      // renders — Language proves it — but there is no Currency affordance to
+      // promise a non-OMR choice the app can't honour. Guards re-adding it
+      // before the multi-currency follow-up solves currency-blind aggregation.
+      expect(find.text('Language'), findsOneWidget);
+      expect(find.text('Currency'), findsNothing);
+    });
+  });
 }
