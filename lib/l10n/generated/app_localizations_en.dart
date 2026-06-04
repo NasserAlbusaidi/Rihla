@@ -724,6 +724,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorAmountGreaterThanZero => 'Amount must be greater than zero';
 
   @override
+  String get editorExactSplitOutOfSync =>
+      'The exact amounts no longer add up to the total. Reopen the split to update them.';
+
+  @override
   String get editorCouldNotIdentifyParticipant =>
       'Could not identify your participant record.';
 
@@ -985,6 +989,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settleUpCouldNotLoadBalances => 'Couldn\'t load balances.';
+
+  @override
+  String get settleUpIncompleteBalanceWarning =>
+      'This balance may be incomplete — some event data couldn\'t be loaded.';
 
   @override
   String get settleUpAmountGreaterThanZero =>

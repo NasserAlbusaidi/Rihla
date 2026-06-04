@@ -1364,6 +1364,12 @@ abstract class AppLocalizations {
   /// **'Amount must be greater than zero'**
   String get editorAmountGreaterThanZero;
 
+  /// No description provided for @editorExactSplitOutOfSync.
+  ///
+  /// In en, this message translates to:
+  /// **'The exact amounts no longer add up to the total. Reopen the split to update them.'**
+  String get editorExactSplitOutOfSync;
+
   /// No description provided for @editorCouldNotIdentifyParticipant.
   ///
   /// In en, this message translates to:
@@ -1801,6 +1807,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t load balances.'**
   String get settleUpCouldNotLoadBalances;
+
+  /// No description provided for @settleUpIncompleteBalanceWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This balance may be incomplete — some event data couldn\'t be loaded.'**
+  String get settleUpIncompleteBalanceWarning;
 
   /// No description provided for @settleUpAmountGreaterThanZero.
   ///
