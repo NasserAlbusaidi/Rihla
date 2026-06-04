@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -7,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_config.dart';
 import '../providers/settings_provider.dart';
+import '../router/app_router.dart';
+import 'local_notifier.dart';
 
 enum NotificationStatus { off, enabled, permissionDenied, error }
 
@@ -35,13 +38,19 @@ class NotificationService {
     Stream<String>? tokenRefresh,
     Stream<RemoteMessage>? foregroundMessages,
     Stream<RemoteMessage>? openedMessages,
+    LocalNotifier? localNotifier,
+    void Function(String location)? onNavigate,
+    Future<RemoteMessage?> Function()? initialMessage,
   }) : _messaging = messaging,
        _firestoreOverride = firestore,
        _currentUserIdOverride = currentUserId,
        _localeResolverOverride = localeResolver,
        _tokenRefreshOverride = tokenRefresh,
        _foregroundMessagesOverride = foregroundMessages,
-       _openedMessagesOverride = openedMessages;
+       _openedMessagesOverride = openedMessages,
+       _localNotifierOverride = localNotifier,
+       _onNavigateOverride = onNavigate,
+       _initialMessageOverride = initialMessage;
 
   final Ref _ref;
 
@@ -52,7 +61,11 @@ class NotificationService {
   final Stream<String>? _tokenRefreshOverride;
   final Stream<RemoteMessage>? _foregroundMessagesOverride;
   final Stream<RemoteMessage>? _openedMessagesOverride;
+  final void Function(String location)? _onNavigateOverride;
+  final Future<RemoteMessage?> Function()? _initialMessageOverride;
+  LocalNotifier? _localNotifierOverride;
   bool _initialized = false;
+  int _notificationId = 0;
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<RemoteMessage>? _messageSubscription;
   StreamSubscription<RemoteMessage>? _messageOpenedSubscription;
@@ -86,6 +99,12 @@ class NotificationService {
   Stream<RemoteMessage> get _openedMessages =>
       _openedMessagesOverride ?? FirebaseMessaging.onMessageOpenedApp;
 
+  LocalNotifier get _localNotifier =>
+      _localNotifierOverride ??= FlutterLocalNotifier();
+
+  Future<RemoteMessage?> _getInitialMessage() =>
+      _initialMessageOverride?.call() ?? _messaging!.getInitialMessage();
+
   /// Initialize Firebase Messaging. Call only after the user has opted in.
   Future<bool> initialize() async {
     if (_initialized) {
@@ -109,11 +128,17 @@ class NotificationService {
         _setStatus(NotificationStatus.enabled);
         await _saveToken();
 
+        await _localNotifier.initialize(_onLocalNotificationTap);
+
         _tokenRefreshSubscription ??= _tokenRefresh.listen(_onTokenRefresh);
         _messageSubscription ??= _foregroundMessages.listen(
-          _onForegroundMessage,
+          (message) => unawaited(_onForegroundMessage(message)),
         );
         _messageOpenedSubscription ??= _openedMessages.listen(_onMessageTap);
+
+        // Cold-start tap: the app was launched FROM a notification while
+        // terminated. Route once after listeners are wired.
+        await _handleInitialMessage();
         return true;
       }
 
@@ -171,11 +196,79 @@ class NotificationService {
     }
   }
 
-  /// Handle foreground messages.
-  void _onForegroundMessage(RemoteMessage message) {}
+  /// Handle foreground messages. The OS does NOT auto-display a `notification`
+  /// payload while the app is foregrounded, so render it ourselves; data-only
+  /// messages (no `notification`) are silent by design.
+  Future<void> _onForegroundMessage(RemoteMessage message) async {
+    final notification = message.notification;
+    if (notification == null) return;
+    try {
+      await _localNotifier.show(
+        id: _nextNotificationId(),
+        title: notification.title ?? '',
+        body: notification.body ?? '',
+        payload: jsonEncode(message.data),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('FCM: foreground display failed: $e');
+    }
+  }
 
-  /// Handle when user taps a notification.
-  void _onMessageTap(RemoteMessage message) {}
+  /// Handle a tap on a notification that the OS displayed (app was
+  /// backgrounded). Routes from the FCM data payload.
+  void _onMessageTap(RemoteMessage message) {
+    _routeFromData(message.data);
+  }
+
+  /// Handle a tap on a local notification we displayed in the foreground. The
+  /// payload is the JSON-encoded FCM data map.
+  void _onLocalNotificationTap(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map<String, dynamic>) _routeFromData(decoded);
+    } catch (e) {
+      if (kDebugMode) debugPrint('FCM: bad local-notification payload: $e');
+    }
+  }
+
+  Future<void> _handleInitialMessage() async {
+    try {
+      final message = await _getInitialMessage();
+      if (message != null) _routeFromData(message.data);
+    } catch (e) {
+      if (kDebugMode) debugPrint('FCM: initial message handling failed: $e');
+    }
+  }
+
+  /// Deep-links a notification to the relevant group landing. Only `settlement`
+  /// and `member_join` types with a non-empty `groupId` route; anything else is
+  /// ignored (forward-compatible with future types).
+  void _routeFromData(Map<String, dynamic> data) {
+    final type = data['type'];
+    if (type != 'settlement' && type != 'member_join') return;
+    final groupId = data['groupId'];
+    if (groupId is! String || groupId.isEmpty) return;
+    _navigate('/group/$groupId');
+  }
+
+  void _navigate(String location) {
+    final override = _onNavigateOverride;
+    if (override != null) {
+      override(location);
+      return;
+    }
+    try {
+      _ref.read(routerProvider).go(location);
+    } catch (e) {
+      if (kDebugMode) debugPrint('FCM: navigation to $location failed: $e');
+    }
+  }
+
+  int _nextNotificationId() {
+    _notificationId = (_notificationId + 1) & 0x7fffffff;
+    return _notificationId;
+  }
 
   /// Remove token when notifications are disabled.
   Future<void> removeToken() async {

@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,6 +37,15 @@ const bool _useFirebaseEmulator = bool.fromEnvironment(
   defaultValue: false,
 );
 
+/// Background/terminated FCM handler (#53). Runs in a separate isolate. The
+/// server sends a `notification` payload, so the OS renders the tray
+/// notification itself and the tap is routed via `onMessageOpenedApp` /
+/// `getInitialMessage` once the app is foregrounded — this handler only needs
+/// to exist so FCM also delivers any accompanying `data`. It must touch no
+/// app state (the isolate has none); keep it a no-op.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -55,6 +65,10 @@ void main() async {
       await FirebaseConfig.initialize(
         useDebugAppCheck: !kReleaseMode || _useFirebaseEmulator,
       );
+
+      // Register the FCM background handler before runApp (#53). Must be after
+      // Firebase init and reference a top-level entry-point function.
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       // Emulator hookup MUST run AFTER Firebase.initializeApp and BEFORE any
       // service construction or auth call (Pitfall 2 in 38-RESEARCH.md).

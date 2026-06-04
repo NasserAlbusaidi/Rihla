@@ -5,9 +5,32 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/services/local_notifier.dart';
 import 'package:safar/core/services/notification_service.dart';
 
 class _MockFirebaseMessaging extends Mock implements FirebaseMessaging {}
+
+/// Records shows and exposes the tap callback so tests can simulate a tap on a
+/// foreground-displayed local notification.
+class _FakeLocalNotifier implements LocalNotifier {
+  final List<Map<String, String>> shown = [];
+  void Function(String? payload)? onTap;
+
+  @override
+  Future<void> initialize(void Function(String? payload) onTap) async {
+    this.onTap = onTap;
+  }
+
+  @override
+  Future<void> show({
+    required int id,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    shown.add({'title': title, 'body': body, 'payload': payload});
+  }
+}
 
 void main() {
   test(
@@ -199,6 +222,123 @@ void main() {
       );
     },
   );
+
+  group('consumer (#53)', () {
+    Future<({NotificationService service, _FakeLocalNotifier notifier, List<String> nav})>
+    boot({
+      Stream<RemoteMessage>? foreground,
+      Stream<RemoteMessage>? opened,
+      Future<RemoteMessage?> Function()? initialMessage,
+    }) async {
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final notifier = _FakeLocalNotifier();
+      final nav = <String>[];
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: FakeFirebaseFirestore(),
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        foregroundMessages: foreground,
+        openedMessages: opened,
+        localNotifier: notifier,
+        onNavigate: nav.add,
+        initialMessage: initialMessage,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+      final service = container.read(provider);
+      await service.initialize();
+      return (service: service, notifier: notifier, nav: nav);
+    }
+
+    test('foreground message with a notification displays it locally', () async {
+      final foreground = StreamController<RemoteMessage>.broadcast();
+      addTearDown(foreground.close);
+      final h = await boot(foreground: foreground.stream);
+
+      foreground.add(
+        const RemoteMessage(
+          notification: RemoteNotification(title: 'Trip', body: 'Ahmed settled'),
+          data: {'type': 'settlement', 'groupId': 'g1'},
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.notifier.shown, hasLength(1));
+      expect(h.notifier.shown.first['title'], 'Trip');
+      expect(h.notifier.shown.first['body'], 'Ahmed settled');
+      expect(h.notifier.shown.first['payload'], contains('"groupId":"g1"'));
+    });
+
+    test('foreground data-only message (no notification) is NOT displayed', () async {
+      final foreground = StreamController<RemoteMessage>.broadcast();
+      addTearDown(foreground.close);
+      final h = await boot(foreground: foreground.stream);
+
+      foreground.add(const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g1'}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.notifier.shown, isEmpty);
+    });
+
+    test('tapping a backgrounded notification routes to the group (settlement)', () async {
+      final opened = StreamController<RemoteMessage>.broadcast();
+      addTearDown(opened.close);
+      final h = await boot(opened: opened.stream);
+
+      opened.add(const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g7', 'eventId': 'e1'}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.nav, ['/group/g7']);
+    });
+
+    test('tapping a member_join notification routes to the group', () async {
+      final opened = StreamController<RemoteMessage>.broadcast();
+      addTearDown(opened.close);
+      final h = await boot(opened: opened.stream);
+
+      opened.add(const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g9'}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.nav, ['/group/g9']);
+    });
+
+    test('unknown type or missing groupId does not route', () async {
+      final opened = StreamController<RemoteMessage>.broadcast();
+      addTearDown(opened.close);
+      final h = await boot(opened: opened.stream);
+
+      opened.add(const RemoteMessage(data: {'type': 'mystery', 'groupId': 'g1'}));
+      opened.add(const RemoteMessage(data: {'type': 'settlement'})); // no groupId
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.nav, isEmpty);
+    });
+
+    test('tapping a foreground local notification routes from its payload', () async {
+      final h = await boot();
+
+      h.notifier.onTap!('{"type":"settlement","groupId":"g3"}');
+
+      expect(h.nav, ['/group/g3']);
+    });
+
+    test('cold-start (terminated) launch from a notification routes once', () async {
+      final h = await boot(
+        initialMessage: () async =>
+            const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g5'}),
+      );
+
+      expect(h.nav, ['/group/g5']);
+    });
+  });
 }
 
 Provider<NotificationService> _serviceProvider({
@@ -207,6 +347,11 @@ Provider<NotificationService> _serviceProvider({
   required String? Function() currentUserId,
   required Stream<String> tokenRefresh,
   String Function()? localeResolver,
+  Stream<RemoteMessage>? foregroundMessages,
+  Stream<RemoteMessage>? openedMessages,
+  LocalNotifier? localNotifier,
+  void Function(String location)? onNavigate,
+  Future<RemoteMessage?> Function()? initialMessage,
 }) {
   return Provider((ref) {
     final service = NotificationService(
@@ -216,8 +361,14 @@ Provider<NotificationService> _serviceProvider({
       currentUserId: currentUserId,
       localeResolver: localeResolver,
       tokenRefresh: tokenRefresh,
-      foregroundMessages: const Stream<RemoteMessage>.empty(),
-      openedMessages: const Stream<RemoteMessage>.empty(),
+      foregroundMessages:
+          foregroundMessages ?? const Stream<RemoteMessage>.empty(),
+      openedMessages: openedMessages ?? const Stream<RemoteMessage>.empty(),
+      localNotifier: localNotifier ?? _FakeLocalNotifier(),
+      onNavigate: onNavigate,
+      // Default: no cold-start message. Avoids hitting the unstubbed mock's
+      // getInitialMessage in tests that don't exercise cold-start routing.
+      initialMessage: initialMessage ?? () async => null,
     );
     ref.onDispose(() => unawaited(service.dispose()));
     return service;
