@@ -1,5 +1,6 @@
 import functionsTest from 'firebase-functions-test';
 import { getFirestore } from 'firebase-admin/firestore';
+import * as messaging from 'firebase-admin/messaging';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 import { joinGroupByInviteCode } from '../../src/callables/joinGroupByInviteCode';
@@ -483,5 +484,95 @@ describe('joinGroupByInviteCode', () => {
 
     const memberSnap = await db.doc('groups/g1/members/mallory').get();
     expect(memberSnap.exists).toBe(false);
+  });
+});
+
+describe('joinGroupByInviteCode — member-join notification (#53)', () => {
+  function mockSendEach(): jest.Mock {
+    const sendEach = jest.fn().mockResolvedValue({
+      successCount: 1,
+      failureCount: 0,
+      responses: [{ success: true, messageId: 'm' }],
+    });
+    jest
+      .spyOn(messaging, 'getMessaging')
+      .mockReturnValue({ sendEach } as unknown as messaging.Messaging);
+    return sendEach;
+  }
+
+  async function seedToken(uid: string): Promise<void> {
+    await getFirestore()
+      .doc(`fcm_tokens/${uid}`)
+      .set({ user_id: uid, token: `tok-${uid}`, locale: 'en', platform: 'android' });
+  }
+
+  beforeEach(async () => {
+    const tokens = await getFirestore().collection('fcm_tokens').listDocuments();
+    await Promise.all(tokens.map((d) => d.delete()));
+  });
+
+  test('first-time join notifies pre-join members minus the joiner', async () => {
+    await seedToken('owner');
+    const sendEach = mockSendEach();
+
+    await expect(
+      wrapped({ data: { inviteCode: 'ABC123', displayName: 'Alice' }, auth: { uid: 'alice' } } as any),
+    ).resolves.toEqual({ groupId: 'g1' });
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
+    const messages = sendEach.mock.calls[0][0];
+    expect(messages).toHaveLength(1);
+    expect(messages[0].token).toBe('tok-owner');
+    expect(messages[0].data).toEqual({ type: 'member_join', groupId: 'g1' });
+    expect(messages[0].notification.body).toContain('Alice');
+  });
+
+  test('idempotent re-join sends NO notification (G1 gate)', async () => {
+    const db = getFirestore();
+    // alice is ALREADY a member with a member doc.
+    await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
+    await db.doc('groups/g1/members/alice').set({
+      id: 'alice', userId: 'alice', displayName: 'Alice',
+      role: 'MEMBER', joinedAt: new Date(), isShadow: false,
+    });
+    await seedToken('owner'); // owner WOULD be a valid target if the gate were absent
+    const sendEach = mockSendEach();
+
+    await expect(
+      wrapped({ data: { inviteCode: 'ABC123', displayName: 'Alice' }, auth: { uid: 'alice' } } as any),
+    ).resolves.toEqual({ groupId: 'g1' });
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
+  test('heal-path re-join (in memberIds, member-doc missing) does NOT re-announce', async () => {
+    const db = getFirestore();
+    // alice is in memberIds but her member doc is MISSING (the heal path).
+    await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
+    await seedToken('owner');
+    const sendEach = mockSendEach();
+
+    await expect(
+      wrapped({ data: { inviteCode: 'ABC123', displayName: 'Alice' }, auth: { uid: 'alice' } } as any),
+    ).resolves.toEqual({ groupId: 'g1' });
+
+    // the heal still creates the member doc...
+    expect((await db.doc('groups/g1/members/alice').get()).exists).toBe(true);
+    // ...but it is NOT a brand-new join, so no notification fires.
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
+  test('notification failure does NOT fail the committed join', async () => {
+    await seedToken('owner');
+    jest.spyOn(messaging, 'getMessaging').mockReturnValue({
+      sendEach: jest.fn().mockRejectedValue(new Error('fcm down')),
+    } as unknown as messaging.Messaging);
+
+    await expect(
+      wrapped({ data: { inviteCode: 'ABC123', displayName: 'Alice' }, auth: { uid: 'alice' } } as any),
+    ).resolves.toEqual({ groupId: 'g1' });
+
+    const memberSnap = await getFirestore().doc('groups/g1/members/alice').get();
+    expect(memberSnap.exists).toBe(true);
   });
 });

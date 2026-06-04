@@ -10,6 +10,7 @@ import {
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import '../admin';
+import { notifyMemberJoin } from '../notifications/memberJoinNotifier';
 
 export interface JoinGroupByInviteCodeInput {
   inviteCode: string;
@@ -234,6 +235,13 @@ export const joinGroupByInviteCode = onCall<
 
     await assertJoinNotLocked(db, uid);
 
+    // #53 — captured INSIDE the tx (last-run-wins on retry) so a committed join
+    // can notify pre-join members. `didJoin` (G1) gates the notification on an
+    // ACTUAL member-doc create — an idempotent re-join must not re-announce.
+    let didJoin = false;
+    let existingMemberIds: string[] = [];
+    let groupName = '';
+
     let groupId: string;
     try {
       groupId = await db.runTransaction(async (tx) => {
@@ -279,6 +287,16 @@ export const joinGroupByInviteCode = onCall<
           );
         }
         const memberIds = getMemberIds(groupData);
+
+        // #53 G1: notify only on a BRAND-NEW member — BOTH the member-doc create
+        // (!memberSnap.exists) AND the memberIds arrayUnion (!includes) must
+        // fire. Requiring both means a heal-path re-join (uid already in
+        // memberIds but member-doc missing) does NOT re-announce, and neither
+        // does the inverse. The member-array snapshot is captured PRE-arrayUnion
+        // so the joiner is never in `existingMemberIds`.
+        didJoin = !memberSnap.exists && !memberIds.includes(uid);
+        existingMemberIds = memberIds;
+        groupName = typeof groupData.name === 'string' ? groupData.name : '';
 
         const eventFanoutUpdates: EventFanoutUpdate[] = [];
         for (const eventSnap of eventsSnap.docs) {
@@ -345,6 +363,18 @@ export const joinGroupByInviteCode = onCall<
 
     await db.doc(`joinAttempts/${uid}`).delete();
     logger.info('group-join succeeded', { uid, groupId });
+
+    // #53 — fire-and-forget member-join push, ONLY on an actual join (G1).
+    // MUST NOT throw: the join is already committed; a notification failure
+    // must never surface as a join failure.
+    if (didJoin) {
+      try {
+        await notifyMemberJoin(groupId, uid, displayName, groupName, existingMemberIds);
+      } catch (error) {
+        logger.warn('member-join notify failed', { groupId, uid, error: String(error) });
+      }
+    }
+
     return { groupId };
   },
 );
