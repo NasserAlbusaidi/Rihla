@@ -88,6 +88,12 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final settlementsAsync = ref.watch(
       groupSettlementsProvider(widget.groupId),
     );
+    // #244: events whose money read hard-errored were silently zeroed in the
+    // balance above; warn that this settle-up balance may be incomplete rather
+    // than present a partial sum as authoritative.
+    final failedEventIds = ref.watch(
+      groupFailedEventIdsProvider(widget.groupId),
+    );
     final eventNameMap =
         <String, ({String name, EventType type, DateTime date})>{
           for (final e in eventsAsync.valueOrNull ?? <Event>[])
@@ -114,7 +120,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                         userNames: balancesData.memberNames,
                       );
 
-                  return SettleUpPageBody(
+                  final body = SettleUpPageBody(
                     subjectName: group.name,
                     currency: group.currency,
                     optimalSettlements: optimalSettlements,
@@ -149,6 +155,52 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           balancesData,
                           eventNameMap,
                         ),
+                  );
+
+                  if (failedEventIds.isEmpty) return body;
+                  return Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsetsDirectional.fromSTEB(
+                          16,
+                          12,
+                          16,
+                          0,
+                        ),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: context.colors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: context.colors.warning.withValues(
+                              alpha: 0.4,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Iconsax.warning_2,
+                              size: 18,
+                              color: context.colors.warning,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                context.l10n.settleUpIncompleteBalanceWarning,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.colors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(child: body),
+                    ],
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),

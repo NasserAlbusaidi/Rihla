@@ -132,7 +132,19 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final participants = event.participantIds.map((id) {
+    // #249: fold departed-member split recipients (and former payers/settlers)
+    // into the universe so their owed shares aren't dropped from the display.
+    final allMemberIds = groupMembers.map((m) => m.userId).toSet();
+    final liveMemberIds =
+        groupMembers.where((m) => !m.isTombstone).map((m) => m.userId).toSet();
+    final universe = eventBalanceUniverse(
+      event: event,
+      expenses: expenses,
+      settlements: settlements,
+      allMemberIds: allMemberIds,
+      liveMemberIds: liveMemberIds,
+    );
+    final participants = universe.map((id) {
       final display = MemberNameResolver.resolveEventScoped(
         uid: id,
         event: event,

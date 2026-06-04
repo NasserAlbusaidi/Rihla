@@ -127,6 +127,10 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   /// handles equal splits without a distribution map.
   Map<String, Decimal>? _splitDistribution;
 
+  /// Write-time split-vs-amount tolerance — mirrors custom_split_sheet._tolerance
+  /// and BalanceCalculator._splitTolerance (the same 0.001 contract). (#250)
+  static final Decimal _splitTolerance = Decimal.parse('0.001');
+
   bool _isSubmitting = false;
 
   bool get _isEdit => widget.mode == ExpenseEditorMode.edit;
@@ -203,6 +207,24 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     if (amount <= Decimal.zero) {
       _showSnack(context.l10n.editorAmountGreaterThanZero);
       return;
+    }
+
+    // #250: an EXACT split is absolute amounts. If the amount was changed after
+    // the split was set, the stored distribution no longer sums to the total
+    // and BalanceCalculator._allocateExact would SILENTLY re-split equally,
+    // destroying the user's stated amounts. (percent/shares are amount-
+    // independent weights and re-derive correctly, so they're exempt.) Reject
+    // here so the user can reopen the split and fix it, rather than persist a
+    // stale split. Same 0.001 contract as the calculator's read-time check.
+    if (_splitMode == SplitMode.exact && _splitDistribution != null) {
+      final splitSum = _splitDistribution!.values.fold(
+        Decimal.zero,
+        (acc, v) => acc + v,
+      );
+      if ((splitSum - amount).abs() > _splitTolerance) {
+        _showSnack(context.l10n.editorExactSplitOutOfSync);
+        return;
+      }
     }
 
     final currentParticipant = ref.read(

@@ -93,31 +93,12 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final groupMembers =
         ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ?? [];
 
-    final displaysByUid = <String, MemberDisplay>{
-      for (final id in event.participantIds)
-        id: MemberNameResolver.resolveEventScoped(
-          uid: id,
-          event: event,
-          members: groupMembers,
-        ),
-    };
-    // Render-only disambiguation for same-named participants (#196); raw names
-    // stay raw because they feed the settlement write path.
-    final userDisplayNames = MemberNameResolver.disambiguate(displaysByUid);
-    final userRawNames = <String, String>{
-      for (final entry in displaysByUid.entries) entry.key: entry.value.rawName,
-    };
-
-    final participants = event.participantIds.map((id) {
-      return Participant(
-        id: id,
-        tripId: event.id,
-        role: ParticipantRole.member,
-        joinedAt: event.createdAt,
-        displayName: userDisplayNames[id] ??
-            MemberNameResolver.format(displaysByUid[id]!),
-      );
-    }).toList();
+    // #249: member-id sets for the per-event balance universe. The universe
+    // itself (and the name maps + participants derived from it) is built inside
+    // the data callback below, where expenses/settlements are available.
+    final allMemberIds = groupMembers.map((m) => m.userId).toSet();
+    final liveMemberIds =
+        groupMembers.where((m) => !m.isTombstone).map((m) => m.userId).toSet();
 
     return Scaffold(
       key: LedgerKeys.settleUpScreen,
@@ -130,6 +111,46 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               child: expensesAsync.when(
                 data: (expenses) {
                   final settlements = settlementsAsync.valueOrNull ?? const [];
+
+                  // #249: fold departed-member split recipients into the
+                  // balance universe so settle-up suggestions conserve. The
+                  // name maps MUST span the universe — OUTBOUND: userRawNames
+                  // feeds the settlement write path.
+                  final universe = eventBalanceUniverse(
+                    event: event,
+                    expenses: expenses,
+                    settlements: settlements,
+                    allMemberIds: allMemberIds,
+                    liveMemberIds: liveMemberIds,
+                  );
+                  final displaysByUid = <String, MemberDisplay>{
+                    for (final id in universe)
+                      id: MemberNameResolver.resolveEventScoped(
+                        uid: id,
+                        event: event,
+                        members: groupMembers,
+                      ),
+                  };
+                  // Render-only disambiguation (#196); raw names stay raw —
+                  // they feed the settlement write path.
+                  final userDisplayNames = MemberNameResolver.disambiguate(
+                    displaysByUid,
+                  );
+                  final userRawNames = <String, String>{
+                    for (final entry in displaysByUid.entries)
+                      entry.key: entry.value.rawName,
+                  };
+                  final participants = universe.map((id) {
+                    return Participant(
+                      id: id,
+                      tripId: event.id,
+                      role: ParticipantRole.member,
+                      joinedAt: event.createdAt,
+                      displayName:
+                          userDisplayNames[id] ??
+                          MemberNameResolver.format(displaysByUid[id]!),
+                    );
+                  }).toList();
 
                   final balances = BalanceCalculator.calculateBalances(
                     expenses: expenses,

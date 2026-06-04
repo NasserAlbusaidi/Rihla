@@ -300,6 +300,30 @@ void main() {
     },
   );
 
+  // #250 — an EXACT split is absolute amounts; if the amount is changed after
+  // the split was set, the stored distribution no longer sums to the total and
+  // the calculator would SILENTLY re-split equally. _submit must reject this
+  // (warn + don't persist) so the user can fix it.
+  testWidgets(
+    '#250: amount-only edit that drifts an EXACT split blocks save with a warning',
+    (tester) async {
+      final payload = await editAmountAndSave(
+        tester,
+        initial: expenseWithSplit(
+          mode: SplitMode.exact,
+          distribution: {
+            'uid-yasmin': Decimal.parse('8.000'),
+            'uid-layla': Decimal.parse('4.000'),
+          },
+        ),
+        newAmount: '20', // 8+4=12 != 20 → drift > tolerance
+      );
+
+      expect(payload, isNull, reason: 'stale exact split must not persist');
+      expect(find.textContaining('no longer add up'), findsOneWidget);
+    },
+  );
+
   testWidgets(
     'single-person custom split keeps the non-equal split gate disabled (#247)',
     (tester) async {
@@ -360,4 +384,28 @@ void main() {
       );
     });
   });
+
+  testWidgets(
+    '#250: an EXACT split that still sums to the amount saves normally',
+    (tester) async {
+      final payload = await editAmountAndSave(
+        tester,
+        initial: expenseWithSplit(
+          mode: SplitMode.exact,
+          distribution: {
+            'uid-yasmin': Decimal.parse('8.000'),
+            'uid-layla': Decimal.parse('4.000'),
+          },
+        ),
+        newAmount: '12', // re-entered same total → sum matches → valid
+      );
+
+      expect(payload, isNotNull);
+      expect(payload!.splitMode, SplitMode.exact);
+      expect(payload.splitDistribution, {
+        'uid-yasmin': Decimal.parse('8.000'),
+        'uid-layla': Decimal.parse('4.000'),
+      });
+    },
+  );
 }

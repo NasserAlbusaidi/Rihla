@@ -747,6 +747,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorAmountGreaterThanZero => 'يجب أن يكون المبلغ أكبر من صفر';
 
   @override
+  String get editorExactSplitOutOfSync =>
+      'لم تعد المبالغ المحددة تساوي الإجمالي. أعد فتح التقسيم لتحديثها.';
+
+  @override
   String get editorCouldNotIdentifyParticipant => 'تعذّر تحديد سجل مشاركتك.';
 
   @override
@@ -1014,6 +1018,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settleUpCouldNotLoadBalances => 'تعذّر تحميل الأرصدة.';
+
+  @override
+  String get settleUpIncompleteBalanceWarning =>
+      'قد يكون هذا الرصيد غير مكتمل — تعذّر تحميل بيانات بعض الفعاليات.';
 
   @override
   String get settleUpAmountGreaterThanZero => 'يجب أن يكون المبلغ أكبر من صفر';

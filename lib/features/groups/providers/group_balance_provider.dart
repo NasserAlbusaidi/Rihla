@@ -173,6 +173,36 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
   );
 });
 
+/// Event ids in [groupId] whose expense OR settlement read HARD-ERRORED — not
+/// merely loading. Mirrors the error-skip in [groupBalancesProvider] (the
+/// `hasError && !hasValue` branch) so the in-group settle-up surface can WARN
+/// that the displayed balance is incomplete instead of presenting a partial sum
+/// as authoritative (#244).
+///
+/// Iterates the SAME [groupEventsProvider] list and the SAME per-event
+/// [eventExpensesProvider]/[eventSettlementsProvider] instances the live
+/// balance provider sums, so the "incomplete" warning can never disagree with
+/// the events the balance silently zeroed. Loading ≠ partial: a still-loading
+/// event (`isLoading && !hasValue`) is NOT flagged, matching the live provider's
+/// separate loading-skip. A soft-deleted event never enters the events list, so
+/// it never appears here.
+final groupFailedEventIdsProvider =
+    Provider.family<Set<String>, String>((ref, groupId) {
+  final events =
+      ref.watch(groupEventsProvider(groupId)).valueOrNull ?? const <Event>[];
+  final failed = <String>{};
+  for (final event in events) {
+    final eventRef = (groupId: groupId, eventId: event.id);
+    final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+    final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
+    if ((expensesAsync.hasError && !expensesAsync.hasValue) ||
+        (settlementsAsync.hasError && !settlementsAsync.hasValue)) {
+      failed.add(event.id);
+    }
+  }
+  return failed;
+});
+
 /// Pure reduction from a group's events, members, and money records to a
 /// [GroupBalances]. Extracted from [groupBalancesProvider] (#104) so the live
 /// streaming path and the one-shot home path ([groupBalancesOnceProvider])
@@ -246,22 +276,21 @@ GroupBalances computeGroupBalances({
     final eventExpenses = expensesByEvent[event.id] ?? const <Expense>[];
     final eventSettlements =
         eventSettlementsByEvent[event.id] ?? const <Settlement>[];
-    final eventFinancialUids = <String>{
-      for (final expense in eventExpenses) expense.payerParticipantId,
-      for (final settlement in eventSettlements) ...[
-        if (settlement.payerParticipantId != null)
-          settlement.payerParticipantId!,
-        if (settlement.recipientParticipantId != null)
-          settlement.recipientParticipantId!,
-      ],
-    };
-    final eventLocalFormerActors = eventFinancialUids.difference(liveMemberIds);
-    allFormerFinancialActorsSeen.addAll(eventLocalFormerActors);
-
-    final eventParticipantUids = <String>{
-      ...event.participantIds,
-      ...eventLocalFormerActors,
-    };
+    // Per-event universe = participantIds ∪ former financial actors (payers,
+    // settlement parties, AND departed-member split recipients — #249). The
+    // member-gate on the recipient fold lives in [eventBalanceUniverse].
+    final eventParticipantUids = eventBalanceUniverse(
+      event: event,
+      expenses: eventExpenses,
+      settlements: eventSettlements,
+      allMemberIds: allMemberIds,
+      liveMemberIds: liveMemberIds,
+    );
+    // Every non-live UID now in the universe is a former actor; record so they
+    // surface in `allUids` → `balances` (with resolved names).
+    allFormerFinancialActorsSeen.addAll(
+      eventParticipantUids.difference(liveMemberIds),
+    );
     if (eventParticipantUids.isEmpty) continue;
 
     final eventParticipants = eventParticipantUids.map((uid) {
