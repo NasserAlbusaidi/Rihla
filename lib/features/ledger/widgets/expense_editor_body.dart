@@ -25,6 +25,24 @@ import 'split_scope_selector.dart';
 
 enum ExpenseEditorMode { add, edit }
 
+/// Seeds the custom-split set with the current participant the first time the
+/// user switches into custom scope, so a custom split defaults to "just me"
+/// (deselectable). Returns [current] unchanged when the new scope is not
+/// custom, when the set is already non-empty, or when identity is unknown — so
+/// custom→global→custom never re-seeds and editing an existing split is
+/// preserved (#247).
+@visibleForTesting
+Set<String> seedCustomSplitOnScopeChange({
+  required ExpenseScope newScope,
+  required Set<String> current,
+  required String? currentParticipantId,
+}) {
+  if (newScope != ExpenseScope.custom) return current;
+  if (current.isNotEmpty) return current;
+  if (currentParticipantId == null) return current;
+  return {currentParticipantId};
+}
+
 /// Snapshot of the form payload handed back to the parent on submit.
 class ExpenseEditorPayload {
   final Decimal amount;
@@ -312,6 +330,16 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
   Future<void> _openCustomiseSheet(Event event) async {
     HapticService.lightClick();
+    // Participant-resolved identity (NOT raw uid) so a seeded self-entry always
+    // satisfies firestore.rules `customSplitParticipants.hasOnly(participants)`.
+    final currentParticipantId = ref
+        .read(
+          currentEventParticipantProvider((
+            groupId: widget.groupId,
+            eventId: widget.eventId,
+          )),
+        )
+        ?.id;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -322,6 +350,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
           initialScope: _scope,
           initialCustomSplit: _customSplitParticipants,
           initialPayerId: _selectedPayerId,
+          currentParticipantId: currentParticipantId,
           onApply:
               ({
                 required ExpenseScope scope,
@@ -397,10 +426,13 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       case ExpenseScope.subGroup:
         return event.participantIds;
       case ExpenseScope.custom:
-        final ids = _customSplitParticipants.toList();
-        final p = _selectedPayerId;
-        if (p != null && !ids.contains(p)) ids.insert(0, p);
-        return ids;
+        // #247: the split is exactly the persisted custom set — no payer
+        // auto-insertion (that made the preview lie vs the ledger). Mirror
+        // BalanceCalculator: an empty set falls back to a global split over
+        // all participants (expense_provider.dart custom-scope branch).
+        return _customSplitParticipants.isEmpty
+            ? event.participantIds
+            : _customSplitParticipants.toList();
       case ExpenseScope.personal:
         return _selectedPayerId != null ? [_selectedPayerId!] : const [];
     }
@@ -1049,9 +1081,12 @@ class _SplitPreviewCard extends StatelessWidget {
       case ExpenseScope.global:
         return event.participantIds;
       case ExpenseScope.custom:
-        final ids = customSplitParticipants.toList();
-        if (payerId != null && !ids.contains(payerId)) ids.insert(0, payerId!);
-        return ids;
+        // #247: preview the persisted custom set verbatim (no payer insert),
+        // mirroring BalanceCalculator's empty→global fallback so the preview
+        // equals the ledger for every custom set, including empty.
+        return customSplitParticipants.isEmpty
+            ? event.participantIds
+            : customSplitParticipants.toList();
       case ExpenseScope.personal:
         return payerId != null ? [payerId!] : const [];
       case ExpenseScope.subGroup:
@@ -1570,6 +1605,7 @@ class _SplitCustomiseSheet extends StatefulWidget {
     required this.initialScope,
     required this.initialCustomSplit,
     required this.initialPayerId,
+    required this.currentParticipantId,
     required this.onApply,
   });
 
@@ -1577,6 +1613,7 @@ class _SplitCustomiseSheet extends StatefulWidget {
   final ExpenseScope initialScope;
   final Set<String> initialCustomSplit;
   final String? initialPayerId;
+  final String? currentParticipantId;
   final _SplitApply onApply;
 
   @override
@@ -1684,7 +1721,16 @@ class _SplitCustomiseSheetState extends State<_SplitCustomiseSheet> {
                   child: SplitScopeSelector(
                     event: widget.event,
                     scope: _scope,
-                    onScopeChanged: (s) => setState(() => _scope = s),
+                    onScopeChanged: (s) => setState(() {
+                      // #247: default a fresh custom split to "just me"
+                      // (deselectable); never re-seed an existing set.
+                      _custom = seedCustomSplitOnScopeChange(
+                        newScope: s,
+                        current: _custom,
+                        currentParticipantId: widget.currentParticipantId,
+                      );
+                      _scope = s;
+                    }),
                     customSplitParticipants: _custom,
                     onCustomSplitChanged: (s) => setState(() {
                       _custom = s;

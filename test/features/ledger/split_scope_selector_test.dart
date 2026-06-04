@@ -12,7 +12,7 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 
 void main() {
   testWidgets(
-    'renders the three supported scope tabs and hides payer for non-leaders',
+    'renders the three scope tabs and shows the payer selector for non-leaders',
     (tester) async {
       ExpenseScope? selectedScope;
 
@@ -26,7 +26,9 @@ void main() {
       expect(find.text('Equally'), findsOneWidget);
       expect(find.text('Custom'), findsOneWidget);
       expect(find.text('Personal'), findsOneWidget);
-      expect(find.byKey(LedgerKeys.payerSectionLabel), findsNothing);
+      // #247: payer attribution is no longer leader-gated. A non-leader can
+      // record who actually paid, so the payer selector is visible to everyone.
+      expect(find.byKey(LedgerKeys.payerSectionLabel), findsOneWidget);
 
       await tester.tap(find.text('Personal'));
       await tester.pump();
@@ -36,7 +38,7 @@ void main() {
   );
 
   testWidgets(
-    'custom scope filters the current user and emits updated selections',
+    'custom picker includes the current user and toggles self into the set',
     (tester) async {
       Set<String>? selectedParticipants;
 
@@ -52,12 +54,15 @@ void main() {
       expect(find.text('1 selected'), findsOneWidget);
       expect(find.text('Yasmin Khan'), findsOneWidget);
       expect(find.text('Omar Said'), findsOneWidget);
-      expect(find.text('Layla Hassan'), findsNothing);
+      // #247: the current user is no longer filtered out of the custom picker,
+      // so you can include yourself in a custom split ("I paid, split me+him").
+      expect(find.text('Layla Hassan'), findsOneWidget);
 
-      await tester.tap(find.text('Omar Said'));
+      // Toggling self adds the current user to the custom set.
+      await tester.tap(find.text('Layla Hassan'));
       await tester.pump();
 
-      expect(selectedParticipants, {'uid-yasmin', 'uid-omar'});
+      expect(selectedParticipants, {'uid-yasmin', 'uid-layla'});
     },
   );
 
