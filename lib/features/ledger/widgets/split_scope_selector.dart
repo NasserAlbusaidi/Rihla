@@ -187,7 +187,6 @@ class _CustomParticipantSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final participants = _eventParticipants(event);
     final participantsAsync = AsyncValue.data(participants);
-    final currentUid = ref.watch(currentUserProvider)?.uid;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,11 +229,9 @@ class _CustomParticipantSelector extends ConsumerWidget {
               message: context.l10n.editorUnableToLoadParticipants,
             ),
             data: (participants) {
-              final otherParticipants = participants
-                  .where((p) => p.id != currentUid)
-                  .toList();
-
-              if (otherParticipants.isEmpty) {
+              // #247: list ALL participants including the current user, so a
+              // custom split can include yourself ("I paid, split me + him").
+              if (participants.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(context.l10n.editorNoOtherParticipants),
@@ -243,9 +240,9 @@ class _CustomParticipantSelector extends ConsumerWidget {
 
               return ListView.builder(
                 shrinkWrap: true,
-                itemCount: otherParticipants.length,
+                itemCount: participants.length,
                 itemBuilder: (context, index) {
-                  final participant = otherParticipants[index];
+                  final participant = participants[index];
                   final isSelected = customSplitParticipants.contains(
                     participant.id,
                   );
@@ -357,9 +354,10 @@ class _PayerSelector extends ConsumerWidget {
     final participants = _eventParticipants(event);
 
     final currentUid = ref.watch(currentUserProvider)?.uid;
-    final isLeader = currentUid != null && event.createdBy == currentUid;
 
-    if (!isLeader || participants.isEmpty) {
+    // #247: attribution is not leader-gated — any participant may record who
+    // paid (firestore.rules only requires payerParticipantId ∈ participants).
+    if (participants.isEmpty) {
       return const SizedBox.shrink();
     }
 
