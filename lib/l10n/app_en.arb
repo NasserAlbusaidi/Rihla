@@ -661,6 +661,7 @@
   "editorDescriptionHint": "What was it for?",
   "editorPleaseEnterValidAmount": "Please enter a valid amount",
   "editorAmountGreaterThanZero": "Amount must be greater than zero",
+  "editorExactSplitOutOfSync": "The exact amounts no longer add up to the total. Reopen the split to update them.",
   "editorCouldNotIdentifyParticipant": "Could not identify your participant record.",
   "editorFailedToAddExpense": "Failed to add expense: {error}",
   "@editorFailedToAddExpense": {

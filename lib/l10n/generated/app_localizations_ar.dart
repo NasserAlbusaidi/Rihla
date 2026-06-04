@@ -747,6 +747,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorAmountGreaterThanZero => 'يجب أن يكون المبلغ أكبر من صفر';
 
   @override
+  String get editorExactSplitOutOfSync =>
+      'لم تعد المبالغ المحددة تساوي الإجمالي. أعد فتح التقسيم لتحديثها.';
+
+  @override
   String get editorCouldNotIdentifyParticipant => 'تعذّر تحديد سجل مشاركتك.';
 
   @override

@@ -1364,6 +1364,12 @@ abstract class AppLocalizations {
   /// **'Amount must be greater than zero'**
   String get editorAmountGreaterThanZero;
 
+  /// No description provided for @editorExactSplitOutOfSync.
+  ///
+  /// In en, this message translates to:
+  /// **'The exact amounts no longer add up to the total. Reopen the split to update them.'**
+  String get editorExactSplitOutOfSync;
+
   /// No description provided for @editorCouldNotIdentifyParticipant.
   ///
   /// In en, this message translates to:
