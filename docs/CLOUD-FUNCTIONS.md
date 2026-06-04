@@ -1,10 +1,10 @@
 # Cloud Functions
 
-Reference for the three Firebase Cloud Functions Rihla ships. All three
-are HTTPS callables under the v2 API (`firebase-functions/v2/https`),
-deployed to `us-central1`. `joinGroupByInviteCode` and
-`cleanupAnonUidArtifacts` enforce App Check; `deleteAccount` runs with
-App Check in verify-if-present (soft) mode.
+Reference for the Firebase Cloud Functions Rihla ships: HTTPS callables
+(`firebase-functions/v2/https`) plus Firestore document triggers
+(`firebase-functions/v2/firestore`), all deployed to `us-central1`.
+`joinGroupByInviteCode` and `cleanupAnonUidArtifacts` enforce App Check;
+`deleteAccount` runs with App Check in verify-if-present (soft) mode.
 
 | Callable | File | Purpose |
 |----------|------|---------|
@@ -28,11 +28,46 @@ setGlobalOptions({ region: 'us-central1' });
 export { joinGroupByInviteCode } from './callables/joinGroupByInviteCode';
 export { cleanupAnonUidArtifacts } from './callables/cleanupAnonUidArtifacts';
 export { deleteAccount } from './callables/deleteAccount';
+export { deleteGroup } from './callables/deleteGroup';
+export {
+  eventWriteRateMonitor,
+  groupSettlementWriteRateMonitor,
+  groupActivityWriteRateMonitor,
+} from './triggers/writeRateMonitor';
 ```
 
-The Flutter client wraps the latter two in
+The Flutter client wraps the callables in
 `lib/core/services/firebase_functions_service.dart`. The join callable
-has its own service inside the `groups` feature.
+has its own service inside the `groups` feature. The triggers have no
+client surface — they fire server-side on document creation.
+
+## Firestore triggers — write-rate monitor (#198)
+
+`functions/src/triggers/writeRateMonitor.ts` ships three `onDocumentCreated`
+triggers that share one handler. They are **detection-only**: expense /
+settlement / activity creates are client-direct (Firestore offline replay —
+a trigger fires *after* commit and cannot reject), so the monitor only
+**flags** per-UID write bursts; it never deletes or mutates the financial
+doc. App Check is irrelevant here (triggers are server-internal, not called
+by clients).
+
+| Trigger | Document path | Covers |
+|---------|---------------|--------|
+| `eventWriteRateMonitor` | `groups/{gid}/events/{eid}/{module}/{docId}` | event `expenses` / `settlements` / `activity_logs` (wildcard `{module}`, filtered to those three) |
+| `groupSettlementWriteRateMonitor` | `groups/{gid}/settlements/{settlementId}` | group-level settlements |
+| `groupActivityWriteRateMonitor` | `groups/{gid}/activity/{activityId}` | group-level activity |
+
+Each create increments `groups/{gid}/_writeCounters/{uid}` (server-only,
+TTL on `expiresAt`) in a transaction. Actor = `createdBy` (expenses/
+settlements) or `actorId` (activity). On the first write that exceeds
+`WRITE_RATE_LIMIT` (default 100/min; `process.env.WRITE_RATE_LIMIT` seam)
+within the 60s window it logs a single `write-rate burst flagged` warning
+and stamps `lastFlaggedAt`. None of the trigger paths match
+`_writeCounters`, so the counter write never re-fires a trigger.
+Response to a flag is **manual** (ops sees the log, then intervenes).
+
+> Note: the `deleteGroup` callable (#190) is also live but not yet itemized
+> in the callable table above — tracked as a docs follow-up.
 
 ---
 
