@@ -898,6 +898,15 @@ service cloud.firestore {
         // B3: settlements are append-only.
         allow delete: if false;
       }
+
+      // #198: per-UID write-rate counters, written ONLY by the writeRateMonitor
+      // triggers via the Admin SDK (which bypasses rules). Clients never touch
+      // them. The recursive default-deny already denies this path; this explicit
+      // match documents the intent and mirrors the joinAttempts/deletionAttempts
+      // server-only convention. A Firestore TTL on `expiresAt` reaps them.
+      match /_writeCounters/{uid} {
+        allow read, write: if false;
+      }
     }
   }
 }
