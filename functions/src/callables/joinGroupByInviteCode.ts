@@ -20,6 +20,29 @@ export interface JoinGroupByInviteCodeOutput {
   groupId: string;
 }
 
+// #197: rate-limit threat model + residual — READ before adding "more" limits.
+// The per-UID counter below (`joinAttempts/{uid}`) is the only per-actor throttle
+// and is BYPASSABLE by design of anonymous auth: anon sign-in is free, so a
+// scripted `signOut → signInAnonymously` loop mints a fresh empty counter on every
+// rotation. Two "obvious" hardenings were evaluated for #197 and INTENTIONALLY NOT
+// added:
+//   • per-IP — the only signal that would survive UID rotation, BUT these callables
+//     run on direct Cloud Run ingress (no external ALB; see index.ts), where the
+//     client IP is unavailable in any trustworthy form: `X-Forwarded-For` is fully
+//     client-spoofable (`rawRequest.ip` merely reads it), and the socket address is
+//     Google's internal front-end proxy, not the caller. Keying a limit on a
+//     spoofable IP is security theater AND would false-positive-lock real users
+//     behind carrier-grade NAT (common in our market). A trustworthy client IP
+//     would require fronting callables with a Global external Application Load
+//     Balancer + serverless NEG — disproportionate infra for a P2.
+//   • per-code (`joinAttemptsByCode/{code}`) — harmless (a valid join SUCCEEDS and
+//     deletes its counter, so only invalid codes ever accumulate → no legit-user
+//     lockout) but marginal: invite-code enumeration tries a DIFFERENT code each
+//     guess, so a per-code counter essentially never fills.
+// The real control is `enforceAppCheck: true` (below): scripted enumeration needs a
+// genuine attested app instance to place the call at all. That is why #197 is P2,
+// not P1. Do not "fix" the per-UID bypass with per-IP/per-code — neither closes the
+// gap on this infra, and per-IP actively harms.
 const JOIN_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
 const JOIN_ATTEMPT_LOCK_MS = 60 * 60 * 1000;
 const JOIN_ATTEMPT_LIMIT = 5;
