@@ -301,6 +301,19 @@ class BalanceCalculator {
     Map<String, Decimal> distribution,
     String currency,
   ) {
+    // A negative share is never a valid weight — it would hand that recipient a
+    // negative owed via _allocateWeighted, breaking the non-negative-owed
+    // invariant. The custom split sheet strips minus signs, but firestore.rules
+    // only checks `splitDistribution is map`, so a forged/legacy write can
+    // persist one. Mirror the _allocateExact guard. Server-side value
+    // validation is the complementary fix (#192).
+    if (distribution.values.any((value) => value < Decimal.zero)) {
+      debugPrint(
+        'Negative shares split entry for expense ${expense.id}; falling back to equal split.',
+      );
+      return _allocateEqual(expense.amount, distribution.keys, currency);
+    }
+
     final totalShares = distribution.values.fold(
       Decimal.zero,
       (sum, value) => sum + value,
@@ -399,6 +412,16 @@ class BalanceCalculator {
     Map<String, Decimal> distribution,
     String currency,
   ) {
+    // A negative percent is never a valid weight (see _allocateShares) — it
+    // would emit a negative owed even when the entries still sum to 100. Mirror
+    // the _allocateExact guard; complementary to server-side validation (#192).
+    if (distribution.values.any((value) => value < Decimal.zero)) {
+      debugPrint(
+        'Negative percent split entry for expense ${expense.id}; falling back to equal split.',
+      );
+      return _allocateEqual(expense.amount, distribution.keys, currency);
+    }
+
     final totalPercent = distribution.values.fold(
       Decimal.zero,
       (sum, value) => sum + value,

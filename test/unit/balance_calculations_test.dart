@@ -222,6 +222,143 @@ void main() {
     );
   });
 
+  group('BalanceCalculator negative-entry guard (#192 / #220)', () {
+    final participants = [
+      participant('p1'),
+      participant('p2'),
+      participant('p3'),
+    ];
+
+    Decimal netFor(List<UserBalance> balances, String id) =>
+        balances.singleWhere((b) => b.participantId == id).netBalance;
+
+    void expectNoNegativeOwed(List<UserBalance> balances) {
+      for (final b in balances) {
+        expect(
+          b.totalOwed >= Decimal.zero,
+          isTrue,
+          reason: '${b.participantId} owed ${b.totalOwed} (< 0)',
+        );
+      }
+    }
+
+    void expectConserved(List<UserBalance> balances) {
+      final sumNet = balances.fold(
+        Decimal.zero,
+        (sum, b) => sum + b.netBalance,
+      );
+      expect(sumNet, Decimal.zero);
+    }
+
+    test(
+      'shares mode with a negative entry (positive total) falls back to equal split',
+      () {
+        // {5, -2, 1} sums to 4 > 0, so the totalShares<=0 guard does NOT fire —
+        // only the new per-entry sign guard catches it. Weighted allocation
+        // would otherwise hand p2 a negative owed.
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(
+              amount: '9.000',
+              splitMode: SplitMode.shares,
+              splitDistribution: {
+                'p1': Decimal.fromInt(5),
+                'p2': Decimal.fromInt(-2),
+                'p3': Decimal.fromInt(1),
+              },
+            ),
+          ],
+          participants: participants,
+        );
+
+        expect(owedFor(balances, 'p1'), Decimal.parse('3.000'));
+        expect(owedFor(balances, 'p2'), Decimal.parse('3.000'));
+        expect(owedFor(balances, 'p3'), Decimal.parse('3.000'));
+        expectNoNegativeOwed(balances);
+        expectConserved(balances);
+      },
+    );
+
+    test('shares mode with a zero entry stays valid (zero is not negative)', () {
+      // Regression fence: the new guard rejects < 0, NOT <= 0. A 0 share is a
+      // legitimate "owes nothing" and must keep the weighted split.
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: [
+          expense(
+            amount: '9.000',
+            splitMode: SplitMode.shares,
+            splitDistribution: {
+              'p1': Decimal.fromInt(2),
+              'p2': Decimal.zero,
+              'p3': Decimal.fromInt(1),
+            },
+          ),
+        ],
+        participants: participants,
+      );
+
+      expect(owedFor(balances, 'p1'), Decimal.parse('6.000'));
+      expect(owedFor(balances, 'p2'), Decimal.zero);
+      expect(owedFor(balances, 'p3'), Decimal.parse('3.000'));
+    });
+
+    test(
+      'percent mode with a negative entry (summing to 100) falls back to equal split',
+      () {
+        // {150, -50} sums to 100 so the tolerance guard passes — only the new
+        // per-entry sign guard catches it.
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(
+              amount: '10.000',
+              splitMode: SplitMode.percent,
+              splitDistribution: {
+                'p1': Decimal.parse('150.000'),
+                'p2': Decimal.parse('-50.000'),
+              },
+            ),
+          ],
+          participants: participants,
+        );
+
+        expect(owedFor(balances, 'p1'), Decimal.parse('5.000'));
+        expect(owedFor(balances, 'p2'), Decimal.parse('5.000'));
+        expect(owedFor(balances, 'p3'), Decimal.zero);
+        expectNoNegativeOwed(balances);
+      },
+    );
+
+    test(
+      'adversarial (identity axis): payer is also a recipient with a negative share',
+      () {
+        // Orthogonal-axis check: a negative entry on the PAYER, exercising the
+        // settlement-free money flow. Conservation must still hold and no one
+        // may carry a negative owed.
+        final balances = BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(
+              amount: '6.000',
+              payerId: 'p1',
+              splitMode: SplitMode.shares,
+              splitDistribution: {
+                'p1': Decimal.fromInt(-3),
+                'p2': Decimal.fromInt(1),
+              },
+            ),
+          ],
+          participants: participants,
+        );
+
+        expect(owedFor(balances, 'p1'), Decimal.parse('3.000'));
+        expect(owedFor(balances, 'p2'), Decimal.parse('3.000'));
+        expect(netFor(balances, 'p1'), Decimal.parse('3.000'));
+        expect(netFor(balances, 'p2'), Decimal.parse('-3.000'));
+        expectNoNegativeOwed(balances);
+        expectConserved(balances);
+      },
+    );
+  });
+
   group('BalanceCalculator currency-aware precision (Issue #47)', () {
     final participants = [
       participant('p1'),

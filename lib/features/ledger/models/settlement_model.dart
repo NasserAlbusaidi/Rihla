@@ -92,7 +92,14 @@ class Settlement {
   /// Field names are camelCase. [tripId] maps to `eventId` for backward
   /// compatibility. Money is stored as integer fils via [MoneySerializer].
   factory Settlement.fromFirestore(Map<String, dynamic> data) {
-    final currency = data['currency'] as String? ?? 'OMR';
+    // Unknown/garbage currency (a forged/legacy doc the deployed rules now
+    // reject on write) must not throw in MoneySerializer and error the whole
+    // settle-up stream for every member. Fall back to OMR, mirroring the
+    // expense read fence (#47, expense_provider.dart). #193 client tail of #220.
+    final rawCurrency = data['currency'] as String? ?? 'OMR';
+    final currency = MoneySerializer.isSupported(rawCurrency)
+        ? rawCurrency
+        : 'OMR';
     final amountFils = data['amountFils'] as int? ?? 0;
     final scope = data['scope'] as String? ?? 'event';
     final groupId = data['groupId'] as String?;
