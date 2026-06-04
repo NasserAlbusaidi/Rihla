@@ -501,6 +501,49 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect((await groupSnap('g')).data()?.isDeleted).toBe(false);
   });
 
+  test('12b. departed-member split-recipient is FOLDED (member-gated) → group settlement offsets → deletes (#249)', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    // `gone` is a tombstoned MEMBER who appears ONLY as a split recipient in the
+    // event (never a payer/event-settlement actor). #249 member-gates the
+    // recipient fold to allMemberIds, so gone IS re-injected into the event
+    // universe (contrast test 12, where a NON-member ghost stays dropped).
+    await seedMember('g', 'gone', { isTombstone: true });
+    await seedEvent('g', 'e1', {
+      participantIds: [OWNER],
+      participantNames: { [OWNER]: 'Owner' },
+    });
+    // owner pays 3000, custom split {owner, gone} → 1500 each. Without the
+    // fold gone's 1500 owed is dropped; with it gone owes 1500.
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 3000,
+      payerParticipantId: OWNER,
+      scope: 'custom',
+      customSplitParticipants: [OWNER, 'gone'],
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+    // gone settles their 1500 via a GROUP-level settlement (folded globally,
+    // not via any event universe). Pre-#249 the server credits gone +1500 from
+    // this settlement while DROPPING their -1500 event owed → gone net +1500 →
+    // wrongly REFUSED. With the fold: gone -1500 (owed) +1500 (settlement) = 0,
+    // owner +1500 (paid-owed) -1500 (settlement recipient) = 0 → deletes.
+    await seedGroupSettlement('g', 'gs1', {
+      payerParticipantId: 'gone',
+      recipientParticipantId: OWNER,
+      payerName: 'Gone',
+      recipientName: 'Owner',
+      amountFils: 1500,
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+    expect(res).toMatchObject({ mode: 'softDelete' });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(true);
+  });
+
   test('13. soft-deleted event holding a LIVE unsettled expense → resolves; child kept (audit trail)', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);
