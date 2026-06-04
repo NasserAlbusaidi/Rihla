@@ -46,6 +46,33 @@ void main() {
     },
   );
 
+  test('token write persists the resolver locale for server-side copy (#53)', () async {
+    final db = FakeFirebaseFirestore();
+    final messaging = _MockFirebaseMessaging();
+    final tokenRefresh = StreamController<String>.broadcast();
+    final serviceProvider = _serviceProvider(
+      messaging: messaging,
+      firestore: db,
+      currentUserId: () => 'uid-1',
+      localeResolver: () => 'ar',
+      tokenRefresh: tokenRefresh.stream,
+    );
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    addTearDown(tokenRefresh.close);
+
+    when(
+      () => messaging.requestPermission(alert: true, badge: true, sound: true),
+    ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+    when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+    final service = container.read(serviceProvider);
+    await service.initialize();
+
+    final tokenDoc = await db.collection('fcm_tokens').doc('uid-1').get();
+    expect(tokenDoc.data()?['locale'], 'ar');
+  });
+
   test(
     'initialize denies without trying to save a token when permission is denied',
     () async {
@@ -179,6 +206,7 @@ Provider<NotificationService> _serviceProvider({
   required FakeFirebaseFirestore firestore,
   required String? Function() currentUserId,
   required Stream<String> tokenRefresh,
+  String Function()? localeResolver,
 }) {
   return Provider((ref) {
     final service = NotificationService(
@@ -186,6 +214,7 @@ Provider<NotificationService> _serviceProvider({
       messaging: messaging,
       firestore: firestore,
       currentUserId: currentUserId,
+      localeResolver: localeResolver,
       tokenRefresh: tokenRefresh,
       foregroundMessages: const Stream<RemoteMessage>.empty(),
       openedMessages: const Stream<RemoteMessage>.empty(),

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_config.dart';
+import '../providers/settings_provider.dart';
 
 enum NotificationStatus { off, enabled, permissionDenied, error }
 
@@ -30,12 +31,14 @@ class NotificationService {
     FirebaseMessaging? messaging,
     FirebaseFirestore? firestore,
     String? Function()? currentUserId,
+    String Function()? localeResolver,
     Stream<String>? tokenRefresh,
     Stream<RemoteMessage>? foregroundMessages,
     Stream<RemoteMessage>? openedMessages,
   }) : _messaging = messaging,
        _firestoreOverride = firestore,
        _currentUserIdOverride = currentUserId,
+       _localeResolverOverride = localeResolver,
        _tokenRefreshOverride = tokenRefresh,
        _foregroundMessagesOverride = foregroundMessages,
        _openedMessagesOverride = openedMessages;
@@ -45,6 +48,7 @@ class NotificationService {
   FirebaseMessaging? _messaging;
   final FirebaseFirestore? _firestoreOverride;
   final String? Function()? _currentUserIdOverride;
+  final String Function()? _localeResolverOverride;
   final Stream<String>? _tokenRefreshOverride;
   final Stream<RemoteMessage>? _foregroundMessagesOverride;
   final Stream<RemoteMessage>? _openedMessagesOverride;
@@ -58,6 +62,20 @@ class NotificationService {
 
   String? get _currentUserId =>
       _currentUserIdOverride?.call() ?? FirebaseConfig.currentUser?.uid;
+
+  /// Recipient locale persisted alongside the token so the server can localize
+  /// push copy for terminated/backgrounded apps (#53). Falls back to 'en' (the
+  /// [AppSettings] default) if settings are unavailable — must never throw a
+  /// token write.
+  String get _localeCode {
+    final override = _localeResolverOverride;
+    if (override != null) return override();
+    try {
+      return _ref.read(settingsProvider).languageCode;
+    } catch (_) {
+      return 'en';
+    }
+  }
 
   Stream<String> get _tokenRefresh =>
       _tokenRefreshOverride ?? _messaging!.onTokenRefresh;
@@ -125,6 +143,7 @@ class NotificationService {
         'user_id': userId,
         'token': token,
         'platform': defaultTargetPlatform.name,
+        'locale': _localeCode,
         'updated_at': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
     } catch (e) {
@@ -143,6 +162,7 @@ class NotificationService {
         'user_id': userId,
         'token': token,
         'platform': defaultTargetPlatform.name,
+        'locale': _localeCode,
         'updated_at': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
     } catch (e) {
