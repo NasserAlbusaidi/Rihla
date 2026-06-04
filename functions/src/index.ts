@@ -12,3 +12,7 @@ export {
   groupSettlementWriteRateMonitor,
   groupActivityWriteRateMonitor,
 } from './triggers/writeRateMonitor';
+export {
+  eventSettlementNotifier,
+  groupSettlementNotifier,
+} from './triggers/settlementNotifier';
