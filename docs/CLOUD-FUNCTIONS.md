@@ -34,6 +34,10 @@ export {
   groupSettlementWriteRateMonitor,
   groupActivityWriteRateMonitor,
 } from './triggers/writeRateMonitor';
+export {
+  eventSettlementNotifier,
+  groupSettlementNotifier,
+} from './triggers/settlementNotifier';
 ```
 
 The Flutter client wraps the callables in
@@ -68,6 +72,44 @@ Response to a flag is **manual** (ops sees the log, then intervenes).
 
 > Note: the `deleteGroup` callable (#190) is also live but not yet itemized
 > in the callable table above — tracked as a docs follow-up.
+
+## Firestore triggers — push notifications (#53)
+
+`functions/src/triggers/settlementNotifier.ts` ships two `onDocumentCreated`
+triggers that send **push notifications** when a settlement is recorded. Like
+the write-rate monitor they fire *after* commit and only read + send — they
+never mutate the financial doc. They give the previously-orphaned
+`fcm_tokens/{uid}` PII a real purpose (resolves the #53 data-minimization
+concern by building the sender, not by removing the tokens).
+
+| Trigger | Document path | Notifies |
+|---------|---------------|----------|
+| `eventSettlementNotifier` | `groups/{gid}/events/{eid}/settlements/{id}` | the counterparty (settlement parties **minus** `createdBy`) |
+| `groupSettlementNotifier` | `groups/{gid}/settlements/{id}` | same, for group-level settlements |
+
+Member-join pushes are **not** a trigger — they fire as a fire-and-forget
+side-effect inside `joinGroupByInviteCode` after a committed BRAND-NEW join
+(gated so an idempotent/heal re-join never re-announces; a notify failure
+never fails the join).
+
+Shared sender infrastructure under `functions/src/notifications/`:
+
+- `fcmSender.ts` — `sendToUids(uids, build, data)`: reads `fcm_tokens/{uid}`,
+  sends one **per-recipient-locale** `Message` via `getMessaging().sendEach`,
+  prunes not-registered/invalid tokens, and **never throws**. uids that have
+  no token doc (shadow/unclaimed members, opted-out users) are skipped.
+- `strings.ts` — bilingual (en/ar) copy + `normalizeLocale`. The recipient
+  locale is read from `fcm_tokens/{uid}.locale` (written by the client), so
+  copy renders correctly even when the app is terminated and the OS draws the
+  notification.
+- `formatAmount.ts` — display-only money formatter mirroring `MoneySerializer`'s
+  currency scale (case-insensitive; OMR fallback). Table-tested.
+
+The `data` payload (`{type, groupId, eventId?}`, all string values) drives the
+client tap route to `/group/:gid`. Client consumer: `lib/core/services/
+notification_service.dart` (+ `local_notifier.dart`). **iOS push is inert**
+until APNs cert + entitlement are configured (no iOS CI) — tracked as a
+follow-up; the client stays crash-safe and the token is still stored.
 
 ---
 
@@ -488,6 +530,11 @@ matches the current commit, and the App Check repo variables agree.
 | `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
 | `functions/src/callables/cleanupAnonUidArtifacts.ts` | 374 | Anon→recovered UID migration |
 | `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |
+| `functions/src/triggers/settlementNotifier.ts` | — | #53 settlement-recorded push triggers |
+| `functions/src/notifications/fcmSender.ts` | — | #53 multicast sender + token pruning |
+| `functions/src/notifications/strings.ts` | — | #53 bilingual push copy + `normalizeLocale` |
+| `functions/src/notifications/formatAmount.ts` | — | #53 display money formatter (mirrors MoneySerializer) |
+| `functions/src/notifications/memberJoinNotifier.ts` | — | #53 member-join push helper |
 | `functions/package.json` | — | Node 20 / TypeScript / Jest |
 | `functions/jest.config.js` | — | Test config |
 | `lib/core/services/firebase_functions_service.dart` | 24 | Flutter client wrapper |
