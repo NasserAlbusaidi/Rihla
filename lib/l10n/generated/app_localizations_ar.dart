@@ -1016,6 +1016,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpCouldNotLoadBalances => 'تعذّر تحميل الأرصدة.';
 
   @override
+  String get settleUpIncompleteBalanceWarning =>
+      'قد يكون هذا الرصيد غير مكتمل — تعذّر تحميل بيانات بعض الفعاليات.';
+
+  @override
   String get settleUpAmountGreaterThanZero => 'يجب أن يكون المبلغ أكبر من صفر';
 
   @override

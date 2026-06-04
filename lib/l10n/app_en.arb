@@ -788,6 +788,7 @@
   "settleUpEventMissingTitle": "This event no longer exists",
   "settleUpEventMissingMessage": "It may have been deleted. Tap below to go back to your groups.",
   "settleUpCouldNotLoadBalances": "Couldn't load balances.",
+  "settleUpIncompleteBalanceWarning": "This balance may be incomplete — some event data couldn't be loaded.",
   "settleUpAmountGreaterThanZero": "Amount must be greater than zero",
   "settleUpAmountExceedsOutstanding": "Amount cannot exceed the outstanding balance of {amount}",
   "@settleUpAmountExceedsOutstanding": {

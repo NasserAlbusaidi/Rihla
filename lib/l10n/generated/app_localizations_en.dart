@@ -987,6 +987,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpCouldNotLoadBalances => 'Couldn\'t load balances.';
 
   @override
+  String get settleUpIncompleteBalanceWarning =>
+      'This balance may be incomplete — some event data couldn\'t be loaded.';
+
+  @override
   String get settleUpAmountGreaterThanZero =>
       'Amount must be greater than zero';
 

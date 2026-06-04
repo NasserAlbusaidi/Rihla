@@ -173,6 +173,36 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
   );
 });
 
+/// Event ids in [groupId] whose expense OR settlement read HARD-ERRORED — not
+/// merely loading. Mirrors the error-skip in [groupBalancesProvider] (the
+/// `hasError && !hasValue` branch) so the in-group settle-up surface can WARN
+/// that the displayed balance is incomplete instead of presenting a partial sum
+/// as authoritative (#244).
+///
+/// Iterates the SAME [groupEventsProvider] list and the SAME per-event
+/// [eventExpensesProvider]/[eventSettlementsProvider] instances the live
+/// balance provider sums, so the "incomplete" warning can never disagree with
+/// the events the balance silently zeroed. Loading ≠ partial: a still-loading
+/// event (`isLoading && !hasValue`) is NOT flagged, matching the live provider's
+/// separate loading-skip. A soft-deleted event never enters the events list, so
+/// it never appears here.
+final groupFailedEventIdsProvider =
+    Provider.family<Set<String>, String>((ref, groupId) {
+  final events =
+      ref.watch(groupEventsProvider(groupId)).valueOrNull ?? const <Event>[];
+  final failed = <String>{};
+  for (final event in events) {
+    final eventRef = (groupId: groupId, eventId: event.id);
+    final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+    final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
+    if ((expensesAsync.hasError && !expensesAsync.hasValue) ||
+        (settlementsAsync.hasError && !settlementsAsync.hasValue)) {
+      failed.add(event.id);
+    }
+  }
+  return failed;
+});
+
 /// Pure reduction from a group's events, members, and money records to a
 /// [GroupBalances]. Extracted from [groupBalancesProvider] (#104) so the live
 /// streaming path and the one-shot home path ([groupBalancesOnceProvider])

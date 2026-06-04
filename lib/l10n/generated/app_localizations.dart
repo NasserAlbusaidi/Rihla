@@ -1802,6 +1802,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load balances.'**
   String get settleUpCouldNotLoadBalances;
 
+  /// No description provided for @settleUpIncompleteBalanceWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This balance may be incomplete — some event data couldn\'t be loaded.'**
+  String get settleUpIncompleteBalanceWarning;
+
   /// No description provided for @settleUpAmountGreaterThanZero.
   ///
   /// In en, this message translates to:

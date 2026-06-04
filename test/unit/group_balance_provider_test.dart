@@ -637,4 +637,137 @@ void main() {
       },
     );
   });
+
+  // ---------------------------------------------------------------------------
+  // groupFailedEventIdsProvider tests (#244)
+  // ---------------------------------------------------------------------------
+
+  group('groupFailedEventIdsProvider (#244)', () {
+    const groupId = 'group-1';
+
+    final eventA = _makeEvent(
+      id: 'event-a',
+      groupId: groupId,
+      participantIds: ['uid-1', 'uid-2'],
+    );
+    final eventB = _makeEvent(
+      id: 'event-b',
+      groupId: groupId,
+      participantIds: ['uid-1', 'uid-2'],
+    );
+
+    Future<Set<String>> readFailed(ProviderContainer container) async {
+      container.listen(
+        groupFailedEventIdsProvider(groupId),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      for (var i = 0; i < 10; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      return container.read(groupFailedEventIdsProvider(groupId));
+    }
+
+    test('flags the event whose expense read errors, not the healthy one',
+        () async {
+      final container = ProviderContainer(
+        overrides: [
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA, eventB])),
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith((_) => Stream.value(<Expense>[])),
+          eventSettlementsProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith((_) => Stream.value(<Settlement>[])),
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-b',
+          )).overrideWith(
+            (_) => Stream<List<Expense>>.error(Exception('permission-denied')),
+          ),
+          eventSettlementsProvider((
+            groupId: groupId,
+            eventId: 'event-b',
+          )).overrideWith((_) => Stream.value(<Settlement>[])),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(await readFailed(container), {'event-b'});
+    });
+
+    test('flags the event whose SETTLEMENT read errors (expenses fine)',
+        () async {
+      final container = ProviderContainer(
+        overrides: [
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA])),
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith((_) => Stream.value(<Expense>[])),
+          eventSettlementsProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith(
+            (_) => Stream<List<Settlement>>.error(Exception('denied')),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(await readFailed(container), {'event-a'});
+    });
+
+    test('all reads succeed -> empty set (regression fence)', () async {
+      final container = ProviderContainer(
+        overrides: [
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA, eventB])),
+          for (final id in const ['event-a', 'event-b']) ...[
+            eventExpensesProvider((
+              groupId: groupId,
+              eventId: id,
+            )).overrideWith((_) => Stream.value(<Expense>[])),
+            eventSettlementsProvider((
+              groupId: groupId,
+              eventId: id,
+            )).overrideWith((_) => Stream.value(<Settlement>[])),
+          ],
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(await readFailed(container), isEmpty);
+    });
+
+    test('a still-loading event is NOT flagged (loading != partial)', () async {
+      final pending = StreamController<List<Expense>>();
+      addTearDown(pending.close);
+      final container = ProviderContainer(
+        overrides: [
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA])),
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith((_) => pending.stream),
+          eventSettlementsProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith((_) => Stream.value(<Settlement>[])),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(await readFailed(container), isEmpty);
+    });
+  });
 }

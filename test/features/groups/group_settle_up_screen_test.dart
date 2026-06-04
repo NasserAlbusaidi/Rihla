@@ -371,6 +371,38 @@ void main() {
       expect(find.textContaining('total'), findsOneWidget);
     });
 
+    testWidgets('#244: shows incomplete-balance banner when an event read failed',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          extraOverrides: [
+            groupFailedEventIdsProvider(
+              _groupId,
+            ).overrideWithValue(const {'event-x'}),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('may be incomplete'), findsOneWidget);
+    });
+
+    testWidgets('#244: no banner when all event reads succeed', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          // groupFailedEventIdsProvider not overridden → real provider over the
+          // (empty) events list returns {} → no banner.
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('may be incomplete'), findsNothing);
+    });
+
     testWidgets('renders settlement tile in unified list', (tester) async {
       await tester.pumpWidget(
         _wrap(
