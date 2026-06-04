@@ -6,6 +6,7 @@ import '../../../core/models/split_mode.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
+import '../../groups/providers/group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
@@ -109,14 +110,33 @@ final eventBalancesProvider = Provider.family<
   final expenses = expensesAsync.valueOrNull ?? [];
   final settlements = settlementsAsync.valueOrNull ?? [];
 
-  // Derive participants from event data (no SQLite needed)
-  final participants = params.event.participantIds.map((id) {
+  // #249: fold departed-member split recipients (and former payers/settlers)
+  // into the universe so their owed shares aren't dropped. Members supply the
+  // member-gate + former-member display names; before they load we degrade to
+  // participantIds-only (the prior behavior).
+  final members =
+      ref.watch(groupMembersProvider(params.eventRef.groupId)).valueOrNull ??
+      const [];
+  final allMemberIds = members.map((m) => m.userId).toSet();
+  final liveMemberIds =
+      members.where((m) => !m.isTombstone).map((m) => m.userId).toSet();
+  final memberNameByUid = {for (final m in members) m.userId: m.displayName};
+
+  final universe = eventBalanceUniverse(
+    event: params.event,
+    expenses: expenses,
+    settlements: settlements,
+    allMemberIds: allMemberIds,
+    liveMemberIds: liveMemberIds,
+  );
+
+  final participants = universe.map((id) {
     return Participant(
       id: id,
       tripId: params.event.id,
       role: ParticipantRole.member,
       joinedAt: params.event.createdAt,
-      displayName: params.event.participantNames[id],
+      displayName: params.event.participantNames[id] ?? memberNameByUid[id],
     );
   }).toList();
 
@@ -128,6 +148,70 @@ final eventBalancesProvider = Provider.family<
 
   return AsyncValue.data(balances);
 });
+
+// ---------------------------------------------------------------------------
+// Per-event balance universe (#249)
+// ---------------------------------------------------------------------------
+
+/// The set of UIDs that must be passed as `participants` to
+/// [BalanceCalculator.calculateBalances] for ONE event so that no owed share is
+/// silently dropped: the current `event.participantIds` plus any FORMER GROUP
+/// MEMBER (∉ [liveMemberIds]) who appears in this event's money records.
+///
+/// - **Payers and settlement parties** are folded whenever they are no longer
+///   live (NOT member-gated — established behavior; mirrors
+///   `deleteGroup.ts` `recomputeNet` and the former-payer regression test).
+/// - **Split recipients** (`splitDistribution` keys for shares/exact/percent,
+///   `customSplitParticipants` for `custom` scope) are folded ONLY when the key
+///   is a known group member (live or tombstoned — i.e. in [allMemberIds]).
+///   This member-gate keeps a forged / rules-bypassing NON-member key OUT of
+///   the universe so [BalanceCalculator]'s drop-guard still fires on it,
+///   preserving the #192/#223 server backstop and the `deleteGroup` forged-
+///   write rejection (test 12). A rules-compliant write can only reference a
+///   key that was a participant at write time, so a real orphan is always a
+///   departed (tombstoned) member.
+///
+/// Pure: no `ref`/provider reads. Callers supply [allMemberIds] (every member
+/// doc, live or tombstoned) and [liveMemberIds] (members where `!isTombstone`).
+Set<String> eventBalanceUniverse({
+  required Event event,
+  required List<Expense> expenses,
+  required List<Settlement> settlements,
+  required Set<String> allMemberIds,
+  required Set<String> liveMemberIds,
+}) {
+  final payersAndSettlers = <String>{
+    for (final e in expenses) e.payerParticipantId,
+    for (final s in settlements) ...[
+      if (s.payerParticipantId != null) s.payerParticipantId!,
+      if (s.recipientParticipantId != null) s.recipientParticipantId!,
+    ],
+  };
+
+  final splitRecipientKeys = <String>{};
+  for (final e in expenses) {
+    final mode = e.splitMode;
+    final dist = e.splitDistribution;
+    if (mode != null &&
+        mode != SplitMode.equally &&
+        dist != null &&
+        dist.isNotEmpty) {
+      splitRecipientKeys.addAll(dist.keys);
+    }
+    if (e.scope == ExpenseScope.custom &&
+        e.customSplitParticipants != null &&
+        e.customSplitParticipants!.isNotEmpty) {
+      splitRecipientKeys.addAll(e.customSplitParticipants!);
+    }
+  }
+
+  final formerActors = <String>{
+    ...payersAndSettlers.difference(liveMemberIds),
+    ...splitRecipientKeys.intersection(allMemberIds).difference(liveMemberIds),
+  };
+
+  return <String>{...event.participantIds, ...formerActors};
+}
 
 // ---------------------------------------------------------------------------
 // Balance calculation engine (pure function -- in-memory)

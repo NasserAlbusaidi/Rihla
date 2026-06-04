@@ -4,6 +4,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
@@ -43,6 +44,7 @@ GroupMember _makeMember({
   required String userId,
   required String groupId,
   String? displayName,
+  bool isTombstone = false,
 }) {
   return GroupMember(
     id: 'member-$userId',
@@ -50,6 +52,7 @@ GroupMember _makeMember({
     userId: userId,
     displayName: displayName ?? 'User $userId',
     role: 'MEMBER',
+    isTombstone: isTombstone,
     joinedAt: DateTime(2025, 1, 1),
   );
 }
@@ -60,13 +63,20 @@ Expense _makeExpense({
   required String payerParticipantId,
   required Decimal amount,
   String tripId = 'event-a',
+  ExpenseScope scope = ExpenseScope.global,
+  List<String>? customSplitParticipants,
+  SplitMode? splitMode,
+  Map<String, Decimal>? splitDistribution,
 }) {
   return Expense(
     id: id,
     tripId: tripId,
     payerParticipantId: payerParticipantId,
     amount: amount,
-    scope: ExpenseScope.global,
+    scope: scope,
+    customSplitParticipants: customSplitParticipants,
+    splitMode: splitMode,
+    splitDistribution: splitDistribution,
     createdAt: DateTime(2025, 1, 1),
   );
 }
@@ -116,6 +126,40 @@ Future<void> _pumpUntilData(ProviderContainer container, String groupId) async {
     await Future<void>.delayed(Duration.zero);
   }
 }
+
+/// Builds a [ProviderContainer] for a single-event group (keeps the #249
+/// conservation tests readable).
+ProviderContainer _singleEventContainer({
+  required String groupId,
+  required Event event,
+  required List<GroupMember> members,
+  required List<Expense> expenses,
+  List<Settlement> eventSettlements = const [],
+  List<Settlement> groupSettlements = const [],
+}) {
+  return ProviderContainer(
+    overrides: [
+      groupEventsProvider(groupId).overrideWith((_) => Stream.value([event])),
+      groupMembersProvider(groupId).overrideWith((_) => Stream.value(members)),
+      eventExpensesProvider((
+        groupId: groupId,
+        eventId: event.id,
+      )).overrideWith((_) => Stream.value(expenses)),
+      eventSettlementsProvider((
+        groupId: groupId,
+        eventId: event.id,
+      )).overrideWith((_) => Stream.value(eventSettlements)),
+      groupSettlementsProvider(
+        groupId,
+      ).overrideWith((_) => Stream.value(groupSettlements)),
+    ],
+  );
+}
+
+Decimal _sumNet(GroupBalances data) => data.balances.fold(
+  Decimal.zero,
+  (sum, b) => sum + b.netBalance,
+);
 
 void main() {
   // ---------------------------------------------------------------------------
@@ -634,6 +678,237 @@ void main() {
           data.perEventBreakdown['uid-1']?['event-a'],
           equals(Decimal.parse('10.000')),
         );
+      },
+    );
+  });
+
+  // ---------------------------------------------------------------------------
+  // #249 — conservation when a split references a DEPARTED MEMBER
+  //
+  // A former group member (tombstoned, removed from event.participantIds) who
+  // appears only as a SPLIT RECIPIENT (never a payer/settlement actor) must be
+  // folded back into the per-event balance universe so their owed share is not
+  // silently dropped — restoring sum(netBalance)==0 with a visible trace.
+  // The fold is MEMBER-GATED: a forged key that was NEVER a member stays
+  // dropped (preserves the #223/#192 backstop + deleteGroup test 12).
+  // ---------------------------------------------------------------------------
+  group('groupBalancesProvider #249 orphaned-owed conservation', () {
+    const groupId = 'group-1';
+
+    test(
+      'former split-recipient (tombstoned member, owed-only) is kept; sum(net)==0',
+      () async {
+        // uid-3 was a member, left (tombstoned + removed from participantIds),
+        // but a custom-split expense still owes them a share.
+        final event = _makeEvent(
+          id: 'event-a',
+          groupId: groupId,
+          participantIds: ['uid-1', 'uid-2'],
+          participantNames: {'uid-1': 'Alice', 'uid-2': 'Bob'},
+        );
+        final expenses = [
+          _makeExpense(
+            id: 'exp-1',
+            payerParticipantId: 'uid-1',
+            amount: Decimal.parse('9.000'),
+            scope: ExpenseScope.custom,
+            customSplitParticipants: ['uid-1', 'uid-2', 'uid-3'],
+          ),
+        ];
+        final members = [
+          _makeMember(userId: 'uid-1', groupId: groupId, displayName: 'Alice'),
+          _makeMember(userId: 'uid-2', groupId: groupId, displayName: 'Bob'),
+          _makeMember(
+            userId: 'uid-3',
+            groupId: groupId,
+            displayName: 'Carol',
+            isTombstone: true,
+          ),
+        ];
+
+        final container = _singleEventContainer(
+          groupId: groupId,
+          event: event,
+          members: members,
+          expenses: expenses,
+        );
+        addTearDown(container.dispose);
+        await _pumpUntilData(container, groupId);
+        final data = container.read(groupBalancesProvider(groupId)).valueOrNull!;
+
+        // 9.000 / 3 = 3.000 each. uid-1 paid 9 → +6; uid-2 → -3; uid-3 → -3.
+        expect(_sumNet(data), equals(Decimal.zero));
+        final carol = data.balances.singleWhere(
+          (b) => b.participantId == 'uid-3',
+        );
+        expect(carol.netBalance, equals(Decimal.parse('-3.000')));
+        expect(carol.totalOwed, equals(Decimal.parse('3.000')));
+        // The departed member stays out of the participantIds-only breakdown.
+        expect(data.perEventBreakdown.containsKey('uid-3'), isFalse);
+      },
+    );
+
+    test('departed split-recipient + their event settlement conserves', () async {
+      // uid-3 (tombstoned) owes 3.000 from a custom split AND had settled it
+      // (event settlement uid-3 → uid-1, written while still a participant).
+      final event = _makeEvent(
+        id: 'event-a',
+        groupId: groupId,
+        participantIds: ['uid-1', 'uid-2'],
+        participantNames: {'uid-1': 'Alice', 'uid-2': 'Bob'},
+      );
+      final expenses = [
+        _makeExpense(
+          id: 'exp-1',
+          payerParticipantId: 'uid-1',
+          amount: Decimal.parse('9.000'),
+          scope: ExpenseScope.custom,
+          customSplitParticipants: ['uid-1', 'uid-2', 'uid-3'],
+        ),
+      ];
+      final eventSettlements = [
+        _makeSettlement(
+          id: 'set-1',
+          payerParticipantId: 'uid-3',
+          recipientParticipantId: 'uid-1',
+          amount: Decimal.parse('3.000'),
+          scope: 'event',
+          tripId: 'event-a',
+        ),
+      ];
+      final members = [
+        _makeMember(userId: 'uid-1', groupId: groupId, displayName: 'Alice'),
+        _makeMember(userId: 'uid-2', groupId: groupId, displayName: 'Bob'),
+        _makeMember(
+          userId: 'uid-3',
+          groupId: groupId,
+          displayName: 'Carol',
+          isTombstone: true,
+        ),
+      ];
+
+      final container = _singleEventContainer(
+        groupId: groupId,
+        event: event,
+        members: members,
+        expenses: expenses,
+        eventSettlements: eventSettlements,
+      );
+      addTearDown(container.dispose);
+      await _pumpUntilData(container, groupId);
+      final data = container.read(groupBalancesProvider(groupId)).valueOrNull!;
+
+      // uid-1: paid 9, owed 3, settlementAdj -3 → +3. uid-2: -3.
+      // uid-3: owed 3, settlementAdj +3 → 0 (settled their share).
+      expect(_sumNet(data), equals(Decimal.zero));
+      expect(
+        data.balances.singleWhere((b) => b.participantId == 'uid-3').netBalance,
+        equals(Decimal.zero),
+      );
+    });
+
+    test(
+      'accepted divisor side-effect: folded member shares co-event global expense',
+      () async {
+        // E1 custom {1,2,3} + E2 global. Once uid-3 is folded, the GLOBAL E2
+        // divides 3 ways too (matches established former-payer behavior).
+        final event = _makeEvent(
+          id: 'event-a',
+          groupId: groupId,
+          participantIds: ['uid-1', 'uid-2'],
+          participantNames: {'uid-1': 'Alice', 'uid-2': 'Bob'},
+        );
+        final expenses = [
+          _makeExpense(
+            id: 'e1',
+            payerParticipantId: 'uid-1',
+            amount: Decimal.parse('6.000'),
+            scope: ExpenseScope.custom,
+            customSplitParticipants: ['uid-1', 'uid-2', 'uid-3'],
+          ),
+          _makeExpense(
+            id: 'e2',
+            payerParticipantId: 'uid-1',
+            amount: Decimal.parse('6.000'),
+            // global → splits across the (now expanded) participant universe.
+          ),
+        ];
+        final members = [
+          _makeMember(userId: 'uid-1', groupId: groupId, displayName: 'Alice'),
+          _makeMember(userId: 'uid-2', groupId: groupId, displayName: 'Bob'),
+          _makeMember(
+            userId: 'uid-3',
+            groupId: groupId,
+            displayName: 'Carol',
+            isTombstone: true,
+          ),
+        ];
+
+        final container = _singleEventContainer(
+          groupId: groupId,
+          event: event,
+          members: members,
+          expenses: expenses,
+        );
+        addTearDown(container.dispose);
+        await _pumpUntilData(container, groupId);
+        final data = container.read(groupBalancesProvider(groupId)).valueOrNull!;
+
+        // E1: 2 each. E2 global: 2 each across {1,2,3}. uid-1 paid 12, owed 4
+        // → +8; uid-2 owed 4 → -4; uid-3 owed 4 (2 from E1 + 2 from global E2)
+        // → -4.
+        expect(_sumNet(data), equals(Decimal.zero));
+        expect(
+          data.balances
+              .singleWhere((b) => b.participantId == 'uid-3')
+              .netBalance,
+          equals(Decimal.parse('-4.000')),
+        );
+      },
+    );
+
+    test(
+      'forged NON-member split key stays dropped (member-gate; #223 backstop)',
+      () async {
+        // "ghost" was NEVER a member → must NOT be folded; conservation is
+        // deliberately NOT faked (mirrors deleteGroup test 12 client-side).
+        final event = _makeEvent(
+          id: 'event-a',
+          groupId: groupId,
+          participantIds: ['uid-1', 'uid-2'],
+          participantNames: {'uid-1': 'Alice', 'uid-2': 'Bob'},
+        );
+        final expenses = [
+          _makeExpense(
+            id: 'exp-1',
+            payerParticipantId: 'uid-1',
+            amount: Decimal.parse('9.000'),
+            scope: ExpenseScope.custom,
+            customSplitParticipants: ['uid-1', 'uid-2', 'ghost'],
+          ),
+        ];
+        final members = [
+          _makeMember(userId: 'uid-1', groupId: groupId, displayName: 'Alice'),
+          _makeMember(userId: 'uid-2', groupId: groupId, displayName: 'Bob'),
+        ];
+
+        final container = _singleEventContainer(
+          groupId: groupId,
+          event: event,
+          members: members,
+          expenses: expenses,
+        );
+        addTearDown(container.dispose);
+        await _pumpUntilData(container, groupId);
+        final data = container.read(groupBalancesProvider(groupId)).valueOrNull!;
+
+        // ghost dropped → uid-1 +6, uid-2 -3 → sum +3 (NOT healed). ghost
+        // never appears (not a member).
+        expect(
+          data.balances.any((b) => b.participantId == 'ghost'),
+          isFalse,
+        );
+        expect(_sumNet(data), equals(Decimal.parse('3.000')));
       },
     );
   });

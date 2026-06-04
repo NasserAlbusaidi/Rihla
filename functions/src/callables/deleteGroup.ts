@@ -480,12 +480,16 @@ async function recomputeNet(
     groupData.deletingInProgress === true ? timestampMillis(groupData.deleteLockedAt) : null;
 
   // liveMemberIds: a member is live unless explicitly tombstoned.
+  // allMemberIds: every member doc (live OR tombstoned) — used to member-gate
+  // the #249 split-recipient fold so a forged non-member key is never credited.
   const membersSnap = await groupRef.collection('members').get();
   const liveMemberIds = new Set<string>();
+  const allMemberIds = new Set<string>();
   for (const member of membersSnap.docs) {
     const data = member.data();
-    if (data.isTombstone !== true && typeof data.userId === 'string') {
-      liveMemberIds.add(data.userId);
+    if (typeof data.userId === 'string') {
+      allMemberIds.add(data.userId);
+      if (data.isTombstone !== true) liveMemberIds.add(data.userId);
     }
   }
 
@@ -514,9 +518,13 @@ async function recomputeNet(
     const expenses = expensesSnap.docs.map((d) => d.data()).filter(isLiveDoc);
     const settlements = settlementsSnap.docs.map((d) => d.data()).filter(isLiveDoc);
 
-    // Per-event universe = participantIds ∪ former financial actors
-    // (payer/settlement uids no longer in liveMemberIds). Mirrors
-    // group_balance_provider.dart:225-241.
+    // Per-event universe = participantIds ∪ former financial actors. Mirrors
+    // eventBalanceUniverse() in
+    // lib/features/ledger/providers/expense_provider.dart (#249) — keep in
+    // parity or this delete gate disagrees with the client ledger.
+    //
+    // Payers + settlement parties: folded whenever no longer live (NOT
+    // member-gated — established behavior).
     const financial = new Set<string>();
     for (const e of expenses) {
       if (typeof e.payerParticipantId === 'string') financial.add(e.payerParticipantId);
@@ -527,9 +535,36 @@ async function recomputeNet(
         financial.add(s.recipientParticipantId);
       }
     }
+    // Split recipients (splitDistribution keys for non-equally modes,
+    // customSplitParticipants for custom scope) — folded ONLY if a known member
+    // (live or tombstoned). Member-gating keeps a forged NON-member key out of
+    // the universe so its owed is dropped (preserves the #192/#223 backstop and
+    // this gate's forged-write rejection).
+    const splitRecipientKeys = new Set<string>();
+    for (const e of expenses) {
+      const mode = decodeSplitMode(e.splitMode);
+      if (
+        mode != null &&
+        mode !== 'equally' &&
+        e.splitDistribution != null &&
+        typeof e.splitDistribution === 'object'
+      ) {
+        for (const k of Object.keys(e.splitDistribution as Record<string, unknown>)) {
+          splitRecipientKeys.add(k);
+        }
+      }
+      if (e.scope === 'custom') {
+        for (const uid of stringArray(e.customSplitParticipants)) {
+          splitRecipientKeys.add(uid);
+        }
+      }
+    }
     const universe = new Set<string>(participantIds);
     for (const uid of financial) {
       if (!liveMemberIds.has(uid)) universe.add(uid);
+    }
+    for (const uid of splitRecipientKeys) {
+      if (allMemberIds.has(uid) && !liveMemberIds.has(uid)) universe.add(uid);
     }
     if (universe.size === 0) continue;
 
