@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/models/split_mode.dart';
 import '../../../core/services/money_serializer.dart';
@@ -218,9 +219,71 @@ Set<String> eventBalanceUniverse({
 // ---------------------------------------------------------------------------
 
 /// Balance calculation engine
+/// Why a non-equal split allocation fell back to an equal split. Each value maps
+/// to exactly one guard in [BalanceCalculator]'s allocators. Reported through
+/// [BalanceCalculator.onSplitFallback] (#250) so a malformed `splitDistribution`
+/// that reaches the calculator anyway — a forged / legacy / Admin-SDK write that
+/// bypassed the add/edit UI guard (PR #253) — is observable. There is no user to
+/// warn on those paths; server-side value validation (#192) is the complement.
+enum SplitFallbackReason {
+  /// `shares`: a negative weight (would emit a negative owed via _allocateWeighted).
+  negativeShares,
+
+  /// `shares`: total of all weights is <= 0 (cannot normalize).
+  invalidShares,
+
+  /// `exact`: a negative absolute amount (cannot owe a negative share).
+  negativeExact,
+
+  /// `exact`: the entries' sum drifts past the tolerance from the expense amount.
+  exactAmountDrift,
+
+  /// `exact`: an in-tolerance residual no recipient can absorb without going
+  /// negative (reachable only via a forged sub-precision write).
+  exactResidualUnabsorbable,
+
+  /// `percent`: a negative percentage.
+  negativePercent,
+
+  /// `percent`: the percentages' sum drifts past the tolerance from 100.
+  percentDrift,
+}
+
 class BalanceCalculator {
   static final Decimal _splitTolerance = Decimal.parse('0.001');
   static final Decimal _hundred = Decimal.fromInt(100);
+
+  /// Telemetry sink for split-allocation fallbacks (#250). Defaults to a
+  /// PII-free Sentry warning ([_reportSplitFallbackToSentry]); overridable in
+  /// tests to assert the calculator never silently swallows a malformed split.
+  /// Keeping the SDK call behind this seam leaves the pure money oracle (mirrored
+  /// byte-for-byte by the TS `deleteGroup` gate) decoupled from `sentry_flutter`.
+  static void Function(SplitFallbackReason reason, Expense expense)
+  onSplitFallback = _reportSplitFallbackToSentry;
+
+  static void _reportSplitFallbackToSentry(
+    SplitFallbackReason reason,
+    Expense expense,
+  ) {
+    // Local dev console (unchanged from the pre-#250 debugPrint behaviour).
+    debugPrint(
+      'Split fallback (${reason.name}) for expense ${expense.id}; '
+      'falling back to equal split.',
+    );
+    // Production telemetry. PII-free: only the doc id, the reason, and the split
+    // mode — never names or amounts.
+    Sentry.captureMessage(
+      'ledger.split_fallback',
+      level: SentryLevel.warning,
+      withScope: (scope) {
+        scope.setContexts('split_fallback', <String, dynamic>{
+          'reason': reason.name,
+          'expenseId': expense.id,
+          'splitMode': expense.splitMode?.name ?? 'unknown',
+        });
+      },
+    );
+  }
 
   /// Calculate balances with proper scope handling
   ///
@@ -392,9 +455,7 @@ class BalanceCalculator {
     // persist one. Mirror the _allocateExact guard. Server-side value
     // validation is the complementary fix (#192).
     if (distribution.values.any((value) => value < Decimal.zero)) {
-      debugPrint(
-        'Negative shares split entry for expense ${expense.id}; falling back to equal split.',
-      );
+      onSplitFallback(SplitFallbackReason.negativeShares, expense);
       return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
@@ -404,9 +465,7 @@ class BalanceCalculator {
     );
 
     if (totalShares <= Decimal.zero) {
-      debugPrint(
-        'Invalid shares split for expense ${expense.id}; falling back to equal split.',
-      );
+      onSplitFallback(SplitFallbackReason.invalidShares, expense);
       return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
@@ -431,9 +490,7 @@ class BalanceCalculator {
     // it (or the residual close-out below) emit a negative owed. Server-side
     // value validation is the complementary fix tracked in #192.
     if (distribution.values.any((value) => value < Decimal.zero)) {
-      debugPrint(
-        'Negative exact split entry for expense ${expense.id}; falling back to equal split.',
-      );
+      onSplitFallback(SplitFallbackReason.negativeExact, expense);
       return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
@@ -443,9 +500,7 @@ class BalanceCalculator {
     );
 
     if ((total - expense.amount).abs() > _splitTolerance) {
-      debugPrint(
-        'Invalid exact split for expense ${expense.id}; falling back to equal split.',
-      );
+      onSplitFallback(SplitFallbackReason.exactAmountDrift, expense);
       return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
@@ -479,10 +534,7 @@ class BalanceCalculator {
       // cannot represent `amount` with non-negative owed. Unreachable for an
       // in-tolerance drift on a positive amount, but treat as invalid with the
       // same posture as the out-of-tolerance guard rather than emit a negative.
-      debugPrint(
-        'Exact split residual cannot be absorbed non-negatively for expense '
-        '${expense.id}; falling back to equal split.',
-      );
+      onSplitFallback(SplitFallbackReason.exactResidualUnabsorbable, expense);
       return _allocateEqual(expense.amount, distribution.keys, currency);
     }
     return {
@@ -500,9 +552,7 @@ class BalanceCalculator {
     // would emit a negative owed even when the entries still sum to 100. Mirror
     // the _allocateExact guard; complementary to server-side validation (#192).
     if (distribution.values.any((value) => value < Decimal.zero)) {
-      debugPrint(
-        'Negative percent split entry for expense ${expense.id}; falling back to equal split.',
-      );
+      onSplitFallback(SplitFallbackReason.negativePercent, expense);
       return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
@@ -512,9 +562,7 @@ class BalanceCalculator {
     );
 
     if ((totalPercent - _hundred).abs() > _splitTolerance) {
-      debugPrint(
-        'Invalid percent split for expense ${expense.id}; falling back to equal split.',
-      );
+      onSplitFallback(SplitFallbackReason.percentDrift, expense);
       return _allocateEqual(expense.amount, distribution.keys, currency);
     }
 
