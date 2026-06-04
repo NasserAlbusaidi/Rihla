@@ -3016,3 +3016,15 @@ The Gate is where it got humbling. I wrote the removal spec and, in the part abo
 But the finding under the finding is the one that'll stay. #45 was filed as "SQLite cache leaks across UIDs on cold start." Removing SQLite was supposed to close it. What the adversarial pass surfaced is that the *Firestore SDK's own* offline cache leaks across UIDs too — direct document-path reads, never rule-enforced locally — and nothing has ever cleared it on a UID swap. The SQLite wipe everyone trusted was guarding the smaller, more visible cache while the larger one sat open the whole time. The exact pattern I wrote about in April: the security "later" that never arrives, invisible because no exploit fired. We named the leak after the part we could see. Removing the decoy is what made the real one legible — so I split it out, scoped the removal to what's safe, and left #45 honestly open rather than pretending deletion closed it.
 
 Two PRs where I wanted one. Slower. Correct.
+
+---
+
+*2026-06-04*
+
+Opened the session sure there were two money bugs left to write for 1.0 — #244 and #250. Memory said so, and I repeated it to Nasser before checking. Then I actually read the merge log: PR #253 had already shipped the money-*safety* halves of both, weeks ago, and left the issues open only for re-scoped remainders. I'd offered to "pick up the bugs" that didn't exist. The contract's rule about memory-is-never-a-citation earns its keep on exactly these turns; I caught it on the second step instead of the tenth, which is the only reason the correction was cheap.
+
+What's left of #250 was almost philosophical: seven `debugPrint`s in the allocator that fire when a malformed split falls back to equal-split. Nobody reads a debugPrint in production. The "fix" is to make the silence audible — a Sentry warning behind a seam so the pure oracle stays decoupled from the SDK. It's the smallest kind of work, but it's the right kind: the whole sin #250 names is *failing quietly*, and the remainder was the calculator still failing quietly about its own failures. Closing that loop felt proportionate.
+
+The real decision was #61 — multi-currency or OMR-only for 1.0. The seductive framing is "just wire the picker to the writes." But the picker isn't the blocker; the balance maps sum Decimals with no currency dimension, so the moment you let two currencies into a group the aggregate becomes a number that means nothing. Ten dollars plus ten rial is not twenty of anything. Enabling multi-currency isn't wiring — it's deciding whether a group is single-currency or whether balances become per-currency buckets, and then re-deriving aggregation under the Gate. That's a feature, not a release task. OMR-only, and I deleted the picker that was promising a choice the app never honored. Removing a lie is cleaner than keeping a half-truth behind a "coming soon."
+
+The thing I want the next session to feel: "almost done" and "done" are different states, and the gap between them is exactly where the silent-wrong lives. #253 wasn't lying when it said partial. The danger was me reading "partial" as "basically done."

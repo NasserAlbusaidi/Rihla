@@ -28,7 +28,6 @@ import '../../auth/widgets/delete_account_retry_dialog.dart';
 import '../../auth/widgets/sign_out_confirm_dialog.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
-import '../widgets/currency_picker_sheet.dart';
 import '../widgets/default_split_picker_sheet.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
 import '../widgets/language_picker_sheet.dart';
@@ -674,12 +673,11 @@ class _PreferencesCard extends ConsumerWidget {
                         .setPushNotificationsEnabled(value);
                   },
           ),
-          _PrefRow(
-            leading: _PrefIcon(icon: Iconsax.global, bg: colors.cardSoft),
-            label: context.l10n.profilePreferencesCurrency,
-            trailingText: _currencyTrailing(settings.currencyCode),
-            onTap: () => CurrencyPickerSheet.show(context),
-          ),
+          // #61: 1.0 is OMR-only. The currency picker was orphaned (it wrote
+          // AppSettings.currencyCode, which no write path ever read), so it
+          // promised a choice the app could not honour. Removed until the
+          // multi-currency follow-up wires currency end-to-end AND solves
+          // currency-blind aggregation in computeGroupBalances.
           _PrefRow(
             leading: _PrefIconLetter(letter: 'Aa', bg: colors.saffronTint),
             label: context.l10n.profilePreferencesLanguage,
@@ -1124,11 +1122,6 @@ class _PrefIconLetter extends StatelessWidget {
 }
 
 // ──────────────────────────── Preference row label helpers
-
-String _currencyTrailing(String code) {
-  // #144: ISO code only — no composite 'code · symbol'.
-  return code;
-}
 
 String _languageTrailing(String code) {
   switch (code) {
