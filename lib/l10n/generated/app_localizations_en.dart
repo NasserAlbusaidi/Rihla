@@ -1074,8 +1074,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpNoteHint => 'Add a note (optional)';
 
   @override
-  String settleUpNotifyToConfirm(Object name) {
-    return '$name will be notified to confirm.';
+  String settleUpRecordsImmediately(Object name) {
+    return 'This records your payment to $name immediately.';
   }
 
   @override
