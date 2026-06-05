@@ -436,7 +436,7 @@ exit 64
   test('Firebase deploy helper refuses dirty tracked worktrees', () {
     final deploy = read('tool/deploy_firebase_backend.sh');
 
-    final buildIndex = deploy.indexOf('npm20 --prefix functions run build');
+    final buildIndex = deploy.indexOf('npm22 --prefix functions run build');
     final postBuildCleanIndex = deploy.indexOf(
       'require_clean_worktree',
       buildIndex,
