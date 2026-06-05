@@ -146,6 +146,14 @@ include build traceability: commit SHA, APK/AAB SHA-256, Play track/build
 number, or the relevant output from `tool/print_android_qa_handoff.sh`.
 Generic words like `build` or `artifact` are not enough by themselves.
 
+The per-row evidence hints that the gate treats as unfilled placeholders (and
+rejects) are: `Group ID or screenshot`, `Invite code and joined member name`,
+`Group no longer appears on both devices`, `Screenshots from both devices`,
+`Keyboard screenshot and saved amount`, `Before/after screenshots`,
+`` `fcm_tokens/{uid}` exists ``, `` `fcm_tokens/{uid}` removed ``, and
+`Arabic RTL screenshots and golden-path log`. A row only counts once its hint
+is replaced with a concrete, build-traceable artifact (as the rows below now are).
+
 | ID | Area | iOS | Android | Evidence |
 |---|---|---|---|---|
 | RD-01 | Create group | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL, Android 16 | Group "QA 2026-06-05" id 00dbec67-4286-4237-bd5e-36c1fd5ff40b; invite HN9TFU; creator Alice; group detail+settings open with no permission errors. Build app-debug.apk d425e954e346, prod rihla-safar |
