@@ -90,7 +90,7 @@ Lookup material. Does not override the contract.
 
 ## Project Overview
 
-Rihla ("Journey") — Splitwise-style group expense splitter: persistent groups → events → ledger. Package `safar`, Android `com.safar.safar`, version per `pubspec.yaml`. Backend **Firebase only**: Firestore, Auth, Cloud Functions (Node 20/TS), FCM. No Firebase Storage SDK — protected media via Functions. Firestore offline persistence handles offline reads and queued-write replay (the hand-rolled SQLite read-cache was removed in #50). Anon auth on first launch + optional email-link recovery. Supabase migration is **complete — do not add Supabase keys**.
+Rihla ("Journey") — Splitwise-style group expense splitter: persistent groups → events → ledger. Package `safar`, Android `com.safar.safar`, version per `pubspec.yaml`. Backend **Firebase only**: Firestore, Auth, Cloud Functions (Node 22/TS), FCM. No Firebase Storage SDK — protected media via Functions. Firestore offline persistence handles offline reads and queued-write replay (the hand-rolled SQLite read-cache was removed in #50). Anon auth on first launch + optional email-link recovery. Supabase migration is **complete — do not add Supabase keys**.
 
 ## Essential Commands
 
@@ -175,7 +175,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 
 ## Database
 
-Firestore is source of truth; offline reads/writes are served by the **Firestore SDK's own offline persistence** (`persistenceEnabled`, unlimited cache, set in `firebase_config.dart`). The hand-rolled SQLite cache (`safar_cache.db`, `LocalDatabase`, `lib/core/services/cache/`) was **removed in #50 — do not reintroduce a local cache or `sqflite`; extend `FirestoreRepository`.** Paths + security model: `security/firestore.rules` + `docs/ARCHITECTURE.md`. Functions: `functions/src/` (TS, Node 20), Jest under Java 21 + emulator.
+Firestore is source of truth; offline reads/writes are served by the **Firestore SDK's own offline persistence** (`persistenceEnabled`, unlimited cache, set in `firebase_config.dart`). The hand-rolled SQLite cache (`safar_cache.db`, `LocalDatabase`, `lib/core/services/cache/`) was **removed in #50 — do not reintroduce a local cache or `sqflite`; extend `FirestoreRepository`.** Paths + security model: `security/firestore.rules` + `docs/ARCHITECTURE.md`. Functions: `functions/src/` (TS, Node 22), Jest under Java 21 + emulator.
 
 ## CI/CD & Docs
 

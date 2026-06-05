@@ -12,7 +12,7 @@ Reference for the Firebase Cloud Functions Rihla ships: HTTPS callables
 | `cleanupAnonUidArtifacts` | `functions/src/callables/cleanupAnonUidArtifacts.ts` | After email-link recovery, migrate Firestore + Auth references from the old anonymous UID to the recovered UID. |
 | `deleteAccount` | `functions/src/callables/deleteAccount.ts` | Server-side account-deletion cascade: scrub PII, replace UID with a per-group tombstone, delete FCM/joinAttempts/Auth user. |
 
-Functions live in `functions/` (Node 20 / TypeScript). They use the
+Functions live in `functions/` (Node 22 / TypeScript). They use the
 Firebase Admin SDK which **bypasses Firestore Security Rules** — every
 authorization check is implemented inside the callable bodies.
 
@@ -535,7 +535,7 @@ matches the current commit, and the App Check repo variables agree.
 | `functions/src/notifications/strings.ts` | — | #53 bilingual push copy + `normalizeLocale` |
 | `functions/src/notifications/formatAmount.ts` | — | #53 display money formatter (mirrors MoneySerializer) |
 | `functions/src/notifications/memberJoinNotifier.ts` | — | #53 member-join push helper |
-| `functions/package.json` | — | Node 20 / TypeScript / Jest |
+| `functions/package.json` | — | Node 22 / TypeScript / Jest |
 | `functions/jest.config.js` | — | Test config |
 | `lib/core/services/firebase_functions_service.dart` | 24 | Flutter client wrapper |
 | `security/firestore.rules` | 755 | Companion rules; see [SECURITY-RULES.md](./SECURITY-RULES.md) |
