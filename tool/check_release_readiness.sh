@@ -42,7 +42,7 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
-npm20() {
+npm22() {
   local npm_cli
   npm_cli="$(command -v npm || true)"
   if [ -z "$npm_cli" ]; then
@@ -50,11 +50,11 @@ npm20() {
     return 1
   fi
 
-  npx --yes node@20 "$npm_cli" "$@"
+  npx --yes node@22 "$npm_cli" "$@"
 }
 
-node20_available() {
-  npx --yes node@20 -e 'const major = Number(process.versions.node.split(".")[0]); console.log(process.version); process.exit(major === 20 ? 0 : 1);'
+node22_available() {
+  npx --yes node@22 -e 'const major = Number(process.versions.node.split(".")[0]); console.log(process.version); process.exit(major === 22 ? 0 : 1);'
 }
 
 setup_java21() {
@@ -120,10 +120,10 @@ if [ "${RIHLA_SKIP_IOS_QA:-}" = "yes" ]; then
 fi
 
 run_step "Java 21 available" setup_java21
-run_step "Node 20 available for Functions commands" node20_available
-run_step "Functions dependencies install from lockfile" npm20 --prefix functions ci
-run_step "Functions dependency audit at low severity" npm20 --prefix functions audit --omit=dev --audit-level=low
-run_step "Functions TypeScript build" npm20 --prefix functions run build
+run_step "Node 22 available for Functions commands" node22_available
+run_step "Functions dependencies install from lockfile" npm22 --prefix functions ci
+run_step "Functions dependency audit at low severity" npm22 --prefix functions audit --omit=dev --audit-level=low
+run_step "Functions TypeScript build" npm22 --prefix functions run build
 run_step "App Check enforcement configured" check_app_check_enforced
 run_step "App Check Console enrollment confirmed" check_app_check_enrollment_confirmed
 run_step "Firebase emulator rules/functions tests" bash tool/run_firebase_emulator_tests.sh

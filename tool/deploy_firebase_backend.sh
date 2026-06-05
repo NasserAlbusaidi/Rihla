@@ -10,7 +10,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$ROOT_DIR"
 
-npm20() {
+npm22() {
   local npm_cli
   npm_cli="$(command -v npm || true)"
   if [ -z "$npm_cli" ]; then
@@ -18,7 +18,7 @@ npm20() {
     return 1
   fi
 
-  npx --yes node@20 "$npm_cli" "$@"
+  npx --yes node@22 "$npm_cli" "$@"
 }
 
 require_clean_worktree() {
@@ -73,9 +73,9 @@ fi
 require_clean_worktree
 require_approved_sha
 
-npm20 --prefix functions ci
-npm20 --prefix functions audit --omit=dev --audit-level=low
-npm20 --prefix functions run build
+npm22 --prefix functions ci
+npm22 --prefix functions audit --omit=dev --audit-level=low
+npm22 --prefix functions run build
 require_clean_worktree
 require_approved_sha
 
