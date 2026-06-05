@@ -4,6 +4,53 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-06-05
+
+Feature + hardening release. Adds push notifications and ships a cluster of
+money-correctness and balance-conservation fixes ahead of the public launch.
+Locks 1.0 to OMR-only. Verified against the production Firebase backend with a
+full physical-device QA pass (RD-01–RD-09).
+
+### Added
+- **Push notifications (#53).** You're now notified when someone joins your
+  group or records a settlement. Includes the FCM consumer (foreground display,
+  background handler, deep-link routing into the relevant group/event) and
+  locale-aware notification copy persisted per recipient.
+- **Server-side write-rate monitoring (#198).** Per-actor write-rate detection
+  triggers flag abnormal bursts across events, group settlements, and activity.
+
+### Changed
+- **1.0 is OMR-only (#61).** The orphaned currency picker is removed; every
+  money write path is OMR for this release. Multi-currency aggregation is a
+  post-1.0 feature.
+- **Home balances are computed one-shot (#104).** Eliminates an O(G×E) Firestore
+  listener leak from the always-mounted home dashboard.
+- **Faster cold start (#105).** The first frame no longer waits on the
+  restored-session token refresh.
+- Dropped the `shimmer` dependency; skeleton loaders now run on `skeletonizer`
+  (#111). Removed the dead onboarding screen (#56).
+
+### Fixed
+- **Expense attribution and split previews (#247).** Removed an incorrect
+  restriction on who an expense could be attributed to; the split preview now
+  reflects what will actually be saved.
+- **Departed members stay in the balance books (#249).** A member removed from a
+  group no longer drops their owed share, so balances conserve on both client
+  and the server `deleteGroup` recompute.
+- **Exact splits are validated before save (#250).** Saving is blocked when an
+  exact split no longer sums to the expense amount; every split-allocation
+  fallback now emits telemetry.
+- **Incomplete settle-up is surfaced (#244).** Group settle-up warns when its
+  balance set is incomplete instead of silently optimising a partial picture.
+- **Allocator and currency safety (#220).** The share/percent allocator is
+  guarded against negative entries, and settlement reads are fenced against an
+  unsupported currency.
+- **Same-named members are disambiguated in settle-up (#196, #263).** Members
+  who share a display name are distinguished in the settle-up list and on the
+  transfer tiles.
+- **Group activity pagination (#183).** Activity now pages correctly past the
+  first page (cursor applied before the limit).
+
 ## [1.3.2] — 2026-06-02
 
 Hotfix release. Fixes a critical data-loss bug affecting anonymous accounts,
