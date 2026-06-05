@@ -48,7 +48,12 @@ app.*.map.json
 .env
 /config.json
 /config.test.json
+/config.qa.json
 /qa-findings-*.md
+
+# Local QA emulator scaffolding (firebase.qa.json mirrors firebase.json with
+# isolated emulator ports; config.qa.json sets USE_FIREBASE_EMULATOR). Local-only.
+/firebase.qa.json
 
 # Firebase config files
 android/app/google-services.json
