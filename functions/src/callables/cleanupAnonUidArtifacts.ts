@@ -148,6 +148,63 @@ function settlementMigrationUpdate(
   return Object.keys(update).length > 0 ? update : null;
 }
 
+// #217: recursively repoint oldUid -> newUid inside an activity-log `metadata`
+// blob — string VALUES that equal oldUid (metadata.payerParticipantId /
+// recipientId), array entries (metadata.customSplitParticipants), and
+// (defensively) map KEYS that equal oldUid. Mirrors deleteAccount's
+// rewriteMetadata MINUS the name-scrubbing (recovery keeps the person's name).
+// PURE substitution — does NOT sum (contrast mergeUidMapKey for
+// splitDistribution, which sums because those values are money subunits;
+// metadata values are display-only and never aggregated, so on the both-members
+// collision an array duplicates rather than merges — inert). Returns a new value
+// (immutable); passes non-UID content through unchanged.
+function migrateMetadataValue(value: unknown, oldUid: string, newUid: string): unknown {
+  if (typeof value === 'string') {
+    return value === oldUid ? newUid : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => migrateMetadataValue(entry, oldUid, newUid));
+  }
+  if (value && typeof value === 'object') {
+    const next: Record<string, unknown> = {};
+    for (const [key, entryValue] of Object.entries(value)) {
+      next[key === oldUid ? newUid : key] = migrateMetadataValue(entryValue, oldUid, newUid);
+    }
+    return next;
+  }
+  return value;
+}
+
+// #217: migrate the UID-bearing attribution of one activity-log doc oldUid ->
+// newUid. MIGRATE semantics (repoint ids only) — actorName / logText /
+// description are denormalized display strings for the SAME recovered person and
+// are LEFT untouched (contrast deleteAccount's activityUpdates, which scrubs them
+// because the person is gone). eventScoped=true also migrates targetParticipantId
+// (group activity has no such field; note: no LIVE writer emits it — defensive
+// parity with the scrub). Returns null when nothing matched (so an unchanged doc
+// is never written).
+function activityMigrationUpdate(
+  data: DocumentData,
+  oldUid: string,
+  newUid: string,
+  eventScoped: boolean,
+): Record<string, unknown> | null {
+  const update: Record<string, unknown> = {};
+  if (data.actorId === oldUid) {
+    update.actorId = newUid;
+  }
+  if (eventScoped && data.targetParticipantId === oldUid) {
+    update.targetParticipantId = newUid;
+  }
+  if (data.metadata !== undefined) {
+    const migrated = migrateMetadataValue(data.metadata, oldUid, newUid);
+    if (JSON.stringify(migrated) !== JSON.stringify(data.metadata)) {
+      update.metadata = migrated;
+    }
+  }
+  return Object.keys(update).length > 0 ? update : null;
+}
+
 function hasEmailProvider(providerData: Array<{ providerId: string }>): boolean {
   return providerData.some((provider) => (
     provider.providerId === 'password' || provider.providerId === 'emailLink'
@@ -242,6 +299,13 @@ async function processGroup(
       activeEventSnaps.map((eventSnap) => tx.get(eventSnap.ref.collection('settlements'))),
     );
     const groupSettlementsSnap = await tx.get(groupRef.collection('settlements'));
+    // #217: activity reads MUST also stay in the read phase (all-reads-before-
+    // writes). Event activity_logs is migrated active-events-only, mirroring the
+    // expense/settlement active-only policy above.
+    const eventActivitySnaps = await Promise.all(
+      activeEventSnaps.map((eventSnap) => tx.get(eventSnap.ref.collection('activity_logs'))),
+    );
+    const groupActivitySnap = await tx.get(groupRef.collection('activity'));
     const actions: string[] = [];
     const nextMemberIds = replaceUid(memberIds, oldUid, newUid);
     const groupUpdate: Record<string, unknown> = {
@@ -375,6 +439,41 @@ async function processGroup(
       if (update) {
         tx.update(settlementSnap.ref, update);
         actions.push(`settlements.group.${settlementSnap.id}`);
+      }
+    }
+
+    // #217: migrate the ACTIVITY surface — event activity_logs (per active event)
+    // and group activity. MIGRATE semantics: repoint actorId/targetParticipantId
+    // + UID-bearing metadata VALUES; leave actorName/logText/description (same
+    // person). Activity is non-financial (the balance engine never reads it), so
+    // an un-migrated ref is an inert orphan, not a money bug — but we migrate it
+    // for completeness (same defect class as #216). Like the settlement loops,
+    // these tx.update calls write THROUGH the activity `allow update: if false`
+    // rule via the Admin SDK; clients still cannot mutate activity.
+    activeEventSnaps.forEach((eventSnap, index) => {
+      for (const activitySnap of eventActivitySnaps[index].docs) {
+        const update = activityMigrationUpdate(
+          activitySnap.data() ?? {},
+          oldUid,
+          newUid,
+          true,
+        );
+        if (update) {
+          tx.update(activitySnap.ref, update);
+          actions.push(`activity_logs.${eventSnap.id}.${activitySnap.id}`);
+        }
+      }
+    });
+    for (const activitySnap of groupActivitySnap.docs) {
+      const update = activityMigrationUpdate(
+        activitySnap.data() ?? {},
+        oldUid,
+        newUid,
+        false,
+      );
+      if (update) {
+        tx.update(activitySnap.ref, update);
+        actions.push(`activity.${activitySnap.id}`);
       }
     }
 

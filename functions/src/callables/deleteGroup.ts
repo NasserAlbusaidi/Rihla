@@ -218,7 +218,40 @@ function allocateExact(
   if (total.minus(amount).abs().gt(SPLIT_TOLERANCE)) {
     return allocateEqual(amount, distribution.keys(), currency);
   }
-  return new Map(distribution);
+  // In-tolerance (±SPLIT_TOLERANCE) non-zero drift: close the residual onto the
+  // alphabetically-LAST recipient that can absorb it without going negative, so
+  // sum(owed) == amount EXACTLY. This MUST mirror the client BalanceCalculator
+  // ._allocateExact (expense_provider.dart:507-543) byte-for-byte — without it
+  // the server net carries the residual the client closed, diverging by up to
+  // ±tolerance per expense and (since the deleteGroup gate is an exact
+  // !isZero() check) refusing to delete a group the app shows as settled (#223).
+  const residual = amount.minus(total);
+  if (residual.isZero()) {
+    return new Map(distribution);
+  }
+  const sortedKeys = [...distribution.keys()].sort();
+  let target: string | null = null;
+  for (let i = sortedKeys.length - 1; i >= 0; i--) {
+    if (distribution.get(sortedKeys[i])!.plus(residual).gte(0)) {
+      target = sortedKeys[i];
+      break;
+    }
+  }
+  if (target === null) {
+    // No recipient can absorb the residual non-negatively — unreachable for an
+    // in-tolerance drift on a positive amount; mirror the client's defensive
+    // equal-split fallback (expense_provider.dart:532-539) rather than emit a
+    // negative owed.
+    return allocateEqual(amount, distribution.keys(), currency);
+  }
+  const out = new Map<string, Decimal>();
+  for (const key of sortedKeys) {
+    out.set(
+      key,
+      key === target ? distribution.get(key)!.plus(residual) : distribution.get(key)!,
+    );
+  }
+  return out;
 }
 
 function allocatePercent(
