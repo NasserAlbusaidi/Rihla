@@ -166,7 +166,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                           ),
                           children: [
                             TextSpan(
-                              text: _firstName(widget.fromName),
+                              text: _compactName(widget.fromName),
                               style: TextStyle(
                                 color: context.colors.ink2,
                                 fontWeight: FontWeight.w700,
@@ -180,7 +180,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                               ),
                             ),
                             TextSpan(
-                              text: _firstName(widget.toName),
+                              text: _compactName(widget.toName),
                               style: TextStyle(
                                 color: context.colors.ink2,
                                 fontWeight: FontWeight.w700,
@@ -320,9 +320,18 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
     );
   }
 
-  String _firstName(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    return parts.isEmpty ? name : parts.first;
+  /// Compact label for the direction line: the first token of the base name,
+  /// with the same-name disambiguation discriminator (` (#last4)`, #196)
+  /// re-appended when the resolver added one. A plain first-name split dropped
+  /// it, collapsing two colliding members to "Sam -> Sam" (#263). The pattern
+  /// mirrors `MemberNameResolver.stripDiscriminator`.
+  String _compactName(String name) {
+    final match = RegExp(r' \(#[^)]*\)$').firstMatch(name);
+    final discriminator = match?.group(0) ?? '';
+    final base = name.substring(0, name.length - discriminator.length);
+    final parts = base.trim().split(RegExp(r'\s+'));
+    final first = parts.isEmpty ? base : parts.first;
+    return '$first$discriminator';
   }
 }
 

@@ -43,4 +43,73 @@ void main() {
       expect(ringColors[0], equals(ringColors[1]));
     },
   );
+
+  testWidgets(
+    'direction line keeps the disambiguation discriminator — two same-named '
+    'members render "Sam (#aaaa) -> Sam (#bbbb)", never "Sam -> Sam" (#263)',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: GroupSettlementTile(
+              fromName: 'Sam (#aaaa)',
+              toName: 'Sam (#bbbb)',
+              amount: Decimal.parse('5.000'),
+              currency: 'OMR',
+              breakdown: const {},
+              isYourAction: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // The visible direction line is a RichText, so traverse it.
+      expect(
+        find.textContaining('Sam (#aaaa)', findRichText: true),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Sam (#bbbb)', findRichText: true),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'direction line still compacts a multi-token name to its first token '
+    'when no discriminator is present (#263 preserves the #196-era compaction)',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: GroupSettlementTile(
+              fromName: 'Sam Smith',
+              toName: 'Bob Jones',
+              amount: Decimal.parse('5.000'),
+              currency: 'OMR',
+              breakdown: const {},
+              isYourAction: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.textContaining('Sam -> Bob', findRichText: true),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Smith', findRichText: true),
+        findsNothing,
+      );
+    },
+  );
 }
