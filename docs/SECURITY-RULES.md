@@ -20,7 +20,7 @@ explicitly allowed is refused.
 | `inviteCodes/{code}` | ❌ (callable only) | group creator, with companion group write | ❌ (immutable) | group creator, with companion group delete |
 | `joinAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
-| `recoveryCleanupIntents/{oldUid}` | ❌ (callable only) | retiring UID, secret 32-128 chars | retiring UID (same shape) | ❌ (callable only) |
+| `recoveryCleanupIntents/{oldUid}` | ❌ (callable only) | retiring UID, secret 32-128 chars + `expiresAt` (#170 TTL) | retiring UID (same shape) | ❌ (callable only) |
 | `groups/{gid}` | members | self, valid initial doc | creator metadata / member-list refresh / self-leave / creator-remove | creator |
 | `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | self-leave or creator-remove |
 | `groups/{gid}/activity/{aid}` | members | members (actor must be self) | ❌ | ❌ |
@@ -259,13 +259,23 @@ match /recoveryCleanupIntents/{oldUid} {
 
 - Caller is signed in and `request.auth.uid == {oldUid}` (only the
   retiring UID can write its own intent)
-- Exact key set `{secret, createdAt}`
+- Exact key set `{secret, createdAt, expiresAt}`
 - `secret` is a string of length 32–128
 - `createdAt` is a timestamp
+- `expiresAt` is a timestamp **strictly after** `createdAt` (#170)
 
 `get`, `list`, and `delete` are denied to clients. The intent is read
 and consumed server-side by the `cleanupAnonUidArtifacts` callable,
 which performs the UID rewrite after email-link recovery.
+
+**TTL (#170):** the client writes `expiresAt = now + 24h`; a Firestore
+TTL on `recoveryCleanupIntents.expiresAt` (declared in
+`firestore.indexes.json`) reaps abandoned bearer-secret docs. The 24h
+window is deliberately longer than the 15-minute server validity
+(`cleanupIntentMaxAgeMs` in `cleanupAnonUidArtifacts.ts`) so a TTL never
+reaps a still-valid intent under client clock skew. **Validity stays
+keyed on `createdAt`, not `expiresAt`** — the server never reads
+`expiresAt`; it is purely a GC marker.
 
 ### 4.4 `groups/{gid}`
 

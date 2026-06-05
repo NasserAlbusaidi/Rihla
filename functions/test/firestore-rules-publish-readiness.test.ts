@@ -378,28 +378,70 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('recovery cleanup intent can only be created by the retiring UID', async () => {
+  test('recovery cleanup intent can only be created by the retiring UID with a TTL expiresAt', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
     const member = testEnv.authenticatedContext('member').firestore();
+    // #170: intents now carry `expiresAt` so a Firestore TTL can reap abandoned
+    // bearer-secret docs. The client computes expiresAt = now + 24h (a concrete
+    // Timestamp) and writes `createdAt` via serverTimestamp(), which the rules
+    // engine resolves to request.time. This package has no client firebase SDK,
+    // so we use concrete `new Date()` values — the same `expiresAt > createdAt`
+    // comparison the rule enforces, with createdAt as an explicit operand.
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
     const validIntent = {
       secret: 'client-generated-secret-with-enough-entropy-12345',
-      createdAt: new Date(),
+      createdAt: new Date(now),
+      expiresAt: new Date(now + day),
     };
-
-    await assertSucceeds(owner.doc('recoveryCleanupIntents/owner').set(validIntent));
-    await assertSucceeds(owner.doc('recoveryCleanupIntents/owner').update({
-      secret: 'client-generated-secret-with-enough-entropy-67890',
-      createdAt: new Date(),
-    }));
-    await assertFails(member.doc('recoveryCleanupIntents/owner').set(validIntent));
-    await assertFails(owner.doc('recoveryCleanupIntents/owner-short').set({
-      secret: 'short',
-      createdAt: new Date(),
-    }));
-    await assertFails(owner.doc('recoveryCleanupIntents/owner-extra').set({
+    const intent = (overrides: Record<string, unknown>) => ({
       ...validIntent,
-      newUid: 'member',
+      ...overrides,
+    });
+
+    // Happy path: create, then overwrite (recovery re-entry rewrites the doc via
+    // .set — a fresh expiresAt, never shortening the createdAt-based validity).
+    await assertSucceeds(owner.doc('recoveryCleanupIntents/owner').set(validIntent));
+    await assertSucceeds(owner.doc('recoveryCleanupIntents/owner').set(intent({
+      secret: 'client-generated-secret-with-enough-entropy-67890',
+    })));
+    // The update verb is also gated by validCleanupIntent (full post-state shape).
+    await assertSucceeds(owner.doc('recoveryCleanupIntents/owner').update(intent({})));
+
+    // A different UID cannot write someone else's intent (uid != oldUid).
+    await assertFails(member.doc('recoveryCleanupIntents/owner').set(validIntent));
+
+    // #170 (the load-bearing RED): expiresAt is mandatory — a write omitting it
+    // is rejected so the TTL always has a field to key on. (.set replaces the
+    // doc, so the field is genuinely absent, unlike a merging update.)
+    await assertFails(owner.doc('recoveryCleanupIntents/owner').set({
+      secret: 'client-generated-secret-with-enough-entropy-12345',
+      createdAt: new Date(now),
     }));
+
+    // #170: expiresAt must be after createdAt — a past expiresAt that would make
+    // the TTL reap a fresh, still-valid intent immediately is rejected.
+    await assertFails(owner.doc('recoveryCleanupIntents/owner').set(
+      intent({ expiresAt: new Date(now - 1000) }),
+    ));
+
+    // #170: expiresAt must be a timestamp, not another type.
+    await assertFails(owner.doc('recoveryCleanupIntents/owner').set(
+      intent({ expiresAt: 12345 }),
+    ));
+
+    // Secret length bound still enforced (doc id matches uid so this isolates
+    // the secret predicate, not the uid check).
+    await assertFails(owner.doc('recoveryCleanupIntents/owner').set(
+      intent({ secret: 'short' }),
+    ));
+
+    // Unknown extra key still rejected (hasOnly admits expiresAt, not newUid).
+    await assertFails(owner.doc('recoveryCleanupIntents/owner').set(
+      intent({ newUid: 'member' }),
+    ));
+
+    // Client can never read or delete the intent directly.
     await assertFails(owner.doc('recoveryCleanupIntents/owner').get());
     await assertFails(owner.doc('recoveryCleanupIntents/owner').delete());
   });

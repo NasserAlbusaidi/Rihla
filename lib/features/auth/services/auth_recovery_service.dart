@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -68,10 +68,7 @@ class AuthRecoveryService {
              await targetFirestore
                  .collection(_cleanupIntentCollection)
                  .doc(oldUid)
-                 .set({
-                   'secret': secret,
-                   'createdAt': FieldValue.serverTimestamp(),
-                 });
+                 .set(buildCleanupIntentPayload(secret));
              return secret;
            }),
        _recoveryCleanupFailureRecorder =
@@ -96,6 +93,33 @@ class AuthRecoveryService {
       bytes[i] = _secureRandom.nextInt(256);
     }
     return base64UrlEncode(bytes);
+  }
+
+  /// TTL window for `recoveryCleanupIntents` docs (#170). Generously longer
+  /// than the 15-min server-side validity (`cleanupIntentMaxAgeMs`) so a
+  /// Firestore TTL keyed on `expiresAt` never reaps an intent that is still
+  /// valid, even under realistic client clock skew. (TTL deletion is itself
+  /// best-effort and may lag — this is the earliest-eligible instant.)
+  static const Duration _cleanupIntentTtl = Duration(hours: 24);
+
+  /// Builds the exact `recoveryCleanupIntents/{oldUid}` write map (#170).
+  ///
+  /// Pure so the OUTBOUND wire shape — the contract the `validCleanupIntent`
+  /// rules gate admits and the TTL keys on — is unit-testable without driving
+  /// the full recovery flow. `createdAt` stays a server-timestamp sentinel (the
+  /// security control: server validity reads `createdAt`, not `expiresAt`);
+  /// `expiresAt` is a concrete client `Timestamp` the TTL reaps on.
+  @visibleForTesting
+  static Map<String, Object?> buildCleanupIntentPayload(
+    String secret, {
+    DateTime Function()? clock,
+  }) {
+    final now = (clock ?? DateTime.now)();
+    return {
+      'secret': secret,
+      'createdAt': FieldValue.serverTimestamp(),
+      'expiresAt': Timestamp.fromDate(now.toUtc().add(_cleanupIntentTtl)),
+    };
   }
 
   static void _recordCleanupFailureBreadcrumb({
