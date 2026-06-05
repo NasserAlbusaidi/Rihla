@@ -205,8 +205,7 @@ fi
 functions_json="$TMP_DIR/functions.json"
 if firebase_cli functions:list --project "$PROJECT_ID" --json >"$functions_json"; then
   expected_functions="$TMP_DIR/expected-functions.txt"
-  sed -n 's/^export { \([^ }]*\) }.*/\1/p' functions/src/index.ts \
-    >"$expected_functions"
+  bash "$ROOT_DIR/tool/list_expected_functions.sh" >"$expected_functions"
   deployed_functions="$TMP_DIR/deployed-functions.txt"
   jq -r '.result[]? | .id // .name // empty' "$functions_json" \
     | awk -F/ '{ print $NF }' \
