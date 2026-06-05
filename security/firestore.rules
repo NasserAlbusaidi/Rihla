@@ -212,6 +212,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // #76: per-UID markers recording an incomplete account deletion, so the
+    // deletionReaper scheduled backstop can finish abandoned/timed-out deletions.
+    // Server-only (deleteAccount + the reaper write via the Admin SDK); clients
+    // never read or write. A Firestore TTL on `expiresAt` is the safety net.
+    match /deletionAudit/{userId} {
+      allow read, write: if false;
+    }
+
     // Recovery cleanup intents are one-time bearer secrets. The retiring
     // anonymous UID writes its own intent before sign-out; the callable verifies
     // and consumes it after email-link recovery. Clients never read or delete
