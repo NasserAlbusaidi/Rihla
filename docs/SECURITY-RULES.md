@@ -20,6 +20,7 @@ explicitly allowed is refused.
 | `inviteCodes/{code}` | ❌ (callable only) | group creator, with companion group write | ❌ (immutable) | group creator, with companion group delete |
 | `joinAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
+| `deletionAudit/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `recoveryCleanupIntents/{oldUid}` | ❌ (callable only) | retiring UID, secret 32-128 chars + `expiresAt` (#170 TTL) | retiring UID (same shape) | ❌ (callable only) |
 | `groups/{gid}` | members | self, valid initial doc | creator metadata / member-list refresh / self-leave / creator-remove | creator |
 | `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | self-leave or creator-remove |
@@ -242,6 +243,22 @@ Written only by the `deleteAccount` callable (via the Admin SDK, which
 bypasses these rules) to enforce a per-UID deletion-invocation rate
 limit (#73). Clients can never read or write these counters. A Firestore
 TTL on `expiresAt` reaps the rows.
+
+### 4.3a-2 `deletionAudit/{userId}`
+
+Fully sealed to clients:
+
+```
+match /deletionAudit/{userId} {
+  allow read, write: if false;
+}
+```
+
+Written only by the `deleteAccount` callable and the `deletionReaper`
+scheduled function (via the Admin SDK) to mark an **incomplete** account
+deletion so the reaper can finish abandoned/timed-out deletions (#76). The
+marker is deleted once the deletion converges; a Firestore TTL on
+`expiresAt` is the safety net. Clients never read or write it.
 
 ### 4.3b `recoveryCleanupIntents/{oldUid}`
 
