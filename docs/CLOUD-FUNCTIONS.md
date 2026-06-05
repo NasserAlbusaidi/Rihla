@@ -271,8 +271,19 @@ interface CleanupAnonUidArtifactsOutput {
      `members/{newUid}`, copy it over with `userId`/`id` rewritten.
    - Delete the old `members/{oldUid}` doc.
    - For each event in the group: rewrite `participantIds`,
-     `participantNames` keys, and `createdBy` analogously. Same for
-     each non-deleted expense's `createdBy`.
+     `participantNames` keys, and `createdBy` analogously.
+   - For each **active** event's non-deleted expenses + the event/group
+     settlements: migrate the financial attribution — `createdBy`,
+     `payerParticipantId`/`recipientParticipantId`, `customSplitParticipants`,
+     and `splitDistribution` keys (collisions SUM subunits to conserve money)
+     (#216).
+   - For each **active** event's `activity_logs` + the group `activity`
+     collection: migrate the activity attribution — `actorId`,
+     `targetParticipantId`, and UID-bearing `metadata` values
+     (`payerParticipantId`/`recipientId`/`customSplitParticipants`) `oldUid →
+     newUid`. Denormalized display strings (`actorName`/`logText`/`description`)
+     are left intact (migrate-not-scrub — same person). Activity is
+     non-financial, so this is hygiene, not a balance fix (#217).
 6. **Keyed-artifact + gated Auth cleanup.** Deletes
    `fcm_tokens/{oldUid}` and `joinAttempts/{oldUid}` (failures are
    appended to `cascadeFailed`). Then, only if `cascadeFailed` is empty,
@@ -528,7 +539,7 @@ matches the current commit, and the App Check repo variables agree.
 | `functions/src/index.ts` | 8 | Region + exports |
 | `functions/src/admin.ts` | 5 | `initializeApp()` side-effect |
 | `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
-| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 374 | Anon→recovered UID migration |
+| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 611 | Anon→recovered UID migration (ledger #216 + activity #217) |
 | `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |
 | `functions/src/triggers/settlementNotifier.ts` | — | #53 settlement-recorded push triggers |
 | `functions/src/notifications/fcmSender.ts` | — | #53 multicast sender + token pruning |
