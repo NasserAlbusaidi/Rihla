@@ -35,6 +35,17 @@ function resolveBatchLimit(): number {
 const DELETION_ATTEMPT_LIMIT = 5;
 const DELETION_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
 
+// #76: server-only marker recording an incomplete deletion, so the deletionReaper
+// backstop can find and finish abandoned/timed-out deletions. Written while a
+// deletion is incomplete, deleted once it converges. `expiresAt` drives a
+// Firestore TTL safety net; the reaper normally deletes the marker on success.
+const deletionAuditCollection = 'deletionAudit';
+const defaultAuditTtlMs = 30 * 24 * 60 * 60 * 1000;
+
+function resolveAuditTtlMs(): number {
+  return Number(process.env.DELETE_ACCOUNT_AUDIT_TTL_MS) || defaultAuditTtlMs;
+}
+
 export interface DeleteAccountOutput {
   groupsProcessed: number;
   tombstoneIds: string[];
@@ -607,6 +618,184 @@ async function deleteDocIfExists(ref: DocumentReference): Promise<boolean> {
   return true;
 }
 
+// #76: upsert the deletionAudit marker for an incomplete deletion. Preserves
+// `firstFailedAt` across attempts, bumps `attemptCount`, refreshes `lastAttemptAt`
+// + the TTL `expiresAt`. `attemptCount` is observability-only (best-effort under a
+// reaper-vs-client overlap); the reaper does not depend on it or on `cascadeFailed`
+// (it re-queries every group still containing the uid).
+async function writeDeletionAuditMarker(
+  db: Firestore,
+  uid: string,
+  cascadeFailed: string[],
+): Promise<void> {
+  const ref = db.doc(`${deletionAuditCollection}/${uid}`);
+  await db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const prev = (await tx.get(ref)).data();
+    const firstFailedAt = prev && isTimestamp(prev.firstFailedAt) ? prev.firstFailedAt : now;
+    const attemptCount = prev && typeof prev.attemptCount === 'number' ? prev.attemptCount : 0;
+    tx.set(ref, {
+      uid,
+      status: 'failed',
+      cascadeFailed,
+      firstFailedAt,
+      lastAttemptAt: now,
+      attemptCount: attemptCount + 1,
+      expiresAt: Timestamp.fromMillis(now.toMillis() + resolveAuditTtlMs()),
+    });
+  });
+}
+
+// #76: shared per-uid deletion cascade, called by BOTH the deleteAccount callable
+// and the deletionReaper scheduled backstop. Revokes refresh tokens, scrubs every
+// group + global identity residue, deletes the Auth user when the scrub is clean,
+// and manages the `deletionAudit/{uid}` marker. It does NOT throw for the two
+// EXPECTED incomplete outcomes (partialCascade / authDeleteFailed) — it returns
+// `complete:false` + `failureKind` so the reaper can inspect the result; the
+// onCall wrapper translates those into the #46 client-facing throws.
+export interface CascadeRunResult {
+  output: DeleteAccountOutput;
+  complete: boolean;
+  failureKind: 'none' | 'partialCascade' | 'authDeleteFailed';
+}
+
+export async function runAccountDeletionCascade(
+  db: Firestore,
+  uid: string,
+): Promise<CascadeRunResult> {
+  // #76: revoke refresh tokens up front so a user preserved by a partial failure
+  // cannot mint a new ID token. Best-effort — erasure must not be blocked by a
+  // hardening step, and `auth/user-not-found` (the reaper re-running an
+  // already-gone user) is benign. This BOUNDS the post-partial-failure replay
+  // window to one ID-token lifetime (<=1h); it does NOT retroactively invalidate
+  // an outstanding ID token (rules/callables do not check revocation — see the
+  // enforceDeletionRateLimit comment). The eventual full closure is deleteUser.
+  try {
+    await getAuth().revokeRefreshTokens(uid);
+  } catch (error) {
+    logger.warn('deleteAccount revokeRefreshTokens failed (continuing)', {
+      uid,
+      code: (error as { code?: unknown }).code,
+    });
+  }
+
+  const cascadeFailed: string[] = [];
+  const output: DeleteAccountOutput = {
+    groupsProcessed: 0,
+    tombstoneIds: [],
+    expensesScrubbed: 0,
+    settlementsScrubbed: 0,
+    activityLogsScrubbed: 0,
+    membersDeleted: 0,
+    groupsOrphanedAndSoftDeleted: 0,
+    cascadeFailed,
+    fcmTokenDeleted: false,
+    joinAttemptsDeleted: false,
+    authUserDeleted: false,
+  };
+
+  const groupsSnap = await db.collection('groups')
+    .where('memberIds', 'array-contains', uid)
+    .get();
+
+  // #46: isolate per group. One group failing (transient Firestore error,
+  // a Phase C transaction conflict, malformed data) must NOT abort the others
+  // or reach the Auth-delete gate.
+  for (const groupDoc of groupsSnap.docs) {
+    try {
+      const result = await processGroup(db, groupDoc.ref, uid);
+      output.groupsProcessed += 1;
+      if (result.skipped) {
+        // uid raced out of memberIds between the query and Phase A/C re-read.
+        logger.info('deleteAccount group skipped (uid no longer a member)', {
+          uid,
+          groupId: groupDoc.id,
+        });
+        continue;
+      }
+      output.tombstoneIds.push(result.tombstoneId);
+      output.expensesScrubbed += result.expensesScrubbed;
+      output.settlementsScrubbed += result.settlementsScrubbed;
+      output.activityLogsScrubbed += result.activityLogsScrubbed;
+      output.membersDeleted += result.membersDeleted;
+      if (result.groupOrphanedAndSoftDeleted) {
+        output.groupsOrphanedAndSoftDeleted += 1;
+      }
+      logger.info('deleteAccount group scrubbed', {
+        uid,
+        groupId: groupDoc.id,
+        tombstoneId: result.tombstoneId,
+      });
+    } catch (error) {
+      cascadeFailed.push(groupDoc.id);
+      logger.error('deleteAccount group failed', {
+        uid,
+        groupId: groupDoc.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // #46: scrub identity residue before the Auth-delete gate, and fold these
+  // failures into cascadeFailed too (mirrors cleanupAnonUidArtifacts).
+  try {
+    output.fcmTokenDeleted = await deleteDocIfExists(db.doc(`fcm_tokens/${uid}`));
+  } catch (error) {
+    cascadeFailed.push('fcm_tokens');
+    logger.error('deleteAccount fcm token delete failed', {
+      uid,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  try {
+    output.joinAttemptsDeleted = await deleteDocIfExists(db.doc(`joinAttempts/${uid}`));
+  } catch (error) {
+    cascadeFailed.push('joinAttempts');
+    logger.error('deleteAccount join attempts delete failed', {
+      uid,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // #76: classify the outcome. `auth/user-not-found` is NOT a failure — the
+  // user is gone, which is exactly the goal (a prior attempt finished, or the
+  // reaper re-ran a completed deletion). Only a REAL auth error is incomplete.
+  let failureKind: CascadeRunResult['failureKind'] = 'none';
+  if (cascadeFailed.length > 0) {
+    // #46: any scrub failed → preserve the Auth user (the still-valid session
+    // can retry; the cascade is idempotent + convergent). deleteUser is not
+    // attempted.
+    failureKind = 'partialCascade';
+  } else {
+    try {
+      await getAuth().deleteUser(uid);
+      output.authUserDeleted = true;
+    } catch (error) {
+      if ((error as { code?: unknown }).code === 'auth/user-not-found') {
+        output.authUserDeleted = false;
+      } else {
+        logger.error('deleteAccount auth delete failed after cascade', {
+          uid,
+          output,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        failureKind = 'authDeleteFailed';
+      }
+    }
+  }
+
+  // #76: the marker is the reaper's input. Write/refresh it while incomplete;
+  // delete it once the deletion converges (incl. a torn prior marker on success).
+  const complete = failureKind === 'none';
+  if (complete) {
+    await deleteDocIfExists(db.doc(`${deletionAuditCollection}/${uid}`));
+  } else {
+    await writeDeletionAuditMarker(db, uid, cascadeFailed);
+  }
+
+  return { output, complete, failureKind };
+}
+
 export const deleteAccount = onCall<unknown, Promise<DeleteAccountOutput>>(
   // #46: bump timeout + memory so the per-group cascade has 9 min of
   // headroom on accounts with many groups (default callable timeout is
@@ -627,92 +816,16 @@ export const deleteAccount = onCall<unknown, Promise<DeleteAccountOutput>>(
     // authenticated calls are both counted.
     await enforceDeletionRateLimit(db, uid);
     assertNoInput(request.data);
-    const cascadeFailed: string[] = [];
-    const output: DeleteAccountOutput = {
-      groupsProcessed: 0,
-      tombstoneIds: [],
-      expensesScrubbed: 0,
-      settlementsScrubbed: 0,
-      activityLogsScrubbed: 0,
-      membersDeleted: 0,
-      groupsOrphanedAndSoftDeleted: 0,
-      cascadeFailed,
-      fcmTokenDeleted: false,
-      joinAttemptsDeleted: false,
-      authUserDeleted: false,
-    };
 
-    const groupsSnap = await db.collection('groups')
-      .where('memberIds', 'array-contains', uid)
-      .get();
+    const { output, failureKind } = await runAccountDeletionCascade(db, uid);
 
-    // #46: isolate per group. One group failing (transient Firestore error,
-    // a Phase C transaction conflict, malformed data) must NOT abort the others
-    // or reach the Auth-delete gate.
-    for (const groupDoc of groupsSnap.docs) {
-      try {
-        const result = await processGroup(db, groupDoc.ref, uid);
-        output.groupsProcessed += 1;
-        if (result.skipped) {
-          // uid raced out of memberIds between the query and Phase A/C re-read.
-          logger.info('deleteAccount group skipped (uid no longer a member)', {
-            uid,
-            groupId: groupDoc.id,
-          });
-          continue;
-        }
-        output.tombstoneIds.push(result.tombstoneId);
-        output.expensesScrubbed += result.expensesScrubbed;
-        output.settlementsScrubbed += result.settlementsScrubbed;
-        output.activityLogsScrubbed += result.activityLogsScrubbed;
-        output.membersDeleted += result.membersDeleted;
-        if (result.groupOrphanedAndSoftDeleted) {
-          output.groupsOrphanedAndSoftDeleted += 1;
-        }
-        logger.info('deleteAccount group scrubbed', {
-          uid,
-          groupId: groupDoc.id,
-          tombstoneId: result.tombstoneId,
-        });
-      } catch (error) {
-        cascadeFailed.push(groupDoc.id);
-        logger.error('deleteAccount group failed', {
-          uid,
-          groupId: groupDoc.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    // #46: scrub identity residue before the Auth-delete gate, and fold these
-    // failures into cascadeFailed too (mirrors cleanupAnonUidArtifacts).
-    try {
-      output.fcmTokenDeleted = await deleteDocIfExists(db.doc(`fcm_tokens/${uid}`));
-    } catch (error) {
-      cascadeFailed.push('fcm_tokens');
-      logger.error('deleteAccount fcm token delete failed', {
-        uid,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-    try {
-      output.joinAttemptsDeleted = await deleteDocIfExists(db.doc(`joinAttempts/${uid}`));
-    } catch (error) {
-      cascadeFailed.push('joinAttempts');
-      logger.error('deleteAccount join attempts delete failed', {
-        uid,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
-    // #46: while ANY scrub failed, preserve the Auth user (so the still-valid
-    // session can retry — the cascade is idempotent and convergent) and THROW.
-    // The client discards the payload and only reacts to throw-vs-resolve, so a
-    // partial deletion MUST throw to deny sign-out and re-prompt.
-    if (cascadeFailed.length > 0) {
+    // #46: the client discards the payload and reacts only to throw-vs-resolve, so
+    // an incomplete deletion MUST throw to deny sign-out and re-prompt. Messages +
+    // codes are preserved byte-for-byte across the #76 core extraction.
+    if (failureKind === 'partialCascade') {
       logger.error('deleteAccount partial cascade; auth user preserved for retry', {
         uid,
-        cascadeFailed,
+        cascadeFailed: output.cascadeFailed,
       });
       throw new HttpsError(
         'internal',
@@ -720,25 +833,12 @@ export const deleteAccount = onCall<unknown, Promise<DeleteAccountOutput>>(
         output,
       );
     }
-
-    try {
-      await getAuth().deleteUser(uid);
-      output.authUserDeleted = true;
-    } catch (error) {
-      if ((error as { code?: unknown }).code === 'auth/user-not-found') {
-        output.authUserDeleted = false;
-      } else {
-        logger.error('deleteAccount auth delete failed after cascade', {
-          uid,
-          output,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        throw new HttpsError(
-          'internal',
-          'Account data was scrubbed, but the Auth user could not be deleted.',
-          output,
-        );
-      }
+    if (failureKind === 'authDeleteFailed') {
+      throw new HttpsError(
+        'internal',
+        'Account data was scrubbed, but the Auth user could not be deleted.',
+        output,
+      );
     }
 
     return output;

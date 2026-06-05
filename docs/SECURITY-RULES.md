@@ -20,7 +20,8 @@ explicitly allowed is refused.
 | `inviteCodes/{code}` | ❌ (callable only) | group creator, with companion group write | ❌ (immutable) | group creator, with companion group delete |
 | `joinAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
-| `recoveryCleanupIntents/{oldUid}` | ❌ (callable only) | retiring UID, secret 32-128 chars | retiring UID (same shape) | ❌ (callable only) |
+| `deletionAudit/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
+| `recoveryCleanupIntents/{oldUid}` | ❌ (callable only) | retiring UID, secret 32-128 chars + `expiresAt` (#170 TTL) | retiring UID (same shape) | ❌ (callable only) |
 | `groups/{gid}` | members | self, valid initial doc | creator metadata / member-list refresh / self-leave / creator-remove | creator |
 | `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | self-leave or creator-remove |
 | `groups/{gid}/activity/{aid}` | members | members (actor must be self) | ❌ | ❌ |
@@ -243,6 +244,22 @@ bypasses these rules) to enforce a per-UID deletion-invocation rate
 limit (#73). Clients can never read or write these counters. A Firestore
 TTL on `expiresAt` reaps the rows.
 
+### 4.3a-2 `deletionAudit/{userId}`
+
+Fully sealed to clients:
+
+```
+match /deletionAudit/{userId} {
+  allow read, write: if false;
+}
+```
+
+Written only by the `deleteAccount` callable and the `deletionReaper`
+scheduled function (via the Admin SDK) to mark an **incomplete** account
+deletion so the reaper can finish abandoned/timed-out deletions (#76). The
+marker is deleted once the deletion converges; a Firestore TTL on
+`expiresAt` is the safety net. Clients never read or write it.
+
 ### 4.3b `recoveryCleanupIntents/{oldUid}`
 
 Not sealed — the retiring anonymous UID may write a one-time bearer
@@ -259,13 +276,23 @@ match /recoveryCleanupIntents/{oldUid} {
 
 - Caller is signed in and `request.auth.uid == {oldUid}` (only the
   retiring UID can write its own intent)
-- Exact key set `{secret, createdAt}`
+- Exact key set `{secret, createdAt, expiresAt}`
 - `secret` is a string of length 32–128
 - `createdAt` is a timestamp
+- `expiresAt` is a timestamp **strictly after** `createdAt` (#170)
 
 `get`, `list`, and `delete` are denied to clients. The intent is read
 and consumed server-side by the `cleanupAnonUidArtifacts` callable,
 which performs the UID rewrite after email-link recovery.
+
+**TTL (#170):** the client writes `expiresAt = now + 24h`; a Firestore
+TTL on `recoveryCleanupIntents.expiresAt` (declared in
+`firestore.indexes.json`) reaps abandoned bearer-secret docs. The 24h
+window is deliberately longer than the 15-minute server validity
+(`cleanupIntentMaxAgeMs` in `cleanupAnonUidArtifacts.ts`) so a TTL never
+reaps a still-valid intent under client clock skew. **Validity stays
+keyed on `createdAt`, not `expiresAt`** — the server never reads
+`expiresAt`; it is purely a GC marker.
 
 ### 4.4 `groups/{gid}`
 

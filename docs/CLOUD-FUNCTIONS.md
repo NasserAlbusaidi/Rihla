@@ -1,8 +1,9 @@
 # Cloud Functions
 
 Reference for the Firebase Cloud Functions Rihla ships: HTTPS callables
-(`firebase-functions/v2/https`) plus Firestore document triggers
-(`firebase-functions/v2/firestore`), all deployed to `us-central1`.
+(`firebase-functions/v2/https`), Firestore document triggers
+(`firebase-functions/v2/firestore`), and a scheduled backstop
+(`firebase-functions/v2/scheduler`), all deployed to `us-central1`.
 `joinGroupByInviteCode` and `cleanupAnonUidArtifacts` enforce App Check;
 `deleteAccount` runs with App Check in verify-if-present (soft) mode.
 
@@ -10,7 +11,7 @@ Reference for the Firebase Cloud Functions Rihla ships: HTTPS callables
 |----------|------|---------|
 | `joinGroupByInviteCode` | `functions/src/callables/joinGroupByInviteCode.ts` | Validate a 6-char invite code and atomically add the caller to the group + active events. |
 | `cleanupAnonUidArtifacts` | `functions/src/callables/cleanupAnonUidArtifacts.ts` | After email-link recovery, migrate Firestore + Auth references from the old anonymous UID to the recovered UID. |
-| `deleteAccount` | `functions/src/callables/deleteAccount.ts` | Server-side account-deletion cascade: scrub PII, replace UID with a per-group tombstone, delete FCM/joinAttempts/Auth user. |
+| `deleteAccount` | `functions/src/callables/deleteAccount.ts` | Server-side account-deletion cascade: revoke refresh tokens, scrub PII, replace UID with a per-group tombstone, delete FCM/joinAttempts/Auth user. On an incomplete cascade it writes a `deletionAudit/{uid}` marker (#76) for the reaper backstop. |
 
 Functions live in `functions/` (Node 22 / TypeScript). They use the
 Firebase Admin SDK which **bypasses Firestore Security Rules** — every
@@ -38,12 +39,40 @@ export {
   eventSettlementNotifier,
   groupSettlementNotifier,
 } from './triggers/settlementNotifier';
+export { deletionReaper } from './scheduled/deletionReaper';
 ```
 
 The Flutter client wraps the callables in
 `lib/core/services/firebase_functions_service.dart`. The join callable
-has its own service inside the `groups` feature. The triggers have no
-client surface — they fire server-side on document creation.
+has its own service inside the `groups` feature. The triggers and the
+scheduled reaper have no client surface — they fire server-side.
+
+## Scheduled functions — deletion reaper (#76)
+
+`functions/src/scheduled/deletionReaper.ts` is an `onSchedule` job (runs
+`every 24 hours`; the **first** scheduled function in the codebase, so it
+adds Cloud Scheduler deploy surface). It is the server-side backstop for the
+"user uninstalls / never retries" tail of `deleteAccount`:
+
+- When a `deleteAccount` cascade is incomplete (partial scrub, or the Auth
+  delete failed), the **shared core** `runAccountDeletionCascade` (exported
+  from `deleteAccount.ts`, called by both the callable and the reaper) writes
+  a server-only `deletionAudit/{uid}` marker (`status:'failed'`,
+  `firstFailedAt`/`lastAttemptAt`/`attemptCount`, TTL `expiresAt`).
+- The reaper queries markers whose `lastAttemptAt` is older than the grace
+  window (`DELETION_REAPER_GRACE_MS`, default 24h — so a client still
+  retrying is never double-processed), up to `DELETION_REAPER_BATCH` (default
+  50) per run, and re-runs the idempotent, convergent (#46) cascade for each.
+- On convergence the core **deletes** the marker (including the self-heal
+  case where the Auth user is already gone — `auth/user-not-found` is treated
+  as complete, never stranded); on a re-failure it refreshes the marker.
+
+**Token revocation:** the core calls `getAuth().revokeRefreshTokens(uid)`
+before the scrub. This bounds the post-partial-failure replay window to one
+ID-token lifetime (≤1h) — it stops the preserved user from minting a new ID
+token. It does **not** retroactively invalidate an outstanding ID token
+(Firestore rules and callables do not check revocation); the reaper's eventual
+`deleteUser` is the full closure.
 
 ## Firestore triggers — write-rate monitor (#198)
 
@@ -271,8 +300,19 @@ interface CleanupAnonUidArtifactsOutput {
      `members/{newUid}`, copy it over with `userId`/`id` rewritten.
    - Delete the old `members/{oldUid}` doc.
    - For each event in the group: rewrite `participantIds`,
-     `participantNames` keys, and `createdBy` analogously. Same for
-     each non-deleted expense's `createdBy`.
+     `participantNames` keys, and `createdBy` analogously.
+   - For each **active** event's non-deleted expenses + the event/group
+     settlements: migrate the financial attribution — `createdBy`,
+     `payerParticipantId`/`recipientParticipantId`, `customSplitParticipants`,
+     and `splitDistribution` keys (collisions SUM subunits to conserve money)
+     (#216).
+   - For each **active** event's `activity_logs` + the group `activity`
+     collection: migrate the activity attribution — `actorId`,
+     `targetParticipantId`, and UID-bearing `metadata` values
+     (`payerParticipantId`/`recipientId`/`customSplitParticipants`) `oldUid →
+     newUid`. Denormalized display strings (`actorName`/`logText`/`description`)
+     are left intact (migrate-not-scrub — same person). Activity is
+     non-financial, so this is hygiene, not a balance fix (#217).
 6. **Keyed-artifact + gated Auth cleanup.** Deletes
    `fcm_tokens/{oldUid}` and `joinAttempts/{oldUid}` (failures are
    appended to `cascadeFailed`). Then, only if `cascadeFailed` is empty,
@@ -528,7 +568,7 @@ matches the current commit, and the App Check repo variables agree.
 | `functions/src/index.ts` | 8 | Region + exports |
 | `functions/src/admin.ts` | 5 | `initializeApp()` side-effect |
 | `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
-| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 374 | Anon→recovered UID migration |
+| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 611 | Anon→recovered UID migration (ledger #216 + activity #217) |
 | `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |
 | `functions/src/triggers/settlementNotifier.ts` | — | #53 settlement-recorded push triggers |
 | `functions/src/notifications/fcmSender.ts` | — | #53 multicast sender + token pruning |

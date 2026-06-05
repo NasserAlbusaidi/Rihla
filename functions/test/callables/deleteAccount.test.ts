@@ -24,7 +24,7 @@ async function clearAuthUsers(): Promise<void> {
 
 async function clearGlobalDocs(): Promise<void> {
   const db = getFirestore();
-  for (const collection of ['fcm_tokens', 'joinAttempts', 'deletionAttempts']) {
+  for (const collection of ['fcm_tokens', 'joinAttempts', 'deletionAttempts', 'deletionAudit']) {
     const docs = await db.collection(collection).listDocuments();
     await Promise.all(docs.map((doc) => doc.delete()));
   }
@@ -673,5 +673,122 @@ describe('deleteAccount', () => {
     }
     expect(JSON.stringify((await db.doc('groups/big/activity/a1').get()).data())).not.toContain(oldName);
     await expect(getAuth().getUser(deletedUid)).rejects.toMatchObject({ code: 'auth/user-not-found' });
+  });
+
+  // #76: refresh-token revocation + deletionAudit marker backstop.
+  function failFirstPhaseBCommit(): void {
+    const realCommit = WriteBatch.prototype.commit;
+    let commits = 0;
+    jest.spyOn(WriteBatch.prototype, 'commit').mockImplementation(function (this: WriteBatch) {
+      commits += 1;
+      if (commits === 1) return Promise.reject(new Error('forced phase-B failure'));
+      return realCommit.apply(this);
+    });
+  }
+
+  async function seedFailableGroup(gid: string): Promise<void> {
+    await seedGroup(gid, [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember(gid, deletedUid);
+    await seedMember(gid, otherUid);
+    await seedEvent(gid, 'ev');
+    await seedExpense(`groups/${gid}/events/ev/expenses/e1`);
+  }
+
+  test('#76 revokes refresh tokens before deleting the auth user', async () => {
+    await seedAuthUser();
+    await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('groupA', deletedUid);
+    await seedMember('groupA', otherUid);
+
+    const revokeSpy = jest.spyOn(getAuth(), 'revokeRefreshTokens');
+    const deleteSpy = jest.spyOn(getAuth(), 'deleteUser');
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.authUserDeleted).toBe(true);
+    expect(revokeSpy).toHaveBeenCalledWith(deletedUid);
+    expect(deleteSpy).toHaveBeenCalledWith(deletedUid);
+    // Revocation must precede deleteUser so a preserved (partial-failure) user
+    // can never refresh into a new ID token.
+    expect(revokeSpy.mock.invocationCallOrder[0])
+      .toBeLessThan(deleteSpy.mock.invocationCallOrder[0]);
+  });
+
+  test('#76 revokes refresh tokens even when the cascade partially fails (user preserved)', async () => {
+    await seedAuthUser();
+    await seedFailableGroup('groupP');
+
+    const revokeSpy = jest.spyOn(getAuth(), 'revokeRefreshTokens');
+    failFirstPhaseBCommit();
+
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+
+    expect(revokeSpy).toHaveBeenCalledWith(deletedUid);
+    await expect(getAuth().getUser(deletedUid)).resolves.toMatchObject({ uid: deletedUid });
+  });
+
+  test('#76 writes a deletionAudit marker on partial failure', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedFailableGroup('groupP');
+    failFirstPhaseBCommit();
+
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+
+    const marker = (await db.doc(`deletionAudit/${deletedUid}`).get()).data();
+    expect(marker).toMatchObject({ uid: deletedUid, status: 'failed', attemptCount: 1 });
+    expect(marker?.cascadeFailed).toContain('groupP');
+    expect(marker?.expiresAt).toBeInstanceOf(Timestamp);
+    expect(marker?.firstFailedAt).toBeInstanceOf(Timestamp);
+    expect((marker?.firstFailedAt as Timestamp).toMillis())
+      .toBe((marker?.lastAttemptAt as Timestamp).toMillis());
+  });
+
+  test('#76 marker attemptCount increments while firstFailedAt is preserved', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedFailableGroup('groupP');
+
+    failFirstPhaseBCommit();
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+    const first = (await db.doc(`deletionAudit/${deletedUid}`).get()).data();
+
+    jest.restoreAllMocks();
+    muteLoggers();
+    failFirstPhaseBCommit();
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+    const second = (await db.doc(`deletionAudit/${deletedUid}`).get()).data();
+
+    expect(second?.attemptCount).toBe(2);
+    expect((second?.firstFailedAt as Timestamp).toMillis())
+      .toBe((first?.firstFailedAt as Timestamp).toMillis());
+    expect((second?.lastAttemptAt as Timestamp).toMillis())
+      .toBeGreaterThanOrEqual((first?.lastAttemptAt as Timestamp).toMillis());
+  });
+
+  test('#76 clears a pre-existing deletionAudit marker on successful deletion', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('groupA', deletedUid);
+    await seedMember('groupA', otherUid);
+    await db.doc(`deletionAudit/${deletedUid}`).set({
+      uid: deletedUid,
+      status: 'failed',
+      cascadeFailed: ['groupA'],
+      firstFailedAt: Timestamp.now(),
+      lastAttemptAt: Timestamp.now(),
+      attemptCount: 1,
+      expiresAt: Timestamp.fromMillis(Date.now() + 1000),
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.cascadeFailed).toEqual([]);
+    expect((await db.doc(`deletionAudit/${deletedUid}`).get()).exists).toBe(false);
   });
 });

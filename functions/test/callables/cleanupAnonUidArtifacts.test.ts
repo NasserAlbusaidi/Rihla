@@ -1,6 +1,6 @@
 import functionsTest from 'firebase-functions-test';
 import { getAuth } from 'firebase-admin/auth';
-import { DocumentReference, getFirestore } from 'firebase-admin/firestore';
+import { DocumentReference, Transaction, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 import { cleanupAnonUidArtifacts } from '../../src/callables/cleanupAnonUidArtifacts';
@@ -456,6 +456,275 @@ describe('cleanupAnonUidArtifacts', () => {
     // (matches the existing createdBy policy). The oldUid ref is inert.
     expect(xdel?.payerParticipantId).toBe('old-anon-uid');
     expect(xdel?.createdBy).toBe('old-anon-uid');
+  });
+
+  // #217: the recovery cascade must also migrate the ACTIVITY surface
+  // (event activity_logs + group activity) oldUid -> newUid. MIGRATE semantics:
+  // repoint actorId/targetParticipantId + UID-bearing metadata VALUES only;
+  // actorName/logText/description are denormalized display strings for the SAME
+  // recovered person and are left untouched (contrast deleteAccount, which scrubs
+  // them to "Deleted member"). Activity is non-financial — the balance engine
+  // never reads it — so these are inert orphans, not money bugs; we migrate them
+  // for completeness (same defect class as #216).
+  test('#217 event activity_logs actorId/targetParticipantId migrate; names untouched', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid']);
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old Name' });
+    await seedEvent('g1', 'e1');
+    await db.doc('groups/g1/events/e1/activity_logs/a1').set({
+      id: 'a1',
+      eventId: 'e1',
+      category: 'MONEY',
+      eventType: 'CREATE',
+      logText: 'Old Name added an expense',
+      actorId: 'old-anon-uid',
+      targetParticipantId: 'old-anon-uid',
+      actorName: 'Old Name',
+      metadata: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    // A log by another actor must be left completely untouched (no write).
+    await db.doc('groups/g1/events/e1/activity_logs/a2').set({
+      id: 'a2',
+      eventId: 'e1',
+      category: 'MONEY',
+      eventType: 'CREATE',
+      logText: 'Owner added an expense',
+      actorId: 'owner',
+      actorName: 'Owner',
+      metadata: {},
+      createdAt: '2026-01-02T00:00:00.000Z',
+    });
+
+    await cleanupCall();
+
+    const a1 = (await db.doc('groups/g1/events/e1/activity_logs/a1').get()).data();
+    expect(a1?.actorId).toBe('new-uid');
+    expect(a1?.targetParticipantId).toBe('new-uid');
+    // migrate-not-scrub: display strings for the SAME person, untouched
+    expect(a1?.actorName).toBe('Old Name');
+    expect(a1?.logText).toBe('Old Name added an expense');
+    expect(a1?.createdAt).toBe('2026-01-01T00:00:00.000Z');
+
+    const a2 = (await db.doc('groups/g1/events/e1/activity_logs/a2').get()).data();
+    expect(a2?.actorId).toBe('owner');
+  });
+
+  test('#217 event activity_logs metadata UID values migrate; non-UID untouched', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid']);
+    await seedMember('g1', 'old-anon-uid');
+    await seedEvent('g1', 'e1');
+    await db.doc('groups/g1/events/e1/activity_logs/a1').set({
+      id: 'a1',
+      eventId: 'e1',
+      category: 'MONEY',
+      eventType: 'CREATE',
+      logText: 'Old Name added an expense for 3.000 OMR',
+      actorId: 'owner',
+      actorName: 'Owner',
+      metadata: {
+        expenseId: 'x1',
+        amount: '3.000',
+        amountFils: 3000,
+        currency: 'OMR',
+        payerParticipantId: 'old-anon-uid',
+        customSplitParticipants: ['old-anon-uid', 'owner'],
+        scope: 'global',
+      },
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await cleanupCall();
+
+    const a1 = (await db.doc('groups/g1/events/e1/activity_logs/a1').get()).data();
+    const meta = a1?.metadata as Record<string, unknown>;
+    expect(meta.payerParticipantId).toBe('new-uid');
+    expect(meta.customSplitParticipants).toEqual(['new-uid', 'owner']);
+    // non-UID metadata is byte-identical
+    expect(meta.expenseId).toBe('x1');
+    expect(meta.amount).toBe('3.000');
+    expect(meta.amountFils).toBe(3000);
+    expect(meta.currency).toBe('OMR');
+    expect(meta.scope).toBe('global');
+    // actorId here is 'owner' (not oldUid) — unchanged
+    expect(a1?.actorId).toBe('owner');
+  });
+
+  test('#217 group activity actorId + metadata.recipientId migrate; names untouched', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid']);
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old Name' });
+    await db.doc('groups/g1/activity/ga1').set({
+      id: 'ga1',
+      type: 'group_settlement',
+      actorId: 'old-anon-uid',
+      actorName: 'Old Name',
+      description: 'settled 5.000 OMR with Owner',
+      metadata: { amount: '5.000', recipientId: 'old-anon-uid' },
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
+    // member_joined by another actor with UID-free metadata: left untouched.
+    await db.doc('groups/g1/activity/ga2').set({
+      id: 'ga2',
+      type: 'member_joined',
+      actorId: 'owner',
+      actorName: 'Owner',
+      description: 'joined the group',
+      metadata: { groupId: 'g1' },
+      timestamp: '2026-01-02T00:00:00.000Z',
+    });
+
+    await cleanupCall();
+
+    const ga1 = (await db.doc('groups/g1/activity/ga1').get()).data();
+    expect(ga1?.actorId).toBe('new-uid');
+    expect((ga1?.metadata as Record<string, unknown>).recipientId).toBe('new-uid');
+    expect((ga1?.metadata as Record<string, unknown>).amount).toBe('5.000');
+    // migrate-not-scrub
+    expect(ga1?.actorName).toBe('Old Name');
+    expect(ga1?.description).toBe('settled 5.000 OMR with Owner');
+    expect(ga1?.timestamp).toBe('2026-01-01T00:00:00.000Z');
+
+    const ga2 = (await db.doc('groups/g1/activity/ga2').get()).data();
+    expect(ga2?.actorId).toBe('owner');
+    expect((ga2?.metadata as Record<string, unknown>).groupId).toBe('g1');
+  });
+
+  test('#217 soft-deleted event activity_logs are NOT migrated (active-only, inert)', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid']);
+    await seedMember('g1', 'old-anon-uid');
+    await seedEvent('g1', 'edel', { isDeleted: true });
+    await db.doc('groups/g1/events/edel/activity_logs/a1').set({
+      id: 'a1',
+      eventId: 'edel',
+      category: 'MONEY',
+      eventType: 'CREATE',
+      logText: 'Old Name added an expense',
+      actorId: 'old-anon-uid',
+      actorName: 'Old Name',
+      metadata: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await cleanupCall();
+
+    const a1 = (await db.doc('groups/g1/events/edel/activity_logs/a1').get()).data();
+    // Active-only policy, matching #216's soft-deleted-expense skip: the feed
+    // never surfaces a soft-deleted event's activity, so the oldUid ref is inert.
+    expect(a1?.actorId).toBe('old-anon-uid');
+  });
+
+  // #217 adversarial / identity-collision axis: when newUid is ALREADY a member
+  // (both-UIDs case), the activity metadata array DUPLICATES (not sums, not dedups)
+  // while the parallel expense splitDistribution SUMS — proving the two paths use
+  // deliberately different collision semantics on the same axis. Activity metadata
+  // is display-only and never aggregated, so a dup is inert; money must conserve.
+  test('#217 both-members collision: metadata array dups (NOT sums) while splitDistribution sums', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid', 'new-uid', 'owner']);
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old' });
+    await seedMember('g1', 'new-uid', { displayName: 'New' });
+    await seedEvent('g1', 'e1', {
+      participantIds: ['old-anon-uid', 'new-uid', 'owner'],
+      participantNames: { 'old-anon-uid': 'Old', 'new-uid': 'New', owner: 'Owner' },
+    });
+    await db.doc('groups/g1/events/e1/expenses/x1').set({
+      id: 'x1',
+      createdBy: 'owner',
+      payerParticipantId: 'owner',
+      splitDistribution: { 'old-anon-uid': 1000, 'new-uid': 500, owner: 1500 },
+      customSplitParticipants: ['old-anon-uid', 'new-uid', 'owner'],
+      isDeleted: false,
+    });
+    await db.doc('groups/g1/events/e1/activity_logs/a1').set({
+      id: 'a1',
+      eventId: 'e1',
+      category: 'MONEY',
+      eventType: 'CREATE',
+      logText: 'an expense',
+      actorId: 'old-anon-uid',
+      actorName: 'Old',
+      metadata: {
+        payerParticipantId: 'owner',
+        customSplitParticipants: ['old-anon-uid', 'new-uid', 'owner'],
+      },
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await cleanupCall();
+
+    // Money path: splitDistribution conserves by SUMMING the collision (#216).
+    const x1 = (await db.doc('groups/g1/events/e1/expenses/x1').get()).data();
+    const dist = x1?.splitDistribution as Record<string, number>;
+    expect(dist['new-uid']).toBe(1500);
+    expect(Object.values(dist).reduce((a, b) => a + b, 0)).toBe(3000);
+    // Activity path: inert display array DUPLICATES (no sum, no dedup), actorId migrates.
+    const a1 = (await db.doc('groups/g1/events/e1/activity_logs/a1').get()).data();
+    expect(a1?.actorId).toBe('new-uid');
+    expect((a1?.metadata as Record<string, unknown>).customSplitParticipants)
+      .toEqual(['new-uid', 'new-uid', 'owner']);
+  });
+
+  // #217: a forced activity-write failure must enter the cascadeFailed gate
+  // (#46) — preserve the old anon Auth user + the cleanup intent for retry. The
+  // existing per-group-failure test (above) throws in the READ phase, before any
+  // activity write, so it does not cover this surface; spy tx.update on the
+  // activity ref to force a write-phase abort.
+  test('#217 activity write failure gates auth delete + preserves intent', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid']);
+    await seedMember('g1', 'old-anon-uid');
+    await seedEvent('g1', 'e1');
+    await db.doc('groups/g1/events/e1/activity_logs/a1').set({
+      id: 'a1',
+      eventId: 'e1',
+      category: 'MONEY',
+      eventType: 'CREATE',
+      logText: 'Old Name added an expense',
+      actorId: 'old-anon-uid',
+      actorName: 'Old Name',
+      metadata: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    const originalUpdate = Transaction.prototype.update;
+    const spy = jest
+      .spyOn(Transaction.prototype, 'update')
+      .mockImplementation(function (this: Transaction, ref: any, ...rest: any[]) {
+        if (typeof ref?.path === 'string' && ref.path.includes('activity_logs')) {
+          throw new Error('forced activity update failure');
+        }
+        return (originalUpdate as any).call(this, ref, ...rest);
+      });
+
+    try {
+      const result = await cleanupCall() as {
+        cascadeFailed: string[];
+        authUserDeleted: boolean;
+      };
+
+      expect(result.cascadeFailed).toEqual(['g1']);
+      expect(result.authUserDeleted).toBe(false);
+      await expect(getAuth().getUser('old-anon-uid')).resolves.toBeDefined();
+      expect((await db.doc('recoveryCleanupIntents/old-anon-uid').get()).exists)
+        .toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   test('deleted anon auth user returns authUserDeleted true', async () => {

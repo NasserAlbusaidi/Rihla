@@ -16,3 +16,4 @@ export {
   eventSettlementNotifier,
   groupSettlementNotifier,
 } from './triggers/settlementNotifier';
+export { deletionReaper } from './scheduled/deletionReaper';

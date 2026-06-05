@@ -323,6 +323,41 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect(await docExists('groups/g/events/e1/settlements/s1')).toBe(true);
   });
 
+  test('7b. #223: in-tolerance exact residual — a client-settled group must be deletable (server closes the residual like the client)', async () => {
+    // expense 10.000 OMR, exact {owner:5000, member:5001} (sum 10.001, drift +1
+    // fils → IN-tolerance, not the out-of-tolerance equal fallback). The client
+    // BalanceCalculator closes the -1 residual onto the alphabetically-last
+    // absorbable recipient (owner: 5000 → 4999), so member owes exactly 5001.
+    // Member settles 5001 → CLIENT net all-zero (the app shows the group
+    // settled). Before the close-out port the server kept owner owed 5000
+    // verbatim → owner net -1 → failed-precondition: the server refused to
+    // delete a group the app shows as settled. After the port the server agrees.
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 10000,
+      splitMode: 'exact',
+      scope: 'custom',
+      customSplitParticipants: [OWNER, MEMBER],
+      splitDistribution: { [OWNER]: 5000, [MEMBER]: 5001 },
+    });
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 5001,
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(res).toMatchObject({ mode: 'softDelete', eventsSoftDeleted: 1 });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(true);
+  });
+
   test('8. group-scope settlement is counted in the balance fold (§:285-304)', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);
