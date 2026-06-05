@@ -148,15 +148,26 @@ Generic words like `build` or `artifact` are not enough by themselves.
 
 | ID | Area | iOS | Android | Evidence |
 |---|---|---|---|---|
-| RD-01 | Create group | Deferred — v1.2 Android-only |  | Group ID or screenshot |
-| RD-02 | Join group by invite code | Deferred — v1.2 Android-only |  | Invite code and joined member name |
-| RD-03 | Delete group | Deferred — v1.2 Android-only |  | Group no longer appears on both devices |
-| RD-04 | Two-device ledger identity | Deferred — v1.2 Android-only |  | Screenshots from both devices |
-| RD-05 | Decimal expense input | Deferred — v1.2 Android-only |  | Keyboard screenshot and saved amount |
-| RD-06 | Offline and reconnect | Deferred — v1.2 Android-only |  | Before/after screenshots |
-| RD-07 | Notification opt-in | Deferred — v1.2 Android-only |  | `fcm_tokens/{uid}` exists |
-| RD-08 | Notification opt-out | Deferred — v1.2 Android-only |  | `fcm_tokens/{uid}` removed |
-| RD-09 | Arabic RTL golden path | Deferred — v1.2 Android-only |  | Arabic RTL screenshots and golden-path log |
+| RD-01 | Create group | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL, Android 16 | Group "QA 2026-06-05" id 00dbec67-4286-4237-bd5e-36c1fd5ff40b; invite HN9TFU; creator Alice; group detail+settings open with no permission errors. Build app-debug.apk d425e954e346, prod rihla-safar |
+| RD-02 | Join group by invite code | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL + emulator | Joined on 2nd client via enforced joinGroupByInviteCode under live App Check (debug token); code HN9TFU; Bob claimed; both clients show 2 members. Build app-debug.apk d425e954e346 |
+| RD-03 | Delete group | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL + emulator | Enforced deleteGroup succeeded after settle-to-zero; group disappeared on both clients, no permission loop; prod groups/00dbec67-4286-4237-bd5e-36c1fd5ff40b isDeleted=true deletedAt 2026-06-05T13:56:39Z. Build app-debug.apk d425e954e346 |
+| RD-04 | Two-device ledger identity | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL + emulator (see note) | Expense "QA coffee" 1.500 OMR paid-by Alice; both clients show Bob owes Alice 0.750, payer label "Alice", no self-owe. 2nd client = Pixel_10_Pro EMULATOR — accepted physical-device deviation. Build app-debug.apk d425e954e346 |
+| RD-05 | Decimal expense input | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL + emulator | Decimal "." separator present on keypad; 1.500 entered and saved; ledger renders OMR 0.750 / 1.500 at 3dp on both clients. Build app-debug.apk d425e954e346 |
+| RD-06 | Offline and reconnect | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL | Airplane mode: cached Home/group/event/Activity stayed visible; reconnect refreshed all screens with no stuck false-offline. Build app-debug.apk d425e954e346 |
+| RD-07 | Notification opt-in | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL | fcm_tokens/EsGOBaZVvYQNXD2u32ad23xN8wP2 created updateTime 2026-06-05T13:36:42Z with token + platform=android + locale=en. Build app-debug.apk d425e954e346 |
+| RD-08 | Notification opt-out | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL | Same fcm_tokens doc deleted (HTTP 404) on opt-out; not recreated after cold relaunch with toggle off. Build app-debug.apk d425e954e346 |
+| RD-09 | Arabic RTL golden path | Deferred — v1.2 Android-only | Pass — Pixel 9 Pro XL | #126 CLOSED; full RTL across Home/Profile/Activity/Group/Event/TypePicker/CreateEvent/AddExpense/Ledger; back arrows point right; invite codes + currency stay LTR. Build app-debug.apk d425e954e346 |
+
+## 2026-06-05 Android-only pass (debug build + App Check debug token)
+
+All nine rows recorded Pass against the production Firebase backend (`rihla-safar`).
+
+- **Build under test:** `app-debug.apk` from `main @ d425e954e3461aedacbc38155bf13e501702fd1d` (pubspec `1.3.2+20`), SHA-256 `2d01ef4ae7c6f931446957a0d38bfd025971cb0ebc1df3de0466bd2fa816f068`.
+- **App Check:** debug build → `AndroidDebugProvider`; per-install debug tokens were registered to prod App Check via the management API so the enforced callables (`joinGroupByInviteCode`, `deleteGroup`) could be exercised. Both callables succeeded under live attestation; tokens were deleted from prod afterwards.
+- **Devices:** Pixel 9 Pro XL (Android 16, physical) as Alice; **Pixel_10_Pro emulator** (Android 37, Google APIs Play Store) as Bob.
+- **RD-04 deviation (accepted):** the two-device row used the emulator as the second client. The cross-device ledger identity verified correctly (both clients showed `Bob owes Alice 0.750`, payer `Alice`, no self-owe), but this is **not** two physical Androids.
+
+**Gate status:** `tool/check_real_device_qa_gate.sh` (with `RIHLA_SKIP_IOS_QA=yes`) still reports FAIL on its hard requirement of **two physical Android devices** (emulators are excluded by design). `RIHLA_REAL_DEVICE_QA_READY` is therefore left **unset** — flip it only after RD-04 is re-confirmed on a second physical Android (or the gate/criteria are amended to accept the emulator for RD-04). Tracked under #40.
 
 ## RD-01: Create Group
 
