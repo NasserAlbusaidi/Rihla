@@ -10,6 +10,7 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
+import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -138,6 +139,27 @@ void main() {
       expect(find.textContaining('Sam (#bbbb)'), findsAtLeastNWidgets(1));
       // No bare "Sam" should survive once both collide.
       expect(find.text('Sam'), findsNothing);
+
+      // #263: the transfer tile's direction line is a RichText (find.text does
+      // NOT traverse it by default), so the assertions above were satisfied by
+      // the net rows alone while the tile rendered an ambiguous "Sam -> Sam".
+      // Assert the discriminator survives INSIDE the tile.
+      final tile = find.byType(GroupSettlementTile);
+      expect(tile, findsOneWidget);
+      expect(
+        find.descendant(
+          of: tile,
+          matching: find.textContaining('Sam (#aaaa)', findRichText: true),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: tile,
+          matching: find.textContaining('Sam (#bbbb)', findRichText: true),
+        ),
+        findsOneWidget,
+      );
     },
   );
 }
