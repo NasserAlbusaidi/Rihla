@@ -584,4 +584,41 @@ exit 64
     expect(audit, contains('Not complete'));
     expect(productionReadiness, contains('docs/RELEASE-HARDENING-AUDIT.md'));
   });
+
+  test('expected-functions extractor lists every re-exported Cloud Function, '
+      'including multi-line export blocks (guards prod-state false-PASS)', () {
+    // The production-state check compares this list against the deployed set. A
+    // prior single-line `sed` missed multi-line `export { ... }` blocks (#53
+    // notifiers, #198 monitors), so the check would report "All expected
+    // Functions are deployed" while those triggers were absent — a false PASS.
+    final result = Process.runSync('bash', [
+      'tool/list_expected_functions.sh',
+    ]);
+    expect(
+      result.exitCode,
+      0,
+      reason: 'extractor failed: ${result.stderr}',
+    );
+    final extracted = (result.stdout as String)
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toSet();
+
+    // Independent second extractor (Dart regex) over the actual source: the
+    // bash awk must match it exactly — no misses, no extras — so a NEW export
+    // can never silently escape the deploy verification.
+    final index = read('functions/src/index.ts');
+    final identifier = RegExp(r'^[A-Za-z_$][A-Za-z0-9_$]*$');
+    final exported = RegExp(r'export\s*\{([^}]*)\}')
+        .allMatches(index)
+        .expand((match) => match.group(1)!.split(','))
+        .map((token) => token.trim())
+        .where(identifier.hasMatch)
+        .toSet();
+
+    expect(exported, contains('eventSettlementNotifier'),
+        reason: 'fixture sanity: source must still re-export the #53 notifiers');
+    expect(extracted, equals(exported));
+  });
 }
