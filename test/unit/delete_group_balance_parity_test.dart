@@ -110,6 +110,50 @@ void main() {
     );
 
     test(
+      'case 1b: in-tolerance exact residual nets to all-zero — the value the '
+      'server allocateExact MUST match after its residual close-out (#223)',
+      () {
+        // owner pays 10.000, exact {owner:5.000, member:5.001} (sum 10.001,
+        // +0.001 IN-tolerance drift — not the out-of-tolerance equal fallback).
+        // The client closes the -0.001 residual onto the alphabetically-last
+        // absorbable recipient (owner: 5.000 → 4.999), so member owes exactly
+        // 5.001; member settles 5.001 → all-zero. The TS deleteGroup gate
+        // (allocateExact) returned the distribution verbatim in-tolerance, so it
+        // kept owner owed 5.000 → owner net -0.001 → it refused to delete a
+        // group the client shows as settled. This pins the net the server must
+        // reach once it mirrors the close-out.
+        final balances = BalanceCalculator.calculateBalances(
+          participants: [participant('owner'), participant('member')],
+          expenses: [
+            expense(
+              amount: '10.000',
+              splitMode: SplitMode.exact,
+              scope: ExpenseScope.custom,
+              customSplitParticipants: ['owner', 'member'],
+              splitDistribution: {
+                'owner': Decimal.parse('5.000'),
+                'member': Decimal.parse('5.001'),
+              },
+            ),
+          ],
+          settlements: [
+            Settlement(
+              id: 's1',
+              tripId: 'event-1',
+              payerParticipantId: 'member',
+              recipientParticipantId: 'owner',
+              amount: Decimal.parse('5.001'),
+              settledAt: DateTime(2026),
+            ),
+          ],
+        );
+
+        expect(netFor(balances, 'owner'), Decimal.zero);
+        expect(netFor(balances, 'member'), Decimal.zero);
+      },
+    );
+
+    test(
       'case 2: out-of-universe ghost share is DROPPED, not redistributed '
       '(identity axis, distribution branch — §8.1 case 12)',
       () {
