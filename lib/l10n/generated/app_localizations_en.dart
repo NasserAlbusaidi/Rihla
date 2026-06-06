@@ -695,6 +695,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorPaidBy => 'Paid by';
 
   @override
+  String get editorChange => 'Change';
+
+  @override
   String get editorSplitBetween => 'Split between';
 
   @override

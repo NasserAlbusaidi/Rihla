@@ -718,6 +718,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorPaidBy => 'دفع بواسطة';
 
   @override
+  String get editorChange => 'تغيير';
+
+  @override
   String get editorSplitBetween => 'التقسيم بين';
 
   @override
