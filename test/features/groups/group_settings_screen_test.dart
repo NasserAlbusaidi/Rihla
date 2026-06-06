@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -415,21 +416,19 @@ class _RemovingGroupService extends GroupService {
 
   final Future<void> Function({
     required String groupId,
-    required String memberId,
     required String userId,
   })?
   onRemove;
 
-  final removeCalls = <({String groupId, String memberId, String userId})>[];
+  final removeCalls = <({String groupId, String userId})>[];
 
   @override
   Future<void> removeMember({
     required String groupId,
-    required String memberId,
     required String userId,
   }) async {
-    removeCalls.add((groupId: groupId, memberId: memberId, userId: userId));
-    await onRemove?.call(groupId: groupId, memberId: memberId, userId: userId);
+    removeCalls.add((groupId: groupId, userId: userId));
+    await onRemove?.call(groupId: groupId, userId: userId);
   }
 }
 
@@ -910,7 +909,36 @@ void main() {
       expect(activityService.logCalls, isEmpty);
     });
 
-    testWidgets('successful member removal logs activity and calls service', (
+    testWidgets(
+      'successful member removal calls callable route and writes NO client activity log (#318)',
+      (tester) async {
+        late _RemovingGroupService groupService;
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrapMembersSection(
+            prefs: prefs,
+            groupServiceBuilder: (ref) =>
+                groupService = _RemovingGroupService(ref),
+            activityService: activityService,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
+        await tester.pumpAndSettle();
+
+        // Routes through the callable with targetUserId (memberId dropped).
+        expect(groupService.removeCalls, [
+          (groupId: 'group-1', userId: 'uid-member'),
+        ]);
+        // #318: the server writes the member_left activity entry; the client
+        // must NOT log it (double-log + the old log fired even on failure).
+        expect(activityService.logCalls, isEmpty);
+      },
+    );
+
+    testWidgets('member removal failure shows snackbar, no client activity log (#318)', (
       tester,
     ) async {
       late _RemovingGroupService groupService;
@@ -919,44 +947,9 @@ void main() {
       await tester.pumpWidget(
         _wrapMembersSection(
           prefs: prefs,
-          groupServiceBuilder: (ref) =>
-              groupService = _RemovingGroupService(ref),
-          activityService: activityService,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
-      await tester.pumpAndSettle();
-
-      expect(groupService.removeCalls, [
-        (groupId: 'group-1', memberId: 'mem-2', userId: 'uid-member'),
-      ]);
-      expect(activityService.logCalls, hasLength(1));
-      expect(activityService.logCalls.single.groupId, 'group-1');
-      expect(activityService.logCalls.single.type, 'member_left');
-      expect(activityService.logCalls.single.actorId, '');
-      expect(activityService.logCalls.single.actorName, 'Test User');
-      expect(
-        activityService.logCalls.single.description,
-        'Bob was removed from the group',
-      );
-      expect(activityService.logCalls.single.metadata, {
-        'memberAction': 'removed',
-        'memberName': 'Bob',
-      });
-    });
-
-    testWidgets('member removal failure shows snackbar', (tester) async {
-      late _RemovingGroupService groupService;
-      final activityService = _RecordingGroupActivityService();
-
-      await tester.pumpWidget(
-        _wrapMembersSection(
-          prefs: prefs,
           groupServiceBuilder: (ref) => groupService = _RemovingGroupService(
             ref,
-            onRemove: ({required groupId, required memberId, required userId}) {
+            onRemove: ({required groupId, required userId}) {
               throw StateError('write failed');
             },
           ),
@@ -973,9 +966,83 @@ void main() {
         findsOneWidget,
       );
       expect(groupService.removeCalls, [
-        (groupId: 'group-1', memberId: 'mem-2', userId: 'uid-member'),
+        (groupId: 'group-1', userId: 'uid-member'),
       ]);
-      expect(activityService.logCalls, hasLength(1));
+      expect(activityService.logCalls, isEmpty);
+    });
+
+    testWidgets(
+      'failed-precondition maps to settle-up snackbar with action routing to settle up (#318)',
+      (tester) async {
+        late _RemovingGroupService groupService;
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrapMembersSection(
+            prefs: prefs,
+            groupServiceBuilder: (ref) => groupService = _RemovingGroupService(
+              ref,
+              onRemove: ({required groupId, required userId}) {
+                throw FirebaseFunctionsException(
+                  message: 'unsettled',
+                  code: 'failed-precondition',
+                );
+              },
+            ),
+            activityService: activityService,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Settle up with Bob before removing them.'),
+          findsOneWidget,
+        );
+        await tester.tap(find.widgetWithText(SnackBarAction, 'Settle up'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('SettleUp:group-1'), findsOneWidget);
+        expect(groupService.removeCalls, [
+          (groupId: 'group-1', userId: 'uid-member'),
+        ]);
+        expect(activityService.logCalls, isEmpty);
+      },
+    );
+
+    testWidgets('not-found maps to silent success — no error snackbar (#318)', (
+      tester,
+    ) async {
+      late _RemovingGroupService groupService;
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrapMembersSection(
+          prefs: prefs,
+          groupServiceBuilder: (ref) => groupService = _RemovingGroupService(
+            ref,
+            onRemove: ({required groupId, required userId}) {
+              throw FirebaseFunctionsException(
+                message: 'already gone',
+                code: 'not-found',
+              );
+            },
+          ),
+          activityService: activityService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Failed to remove'), findsNothing);
+      expect(groupService.removeCalls, [
+        (groupId: 'group-1', userId: 'uid-member'),
+      ]);
+      expect(activityService.logCalls, isEmpty);
     });
   });
 }

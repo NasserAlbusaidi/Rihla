@@ -516,8 +516,10 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(member.doc('groups/g1/members/member').delete());
   });
 
-  test('creator can still client-remove another member (#290 left validCreatorRemoveMember intact)', async () => {
-    // Positive control: dropping validSelfLeave must NOT break creator-remove.
+  test('creator can NO LONGER client-remove another member — server-only via removeMember (#318)', async () => {
+    // #318: validCreatorRemoveMember was dropped from group `allow update`. The
+    // full creator-remove batch (drop target from memberIds + delete the target
+    // member doc) is now rejected — creator-remove is server-authoritative.
     const owner = testEnv.authenticatedContext('owner').firestore();
     const batch = owner.batch();
     batch.update(owner.doc('groups/g1'), {
@@ -525,7 +527,16 @@ describe('Publish readiness Firestore rules', () => {
       updatedAt: new Date(),
     });
     batch.delete(owner.doc('groups/g1/members/member'));
-    await assertSucceeds(batch.commit());
+    await assertFails(batch.commit());
+  });
+
+  test('creator cannot lone-delete another member doc without the (now-blocked) memberIds drop (#318)', async () => {
+    // validMemberDelete CREATOR branch needs !(target in memberIds-after); the
+    // memberIds drop is the only way to satisfy it and it is now forbidden, so a
+    // lone member-doc delete is denied. Byte-for-byte the #290 argument via the
+    // CREATOR branch (758-760, 800-802).
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/members/member').delete());
   });
 
   test('deleteGroupAttempts counters are not readable or writable by clients (#190)', async () => {
