@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/share_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_links.dart';
@@ -1150,10 +1150,7 @@ void _showSnack(BuildContext context, String message) {
 // ──────────────────────────── Outbound action helpers
 
 void _shareApp(BuildContext context) {
-  Share.share(
-    context.l10n.profileShareMessage,
-    subject: 'Rihla',
-  );
+  shareText(context, context.l10n.profileShareMessage, subject: 'Rihla');
 }
 
 Future<void> _openExternalUrl(BuildContext context, String url) async {

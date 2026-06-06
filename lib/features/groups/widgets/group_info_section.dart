@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
@@ -292,7 +292,8 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 semanticLabel: context.l10n.groupShareInviteSemantic,
                 onTap: () {
                   HapticService.selection();
-                  Share.share(
+                  shareText(
+                    context,
                     context.l10n.groupShareInviteMessage(
                       widget.group.name,
                       AppLinks.inviteUrl(widget.group.inviteCode).toString(),

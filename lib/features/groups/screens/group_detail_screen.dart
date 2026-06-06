@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
@@ -300,7 +300,8 @@ class _CoverHeader extends StatelessWidget {
                       semanticLabel: context.l10n.groupShareInviteSemantic,
                       onTap: () {
                         HapticService.selection();
-                        Share.share(
+                        shareText(
+                          context,
                           context.l10n.groupShareInviteMessage(
                             group.name,
                             AppLinks.inviteUrl(group.inviteCode).toString(),

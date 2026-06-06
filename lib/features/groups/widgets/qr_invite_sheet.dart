@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
@@ -121,7 +121,8 @@ class _QrInviteSheet extends StatelessWidget {
                     primary: true,
                     onTap: () {
                       HapticService.lightClick();
-                      Share.share(
+                      shareText(
+                        context,
                         context.l10n.groupShareInviteMessage(
                           group.name,
                           _inviteUri.toString(),
