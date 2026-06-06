@@ -25,7 +25,7 @@ class DeleteAccountDialog extends StatelessWidget {
     final l10n = context.l10n;
     return AlertDialog(
       backgroundColor: colors.cardSurface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.spacing.radiusCard)),
       title: Text(
         l10n.deleteAccountTitle,
         style: AppTypography.sans(
