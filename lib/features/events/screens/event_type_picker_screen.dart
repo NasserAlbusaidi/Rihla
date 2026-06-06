@@ -61,7 +61,7 @@ class _EventTypePickerScreenState extends ConsumerState<EventTypePickerScreen> {
                         height: 1.05,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.spacing.space8),
                     Text(
                       context.l10n.eventPickerSubtitle,
                       style: AppTypography.sans(
@@ -81,7 +81,7 @@ class _EventTypePickerScreenState extends ConsumerState<EventTypePickerScreen> {
                         setState(() => _selectedType = type);
                       },
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: context.spacing.space24),
                     _ContinueButton(
                       label: context.l10n.eventContinueWith(selectedLabel),
                       onPressed: () => context.push(
@@ -228,7 +228,7 @@ class _TypeCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           constraints: BoxConstraints(minHeight: horizontal ? 84 : 168),
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(context.spacing.space16),
           decoration: BoxDecoration(
             color: colors.cardSurface,
             borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
@@ -321,7 +321,7 @@ class _TypeCopy extends StatelessWidget {
             height: 1.1,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: context.spacing.space4),
         Text(
           config.type.localizedDescription(context.l10n),
           maxLines: 2,

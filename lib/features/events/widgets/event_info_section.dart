@@ -148,7 +148,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.space8),
         Container(
           key: EventKeys.infoSection,
           decoration: BoxDecoration(
@@ -156,16 +156,16 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: context.shadows.raised,
           ),
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(context.spacing.space16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildNameField(),
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               _buildDateRow(),
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               _buildDescriptionField(),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacing.space16),
               _buildSaveButton(),
             ],
           ),
@@ -212,7 +212,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
           width: 1.5,
         ),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space12),
     );
   }
 
@@ -235,7 +235,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
     return Row(
       children: [
         Expanded(child: _buildDateTile(isStart: true)),
-        const SizedBox(width: 8),
+        SizedBox(width: context.spacing.space8),
         Expanded(child: _buildDateTile(isStart: false)),
       ],
     );
@@ -287,8 +287,8 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
             icon: Iconsax.note,
           ).copyWith(
             alignLabelWithHint: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space12,
               vertical: 14,
             ),
           ),
@@ -316,10 +316,10 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
           ),
         ),
         child: _isSaving
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
+            ? SizedBox(
+                width: context.spacing.space20,
+                height: context.spacing.space20,
+                child: const CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
