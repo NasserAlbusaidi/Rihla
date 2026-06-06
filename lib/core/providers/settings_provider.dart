@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../config/firebase_config.dart';
 import '../models/app_settings_model.dart';
 import '../models/split_mode.dart';
@@ -25,7 +27,8 @@ final settingsServiceProvider = Provider<SettingsService>((ref) {
 class SettingsNotifier extends StateNotifier<AppSettings> {
   final SettingsService _service;
 
-  SettingsNotifier(this._service) : super(_service.loadSettings());
+  SettingsNotifier(this._service, {String? deviceLanguageCode})
+    : super(_service.loadSettings(deviceLanguageCode: deviceLanguageCode));
 
   Future<void> setThemeMode(AppThemeMode mode) async {
     await _service.saveThemeMode(mode);
@@ -133,12 +136,38 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   }
 }
 
+/// Device locales in the user's platform-preference order.
+///
+/// Defaults to the OS-reported list; overridable in tests to make first-run
+/// locale seeding deterministic regardless of the host machine's locale.
+final deviceLocalesProvider = Provider<List<Locale>>(
+  (ref) => PlatformDispatcher.instance.locales,
+);
+
+/// Returns the first [deviceLocales] entry whose `languageCode` the app
+/// supports (region subtag ignored), or null when none match — in which case
+/// the caller falls back to the default language. (#286)
+String? resolveSupportedLanguageCode(
+  List<Locale> deviceLocales,
+  Iterable<Locale> supportedLocales,
+) {
+  final supported = supportedLocales.map((l) => l.languageCode).toSet();
+  for (final locale in deviceLocales) {
+    if (supported.contains(locale.languageCode)) return locale.languageCode;
+  }
+  return null;
+}
+
 /// Provider for SettingsNotifier
 final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((
   ref,
 ) {
   final service = ref.watch(settingsServiceProvider);
-  return SettingsNotifier(service);
+  final deviceLanguageCode = resolveSupportedLanguageCode(
+    ref.watch(deviceLocalesProvider),
+    AppLocalizations.supportedLocales,
+  );
+  return SettingsNotifier(service, deviceLanguageCode: deviceLanguageCode);
 });
 
 /// Locale derived from [settingsProvider]'s `languageCode`.

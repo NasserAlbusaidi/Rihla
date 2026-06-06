@@ -17,14 +17,19 @@ class SettingsService {
 
   SettingsService(this._prefs);
 
-  /// Load settings from SharedPreferences
-  AppSettings loadSettings() {
+  /// Load settings from SharedPreferences.
+  ///
+  /// [deviceLanguageCode] seeds the language on first run (when the user has
+  /// never made an explicit choice) so an Arabic phone boots Arabic (#286). A
+  /// stored choice always wins; an absent device hint falls back to English.
+  AppSettings loadSettings({String? deviceLanguageCode}) {
     final themeIndex = _prefs.getInt(_themeKey) ?? AppThemeMode.system.index;
     final themeMode = themeIndex >= 0 && themeIndex < AppThemeMode.values.length
         ? AppThemeMode.values[themeIndex]
         : AppThemeMode.system;
 
-    final languageCode = _prefs.getString(languageKey) ?? 'en';
+    final languageCode =
+        _prefs.getString(languageKey) ?? deviceLanguageCode ?? 'en';
     final currencyCode = _prefs.getString(_currencyKey) ?? 'OMR';
     final pushNotificationsEnabled =
         _prefs.getBool(_pushNotificationsKey) ?? false;
