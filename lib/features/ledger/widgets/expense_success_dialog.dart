@@ -30,7 +30,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacing.space24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -62,23 +62,23 @@ class ExpenseSuccessDialog extends StatelessWidget {
                 curve: Curves.elasticOut,
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacing.space16),
 
               Text(
                 context.l10n.expenseSuccessTitle,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
 
-              const SizedBox(height: 4),
+              SizedBox(height: context.spacing.space4),
 
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.space12,
+                  vertical: context.spacing.space4,
                 ),
                 decoration: BoxDecoration(
                   color: context.colors.inputFill,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(context.spacing.radiusCard),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -103,12 +103,12 @@ class ExpenseSuccessDialog extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: context.spacing.space24),
 
               // Summary Card
               _ExpenseSummaryCard(expense: expense, currency: currency),
 
-              const SizedBox(height: 24),
+              SizedBox(height: context.spacing.space24),
 
               // Done Button
               SizedBox(
@@ -137,7 +137,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
 
               // Add Another
               TextButton(
@@ -146,7 +146,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Iconsax.add, size: 18),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacing.space8),
                     Text(context.l10n.expenseSuccessAddAnother),
                   ],
                 ),
@@ -168,7 +168,7 @@ class _ExpenseSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(context.spacing.space20),
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
@@ -180,19 +180,19 @@ class _ExpenseSummaryCard extends StatelessWidget {
             context.l10n.expenseSuccessTotalAmount,
             style: Theme.of(context).textTheme.labelSmall,
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: context.spacing.space4),
           Text(
             AppFormatters.formatCurrency(expense.amount, currency),
             style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.space16),
 
           // Category row
           if (expense.categoryId != null || expense.categoryName != null)
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(context.spacing.space8),
                   decoration: BoxDecoration(
                     color: context.colors.selectionFill,
                     borderRadius: BorderRadius.circular(8),
@@ -203,7 +203,7 @@ class _ExpenseSummaryCard extends StatelessWidget {
                     color: context.colors.primary,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

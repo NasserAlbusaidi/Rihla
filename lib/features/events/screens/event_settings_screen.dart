@@ -60,13 +60,13 @@ class EventSettingsScreen extends ConsumerWidget {
 
             return SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.spacing.space16),
                     _buildBackButton(context),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.spacing.space16),
                     Text(
                       context.l10n.eventSettingsTitle,
                       style: TextStyle(
@@ -75,12 +75,12 @@ class EventSettingsScreen extends ConsumerWidget {
                         color: context.colors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: context.spacing.space24),
                     EventInfoSection(event: event)
                         .animate()
                         .fadeIn(delay: 100.ms, duration: 400.ms)
                         .slideY(begin: 0.1, curve: Curves.easeOutCubic),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.spacing.space16),
                     if (isAdmin)
                       EventDangerSection(
                             groupId: groupId,
@@ -91,20 +91,20 @@ class EventSettingsScreen extends ConsumerWidget {
                           .animate()
                           .fadeIn(delay: 200.ms, duration: 400.ms)
                           .slideY(begin: 0.1, curve: Curves.easeOutCubic),
-                    const SizedBox(height: 32),
+                    SizedBox(height: context.spacing.space32),
                   ],
                 ),
               ),
             );
           },
           loading: () => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 _buildBackButton(context),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 SkeletonLoader.generic(count: 3),
               ],
             ),
@@ -141,11 +141,11 @@ class EventSettingsScreen extends ConsumerWidget {
 
   Widget _buildError(BuildContext context, WidgetRef ref, String? message) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.space16),
           _buildBackButton(context),
           const SizedBox(height: 48),
           Center(
@@ -156,7 +156,7 @@ class EventSettingsScreen extends ConsumerWidget {
                   size: 32,
                   color: context.colors.textSecondary,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacing.space8),
                 Text(
                   context.l10n.eventSettingsLoadFailed,
                   style: TextStyle(
@@ -165,7 +165,7 @@ class EventSettingsScreen extends ConsumerWidget {
                     color: context.colors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.spacing.space4),
                 Text(
                   context.l10n.activityLoadFailedMessage,
                   style: TextStyle(
@@ -174,7 +174,7 @@ class EventSettingsScreen extends ConsumerWidget {
                     color: context.colors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 TextButton(
                   onPressed: () => ref.invalidate(
                     eventDetailProvider((groupId: groupId, eventId: eventId)),

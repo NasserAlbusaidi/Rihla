@@ -184,7 +184,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                         },
                       ),
                       if (m != PaymentMethod.values.last)
-                        const SizedBox(width: 8),
+                        SizedBox(width: context.spacing.space8),
                     ],
                   ],
                 ),
@@ -203,9 +203,9 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     isDense: true,
                     filled: true,
                     fillColor: colors.inputFillWarm,
-                    contentPadding: const EdgeInsets.symmetric(
+                    contentPadding: EdgeInsets.symmetric(
                       horizontal: 14,
-                      vertical: 12,
+                      vertical: context.spacing.space12,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -229,9 +229,9 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: spacing.space24),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 12,
+                    vertical: context.spacing.space12,
                   ),
                   decoration: BoxDecoration(
                     color: colors.saffronTint,
@@ -364,7 +364,7 @@ class _PayeeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
         color: colors.cardSurface,
         borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
@@ -452,9 +452,9 @@ class _PayeeCard extends StatelessWidget {
                 labelText: context.l10n.settleUpAmountLabel(currency),
                 filled: true,
                 fillColor: colors.inputFillWarm,
-                contentPadding: const EdgeInsets.symmetric(
+                contentPadding: EdgeInsets.symmetric(
                   horizontal: 14,
-                  vertical: 12,
+                  vertical: context.spacing.space12,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -537,7 +537,7 @@ class _MethodChip extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.space8),
               ],
               Flexible(
                 child: Text(

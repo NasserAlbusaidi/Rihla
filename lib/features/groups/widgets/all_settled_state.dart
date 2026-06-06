@@ -19,7 +19,7 @@ class AllSettledState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.spacing.space16),
             decoration: BoxDecoration(
               color: context.colors.success.withValues(alpha: 0.12),
               shape: BoxShape.circle,
@@ -30,7 +30,7 @@ class AllSettledState extends StatelessWidget {
               size: 48,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.space16),
           Text(
             context.l10n.settleUpAllSettledTitle,
             key: GroupKeys.settleUpAllSettledMessage,
@@ -41,7 +41,7 @@ class AllSettledState extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.space8),
           Text(
             context.l10n.settleUpAllSettledMessage,
             style: TextStyle(

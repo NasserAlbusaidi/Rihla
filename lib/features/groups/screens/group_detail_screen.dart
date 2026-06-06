@@ -113,7 +113,7 @@ class _Content extends ConsumerWidget {
         slivers: [
           SliverToBoxAdapter(child: _CoverHeader(group: group)),
           SliverPadding(
-            padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 0),
+            padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, 14, context.spacing.space20, 0),
             sliver: SliverToBoxAdapter(
               child: _BalanceCard(
                 group: group,
@@ -131,7 +131,7 @@ class _Content extends ConsumerWidget {
               ).animate().fadeIn(delay: 80.ms, duration: 360.ms),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          SliverToBoxAdapter(child: SizedBox(height: context.spacing.space20)),
           SliverToBoxAdapter(
             child: SectionHeader(
               key: GroupKeys.eventsSection,
@@ -141,9 +141,9 @@ class _Content extends ConsumerWidget {
                   GoRouter.of(context).push('/group/${group.id}/create-event'),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          SliverToBoxAdapter(child: SizedBox(height: context.spacing.space8)),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
             sliver: _eventsSliver(
               context: context,
               eventsAsync: eventsAsync,
@@ -159,9 +159,9 @@ class _Content extends ConsumerWidget {
               title: context.l10n.groupMembers,
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          SliverToBoxAdapter(child: SizedBox(height: context.spacing.space8)),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
             sliver: SliverToBoxAdapter(
               child: _MembersCard(
                 group: group,
@@ -188,7 +188,7 @@ class _Content extends ConsumerWidget {
         if (events.isEmpty) {
           return SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: EdgeInsets.symmetric(vertical: context.spacing.space20),
               child: EmptyStateView(
                 key: GroupKeys.noEventsEmpty,
                 icon: Iconsax.calendar_add,
@@ -221,7 +221,7 @@ class _Content extends ConsumerWidget {
       loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
       error: (_, _) => SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
           child: Text(
             context.l10n.groupLoadEventsFailed,
             style: AppTypography.sans(
@@ -537,7 +537,7 @@ class _BalanceCard extends StatelessWidget {
                 RAvatarStack(names: memberNames, size: 22, max: 4),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.space8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -570,7 +570,7 @@ class _BalanceCard extends StatelessWidget {
                   onTap: onAddPrimary,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.space8),
               Expanded(
                 child: _SecondaryCtaButton(
                   label: context.l10n.groupSettleUp,
@@ -699,7 +699,7 @@ class _EventRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
         child: Column(
           children: [
             Row(
@@ -713,7 +713,7 @@ class _EventRow extends StatelessWidget {
                     child: CoverArt.forEventType(event.type),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,7 +749,7 @@ class _EventRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.space8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
@@ -784,7 +784,7 @@ class _EventRow extends StatelessWidget {
               ],
             ),
             if (divider) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               Container(height: 0.5, color: colors.rule),
             ],
           ],
@@ -833,7 +833,7 @@ class _MembersCard extends StatelessWidget {
 
     if (data == null || data.balances.isEmpty) {
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+        padding: EdgeInsets.symmetric(vertical: 18, horizontal: context.spacing.space16),
         decoration: BoxDecoration(
           color: colors.cardSurface,
           borderRadius: BorderRadius.circular(spacing.radiusLarge),
@@ -855,7 +855,7 @@ class _MembersCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(spacing.radiusLarge),
         boxShadow: context.shadows.raised,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
       child: Column(
         children: [
           for (var i = 0; i < balances.length; i++)
@@ -918,11 +918,11 @@ class _MemberRow extends StatelessWidget {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
             child: Row(
               children: [
                 RAvatar(name: name, size: 32),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -953,7 +953,7 @@ class _MemberRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.space8),
                 if (net == Decimal.zero)
                   Text(
                     '—',
@@ -1011,7 +1011,7 @@ class _ErrorState extends StatelessWidget {
     return SafeArea(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacing.space24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
             title: context.l10n.groupLoadFailedTitle,
@@ -1034,7 +1034,7 @@ class _NotFoundState extends StatelessWidget {
     return SafeArea(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacing.space24),
           child: EmptyStateView(
             icon: Iconsax.box_remove,
             title: context.l10n.groupNotFoundTitle,

@@ -76,10 +76,10 @@ class _AllChip extends StatelessWidget {
       },
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space8),
         decoration: BoxDecoration(
           color: active ? colors.textPrimary : colors.cardSurface,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
           border: Border.all(
             color: active ? colors.textPrimary : colors.rule2,
             width: 1,
@@ -137,10 +137,10 @@ class _CategoryChip extends StatelessWidget {
       },
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space8),
         decoration: BoxDecoration(
           color: active ? colors.textPrimary : colors.cardSurface,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
           border: Border.all(
             color: active ? colors.textPrimary : colors.rule2,
             width: 1,
@@ -186,10 +186,10 @@ class LedgerCategoryStripEmpty extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space8),
             decoration: BoxDecoration(
               color: colors.cardSurface,
-              borderRadius: BorderRadius.circular(9999),
+              borderRadius: BorderRadius.circular(context.spacing.radiusPill),
               border: Border.all(color: colors.rule2, width: 1),
             ),
             child: Row(

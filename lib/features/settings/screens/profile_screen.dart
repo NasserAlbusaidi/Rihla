@@ -70,11 +70,11 @@ class ProfileScreen extends ConsumerWidget {
             _TopBar(canPop: showBack),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 32),
+                padding: EdgeInsets.only(bottom: context.spacing.space32),
                 child: Column(
                   children: [
                     const _PendingRecoveryBanner(),
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.spacing.space4),
                     _IdentityCard(
                           name: settings.deviceName,
                           onEditName: () =>
@@ -90,27 +90,27 @@ class ProfileScreen extends ConsumerWidget {
                         .slideY(begin: 0.08),
                     const SizedBox(height: 18),
                     _SectionLabel(label: l10n.profileSectionPreferences),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.spacing.space8),
                     const _PreferencesCard().animate().fadeIn(
                       delay: 260.ms,
                       duration: 400.ms,
                     ),
                     const SizedBox(height: 18),
-                    const Padding(
+                    Padding(
                       key: ProfileKeys.displaySection,
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: ProfileDisplaySection(),
+                      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
+                      child: const ProfileDisplaySection(),
                     ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
                     const SizedBox(height: 18),
                     _SectionLabel(label: l10n.profileSectionAccount),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.spacing.space8),
                     const _AccountCard().animate().fadeIn(
                       delay: 320.ms,
                       duration: 400.ms,
                     ),
                     const SizedBox(height: 18),
                     _SectionLabel(label: l10n.profileSectionAbout),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.spacing.space8),
                     const _AboutCard().animate().fadeIn(
                       delay: 380.ms,
                       duration: 400.ms,
@@ -260,7 +260,7 @@ class _PendingRecoveryBanner extends ConsumerWidget {
     final colors = context.colors;
     return Padding(
       key: ProfileKeys.pendingRecoveryBanner,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+      padding: EdgeInsets.fromLTRB(context.spacing.space20, context.spacing.space12, context.spacing.space20, context.spacing.space4),
       child: Material(
         color: colors.cardSoft,
         borderRadius: BorderRadius.circular(14),
@@ -271,11 +271,11 @@ class _PendingRecoveryBanner extends ConsumerWidget {
             context.push('/recover');
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: context.spacing.space12),
             child: Row(
               children: [
                 Icon(Iconsax.sms_tracking, size: 18, color: colors.textPrimary),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,7 +299,7 @@ class _PendingRecoveryBanner extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.space8),
                 DirectionalIcon(
                   Iconsax.arrow_right_3,
                   size: 16,
@@ -333,7 +333,7 @@ class _IdentityCard extends StatelessWidget {
     final handle = hasName ? '@${_slug(name)}' : l10n.profileHandlePlaceholder;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: Container(
         decoration: BoxDecoration(
           color: colors.cardSurface,
@@ -358,7 +358,7 @@ class _IdentityCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+              padding: EdgeInsets.fromLTRB(22, context.spacing.space24, 22, 22),
               child: Column(
                 children: [
                   RAvatar(
@@ -387,7 +387,7 @@ class _IdentityCard extends StatelessWidget {
                             height: 1.1,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: context.spacing.space8),
                         Icon(
                           Iconsax.edit_2,
                           size: 14,
@@ -396,7 +396,7 @@ class _IdentityCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.spacing.space4),
                   Text(
                     l10n.profileAnonymousTraveller,
                     style: AppTypography.sans(
@@ -417,7 +417,7 @@ class _IdentityCard extends StatelessWidget {
                           handle: handle,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.spacing.space8),
                       _IdentityChip(
                         leadingIcon: Iconsax.copy,
                         label: handle,
@@ -462,10 +462,10 @@ class _IdentityChip extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: 7),
         decoration: BoxDecoration(
           color: colors.cardSoft,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
           border: Border.all(color: colors.rule, width: 0.5),
         ),
         child: Row(
@@ -500,7 +500,7 @@ class _StatsGrid extends StatelessWidget {
     final l10n = context.l10n;
     return Padding(
       key: ProfileKeys.statsSection,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: Row(
         children: [
           Expanded(
@@ -566,7 +566,7 @@ class _StatCard extends StatelessWidget {
     final colors = context.colors;
     return Container(
       key: statKey,
-      padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+      padding: EdgeInsets.fromLTRB(14, 14, context.spacing.space12, 14),
       decoration: BoxDecoration(
         color: colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
@@ -596,7 +596,7 @@ class _StatCard extends StatelessWidget {
                 height: 1.0,
               ),
             ),
-          const SizedBox(height: 4),
+          SizedBox(height: context.spacing.space4),
           Text(
             sub,
             style: AppTypography.sans(
@@ -620,7 +620,7 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: Row(
         children: [
           Text(
@@ -654,7 +654,7 @@ class _PreferencesCard extends ConsumerWidget {
     final colors = context.colors;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: _RowsCard(
         rows: [
           _NotificationPrefRow(
@@ -710,7 +710,7 @@ class _AboutCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: _RowsCard(
         rows: [
           _PrefRow(
@@ -816,7 +816,7 @@ class _AccountCard extends ConsumerWidget {
     final isLinked = linkedEmail != null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: _RowsCard(
         rows: [
           _PrefRow(
@@ -929,10 +929,10 @@ class _RowsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
         boxShadow: context.shadows.raised,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
       child: Column(children: rows),
     );
   }
@@ -964,7 +964,7 @@ class _NotificationPrefRow extends StatelessWidget {
             child: Row(
               children: [
                 leading,
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1052,7 +1052,7 @@ class _PrefRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 14),
             child: Row(
               children: [
-                if (leading != null) ...[leading!, const SizedBox(width: 12)],
+                if (leading != null) ...[leading!, SizedBox(width: context.spacing.space12)],
                 Expanded(
                   child: Text(
                     label,

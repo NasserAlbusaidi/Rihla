@@ -51,7 +51,7 @@ class _ProfileQrSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        padding: EdgeInsets.fromLTRB(context.spacing.space20, context.spacing.space12, context.spacing.space20, context.spacing.space20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -63,7 +63,7 @@ class _ProfileQrSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: context.spacing.space20),
             Text(
               l10n.qrSheetTitle,
               style: AppTypography.display(
@@ -81,13 +81,13 @@ class _ProfileQrSheet extends StatelessWidget {
                 color: colors.textSecondary,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacing.space24),
             Container(
               key: ProfileKeys.qrCard,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(context.spacing.space16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(context.spacing.radiusCard),
                 boxShadow: context.shadows.raised,
               ),
               child: QrImageView(
@@ -106,7 +106,7 @@ class _ProfileQrSheet extends StatelessWidget {
                 semanticsLabel: l10n.qrSemanticsLabel,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: context.spacing.space20),
             Text(
               handle,
               style: AppTypography.mono(
@@ -115,7 +115,7 @@ class _ProfileQrSheet extends StatelessWidget {
                 color: colors.textPrimary,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: context.spacing.space20),
             SizedBox(
               height: 48,
               width: double.infinity,

@@ -15,8 +15,7 @@ class _AvatarColorPair {
 ///
 /// Pairs are chosen for warm-paper backgrounds and read as muted ink stamps
 /// rather than saturated badges. The hash → slot mapping is stable across
-/// app upgrades because [_stableHash] folds `codeUnits` with a fixed
-/// constant, the same approach as [AppGroupAvatarColors].
+/// app upgrades because [_stableHash] folds `codeUnits` with a fixed constant.
 const List<_AvatarColorPair> _palette = [
   // design-token-justified: deterministic avatar stamps are decorative identity colors.
   _AvatarColorPair(Color(0xFFD17B2C), Color(0xFFFBEED5)),

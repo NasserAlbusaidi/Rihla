@@ -162,13 +162,13 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     children: [
                       Container(
                         width: double.infinity,
-                        margin: const EdgeInsetsDirectional.fromSTEB(
-                          16,
-                          12,
-                          16,
+                        margin: EdgeInsetsDirectional.fromSTEB(
+                          context.spacing.space16,
+                          context.spacing.space12,
+                          context.spacing.space16,
                           0,
                         ),
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(context.spacing.space12),
                         decoration: BoxDecoration(
                           color: context.colors.warning.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
@@ -185,7 +185,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                               size: 18,
                               color: context.colors.warning,
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: context.spacing.space8),
                             Expanded(
                               child: Text(
                                 context.l10n.settleUpIncompleteBalanceWarning,
@@ -206,7 +206,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(context.spacing.space24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -215,7 +215,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           size: 40,
                           color: context.colors.error,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: context.spacing.space16),
                         Text(
                           context.l10n.settleUpCouldNotLoadBalances,
                           style: TextStyle(
@@ -224,7 +224,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                             color: context.colors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: context.spacing.space8),
                         TextButton(
                           onPressed: () => ref.invalidate(
                             groupBalancesProvider(widget.groupId),

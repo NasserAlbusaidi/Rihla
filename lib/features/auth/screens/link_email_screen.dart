@@ -137,7 +137,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20, vertical: context.spacing.space16),
             children: [
               Text(
                 l10n.authLinkEmailHeading,
@@ -147,7 +147,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                   color: colors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.spacing.space8),
               Text(
                 l10n.authLinkEmailDescription,
                 style: AppTypography.sans(
@@ -156,7 +156,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: context.spacing.space24),
               TextFormField(
                 key: const Key('linkEmail.email'),
                 controller: _emailController,
@@ -171,7 +171,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                 ),
                 validator: validateEmail,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacing.space16),
               TextFormField(
                 key: const Key('linkEmail.confirm'),
                 controller: _confirmController,
@@ -185,9 +185,9 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                 validator: _validateConfirm,
                 onFieldSubmitted: (_) => _send(),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacing.space16),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(context.spacing.space12),
                 decoration: BoxDecoration(
                   color: colors.cardSurface,
                   borderRadius: BorderRadius.circular(12),
@@ -202,7 +202,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                 ),
               ),
               if (_serverError != null) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.space12),
                 Text(
                   _serverError!,
                   key: const Key('linkEmail.error'),
@@ -213,7 +213,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
+              SizedBox(height: context.spacing.space24),
               SizedBox(
                 height: 52,
                 child: FilledButton(

@@ -126,7 +126,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
               current: _filter,
               onChange: (f) => setState(() => _filter = f),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.space8),
             Expanded(child: _buildBody(context)),
           ],
         ),
@@ -160,16 +160,16 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
+      padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, context.spacing.space4, context.spacing.space20, context.spacing.space24),
       itemCount: days.length + (_hasMore ? 1 : 0),
       itemBuilder: (ctx, i) {
         if (i == days.length) {
           return Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.spacing.space16),
             child: Center(
               child: SizedBox(
-                width: 16,
-                height: 16,
+                width: context.spacing.space16,
+                height: context.spacing.space16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: context.colors.primary,
@@ -202,7 +202,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 20, 8),
+      padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space12, context.spacing.space4, context.spacing.space20, context.spacing.space8),
       child: SizedBox(
         height: 48,
         child: Stack(
@@ -284,10 +284,10 @@ class _FilterStrip extends StatelessWidget {
       ),
     ];
     return SizedBox(
-      height: 32,
+      height: context.spacing.space32,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
         children: [
           for (final opt in options) ...[
             _Chip(
@@ -330,7 +330,7 @@ class _Chip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: active ? colors.textPrimary : colors.cardSoft,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
           border: Border.all(
             color: active ? colors.textPrimary : colors.rule,
             width: 0.5,
@@ -389,7 +389,7 @@ class _DaySection extends StatelessWidget {
             borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
             boxShadow: context.shadows.raised,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
           child: Column(
             children: [
               for (var i = 0; i < entries.length; i++)
@@ -416,7 +416,7 @@ class _ActivityRow extends StatelessWidget {
     final description = localizedGroupActivityText(context.l10n, log);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
       child: Column(
         children: [
           Row(
@@ -425,7 +425,7 @@ class _ActivityRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _CategoryIcon(type: log.type),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.space12),
               Expanded(
                 child: Text.rich(
                   TextSpan(
@@ -452,7 +452,7 @@ class _ActivityRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.space12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
@@ -483,7 +483,7 @@ class _ActivityRow extends StatelessWidget {
             ],
           ),
           if (divider) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.space12),
             Container(height: 0.5, color: colors.rule),
           ],
         ],

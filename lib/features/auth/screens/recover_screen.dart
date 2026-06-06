@@ -158,7 +158,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20, vertical: context.spacing.space16),
             children: [
               Text(
                 l10n.authWelcomeBack,
@@ -168,7 +168,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
                   color: colors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.spacing.space8),
               Text(
                 l10n.authRecoverDescription,
                 style: AppTypography.sans(
@@ -177,7 +177,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: context.spacing.space24),
               TextFormField(
                 key: const Key('recover.email'),
                 controller: _emailController,
@@ -194,7 +194,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
                 onFieldSubmitted: (_) => _send(),
               ),
               if (_serverError != null) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.space12),
                 Text(
                   _serverError!,
                   key: const Key('recover.error'),
@@ -205,7 +205,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
+              SizedBox(height: context.spacing.space24),
               SizedBox(
                 height: 52,
                 child: FilledButton(

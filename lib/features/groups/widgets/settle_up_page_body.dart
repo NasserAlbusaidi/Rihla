@@ -97,7 +97,7 @@ class SettleUpPageBody extends StatelessWidget {
             currency: currency,
           ),
           if (allSettled) ...[
-            const SizedBox(height: 32),
+            SizedBox(height: context.spacing.space32),
             const AllSettledState(),
           ],
           if (optimalSettlements.isNotEmpty) ...[
@@ -106,11 +106,11 @@ class SettleUpPageBody extends StatelessWidget {
               _buildTile(context, optimalSettlements[i], i),
           ],
           if (balances.isNotEmpty) ...[
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacing.space24),
             _NetBalancesSection(balances: balances, currency: currency),
           ],
           if (history.isNotEmpty) ...[
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacing.space24),
             _PaymentHistorySection(
               settlements: history,
               currency: currency,
@@ -295,11 +295,11 @@ class _NetBalanceRow extends StatelessWidget {
               : BorderSide.none,
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: context.spacing.space12),
       child: Row(
         children: [
           _MiniAvatar(name: name),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.space12),
           Expanded(
             child: Text(
               name,
@@ -362,7 +362,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 4),
+      padding: EdgeInsetsDirectional.only(start: context.spacing.space4),
       child: Text(
         label,
         style: TextStyle(

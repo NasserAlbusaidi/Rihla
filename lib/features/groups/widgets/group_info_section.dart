@@ -91,7 +91,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
         _buildIdentityCard(),
         const SizedBox(height: 10),
         SettingsSectionHeader(title: context.l10n.groupInvite),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.space8),
         _buildInviteCodeCard(),
       ],
     );
@@ -207,10 +207,10 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
           ),
         ),
         _isSaving
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: Padding(
+            ? SizedBox(
+                width: context.spacing.space20,
+                height: context.spacing.space20,
+                child: const Padding(
                   padding: EdgeInsets.all(2),
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
@@ -243,7 +243,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
               color: context.colors.textSecondary,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.space8),
           Row(
             children: [
               Expanded(
@@ -259,7 +259,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.space12),
               _InviteIconButton(
                 key: GroupKeys.inviteCodeCopyButton,
                 icon: Iconsax.copy,
@@ -336,8 +336,8 @@ class _InviteIconButton extends StatelessWidget {
         radius: 22,
         customBorder: const CircleBorder(),
         child: SizedBox(
-          width: 32,
-          height: 32,
+          width: context.spacing.space32,
+          height: context.spacing.space32,
           child: Icon(
             icon,
             size: 16,

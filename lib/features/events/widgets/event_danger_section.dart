@@ -53,7 +53,7 @@ class EventDangerSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(context),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.space8),
         Container(
           decoration: BoxDecoration(
             color: context.colors.cardSurface,
@@ -97,11 +97,11 @@ class EventDangerSection extends ConsumerWidget {
 
   Widget _buildBalanceWarning(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 10),
       child: Row(
         children: [
           Icon(Iconsax.warning_2, size: 16, color: context.colors.warning),
-          const SizedBox(width: 8),
+          SizedBox(width: context.spacing.space8),
           Expanded(
             child: Text(
               context.l10n.eventUnsettledWarning,
@@ -130,7 +130,7 @@ class EventDangerSection extends ConsumerWidget {
       },
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 10),
         child: Row(
           children: [
             Container(
@@ -148,7 +148,7 @@ class EventDangerSection extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             Expanded(
               child: Text(
                 context.l10n.eventDelete,

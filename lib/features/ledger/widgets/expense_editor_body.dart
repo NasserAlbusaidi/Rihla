@@ -284,11 +284,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.spacing.radiusCard)),
         title: Row(
           children: [
             Icon(Iconsax.trash, color: context.colors.error),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             Text(context.l10n.editorDeleteExpenseTitle),
           ],
         ),
@@ -515,7 +515,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: EdgeInsets.only(bottom: context.spacing.space24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -585,9 +585,9 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         child: _WhereCard(event: event),
                       ),
                     ] else
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Center(child: CircularProgressIndicator()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: context.spacing.space24),
+                        child: const Center(child: CircularProgressIndicator()),
                       ),
                     if (_isEdit && widget.onDelete != null)
                       _DeleteCard(
@@ -664,7 +664,7 @@ class _ExpenseTopBar extends StatelessWidget {
                   backgroundColor: context.colors.primary,
                   foregroundColor: context.colors.textOnPrimary,
                   minimumSize: const Size(64, 40),
-                  padding: const EdgeInsetsDirectional.fromSTEB(16, 9, 16, 11),
+                  padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space16, 9, context.spacing.space16, 11),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(
                       context.spacing.radiusSmall,
@@ -755,7 +755,7 @@ class _AmountHero extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               Directionality(
                 textDirection: TextDirection.ltr,
                 child: Row(
@@ -763,7 +763,7 @@ class _AmountHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: EdgeInsets.only(bottom: context.spacing.space12),
                       child: Text(
                         currency,
                         style: AppTypography.mono(
@@ -786,7 +786,7 @@ class _AmountHero extends StatelessWidget {
                     ),
                     if (fraction.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.only(bottom: context.spacing.space8),
                         child: Text(
                           fraction,
                           style: AppTypography.mono(
@@ -859,7 +859,7 @@ class _DescriptionField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: TextField(
         controller: controller,
         textInputAction: TextInputAction.done,
@@ -896,12 +896,12 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: EdgeInsets.only(top: context.spacing.space24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
             child: Row(
               children: [
                 Expanded(
@@ -919,9 +919,9 @@ class _Section extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     onTap: onAction,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 4,
-                        horizontal: 4,
+                      padding: EdgeInsets.symmetric(
+                        vertical: context.spacing.space4,
+                        horizontal: context.spacing.space4,
                       ),
                       child: Text(
                         action!,
@@ -958,12 +958,12 @@ class _CategoryStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return categoriesAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: LinearProgressIndicator(),
+      loading: () => Padding(
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space24, vertical: context.spacing.space12),
+        child: const LinearProgressIndicator(),
       ),
       error: (_, _) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
         child: Text(
           context.l10n.editorCouldNotLoadCategories,
           style: TextStyle(color: context.colors.errorText),
@@ -972,7 +972,7 @@ class _CategoryStrip extends StatelessWidget {
       data: (categories) => SizedBox(
         height: 42,
         child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
           scrollDirection: Axis.horizontal,
           itemCount: categories.length,
           separatorBuilder: (_, _) => const SizedBox(width: 8),
@@ -1078,7 +1078,7 @@ class _PaidByCard extends StatelessWidget {
         event.participantNames[effectivePayerId] ??
         context.l10n.editorSelectedPayer;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
@@ -1150,7 +1150,7 @@ class _SplitPreviewCard extends StatelessWidget {
     final l10n = context.l10n;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: _CardShell(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -1210,7 +1210,7 @@ class _SplitPreviewCard extends StatelessWidget {
             const SizedBox(height: 14),
             if (count == 0)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
                 child: Text(
                   l10n.editorTapCustomiseSplit,
                   style: AppTypography.sans(
@@ -1345,7 +1345,7 @@ class _SplitModeCard extends StatelessWidget {
             SplitMode.percent => l10n.editorPerPersonPercents,
           };
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: _CardShell(
         padding: const EdgeInsets.all(14),
         child: Row(
@@ -1364,7 +1364,7 @@ class _SplitModeCard extends StatelessWidget {
                 color: colors.primary,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1404,7 +1404,7 @@ class _WhereCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = event.startDate ?? event.createdAt;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: _CardShell(
         child: Column(
           children: [
@@ -1440,7 +1440,7 @@ class _DeleteCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacing.space16),
         decoration: BoxDecoration(
           color: colors.error.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
@@ -1471,7 +1471,7 @@ class _DeleteCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             FilledButton.icon(
               onPressed: enabled ? onDelete : null,
               icon: const Icon(Iconsax.trash, size: 14),
@@ -1546,7 +1546,7 @@ class _InfoRow extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: dense ? 12 : 14),
       child: Row(
         children: [
-          if (leading != null) ...[leading!, const SizedBox(width: 12)],
+          if (leading != null) ...[leading!, SizedBox(width: context.spacing.space12)],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1681,7 +1681,7 @@ class _PayerPickerSheet extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 12),
+              padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, context.spacing.space4, context.spacing.space20, context.spacing.space12),
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: Text(
@@ -1734,7 +1734,7 @@ class _PayerOption extends StatelessWidget {
     final colors = context.colors;
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsetsDirectional.symmetric(horizontal: 12),
+      contentPadding: EdgeInsetsDirectional.symmetric(horizontal: context.spacing.space12),
       leading: _Avatar(name: name, size: 36),
       title: Text(
         name,
@@ -1841,10 +1841,10 @@ class _SplitCustomiseSheetState extends State<_SplitCustomiseSheet> {
                         backgroundColor: colors.primary,
                         foregroundColor: colors.textOnPrimary,
                         minimumSize: const Size(64, 40),
-                        padding: const EdgeInsetsDirectional.fromSTEB(
-                          16,
+                        padding: EdgeInsetsDirectional.fromSTEB(
+                          context.spacing.space16,
                           9,
-                          16,
+                          context.spacing.space16,
                           11,
                         ),
                         shape: RoundedRectangleBorder(

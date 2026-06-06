@@ -29,7 +29,7 @@ class InviteCodeDisplay extends StatelessWidget {
       children: [
         // Code pill
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space24, vertical: context.spacing.space16),
           decoration: BoxDecoration(
             color: context.colors.selectionFill,
             borderRadius: BorderRadius.circular(8),
@@ -48,7 +48,7 @@ class InviteCodeDisplay extends StatelessWidget {
         ),
         // Action buttons (copy + share)
         if (hasActions) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.space16),
           Row(
             children: [
               if (onCopy != null)
@@ -67,7 +67,7 @@ class InviteCodeDisplay extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (onCopy != null && onShare != null) const SizedBox(width: 12),
+              if (onCopy != null && onShare != null) SizedBox(width: context.spacing.space12),
               if (onShare != null)
                 Expanded(
                   child: SizedBox(

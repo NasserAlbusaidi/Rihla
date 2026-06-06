@@ -140,7 +140,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 child: SingleChildScrollView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsetsDirectional.fromSTEB(24, 8, 24, 24),
+                  padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space24, context.spacing.space8, context.spacing.space24, context.spacing.space24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -199,7 +199,7 @@ class _CreateGroupTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 10),
       child: SizedBox(
         height: 44,
         child: Stack(
@@ -292,7 +292,7 @@ class _MoodBlock extends StatelessWidget {
             height: 1.05,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.space8),
         Text(
           context.l10n.groupMoodBody,
           style: AppTypography.sans(
@@ -400,7 +400,7 @@ class _WireframeTextField extends StatelessWidget {
             helperText: helperText,
             filled: false,
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            contentPadding: EdgeInsets.symmetric(vertical: context.spacing.space12),
             border: _inputBorder(colors.ink2),
             enabledBorder: _inputBorder(colors.ink2),
             focusedBorder: _inputBorder(colors.textPrimary, width: 1.5),
@@ -441,7 +441,7 @@ class _ReadOnlyCurrencyField extends StatelessWidget {
       children: [
         _FieldLabel(context.l10n.groupDefaultCurrency),
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: colors.ink2)),
           ),
@@ -466,10 +466,10 @@ class _CreatorPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
         color: colors.cardSoft,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
         border: Border.all(color: colors.rule2),
       ),
       child: Column(
@@ -567,7 +567,7 @@ class _SharePrompt extends StatelessWidget {
     final colors = context.colors;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(context.spacing.space24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -580,7 +580,7 @@ class _SharePrompt extends StatelessWidget {
                 height: 1.1,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.space8),
             Text(
               context.l10n.groupShareCodeWithGroup,
               style: AppTypography.sans(
@@ -589,12 +589,12 @@ class _SharePrompt extends StatelessWidget {
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacing.space24),
 
             // Invite code pill (no inline buttons — buttons are below)
             InviteCodeDisplay(code: group.inviteCode),
 
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacing.space24),
 
             // Copy and Share buttons
             Row(
@@ -608,7 +608,7 @@ class _SharePrompt extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: SizedBox(
                     height: 52,
@@ -621,7 +621,7 @@ class _SharePrompt extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.space16),
 
             Center(
               child: TextButton(

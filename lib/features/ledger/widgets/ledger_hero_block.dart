@@ -182,11 +182,11 @@ class _SettledRow extends StatelessWidget {
       children: [
         Text(l10n.ledgerAllSquare, style: baseStyle),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: context.spacing.space4),
           decoration: BoxDecoration(
             // sage-soft tint approximation against paper bg.
             color: colors.success.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(9999),
+            borderRadius: BorderRadius.circular(context.spacing.radiusPill),
           ),
           child: Text(
             l10n.ledgerSettledBadge,

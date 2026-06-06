@@ -46,12 +46,12 @@ class _BottomNavShellState extends State<BottomNavShell> {
     return Scaffold(
       key: widget.scaffoldKey,
       backgroundColor: context.colors.scaffoldBackground,
-      body: _buildBody(),
+      body: _buildBody(context),
       bottomNavigationBar: _buildNavBar(context),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     final tabs = [
       widget.child,
       const CrossGroupActivityScreen(),
@@ -62,8 +62,8 @@ class _BottomNavShellState extends State<BottomNavShell> {
       child: Stack(
         children: List.generate(tabs.length, (index) {
           return AnimatedOpacity(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
+            duration: context.motion.standard,
+            curve: context.motion.curveStandard,
             opacity: index == _currentIndex ? 1.0 : 0.0,
             child: IgnorePointer(
               ignoring: index != _currentIndex,
@@ -82,18 +82,16 @@ class _BottomNavShellState extends State<BottomNavShell> {
         indicatorColor: context.colors.selectionFill,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return TextStyle(
+            return AppTypography.sans(
               color: context.colors.primary,
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              fontFamily: AppTypography.sansFamily,
             );
           }
-          return TextStyle(
+          return AppTypography.sans(
             color: context.colors.bottomNavInactiveIcon,
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            fontFamily: AppTypography.sansFamily,
           );
         }),
       ),

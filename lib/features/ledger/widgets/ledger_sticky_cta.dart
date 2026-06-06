@@ -47,7 +47,7 @@ class LedgerStickyCta extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacing.space8),
             Expanded(
               child: _SecondaryCta(
                 enabled: settleEnabled,
@@ -74,10 +74,10 @@ class _PrimaryCta extends StatelessWidget {
     final colors = context.colors;
     return Material(
       color: colors.textPrimary,
-      borderRadius: BorderRadius.circular(9999),
+      borderRadius: BorderRadius.circular(context.spacing.radiusPill),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(9999),
+        borderRadius: BorderRadius.circular(context.spacing.radiusPill),
         child: SizedBox(
           height: 48,
           child: Row(
@@ -114,16 +114,16 @@ class _SecondaryCta extends StatelessWidget {
       opacity: enabled ? 1 : 0.4,
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(9999),
+        borderRadius: BorderRadius.circular(context.spacing.radiusPill),
         child: InkWell(
           onTap: enabled ? onTap : null,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
           child: Container(
             height: 48,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               border: Border.all(color: colors.textPrimary, width: 1),
-              borderRadius: BorderRadius.circular(9999),
+              borderRadius: BorderRadius.circular(context.spacing.radiusPill),
             ),
             child: Text(
               context.l10n.ledgerSettleUp,

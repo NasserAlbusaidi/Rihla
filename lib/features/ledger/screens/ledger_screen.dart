@@ -355,9 +355,9 @@ class _Body extends StatelessWidget {
               const SliverToBoxAdapter(child: SizedBox(height: 6)),
               if (timeline.isEmpty)
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.space20,
+                    vertical: context.spacing.space16,
                   ),
                   sliver: SliverToBoxAdapter(
                     child: hasExpenses
@@ -394,7 +394,7 @@ class _Body extends StatelessWidget {
                 ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  padding: EdgeInsets.symmetric(vertical: context.spacing.space24),
                   child: Center(
                     child: Text(
                       isSettled
@@ -620,7 +620,7 @@ class _EmptyStateBody extends StatelessWidget {
             size: const Size(120, 116),
             painter: _JournalPagePainter(colors: colors),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.spacing.space12),
           Text(
             context.l10n.ledgerEmptyStateTitle,
             textAlign: TextAlign.center,
@@ -630,7 +630,7 @@ class _EmptyStateBody extends StatelessWidget {
               height: 1.2,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.space8),
           Text(
             context.l10n.ledgerEmptyStateFirstExpenseBody,
             textAlign: TextAlign.center,
@@ -754,7 +754,7 @@ class _ErrorState extends StatelessWidget {
     return SafeArea(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacing.space24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
             title: context.l10n.ledgerCouldNotLoadEventTitle,
@@ -776,7 +776,7 @@ class _DataErrorState extends StatelessWidget {
     return SafeArea(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacing.space24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
             title: context.l10n.ledgerCouldNotLoadLedgerTitle,
@@ -797,7 +797,7 @@ class _NotFoundState extends StatelessWidget {
     return SafeArea(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacing.space24),
           child: EmptyStateView(
             icon: Iconsax.box_remove,
             title: context.l10n.ledgerEventNotFoundTitle,

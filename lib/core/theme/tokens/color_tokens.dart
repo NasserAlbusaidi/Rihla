@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'group_avatar_colors.dart';
-
 /// Typed color token set for the saffron travel-journal direction (v2.0).
 ///
 /// All fields are final Color values. Gradient tokens are computed getters
@@ -250,19 +248,6 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
         end: Alignment.bottomRight,
         colors: [primary, primaryDark],
       );
-
-  /// Deterministic avatar color for [groupId], theme-aware.
-  ///
-  /// Uses a stable FNV-like hash over `codeUnits` — not `String.hashCode`,
-  /// which is not guaranteed stable across Dart versions. The return value
-  /// comes from [AppGroupAvatarColors.lightSlots] or `.darkSlots` based on
-  /// the active [brightness] on this token instance.
-  Color groupAvatarSlot(String groupId) {
-    final slots = brightness == Brightness.dark
-        ? AppGroupAvatarColors.darkSlots
-        : AppGroupAvatarColors.lightSlots;
-    return slots[_stableGroupHash(groupId) % slots.length];
-  }
 
   /// Default saffron light palette instance.
   static const AppColorTokens light = AppColorTokens(
@@ -561,14 +546,4 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       cat6: Color.lerp(cat6, other.cat6, t)!,
     );
   }
-}
-
-/// Deterministic string hash — folds `codeUnits` with a 31-constant FNV-like
-/// loop. Stable across Dart versions (unlike `String.hashCode`).
-int _stableGroupHash(String id) {
-  var h = 0;
-  for (final c in id.codeUnits) {
-    h = (h * 31 + c) & 0xffffffff;
-  }
-  return h;
 }

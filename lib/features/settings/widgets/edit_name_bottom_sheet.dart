@@ -141,7 +141,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                     height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.spacing.space4),
                 Text(
                   l10n.editNameHelper,
                   style: AppTypography.sans(
@@ -204,7 +204,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                           },
                         ),
                       ),
-                      if (i < initials.length - 1) const SizedBox(width: 8),
+                      if (i < initials.length - 1) SizedBox(width: context.spacing.space8),
                     ],
                   ],
                 ),
@@ -273,8 +273,8 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
     }
     if (_isSaving) {
       return SizedBox(
-        width: 20,
-        height: 20,
+        width: context.spacing.space20,
+        height: context.spacing.space20,
         child: CircularProgressIndicator(
           color: colors.textOnPrimary,
           strokeWidth: 2,

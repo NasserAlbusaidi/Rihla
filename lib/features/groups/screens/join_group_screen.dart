@@ -180,7 +180,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsetsDirectional.fromSTEB(24, 8, 24, 24),
+                padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space24, context.spacing.space8, context.spacing.space24, context.spacing.space24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -232,7 +232,7 @@ class _JoinGroupTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 10),
       child: SizedBox(
         height: 36,
         child: Stack(
@@ -280,7 +280,7 @@ class _JoinMoodBlock extends StatelessWidget {
             height: 1.05,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.space8),
         Text(
           context.l10n.groupJoinMoodBody,
           style: AppTypography.sans(
@@ -330,7 +330,7 @@ class _UnderlinedTextField extends StatelessWidget {
             hintText: hintText,
             filled: false,
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            contentPadding: EdgeInsets.symmetric(vertical: context.spacing.space12),
             border: _underline(colors.ink2),
             enabledBorder: _underline(colors.ink2),
             focusedBorder: _underline(colors.textPrimary, width: 1.5),
@@ -359,7 +359,7 @@ class _InviteCodeField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _FieldLabel(context.l10n.groupInviteCode),
-        const SizedBox(height: 4),
+        SizedBox(height: context.spacing.space4),
         Text(
           context.l10n.groupInviteCodeHelper,
           style: AppTypography.sans(
@@ -368,7 +368,7 @@ class _InviteCodeField extends StatelessWidget {
             height: 1.4,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: context.spacing.space12),
         TextFormField(
           controller: controller,
           textCapitalization: TextCapitalization.characters,
@@ -417,10 +417,10 @@ class _JoinHintCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
         color: colors.cardSoft,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
         border: Border.all(color: colors.rule2),
       ),
       child: Column(

@@ -53,7 +53,7 @@ class _SettlementChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space8),
       decoration: BoxDecoration(
         color: context.colors.cardSoft,
         borderRadius: BorderRadius.circular(context.spacing.radiusSmall),
@@ -68,7 +68,7 @@ class _SettlementChip extends StatelessWidget {
               size: 12,
               color: context.colors.ink2,
             ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.spacing.space8),
           Text(
             label,
             style: TextStyle(
