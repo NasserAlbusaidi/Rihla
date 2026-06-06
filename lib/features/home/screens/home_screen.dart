@@ -62,6 +62,28 @@ class _DashboardContent extends ConsumerStatefulWidget {
 }
 
 class _DashboardContentState extends ConsumerState<_DashboardContent> {
+  // #284: the balance hero scrolls down to the journeys list (the path to
+  // per-group settle-up) — there is no cross-group settle screen to route to.
+  final _scrollController = ScrollController();
+  final _journeysSectionKey = GlobalKey();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToJourneys() {
+    HapticService.lightClick();
+    final sectionContext = _journeysSectionKey.currentContext;
+    if (sectionContext == null) return;
+    Scrollable.ensureVisible(
+      sectionContext,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(userGroupsProvider);
@@ -96,26 +118,30 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       },
       color: context.colors.primary,
       child: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(child: _GreetingStrip(name: _firstName())),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           SliverToBoxAdapter(
-            child: const BalanceHeroCard()
+            child: BalanceHeroCard(onTap: _scrollToJourneys)
                 .animate()
                 .fadeIn(delay: 250.ms, duration: 500.ms)
                 .slideY(begin: 0.15, curve: Curves.easeOutQuart),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
           SliverToBoxAdapter(
-            child: SectionHeader(
-              title: context.l10n.homeActiveJourneys,
-              actionLabel:
-                  journeysAsync.hasValue &&
-                      (journeysAsync.value?.isNotEmpty ?? false)
-                  ? context.l10n.homeSeeAll
-                  : null,
-              onActionTap: () => context.push('/activity'),
-            ).animate().fadeIn(delay: 350.ms),
+            child: KeyedSubtree(
+              key: _journeysSectionKey,
+              child: SectionHeader(
+                title: context.l10n.homeActiveJourneys,
+                actionLabel:
+                    journeysAsync.hasValue &&
+                        (journeysAsync.value?.isNotEmpty ?? false)
+                    ? context.l10n.homeSeeAll
+                    : null,
+                onActionTap: () => context.push('/activity'),
+              ).animate().fadeIn(delay: 350.ms),
+            ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           SliverToBoxAdapter(

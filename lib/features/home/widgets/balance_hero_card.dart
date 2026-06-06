@@ -19,7 +19,12 @@ import '../keys/home_keys.dart';
 /// derivation walks each group's per-user balance to split the net into positive
 /// and negative components.
 class BalanceHeroCard extends ConsumerWidget {
-  const BalanceHeroCard({super.key});
+  const BalanceHeroCard({super.key, this.onTap});
+
+  /// When non-null, the loaded card becomes tappable (#284). The home screen
+  /// wires this to scroll to the active-journeys list — the path to per-group
+  /// settle-up (there is no cross-group settle screen).
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,14 +33,15 @@ class BalanceHeroCard extends ConsumerWidget {
     return balanceAsync.when(
       loading: SkeletonLoader.dashboardHero,
       error: (e, _) => _ErrorCard(),
-      data: (balance) => _LoadedCard(balance: balance),
+      data: (balance) => _LoadedCard(balance: balance, onTap: onTap),
     );
   }
 }
 
 class _LoadedCard extends StatelessWidget {
-  const _LoadedCard({required this.balance});
+  const _LoadedCard({required this.balance, this.onTap});
   final CrossGroupBalance balance;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +70,7 @@ class _LoadedCard extends StatelessWidget {
         ? AmountTone.rust
         : AmountTone.ink;
 
-    return Container(
+    final card = Container(
       key: HomeKeys.balanceHeroCard,
       margin: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       padding: const EdgeInsetsDirectional.fromSTEB(22, 20, 22, 22),
@@ -116,6 +122,15 @@ class _LoadedCard extends StatelessWidget {
           const SizedBox(height: 10),
           _SplitLegend(owedToUser: owedToUser, userOwes: userOwes),
         ],
+      ),
+    );
+    if (onTap == null) return card;
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: card,
       ),
     );
   }
