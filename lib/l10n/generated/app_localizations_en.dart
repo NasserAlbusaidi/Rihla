@@ -2420,4 +2420,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String errorPageNotFound(Object location) {
     return 'Page not found: $location';
   }
+
+  @override
+  String get splashTagline => 'your shared journey';
+
+  @override
+  String get splashErrorTitle => 'Something\'s off';
+
+  @override
+  String get splashErrorBody => 'We couldn\'t start the app.';
+
+  @override
+  String get splashRetry => 'Try again';
 }
