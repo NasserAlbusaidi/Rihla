@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/core/theme/tokens/color_tokens.dart';
 import 'package:safar/core/theme/tokens/domain_aliases.dart';
-import 'package:safar/core/theme/tokens/gradient_tokens.dart';
 import 'package:safar/core/theme/tokens/shadow_tokens.dart';
 import 'package:safar/core/theme/tokens/spacing_tokens.dart';
 
@@ -434,46 +433,6 @@ void main() {
         ),
       );
       expect(shadows.raised.length, equals(2));
-    });
-
-    testWidgets('context.gradient resolves by active brightness', (
-      tester,
-    ) async {
-      late LinearGradient lightGradient;
-      late LinearGradient darkGradient;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: _testTheme(),
-          home: Builder(
-            builder: (context) {
-              lightGradient = context.gradient(AppGradients.terracotta);
-              return const SizedBox();
-            },
-          ),
-        ),
-      );
-
-      await tester.pumpWidget(
-        Theme(
-          data: ThemeData.dark(useMaterial3: true).copyWith(
-            extensions: <ThemeExtension>[
-              AppColorTokens.dark,
-              AppSpacingTokens.standard,
-              AppShadowTokens.dark,
-            ],
-          ),
-          child: Builder(
-            builder: (context) {
-              darkGradient = context.gradient(AppGradients.terracotta);
-              return const SizedBox();
-            },
-          ),
-        ),
-      );
-
-      expect(lightGradient, equals(AppGradients.terracotta.light));
-      expect(darkGradient, equals(AppGradients.terracotta.dark));
     });
   });
 

@@ -33,7 +33,7 @@ class ActivityRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
         child: Row(
           // Top-align so the avatar pins to the first line when a long
           // actor + verb phrase wraps to two lines, rather than floating to
@@ -41,7 +41,7 @@ class ActivityRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             RAvatar(name: activity.actorName, size: 36),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,7 +71,7 @@ class ActivityRow extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.spacing.space4),
                   Row(
                     children: [
                       Container(
@@ -81,7 +81,9 @@ class ActivityRow extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: colors.cardSoft,
-                          borderRadius: BorderRadius.circular(9999),
+                          borderRadius: BorderRadius.circular(
+                            context.spacing.radiusPill,
+                          ),
                           border: Border.all(color: colors.rule, width: 0.5),
                         ),
                         child: Text(
@@ -93,7 +95,7 @@ class ActivityRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.spacing.space8),
                       Text(
                         formatRelativeShort(context, activity.timestamp),
                         style: AppTypography.mono(

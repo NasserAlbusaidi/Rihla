@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'color_tokens.dart';
-import 'gradient_tokens.dart';
 import 'motion_tokens.dart';
 import 'shadow_tokens.dart';
 import 'spacing_tokens.dart';
@@ -13,7 +12,6 @@ import 'spacing_tokens.dart';
 /// final primary = context.colors.primary;
 /// final gap = context.spacing.space16;
 /// final shadow = context.shadows.raised;
-/// final gradient = context.gradient(AppGradients.terracotta);
 /// ```
 ///
 /// These use `!` (not `?.`) — extensions are registered at app startup
@@ -31,11 +29,4 @@ extension AppThemeExtensions on BuildContext {
 
   /// Access motion tokens — [AppMotionTokens].
   AppMotionTokens get motion => Theme.of(this).extension<AppMotionTokens>()!;
-
-  /// Resolve a named gradient pair for the active brightness.
-  ///
-  /// `context.gradient(AppGradients.terracotta)` returns `.light` on light
-  /// theme and `.dark` on dark theme.
-  LinearGradient gradient(AppGradientPair pair) =>
-      Theme.of(this).brightness == Brightness.dark ? pair.dark : pair.light;
 }
