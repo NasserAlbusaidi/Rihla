@@ -1645,5 +1645,22 @@
     "placeholders": {
       "location": {}
     }
+  },
+
+  "splashTagline": "your shared journey",
+  "@splashTagline": {
+    "description": "Brand tagline shown under the Rihla wordmark on the boot splash screen."
+  },
+  "splashErrorTitle": "Something's off",
+  "@splashErrorTitle": {
+    "description": "Title on the splash error state shown when the app fails to start."
+  },
+  "splashErrorBody": "We couldn't start the app.",
+  "@splashErrorBody": {
+    "description": "Body copy on the splash error state shown when the app fails to start."
+  },
+  "splashRetry": "Try again",
+  "@splashRetry": {
+    "description": "Retry button on the splash error state."
   }
 }

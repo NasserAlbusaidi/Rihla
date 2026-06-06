@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../extensions/build_context_l10n.dart';
 import '../theme/tokens/color_tokens.dart';
 import '../theme/tokens/typography_tokens.dart';
 
@@ -63,7 +64,7 @@ class _LoadingBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'your shared journey',
+                  context.l10n.splashTagline,
                   style: AppTypography.sans(
                     fontSize: 14,
                     color: colors.textSecondary,
@@ -118,7 +119,7 @@ class _ErrorBody extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              "Something's off",
+              context.l10n.splashErrorTitle,
               style: AppTypography.display(
                 fontSize: 26,
                 color: colors.textPrimary,
@@ -127,7 +128,7 @@ class _ErrorBody extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              "We couldn't start the app.",
+              context.l10n.splashErrorBody,
               style: AppTypography.sans(
                 fontSize: 13,
                 color: colors.textSecondary,
@@ -150,7 +151,7 @@ class _ErrorBody extends StatelessWidget {
                 elevation: 0,
               ),
               child: Text(
-                'Try again',
+                context.l10n.splashRetry,
                 style: AppTypography.sans(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
