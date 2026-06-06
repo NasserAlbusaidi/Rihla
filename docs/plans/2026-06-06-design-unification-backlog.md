@@ -6,20 +6,30 @@ money math / routing / rules / schema → **no Gate**; all are pure presentation
 each PR must keep widget + golden tests green (goldens are macOS-only, CI-excluded
 — regen locally).
 
-## Drift snapshot (re-run greps in DESIGN.md §13 to update)
+## Drift snapshot (2026-06-06, post-#312)
 
-| area | files | tok% | edgeLit | sbLit | radLit | rawTS |
-|---|---|---|---|---|---|---|
-| home | 10 | 70% | 8 | 36 | 12 | 5 |
-| ledger | 25 | 56% | 35 | 77 | 53 | 18 |
-| groups | 27 | 66% | 25 | 109 | 33 | 27 |
-| events | 17 | 64% | 16 | 62 | 27 | 25 |
-| settings | 10 | 80% | 6 | 37 | 20 | 5 |
-| auth | 14 | 57% | 1 | 23 | 7 | 0 |
-| activity | 5 | 20% | 4 | 8 | 3 | 0 |
-| shared | 14 | 71% | 0 | 3 | 1 | 7 |
-| core | 44 | 9% | 3 | 5 | 23 | 7 |
+Counts = lines with a **bare** literal still present (tokens stripped before counting,
+so a partially-tokenised `EdgeInsets.symmetric(horizontal: space16, vertical: 14)`
+still counts via the `14`). Columns: `edgeLit` = EdgeInsets line w/ a bare int ·
+`sbLit` = `SizedBox((height|width): N` · `radLit` = `BorderRadius.circular(N` ·
+`rawTS` = `TextStyle(`. Whole-`lib` headline (D1): 304 literal SizedBox · 157
+`BorderRadius.circular` · 89 raw `TextStyle` · 82/172 files use `context.*`.
 
+| area | files | tok% | edgeLit | sbLit | radLit | rawTS | pass |
+|---|---|---|---|---|---|---|---|
+| home | 10 | 70% | 10 | 23 | 4 | 0 | ✅ #310 |
+| ledger | 25 | 56% | 36 | 33 | 39 | 18 | ✅ #312 |
+| groups | 27 | 66% | 58 | 110 | 33 | 27 | ← next |
+| events | 17 | 64% | 37 | 62 | 27 | 25 | — |
+| settings | 10 | 80% | 21 | 37 | 20 | 5 | — |
+| auth | 14 | 57% | 5 | 23 | 7 | 0 | — |
+| activity | 5 | 20% | 9 | 8 | 3 | 0 | — |
+| shared | 14 | 71% | 2 | 3 | 1 | 7 | clean |
+| core | 43 | 9% | 5 | 5 | 23 | 7 | n/a |
+
+home/ledger ✅ = no-op spacing/radius pass shipped; the residual literals above are
+the deliberately-deferred **off-scale spacing + legacy/off-scale radii** (8/12/16/…) —
+snapping those to canonical is a *visual* change for a separate golden-reviewed pass.
 (core is mostly non-UI services/router — low priority. shared is already clean.)
 
 ## Phase 1 — Foundation reconcile (FIRST — these change what screens adopt)
@@ -51,9 +61,9 @@ Doing screen migration before this means migrating to values we're about to chan
 Each PR: literals → `context.spacing` / token radii / `AppTypography`, hand-rolled
 widgets → shared primitives. Keep diffs mechanical and reviewable.
 
-1. **home** — pilot. High visibility, modest size; proves the pattern + Phase-1 tokens.
-2. **ledger** — money screens; highest radius (53) + edge (35) drift.
-3. **groups** — highest SizedBox (109) + raw TextStyle (27).
+1. **home** — pilot. ✅ **DONE (#310).** Proved the no-op-swap template + Phase-1 tokens.
+2. **ledger** — money screens. ✅ **DONE (#312).** Spacing + canonical radii; off-scale/legacy deferred.
+3. **groups** — highest SizedBox (110) + raw TextStyle (27). ← **NEXT.**
 4. **events** — high raw TextStyle (25) + radius (27).
 5. **settings + activity + auth** — smaller; can batch as 1–2 cleanup PRs.
 
