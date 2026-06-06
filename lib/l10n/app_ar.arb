@@ -736,5 +736,10 @@
   "groupSettleUpMissingMessage": "قد تكون قد أُزلت منها. اضغط أدناه للعودة إلى الرئيسية.",
   "groupSettleUpEventLabelFallback": "فعالية ...{suffix}",
 
-  "errorPageNotFound": "الصفحة غير موجودة: {location}"
+  "errorPageNotFound": "الصفحة غير موجودة: {location}",
+
+  "splashTagline": "رحلتك المشتركة",
+  "splashErrorTitle": "حدث خطأ ما",
+  "splashErrorBody": "تعذّر تشغيل التطبيق.",
+  "splashRetry": "حاول مرة أخرى"
 }
