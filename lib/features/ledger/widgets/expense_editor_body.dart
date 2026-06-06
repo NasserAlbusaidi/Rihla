@@ -15,6 +15,7 @@ import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
+import '../../groups/services/member_name_resolver.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
@@ -390,11 +391,16 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       _showSnack(context.l10n.editorPickAtLeastTwoPeople);
       return;
     }
+    // #289: distinguish two same-named members in the custom-split sheet.
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
     final participants = [
       for (final id in ids)
         SplitParticipant(
           id: id,
-          name: event.participantNames[id] ?? context.l10n.editorMemberFallback,
+          name:
+              displayNames[id] ??
+              event.participantNames[id] ??
+              context.l10n.editorMemberFallback,
           role: id == _selectedPayerId ? context.l10n.editorPaidRole : null,
         ),
     ];
@@ -1030,7 +1036,10 @@ class _PaidByCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectivePayerId = payerId ?? event.participantIds.firstOrNull;
+    // #289: distinguish two same-named members in the "Paid by" attribution.
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
     final payerName =
+        displayNames[effectivePayerId] ??
         event.participantNames[effectivePayerId] ??
         context.l10n.editorSelectedPayer;
     return Padding(
@@ -1098,6 +1107,9 @@ class _SplitPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ids = _splitParticipantIds;
     final count = ids.length;
+    // #289: distinguish two same-named members; the compact tile keeps the
+    // ` (#…)` discriminator alive through the first-name collapse.
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
     final each = count == 0
         ? Decimal.zero
         : (amount / Decimal.fromInt(count)).toDecimal(
@@ -1188,8 +1200,12 @@ class _SplitPreviewCard extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final id = ids[index];
                     final name =
-                        event.participantNames[id] ?? l10n.editorMemberFallback;
-                    final firstName = name.split(' ').first;
+                        displayNames[id] ??
+                        event.participantNames[id] ??
+                        l10n.editorMemberFallback;
+                    final firstName = MemberNameResolver.compactDisambiguated(
+                      name,
+                    );
                     return _ParticipantSplitTile(
                       name: name,
                       firstName: firstName,

@@ -10,6 +10,7 @@ import '../../../core/utils/expense_scope_display_name.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
+import '../../groups/services/member_name_resolver.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
@@ -187,6 +188,8 @@ class _CustomParticipantSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final participants = _eventParticipants(event);
     final participantsAsync = AsyncValue.data(participants);
+    // #289: distinguish two same-named members exactly where money is split.
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,6 +252,10 @@ class _CustomParticipantSelector extends ConsumerWidget {
 
                   return _ParticipantTile(
                     participant: participant,
+                    displayName:
+                        displayNames[participant.id] ??
+                        participant.displayName ??
+                        context.l10n.editorUnknownParticipant,
                     isSelected: isSelected,
                     onToggle: () {
                       HapticService.lightClick();
@@ -273,17 +280,23 @@ class _CustomParticipantSelector extends ConsumerWidget {
 
 class _ParticipantTile extends StatelessWidget {
   final Participant participant;
+  // #289: disambiguated render name (id-keyed callbacks are unaffected).
+  final String displayName;
   final bool isSelected;
   final VoidCallback onToggle;
 
   const _ParticipantTile({
     required this.participant,
+    required this.displayName,
     required this.isSelected,
     required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final initial = displayName.isNotEmpty
+        ? displayName[0].toUpperCase()
+        : context.l10n.editorUnknownParticipant[0].toUpperCase();
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
       leading: Container(
@@ -297,9 +310,7 @@ class _ParticipantTile extends StatelessWidget {
         ),
         child: Center(
           child: Text(
-            (participant.displayName ??
-                    context.l10n.editorUnknownParticipant)[0]
-                .toUpperCase(),
+            initial,
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: isSelected
@@ -310,7 +321,7 @@ class _ParticipantTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        participant.displayName ?? context.l10n.editorUnknownParticipant,
+        displayName,
         style: TextStyle(
           fontSize: 14,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -352,6 +363,8 @@ class _PayerSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final participants = _eventParticipants(event);
+    // #289: distinguish two same-named members in the "who paid" picker.
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
 
     final currentUid = ref.watch(currentUserProvider)?.uid;
 
@@ -393,6 +406,10 @@ class _PayerSelector extends ConsumerWidget {
               icon: const Icon(Iconsax.arrow_down_1),
               items: participants.map((p) {
                 final isMe = p.id == currentUid;
+                final name =
+                    displayNames[p.id] ??
+                    p.displayName ??
+                    context.l10n.editorUnknownParticipant;
                 return DropdownMenuItem(
                   value: p.id,
                   child: Row(
@@ -401,8 +418,8 @@ class _PayerSelector extends ConsumerWidget {
                         radius: 14,
                         backgroundColor: context.colors.selectionFill,
                         child: Text(
-                          (p.displayName?.isNotEmpty == true
-                                  ? p.displayName![0]
+                          (name.isNotEmpty
+                                  ? name[0]
                                   : context.l10n.editorUnknownParticipant[0])
                               .toUpperCase(),
                           style: TextStyle(
@@ -416,12 +433,8 @@ class _PayerSelector extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           isMe
-                              ? context.l10n.editorParticipantMe(
-                                  p.displayName ??
-                                      context.l10n.editorUnknownParticipant,
-                                )
-                              : p.displayName ??
-                                    context.l10n.editorUnknownParticipant,
+                              ? context.l10n.editorParticipantMe(name)
+                              : name,
                           style: TextStyle(
                             fontWeight: isMe
                                 ? FontWeight.bold

@@ -144,20 +144,30 @@ class _Body extends StatelessWidget {
       allMemberIds: allMemberIds,
       liveMemberIds: liveMemberIds,
     );
-    final participants = universe.map((id) {
-      final display = MemberNameResolver.resolveEventScoped(
-        uid: id,
-        event: event,
-        members: groupMembers,
-      );
-      return Participant(
-        id: id,
-        tripId: event.id,
-        role: ParticipantRole.member,
-        joinedAt: event.createdAt,
-        displayName: MemberNameResolver.format(display),
-      );
-    }).toList();
+    final displaysByUid = <String, MemberDisplay>{
+      for (final id in universe)
+        id: MemberNameResolver.resolveEventScoped(
+          uid: id,
+          event: event,
+          members: groupMembers,
+        ),
+    };
+    final participants = [
+      for (final entry in displaysByUid.entries)
+        Participant(
+          id: entry.key,
+          tripId: event.id,
+          role: ParticipantRole.member,
+          joinedAt: event.createdAt,
+          displayName: MemberNameResolver.format(entry.value),
+        ),
+    ];
+    // #289: disambiguate same-named LIVE members at the RENDER sites only. The
+    // calc input (participants[].displayName above) stays plain format() so the
+    // BalanceCalculator oracle is byte-identical; the discriminator never feeds
+    // the calc or any write path.
+    final rosterDisplayNames = MemberNameResolver.disambiguate(displaysByUid);
+    final liveCounts = MemberNameResolver.liveNameCounts(displaysByUid.values);
     final currentPid = event.participantIds.contains(currentUserId)
         ? currentUserId
         : null;
@@ -186,7 +196,10 @@ class _Body extends StatelessWidget {
             .map(
               (b) => LedgerRosterPerson(
                 participantId: b.participantId,
-                displayName: b.displayName ?? context.l10n.ledgerMemberFallback,
+                displayName:
+                    rosterDisplayNames[b.participantId] ??
+                    b.displayName ??
+                    context.l10n.ledgerMemberFallback,
                 signedAmount: -b.netBalance,
               ),
             )
@@ -234,13 +247,16 @@ class _Body extends StatelessWidget {
     );
     final expensePayerDisplayNames = <String, String>{
       for (final expense in expenses)
-        expense.id: MemberNameResolver.format(
+        // #289: distinguish two same-named payers ("which Ahmed paid this?").
+        expense.id: MemberNameResolver.discriminatedLabel(
+          expense.payerParticipantId,
           MemberNameResolver.resolveEventScoped(
             uid: expense.payerParticipantId,
             event: event,
             members: groupMembers,
             fallbackName: expense.payerName,
           ),
+          liveCounts,
         ),
     };
     final settlementDisplayNames =
@@ -249,23 +265,27 @@ class _Body extends StatelessWidget {
             settlement.id: (
               payerName: settlement.payerParticipantId == null
                   ? settlement.payerName ?? context.l10n.ledgerSomeone
-                  : MemberNameResolver.format(
+                  : MemberNameResolver.discriminatedLabel(
+                      settlement.payerParticipantId!,
                       MemberNameResolver.resolveEventScoped(
                         uid: settlement.payerParticipantId!,
                         event: event,
                         members: groupMembers,
                         fallbackName: settlement.payerName,
                       ),
+                      liveCounts,
                     ),
               recipientName: settlement.recipientParticipantId == null
                   ? settlement.recipientName ?? context.l10n.ledgerSomeoneLower
-                  : MemberNameResolver.format(
+                  : MemberNameResolver.discriminatedLabel(
+                      settlement.recipientParticipantId!,
                       MemberNameResolver.resolveEventScoped(
                         uid: settlement.recipientParticipantId!,
                         event: event,
                         members: groupMembers,
                         fallbackName: settlement.recipientName,
                       ),
+                      liveCounts,
                     ),
             ),
         };
