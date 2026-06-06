@@ -15,9 +15,10 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 // `addCalls.single.createdBy == 'uid-bob'` plus the zero / too-large snackbars,
 // and settle_up_screen_test mirrors it for the ledger screen. This sheet is a
 // pure input collector: it returns a RecordPaymentResult on confirm (or null on
-// dismiss) and performs NO validation. That contract — never exercised in
-// isolation — is what these tests pin, including the deliberate absence of
-// validation (so the caller stays responsible for it).
+// dismiss) and performs no submit-BLOCKING validation. That contract — never
+// exercised in isolation — is what these tests pin. (#220 adds inline free-text
+// FEEDBACK on the note field — an errorText hint — but it still never blocks
+// confirm; the caller/server stay responsible for enforcement.)
 void main() {
   Future<RecordPaymentResult?> openAndReturn(
     WidgetTester tester, {
@@ -193,6 +194,25 @@ void main() {
 
     // 0-decimal currency → no spurious '.000' tail.
     expect(result!.amount, '1000');
+  });
+
+  testWidgets('#220: an over-length note shows an inline error but still '
+      'allows confirm (no client hard-block)', (tester) async {
+    final result = await openAndReturn(
+      tester,
+      currency: 'OMR',
+      suggestedAmount: Decimal.parse('7.750'),
+      act: (t) async {
+        await t.enterText(find.byType(TextField), 'a' * 281);
+        await t.pump();
+        // Inline feedback instead of an opaque permission-denied.
+        expect(find.text('Keep it to 280 characters or fewer.'), findsOneWidget);
+        // The sheet still returns — it never blocks; the server enforces.
+        await tapMarkPaid(t);
+      },
+    );
+
+    expect(result, isNotNull);
   });
 
   testWidgets('performs no validation — returns a zero amount as typed '
