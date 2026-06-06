@@ -4,7 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -286,7 +288,32 @@ class _CoverHeader extends StatelessWidget {
                     }
                   },
                 ),
-                _OverflowMenu(groupId: group.id),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // #291: surface "invite a friend" on the group screen —
+                    // reuses the link-bearing share message (#277) instead of
+                    // burying it in Group Settings.
+                    _PaperIconButton(
+                      key: GroupKeys.groupDetailInviteButton,
+                      icon: Iconsax.user_add,
+                      semanticLabel: context.l10n.groupShareInviteSemantic,
+                      onTap: () {
+                        HapticService.selection();
+                        Share.share(
+                          context.l10n.groupShareInviteMessage(
+                            group.name,
+                            AppLinks.inviteUrl(group.inviteCode).toString(),
+                            group.inviteCode,
+                          ),
+                          subject: context.l10n.groupShareSubject(group.name),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _OverflowMenu(groupId: group.id),
+                  ],
+                ),
               ],
             ),
           ),
@@ -328,9 +355,15 @@ class _CoverHeader extends StatelessWidget {
 }
 
 class _PaperIconButton extends StatelessWidget {
-  const _PaperIconButton({required this.icon, required this.onTap});
+  const _PaperIconButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.semanticLabel,
+  });
   final IconData icon;
   final VoidCallback onTap;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -338,22 +371,26 @@ class _PaperIconButton extends StatelessWidget {
     return SizedBox(
       width: 48,
       height: 48,
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        child: InkResponse(
-          onTap: onTap,
-          radius: 24,
-          customBorder: const CircleBorder(),
-          child: Center(
-            child: Material(
-              color: colors.cardSurface.withValues(alpha: 0.94),
-              shape: const CircleBorder(),
-              elevation: 1,
-              child: SizedBox(
-                width: 36,
-                height: 36,
-                child: Icon(icon, size: 18, color: colors.textPrimary),
+      child: Semantics(
+        button: true,
+        label: semanticLabel,
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkResponse(
+            onTap: onTap,
+            radius: 24,
+            customBorder: const CircleBorder(),
+            child: Center(
+              child: Material(
+                color: colors.cardSurface.withValues(alpha: 0.94),
+                shape: const CircleBorder(),
+                elevation: 1,
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: Icon(icon, size: 18, color: colors.textPrimary),
+                ),
               ),
             ),
           ),
