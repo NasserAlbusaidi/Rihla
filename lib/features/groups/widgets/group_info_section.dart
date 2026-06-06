@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -292,7 +293,11 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 onTap: () {
                   HapticService.selection();
                   Share.share(
-                    context.l10n.groupShareMessage(widget.group.inviteCode),
+                    context.l10n.groupShareInviteMessage(
+                      widget.group.name,
+                      AppLinks.inviteUrl(widget.group.inviteCode).toString(),
+                      widget.group.inviteCode,
+                    ),
                     subject: context.l10n.groupShareSubject(widget.group.name),
                   );
                 },
