@@ -34,8 +34,8 @@ class EventParticipantsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: context.spacing.space12),
+      padding: EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(24),
@@ -48,7 +48,7 @@ class EventParticipantsCard extends StatelessWidget {
             context.l10n.eventParticipants,
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.space8),
           // Select All row
           Row(
             children: [
@@ -135,7 +135,7 @@ class _ParticipantRow extends StatelessWidget {
                   color: context.colors.textSecondary,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.space12),
               Expanded(
                 child: Text(
                   member.displayName,

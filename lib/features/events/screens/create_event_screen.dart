@@ -276,9 +276,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 );
 
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.space16,
+                    vertical: context.spacing.space16,
                   ),
                   child: Form(
                     key: _formKey,
@@ -322,7 +322,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                           onPressed: () => _submitForm(members),
                         ),
 
-                        const SizedBox(height: 32),
+                        SizedBox(height: context.spacing.space32),
                       ],
                     ),
                   ),

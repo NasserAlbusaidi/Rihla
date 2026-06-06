@@ -18,8 +18,8 @@ class EventTypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final typeColor = typeConfig.resolveColor(context.colors);
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: EdgeInsets.only(bottom: context.spacing.space12),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: context.spacing.space12),
       decoration: BoxDecoration(
         color: typeColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(24),
@@ -27,7 +27,7 @@ class EventTypeBadge extends StatelessWidget {
       child: Row(
         children: [
           Icon(typeConfig.icon, size: 20, color: typeColor),
-          const SizedBox(width: 8),
+          SizedBox(width: context.spacing.space8),
           Text(
             typeConfig.type.localizedLabel(context.l10n),
             style: TextStyle(

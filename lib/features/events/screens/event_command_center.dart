@@ -333,7 +333,7 @@ class _BalanceHero extends StatelessWidget {
       key: EventKeys.spendingHero,
       decoration: BoxDecoration(
         color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
         border: Border.all(color: colors.border),
         boxShadow: context.shadows.raised,
       ),
@@ -410,7 +410,7 @@ class _BalanceWithBreakdown extends StatelessWidget {
             _Overline(label: context.l10n.eventYourBalance),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.space8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -431,7 +431,7 @@ class _BalanceWithBreakdown extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: colors.rule, width: 0.5)),
             ),
-            padding: const EdgeInsets.only(top: 4),
+            padding: EdgeInsets.only(top: context.spacing.space4),
             child: Column(
               children: [
                 for (final entry in breakdown)
@@ -482,7 +482,7 @@ class _BalanceQuiet extends StatelessWidget {
               Container(width: 56, height: 2, color: colors.success),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.space8),
         Text(
           isSettled
               ? context.l10n.eventEveryoneSquare
@@ -519,11 +519,11 @@ class _BreakdownRow extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: 10),
           child: Row(
             children: [
               RAvatar(name: entry.otherName, size: 32),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.space12),
               Expanded(
                 child: RichText(
                   text: TextSpan(
@@ -604,7 +604,7 @@ class _LedgerSummaryStrip extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _Overline(label: context.l10n.eventTripTotal),
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.spacing.space4),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -613,7 +613,7 @@ class _LedgerSummaryStrip extends StatelessWidget {
                           size: 20,
                           weight: FontWeight.w800,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: context.spacing.space8),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 2),
                           child: Text(
@@ -739,7 +739,7 @@ class _RecentList extends StatelessWidget {
         border: Border.all(color: colors.border),
         boxShadow: context.shadows.raised,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
       child: Column(
         children: [
           for (var i = 0; i < expenses.length; i++)
@@ -788,7 +788,7 @@ class _RecentRow extends StatelessWidget {
             ? Border(bottom: BorderSide(color: colors.rule, width: 0.5))
             : null,
       ),
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
       child: Row(
         children: [
           Container(
@@ -805,7 +805,7 @@ class _RecentRow extends StatelessWidget {
               color: colors.textSecondary,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.space12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -834,7 +834,7 @@ class _RecentRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.spacing.space8),
           Text(
             AppFormatters.formatCurrency(expense.amount, expense.currency),
             style: AppTypography.mono(
@@ -1029,13 +1029,13 @@ class _RosterStrip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
           child: _Overline(label: context.l10n.eventPeopleOverline(count)),
         ),
         if (isEmpty) ...[
           const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
             child: RichText(
               text: TextSpan(
                 style: AppTypography.sans(
@@ -1059,9 +1059,9 @@ class _RosterStrip extends StatelessWidget {
           height: 124,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
             itemCount: event.participantIds.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) => SizedBox(width: context.spacing.space8),
             itemBuilder: (context, i) {
               final uid = event.participantIds[i];
               final isMe = uid == currentUid;
@@ -1130,7 +1130,7 @@ class _RosterPersonCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             RAvatar(name: name, size: 40),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.space8),
             Text(
               isMe ? context.l10n.eventYou : short,
               maxLines: 1,
@@ -1141,9 +1141,9 @@ class _RosterPersonCard extends StatelessWidget {
                 color: colors.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.space8),
             SizedBox(
-              height: 8,
+              height: context.spacing.space8,
               child: showDot && dotColor != null
                   ? Container(
                       width: 6,
@@ -1274,7 +1274,7 @@ class _CoverHeader extends StatelessWidget {
                     letterSpacing: 2,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.spacing.space4),
                 Text(
                   event.name,
                   maxLines: 2,
@@ -1423,7 +1423,7 @@ class _ErrorState extends StatelessWidget {
     return SafeArea(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacing.space24),
           child: EmptyStateView(
             icon: Iconsax.warning_2,
             title: context.l10n.eventLoadFailedTitle,
@@ -1444,7 +1444,7 @@ class _NotFoundState extends StatelessWidget {
     return SafeArea(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacing.space24),
           child: EmptyStateView(
             icon: Iconsax.box_remove,
             title: context.l10n.eventNotFound,

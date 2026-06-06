@@ -66,7 +66,7 @@ class EventCard extends ConsumerWidget {
         child: Container(
           decoration: BoxDecoration(
             color: context.colors.cardSurface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(context.spacing.radiusCard),
             border: Border.all(
               color: context.colors.border.withValues(alpha: 0.5),
               width: 0.5,
@@ -99,7 +99,7 @@ class EventCard extends ConsumerWidget {
                 // Main content area
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(context.spacing.space16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -110,7 +110,7 @@ class EventCard extends ConsumerWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.spacing.space4),
                         // Date range
                         Text(
                           _buildDateText(context),
@@ -120,10 +120,10 @@ class EventCard extends ConsumerWidget {
                             color: context.colors.textSecondary,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.spacing.space4),
                         // Personal balance or total spent
                         _buildBalanceLine(context),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.spacing.space4),
                         // Expense count
                         _buildExpenseCountLine(context, totalSpent),
                       ],
