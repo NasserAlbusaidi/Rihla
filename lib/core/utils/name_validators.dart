@@ -72,3 +72,44 @@ String? validateDisplayName(String? input) {
 String normalizeDisplayName(String input) {
   return input.trim().replaceAll(RegExp(r'\s+'), ' ');
 }
+
+/// Max length for user free text (expense description/note, etc.).
+///
+/// Mirrors the server-side `validFreeText` check in `security/firestore.rules`
+/// (#194): `value.size() <= 280`.
+const int kFreeTextMaxLength = 280;
+
+enum FreeTextValidationError {
+  tooLong,
+  controlCharacter,
+}
+
+/// Returns the validation error for free-text [input], or `null` if valid.
+///
+/// Mirrors the server `validFreeText` rule: empty is allowed (no minimum),
+/// `<= 280` chars, and no C0/DEL control characters. The check runs on the
+/// trimmed value because the write path persists `controller.text.trim()`
+/// (empty becomes `null`), so the trimmed string is what the server validates.
+FreeTextValidationError? freeTextValidationError(String? input) {
+  final value = (input ?? '').trim();
+  if (value.length > kFreeTextMaxLength) {
+    return FreeTextValidationError.tooLong;
+  }
+  if (_hasControlChar(value)) {
+    return FreeTextValidationError.controlCharacter;
+  }
+  return null;
+}
+
+/// Returns a user-facing English error message, or `null` if [input] is valid.
+///
+/// For localized widgets use `validateFreeTextLocalized`.
+String? validateFreeText(String? input) {
+  return switch (freeTextValidationError(input)) {
+    FreeTextValidationError.tooLong =>
+      'Keep it to $kFreeTextMaxLength characters or fewer.',
+    FreeTextValidationError.controlCharacter =>
+      'Remove line breaks or special characters.',
+    null => null,
+  };
+}

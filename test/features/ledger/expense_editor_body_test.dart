@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/utils/name_validators.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -408,4 +409,59 @@ void main() {
       });
     },
   );
+
+  // #220 — inline free-text validation on the note/description field. The write
+  // path stores controller.text.trim(); security/firestore.rules' validFreeText
+  // rejects >280 chars or control chars with an opaque permission-denied, so the
+  // editor now surfaces a friendly inline message as the user types instead.
+  Expense globalExpense() => Expense(
+    id: 'expense-1',
+    tripId: 'event-1',
+    payerParticipantId: 'uid-yasmin',
+    amount: Decimal.parse('12.000'),
+    scope: ExpenseScope.global,
+    createdAt: DateTime(2026, 5, 30),
+    createdBy: 'uid-yasmin',
+    splitMode: SplitMode.equally,
+  );
+
+  testWidgets('#220: an over-length note shows an inline error', (tester) async {
+    await pumpEditor(tester, initial: globalExpense());
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Description'),
+      'a' * (kFreeTextMaxLength + 1),
+    );
+    await tester.pump();
+    expect(find.text('Keep it to 280 characters or fewer.'), findsOneWidget);
+  });
+
+  testWidgets('#220: a control character in the note shows an inline error', (
+    tester,
+  ) async {
+    // The single-line field strips \n/\r on input, but a non-line-terminator
+    // control char (DEL) can still arrive (e.g. paste) — the validator catches
+    // it and the editor surfaces the message.
+    await pumpEditor(tester, initial: globalExpense());
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Description'),
+      'del${String.fromCharCode(0x7f)}here',
+    );
+    await tester.pump();
+    expect(
+      find.text('Remove line breaks or special characters.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('#220: fixing the note clears the inline error', (tester) async {
+    await pumpEditor(tester, initial: globalExpense());
+    final note = find.widgetWithText(TextField, 'Description');
+    await tester.enterText(note, 'a' * (kFreeTextMaxLength + 1));
+    await tester.pump();
+    expect(find.text('Keep it to 280 characters or fewer.'), findsOneWidget);
+
+    await tester.enterText(note, 'Dinner at the souq');
+    await tester.pump();
+    expect(find.text('Keep it to 280 characters or fewer.'), findsNothing);
+  });
 }
