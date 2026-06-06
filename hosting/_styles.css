@@ -135,3 +135,25 @@ footer.nav .copyright {
   color: var(--muted);
   margin-top: 8px;
 }
+
+.install {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 24px 0 8px;
+}
+
+.btn-store {
+  display: inline-block;
+  padding: 12px 20px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.btn-store:hover {
+  background: var(--accent-dark);
+  color: #fff;
+  text-decoration: none;
+}
