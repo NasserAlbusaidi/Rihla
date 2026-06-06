@@ -47,11 +47,11 @@ class GroupSettingsScreen extends ConsumerWidget {
                 _SettingsTopBar(groupId: groupId),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsetsDirectional.fromSTEB(
-                      20,
+                    padding: EdgeInsetsDirectional.fromSTEB(
+                      context.spacing.space20,
                       6,
-                      20,
-                      20,
+                      context.spacing.space20,
+                      context.spacing.space20,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -71,7 +71,7 @@ class GroupSettingsScreen extends ConsumerWidget {
                         _DefaultsSection(
                           currency: group.currency,
                         ).animate().fadeIn(delay: 240.ms).slideY(begin: 0.08),
-                        const SizedBox(height: 12),
+                        SizedBox(height: context.spacing.space12),
                         GroupDangerSection(
                           groupId: groupId,
                           isCreator: isCreator,
@@ -89,7 +89,7 @@ class GroupSettingsScreen extends ConsumerWidget {
               _SettingsTopBar(groupId: groupId),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(20, 6, 20, 20),
+                  padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, 6, context.spacing.space20, context.spacing.space20),
                   child: SkeletonLoader.generic(count: 3),
                 ),
               ),
@@ -112,7 +112,7 @@ class _SettingsTopBar extends StatelessWidget {
     return SizedBox(
       height: 44,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -184,14 +184,14 @@ class _DefaultsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SettingsSectionHeader(title: context.l10n.groupDefaults),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.space8),
         Container(
           decoration: BoxDecoration(
             color: colors.cardSurface,
             borderRadius: BorderRadius.circular(spacing.radiusLarge),
             boxShadow: context.shadows.raised,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
           child: Column(
             children: [
               _DefaultsRow(
@@ -235,7 +235,7 @@ class _DefaultsRow extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: EdgeInsets.symmetric(vertical: context.spacing.space4),
           child: Row(
             children: [
               Expanded(
@@ -276,7 +276,7 @@ class _ErrorState extends ConsumerWidget {
         _SettingsTopBar(groupId: groupId),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -286,7 +286,7 @@ class _ErrorState extends ConsumerWidget {
                     size: 32,
                     color: context.colors.textSecondary,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.spacing.space8),
                   Text(
                     context.l10n.groupSettingsLoadFailed,
                     style: AppTypography.sans(
@@ -295,7 +295,7 @@ class _ErrorState extends ConsumerWidget {
                       color: context.colors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.spacing.space4),
                   Text(
                     context.l10n.activityLoadFailedMessage,
                     textAlign: TextAlign.center,
@@ -304,7 +304,7 @@ class _ErrorState extends ConsumerWidget {
                       color: context.colors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.spacing.space16),
                   TextButton(
                     onPressed: () =>
                         ref.invalidate(groupDetailProvider(groupId)),

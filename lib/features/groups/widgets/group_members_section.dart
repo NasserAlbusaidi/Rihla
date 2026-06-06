@@ -54,7 +54,7 @@ class GroupMembersSection extends ConsumerWidget {
             borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
             boxShadow: context.shadows.raised,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: _buildMemberTiles(context, ref),
@@ -88,11 +88,11 @@ class GroupMembersSection extends ConsumerWidget {
 
     return Padding(
       key: GroupKeys.memberTile(member.id),
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
       child: Row(
         children: [
           RAvatar(size: 30, name: member.displayName),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.space12),
           Expanded(
             child: Text(
               member.displayName,

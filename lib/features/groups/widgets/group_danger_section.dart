@@ -40,7 +40,7 @@ class GroupDangerSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(context.spacing.space12),
           decoration: BoxDecoration(
             color: context.colors.error.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
@@ -61,7 +61,7 @@ class GroupDangerSection extends ConsumerWidget {
               const SizedBox(height: 6),
               _buildLeaveGroupTile(context, ref),
               if (isCreator) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacing.space8),
                 _buildDeleteGroupTile(context, ref),
               ],
             ],
@@ -349,7 +349,7 @@ class _DangerButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: 7),
           child: Text(
             label,
             style: AppTypography.sans(

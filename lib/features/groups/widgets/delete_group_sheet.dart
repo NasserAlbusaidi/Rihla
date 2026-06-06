@@ -123,7 +123,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                           color: colors.error,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.spacing.space12),
                       Text(
                         context.l10n.groupDeleteSheetTitle,
                         style: AppTypography.display(
@@ -220,7 +220,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.spacing.space8),
                       TextField(
                         controller: _controller,
                         autofocus: false,
@@ -233,9 +233,9 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                           filled: true,
                           fillColor: colors.cardSurface,
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
+                          contentPadding: EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 12,
+                            vertical: context.spacing.space12,
                           ),
                           suffixIcon: _matches
                               ? Icon(Icons.check_rounded, color: colors.success)
@@ -256,7 +256,7 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.spacing.space8),
                       Row(
                         children: [
                           Icon(
