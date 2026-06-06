@@ -5,6 +5,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../groups/services/member_name_resolver.dart';
 
 /// Roster strip state.
 ///   live    — show signed amounts (sage positive, rust negative)
@@ -188,9 +189,9 @@ class _RosterTile extends StatelessWidget {
   }
 
   static String _shortName(String full) {
-    final trimmed = full.trim();
-    final spaceIdx = trimmed.indexOf(' ');
-    return spaceIdx == -1 ? trimmed : trimmed.substring(0, spaceIdx);
+    // #289: collapse to first name but keep the ` (#…)` discriminator so two
+    // same-named members stay distinct in the roster.
+    return MemberNameResolver.compactDisambiguated(full.trim());
   }
 }
 
