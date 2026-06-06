@@ -466,7 +466,7 @@ class _SettlementTopBar extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: IconButton(
                 tooltip: l10n.commonBack,
                 icon: const Icon(Iconsax.arrow_left_2, size: 20),

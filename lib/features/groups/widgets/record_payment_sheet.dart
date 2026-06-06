@@ -15,8 +15,8 @@ import '../keys/group_keys.dart';
 ///
 /// Shows a sage check badge, italic display title, payee card with the
 /// suggested amount, method chips (Cash / Bank transfer / Other), and a
-/// saffron-tinted notification banner. Returns a [RecordPaymentResult] on
-/// confirm; null on dismiss.
+/// saffron-tinted banner noting that recording is immediate (no confirmation
+/// step — #281). Returns a [RecordPaymentResult] on confirm; null on dismiss.
 Future<RecordPaymentResult?> showRecordPaymentSheet(
   BuildContext context, {
   required String currency,
@@ -240,14 +240,16 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.notifications_active_outlined,
+                        Icons.check_circle_outline,
                         size: 16,
                         color: colors.primaryDark,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          context.l10n.settleUpNotifyToConfirm(widget.toName),
+                          context.l10n.settleUpRecordsImmediately(
+                            widget.toName,
+                          ),
                           style: AppTypography.sans(
                             fontSize: 12,
                             color: colors.primaryDark,

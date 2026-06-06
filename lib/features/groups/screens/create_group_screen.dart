@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
@@ -551,7 +552,11 @@ class _SharePrompt extends StatelessWidget {
 
   void _shareCode(BuildContext context) {
     Share.share(
-      context.l10n.groupShareMessage(group.inviteCode),
+      context.l10n.groupShareInviteMessage(
+        group.name,
+        AppLinks.inviteUrl(group.inviteCode).toString(),
+        group.inviteCode,
+      ),
       subject: context.l10n.groupShareSubject(group.name),
     );
   }

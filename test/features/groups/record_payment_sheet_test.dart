@@ -71,6 +71,48 @@ void main() {
   Future<void> tapMarkPaid(WidgetTester tester) =>
       tester.tap(find.byKey(GroupKeys.markAsPaidButton));
 
+  testWidgets(
+    'banner states recording is immediate, not a notify/confirm promise (#281)',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: ElevatedButton(
+                    key: const Key('open'),
+                    onPressed: () => showRecordPaymentSheet(
+                      context,
+                      currency: 'OMR',
+                      fromName: 'Bob',
+                      toName: 'Alice',
+                      suggestedAmount: Decimal.parse('5.000'),
+                    ),
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('open')));
+      await tester.pumpAndSettle();
+
+      // The old copy promised a two-party confirmation / notification that does
+      // not exist: recording is unilateral and immediate, and there is no
+      // `confirmed` field. A user who "waits for confirmation" waits forever.
+      expect(find.textContaining('will be notified'), findsNothing);
+      expect(find.textContaining('to confirm'), findsNothing);
+      // Honest copy: states plainly that the write is immediate.
+      expect(find.textContaining('immediately'), findsOneWidget);
+    },
+  );
+
   testWidgets('confirm returns the seeded amount, empty note, cash by default', (
     tester,
   ) async {
