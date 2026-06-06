@@ -123,7 +123,7 @@ class _YouAnchor extends StatelessWidget {
             height: 1.2,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: context.spacing.space4),
         Text(
           '—',
           style: AppTypography.mono(
@@ -213,10 +213,10 @@ class _Chip extends StatelessWidget {
     final colors = context.colors;
     if (isEmpty) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: 2),
         decoration: BoxDecoration(
           border: Border.all(color: colors.rule2, width: 1),
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
         ),
         child: Text(
           '—',
@@ -231,10 +231,10 @@ class _Chip extends StatelessWidget {
     }
     if (isSettled || person.signedAmount == Decimal.zero) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: 2),
         decoration: BoxDecoration(
           color: colors.cardSoft,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
         ),
         child: Text(
           context.l10n.ledgerEven,
@@ -255,10 +255,10 @@ class _Chip extends StatelessWidget {
     final prefix = positive ? '+' : '−';
     final abs = person.signedAmount.abs().toStringAsFixed(3);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(9999),
+        borderRadius: BorderRadius.circular(context.spacing.radiusPill),
       ),
       child: Text(
         '$prefix$abs',

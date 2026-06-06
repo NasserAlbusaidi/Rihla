@@ -432,7 +432,7 @@ class _Header extends StatelessWidget {
               height: 1.15,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: context.spacing.space4),
           Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
@@ -469,7 +469,7 @@ class _ModeSegmented extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(context.spacing.space4),
       decoration: BoxDecoration(
         color: colors.inputFill,
         borderRadius: BorderRadius.circular(999),
@@ -483,7 +483,7 @@ class _ModeSegmented extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: m == mode ? colors.cardSurface : Colors.transparent,
@@ -547,7 +547,7 @@ class _ModeBody extends StatelessWidget {
         borderRadius: BorderRadius.circular(spacing.radiusLarge),
         boxShadow: context.shadows.raised,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
       child: Column(
         children: [
           for (var i = 0; i < participants.length; i++)
@@ -604,7 +604,7 @@ class _ParticipantRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -617,7 +617,7 @@ class _ParticipantRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _Avatar(name: participant.name),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.space12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -663,7 +663,7 @@ class _ParticipantRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.space12),
           SizedBox(
             width: 124,
             child: _Editor(
@@ -788,7 +788,7 @@ class _EqualReadout extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: context.spacing.space4),
           decoration: BoxDecoration(
             border: Border.all(color: colors.rule2),
             borderRadius: BorderRadius.circular(8),
@@ -802,7 +802,7 @@ class _EqualReadout extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: context.spacing.space4),
         RAmount(
           value: share,
           currency: currency,
@@ -840,7 +840,7 @@ class _SharesStepper extends StatelessWidget {
             },
           ),
           SizedBox(
-            width: 32,
+            width: context.spacing.space32,
             child: Text(
               '$value',
               textAlign: TextAlign.center,
@@ -934,9 +934,9 @@ class _NumberInput extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 8,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.spacing.space8,
+            vertical: context.spacing.space8,
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),

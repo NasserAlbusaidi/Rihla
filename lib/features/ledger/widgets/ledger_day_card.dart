@@ -44,7 +44,7 @@ class LedgerDayStamp extends StatelessWidget {
           ),
           if (date != null || (sub != null && sub!.isNotEmpty))
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: context.spacing.space4),
               child: Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: 8,
@@ -118,7 +118,7 @@ class LedgerDayCard extends StatelessWidget {
       children: [
         LedgerDayStamp(label: dayLabel, sub: sub),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
           child: Container(
             decoration: BoxDecoration(
               color: colors.cardSurface,
@@ -205,14 +205,14 @@ class _ExpenseRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 14),
         child: Column(
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _CategoryBadge(bucket: bucket),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +244,7 @@ class _ExpenseRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.space8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
@@ -390,7 +390,7 @@ class LedgerSettleRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _SettleIcon(sageText: sageText),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,7 +418,7 @@ class LedgerSettleRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacing.space8),
             RAmount(
               value: amount,
               size: 14,

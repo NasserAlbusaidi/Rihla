@@ -195,7 +195,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(context.spacing.space24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -204,7 +204,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                           size: 40,
                           color: context.colors.error,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: context.spacing.space16),
                         Text(
                           context.l10n.settleUpCouldNotLoadBalances,
                           style: TextStyle(
@@ -213,7 +213,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                             color: context.colors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: context.spacing.space8),
                         TextButton(
                           onPressed: () =>
                               ref.invalidate(eventExpensesProvider(eventRef)),
