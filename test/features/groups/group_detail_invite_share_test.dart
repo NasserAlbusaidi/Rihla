@@ -141,4 +141,40 @@ void main() {
     expect(sharedText, isNotNull);
     expect(sharedText, contains('https://rihla-safar.web.app/join/ABC123'));
   });
+
+  // Regression for the iOS-only crash: Share.share without a non-zero
+  // sharePositionOrigin throws PlatformException('sharePositionOrigin:
+  // argument must be set') on iOS/iPadOS, silently breaking every share path.
+  // The mock-the-text test above can't catch it, so assert the origin rect is
+  // present and non-zero on the wire.
+  testWidgets('group screen header invite passes a non-zero share origin (iOS)',
+      (tester) async {
+    Map<Object?, Object?>? shareArgs;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      shareChannel,
+      (call) async {
+        if (call.method == 'share') {
+          shareArgs = call.arguments as Map<Object?, Object?>;
+        }
+        return '';
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        shareChannel,
+        null,
+      ),
+    );
+
+    await pumpGroupDetail(tester);
+
+    await tester.tap(find.byKey(GroupKeys.groupDetailInviteButton));
+    await tester.pumpAndSettle();
+
+    expect(shareArgs, isNotNull);
+    expect(shareArgs!['originWidth'], isA<double>());
+    expect(shareArgs!['originHeight'], isA<double>());
+    expect((shareArgs!['originWidth'] as double) > 0, isTrue);
+    expect((shareArgs!['originHeight'] as double) > 0, isTrue);
+  });
 }

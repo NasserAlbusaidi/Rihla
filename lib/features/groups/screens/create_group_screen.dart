@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
@@ -551,7 +551,8 @@ class _SharePrompt extends StatelessWidget {
   }
 
   void _shareCode(BuildContext context) {
-    Share.share(
+    shareText(
+      context,
       context.l10n.groupShareInviteMessage(
         group.name,
         AppLinks.inviteUrl(group.inviteCode).toString(),
