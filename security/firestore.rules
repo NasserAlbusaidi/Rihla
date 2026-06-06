@@ -297,28 +297,17 @@ service cloud.firestore {
           && request.resource.data.updatedAt is timestamp;
       }
 
-      function removesExactlyOneExistingMember() {
-        return request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['memberIds', 'updatedAt'])
-          && request.resource.data.memberIds is list
-          && request.resource.data.memberIds.hasOnly(resource.data.memberIds)
-          && resource.data.memberIds.size() == request.resource.data.memberIds.size() + 1
-          && request.resource.data.updatedAt is timestamp;
-      }
-
-      // #290: self-leave is server-authoritative. The `leaveGroup` callable
-      // (Admin SDK, rules-bypassing) recomputes the LEAVER's net balance, refuses
-      // on any non-zero net, then removes the uid from memberIds + deletes the
-      // member doc. A direct client self-leave is therefore forbidden — there is
-      // no `validSelfLeave` branch in `allow update`. Removing the group-doc
-      // arrayRemove path is sufficient: the member-doc self-delete
-      // (`validMemberDelete`) requires `!(uid in memberIds-after)`, achievable
-      // only by the now-blocked group update, and the write batch is atomic.
-      function validCreatorRemoveMember() {
-        return isCreator()
-          && removesExactlyOneExistingMember()
-          && request.auth.uid in request.resource.data.memberIds;
-      }
+      // #290 + #318: membership removal is server-authoritative. The `leaveGroup`
+      // (self-leave) and `removeMember` (creator-remove) callables (Admin SDK,
+      // rules-bypassing) recompute the leaver/target net balance, refuse on any
+      // non-zero net, then remove the uid from memberIds + delete the member doc
+      // + log `member_left`. A direct client self-leave (#290) OR creator-remove
+      // (#318) is therefore forbidden — there is no `validSelfLeave` and no
+      // `validCreatorRemoveMember` branch in `allow update`. Removing the
+      // group-doc arrayRemove path is sufficient for BOTH: the member-doc delete
+      // (`validMemberDelete`, self-branch and creator-branch) requires
+      // `!(targetUserId in memberIds-after)`, achievable only by the now-blocked
+      // group update, and the write batch is atomic.
 
       function validMemberIdsRefresh() {
         return isMember()
@@ -332,8 +321,7 @@ service cloud.firestore {
       allow create: if validGroupCreate();
       allow update: if groupAllowsClientWrites(groupId)
         && (validCreatorMetadataUpdate()
-          || validMemberIdsRefresh()
-          || validCreatorRemoveMember());
+          || validMemberIdsRefresh());
       // #190: group deletion is server-authoritative. The deleteGroup callable
       // (Admin SDK, rules-bypassing) recomputes net balances across all events +
       // group settlements, refuses on any non-zero net, then SOFT-deletes the
