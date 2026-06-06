@@ -847,8 +847,9 @@
     }
   },
   "settleUpNoteHint": "Add a note (optional)",
-  "settleUpNotifyToConfirm": "{name} will be notified to confirm.",
-  "@settleUpNotifyToConfirm": {
+  "settleUpRecordsImmediately": "This records your payment to {name} immediately.",
+  "@settleUpRecordsImmediately": {
+    "description": "Heads-up on the record-payment sheet. Recording a settlement is unilateral and immediate — there is no confirmation step and no `confirmed` field — so the copy must not promise a notification or two-party confirmation (#281).",
     "placeholders": {
       "name": {}
     }

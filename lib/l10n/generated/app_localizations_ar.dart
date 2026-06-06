@@ -1110,8 +1110,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpNoteHint => 'إضافة ملاحظة (اختياري)';
 
   @override
-  String settleUpNotifyToConfirm(Object name) {
-    return 'سيتم إشعار $name للتأكيد.';
+  String settleUpRecordsImmediately(Object name) {
+    return 'يُسجَّل دفعك إلى $name فوراً.';
   }
 
   @override

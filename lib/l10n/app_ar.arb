@@ -338,7 +338,7 @@
   "settleUpMarkThisPaidTitle": "تحديده كمدفوع؟",
   "settleUpMarkThisPaidBody": "سنغلق الرصيد بين {fromName} و{toName}.",
   "settleUpNoteHint": "إضافة ملاحظة (اختياري)",
-  "settleUpNotifyToConfirm": "سيتم إشعار {name} للتأكيد.",
+  "settleUpRecordsImmediately": "يُسجَّل دفعك إلى {name} فوراً.",
   "settleUpNotYet": "ليس الآن",
   "settleUpMarkPaid": "تحديد كمدفوع",
   "settleUpPays": "{fromName} يدفع إلى {toName}",

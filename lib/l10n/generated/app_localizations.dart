@@ -1916,11 +1916,11 @@ abstract class AppLocalizations {
   /// **'Add a note (optional)'**
   String get settleUpNoteHint;
 
-  /// No description provided for @settleUpNotifyToConfirm.
+  /// Heads-up on the record-payment sheet. Recording a settlement is unilateral and immediate — there is no confirmation step and no `confirmed` field — so the copy must not promise a notification or two-party confirmation (#281).
   ///
   /// In en, this message translates to:
-  /// **'{name} will be notified to confirm.'**
-  String settleUpNotifyToConfirm(Object name);
+  /// **'This records your payment to {name} immediately.'**
+  String settleUpRecordsImmediately(Object name);
 
   /// No description provided for @settleUpNotYet.
   ///
