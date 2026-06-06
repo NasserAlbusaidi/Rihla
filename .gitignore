@@ -70,6 +70,7 @@ SKILL.md
 # discipline is referenced by CLAUDE.md (The Gate / Memory). Tracked despite the
 # .claude/ and SKILL.md blanket-ignores above:
 #   .claude/skills/run-the-gate/{SKILL.md,reviewer-prompt.md}
+#   .claude/skills/automerge/{SKILL.md,diff-reviewer-prompt.md}
 #   .claude/workflows/verified-sweep.js
 # settings.local.json, scheduled_tasks.lock, worktrees/ stay ignored.
 
