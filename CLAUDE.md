@@ -10,7 +10,8 @@ Rihla — Flutter group expense splitter. Solo-dev. **The Operating Contract is 
 | Screen / nav flow | `lib/core/router/app_router.dart` + Do/Don't |
 | Money math | `BalanceCalculator` in `lib/features/ledger/providers/expense_provider.dart` |
 | Firestore stream | `lib/core/services/firestore_repository.dart` |
-| New screen design | `docs/design/` + tokens in `lib/core/theme/tokens/` |
+| Design system (color/type/spacing/motion/components) | **`docs/DESIGN.md`** — the contract; values live in `lib/core/theme/tokens/` |
+| New screen design | `docs/DESIGN.md` § Screen patterns + `docs/design/` specs |
 | Tests | `test/helpers/`, `flutter_test_config.dart` |
 | Release | `docs/PRODUCTION-READINESS.md` + `tool/check_release_readiness.sh` |
 | Play Store listing | `fastlane/README.md` |
