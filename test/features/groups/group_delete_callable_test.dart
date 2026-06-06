@@ -371,9 +371,10 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('leave success logs member_left, calls service, and goes home', (
-    tester,
-  ) async {
+  testWidgets(
+    'leave success calls the callable-backed service + goes home, and NO '
+    'longer logs activity client-side (server writes member_left now, #290)',
+    (tester) async {
     final groupService = _MockGroupService();
     final activityService = _RecordingGroupActivityService();
     when(
@@ -396,9 +397,9 @@ void main() {
 
     verify(() => groupService.leaveGroup(groupId: 'g1')).called(1);
     expect(find.text('Home'), findsOneWidget);
-    expect(activityService.calls.single.groupId, 'g1');
-    expect(activityService.calls.single.type, 'member_left');
-    expect(activityService.calls.single.actorName, 'Test User');
+    // The member_left activity is written server-side by the leaveGroup
+    // callable (the client can't — post-leave it is no longer a member, #290).
+    expect(activityService.calls, isEmpty);
   });
 
   testWidgets('leave failure shows groupFailedLeave snackbar', (tester) async {
@@ -422,6 +423,67 @@ void main() {
 
     verify(() => groupService.leaveGroup(groupId: 'g1')).called(1);
     expect(find.text('Failed to leave group: Bad state: boom'), findsOneWidget);
+  });
+
+  // The server `leaveGroup` callable is the sole balance authority (#290); the
+  // client UX short-circuit is uid-gated (FirebaseConfig.currentUser, not set in
+  // this harness) so the balance gate is exercised server-side in
+  // functions/test/callables/leaveGroup.test.ts. These cases pin the client's
+  // FirebaseFunctionsException → UX mapping.
+  testWidgets(
+    'leave failed-precondition shows the settle-before-leaving snackbar (#290)',
+    (tester) async {
+      final groupService = _MockGroupService();
+      when(() => groupService.leaveGroup(groupId: any(named: 'groupId'))).thenThrow(
+        FirebaseFunctionsException(
+          message: 'unsettled',
+          code: 'failed-precondition',
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildApp(
+          buildOverrides(
+            groupService: groupService,
+            eventExpenses: Stream.value(const <Expense>[]),
+            eventSettlements: Stream.value(const <Settlement>[]),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await confirmLeave(tester);
+
+      verify(() => groupService.leaveGroup(groupId: 'g1')).called(1);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.groupSettleBeforeLeaving), findsOneWidget);
+      expect(find.text('Home'), findsNothing);
+    },
+  );
+
+  testWidgets('not-found from leave callable is treated as success (goes home)', (
+    tester,
+  ) async {
+    final groupService = _MockGroupService();
+    when(
+      () => groupService.leaveGroup(groupId: any(named: 'groupId')),
+    ).thenThrow(FirebaseFunctionsException(message: 'gone', code: 'not-found'));
+
+    await tester.pumpWidget(
+      buildApp(
+        buildOverrides(
+          groupService: groupService,
+          eventExpenses: Stream.value(const <Expense>[]),
+          eventSettlements: Stream.value(const <Settlement>[]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await confirmLeave(tester);
+
+    verify(() => groupService.leaveGroup(groupId: 'g1')).called(1);
+    expect(find.text('Home'), findsOneWidget);
   });
 
   testWidgets(

@@ -37,4 +37,15 @@ class FirebaseFunctionsService {
   Future<void> deleteGroup({required String groupId}) async {
     await _functions.httpsCallable('deleteGroup').call({'groupId': groupId});
   }
+
+  /// Invoke the server-authoritative `leaveGroup` callable (#290).
+  ///
+  /// The server recomputes the LEAVER's net balance, refuses with
+  /// `failed-precondition` on a non-zero net, then removes the uid from
+  /// `memberIds` + deletes their member doc + logs `member_left`. Replaces the
+  /// old client-side batch whose balance gate was skipped when balances were
+  /// null (offline) — orphaning debt. Throws [FirebaseFunctionsException].
+  Future<void> leaveGroup({required String groupId}) async {
+    await _functions.httpsCallable('leaveGroup').call({'groupId': groupId});
+  }
 }

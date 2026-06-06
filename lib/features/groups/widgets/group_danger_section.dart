@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -199,57 +198,64 @@ class GroupDangerSection extends ConsumerWidget {
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
+    // UX-only short-circuit: when balances are LOADED and the leaver is not
+    // square, show the settle-up hint without a round-trip. On the null/loading
+    // path we fall through and let the SERVER decide — the leaveGroup callable
+    // is the sole authority (#290). Never skip the callable just because the
+    // local balance is null — that was the offline orphan-debt hole.
     final uid = FirebaseConfig.currentUser?.uid;
-    final balancesAsync = ref.read(groupBalancesProvider(groupId));
-    final balances = balancesAsync.valueOrNull;
+    final balances = ref.read(groupBalancesProvider(groupId)).valueOrNull;
     if (balances != null && uid != null) {
       final userBalance = balances.balances.where(
         (b) => b.participantId == uid,
       );
       if (userBalance.isNotEmpty &&
           userBalance.first.netBalance != Decimal.zero) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.groupSettleBeforeLeaving),
-              action: SnackBarAction(
-                label: context.l10n.groupSettleUp,
-                onPressed: () => context.push('/group/$groupId/settle-up'),
-              ),
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.groupSettleBeforeLeaving),
+            action: SnackBarAction(
+              label: context.l10n.groupSettleUp,
+              onPressed: () => context.push('/group/$groupId/settle-up'),
             ),
-          );
-        }
+          ),
+        );
         return;
       }
     }
 
     try {
-      final actorId = FirebaseConfig.currentUser?.uid ?? '';
-      final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
-          ? ref.read(settingsProvider).deviceName
-          : 'Someone';
-      ref
-          .read(groupActivityServiceProvider)
-          .logGroupEvent(
-            groupId: groupId,
-            type: 'member_left',
-            actorId: actorId,
-            actorName: actorName,
-            description: 'left the group',
-          );
-    } catch (_) {
-      // Activity logging failure must never crash the leave flow.
-    }
-
-    try {
       await ref.read(groupServiceProvider).leaveGroup(groupId: groupId);
       router.go('/home');
-    } catch (e) {
-      if (context.mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(context.l10n.groupFailedLeave(e.toString()))),
-        );
+    } on FirebaseFunctionsException catch (e) {
+      // Already removed server-side (idempotent / never a member) → go home.
+      if (e.code == 'not-found') {
+        router.go('/home');
+        return;
       }
+      if (!context.mounted) return;
+      if (e.code == 'failed-precondition') {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.groupSettleBeforeLeaving),
+            action: SnackBarAction(
+              label: context.l10n.groupSettleUp,
+              onPressed: () => context.push('/group/$groupId/settle-up'),
+            ),
+          ),
+        );
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.groupFailedLeave(e.message ?? e.code)),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(context.l10n.groupFailedLeave(e.toString()))),
+      );
     }
   }
 
