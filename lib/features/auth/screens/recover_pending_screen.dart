@@ -143,7 +143,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space24, vertical: context.spacing.space16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -160,7 +160,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                   color: colors.primary,
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: context.spacing.space20),
               Text(
                 l10n.authRecoverPendingTitle,
                 style: AppTypography.sans(
@@ -169,7 +169,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                   color: colors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.spacing.space8),
               Text.rich(
                 TextSpan(
                   style: AppTypography.sans(
@@ -191,7 +191,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacing.space16),
               Text(
                 l10n.authRecoverPendingSpamHint,
                 style: AppTypography.sans(
@@ -201,7 +201,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                 ),
               ),
               if (pendingLink != null) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 Text(
                   l10n.authRecoverPendingLinkSeen,
                   key: const Key('recoverPending.linkSeen'),
@@ -212,7 +212,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                 ),
               ],
               if (_statusMessage != null) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 Text(
                   _statusMessage!,
                   key: const Key('recoverPending.status'),
@@ -223,7 +223,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                 ),
               ],
               if (_errorMessage != null) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 Text(
                   _errorMessage!,
                   key: const Key('recoverPending.error'),
@@ -254,7 +254,7 @@ class _RecoverPendingScreenState extends ConsumerState<RecoverPendingScreen> {
                         ),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               SizedBox(
                 height: 52,
                 child: TextButton(

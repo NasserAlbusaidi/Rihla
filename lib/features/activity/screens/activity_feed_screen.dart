@@ -161,11 +161,11 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
       itemBuilder: (ctx, i) {
         if (i == days.length) {
           return Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.spacing.space16),
             child: Center(
               child: SizedBox(
-                width: 16,
-                height: 16,
+                width: context.spacing.space16,
+                height: context.spacing.space16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: context.colors.primary,
@@ -176,7 +176,7 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
         }
         return Padding(
           key: ValueKey('activity-day-${days[i].label}'),
-          padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
+          padding: EdgeInsets.only(top: i == 0 ? context.spacing.space4 : 22),
           child: _DaySection(label: days[i].label, entries: days[i].entries),
         );
       },
@@ -219,7 +219,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: context.spacing.space4),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 10),
@@ -289,10 +289,10 @@ class _DaySection extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: colors.cardSurface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(context.spacing.radiusCard),
             boxShadow: context.shadows.raised,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
           child: Column(
             children: [
               for (var i = 0; i < entries.length; i++)
@@ -316,7 +316,7 @@ class _ActivityRow extends StatelessWidget {
     final actor = log.actorName ?? context.l10n.activitySomeone;
     final text = localizedEventActivityText(context.l10n, log);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
       child: Column(
         children: [
           Row(
@@ -325,7 +325,7 @@ class _ActivityRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _CategoryIcon(category: log.category, eventType: log.eventType),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.space12),
               Expanded(
                 child: Text.rich(
                   TextSpan(
@@ -352,7 +352,7 @@ class _ActivityRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.space8),
               Text(
                 formatRelativeShort(context, log.createdAt),
                 style: AppTypography.mono(
@@ -364,7 +364,7 @@ class _ActivityRow extends StatelessWidget {
             ],
           ),
           if (divider) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.space12),
             Container(height: 0.5, color: colors.rule),
           ],
         ],
@@ -460,12 +460,12 @@ class _LoadingShimmer extends StatelessWidget {
       padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
       itemCount: 3,
       itemBuilder: (ctx, i) => Padding(
-        padding: EdgeInsets.only(top: i == 0 ? 4 : 16),
+        padding: EdgeInsets.only(top: i == 0 ? context.spacing.space4 : context.spacing.space16),
         child: Container(
           height: 110,
           decoration: BoxDecoration(
             color: colors.cardSoft,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(context.spacing.radiusCard),
           ),
         ),
       ),

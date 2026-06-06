@@ -123,7 +123,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space24, vertical: context.spacing.space16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -140,7 +140,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
                   color: colors.primary,
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: context.spacing.space20),
               Text(
                 l10n.authRecoverPendingTitle,
                 style: AppTypography.sans(
@@ -149,7 +149,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
                   color: colors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.spacing.space8),
               Text.rich(
                 TextSpan(
                   style: AppTypography.sans(
@@ -171,7 +171,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacing.space16),
               Text(
                 l10n.authRecoverPendingSpamHint,
                 style: AppTypography.sans(
@@ -181,7 +181,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
                 ),
               ),
               if (_statusMessage != null) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 Text(
                   _statusMessage!,
                   key: const Key('linkEmailSent.status'),
@@ -192,7 +192,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
                 ),
               ],
               if (_errorMessage != null) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.space16),
                 Text(
                   _errorMessage!,
                   key: const Key('linkEmailSent.error'),
@@ -220,7 +220,7 @@ class _LinkEmailSentScreenState extends ConsumerState<LinkEmailSentScreen> {
                         ),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               SizedBox(
                 height: 52,
                 child: FilledButton(
