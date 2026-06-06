@@ -66,11 +66,11 @@ class _LoadedCard extends StatelessWidget {
 
     return Container(
       key: HomeKeys.balanceHeroCard,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       padding: const EdgeInsetsDirectional.fromSTEB(22, 20, 22, 22),
       decoration: BoxDecoration(
         color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(context.spacing.radiusSheet),
         boxShadow: context.shadows.raised,
       ),
       child: Column(
@@ -272,7 +272,7 @@ class _LegendLine extends StatelessWidget {
     return Row(
       children: [
         _LegendDot(color: dotColor),
-        const SizedBox(width: 8),
+        SizedBox(width: context.spacing.space8),
         Expanded(
           child: Text(
             label,
@@ -308,11 +308,11 @@ class _ErrorCard extends StatelessWidget {
     final colors = context.colors;
     return Container(
       key: HomeKeys.balanceHeroCard,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(context.spacing.radiusSheet),
         boxShadow: context.shadows.raised,
       ),
       child: Text(
