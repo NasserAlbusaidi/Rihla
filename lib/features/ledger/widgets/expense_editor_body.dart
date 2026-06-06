@@ -383,6 +383,34 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     );
   }
 
+  /// #280: dedicated "who paid" picker, reachable from the Paid-by section —
+  /// not buried in the Split-between → Customise sheet. Changes only the single
+  /// payerParticipantId field; the split set and its distribution are untouched.
+  Future<void> _openPayerSheet(Event event) async {
+    HapticService.lightClick();
+    final currentId =
+        _selectedPayerId ??
+        ref
+            .read(
+              currentEventParticipantProvider((
+                groupId: widget.groupId,
+                eventId: widget.eventId,
+              )),
+            )
+            ?.id;
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) =>
+          _PayerPickerSheet(event: event, selectedPayerId: currentId),
+    );
+    if (selected != null && selected != _selectedPayerId) {
+      HapticService.selection();
+      setState(() => _selectedPayerId = selected);
+    }
+  }
+
   Future<void> _openSplitModeSheet(Event event) async {
     HapticService.lightClick();
     final amount = Decimal.tryParse(_amount) ?? Decimal.zero;
@@ -515,9 +543,14 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                     if (event != null) ...[
                       _Section(
                         title: context.l10n.editorPaidBy,
+                        // #280: change the payer directly here, not only via the
+                        // buried Split-between → Customise sheet.
+                        action: context.l10n.editorChange,
+                        onAction: () => _openPayerSheet(event),
                         child: _PaidByCard(
                           event: event,
                           payerId: _selectedPayerId ?? currentParticipant?.id,
+                          onTap: () => _openPayerSheet(event),
                         ),
                       ),
                       _Section(
@@ -1028,10 +1061,12 @@ class _CategoryChip extends StatelessWidget {
 }
 
 class _PaidByCard extends StatelessWidget {
-  const _PaidByCard({required this.event, required this.payerId});
+  const _PaidByCard({required this.event, required this.payerId, this.onTap});
 
   final Event event;
   final String? payerId;
+  // #280: tap the card (or the section's "Change" action) to pick the payer.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1044,22 +1079,18 @@ class _PaidByCard extends StatelessWidget {
         context.l10n.editorSelectedPayer;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: _CardShell(
-        child: _InfoRow(
-          leading: _Avatar(name: payerName, size: 32),
-          title: payerName,
-          subtitle: context.l10n.editorSelectedPaidFullAmount,
-          trailing: Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              color: context.colors.textPrimary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Iconsax.tick_circle,
-              size: 14,
-              color: context.colors.scaffoldBackground,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: _CardShell(
+          child: _InfoRow(
+            leading: _Avatar(name: payerName, size: 32),
+            title: payerName,
+            subtitle: context.l10n.editorSelectedPaidFullAmount,
+            trailing: Icon(
+              Iconsax.arrow_right_3,
+              size: 18,
+              color: context.colors.textSecondary,
             ),
           ),
         ),
@@ -1614,6 +1645,111 @@ typedef _SplitApply =
       required Set<String> custom,
       required String? payerId,
     });
+
+/// #280: single-choice "who paid" picker. Tap a participant to select and
+/// close, returning the chosen id via [Navigator.pop]. Render-only names
+/// (disambiguated, #289); the caller writes the id.
+class _PayerPickerSheet extends StatelessWidget {
+  const _PayerPickerSheet({required this.event, required this.selectedPayerId});
+
+  final Event event;
+  final String? selectedPayerId;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.scaffoldBackground,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.rule,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 12),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  context.l10n.editorPaidBy,
+                  style: AppTypography.sans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                children: [
+                  for (final id in event.participantIds)
+                    _PayerOption(
+                      name:
+                          displayNames[id] ??
+                          event.participantNames[id] ??
+                          context.l10n.editorUnknownParticipant,
+                      selected: id == selectedPayerId,
+                      onTap: () => Navigator.of(context).pop(id),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PayerOption extends StatelessWidget {
+  const _PayerOption({
+    required this.name,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String name;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsetsDirectional.symmetric(horizontal: 12),
+      leading: _Avatar(name: name, size: 36),
+      title: Text(
+        name,
+        style: AppTypography.sans(
+          fontSize: 15,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: colors.textPrimary,
+        ),
+      ),
+      trailing: selected
+          ? Icon(Iconsax.tick_circle, color: colors.primary, size: 20)
+          : null,
+    );
+  }
+}
 
 class _SplitCustomiseSheet extends StatefulWidget {
   const _SplitCustomiseSheet({

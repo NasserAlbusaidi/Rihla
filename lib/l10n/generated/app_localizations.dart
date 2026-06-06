@@ -1310,6 +1310,12 @@ abstract class AppLocalizations {
   /// **'Paid by'**
   String get editorPaidBy;
 
+  /// No description provided for @editorChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get editorChange;
+
   /// No description provided for @editorSplitBetween.
   ///
   /// In en, this message translates to:

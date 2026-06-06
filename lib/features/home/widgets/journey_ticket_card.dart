@@ -42,7 +42,7 @@ class JourneyTicketCard extends StatelessWidget {
         width: width,
         decoration: BoxDecoration(
           color: colors.cardSurface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(context.spacing.radiusCard),
           boxShadow: context.shadows.raised,
         ),
         clipBehavior: Clip.antiAlias,
