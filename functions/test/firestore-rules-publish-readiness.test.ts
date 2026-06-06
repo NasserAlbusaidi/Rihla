@@ -496,6 +496,38 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(member.doc('groups/g1').delete());
   });
 
+  test('member can NO LONGER client self-leave — server-only via leaveGroup (#290)', async () => {
+    // The full self-leave batch (drop self from memberIds + delete own member
+    // doc) is rejected: `validSelfLeave` was removed from group `allow update`.
+    const member = testEnv.authenticatedContext('member').firestore();
+    const batch = member.batch();
+    batch.update(member.doc('groups/g1'), {
+      memberIds: ['owner'],
+      updatedAt: new Date(),
+    });
+    batch.delete(member.doc('groups/g1/members/member'));
+    await assertFails(batch.commit());
+  });
+
+  test('member cannot self-delete their member doc without the (now-blocked) memberIds drop (#290)', async () => {
+    // Lone member-doc delete: validMemberDelete self-branch needs
+    // !(uid in memberIds-after), but memberIds is unchanged here → denied.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/members/member').delete());
+  });
+
+  test('creator can still client-remove another member (#290 left validCreatorRemoveMember intact)', async () => {
+    // Positive control: dropping validSelfLeave must NOT break creator-remove.
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const batch = owner.batch();
+    batch.update(owner.doc('groups/g1'), {
+      memberIds: ['owner'],
+      updatedAt: new Date(),
+    });
+    batch.delete(owner.doc('groups/g1/members/member'));
+    await assertSucceeds(batch.commit());
+  });
+
   test('deleteGroupAttempts counters are not readable or writable by clients (#190)', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
     await assertFails(owner.doc('deleteGroupAttempts/owner').get());

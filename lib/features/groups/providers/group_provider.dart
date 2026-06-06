@@ -296,32 +296,21 @@ class GroupService extends FirestoreRepository {
         .update({'displayName': displayName});
   }
 
-  /// Remove the current user from the group atomically.
+  /// Remove the current user from the group (server-authoritative, #290).
   ///
-  /// Batch operation: removes UID from memberIds array + deletes member
-  /// subcollection document. Callers must check balance == zero before
-  /// invoking (D-07 gate is UI-side).
+  /// Routes through the `leaveGroup` Cloud callable, which recomputes the
+  /// caller's net balance, refuses with `failed-precondition` on any non-zero
+  /// net, then removes the UID from `memberIds` + deletes their member doc +
+  /// logs `member_left`. The client performs NO direct Firestore writes — the
+  /// direct self-leave path is locked at the rules layer (`validSelfLeave`
+  /// dropped from group `allow update`). This closes the offline orphan-debt
+  /// hole where the old UI-side gate was skipped when balances were null.
+  ///
+  /// Throws [FirebaseFunctionsException]; the danger section maps the code.
   Future<void> leaveGroup({required String groupId}) async {
-    final uid = _currentUid;
-    if (uid == null) throw Exception('Not authenticated');
-
-    final membersSnap = await db
-        .collection('groups')
-        .doc(groupId)
-        .collection('members')
-        .where('userId', isEqualTo: uid)
-        .limit(1)
-        .get();
-
-    if (membersSnap.docs.isEmpty) throw Exception('Member not found');
-
-    final batch = db.batch();
-    batch.update(db.collection('groups').doc(groupId), {
-      'memberIds': FieldValue.arrayRemove([uid]),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    batch.delete(membersSnap.docs.first.reference);
-    await batch.commit();
+    await _ref
+        .read(firebaseFunctionsServiceProvider)
+        .leaveGroup(groupId: groupId);
   }
 
   /// Remove a specific member from the group (creator action).
