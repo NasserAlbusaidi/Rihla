@@ -102,8 +102,8 @@ iterations) but remapped to saffron — trust the role column, not the field nam
 ### Gradients
 - **Live:** `context.colors.headerGradient` (ink → ink-2, dark module headers) and
   `context.colors.primaryGradient` (saffron → saffron-dark, CTAs/accent icons).
-- **`AppGradients` (terracotta/olive/teal/gray) in `gradient_tokens.dart` is dead**
-  — left over from the archived onboarding. Do not use; see [§13](#13-known-drift--debt).
+- The old `AppGradients`/`gradient_tokens.dart` (terracotta/olive/teal/gray, archived
+  onboarding) was **deleted** (§13 D3). Only the two getters above remain.
 
 ### Module accents
 Only **Ledger** is colored (saffron). All other module accents resolve to ink-3 —
@@ -350,10 +350,10 @@ are the enforcement backlog:
 |---|---|---|---|
 | D1 | **Token adoption ~50%.** ~92 `lib` files hardcode spacing/radius/text. | 81/173 files use `context.*`; 360 literal `SizedBox`, 179 literal `BorderRadius.circular`, 94 raw `TextStyle(`. | Phased per-feature refactor → tokens/primitives. |
 | D2 | **Radius — semantic tokens landed; call sites pending.** Canonical `radiusInput/Card/Sheet/Pill` now exist & match `AppTheme`; ~19 legacy `radiusMedium`/`radiusLarge` call sites not yet migrated. | §4. | ✅ Phase 1 (tokens). Phase 2: migrate the 19 call sites per screen. |
-| D3 | **`AppGradients` is dead.** terracotta/olive/teal/gray — archived onboarding only. | No screen references it (grep); only `token_promotions_test` + `design_tokens_test` gradient cases. | Cleanup PR — delete with its tests (one-PR-one-thing; coverage-neutral). |
-| D4 | **Group avatar palette is dead code, not a live mismatch.** `AppGroupAvatarColors` (teal/emerald/amber) + `groupAvatarSlot()` have **zero live callers** — groups already render on-brand via `RAvatar`. | grep: no `context.colors.groupAvatarSlot(` in `lib`. | Cleanup PR — delete with D3 (was wrongly scoped as a palette fix). |
+| D3 | **`AppGradients` deleted.** ✅ terracotta/olive/teal/gray + `AppGradientPair` + the `context.gradient()` helper removed (zero live callers). | — | ✅ Done (cleanup PR + its tests; coverage 88.65%). |
+| D4 | **Group avatar dead code deleted.** ✅ `AppGroupAvatarColors` + `groupAvatarSlot()` + `_stableGroupHash` removed (zero live callers; groups render via `RAvatar`). | — | ✅ Done (same cleanup PR). |
 | D5 | **Dark theme untuned.** Compiles, legible, not designed. | `color_tokens.dart` dark docstring; `app_theme.dart` darkTheme is a stub. | Tune dark after light adherence lands. |
 | D6 | **Motion tokens landed; adoption pending.** `context.motion` (quick/standard/emphasis + curves) exists; ~20 ad-hoc `flutter_animate` durations not yet migrated. | §6. | ✅ Phase 1 (tokens). Phase 2: migrate ad-hoc durations. |
-| D7 | **Dead module tokens.** Gear/Logistics/Vault/Memories color fields persist post-Phase-39. | `color_tokens.dart`. | Cleanup PR (low priority — inert; 50-field surgery on copyWith/lerp/`_allBlack`). |
+| ~~D7~~ | **CLOSED — not dead.** Module color fields look stranded post-Phase-39 but are **live**: `event_type_picker_screen.dart` reads `moduleLedgerLight`/`moduleMemoriesLight` as the event-type color palette. Do **not** delete them. | grep: `colors.module*Light` in `event_type_picker_screen.dart`. | None — caught by the cleanup PR's adversarial dead-code check. |
 
 Track adherence by re-running the §13 greps; the counts are the metric.
