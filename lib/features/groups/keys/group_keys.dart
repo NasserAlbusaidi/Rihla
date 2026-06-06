@@ -19,6 +19,7 @@ abstract final class GroupKeys {
   static const createGroupButton = Key('group_create_button');
   static const joinGroupButton = Key('group_join_button');
   static const settleUpButton = Key('group_settle_up_button');
+  static const groupDetailInviteButton = Key('group_detail_invite_button');
   static const recordSettlementButton = Key('group_record_settlement_button');
   static const markAsPaidButton = Key('group_mark_as_paid_button');
   static const notNowButton = Key('group_not_now_button');
