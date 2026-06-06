@@ -115,16 +115,12 @@ class _Content extends ConsumerWidget {
 
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
     final balances = balancesAsync.valueOrNull ?? const <UserBalance>[];
-    final participantDisplayNames = <String, String>{
-      for (final uid in event.participantIds)
-        uid: MemberNameResolver.format(
-          MemberNameResolver.resolveEventScoped(
-            uid: uid,
-            event: event,
-            members: groupMembers,
-          ),
-        ),
-    };
+    // #289: distinguish same-named LIVE members across the hub (roster,
+    // breakdown, recent rows) while still labelling departed ones.
+    final participantDisplayNames = MemberNameResolver.disambiguateEventScoped(
+      event: event,
+      members: groupMembers,
+    );
 
     final total = expenses.fold<Decimal>(
       Decimal.zero,
@@ -211,6 +207,7 @@ class _Content extends ConsumerWidget {
               currentUid: currentUid,
               event: event,
               groupMembers: groupMembers,
+              participantDisplayNames: participantDisplayNames,
               onSeeAll: () {
                 HapticService.lightClick();
                 GoRouter.of(
@@ -514,7 +511,8 @@ class _BreakdownRow extends StatelessWidget {
     final verb = isOwed
         ? context.l10n.eventBreakdownOwesYou
         : context.l10n.eventBreakdownYouOwe;
-    final firstName = entry.otherName.split(' ').first;
+    // #289: keep the ` (#…)` discriminator alive through the first-name collapse.
+    final firstName = MemberNameResolver.compactDisambiguated(entry.otherName);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -656,6 +654,7 @@ class _RecentExpensesSection extends StatelessWidget {
     required this.currentUid,
     required this.event,
     required this.groupMembers,
+    required this.participantDisplayNames,
     required this.onSeeAll,
     required this.onAddFirst,
   });
@@ -664,6 +663,7 @@ class _RecentExpensesSection extends StatelessWidget {
   final String? currentUid;
   final Event event;
   final List<GroupMember> groupMembers;
+  final Map<String, String> participantDisplayNames;
   final VoidCallback onSeeAll;
   final VoidCallback onAddFirst;
 
@@ -707,6 +707,7 @@ class _RecentExpensesSection extends StatelessWidget {
             currentUid: currentUid,
             event: event,
             groupMembers: groupMembers,
+            participantDisplayNames: participantDisplayNames,
           ),
       ],
     );
@@ -719,12 +720,14 @@ class _RecentList extends StatelessWidget {
     required this.currentUid,
     required this.event,
     required this.groupMembers,
+    required this.participantDisplayNames,
   });
 
   final List<Expense> expenses;
   final String? currentUid;
   final Event event;
   final List<GroupMember> groupMembers;
+  final Map<String, String> participantDisplayNames;
 
   @override
   Widget build(BuildContext context) {
@@ -745,6 +748,7 @@ class _RecentList extends StatelessWidget {
               currentUid: currentUid,
               event: event,
               groupMembers: groupMembers,
+              participantDisplayNames: participantDisplayNames,
               divider: i < expenses.length - 1,
             ),
         ],
@@ -759,6 +763,7 @@ class _RecentRow extends StatelessWidget {
     required this.currentUid,
     required this.event,
     required this.groupMembers,
+    required this.participantDisplayNames,
     required this.divider,
   });
 
@@ -766,6 +771,8 @@ class _RecentRow extends StatelessWidget {
   final String? currentUid;
   final Event event;
   final List<GroupMember> groupMembers;
+  // #289: disambiguated uid → name map shared across the hub.
+  final Map<String, String> participantDisplayNames;
   final bool divider;
 
   @override
@@ -842,6 +849,13 @@ class _RecentRow extends StatelessWidget {
   }
 
   String _compactPayerName() {
+    // #289: prefer the disambiguated hub map (live members, with ` (#…)` on a
+    // name collision); fall back to the former-aware resolver for a departed
+    // payer not in the live set, preserving the persisted payerName.
+    final disambiguated = participantDisplayNames[expense.payerParticipantId];
+    if (disambiguated != null) {
+      return MemberNameResolver.compactDisambiguated(disambiguated);
+    }
     final display = MemberNameResolver.resolveEventScoped(
       uid: expense.payerParticipantId,
       event: event,
@@ -851,7 +865,9 @@ class _RecentRow extends StatelessWidget {
     if (display.rawName == MemberNameResolver.formerMemberLiteral) {
       return display.rawName;
     }
-    return display.rawName.split(' ').first;
+    return MemberNameResolver.compactDisambiguated(
+      MemberNameResolver.format(display),
+    );
   }
 }
 
@@ -1085,7 +1101,8 @@ class _RosterPersonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final short = name.split(' ').first;
+    // #289: keep the ` (#…)` discriminator alive through the first-name collapse.
+    final short = MemberNameResolver.compactDisambiguated(name);
     final isOwed = balance != null && balance!.isOwedMoney;
     final owes = balance != null && balance!.owesMoney;
     final dotColor = isOwed
