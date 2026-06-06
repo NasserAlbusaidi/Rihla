@@ -57,7 +57,7 @@ class SplitScopeSelector extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(4),
+          padding: EdgeInsets.all(context.spacing.space4),
           decoration: BoxDecoration(
             color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
@@ -95,14 +95,14 @@ class SplitScopeSelector extends ConsumerWidget {
           ),
         ),
         if (scope == ExpenseScope.custom) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.space16),
           _CustomParticipantSelector(
             event: event,
             customSplitParticipants: customSplitParticipants,
             onCustomSplitChanged: onCustomSplitChanged,
           ),
         ],
-        const SizedBox(height: 24),
+        SizedBox(height: context.spacing.space24),
         _PayerSelector(
           event: event,
           selectedPayerId: selectedPayerId,
@@ -137,7 +137,7 @@ class _ScopeTab extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
           decoration: BoxDecoration(
             color: isSelected ? context.colors.cardSurface : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -153,7 +153,7 @@ class _ScopeTab extends StatelessWidget {
                     ? context.colors.primary
                     : context.colors.textSecondary,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.space8),
               Text(
                 label,
                 style: TextStyle(
@@ -218,9 +218,9 @@ class _CustomParticipantSelector extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: context.spacing.space12),
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(context.spacing.space8),
           decoration: BoxDecoration(
             color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
@@ -236,7 +236,7 @@ class _CustomParticipantSelector extends ConsumerWidget {
               // custom split can include yourself ("I paid, split me + him").
               if (participants.isEmpty) {
                 return Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(context.spacing.space16),
                   child: Text(context.l10n.editorNoOtherParticipants),
                 );
               }
@@ -298,7 +298,7 @@ class _ParticipantTile extends StatelessWidget {
         ? displayName[0].toUpperCase()
         : context.l10n.editorUnknownParticipant[0].toUpperCase();
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.space8),
       leading: Container(
         width: 36,
         height: 36,
@@ -389,9 +389,9 @@ class _PayerSelector extends ConsumerWidget {
             letterSpacing: 1.5,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: context.spacing.space12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: context.spacing.space4),
           decoration: BoxDecoration(
             color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
@@ -429,7 +429,7 @@ class _PayerSelector extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: context.spacing.space12),
                       Expanded(
                         child: Text(
                           isMe

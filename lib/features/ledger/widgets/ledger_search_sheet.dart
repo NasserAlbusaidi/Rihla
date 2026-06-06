@@ -114,15 +114,15 @@ class _LedgerSearchSheetState extends State<_LedgerSearchSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               _GrabHandle(),
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               _SearchBar(
                 controller: _controller,
                 focusNode: _focusNode,
                 onClose: () => Navigator.of(context).pop(),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.spacing.space8),
               Expanded(
                 child: _Results(
                   query: _query,
@@ -169,7 +169,7 @@ class _SearchBar extends StatelessWidget {
     final colors = context.colors;
     final l10n = context.l10n;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
       child: Row(
         children: [
           Expanded(
@@ -178,7 +178,7 @@ class _SearchBar extends StatelessWidget {
                 color: colors.inputFill,
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: context.spacing.space12),
               child: Row(
                 children: [
                   Icon(
@@ -186,7 +186,7 @@ class _SearchBar extends StatelessWidget {
                     size: 18,
                     color: colors.textSecondary,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.spacing.space8),
                   Expanded(
                     child: TextField(
                       key: LedgerKeys.searchField,
@@ -224,7 +224,7 @@ class _SearchBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.spacing.space8),
           TextButton(
             onPressed: onClose,
             child: Text(
@@ -275,7 +275,7 @@ class _Results extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       itemCount: results.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => SizedBox(height: context.spacing.space8),
       itemBuilder: (context, index) => _ResultRow(
         hit: results[index],
         onTap: () {
@@ -307,7 +307,7 @@ class _ResultRow extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space12),
         decoration: BoxDecoration(
           color: colors.cardSurface,
           borderRadius: BorderRadius.circular(12),
@@ -328,7 +328,7 @@ class _ResultRow extends StatelessWidget {
                 color: colors.textSecondary,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,7 +356,7 @@ class _ResultRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacing.space8),
             RAmount(value: hit.amount, currency: hit.currency, size: 14),
           ],
         ),
@@ -377,12 +377,12 @@ class _Hint extends StatelessWidget {
     final colors = context.colors;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space32, vertical: context.spacing.space16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 32, color: colors.textSecondary),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.space12),
             Text(
               title,
               textAlign: TextAlign.center,
@@ -392,7 +392,7 @@ class _Hint extends StatelessWidget {
                 color: colors.textPrimary,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: context.spacing.space4),
             Text(
               message,
               textAlign: TextAlign.center,
