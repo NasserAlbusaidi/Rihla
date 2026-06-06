@@ -45,7 +45,7 @@ class _QrInviteSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 20),
+        padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, context.spacing.space12, context.spacing.space20, context.spacing.space20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -57,7 +57,7 @@ class _QrInviteSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: context.spacing.space20),
             Text(
               context.l10n.groupScanToJoin,
               style: AppTypography.display(
@@ -75,12 +75,12 @@ class _QrInviteSheet extends StatelessWidget {
                 color: colors.textSecondary,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacing.space24),
             _QrCard(
               uri: _inviteUri,
               semanticLabel: context.l10n.groupInviteQrCode,
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: context.spacing.space20),
             Text(
               context.l10n.groupOrEnterCode,
               style: AppTypography.mono(
@@ -91,7 +91,7 @@ class _QrInviteSheet extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             _CodePill(code: group.inviteCode),
-            const SizedBox(height: 20),
+            SizedBox(height: context.spacing.space20),
             Row(
               children: [
                 Expanded(
@@ -154,10 +154,10 @@ class _QrCard extends StatelessWidget {
     final colors = context.colors;
     return Container(
       key: GroupKeys.inviteQrCard,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
         boxShadow: context.shadows.raised,
       ),
       child: QrImageView(
@@ -188,10 +188,10 @@ class _CodePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: context.spacing.space8),
       decoration: BoxDecoration(
         color: colors.inputFill,
-        borderRadius: BorderRadius.circular(9999),
+        borderRadius: BorderRadius.circular(context.spacing.radiusPill),
         border: Border.all(color: colors.rule, width: 0.5),
       ),
       child: Text(

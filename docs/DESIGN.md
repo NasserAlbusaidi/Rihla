@@ -348,7 +348,7 @@ are the enforcement backlog:
 
 | # | Drift | Evidence | Action |
 |---|---|---|---|
-| D1 | **Token adoption ~48%.** ~90 `lib` files hardcode spacing/radius/text. | 82/172 files use `context.*`; 304 literal `SizedBox`, 157 literal `BorderRadius.circular`, 89 raw `TextStyle(`. | Phased per-feature refactor → tokens/primitives. **home ✅#310 · ledger ✅#312** (no-op spacing/radius passes shipped; off-scale/legacy residual deferred). groups next. |
+| D1 | **Token adoption ~48%.** ~90 `lib` files hardcode spacing/radius/text. | 82/172 files use `context.*`; 250 literal `SizedBox`, 152 literal `BorderRadius.circular`, 89 raw `TextStyle(`. | Phased per-feature refactor → tokens/primitives. **home ✅#310 · ledger ✅#312 · groups ✅#314** (no-op spacing/radius passes shipped; off-scale/legacy + raw `TextStyle` residual deferred). events next. |
 | D2 | **Radius — semantic tokens landed; call sites pending.** Canonical `radiusInput/Card/Sheet/Pill` now exist & match `AppTheme`; ~19 legacy `radiusMedium`/`radiusLarge` call sites not yet migrated. | §4. | ✅ Phase 1 (tokens). Phase 2: migrate the 19 call sites per screen. |
 | D3 | **`AppGradients` deleted.** ✅ terracotta/olive/teal/gray + `AppGradientPair` + the `context.gradient()` helper removed (zero live callers). | — | ✅ Done (cleanup PR + its tests; coverage 88.65%). |
 | D4 | **Group avatar dead code deleted.** ✅ `AppGroupAvatarColors` + `groupAvatarSlot()` + `_stableGroupHash` removed (zero live callers; groups render via `RAvatar`). | — | ✅ Done (same cleanup PR). |

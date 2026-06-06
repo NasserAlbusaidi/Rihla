@@ -112,9 +112,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: context.spacing.space8,
+                                vertical: context.spacing.space4,
                               ),
                               decoration: BoxDecoration(
                                 color: widget.isHighlighted
