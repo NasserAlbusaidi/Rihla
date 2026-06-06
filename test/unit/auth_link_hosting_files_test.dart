@@ -119,6 +119,19 @@ void main() {
     );
   });
 
+  test('web join page offers a Google Play install link (#276)', () {
+    final page = File('hosting/join.html').readAsStringSync();
+
+    // Someone without the app installed must not dead-end on the rihla://
+    // scheme — the page has to offer a way to actually get the app. The link
+    // lives in the static HTML (not only JS-injected) so it renders even when
+    // the invite code is missing/invalid and the page never fully dead-ends.
+    expect(
+      page,
+      contains('play.google.com/store/apps/details?id=com.safar.safar'),
+    );
+  });
+
   test('production-state check verifies both Firebase Hosting domains', () {
     final script = File('tool/check_firebase_prod_state.sh').readAsStringSync();
 

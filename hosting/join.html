@@ -27,6 +27,15 @@
     <p><strong>Invite code:</strong> <code id="invite-code">Not found</code></p>
     <p><a id="open-rihla" href="rihla://join">Open in Rihla</a></p>
 
+    <p id="install-prompt" class="install">
+      Don't have Rihla yet? Install it from Google Play, then tap this invite
+      link again to join.
+    </p>
+    <p>
+      <a id="get-app" class="btn-store"
+         href="https://play.google.com/store/apps/details?id=com.safar.safar">Get it on Google Play</a>
+    </p>
+
     <footer class="nav">
       <a href="/">Home</a>
       <span class="sep">.</span>
@@ -44,10 +53,16 @@
     const valid = /^[A-Z0-9]{6}$/.test(code);
     const codeNode = document.getElementById('invite-code');
     const link = document.getElementById('open-rihla');
+    const getApp = document.getElementById('get-app');
 
     if (valid) {
       codeNode.textContent = code;
       link.href = `rihla://join/${code}`;
+      // Carry the code into the Play Store install referrer for attribution /
+      // future auto-fill; the base store link below works regardless.
+      getApp.href =
+        `https://play.google.com/store/apps/details?id=com.safar.safar` +
+        `&referrer=${encodeURIComponent(`code=${code}`)}`;
       window.setTimeout(() => {
         window.location.href = link.href;
       }, 300);
