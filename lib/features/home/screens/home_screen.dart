@@ -160,7 +160,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             child: SizedBox(key: HomeKeys.groupsHeaderGap, height: 14),
           ),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final isLast = index == groups.length - 1;
@@ -184,15 +184,17 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               title: context.l10n.homeRecently,
             ).animate().fadeIn(delay: 700.ms),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 4)),
+          SliverToBoxAdapter(child: SizedBox(height: context.spacing.space4)),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
             sliver: SliverToBoxAdapter(
               key: HomeKeys.activitySection,
               child: activityAsync.when(
                 data: (entries) => entries.isEmpty
                     ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(
+                          vertical: context.spacing.space8,
+                        ),
                         child: Text(
                           context.l10n.homeNoActivityYet,
                           style: AppTypography.sans(
@@ -259,7 +261,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               SizedBox(height: context.spacing.space20),
               Text(
                 context.l10n.homeStartFirstGroup,
-                style: TextStyle(
+                style: AppTypography.sans(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: context.colors.textPrimary,
@@ -269,7 +271,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               SizedBox(height: context.spacing.space8),
               Text(
                 context.l10n.homeStartFirstGroupBody,
-                style: TextStyle(
+                style: AppTypography.sans(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: context.colors.textSecondary,
@@ -279,7 +281,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               SizedBox(height: context.spacing.space24),
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: context.spacing.buttonHeight,
                 child: ElevatedButton.icon(
                   key: HomeKeys.createGroupFab,
                   onPressed: () => context.push('/create-group'),
@@ -290,7 +292,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               SizedBox(height: context.spacing.space12),
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: context.spacing.buttonHeight,
                 child: OutlinedButton.icon(
                   onPressed: () => context.push('/join-group'),
                   icon: const Icon(Iconsax.login_1),
@@ -303,7 +305,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 onPressed: () => context.push('/recover'),
                 child: Text(
                   context.l10n.homeRecover,
-                  style: TextStyle(
+                  style: AppTypography.sans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: context.colors.textSecondary,
@@ -372,8 +374,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: context.colors.cardSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(context.spacing.radiusSheet),
+        ),
       ),
       builder: (sheetContext) => SafeArea(
         child: Column(
@@ -381,7 +385,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           children: [
             ListTile(
               key: HomeKeys.createGroupOption,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
               minTileHeight: 64,
               leading: Icon(Iconsax.people, color: context.colors.primary),
               title: Text(
@@ -395,7 +399,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             ),
             ListTile(
               key: HomeKeys.joinGroupOption,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
               minTileHeight: 64,
               leading: Icon(
                 Iconsax.login_1,
@@ -527,12 +531,12 @@ class _JourneysStrip extends StatelessWidget {
       data: (entries) {
         if (entries.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 18),
               decoration: BoxDecoration(
                 color: colors.cardSoft,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(context.spacing.radiusCard),
                 border: Border.all(color: colors.rule, width: 0.5),
               ),
               child: Row(
@@ -559,7 +563,7 @@ class _JourneysStrip extends StatelessWidget {
         }
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
           physics: const BouncingScrollPhysics(),
           child: Row(
             children: [
@@ -570,7 +574,8 @@ class _JourneysStrip extends StatelessWidget {
                     '/group/${entries[i].groupId}/event/${entries[i].eventId}',
                   ),
                 ),
-                if (i < entries.length - 1) const SizedBox(width: 12),
+                if (i < entries.length - 1)
+                  SizedBox(width: context.spacing.space12),
               ],
             ],
           ),
@@ -579,11 +584,11 @@ class _JourneysStrip extends StatelessWidget {
       loading: () => SizedBox(
         height: 200,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
           child: Container(
             decoration: BoxDecoration(
               color: colors.cardSoft,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(context.spacing.radiusCard),
             ),
           ),
         ),
@@ -638,7 +643,7 @@ class _GroupRow extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 GroupGlyph(name: group.name),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

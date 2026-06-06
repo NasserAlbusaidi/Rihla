@@ -53,7 +53,7 @@ class _CrossGroupActivityScreenState
               current: _filter,
               onChange: (f) => setState(() => _filter = f),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.space8),
             Expanded(child: _buildBody(context, activityAsync)),
           ],
         ),
@@ -91,7 +91,12 @@ class _CrossGroupActivityScreenState
         }
         final days = _groupByDay(context, filtered, DateTime.now());
         return ListView.builder(
-          padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
+          padding: EdgeInsetsDirectional.fromSTEB(
+            context.spacing.space20,
+            context.spacing.space4,
+            context.spacing.space20,
+            context.spacing.space24,
+          ),
           itemCount: days.length,
           itemBuilder: (ctx, i) => Padding(
             padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
@@ -113,7 +118,12 @@ class _TopBar extends StatelessWidget {
     final colors = context.colors;
     final canPop = GoRouter.of(context).canPop();
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 8, 20, 0),
+      padding: EdgeInsetsDirectional.fromSTEB(
+        context.spacing.space20,
+        context.spacing.space8,
+        context.spacing.space20,
+        0,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -135,7 +145,7 @@ class _TopBar extends StatelessWidget {
                     height: 1.0,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.spacing.space4),
                 Text(
                   context.l10n.activitySubtitle,
                   style: AppTypography.sans(
@@ -199,7 +209,7 @@ class _FilterStrip extends StatelessWidget {
       height: 32,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
         children: [
           for (final entry in labels.entries) ...[
             _Chip(
@@ -207,7 +217,7 @@ class _FilterStrip extends StatelessWidget {
               active: current == entry.key,
               onTap: () => onChange(entry.key),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacing.space8),
           ],
         ],
       ),
@@ -231,7 +241,7 @@ class _Chip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: active ? colors.textPrimary : colors.cardSoft,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
           border: Border.all(
             color: active ? colors.textPrimary : colors.rule,
             width: 0.5,
@@ -282,10 +292,10 @@ class _DaySection extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: colors.cardSurface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(context.spacing.radiusCard),
             boxShadow: context.shadows.raised,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
           child: Column(
             children: [
               for (var i = 0; i < entries.length; i++)
@@ -319,7 +329,7 @@ class _ActivityRow extends StatelessWidget {
     return InkWell(
       onTap: () => GoRouter.of(context).push('/group/${entry.groupId}'),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
         child: Column(
           children: [
             Row(
@@ -328,7 +338,7 @@ class _ActivityRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _CategoryIcon(type: log.type),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +381,7 @@ class _ActivityRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.space12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
@@ -397,7 +407,7 @@ class _ActivityRow extends StatelessWidget {
               ],
             ),
             if (divider) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.space12),
               Container(height: 0.5, color: colors.rule),
             ],
           ],
