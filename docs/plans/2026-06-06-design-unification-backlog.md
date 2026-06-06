@@ -6,28 +6,28 @@ money math / routing / rules / schema → **no Gate**; all are pure presentation
 each PR must keep widget + golden tests green (goldens are macOS-only, CI-excluded
 — regen locally).
 
-## Drift snapshot (2026-06-06, post-#312)
+## Drift snapshot (2026-06-06, post-#314)
 
 Counts = lines with a **bare** literal still present (tokens stripped before counting,
 so a partially-tokenised `EdgeInsets.symmetric(horizontal: space16, vertical: 14)`
 still counts via the `14`). Columns: `edgeLit` = EdgeInsets line w/ a bare int ·
 `sbLit` = `SizedBox((height|width): N` · `radLit` = `BorderRadius.circular(N` ·
-`rawTS` = `TextStyle(`. Whole-`lib` headline (D1): 304 literal SizedBox · 157
+`rawTS` = `TextStyle(`. Whole-`lib` headline (D1): 250 literal SizedBox · 152
 `BorderRadius.circular` · 89 raw `TextStyle` · 82/172 files use `context.*`.
 
 | area | files | tok% | edgeLit | sbLit | radLit | rawTS | pass |
 |---|---|---|---|---|---|---|---|
 | home | 10 | 70% | 10 | 23 | 4 | 0 | ✅ #310 |
 | ledger | 25 | 56% | 36 | 33 | 39 | 18 | ✅ #312 |
-| groups | 27 | 66% | 58 | 110 | 33 | 27 | ← next |
-| events | 17 | 64% | 37 | 62 | 27 | 25 | — |
+| groups | 27 | 66% | 17 | 56 | 28 | 27 | ✅ #314 |
+| events | 17 | 64% | 37 | 62 | 27 | 25 | ← next |
 | settings | 10 | 80% | 21 | 37 | 20 | 5 | — |
 | auth | 14 | 57% | 5 | 23 | 7 | 0 | — |
 | activity | 5 | 20% | 9 | 8 | 3 | 0 | — |
 | shared | 14 | 71% | 2 | 3 | 1 | 7 | clean |
 | core | 43 | 9% | 5 | 5 | 23 | 7 | n/a |
 
-home/ledger ✅ = no-op spacing/radius pass shipped; the residual literals above are
+home/ledger/groups ✅ = no-op spacing/radius pass shipped; the residual literals above are
 the deliberately-deferred **off-scale spacing + legacy/off-scale radii** (8/12/16/…) —
 snapping those to canonical is a *visual* change for a separate golden-reviewed pass.
 (core is mostly non-UI services/router — low priority. shared is already clean.)
@@ -63,8 +63,8 @@ widgets → shared primitives. Keep diffs mechanical and reviewable.
 
 1. **home** — pilot. ✅ **DONE (#310).** Proved the no-op-swap template + Phase-1 tokens.
 2. **ledger** — money screens. ✅ **DONE (#312).** Spacing + canonical radii; off-scale/legacy deferred.
-3. **groups** — highest SizedBox (110) + raw TextStyle (27). ← **NEXT.**
-4. **events** — high raw TextStyle (25) + radius (27).
+3. **groups** — highest SizedBox. ✅ **DONE (#314).** Spacing + canonical radii; 27 raw `TextStyle` deferred.
+4. **events** — high raw TextStyle (25) + radius (27). ← **NEXT.**
 5. **settings + activity + auth** — smaller; can batch as 1–2 cleanup PRs.
 
 ## Definition of done (whole effort)
