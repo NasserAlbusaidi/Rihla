@@ -19,7 +19,12 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          // Pin device locale so first-run language seeding (#286) is
+          // deterministic regardless of the host machine's locale.
+          deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
+        ],
       );
       addTearDown(container.dispose);
       return container;
@@ -188,7 +193,10 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
+        ],
       );
       addTearDown(container.dispose);
       expect(container.read(localeProvider), const Locale('en'));
@@ -198,7 +206,10 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
+        ],
       );
       addTearDown(container.dispose);
       await container.read(settingsProvider.notifier).setLanguage('ar');
