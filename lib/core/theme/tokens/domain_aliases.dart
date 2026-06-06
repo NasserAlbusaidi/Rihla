@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'color_tokens.dart';
 import 'gradient_tokens.dart';
+import 'motion_tokens.dart';
 import 'shadow_tokens.dart';
 import 'spacing_tokens.dart';
 
@@ -27,6 +28,9 @@ extension AppThemeExtensions on BuildContext {
 
   /// Access shadow tokens — [AppShadowTokens].
   AppShadowTokens get shadows => Theme.of(this).extension<AppShadowTokens>()!;
+
+  /// Access motion tokens — [AppMotionTokens].
+  AppMotionTokens get motion => Theme.of(this).extension<AppMotionTokens>()!;
 
   /// Resolve a named gradient pair for the active brightness.
   ///

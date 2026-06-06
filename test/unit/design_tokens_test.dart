@@ -235,6 +235,23 @@ void main() {
       expect(s.radiusLarge, equals(16.0));
     });
 
+    test('standard has canonical semantic radii (DESIGN.md §4)', () {
+      const s = AppSpacingTokens.standard;
+      expect(s.radiusInput, equals(14.0));
+      expect(s.radiusCard, equals(20.0));
+      expect(s.radiusSheet, equals(28.0));
+      expect(s.radiusPill, equals(9999.0));
+    });
+
+    test('semantic radii match the values AppTheme renders', () {
+      // Wiring AppTheme to these tokens must stay a visual no-op: the tokens
+      // equal the radii AppTheme uses for input(14)/card(20)/sheet(28)/pill.
+      const s = AppSpacingTokens.standard;
+      expect(s.radiusInput, equals(14.0));
+      expect(s.radiusCard, equals(20.0));
+      expect(s.radiusSheet, equals(28.0));
+    });
+
     test('standard.buttonHeight equals 52.0', () {
       expect(AppSpacingTokens.standard.buttonHeight, equals(52.0));
     });

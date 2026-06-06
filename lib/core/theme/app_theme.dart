@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'tokens/color_tokens.dart';
+import 'tokens/motion_tokens.dart';
 import 'tokens/shadow_tokens.dart';
 import 'tokens/spacing_tokens.dart';
 import 'tokens/typography_tokens.dart';
@@ -193,6 +194,7 @@ class AppTheme {
         AppColorTokens.light,
         AppSpacingTokens.standard,
         AppShadowTokens.light,
+        AppMotionTokens.base,
       ],
     );
   }
@@ -327,6 +329,7 @@ class AppTheme {
         AppColorTokens.dark,
         AppSpacingTokens.standard,
         AppShadowTokens.dark,
+        AppMotionTokens.base,
       ],
     );
   }
