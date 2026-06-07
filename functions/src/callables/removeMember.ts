@@ -120,7 +120,17 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
     // the target never had a financial position ⇒ owes nothing ⇒ allowed.
     // isZero() is exact (the allocators close residuals, incl. the #223
     // in-tolerance close-out).
-    const { net } = await recomputeNet(db, groupRef);
+    const { net, currencies } = await recomputeNet(db, groupRef);
+    // #261: a mixed-currency group's per-actor net is a meaningless flat scalar
+    // (a +10 OMR / −10 USD position fakes Decimal 0), so isZero() below cannot be
+    // trusted. Refuse rather than remove a member who owes per-currency.
+    // Unreachable under Model A; defends legacy/Admin-written docs.
+    if (currencies.size > 1) {
+      throw new HttpsError(
+        'failed-precondition',
+        'This group holds more than one currency; removing a member is not supported.',
+      );
+    }
     const targetNet = net.get(targetUserId);
     if (targetNet && !targetNet.isZero()) {
       throw new HttpsError(

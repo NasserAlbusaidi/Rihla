@@ -83,7 +83,17 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
     // the client ledger + deleteGroup use; a missing entry means the leaver never
     // had a financial position ⇒ owes nothing ⇒ allowed. isZero() is exact (the
     // allocators close residuals, incl. the #223 in-tolerance close-out).
-    const { net } = await recomputeNet(db, groupRef);
+    const { net, currencies } = await recomputeNet(db, groupRef);
+    // #261: a mixed-currency group's per-actor net is a meaningless flat scalar
+    // (a +10 OMR / −10 USD position fakes Decimal 0), so isZero() below cannot
+    // be trusted. Refuse rather than let a member leave while owing per-currency.
+    // Unreachable under Model A; defends legacy/Admin-written docs.
+    if (currencies.size > 1) {
+      throw new HttpsError(
+        'failed-precondition',
+        'This group holds more than one currency; leaving is not supported.',
+      );
+    }
     const leaverNet = net.get(uid);
     if (leaverNet && !leaverNet.isZero()) {
       throw new HttpsError(

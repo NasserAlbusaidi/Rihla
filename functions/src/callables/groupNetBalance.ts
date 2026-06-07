@@ -319,6 +319,15 @@ function stringArray(value: unknown): string[] {
 export interface RecomputeResult {
   net: Map<string, Decimal>;
   liveEventRefs: DocumentReference[];
+  // #261: the distinct set of EXPENSE currencies that actually contributed to
+  // `net`. The flat scalar `net` is only a true settled-check when a group holds
+  // ONE currency (Model A); a mixed-currency group can net to a fake Decimal 0
+  // (+10 OMR / −10 USD), so the balance-zero gates (deleteGroup/leaveGroup/
+  // removeMember) refuse when size > 1 rather than act on a meaningless scalar.
+  // Built from expenses ONLY — settlements are written OMR-scale even in non-OMR
+  // groups by convention, so folding their currency would falsely flag a
+  // legitimate single-expense-currency group.
+  currencies: Set<string>;
 }
 
 export async function recomputeNet(
@@ -348,6 +357,10 @@ export async function recomputeNet(
   const addNet = (uid: string, delta: Decimal): void => {
     net.set(uid, (net.get(uid) ?? new Money(0)).plus(delta));
   };
+
+  // #261: function scope (NOT per-event) so cross-event currency mixing — an OMR
+  // expense in e1 and a USD expense in e2 — is also detected. Expense fold only.
+  const currencies = new Set<string>();
 
   // Skip soft-deleted events wholesale (the client drops them at
   // event_provider.dart:42 — their live children must NOT enter the balance).
@@ -430,6 +443,7 @@ export async function recomputeNet(
 
     for (const e of expenses) {
       const currency = currencyOf(e.currency);
+      currencies.add(currency); // #261: track the contributing expense currency
       const amount = fromSubunits(amountFilsOf(e), currency);
       const payerId = e.payerParticipantId;
       if (typeof payerId === 'string' && paid.has(payerId)) {
@@ -504,5 +518,5 @@ export async function recomputeNet(
     if (typeof recipientId === 'string') addNet(recipientId, amount.negated());
   }
 
-  return { net, liveEventRefs: liveEventDocs.map((doc) => doc.ref) };
+  return { net, liveEventRefs: liveEventDocs.map((doc) => doc.ref), currencies };
 }
