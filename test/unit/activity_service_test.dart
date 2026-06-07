@@ -15,38 +15,6 @@ void main() {
     const groupId = 'g1';
     const eventId = 'e1';
 
-    group('addActivityLog', () {
-      test(
-        'writes activity log document to groups/{groupId}/events/{eventId}/activity_logs',
-        () async {
-          await service.addActivityLog(
-            groupId: groupId,
-            eventId: eventId,
-            category: 'MONEY',
-            action: 'CREATE',
-            actorId: 'user1',
-            actorName: 'Alice',
-            metadata: {'amount': '10.500'},
-          );
-
-          final snap = await fakeFirestore
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('activity_logs')
-              .get();
-
-          expect(snap.docs.length, equals(1));
-          final data = snap.docs.first.data();
-          expect(data['category'], equals('MONEY'));
-          expect(data['actorId'], equals('user1'));
-          expect(data['eventId'], equals(eventId));
-          expect(data['metadata'], containsPair('amount', '10.500'));
-        },
-      );
-    });
-
     group('fetchActivityPageRaw (cursor pagination)', () {
       Future<void> seedLogs(int n) async {
         for (var i = 0; i < n; i++) {

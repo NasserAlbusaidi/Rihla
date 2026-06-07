@@ -1673,4 +1673,61 @@ describe('Publish readiness Firestore rules', () => {
       deletedAt: new Date().toISOString(),
     }));
   });
+
+  // #248 PR 2 — event activity_logs are now SERVER-ONLY. validActivityCreate was
+  // removed from the create OR-list; the expenseAuditLogger trigger (Admin SDK,
+  // bypasses rules) is the sole writer, so a client cannot forge an audit entry.
+  function validActivityLog(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id: 'aLE',
+      eventId: 'e1',
+      category: 'MONEY',
+      eventType: 'CREATE',
+      logText: 'Member added an expense for 10.500 OMR',
+      actorId: 'member',
+      actorName: 'Member',
+      metadata: {},
+      createdAt: new Date().toISOString(),
+      ...overrides,
+    };
+  }
+
+  test('#248 participant can NO LONGER create an event activity_logs entry (server-only)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/activity_logs/aLE').set(validActivityLog()));
+  });
+
+  test('#248 a forged MONEY/UPDATE audit entry from a client is rejected', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/activity_logs/aFake').set(
+      validActivityLog({ id: 'aFake', eventType: 'UPDATE', metadata: { amountFils: 999999 } }),
+    ));
+  });
+
+  test('#248 even an actorId == auth.uid client create is rejected (no client write at all)', async () => {
+    // pre-lock this passed (validActivityCreate only pinned actorId == auth.uid);
+    // post-lock there is no client create path for activity_logs.
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/events/e1/activity_logs/aOwn').set(
+      validActivityLog({ id: 'aOwn', actorId: 'owner', actorName: 'Owner' }),
+    ));
+  });
+
+  test('#248 server (Admin SDK / rules-disabled) CAN write an event activity_logs entry', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await assertSucceeds(ctx.firestore().doc('groups/g1/events/e1/activity_logs/aSrv').set(
+        validActivityLog({ id: 'aSrv', eventType: 'UPDATE' }),
+      ));
+    });
+  });
+
+  test('#248 a group member can still READ event activity_logs (read unchanged)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('groups/g1/events/e1/activity_logs/aRead').set(
+        validActivityLog({ id: 'aRead' }),
+      );
+    });
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/activity_logs/aRead').get());
+  });
 });

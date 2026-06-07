@@ -18,4 +18,5 @@ export {
   eventSettlementNotifier,
   groupSettlementNotifier,
 } from './triggers/settlementNotifier';
+export { expenseAuditLogger } from './triggers/expenseAuditLogger';
 export { deletionReaper } from './scheduled/deletionReaper';

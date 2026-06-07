@@ -712,37 +712,15 @@ service cloud.firestore {
               );
           }
 
-          function validActivityCreate() {
-            return module == 'activity_logs'
-              && isEventParticipant(groupId, eventId)
-              && eventAllowsClientWrites(groupId, eventId)
-              && request.resource.data.keys().hasOnly([
-                'id',
-                'eventId',
-                'category',
-                'eventType',
-                'logText',
-                'actorId',
-                'actorName',
-                'metadata',
-                'createdAt'
-              ])
-              && request.resource.data.id == docId
-              && request.resource.data.eventId == eventId
-              && request.resource.data.actorId == request.auth.uid
-              && request.resource.data.category is string
-              && request.resource.data.eventType is string
-              && request.resource.data.logText is string
-              && isValidNullableDisplayName(request.resource.data.actorName)
-              && request.resource.data.metadata is map
-              && request.resource.data.createdAt is string;
-          }
-
           allow read: if isGroupMember(groupId)
             && module in ['expenses', 'settlements', 'activity_logs'];
+          // #248: event activity_logs are written ONLY by the expenseAuditLogger
+          // trigger via the Admin SDK (which bypasses rules). Clients may READ but
+          // never create/update/delete — a client cannot forge an audit entry.
+          // (update is validExpenseUpdate(), module-gated to 'expenses'; delete is
+          // false; create no longer has an activity branch.)
           allow create: if validExpenseCreate()
-            || validEventSettlementCreate()
-            || validActivityCreate();
+            || validEventSettlementCreate();
           allow update: if validExpenseUpdate();
           allow delete: if false;
 
