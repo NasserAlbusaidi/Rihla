@@ -154,6 +154,25 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
+  - **Pending backend deploy (2026-06-07) — merged to `main`, NOT yet in prod.**
+    The "Latest gate result (2026-06-01…)" above is stale (`deleteGroup` shipped
+    2026-06-02 and `leaveGroup` #290 shipped 2026-06-06). Since the 2026-06-06
+    deploy, these backend changes have merged and MUST ride the next deploy
+    ceremony **before the next client release**:
+    - **#318** (`6af0594`) — new `removeMember` Cloud callable + `firestore.rules`
+      drops `validCreatorRemoveMember` / `removesExactlyOneExistingMember` from
+      the group `allow update`. ⚠️ Deploy-first, like #290: until the rules drop
+      is live in prod **and** a client carrying the `removeMember` callable ships,
+      old v1.4.0 clients get `PERMISSION_DENIED` on direct creator-remove (the
+      direct path is now rules-locked). `removeMember` is in
+      `tool/list_expected_functions.sh`, so the deploy-drift check enforces it.
+    - **#294** (`ef64797`) — `deleteAccount.ts` + `cleanupAnonUidArtifacts.ts`
+      locate member docs by the `userId` field (fixes orphaned-PII-on-delete +
+      broken creator recovery for uuid-keyed creator docs). Functions code only;
+      no new function, no rules change.
+    - Re-run `bash tool/check_firebase_prod_state.sh rihla-safar` at ceremony
+      time to capture a fresh prod-vs-`main` delta — do not trust this list as a
+      substitute for the live gate.
 - [ ] Real-device QA is not complete (Android-only for v1.2).
   - Runbook: `docs/REAL-DEVICE-QA.md`
   - Gate command (v1.2 Android-only):
