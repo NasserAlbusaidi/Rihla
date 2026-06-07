@@ -1,12 +1,11 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
-import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -151,13 +150,20 @@ class GroupMembersSection extends ConsumerWidget {
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
 
+    final messenger = ScaffoldMessenger.of(context);
+
+    // UX-only short-circuit: when balances are LOADED and the target is not
+    // square, show the settle-up hint without a round-trip. On the null/loading
+    // path we fall through and let the SERVER decide — the removeMember callable
+    // is the sole authority (#318). Never skip the callable just because the
+    // local balance is null — that was the offline orphan-debt hole.
     if (balances != null) {
       final memberBalance = balances.balances.where(
         (b) => b.participantId == member.userId,
       );
       if (memberBalance.isNotEmpty &&
           memberBalance.first.netBalance != Decimal.zero) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               context.l10n.groupSettleWithBeforeRemoving(member.displayName),
@@ -172,49 +178,55 @@ class GroupMembersSection extends ConsumerWidget {
       }
     }
 
-    // Log member_left activity (D-14) — fire-and-forget before remove call.
-    try {
-      final actorId = FirebaseConfig.currentUser?.uid ?? '';
-      ref
-          .read(groupActivityServiceProvider)
-          .logGroupEvent(
-            groupId: groupId,
-            type: 'member_left',
-            actorId: actorId,
-            actorName: ref.read(settingsProvider).deviceName.isNotEmpty
-                ? ref.read(settingsProvider).deviceName
-                : member.displayName,
-            description: '${member.displayName} was removed from the group',
-            metadata: {
-              'memberAction': 'removed',
-              'memberName': member.displayName,
-            },
-          );
-    } catch (_) {
-      // Activity logging failure must never crash the remove flow.
-    }
-
+    // The server writes the `member_left` activity entry (#318). The client no
+    // longer logs it — the old client-side log double-logged on success and
+    // fired even when the remove write failed.
     try {
       await ref
           .read(groupServiceProvider)
-          .removeMember(
-            groupId: groupId,
-            memberId: member.id,
-            userId: member.userId,
-          );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+          .removeMember(groupId: groupId, userId: member.userId);
+    } on FirebaseFunctionsException catch (e) {
+      // Already removed server-side (idempotent / never a member) → no-op.
+      if (e.code == 'not-found') {
+        return;
+      }
+      if (!context.mounted) return;
+      if (e.code == 'failed-precondition') {
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
-              context.l10n.groupFailedRemoveMember(
-                member.displayName,
-                e.toString(),
-              ),
+              context.l10n.groupSettleWithBeforeRemoving(member.displayName),
+            ),
+            action: SnackBarAction(
+              label: context.l10n.groupSettleUp,
+              onPressed: () => context.push('/group/$groupId/settle-up'),
             ),
           ),
         );
+        return;
       }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.groupFailedRemoveMember(
+              member.displayName,
+              e.message ?? e.code,
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.groupFailedRemoveMember(
+              member.displayName,
+              e.toString(),
+            ),
+          ),
+        ),
+      );
     }
   }
 }

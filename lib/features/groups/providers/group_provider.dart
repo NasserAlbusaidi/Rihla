@@ -313,25 +313,25 @@ class GroupService extends FirestoreRepository {
         .leaveGroup(groupId: groupId);
   }
 
-  /// Remove a specific member from the group (creator action).
+  /// Remove a specific member from the group (server-authoritative, #318).
   ///
-  /// Batch operation: removes the member's userId from memberIds +
-  /// deletes their member subcollection document. Callers must verify
-  /// the current user is the creator and the target has zero balance.
+  /// Routes through the creator-only `removeMember` Cloud callable, which
+  /// recomputes the TARGET member's net balance, refuses with
+  /// `failed-precondition` on any non-zero net, then removes the UID from
+  /// `memberIds` + deletes their member doc + logs `member_left`. The client
+  /// performs NO direct Firestore writes — the direct creator-remove path is
+  /// locked at the rules layer (`validCreatorRemoveMember` dropped from group
+  /// `allow update`). This closes the offline orphan-debt hole where the old
+  /// UI-side gate was skipped when balances were null.
+  ///
+  /// Throws [FirebaseFunctionsException]; the members section maps the code.
   Future<void> removeMember({
     required String groupId,
-    required String memberId,
     required String userId,
   }) async {
-    final batch = db.batch();
-    batch.update(db.collection('groups').doc(groupId), {
-      'memberIds': FieldValue.arrayRemove([userId]),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    batch.delete(
-      db.collection('groups').doc(groupId).collection('members').doc(memberId),
-    );
-    await batch.commit();
+    await _ref
+        .read(firebaseFunctionsServiceProvider)
+        .removeMember(groupId: groupId, targetUserId: userId);
   }
 
   /// Delete a group (server-authoritative, #190).
