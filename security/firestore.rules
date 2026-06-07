@@ -657,12 +657,17 @@ service cloud.firestore {
               && validExpenseBase(request.resource.data, affectsExpenseAllocation())
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitDistribution'])
                 || splitValuesNonNegative(request.resource.data))
-              // #248: diff-gated (not 'in'-gated) — on an update request.resource.data
-              // is the MERGED doc, so a stale lastEditedBy from a prior edit is
-              // preserved; gating on the diff means "touch it -> must be you, don't
-              // touch it -> unconstrained", avoiding a merge-preservation footgun.
-              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastEditedBy'])
-                || request.resource.data.lastEditedBy == request.auth.uid)
+              // #248 PR4: lastEditedBy is now MANDATORY and pinned to the caller on
+              // EVERY expense update (was diff-gated in PR1). With edit open to any
+              // participant, an editor who OMITTED lastEditedBy would let the
+              // expenseAuditLogger trigger fall back to `createdBy` and blame the
+              // wrong person (silent misattribution) — so self-attribution is forced:
+              // the merged doc must end with lastEditedBy == the caller. The live
+              // client always re-stamps it on every update/soft-delete path
+              // (edit_expense_screen.dart), so the PR1 merge-preservation footgun
+              // (an update that doesn't re-stamp inheriting a stale value) cannot
+              // occur. Only pre-PR1 clients omit it — none in the field (no users).
+              && request.resource.data.lastEditedBy == request.auth.uid
               && expenseFreeTextDiffOk()
               && (
                 (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
