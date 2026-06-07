@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/services/notification_prompt.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
@@ -61,7 +64,14 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           .timeout(const Duration(seconds: 15));
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
+      // Capture before the share sheet (which may navigate away and unmount
+      // this screen) so the post-sheet prompt reads from the container ref.
+      final notificationPrompt = ref.read(notificationPromptProvider);
       await _showSharePrompt(context, group);
+      // First natural moment to ask for push permission (#288) — the owner now
+      // has a group to be notified about. Fires after the sheet so it doesn't
+      // fight the modal.
+      unawaited(notificationPrompt.maybePrompt());
     } catch (e) {
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;

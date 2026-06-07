@@ -8,6 +8,8 @@ class SettingsService {
   static const String languageKey = 'settings_language';
   static const String _currencyKey = 'settings_currency';
   static const String _pushNotificationsKey = 'settings_push_notifications';
+  static const String _notificationPromptSeenKey =
+      'settings_notification_prompt_seen';
   static const String _weeklyDigestKey = 'settings_weekly_digest';
   static const String _deviceNameKey = 'settings_device_name';
   static const String _onboardingCompleteKey = 'settings_onboarding_complete';
@@ -33,6 +35,8 @@ class SettingsService {
     final currencyCode = _prefs.getString(_currencyKey) ?? 'OMR';
     final pushNotificationsEnabled =
         _prefs.getBool(_pushNotificationsKey) ?? false;
+    final notificationPromptSeen =
+        _prefs.getBool(_notificationPromptSeenKey) ?? false;
     final weeklyDigestEnabled = _prefs.getBool(_weeklyDigestKey) ?? false;
     final rawDeviceName = _prefs.getString(_deviceNameKey) ?? '';
     final deviceName = _sanitizePersistedDeviceName(rawDeviceName);
@@ -46,6 +50,7 @@ class SettingsService {
       languageCode: languageCode,
       currencyCode: currencyCode,
       pushNotificationsEnabled: pushNotificationsEnabled,
+      notificationPromptSeen: notificationPromptSeen,
       weeklyDigestEnabled: weeklyDigestEnabled,
       deviceName: deviceName,
       onboardingComplete: onboardingComplete,
@@ -68,6 +73,10 @@ class SettingsService {
 
   Future<void> savePushNotificationsEnabled(bool enabled) async {
     await _prefs.setBool(_pushNotificationsKey, enabled);
+  }
+
+  Future<void> saveNotificationPromptSeen(bool seen) async {
+    await _prefs.setBool(_notificationPromptSeenKey, seen);
   }
 
   Future<void> saveWeeklyDigestEnabled(bool enabled) async {

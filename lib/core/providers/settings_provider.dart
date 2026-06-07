@@ -50,6 +50,13 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(pushNotificationsEnabled: enabled);
   }
 
+  /// Records that the natural-moment notification-permission prompt has been
+  /// shown, so it fires exactly once across the app's lifetime (#288).
+  Future<void> setNotificationPromptSeen(bool seen) async {
+    await _service.saveNotificationPromptSeen(seen);
+    state = state.copyWith(notificationPromptSeen: seen);
+  }
+
   Future<void> setWeeklyDigestEnabled(bool enabled) async {
     await _service.saveWeeklyDigestEnabled(enabled);
     state = state.copyWith(weeklyDigestEnabled: enabled);
