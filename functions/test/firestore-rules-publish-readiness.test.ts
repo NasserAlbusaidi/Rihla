@@ -1098,22 +1098,25 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('expense non-creator cannot update peer record', async () => {
-    await seedExpense();
+  // #248 PR4: edit is now OPEN to any event participant (was creator-only).
+  test('#248 PR4 participant non-creator CAN update peer record', async () => {
+    await seedExpense(); // createdBy: 'owner'
     const member = testEnv.authenticatedContext('member').firestore();
 
-    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/exp1').update({
       amountFils: 12500,
+      lastEditedBy: 'member',
     }));
   });
 
-  test('expense non-creator cannot soft-delete peer record', async () => {
-    await seedExpense();
+  test('#248 PR4 participant non-creator CAN soft-delete peer record', async () => {
+    await seedExpense(); // createdBy: 'owner'
     const member = testEnv.authenticatedContext('member').firestore();
 
-    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/exp1').update({
       isDeleted: true,
       deletedAt: new Date().toISOString(),
+      lastEditedBy: 'member',
     }));
   });
 
@@ -1211,10 +1214,73 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('#248 non-creator still cannot update even with a valid own lastEditedBy (edit stays creator-only in PR1)', async () => {
+  // === #248 PR4: OPEN edit — any event participant edits/deletes; identity guards hold ===
+
+  test('#248 PR4 participant non-creator CAN update with own lastEditedBy', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'member',
+    }));
+  });
+
+  test('#248 PR4 participant non-creator FORGING lastEditedBy is rejected', async () => {
     await seedExpense(); // createdBy: 'owner'
     const member = testEnv.authenticatedContext('member').firestore();
     await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'owner', // framing the creator — pinned to auth.uid, rejected
+    }));
+  });
+
+  test('#248 PR4 participant non-creator cannot mutate createdBy', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      createdBy: 'member',
+      lastEditedBy: 'member',
+    }));
+  });
+
+  test('#248 PR4 participant non-creator update re-sending a negative splitDistribution is denied', async () => {
+    await seedExpense({
+      splitMode: 'shares',
+      splitDistribution: { owner: 1, member: 1 },
+    }); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      splitDistribution: { owner: -1, member: 2 }, // #192/#194 holds across the wider WHO
+      lastEditedBy: 'member',
+    }));
+  });
+
+  test('#248 PR4 non-member outsider cannot update expense', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const eve = testEnv.authenticatedContext('eve').firestore(); // not in g1.memberIds
+    await assertFails(eve.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'eve',
+    }));
+  });
+
+  // The boundary that matters: the gate is isEventParticipant (participantIds),
+  // NOT isGroupMember (memberIds). A group member who is not on THIS event's
+  // participant list cannot edit its expenses.
+  test('#248 PR4 group-member who is NOT an event participant cannot update expense', async () => {
+    await seedEvent('e2', { participantIds: ['owner'] }); // member NOT a participant of e2
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('groups/g1/events/e2/expenses/expE2').set(
+        validExpense({
+          id: 'expE2',
+          eventId: 'e2',
+          createdBy: 'owner',
+          payerParticipantId: 'owner',
+        }),
+      );
+    });
+    const member = testEnv.authenticatedContext('member').firestore(); // in g1.memberIds, NOT in e2.participantIds
+    await assertFails(member.doc('groups/g1/events/e2/expenses/expE2').update({
       amountFils: 12500,
       lastEditedBy: 'member',
     }));

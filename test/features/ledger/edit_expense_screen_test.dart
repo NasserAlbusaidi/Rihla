@@ -63,26 +63,44 @@ void main() {
     expect(find.text('This expense may have been deleted.'), findsOneWidget);
   });
 
-  testWidgets('blocks edit controls for expenses created by another uid', (
-    tester,
-  ) async {
-    await _pumpEditExpenseScreen(
-      tester,
-      currentUid: 'uid-layla',
-      expenses: Stream<List<Expense>>.value([
-        _expense(createdBy: 'uid-yasmin'),
-      ]),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    '#248 PR4 a participant who is not the creator sees the editor (open edit)',
+    (tester) async {
+      // uid-layla is in _event.participantIds but did not create the expense.
+      await _pumpEditExpenseScreen(
+        tester,
+        currentUid: 'uid-layla',
+        expenses: Stream<List<Expense>>.value([
+          _expense(createdBy: 'uid-yasmin'),
+        ]),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('View only'), findsOneWidget);
-    expect(
-      find.text(
-        'Only the person who added this expense can edit or delete it.',
-      ),
-      findsOneWidget,
-    );
-  });
+      expect(find.byKey(LedgerKeys.editExpenseSheet), findsOneWidget);
+      expect(find.text('View only'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#248 PR4 a non-participant still sees view-only',
+    (tester) async {
+      // uid-zara is NOT in _event.participantIds.
+      await _pumpEditExpenseScreen(
+        tester,
+        currentUid: 'uid-zara',
+        expenses: Stream<List<Expense>>.value([
+          _expense(createdBy: 'uid-yasmin'),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('View only'), findsOneWidget);
+      expect(
+        find.text('Only people in this event can edit expenses.'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('creator can save an amount change', (tester) async {
     final service = _MockExpenseService();
@@ -298,6 +316,13 @@ Future<void> _pumpEditExpenseScreen(
       overrides: [
         currentUserIdProvider.overrideWithValue(currentUid),
         eventExpensesProvider(eventRef).overrideWith((ref) => expenses),
+        // #248 PR4: the screen now gates edit on event participation.
+        eventDetailProvider(
+          eventRef,
+        ).overrideWith((ref) => Stream.value(_event)),
+        tripCategoriesProvider(
+          'event-1',
+        ).overrideWith((ref) => Stream.value(_categories)),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,

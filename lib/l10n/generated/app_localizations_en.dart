@@ -891,7 +891,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editorViewOnlyMessage =>
-      'Only the person who added this expense can edit or delete it.';
+      'Only people in this event can edit expenses.';
 
   @override
   String get editorExpenseDeleted => 'Expense deleted';

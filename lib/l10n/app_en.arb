@@ -753,7 +753,7 @@
   "editorExpenseNotFoundTitle": "Expense not found",
   "editorExpenseNotFoundMessage": "This expense may have been deleted.",
   "editorViewOnlyTitle": "View only",
-  "editorViewOnlyMessage": "Only the person who added this expense can edit or delete it.",
+  "editorViewOnlyMessage": "Only people in this event can edit expenses.",
   "editorExpenseDeleted": "Expense deleted",
   "editorScopeGlobal": "Equally",
   "editorScopeSubGroup": "Group split",

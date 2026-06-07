@@ -9,6 +9,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
@@ -54,12 +55,19 @@ class EditExpenseScreen extends ConsumerWidget {
           );
         }
         final currentUid = ref.watch(currentUserIdProvider);
-        // B1: only the original creator can edit/delete; legacy records with
-        // empty createdBy are still editable (no enforcement to migrate from).
-        final isCreator =
-            expense.createdBy.isEmpty ||
-            (currentUid != null && currentUid == expense.createdBy);
-        if (!isCreator) {
+        // #248 PR4: OPEN edit — any event participant may edit/delete. Rules
+        // (validExpenseUpdate + the lastEditedBy==auth.uid pin) are the real gate;
+        // this is UX only. Optimistic: if the event hasn't resolved
+        // (loading/error/missing) show the editor and let rules reject a true
+        // non-participant on save — a stream hiccup must not block a real participant.
+        final event = ref
+            .watch(eventDetailProvider((groupId: groupId, eventId: eventId)))
+            .valueOrNull;
+        final canEdit =
+            currentUid == null ||
+            event == null ||
+            event.participantIds.contains(currentUid);
+        if (!canEdit) {
           return _ErrorScaffold(
             title: context.l10n.editorViewOnlyTitle,
             message: context.l10n.editorViewOnlyMessage,

@@ -920,7 +920,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get editorViewOnlyMessage =>
-      'يمكن فقط للشخص الذي أضاف هذا المصروف تعديله أو حذفه.';
+      'يمكن فقط للمشاركين في هذه الفعالية تعديل المصاريف.';
 
   @override
   String get editorExpenseDeleted => 'تم حذف المصروف';
