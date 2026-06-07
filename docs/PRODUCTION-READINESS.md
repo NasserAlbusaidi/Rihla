@@ -154,9 +154,9 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-08, `5eaacf7`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-08, `edd6421`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-08
-    deploy ceremony the `backend-deployed` tag is `5eaacf7` and
+    deploy ceremony the `backend-deployed` tag is `edd6421` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Shipped
     across the 2026-06-07/08 deploys (see `docs/DEPLOY-LEDGER.md`):
     - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
@@ -188,6 +188,15 @@ starts a new run.
       more than one currency, **before** the `isZero()` gate — closing the
       `+10 OMR / −10 USD` fake-zero delete/leave/remove money-loss path.
       Functions-only; 13 functions unchanged.
+    - **#261 PR-1** (`edd6421`, #374) — `firestore.rules` make `group.currency`
+      authoritative + immutable: `currencyMatchesGroup` pins expense create
+      (unconditional) / update (diff-gated) / event-settlement-create currency to
+      the owning group's currency, and `validCreatorMetadataUpdate` drops
+      `currency` from its allow-list (settable only at create). Client
+      `updateGroup(currency:)` param removed. Rules-only; 13 functions unchanged.
+      A tautology for every current OMR write — forward-enforcement for Model A
+      multi-currency (Phase 2 must move the `'OMR'` write hardcodes or non-OMR
+      writes get `PERMISSION_DENIED`).
     - This clears the prior pending-deploy debt; the pinned checkbox above stays
       OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
       release SHA), which is a higher bar than this backend deploy.
