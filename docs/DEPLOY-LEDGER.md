@@ -16,6 +16,7 @@ Append newest at the **bottom**.
 |------|--------------|--------------|--------|
 | 2026-06-06 | `e08b929` | #290 server-authoritative leaveGroup callable + `validSelfLeave` rules drop; also-shipped undeployed #170 recovery TTL + #76 deletionReaper | prod-state PASS; first server-authoritative leave live |
 | 2026-06-07 | `f105862` | #318 server-authoritative `removeMember` callable (+ creator-remove rules drop), #294 member-doc lookup by `userId` field in `deleteAccount`/`cleanupAnonUidArtifacts`, #275 `cleanupAnonUidArtifacts` chunked BatchWriter (off the 500-write transaction cliff) | prod-state PASS; `removeMember` created, all 12 functions deployed |
+| 2026-06-07 | `cc8c84e` | #270 server allocators (`groupNetBalance.ts` `allocateShares`/`allocateExact`/`allocatePercent`) gain the negative-value→equal-split guard — full byte-for-byte parity with the client `BalanceCalculator` (shared oracle → `deleteGroup`/`leaveGroup`/`removeMember`) | prod-state PASS; all 12 functions updated |
 
 <!--
 Seed row reconstructed from memory on 2026-06-07. e08b929 = PR #319 merge (the
