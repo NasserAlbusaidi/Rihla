@@ -154,9 +154,9 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-07, `b53433d`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-07, `786c2f1`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-07
-    deploy ceremony the `backend-deployed` tag is `b53433d` and
+    deploy ceremony the `backend-deployed` tag is `786c2f1` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Shipped
     across the 2026-06-07 deploys (see `docs/DEPLOY-LEDGER.md`):
     - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
@@ -176,6 +176,11 @@ starts a new run.
       trigger (server-owned expense CREATE/UPDATE/soft-DELETE audit log → event
       `activity_logs`); `validActivityCreate` removed so event `activity_logs` is
       server-only (a client can no longer forge an audit entry). 13 functions now.
+    - **#248 PR 4** (`786c2f1`, #343) — `validExpenseUpdate` opens expense
+      edit/soft-delete to **any event participant** (drops `requesterIsRecordCreator()`)
+      and makes the `lastEditedBy == auth.uid` pin **mandatory** on every update
+      (was diff-gated) so the audit trigger can never mis-attribute an edit to the
+      creator. Rules-only; 13 functions unchanged.
     - This clears the prior pending-deploy debt; the pinned checkbox above stays
       OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
       release SHA), which is a higher bar than this backend deploy.
