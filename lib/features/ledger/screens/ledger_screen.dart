@@ -14,15 +14,12 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
-import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
-import '../../groups/providers/group_provider.dart';
-import '../../groups/services/member_name_resolver.dart';
-import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
+import '../providers/ledger_view_provider.dart';
 import '../utils/ledger_categories.dart';
 import '../utils/ledger_timeline.dart';
 import '../widgets/ledger_category_strip.dart';
@@ -87,16 +84,12 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           final expenses = expensesAsync.valueOrNull ?? <Expense>[];
           final settlements = settlementsAsync.valueOrNull ?? <Settlement>[];
           final currentUserId = ref.watch(currentUserIdProvider);
-          final groupMembers =
-              ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ??
-              const <GroupMember>[];
           return _Body(
             groupId: widget.groupId,
             eventId: widget.eventId,
             event: event,
             expenses: expenses,
             settlements: settlements,
-            groupMembers: groupMembers,
             currentUserId: currentUserId,
             categoryFilter: _categoryFilter,
             onCategoryFilter: (cat) => setState(() => _categoryFilter = cat),
@@ -107,14 +100,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   }
 }
 
-class _Body extends StatelessWidget {
+class _Body extends ConsumerWidget {
   const _Body({
     required this.groupId,
     required this.eventId,
     required this.event,
     required this.expenses,
     required this.settlements,
-    required this.groupMembers,
     required this.currentUserId,
     required this.categoryFilter,
     required this.onCategoryFilter,
@@ -125,66 +117,46 @@ class _Body extends StatelessWidget {
   final Event event;
   final List<Expense> expenses;
   final List<Settlement> settlements;
-  final List<GroupMember> groupMembers;
   final String? currentUserId;
   final int? categoryFilter;
   final ValueChanged<int?> onCategoryFilter;
 
   @override
-  Widget build(BuildContext context) {
-    // #249: fold departed-member split recipients (and former payers/settlers)
-    // into the universe so their owed shares aren't dropped from the display.
-    final allMemberIds = groupMembers.map((m) => m.userId).toSet();
-    final liveMemberIds =
-        groupMembers.where((m) => !m.isTombstone).map((m) => m.userId).toSet();
-    final universe = eventBalanceUniverse(
-      event: event,
-      expenses: expenses,
-      settlements: settlements,
-      allMemberIds: allMemberIds,
-      liveMemberIds: liveMemberIds,
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Filter-INDEPENDENT work (balances, participant universe, name maps) is
+    // memoized here (#106) so a category-chip tap re-runs only the cheap filter
+    // pass below — not the BalanceCalculator Decimal pass or the resolveEventScoped
+    // name maps. Keyed by EventRef; the provider watches the event/expenses/
+    // settlements/members streams itself.
+    final data = ref.watch(
+      ledgerViewProvider((groupId: groupId, eventId: eventId)),
     );
-    final displaysByUid = <String, MemberDisplay>{
-      for (final id in universe)
-        id: MemberNameResolver.resolveEventScoped(
-          uid: id,
-          event: event,
-          members: groupMembers,
-        ),
-    };
-    final participants = [
-      for (final entry in displaysByUid.entries)
-        Participant(
-          id: entry.key,
-          tripId: event.id,
-          role: ParticipantRole.member,
-          joinedAt: event.createdAt,
-          displayName: MemberNameResolver.format(entry.value),
-        ),
-    ];
-    // #289: disambiguate same-named LIVE members at the RENDER sites only. The
-    // calc input (participants[].displayName above) stays plain format() so the
-    // BalanceCalculator oracle is byte-identical; the discriminator never feeds
-    // the calc or any write path.
-    final rosterDisplayNames = MemberNameResolver.disambiguate(displaysByUid);
-    final liveCounts = MemberNameResolver.liveNameCounts(displaysByUid.values);
+    final participants = data.participants;
+    final balances = data.balances;
+    final eventTotal = data.eventTotal;
+    final rosterDisplayNames = data.rosterDisplayNames;
+    final expensePayerDisplayNames = data.expensePayerDisplayNames;
+    // Restore the non-null records the consumers require: the provider defers
+    // the two l10n fallbacks (null ⇒ unknown party) to keep itself BuildContext-
+    // free. Cheap O(settlements) string pass — no resolveEventScoped here.
+    final settlementDisplayNames =
+        <String, ({String payerName, String recipientName})>{
+          for (final entry in data.settlementDisplayNames.entries)
+            entry.key: (
+              payerName:
+                  entry.value.payerName ?? context.l10n.ledgerSomeone,
+              recipientName:
+                  entry.value.recipientName ?? context.l10n.ledgerSomeoneLower,
+            ),
+        };
+
     final currentPid = event.participantIds.contains(currentUserId)
         ? currentUserId
         : null;
-
-    final balances = BalanceCalculator.calculateBalances(
-      expenses: expenses,
-      settlements: settlements,
-      participants: participants,
-    );
     final myBalance = _resolveMyBalance(
       balances,
       currentPid,
       context.l10n.ledgerYou,
-    );
-    final eventTotal = expenses.fold<Decimal>(
-      Decimal.zero,
-      (sum, e) => sum + e.amount,
     );
 
     // From the current user's perspective:
@@ -245,50 +217,6 @@ class _Body extends StatelessWidget {
       DateTime.now(),
       l10n: context.l10n,
     );
-    final expensePayerDisplayNames = <String, String>{
-      for (final expense in expenses)
-        // #289: distinguish two same-named payers ("which Ahmed paid this?").
-        expense.id: MemberNameResolver.discriminatedLabel(
-          expense.payerParticipantId,
-          MemberNameResolver.resolveEventScoped(
-            uid: expense.payerParticipantId,
-            event: event,
-            members: groupMembers,
-            fallbackName: expense.payerName,
-          ),
-          liveCounts,
-        ),
-    };
-    final settlementDisplayNames =
-        <String, ({String payerName, String recipientName})>{
-          for (final settlement in settlements)
-            settlement.id: (
-              payerName: settlement.payerParticipantId == null
-                  ? settlement.payerName ?? context.l10n.ledgerSomeone
-                  : MemberNameResolver.discriminatedLabel(
-                      settlement.payerParticipantId!,
-                      MemberNameResolver.resolveEventScoped(
-                        uid: settlement.payerParticipantId!,
-                        event: event,
-                        members: groupMembers,
-                        fallbackName: settlement.payerName,
-                      ),
-                      liveCounts,
-                    ),
-              recipientName: settlement.recipientParticipantId == null
-                  ? settlement.recipientName ?? context.l10n.ledgerSomeoneLower
-                  : MemberNameResolver.discriminatedLabel(
-                      settlement.recipientParticipantId!,
-                      MemberNameResolver.resolveEventScoped(
-                        uid: settlement.recipientParticipantId!,
-                        event: event,
-                        members: groupMembers,
-                        fallbackName: settlement.recipientName,
-                      ),
-                      liveCounts,
-                    ),
-            ),
-        };
 
     return Column(
       children: [

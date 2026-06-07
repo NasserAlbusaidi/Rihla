@@ -253,6 +253,14 @@ class BalanceCalculator {
   static final Decimal _splitTolerance = Decimal.parse('0.001');
   static final Decimal _hundred = Decimal.fromInt(100);
 
+  /// Test-only invocation counter (#106). Lets a widget test prove a category
+  /// chip tap no longer re-enters [calculateBalances] — the filter-independent
+  /// balance work is now memoized in `ledgerViewProvider`. Reset it in test
+  /// setUp; production never reads it. Same library, so the `@visibleForTesting`
+  /// write below is legal.
+  @visibleForTesting
+  static int debugCalculateBalancesCount = 0;
+
   /// Telemetry sink for split-allocation fallbacks (#250). Defaults to a
   /// PII-free Sentry warning ([_reportSplitFallbackToSentry]); overridable in
   /// tests to assert the calculator never silently swallows a malformed split.
@@ -298,6 +306,7 @@ class BalanceCalculator {
     required List<Participant> participants,
     List<Settlement> settlements = const [],
   }) {
+    debugCalculateBalancesCount++;
     if (participants.isEmpty) return [];
 
     // Maps: participantId -> amounts
