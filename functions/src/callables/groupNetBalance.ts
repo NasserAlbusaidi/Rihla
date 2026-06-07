@@ -185,6 +185,15 @@ function allocateShares(
   distribution: Map<string, Decimal>,
   currency: string,
 ): Map<string, Decimal> {
+  // #270: a negative share is never a valid weight — without this guard a
+  // negative entry with a still-positive total (e.g. {-1, 5}) reaches
+  // allocateWeighted and emits a negative owed, diverging from the client
+  // _allocateShares (expense_provider.dart:457). New negatives are rules-blocked
+  // (firestore.rules:497 splitValuesNonNegative); only a legacy/Admin doc could
+  // carry one. Guard FIRST, mirroring the Dart equal-split fallback.
+  if ([...distribution.values()].some((value) => value.lt(0))) {
+    return allocateEqual(amount, distribution.keys(), currency);
+  }
   const totalShares = sumValues(distribution);
   if (totalShares.lte(0)) {
     return allocateEqual(amount, distribution.keys(), currency);
@@ -197,6 +206,14 @@ function allocateExact(
   distribution: Map<string, Decimal>,
   currency: string,
 ): Map<string, Decimal> {
+  // #270: a negative exact entry is never a valid split — and it can still be
+  // IN-tolerance (e.g. {-1.000, 11.000} sums to amount 10.000), so the tolerance
+  // check + residual close-out below would keep it verbatim. Guard FIRST,
+  // mirroring _allocateExact (expense_provider.dart:492). See allocateShares for
+  // the threat model (legacy/Admin docs; new negatives are rules-blocked).
+  if ([...distribution.values()].some((value) => value.lt(0))) {
+    return allocateEqual(amount, distribution.keys(), currency);
+  }
   const total = sumValues(distribution);
   if (total.minus(amount).abs().gt(SPLIT_TOLERANCE)) {
     return allocateEqual(amount, distribution.keys(), currency);
@@ -242,6 +259,12 @@ function allocatePercent(
   distribution: Map<string, Decimal>,
   currency: string,
 ): Map<string, Decimal> {
+  // #270: a negative percent is never a valid weight — and entries can still sum
+  // to 100 (in-tolerance, e.g. {-20, 120}), reaching allocateWeighted. Guard
+  // FIRST, mirroring _allocatePercent (expense_provider.dart:554).
+  if ([...distribution.values()].some((value) => value.lt(0))) {
+    return allocateEqual(amount, distribution.keys(), currency);
+  }
   const total = sumValues(distribution);
   if (total.minus(HUNDRED).abs().gt(SPLIT_TOLERANCE)) {
     return allocateEqual(amount, distribution.keys(), currency);

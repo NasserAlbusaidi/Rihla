@@ -154,6 +154,96 @@ void main() {
     );
 
     test(
+      'case 1c: negative EXACT split value → equal-split fallback — the net the '
+      'server allocateExact MUST match after its #270 negative guard',
+      () {
+        // owner pays 10.000, exact {owner:-1.000, member:11.000} (sum 10.000 ==
+        // amount → IN-tolerance, so the tolerance guard would NOT fire). A
+        // legacy/Admin doc could carry this; rules block new ones. The client
+        // _allocateExact negative-value guard fires FIRST → equal split
+        // (owner 5.000 / member 5.000). Expense-only (no settlement) so the
+        // asserted net IS the differential oracle: owner +5.000, member -5.000.
+        // A server that keeps the distribution verbatim in-tolerance instead
+        // reads owner owed -1.000 / member 11.000 → owner +11.000 → divergent.
+        final balances = BalanceCalculator.calculateBalances(
+          participants: [participant('owner'), participant('member')],
+          expenses: [
+            expense(
+              amount: '10.000',
+              splitMode: SplitMode.exact,
+              scope: ExpenseScope.custom,
+              customSplitParticipants: ['owner', 'member'],
+              splitDistribution: {
+                'owner': Decimal.parse('-1.000'),
+                'member': Decimal.parse('11.000'),
+              },
+            ),
+          ],
+        );
+
+        expect(netFor(balances, 'owner'), Decimal.parse('5.000'));
+        expect(netFor(balances, 'member'), Decimal.parse('-5.000'));
+      },
+    );
+
+    test(
+      'case 1d: negative SHARES split value → equal-split fallback (#270)',
+      () {
+        // owner pays 8.000, shares {owner:-1, member:5} (totalShares 4 > 0, so
+        // the invalid-shares guard would NOT fire — it reaches _allocateWeighted
+        // without the negative guard). The client negative guard equal-splits
+        // 8.000 → owner 4.000 / member 4.000. Expense-only: owner +4.000,
+        // member -4.000. A server without the guard weights over [member, owner]
+        // → member 10.000, owner (last) -2.000 → owner +10.000 → divergent.
+        final balances = BalanceCalculator.calculateBalances(
+          participants: [participant('owner'), participant('member')],
+          expenses: [
+            expense(
+              amount: '8.000',
+              payerId: 'owner',
+              splitMode: SplitMode.shares,
+              splitDistribution: {
+                'owner': Decimal.fromInt(-1),
+                'member': Decimal.fromInt(5),
+              },
+            ),
+          ],
+        );
+
+        expect(netFor(balances, 'owner'), Decimal.parse('4.000'));
+        expect(netFor(balances, 'member'), Decimal.parse('-4.000'));
+      },
+    );
+
+    test(
+      'case 1e: negative PERCENT split value → equal-split fallback (#270)',
+      () {
+        // owner pays 10.000, percent {owner:-20.0, member:120.0} (sum 100 →
+        // IN-tolerance, so the drift guard would NOT fire). The client negative
+        // guard equal-splits 10.000 → 5.000 / 5.000. Expense-only: owner +5.000,
+        // member -5.000. A server without the guard weights over [member, owner]
+        // → member 12.000, owner (last) -2.000 → owner +12.000 → divergent.
+        final balances = BalanceCalculator.calculateBalances(
+          participants: [participant('owner'), participant('member')],
+          expenses: [
+            expense(
+              amount: '10.000',
+              payerId: 'owner',
+              splitMode: SplitMode.percent,
+              splitDistribution: {
+                'owner': Decimal.parse('-20.0'),
+                'member': Decimal.parse('120.0'),
+              },
+            ),
+          ],
+        );
+
+        expect(netFor(balances, 'owner'), Decimal.parse('5.000'));
+        expect(netFor(balances, 'member'), Decimal.parse('-5.000'));
+      },
+    );
+
+    test(
       'case 2: out-of-universe ghost share is DROPPED, not redistributed '
       '(identity axis, distribution branch — §8.1 case 12)',
       () {
