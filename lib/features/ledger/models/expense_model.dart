@@ -44,6 +44,13 @@ class Expense {
   /// other UID. Empty string means "unknown" (legacy / test-only data).
   final String createdBy;
 
+  /// Auth UID of the user who last wrote this record (create or edit).
+  /// Client-stamped on every write; Firestore rules pin it to the caller's
+  /// UID whenever the write touches it. Read by the server audit-log trigger
+  /// (#248, PR 2). Empty string means "unknown" (legacy docs predating this
+  /// field) — the trigger falls back to [createdBy].
+  final String lastEditedBy;
+
   // Category info
   final String? categoryName;
   final String? categoryIcon;
@@ -81,6 +88,7 @@ class Expense {
     this.isDeleted = false,
     this.deletedAt,
     this.createdBy = '',
+    this.lastEditedBy = '',
     String currency = 'OMR',
   }) : _currency = currency;
 
@@ -195,6 +203,7 @@ class Expense {
           ? DateTime.parse(data['deletedAt'] as String)
           : null,
       createdBy: data['createdBy'] as String? ?? '',
+      lastEditedBy: data['lastEditedBy'] as String? ?? '',
     );
   }
 
@@ -227,6 +236,7 @@ class Expense {
       'isDeleted': isDeleted,
       'deletedAt': deletedAt?.toIso8601String(),
       'createdBy': createdBy,
+      'lastEditedBy': lastEditedBy,
     };
   }
 
@@ -261,6 +271,7 @@ class Expense {
     bool? isDeleted,
     DateTime? deletedAt,
     String? createdBy,
+    String? lastEditedBy,
     bool clearSplit = false,
   }) {
     return Expense(
@@ -289,6 +300,7 @@ class Expense {
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
       createdBy: createdBy ?? this.createdBy,
+      lastEditedBy: lastEditedBy ?? this.lastEditedBy,
     );
   }
 

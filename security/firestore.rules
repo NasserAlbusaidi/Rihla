@@ -546,7 +546,8 @@ service cloud.firestore {
               'note',
               'isDeleted',
               'deletedAt',
-              'createdAt'
+              'createdAt',
+              'lastEditedBy'
             ])
             && data.id == docId
             && data.eventId == eventId
@@ -577,13 +578,26 @@ service cloud.firestore {
               && splitValuesNonNegative(request.resource.data)
               && validExpenseFreeText(request.resource.data)
               && request.resource.data.createdBy == request.auth.uid
+              // #248: when present, lastEditedBy must be the caller (unforgeable
+              // attribution for PR2's audit trigger). Presence-gated so a
+              // pre-feature client that omits it still creates.
+              && (!('lastEditedBy' in request.resource.data)
+                || request.resource.data.lastEditedBy == request.auth.uid)
               && request.resource.data.isDeleted == false
               && request.resource.data.deletedAt == null;
           }
 
           function validSoftDelete() {
+            // #248: a new client stamps lastEditedBy on soft-delete so PR2's
+            // trigger can attribute the deleter — permit it alongside the
+            // isDeleted/deletedAt pair. The lastEditedBy value is pinned to the
+            // caller by validExpenseUpdate's diff-gated check. Only the LIVE
+            // expense path reaches this fn (validSoftDelete's other reference,
+            // inside validEventSettlementUpdate, is dead code — settlement
+            // updates are denied at `allow update: if false`, firestore.rules
+            // settlements block), so this loosening cannot widen settlements.
             return request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['isDeleted', 'deletedAt'])
+                .hasOnly(['isDeleted', 'deletedAt', 'lastEditedBy'])
               && resource.data.isDeleted == false
               && request.resource.data.isDeleted == true
               && request.resource.data.deletedAt is string;
@@ -624,11 +638,18 @@ service cloud.firestore {
                   'categoryId',
                   'note',
                   'isDeleted',
-                  'deletedAt'
+                  'deletedAt',
+                  'lastEditedBy'
                 ])
               && validExpenseBase(request.resource.data, affectsExpenseAllocation())
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitDistribution'])
                 || splitValuesNonNegative(request.resource.data))
+              // #248: diff-gated (not 'in'-gated) — on an update request.resource.data
+              // is the MERGED doc, so a stale lastEditedBy from a prior edit is
+              // preserved; gating on the diff means "touch it -> must be you, don't
+              // touch it -> unconstrained", avoiding a merge-preservation footgun.
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastEditedBy'])
+                || request.resource.data.lastEditedBy == request.auth.uid)
               && expenseFreeTextDiffOk()
               && (
                 (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
