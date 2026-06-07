@@ -265,19 +265,21 @@ class GroupService extends FirestoreRepository {
     return snapshot;
   }
 
-  /// Update group metadata (name and/or currency).
+  /// Update group metadata (name only).
   ///
   /// Only provided (non-null) fields are updated. Always updates updatedAt.
+  /// #261 (Model A): currency is immutable after create — settable ONLY in
+  /// createGroup. The rule (`validCreatorMetadataUpdate`) drops it from the
+  /// metadata allow-list; this signature mirrors that so the client cannot even
+  /// attempt a currency change.
   Future<void> updateGroup({
     required String groupId,
     String? name,
-    String? currency,
   }) async {
     final updateMap = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (name != null) updateMap['name'] = name;
-    if (currency != null) updateMap['currency'] = currency;
 
     await db.collection('groups').doc(groupId).update(updateMap);
   }
