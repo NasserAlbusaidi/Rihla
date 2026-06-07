@@ -321,12 +321,24 @@ export interface RecomputeResult {
   liveEventRefs: DocumentReference[];
   // #261: the distinct set of EXPENSE currencies that actually contributed to
   // `net`. The flat scalar `net` is only a true settled-check when a group holds
-  // ONE currency (Model A); a mixed-currency group can net to a fake Decimal 0
-  // (+10 OMR / −10 USD), so the balance-zero gates (deleteGroup/leaveGroup/
-  // removeMember) refuse when size > 1 rather than act on a meaningless scalar.
-  // Built from expenses ONLY — settlements are written OMR-scale even in non-OMR
-  // groups by convention, so folding their currency would falsely flag a
-  // legitimate single-expense-currency group.
+  // ONE expense currency (Model A); two different EXPENSE currencies can net to a
+  // fake Decimal 0 (+10 OMR / −10 USD), so the balance-zero gates (deleteGroup/
+  // leaveGroup/removeMember) refuse when size > 1 rather than act on a
+  // meaningless scalar.
+  //
+  // SCOPE — built from EXPENSES ONLY, NOT settlements. This is deliberate and
+  // load-bearing, NOT an oversight: settlements are written OMR-scale even in a
+  // non-OMR group by convention (settle_up_screen hardcodes 'OMR'), so a
+  // legitimate single-expense-currency group routinely carries an OMR settlement
+  // against a non-OMR debt — folding settlement currency would (a) falsely flag
+  // that group as mixed (false-nonzero → a STUCK, undeletable group), (b) break
+  // deleteGroup test 9, and (c) diverge from the client BalanceCalculator (which
+  // has the SAME currency-blindness and shows that group as settled) — a parity
+  // break. The residual gap this leaves — a non-OMR expense "settled" by an
+  // incomparable OMR settlement — is the DEEPER expense-vs-settlement currency-
+  // blindness that Model B (per-currency buckets) owns; it is unreachable for
+  // app data under Model A (every write is OMR) and pre-exists this guard. Do
+  // NOT "fix" it here by adding settlement currencies.
   currencies: Set<string>;
 }
 
