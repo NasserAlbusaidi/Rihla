@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../groups/providers/group_balance_provider.dart';
-import '../../trip/providers/trip_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
@@ -34,12 +33,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String get _tripCurrency => 'OMR';
 
   Future<void> _handleSubmit(ExpenseEditorPayload payload) async {
-    final currentParticipant = ref.read(
-      currentEventParticipantProvider((
-        groupId: widget.groupId,
-        eventId: widget.eventId,
-      )),
-    );
     final currentUid = ref.read(currentUserIdProvider);
     if (currentUid == null || currentUid.isEmpty) {
       throw StateError('Cannot add expense without an authenticated user.');
@@ -56,8 +49,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             groupId: widget.groupId,
             eventId: widget.eventId,
             payerParticipantId: payload.payerParticipantId,
-            actorId: currentParticipant?.id,
-            actorName: currentParticipant?.displayName,
             amount: payload.amount,
             description: payload.description,
             scope: payload.scope,

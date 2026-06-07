@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
 import '../models/activity_log_model.dart';
@@ -43,30 +42,5 @@ class ActivityService extends FirestoreRepository {
       query = query.startAfterDocument(startAfter);
     }
     return query.limit(limit).get();
-  }
-
-  /// Add an activity log entry to the event subcollection.
-  Future<void> addActivityLog({
-    required String groupId,
-    required String eventId,
-    required String category,
-    required String action,
-    required String actorId,
-    String? actorName,
-    Map<String, dynamic>? metadata,
-  }) async {
-    final id = const Uuid().v4();
-    final now = DateTime.now().toUtc();
-    await eventSubcollection(groupId, eventId, 'activity_logs').doc(id).set({
-      'id': id,
-      'eventId': eventId,
-      'category': category,
-      'eventType': action,
-      'logText': '$actorName $action'.trim(),
-      'actorId': actorId,
-      'actorName': actorName,
-      'metadata': metadata ?? const <String, dynamic>{},
-      'createdAt': now.toIso8601String(),
-    });
   }
 }

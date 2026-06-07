@@ -77,21 +77,22 @@ void main() {
         expect(expense.amount, equals(Decimal.parse('10.500')));
       });
 
-      test('writes a MONEY activity log when an expense is created', () async {
+      test('addExpense no longer writes an activity_logs entry — the '
+          'expenseAuditLogger trigger owns it (#248 PR 2)', () async {
         const groupId = 'g1';
         const eventId = 'e1';
 
-        final expense = await service.addExpense(
+        await service.addExpense(
           createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'p1',
-          actorId: 'user1',
-          actorName: 'Alice',
           amount: Decimal.parse('12.345'),
           description: 'Dinner',
         );
 
+        // The client write was dropped; fake_cloud_firestore runs no triggers,
+        // so the event activity_logs collection stays empty.
         final snap = await fakeDb
             .collection('groups')
             .doc(groupId)
@@ -100,23 +101,7 @@ void main() {
             .collection('activity_logs')
             .get();
 
-        expect(snap.docs, hasLength(1));
-
-        final data = snap.docs.first.data();
-        final metadata = data['metadata'] as Map<String, dynamic>;
-
-        expect(data['category'], equals('MONEY'));
-        expect(data['eventType'], equals('CREATE'));
-        expect(data['actorId'], equals('user1'));
-        expect(data['actorName'], equals('Alice'));
-        expect(data['eventId'], equals(eventId));
-        expect(data['logText'], contains('Alice'));
-        expect(data['logText'], contains('Dinner'));
-        expect(data['logText'], contains('12.345 OMR'));
-        expect(metadata, containsPair('expenseId', expense.id));
-        expect(metadata, containsPair('amount', '12.345'));
-        expect(metadata, containsPair('currency', 'OMR'));
-        expect(metadata, containsPair('payerParticipantId', 'p1'));
+        expect(snap.docs, isEmpty);
       });
 
       test('rejects an empty createdBy uid before writing', () async {
