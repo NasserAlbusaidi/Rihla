@@ -607,6 +607,20 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
 // [ledgerRevisionProvider] (the liveness lever) lives in expense_provider.dart
 // alongside the write services; this file imports it already.
 
+/// One-shot balance plus the ids of events whose one-shot money read FAILED
+/// (and were therefore dropped from [balances]). [failedEventIds] non-empty ⇒
+/// [balances] is a PARTIAL sum (#244): the home hero renders an "incomplete"
+/// affordance rather than presenting the partial number as authoritative.
+///
+/// Mirrors the live error-skip in [groupBalancesProvider] (the
+/// `hasError && !hasValue` branch) and [groupFailedEventIdsProvider], but
+/// computed from the SAME one-shot reads that produce [balances] — so the flag
+/// can never disagree with the number.
+typedef GroupBalancesOnce = ({
+  GroupBalances balances,
+  Set<String> failedEventIds,
+});
+
 /// One-shot variant of [groupBalancesProvider] for the always-mounted home
 /// dashboard (#104).
 ///
@@ -616,10 +630,19 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
 /// event sort unchanged (no re-implementation, no divergence). Only the
 /// O(G×E) per-event expense/settlement reads are one-shot `.get()`.
 ///
+/// Per-event tolerance (#244): an event whose expense OR settlement read throws
+/// (permission-denied / uncached-while-offline) is DROPPED and recorded in
+/// `failedEventIds`, mirroring the live provider's silent error-skip — but the
+/// drop is now surfaced so the home hero can warn instead of silently zeroing.
+/// The COARSE list reads (events/members/group settlements) are awaited BEFORE
+/// the per-event loop and are intentionally NOT caught: a whole-group read
+/// failure still rejects the future (loud-safe → error card), because a wholly
+/// unknown group is too coarse to silently drop.
+///
 /// Calls the SAME [computeGroupBalances] as the live provider, so the home
 /// headline and the OUTBOUND in-group settle-up screen can never diverge.
 final groupBalancesOnceProvider = FutureProvider.autoDispose
-    .family<GroupBalances, String>((ref, groupId) async {
+    .family<GroupBalancesOnce, String>((ref, groupId) async {
   // Register all stream dependencies SYNCHRONOUSLY (before any await) so the
   // provider re-runs when a list emits or the ledger revision bumps.
   final eventsFut = ref.watch(groupEventsProvider(groupId).future);
@@ -636,20 +659,40 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
   final settlementService = ref.read(settlementServiceProvider);
   final allExpenses = <Expense>[];
   final allEventSettlements = <Settlement>[];
+  final failedEventIds = <String>{};
   for (final event in events) {
-    allExpenses.addAll(await expenseService.getExpenses(groupId, event.id));
-    allEventSettlements
-        .addAll(await settlementService.getSettlements(groupId, event.id));
+    try {
+      // Read BOTH before mutating the accumulators — if either throws, neither
+      // is added (the OR-drop semantics of the live `:153-156` skip: an event
+      // with one failed money read contributes 0, never half-counted).
+      final eventExpenses =
+          await expenseService.getExpenses(groupId, event.id);
+      final eventSettlements =
+          await settlementService.getSettlements(groupId, event.id);
+      allExpenses.addAll(eventExpenses);
+      allEventSettlements.addAll(eventSettlements);
+    } catch (_) {
+      failedEventIds.add(event.id);
+    }
   }
 
-  return computeGroupBalances(
-    events: events,
-    members: members,
-    allExpenses: allExpenses,
-    allEventSettlements: allEventSettlements,
-    groupSettlements: groupSettlements,
+  return (
+    balances: computeGroupBalances(
+      events: events,
+      members: members,
+      allExpenses: allExpenses,
+      allEventSettlements: allEventSettlements,
+      groupSettlements: groupSettlements,
+    ),
+    failedEventIds: failedEventIds,
   );
 });
+
+/// Home cross-group summary plus whether ANY group's one-shot dropped an event
+/// (#244). [partial] ⇒ [balance] omits one or more events' money (a per-event
+/// read failed); the home hero renders the "may be incomplete" affordance.
+/// Atomic: number + flag come from one computation, so they can never disagree.
+typedef CrossGroupBalanceOnce = ({CrossGroupBalance balance, bool partial});
 
 /// One-shot variant of [crossGroupBalanceProvider] for [BalanceHeroCard] (#104).
 ///
@@ -657,16 +700,24 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
 /// scalar ([UserBalance.netBalance], which already folds settlements), then
 /// sign-splits that scalar into owed/owes. It does NOT sum `totalPaid` slices —
 /// that would drop settlement effects.
+///
+/// [partial] (#244) is the OR over groups of "did a per-event read fail." A
+/// whole-group reject (a coarse list-read failure inside
+/// [groupBalancesOnceProvider]) still propagates → this future rejects → the
+/// hero shows the error card (loud-safe preserved for the coarse case).
 final crossGroupBalanceOnceProvider =
-    FutureProvider.autoDispose<CrossGroupBalance>((ref) async {
+    FutureProvider.autoDispose<CrossGroupBalanceOnce>((ref) async {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) {
     return (
-      net: Decimal.zero,
-      owedToUser: Decimal.zero,
-      userOwes: Decimal.zero,
-      groupCount: 0,
-      isLoading: false,
+      balance: (
+        net: Decimal.zero,
+        owedToUser: Decimal.zero,
+        userOwes: Decimal.zero,
+        groupCount: 0,
+        isLoading: false,
+      ),
+      partial: false,
     );
   }
 
@@ -674,9 +725,11 @@ final crossGroupBalanceOnceProvider =
   var net = Decimal.zero;
   var owedToUser = Decimal.zero;
   var userOwes = Decimal.zero;
+  var partial = false;
   for (final group in groups) {
-    final balances = await ref.watch(groupBalancesOnceProvider(group.id).future);
-    final groupNet = balances.balances
+    final result = await ref.watch(groupBalancesOnceProvider(group.id).future);
+    partial = partial || result.failedEventIds.isNotEmpty;
+    final groupNet = result.balances.balances
             .where((b) => b.participantId == uid)
             .firstOrNull
             ?.netBalance ??
@@ -690,10 +743,13 @@ final crossGroupBalanceOnceProvider =
   }
 
   return (
-    net: net,
-    owedToUser: owedToUser,
-    userOwes: userOwes,
-    groupCount: groups.length,
-    isLoading: false,
+    balance: (
+      net: net,
+      owedToUser: owedToUser,
+      userOwes: userOwes,
+      groupCount: groups.length,
+      isLoading: false,
+    ),
+    partial: partial,
   );
 });

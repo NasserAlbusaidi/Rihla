@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -33,14 +34,27 @@ class BalanceHeroCard extends ConsumerWidget {
     return balanceAsync.when(
       loading: SkeletonLoader.dashboardHero,
       error: (e, _) => _ErrorCard(),
-      data: (balance) => _LoadedCard(balance: balance, onTap: onTap),
+      data: (result) => _LoadedCard(
+        balance: result.balance,
+        partial: result.partial,
+        onTap: onTap,
+      ),
     );
   }
 }
 
 class _LoadedCard extends StatelessWidget {
-  const _LoadedCard({required this.balance, this.onTap});
+  const _LoadedCard({
+    required this.balance,
+    this.partial = false,
+    this.onTap,
+  });
   final CrossGroupBalance balance;
+
+  /// #244: a per-event money read failed for at least one group, so [balance]
+  /// is a partial sum. Renders the "may be incomplete" notice; the number still
+  /// shows (the "you're owed X (incomplete)" goal).
+  final bool partial;
   final VoidCallback? onTap;
 
   @override
@@ -121,6 +135,10 @@ class _LoadedCard extends StatelessWidget {
           _SplitBar(owedToUser: owedToUser, userOwes: userOwes),
           const SizedBox(height: 10),
           _SplitLegend(owedToUser: owedToUser, userOwes: userOwes),
+          if (partial) ...[
+            const SizedBox(height: 12),
+            const _IncompleteNotice(),
+          ],
         ],
       ),
     );
@@ -313,6 +331,33 @@ class _LegendDot extends StatelessWidget {
       width: 6,
       height: 6,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+/// #244: compact "balance may be incomplete" row appended to the hero when a
+/// per-event money read failed for some group. Same warning language as the
+/// settle-up banner, but a single inline row (no border box) so the hero stays
+/// glanceable. The number above still renders.
+class _IncompleteNotice extends StatelessWidget {
+  const _IncompleteNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      key: HomeKeys.balanceIncompleteNotice,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Iconsax.warning_2, size: 14, color: colors.warning),
+        SizedBox(width: context.spacing.space8),
+        Expanded(
+          child: Text(
+            context.l10n.homeBalanceIncompleteNotice,
+            style: AppTypography.sans(fontSize: 12, color: colors.textSecondary),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2252,6 +2252,12 @@ abstract class AppLocalizations {
   /// **'Balance unavailable'**
   String get homeBalanceUnavailable;
 
+  /// Shown on the home balance hero when one or more events' money data failed to load, so the displayed cross-group balance is a partial sum (#244).
+  ///
+  /// In en, this message translates to:
+  /// **'Some data couldn\'t load — balance may be incomplete'**
+  String get homeBalanceIncompleteNotice;
+
   /// No description provided for @homeSpendingUnavailable.
   ///
   /// In en, this message translates to:

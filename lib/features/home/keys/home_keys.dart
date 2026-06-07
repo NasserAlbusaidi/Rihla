@@ -19,6 +19,9 @@ abstract final class HomeKeys {
 
   // Dashboard sections
   static const balanceHeroCard = Key('home_balance_hero_card');
+  // #244: shown on the hero when the cross-group balance is a partial sum
+  // (a per-event money read failed for some group).
+  static const balanceIncompleteNotice = Key('home_balance_incomplete_notice');
   static const activitySection = Key('home_activity_section');
 
   // Bottom navigation

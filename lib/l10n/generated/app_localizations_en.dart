@@ -1278,6 +1278,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeBalanceUnavailable => 'Balance unavailable';
 
   @override
+  String get homeBalanceIncompleteNotice =>
+      'Some data couldn\'t load — balance may be incomplete';
+
+  @override
   String get homeSpendingUnavailable => 'Spending data unavailable';
 
   @override

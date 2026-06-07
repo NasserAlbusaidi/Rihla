@@ -125,7 +125,9 @@ void main() {
           ).overrideWith((_) => Stream.value([activeEvent])),
           groupBalancesOnceProvider(
             groupId,
-          ).overrideWith((_) => balances),
+          ).overrideWith(
+            (_) => (balances: balances, failedEventIds: const <String>{}),
+          ),
         ],
       );
       addTearDown(container.dispose);

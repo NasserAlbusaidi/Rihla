@@ -967,6 +967,10 @@
   "homeOwe": "owe",
   "homeOwedToYou": "owed to you",
   "homeBalanceUnavailable": "Balance unavailable",
+  "homeBalanceIncompleteNotice": "Some data couldn't load — balance may be incomplete",
+  "@homeBalanceIncompleteNotice": {
+    "description": "Shown on the home balance hero when one or more events' money data failed to load, so the displayed cross-group balance is a partial sum (#244)."
+  },
   "homeSpendingUnavailable": "Spending data unavailable",
   "homeWeeklySpending": "Weekly Spending ({currency})",
   "@homeWeeklySpending": {

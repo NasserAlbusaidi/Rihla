@@ -1321,6 +1321,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeBalanceUnavailable => 'الرصيد غير متاح';
 
   @override
+  String get homeBalanceIncompleteNotice =>
+      'تعذّر تحميل بعض البيانات — قد يكون الرصيد غير مكتمل';
+
+  @override
   String get homeSpendingUnavailable => 'بيانات الإنفاق غير متاحة';
 
   @override

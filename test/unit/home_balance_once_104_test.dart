@@ -193,10 +193,12 @@ void main() {
             reason: 'no live settlement listener may survive the one-shot path');
 
         // uid-a is owed nothing, owes 10.
-        expect(result.net, Decimal.fromInt(-10));
-        expect(result.owedToUser, Decimal.zero);
-        expect(result.userOwes, Decimal.fromInt(10));
-        expect(result.groupCount, 1);
+        expect(result.balance.net, Decimal.fromInt(-10));
+        expect(result.balance.owedToUser, Decimal.zero);
+        expect(result.balance.userOwes, Decimal.fromInt(10));
+        expect(result.balance.groupCount, 1);
+        expect(result.partial, isFalse,
+            reason: 'all reads succeeded → not partial');
       },
     );
 
@@ -251,9 +253,9 @@ void main() {
         final result =
             await container.read(crossGroupBalanceOnceProvider.future);
 
-        expect(result.net, Decimal.fromInt(15));
-        expect(result.owedToUser, Decimal.fromInt(15));
-        expect(result.userOwes, Decimal.zero);
+        expect(result.balance.net, Decimal.fromInt(15));
+        expect(result.balance.owedToUser, Decimal.fromInt(15));
+        expect(result.balance.userOwes, Decimal.zero);
         // Group settlement was surfaced via the LIVE groupSettlementsProvider,
         // not a per-event one-shot read.
         expect(expFake.activeWatchListeners, 0);
@@ -288,7 +290,7 @@ void main() {
           fireImmediately: true);
 
       final before = await container.read(crossGroupBalanceOnceProvider.future);
-      expect(before.net, Decimal.fromInt(-10));
+      expect(before.balance.net, Decimal.fromInt(-10));
 
       // Simulate a new expense write + the liveness bump.
       expenses = [
@@ -298,7 +300,7 @@ void main() {
       container.read(ledgerRevisionProvider.notifier).state++;
 
       final after = await container.read(crossGroupBalanceOnceProvider.future);
-      expect(after.net, Decimal.fromInt(-30),
+      expect(after.balance.net, Decimal.fromInt(-30),
           reason: 'bump must force a fresh one-shot read');
     });
 
@@ -335,7 +337,10 @@ void main() {
           for (var i = 0; i < 12; i++) {
             await Future<void>.delayed(Duration.zero);
           }
-          return container.read(groupBalancesOnceProvider(gid)).requireValue;
+          return container
+              .read(groupBalancesOnceProvider(gid))
+              .requireValue
+              .balances;
         }
 
         Decimal netA(GroupBalances b) =>

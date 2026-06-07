@@ -397,6 +397,7 @@
   "homeOwe": "عليك دفع",
   "homeOwedToYou": "مستحق لك",
   "homeBalanceUnavailable": "الرصيد غير متاح",
+  "homeBalanceIncompleteNotice": "تعذّر تحميل بعض البيانات — قد يكون الرصيد غير مكتمل",
   "homeSpendingUnavailable": "بيانات الإنفاق غير متاحة",
   "homeWeeklySpending": "الإنفاق الأسبوعي ({currency})",
   "homeNoSpendingThisWeek": "لا يوجد إنفاق هذا الأسبوع",

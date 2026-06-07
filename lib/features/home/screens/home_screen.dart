@@ -616,7 +616,7 @@ class _GroupRow extends ConsumerWidget {
     final colors = context.colors;
     final uid = ref.watch(currentUserIdProvider);
     final balancesAsync = ref.watch(groupBalancesOnceProvider(group.id));
-    final balances = balancesAsync.valueOrNull;
+    final balances = balancesAsync.valueOrNull?.balances;
     final userNet = (balances == null || uid == null)
         ? Decimal.zero
         : (balances.balances
