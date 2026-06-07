@@ -221,10 +221,12 @@ class ExpenseService extends FirestoreRepository {
       updates['payerParticipantId'] = payerParticipantId;
     }
     if (updates.isNotEmpty) {
-      // #248: stamp the editor's UID only on a real change, so a no-op save
-      // stays a no-op (no spurious audit entry from PR2's trigger). Skipped
-      // when null/empty so a uid-less caller still writes (rules pin is
-      // presence-gated for backward compat).
+      // #248: stamp the editor's UID on every real change. PR4 makes the rules
+      // pin MANDATORY (lastEditedBy == auth.uid on every update), so an authed
+      // caller MUST supply its uid here or the write is rejected — the trigger
+      // then attributes the edit to the real editor, never the creator. The
+      // null/empty guard only skips a uid-less caller, who cannot write anyway
+      // (rules require signedIn()); it is not a backward-compat escape hatch.
       if (lastEditedBy != null && lastEditedBy.isNotEmpty) {
         updates['lastEditedBy'] = lastEditedBy;
       }
