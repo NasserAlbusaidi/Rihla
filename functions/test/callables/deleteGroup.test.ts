@@ -358,6 +358,104 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect((await groupSnap('g')).data()?.isDeleted).toBe(true);
   });
 
+  test('7c. #270: negative EXACT split value → server equal-split fallback like the client (client-settled group must be deletable)', async () => {
+    // exact {owner:-1000, member:11000} (sum 10.000 == amount → IN-tolerance,
+    // residual 0). A legacy/Admin doc could carry this; rules block new ones.
+    // The client _allocateExact negative-value guard falls back to EQUAL split
+    // (owner 5.000 / member 5.000), so member owes 5.000; member settles 5.000
+    // → CLIENT net all-zero (the app shows the group settled). WITHOUT the server
+    // guard, allocateExact keeps the distribution verbatim (owner owed -1.000,
+    // member 11.000) → member net -6.000 after the 5.000 settlement → the server
+    // REFUSES to delete a group the app shows settled (the #223 shape, sign axis).
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 10000,
+      splitMode: 'exact',
+      scope: 'custom',
+      customSplitParticipants: [OWNER, MEMBER],
+      splitDistribution: { [OWNER]: -1000, [MEMBER]: 11000 },
+    });
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 5000,
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(res).toMatchObject({ mode: 'softDelete', eventsSoftDeleted: 1 });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(true);
+  });
+
+  test('7d. #270: negative SHARES split value → server equal-split fallback like the client', async () => {
+    // shares {owner:-1, member:5} (totalShares 4 > 0 → reaches allocateWeighted
+    // without the guard). The client _allocateShares negative guard equal-splits
+    // 8.000 → owner 4.000 / member 4.000; member settles 4.000 → CLIENT all-zero.
+    // Server-without-guard weighted over [member,owner]: member 10.000, owner
+    // (last) 8-10 = -2.000 → owner net (8-4)-(-2) = +6.000 → REFUSES.
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 8000,
+      splitMode: 'shares',
+      scope: 'global',
+      splitDistribution: { [OWNER]: -1, [MEMBER]: 5 },
+    });
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 4000,
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(res).toMatchObject({ mode: 'softDelete', eventsSoftDeleted: 1 });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(true);
+  });
+
+  test('7e. #270: negative PERCENT split value → server equal-split fallback like the client', async () => {
+    // percent {owner:-20, member:120} persisted x1000 = {-20000, 120000} (sum
+    // 100 → IN-tolerance, reaches allocateWeighted without the guard). The client
+    // _allocatePercent negative guard equal-splits 10.000 → 5.000 / 5.000; member
+    // settles 5.000 → CLIENT all-zero. Server-without-guard weighted over
+    // [member,owner]: member 12.000, owner (last) 10-12 = -2.000 → owner net
+    // (10-5)-(-2) = +7.000 → REFUSES.
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 10000,
+      splitMode: 'percent',
+      scope: 'global',
+      splitDistribution: { [OWNER]: -20000, [MEMBER]: 120000 },
+    });
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 5000,
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(res).toMatchObject({ mode: 'softDelete', eventsSoftDeleted: 1 });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(true);
+  });
+
   test('8. group-scope settlement is counted in the balance fold (§:285-304)', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);
