@@ -216,6 +216,7 @@ void main() {
           expenseId: expense.id,
           description: 'New description',
           amount: Decimal.parse('7.500'),
+          currency: 'OMR',
         );
 
         final snap = await fakeDb
@@ -290,6 +291,7 @@ void main() {
           eventId: 'e1',
           expenseId: expense.id,
           amount: Decimal.parse('9.000'),
+          currency: 'OMR',
           lastEditedBy: 'editorX',
         );
 
@@ -346,6 +348,116 @@ void main() {
           ),
           throwsA(isA<FirebaseException>()),
         );
+      });
+
+      // #261 (multi-currency hardening): an amount edit must NEVER default the
+      // currency to OMR — that silently re-scales amountFils (a USD 10.00 read
+      // back as OMR 1.000) and clobbers the stored currency. Require currency
+      // whenever amount is set; the caller (edit_expense_screen) passes
+      // original.currency. The split-mode-only edit path (no amount) is exempt.
+      test('throws when amount is set without a currency (#261)', () async {
+        final expense = await service.addExpense(
+          createdBy: 'uidA',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('10.000'),
+        );
+
+        expect(
+          () => service.updateExpense(
+            groupId: 'g1',
+            eventId: 'e1',
+            expenseId: expense.id,
+            amount: Decimal.parse('12.000'),
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
+
+      test(
+        'amount edit preserves the passed currency and its subunit scale (#261)',
+        () async {
+          // (currency, edited amount, expected amountFils at that scale)
+          const cases = <(String, String, int)>[
+            ('USD', '12.00', 1200), // /100
+            ('OMR', '12.000', 12000), // /1000
+            ('JPY', '1200', 1200), // /1
+          ];
+
+          for (final (currency, amountStr, expectedFils) in cases) {
+            final expense = await service.addExpense(
+              createdBy: 'uidA',
+              groupId: 'g1',
+              eventId: 'e1',
+              payerParticipantId: 'p1',
+              amount: Decimal.parse('1'),
+              currency: currency,
+            );
+
+            await service.updateExpense(
+              groupId: 'g1',
+              eventId: 'e1',
+              expenseId: expense.id,
+              amount: Decimal.parse(amountStr),
+              currency: currency,
+            );
+
+            final snap = await fakeDb
+                .collection('groups')
+                .doc('g1')
+                .collection('events')
+                .doc('e1')
+                .collection('expenses')
+                .doc(expense.id)
+                .get();
+            expect(
+              snap.data()!['currency'],
+              equals(currency),
+              reason: 'currency must be preserved for $currency',
+            );
+            expect(
+              snap.data()!['amountFils'],
+              equals(expectedFils),
+              reason: 'amountFils must scale by $currency subunits',
+            );
+          }
+        },
+      );
+
+      // The split-mode-only edit (no amount) stays exempt from the
+      // amount-requires-currency guard — it passes neither amount nor currency.
+      test('split-mode edit without amount does not require currency (#261)', () async {
+        final expense = await service.addExpense(
+          createdBy: 'uidA',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('20.000'),
+        );
+
+        await service.updateExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          expenseId: expense.id,
+          scope: ExpenseScope.custom,
+          customSplitParticipants: ['p2', 'p3'],
+          splitMode: SplitMode.shares,
+          splitDistribution: {
+            'p2': Decimal.fromInt(2),
+            'p3': Decimal.fromInt(1),
+          },
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
+        expect(snap.data()!['splitMode'], 'shares');
       });
     });
 

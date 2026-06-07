@@ -194,9 +194,15 @@ class ExpenseService extends FirestoreRepository {
   }) async {
     final updates = <String, dynamic>{};
     if (amount != null) {
-      final cur = currency ?? 'OMR';
-      updates['amountFils'] = MoneySerializer.toSubunits(amount, cur);
-      updates['currency'] = cur;
+      // #261: never default the currency on an amount edit — that silently
+      // re-scales amountFils (a USD 10.00 read back as OMR 1.000) and clobbers
+      // the stored currency. The caller (edit_expense_screen) passes
+      // original.currency; a uid-less / currency-less amount edit is a bug.
+      if (currency == null) {
+        throw ArgumentError('updateExpense requires a currency when amount is set');
+      }
+      updates['amountFils'] = MoneySerializer.toSubunits(amount, currency);
+      updates['currency'] = currency;
     }
     if (description != null) updates['description'] = description;
     if (scope != null) updates['scope'] = scope.value;

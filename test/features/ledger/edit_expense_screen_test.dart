@@ -110,6 +110,7 @@ void main() {
         eventId: 'event-1',
         expenseId: 'expense-1',
         amount: Decimal.parse('15'),
+        currency: 'OMR',
         description: null,
         scope: null,
         customSplitParticipants: null,
@@ -145,6 +146,7 @@ void main() {
         eventId: 'event-1',
         expenseId: 'expense-1',
         amount: Decimal.parse('15'),
+        currency: 'OMR',
         description: null,
         scope: null,
         customSplitParticipants: null,
@@ -158,6 +160,68 @@ void main() {
     ).called(1);
     expect(find.text('Open edit'), findsOneWidget);
   });
+
+  testWidgets(
+    'amount edit threads the expense currency, not a hardcoded OMR (#261)',
+    (tester) async {
+      // RED before the clobber fix: _save omitted currency:, so updateExpense
+      // defaulted it to OMR and re-scaled amountFils — corrupting a non-OMR
+      // expense. The save must forward original.currency ('USD' here).
+      final service = _MockExpenseService();
+      when(
+        () => service.updateExpense(
+          groupId: 'group-1',
+          eventId: 'event-1',
+          expenseId: 'expense-1',
+          amount: Decimal.parse('15'),
+          currency: 'USD',
+          description: null,
+          scope: null,
+          customSplitParticipants: null,
+          splitMode: null,
+          splitDistribution: null,
+          clearSplit: false,
+          categoryId: null,
+          payerParticipantId: null,
+          lastEditedBy: 'uid-yasmin',
+        ),
+      ).thenAnswer((_) async {});
+
+      await _pumpEditableRoute(
+        tester,
+        expenseService: service,
+        expenses: Stream<List<Expense>>.value([
+          _expense(createdBy: 'uid-yasmin', currency: 'USD'),
+        ]),
+      );
+
+      await tester.tap(find.text('Open edit'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '15');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      verify(
+        () => service.updateExpense(
+          groupId: 'group-1',
+          eventId: 'event-1',
+          expenseId: 'expense-1',
+          amount: Decimal.parse('15'),
+          currency: 'USD',
+          description: null,
+          scope: null,
+          customSplitParticipants: null,
+          splitMode: null,
+          splitDistribution: null,
+          clearSplit: false,
+          categoryId: null,
+          payerParticipantId: null,
+          lastEditedBy: 'uid-yasmin',
+        ),
+      ).called(1);
+    },
+  );
 
   testWidgets('creator can confirm deletion', (tester) async {
     final service = _MockExpenseService();
@@ -206,6 +270,7 @@ void main() {
         eventId: 'event-1',
         expenseId: 'expense-1',
         amount: Decimal.parse('18'),
+        currency: 'OMR',
         description: null,
         scope: null,
         customSplitParticipants: null,
@@ -393,12 +458,13 @@ Future<void> _pumpEditableRoute(
   await tester.pump();
 }
 
-Expense _expense({required String createdBy}) {
+Expense _expense({required String createdBy, String currency = 'OMR'}) {
   return Expense(
     id: 'expense-1',
     tripId: 'event-1',
     payerParticipantId: 'uid-yasmin',
     amount: Decimal.parse('12.500'),
+    currency: currency,
     description: 'Dinner',
     scope: ExpenseScope.global,
     createdAt: DateTime(2026, 5, 30),
