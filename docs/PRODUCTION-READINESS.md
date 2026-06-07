@@ -154,11 +154,14 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-07, `f105862`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-07, `cc8c84e`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-07
-    deploy ceremony the `backend-deployed` tag is `f105862` and
-    `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Shipped in
-    this deploy (see `docs/DEPLOY-LEDGER.md`):
+    deploy ceremony the `backend-deployed` tag is `cc8c84e` and
+    `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Shipped
+    across the 2026-06-07 deploys (see `docs/DEPLOY-LEDGER.md`):
+    - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
+      `allocateShares`/`allocateExact`/`allocatePercent`) gain the
+      negative-value→equal-split guard, mirroring the client byte-for-byte.
     - **#318** (`6af0594`) — `removeMember` Cloud callable (created in prod) +
       `firestore.rules` drop of `validCreatorRemoveMember` /
       `removesExactlyOneExistingMember`.
