@@ -222,6 +222,50 @@ describe('cleanupAnonUidArtifacts', () => {
     expect(newMember.data()?.joinedAt).toBeDefined();
   });
 
+  // #294: a recovering CREATOR's member doc is keyed by a random uuid (userId:
+  // oldUid), so the old `.doc(oldUid)` point read missed it — the copy/delete
+  // were gated on a non-existent doc, leaving the recovered creator with no
+  // member doc keyed to their new uid + a stale uuid doc pointing at the dead uid.
+  // Matching by the `userId` FIELD migrates it (normalized to .doc(newUid)).
+  test('#294 migrates a uuid-keyed creator member doc on recovery', async () => {
+    const db = getFirestore();
+    const creatorDocId = 'creator-uuid-eeee-ffff';
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid'], { createdBy: 'old-anon-uid' });
+    // creator member doc keyed by a uuid, userId is the old anon uid:
+    await db.doc(`groups/g1/members/${creatorDocId}`).set({
+      id: creatorDocId,
+      userId: 'old-anon-uid',
+      displayName: 'Recovered Creator',
+      role: 'CREATOR',
+      joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isShadow: false,
+    });
+
+    await cleanupCall();
+
+    const group = await db.doc('groups/g1').get();
+    const newMember = await db.doc('groups/g1/members/new-uid').get();
+    const oldUuidDoc = await db.doc(`groups/g1/members/${creatorDocId}`).get();
+
+    expect(group.data()?.memberIds).toEqual(['new-uid']);
+    expect(group.data()?.createdBy).toBe('new-uid');
+    // the uuid-keyed doc is gone, migrated/normalized to .doc(newUid):
+    expect(oldUuidDoc.exists).toBe(false);
+    expect(newMember.data()).toMatchObject({
+      id: 'new-uid',
+      userId: 'new-uid',
+      displayName: 'Recovered Creator',
+      role: 'CREATOR',
+    });
+    // no member doc anywhere still carries the old uid:
+    const remaining = await db.collection('groups/g1/members').get();
+    for (const doc of remaining.docs) {
+      expect(doc.data().userId).not.toBe('old-anon-uid');
+    }
+  });
+
   test('createdBy is rewritten on group, active event, active expense, and settlements', async () => {
     const db = getFirestore();
     await seedAuthUsers();

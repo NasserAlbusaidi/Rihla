@@ -791,4 +791,106 @@ describe('deleteAccount', () => {
     expect(result.cascadeFailed).toEqual([]);
     expect((await db.doc(`deletionAudit/${deletedUid}`).get()).exists).toBe(false);
   });
+
+  // #294: a creator's member doc is keyed by a random uuid (createGroup writes
+  // .doc(uuid.v4()) with userId:uid), not by .doc(uid). The cascade must locate
+  // it by the `userId` FIELD, otherwise tx.delete(.doc(uid)) no-ops and the
+  // creator's displayName (PII) + dead-uid userId are orphaned in the group.
+  test('#294 deletes a uuid-keyed creator member doc and scrubs its PII (sole creator)', async () => {
+    const db = getFirestore();
+    const creatorDocId = 'creator-uuid-aaaa-bbbb';
+    await seedAuthUser();
+    await seedGroup('cg', [deletedUid], { createdBy: deletedUid });
+    // creator member doc keyed by a uuid, userId points at the deleted uid:
+    await db.doc(`groups/cg/members/${creatorDocId}`).set({
+      id: creatorDocId,
+      userId: deletedUid,
+      displayName: oldName,
+      role: 'CREATOR',
+      joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isShadow: false,
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.membersDeleted).toBe(1);
+
+    // the uuid-keyed creator doc is gone (not orphaned):
+    expect((await db.doc(`groups/cg/members/${creatorDocId}`).get()).exists).toBe(false);
+
+    // no member doc anywhere still carries the deleted uid:
+    const remaining = await db.collection('groups/cg/members').get();
+    for (const doc of remaining.docs) {
+      expect(doc.data().userId).not.toBe(deletedUid);
+      expectNoDeletedIdentity(doc.data());
+    }
+
+    // a tombstone replaced the identity; sole creator ⇒ group soft-deleted:
+    const tombstoneId = tombstoneIdFor(deletedUid);
+    const tombstone = await db.doc(`groups/cg/members/${tombstoneId}`).get();
+    expect(tombstone.data()).toMatchObject({
+      userId: tombstoneId,
+      displayName: 'Deleted member',
+      isTombstone: true,
+    });
+    const group = await db.doc('groups/cg').get();
+    expect(group.data()).toMatchObject({ createdBy: 'deleted-user', isDeleted: true });
+    expect(group.data()?.memberIds).not.toContain(deletedUid);
+  });
+
+  test('#294 deletes a uuid-keyed creator doc, leaving a real joiner survivor (no uid residue)', async () => {
+    const db = getFirestore();
+    const creatorDocId = 'creator-uuid-cccc-dddd';
+    await seedAuthUser();
+    await seedGroup('cg2', [deletedUid, otherUid], { createdBy: deletedUid });
+    await db.doc(`groups/cg2/members/${creatorDocId}`).set({
+      id: creatorDocId,
+      userId: deletedUid,
+      displayName: oldName,
+      role: 'CREATOR',
+      joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isShadow: false,
+    });
+    await seedMember('cg2', otherUid); // uid-keyed survivor
+    // creator sits in the financial universe (event payer) — money-adjacent axis:
+    await seedEvent('cg2', 'eventA');
+    await db.doc('groups/cg2/events/eventA/expenses/paid').set({
+      id: 'paid',
+      eventId: 'eventA',
+      createdBy: deletedUid,
+      payerParticipantId: deletedUid,
+      amountFils: 10000,
+      currency: 'OMR',
+      scope: 'custom',
+      splitMode: 'exact',
+      customSplitParticipants: [deletedUid, otherUid],
+      splitDistribution: { [deletedUid]: 5000, [otherUid]: 5000 },
+      description: 'expense',
+      note: 'note',
+      receiptUrl: 'receipts/x.png',
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-06T00:00:00.000Z',
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.membersDeleted).toBe(1);
+    expect((await db.doc(`groups/cg2/members/${creatorDocId}`).get()).exists).toBe(false);
+
+    // #249 money-adjacent: no live member doc still keyed under the deleted uid,
+    // so recomputeNet's liveMemberIds no longer treats the departed creator as live.
+    const remaining = await db.collection('groups/cg2/members').get();
+    for (const doc of remaining.docs) {
+      expect(doc.data().userId).not.toBe(deletedUid);
+    }
+
+    const survivor = await db.doc(`groups/cg2/members/${otherUid}`).get();
+    expect(survivor.data()).toMatchObject({ userId: otherUid, displayName: otherName });
+
+    const group = await db.doc('groups/cg2').get();
+    expect(group.data()).toMatchObject({ createdBy: otherUid, isDeleted: false });
+    expect(group.data()?.memberIds).toContain(otherUid);
+    expect(group.data()?.memberIds).not.toContain(deletedUid);
+  });
 });

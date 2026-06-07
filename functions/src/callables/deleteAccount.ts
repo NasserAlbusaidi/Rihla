@@ -454,7 +454,10 @@ async function processGroup(
   taken.delete(uid);
   const tombstoneId = deterministicTombstoneId(uid, taken);
 
-  const oldMemberData = membersSnap.docs.find((doc) => doc.id === uid)?.data();
+  // #294: match the deleted user's member doc by the `userId` FIELD, never the
+  // doc id — a creator's doc is keyed by a random uuid (createGroup writes
+  // .doc(uuid.v4()) with userId:uid), so doc.id===uid would miss it.
+  const oldMemberData = membersSnap.docs.find((doc) => doc.data().userId === uid)?.data();
   const eventsSnap = await groupRef.collection('events').get();
   const originalName = resolveOriginalName(oldMemberData, eventsSnap.docs, uid);
 
@@ -568,7 +571,10 @@ async function processGroup(
         `tombstone id ${tombstoneId} collides with a real member of ${groupRef.id}.`,
       );
     }
-    const oldTxMember = members.find((m) => m.id === uid)?.data;
+    // #294: match by the `userId` FIELD (creator docs are uuid-keyed). Delete
+    // ALL matched docs (mirrors leaveGroup); realistically one per userId.
+    const oldTxMembers = members.filter((m) => m.data.userId === uid);
+    const oldTxMember = oldTxMembers[0]?.data;
     const remainingRealCreator = oldestRealMemberUid(members, uid);
     const hasRealSurvivor = remainingRealCreator != null;
 
@@ -594,7 +600,9 @@ async function processGroup(
       isShadow: oldTxMember?.isShadow === true,
       isTombstone: true,
     });
-    tx.delete(groupRef.collection('members').doc(uid));
+    for (const m of oldTxMembers) {
+      tx.delete(groupRef.collection('members').doc(m.id));
+    }
     tx.update(groupRef, groupUpdate);
 
     return { membersDeleted: oldTxMember ? 1 : 0, orphaned: !hasRealSurvivor, applied: true };
