@@ -582,6 +582,41 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect((await groupSnap('g')).data()?.isDeleted).toBe(false);
   });
 
+  test('9d. legacy mixed-CASE single currency (omr + OMR) settled group still deletes (#261)', async () => {
+    // currencyOf returns the raw code; the net math uppercases internally, so an
+    // OMR group whose legacy/Admin docs mix 'omr' and 'OMR' is GENUINELY settled
+    // (net 0) and must NOT be falsely flagged multi-currency. Each personal-scope
+    // expense is paid AND owed by the same payer → net 0. Without case
+    // normalization the set is {'omr','OMR'} (size 2) and bricks this delete.
+    await seedGroup('g', { currency: 'OMR' });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 5000,
+      currency: 'omr', // lowercase legacy doc
+      payerParticipantId: OWNER,
+      scope: 'personal',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+    await seedExpense('groups/g/events/e1/expenses/x2', {
+      amountFils: 5000,
+      currency: 'OMR',
+      payerParticipantId: MEMBER,
+      createdBy: MEMBER,
+      scope: 'personal',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+    expect(res).toMatchObject({ mode: 'softDelete' });
+  });
+
   test('10. percent split happy path (70/30) settles to zero (HARD REQ #3)', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);

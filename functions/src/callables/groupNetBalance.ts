@@ -443,7 +443,12 @@ export async function recomputeNet(
 
     for (const e of expenses) {
       const currency = currencyOf(e.currency);
-      currencies.add(currency); // #261: track the contributing expense currency
+      // #261: normalize case — currencyOf returns the raw code, but the net math
+      // (currencyScale) uppercases internally, so a legacy/Admin group mixing
+      // 'omr' and 'OMR' decodes to a TRUE zero. Without toUpperCase the set would
+      // be {'omr','OMR'} (size 2) and falsely brick a genuinely-settled group —
+      // exactly the legacy/Admin population this guard exists to defend.
+      currencies.add(currency.toUpperCase());
       const amount = fromSubunits(amountFilsOf(e), currency);
       const payerId = e.payerParticipantId;
       if (typeof payerId === 'string' && paid.has(payerId)) {
