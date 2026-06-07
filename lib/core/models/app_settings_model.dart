@@ -9,6 +9,12 @@ class AppSettings {
   final String languageCode;
   final String currencyCode;
   final bool pushNotificationsEnabled;
+
+  /// True once we've proactively shown the OS notification-permission prompt at
+  /// a natural moment (first group join/create). Gates that prompt to fire
+  /// exactly once so a default-off [pushNotificationsEnabled] no longer hides
+  /// the system dialog forever (#288).
+  final bool notificationPromptSeen;
   final bool weeklyDigestEnabled;
   final String deviceName;
   final bool onboardingComplete;
@@ -19,6 +25,7 @@ class AppSettings {
     this.languageCode = 'en',
     this.currencyCode = 'OMR',
     this.pushNotificationsEnabled = false,
+    this.notificationPromptSeen = false,
     this.weeklyDigestEnabled = false,
     this.deviceName = '',
     this.onboardingComplete = false,
@@ -32,6 +39,7 @@ class AppSettings {
     String? languageCode,
     String? currencyCode,
     bool? pushNotificationsEnabled,
+    bool? notificationPromptSeen,
     bool? weeklyDigestEnabled,
     String? deviceName,
     bool? onboardingComplete,
@@ -43,6 +51,8 @@ class AppSettings {
       currencyCode: currencyCode ?? this.currencyCode,
       pushNotificationsEnabled:
           pushNotificationsEnabled ?? this.pushNotificationsEnabled,
+      notificationPromptSeen:
+          notificationPromptSeen ?? this.notificationPromptSeen,
       weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
       deviceName: deviceName ?? this.deviceName,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,

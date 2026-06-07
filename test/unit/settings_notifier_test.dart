@@ -122,6 +122,43 @@ void main() {
       },
     );
 
+    test('notificationPromptSeen defaults to false', () async {
+      final container = await makeContainer();
+      expect(
+        container.read(settingsProvider).notificationPromptSeen,
+        isFalse,
+      );
+    });
+
+    test(
+      'setNotificationPromptSeen updates and persists notificationPromptSeen',
+      () async {
+        final container = await makeContainer();
+        await container
+            .read(settingsProvider.notifier)
+            .setNotificationPromptSeen(true);
+        expect(
+          container.read(settingsProvider).notificationPromptSeen,
+          isTrue,
+        );
+
+        // Survives a reload from the same SharedPreferences store.
+        final reloaded = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+            deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
+          ],
+        );
+        addTearDown(reloaded.dispose);
+        expect(
+          reloaded.read(settingsProvider).notificationPromptSeen,
+          isTrue,
+        );
+      },
+    );
+
     test('settingsServiceProvider returns SettingsService instance', () async {
       final container = await makeContainer();
       final service = container.read(settingsServiceProvider);
