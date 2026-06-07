@@ -1152,6 +1152,89 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  // === #248 PR1: lastEditedBy field — permit + pin (== auth.uid, gated) + soft-delete carry ===
+
+  test('#248 expense create with lastEditedBy == auth.uid is allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expLE').set(
+      validExpense({ id: 'expLE', createdBy: 'member', lastEditedBy: 'member' }),
+    ));
+  });
+
+  test('#248 expense create with forged lastEditedBy is rejected', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expForge').set(
+      validExpense({ id: 'expForge', createdBy: 'member', lastEditedBy: 'owner' }),
+    ));
+  });
+
+  test('#248 legacy expense create WITHOUT lastEditedBy still allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expLegacy').set(
+      validExpense({ id: 'expLegacy', createdBy: 'member' }),
+    ));
+  });
+
+  test('#248 creator update setting lastEditedBy == auth.uid is allowed', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'owner',
+    }));
+  });
+
+  test('#248 creator update forging lastEditedBy != auth.uid is rejected', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'member',
+    }));
+  });
+
+  test('#248 old-client update WITHOUT touching lastEditedBy still allowed', async () => {
+    await seedExpense(); // createdBy: 'owner', no lastEditedBy
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500, // diff doesn't touch lastEditedBy -> pin skipped
+    }));
+  });
+
+  test('#248 creator soft-delete carrying lastEditedBy is allowed (validSoftDelete loosened)', async () => {
+    await seedExpense();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      lastEditedBy: 'owner',
+    }));
+  });
+
+  test('#248 non-creator still cannot update even with a valid own lastEditedBy (edit stays creator-only in PR1)', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'member',
+    }));
+  });
+
+  // B3 append-only guard. NOTE: stays green regardless of the validSoftDelete
+  // loosening, because settlement updates are dead-denied at `allow update: if
+  // false` (firestore.rules:735) — it does NOT detect drift in validSoftDelete
+  // (validEventSettlementUpdate at :677 is dead code). Kept to pin B3 against
+  // any future re-wiring of validEventSettlementUpdate.
+  test('#248 settlement soft-delete carrying lastEditedBy is still denied', async () => {
+    await seedEventSettlement(); // createdBy: 'owner'
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/events/e1/settlements/set1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      lastEditedBy: 'owner',
+    }));
+  });
+
   test('event settlements and group settlements validate participants and amount', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertSucceeds(member.doc('groups/g1/events/e1/settlements/set1').set(validSettlement()));
