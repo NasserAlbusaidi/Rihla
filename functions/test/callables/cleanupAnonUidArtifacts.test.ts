@@ -1,6 +1,6 @@
 import functionsTest from 'firebase-functions-test';
 import { getAuth } from 'firebase-admin/auth';
-import { DocumentReference, Transaction, getFirestore } from 'firebase-admin/firestore';
+import { DocumentReference, Transaction, WriteBatch, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 import { cleanupAnonUidArtifacts } from '../../src/callables/cleanupAnonUidArtifacts';
@@ -115,6 +115,10 @@ async function seedEvent(
 }
 
 beforeEach(async () => {
+  // #275: the new CLEANUP_BATCH_LIMIT seam is global-mutable; reset it every
+  // test (mirrors deleteAccount.test.ts) so a leak from a forced-chunking test
+  // cannot silently force multi-flush onto the money-conservation tests.
+  delete process.env.CLEANUP_BATCH_LIMIT;
   await clearFirestore();
   await clearFcmTokens();
   await clearAuthUsers();
@@ -724,8 +728,14 @@ describe('cleanupAnonUidArtifacts', () => {
   // #217: a forced activity-write failure must enter the cascadeFailed gate
   // (#46) — preserve the old anon Auth user + the cleanup intent for retry. The
   // existing per-group-failure test (above) throws in the READ phase, before any
-  // activity write, so it does not cover this surface; spy tx.update on the
-  // activity ref to force a write-phase abort.
+  // activity write, so it does not cover this surface.
+  // #275: activity writes now go through the Phase B BatchWriter, not a
+  // transaction, so the spy retargets to WriteBatch.prototype.commit (the
+  // mechanism deleteAccount.test.ts already proves works; there is no
+  // WriteBatch.prototype.update spy precedent). The seeded group has ONLY an
+  // activity-log doc (no expenses/settlements), so the single Phase B flush IS
+  // the activity write — rejecting that commit is precisely an activity-write
+  // failure. Assertions unchanged.
   test('#217 activity write failure gates auth delete + preserves intent', async () => {
     const db = getFirestore();
     await seedAuthUsers();
@@ -745,14 +755,10 @@ describe('cleanupAnonUidArtifacts', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
     });
 
-    const originalUpdate = Transaction.prototype.update;
     const spy = jest
-      .spyOn(Transaction.prototype, 'update')
-      .mockImplementation(function (this: Transaction, ref: any, ...rest: any[]) {
-        if (typeof ref?.path === 'string' && ref.path.includes('activity_logs')) {
-          throw new Error('forced activity update failure');
-        }
-        return (originalUpdate as any).call(this, ref, ...rest);
+      .spyOn(WriteBatch.prototype, 'commit')
+      .mockImplementation(function (this: WriteBatch) {
+        return Promise.reject(new Error('forced activity batch commit failure'));
       });
 
     try {
@@ -946,5 +952,174 @@ describe('cleanupAnonUidArtifacts', () => {
     expect((await db.doc('joinAttempts/old-anon-uid').get()).exists).toBe(false);
     expect((await db.doc('recoveryCleanupIntents/old-anon-uid').get()).exists)
       .toBe(false);
+  });
+
+  // #275: the per-group cascade is now a chunked BatchWriter (Phase B child
+  // scrubs) + a bounded transactional Phase C (identity retirement), escaping
+  // the 500-write-per-transaction cliff. These three tests pin the convergence
+  // contract the non-atomic execution relies on.
+
+  // ARCHITECTURE-DISTINGUISHING RED: on the old single-transaction code, forcing
+  // the group-doc update (the FIRST write of the one transaction) to fail rolled
+  // back EVERYTHING — the splitDistribution sum never committed. On the rewrite,
+  // Phase B's batch already committed the sum before Phase C's identity write
+  // fails, so the sum is durable and the retry must NOT apply it a second time.
+  test('#275 torn identity write keeps the batched split sum; retry does not double-sum', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid', 'new-uid', 'owner']);
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old' });
+    await seedMember('g1', 'new-uid', { displayName: 'New' });
+    await seedEvent('g1', 'e1', {
+      participantIds: ['old-anon-uid', 'new-uid', 'owner'],
+      participantNames: { 'old-anon-uid': 'Old', 'new-uid': 'New', owner: 'Owner' },
+    });
+    await db.doc('groups/g1/events/e1/expenses/x1').set({
+      id: 'x1',
+      createdBy: 'owner',
+      payerParticipantId: 'owner',
+      splitDistribution: { 'old-anon-uid': 1000, 'new-uid': 500, owner: 1500 },
+      isDeleted: false,
+    });
+
+    // Reject the group-doc update. On the rewrite this is the Phase C
+    // transaction (Transaction.prototype.update on groups/g1), AFTER Phase B's
+    // batch committed; on the old code it is the first tx.update of the single
+    // transaction, taking the whole cascade (and the sum) down with it.
+    const originalUpdate = Transaction.prototype.update;
+    const spy = jest
+      .spyOn(Transaction.prototype, 'update')
+      .mockImplementation(function (this: Transaction, ref: any, ...rest: any[]) {
+        if (typeof ref?.path === 'string' && ref.path === 'groups/g1') {
+          throw new Error('forced group-update failure');
+        }
+        return (originalUpdate as any).call(this, ref, ...rest);
+      });
+
+    let firstResult: any;
+    try {
+      firstResult = await cleanupCall();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(firstResult.cascadeFailed).toEqual(['g1']);
+    expect(firstResult.authUserDeleted).toBe(false);
+
+    // The batched sum survives the failed identity write.
+    const x1AfterFail = (await db.doc('groups/g1/events/e1/expenses/x1').get()).data();
+    const distAfterFail = x1AfterFail?.splitDistribution as Record<string, number>;
+    expect(distAfterFail['new-uid']).toBe(1500);
+    expect(distAfterFail['old-anon-uid']).toBeUndefined();
+    // Group stays query-visible (oldUid still a member) so the retry converges.
+    expect((await db.doc('groups/g1').get()).data()?.memberIds).toContain('old-anon-uid');
+    await expect(getAuth().getUser('old-anon-uid')).resolves.toBeDefined();
+
+    // Retry, no spy → converges with NO double-sum.
+    const secondResult = await cleanupCall() as {
+      cascadeFailed: string[];
+      authUserDeleted: boolean;
+    };
+    expect(secondResult.cascadeFailed).toEqual([]);
+    expect(secondResult.authUserDeleted).toBe(true);
+
+    const x1Final = (await db.doc('groups/g1/events/e1/expenses/x1').get()).data();
+    const distFinal = x1Final?.splitDistribution as Record<string, number>;
+    expect(distFinal['new-uid']).toBe(1500); // NOT 2000 — mergeUidMapKey saw no oldUid key
+    expect(Object.values(distFinal).reduce((a, b) => a + b, 0)).toBe(3000);
+    expect((await db.doc('groups/g1').get()).data()?.memberIds).toEqual(['new-uid', 'owner']);
+  });
+
+  // A cascade spanning MULTIPLE batch flushes (forced via the low CLEANUP_BATCH_
+  // LIMIT seam) produces the identical fully-migrated end state — the testable
+  // surrogate for the un-seedable 500-doc cliff (mirrors deleteAccount's
+  // DELETE_ACCOUNT_BATCH_LIMIT='2' torn-multi-batch test).
+  test('#275 cascade spanning multiple batch flushes still converges', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid', 'owner'], { createdBy: 'old-anon-uid' });
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old' });
+    await seedEvent('g1', 'e1', {
+      participantIds: ['old-anon-uid', 'owner'],
+      participantNames: { 'old-anon-uid': 'Old', owner: 'Owner' },
+    });
+    for (let i = 0; i < 6; i += 1) {
+      await db.doc(`groups/g1/events/e1/expenses/x${i}`).set({
+        id: `x${i}`,
+        createdBy: 'old-anon-uid',
+        payerParticipantId: 'old-anon-uid',
+        splitDistribution: { 'old-anon-uid': 1000, owner: 1000 },
+        isDeleted: false,
+      });
+    }
+
+    process.env.CLEANUP_BATCH_LIMIT = '3';
+    try {
+      await expect(cleanupCall()).resolves.toMatchObject({
+        groupsProcessed: 1,
+        cascadeFailed: [],
+        authUserDeleted: true,
+      });
+    } finally {
+      delete process.env.CLEANUP_BATCH_LIMIT;
+    }
+
+    const group = await db.doc('groups/g1').get();
+    expect(group.data()?.memberIds).toEqual(['new-uid', 'owner']);
+    expect(group.data()?.createdBy).toBe('new-uid');
+    for (let i = 0; i < 6; i += 1) {
+      const x = (await db.doc(`groups/g1/events/e1/expenses/x${i}`).get()).data();
+      const dist = x?.splitDistribution as Record<string, number>;
+      expect(x?.payerParticipantId).toBe('new-uid');
+      expect(x?.createdBy).toBe('new-uid');
+      expect(dist['new-uid']).toBe(1000);
+      expect(dist['old-anon-uid']).toBeUndefined();
+    }
+    await expect(getAuth().getUser('old-anon-uid'))
+      .rejects.toMatchObject({ code: 'auth/user-not-found' });
+  });
+
+  // ORDERING (§3b): the identity write that removes oldUid from memberIds is
+  // Phase C, AFTER Phase B's flush. A Phase B child-write failure must leave the
+  // group query-visible (oldUid still in memberIds) so the #46 retry converges.
+  test('#275 a Phase B child-write failure leaves the group query-visible for retry', async () => {
+    const db = getFirestore();
+    await seedAuthUsers();
+    await seedCleanupIntent();
+    await seedGroup('g1', ['old-anon-uid'], { createdBy: 'owner' });
+    await seedMember('g1', 'old-anon-uid', { displayName: 'Old' });
+    await seedEvent('g1', 'e1', {
+      participantIds: ['old-anon-uid', 'owner'],
+      participantNames: { 'old-anon-uid': 'Old', owner: 'Owner' },
+    });
+    await db.doc('groups/g1/events/e1/expenses/x1').set({
+      id: 'x1',
+      createdBy: 'old-anon-uid',
+      payerParticipantId: 'old-anon-uid',
+      splitDistribution: { 'old-anon-uid': 1000, owner: 1000 },
+      isDeleted: false,
+    });
+
+    const spy = jest
+      .spyOn(WriteBatch.prototype, 'commit')
+      .mockImplementation(function (this: WriteBatch) {
+        return Promise.reject(new Error('forced batch commit failure'));
+      });
+
+    let result: any;
+    try {
+      result = await cleanupCall();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(result.cascadeFailed).toEqual(['g1']);
+    expect(result.authUserDeleted).toBe(false);
+    // memberIds untouched: Phase C (the identity write) never ran.
+    expect((await db.doc('groups/g1').get()).data()?.memberIds).toEqual(['old-anon-uid']);
+    await expect(getAuth().getUser('old-anon-uid')).resolves.toBeDefined();
+    expect((await db.doc('recoveryCleanupIntents/old-anon-uid').get()).exists).toBe(true);
   });
 });

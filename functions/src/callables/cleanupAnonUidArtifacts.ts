@@ -3,12 +3,56 @@ import {
   DocumentData,
   DocumentReference,
   FieldValue,
+  Firestore,
   Timestamp,
+  WriteBatch,
   getFirestore,
 } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
+
+// #275: chunked batch writer (≤450-op auto-flush) so the per-group recovery
+// cascade no longer rides Firestore's 500-write-per-transaction cliff. Local to
+// this callable with its OWN test seam (CLEANUP_BATCH_LIMIT) so the deleteAccount
+// / deleteGroup cascades stay untouched — mirrors deleteGroup.ts's deliberate
+// per-callable copy. Only `update` is needed (Phase B never set/deletes; the
+// member copy/delete is the Phase C transaction).
+// LIMIT GUARD: only event updates here carry a serverTimestamp transform (which
+// counts as +1 against the 500-write commit cap); expense/settlement/activity
+// updates carry none, so 450 (matching deleteAccount/deleteGroup) is safe. If a
+// transform is ever added to a high-volume write, halve this to <=250.
+const DEFAULT_BATCH_LIMIT = 450;
+
+function resolveBatchLimit(): number {
+  return Number(process.env.CLEANUP_BATCH_LIMIT) || DEFAULT_BATCH_LIMIT;
+}
+
+class BatchWriter {
+  private batch: WriteBatch;
+  private writes = 0;
+  private readonly limit: number;
+
+  constructor(private readonly db: Firestore) {
+    this.batch = db.batch();
+    this.limit = resolveBatchLimit();
+  }
+
+  async update(ref: DocumentReference, data: DocumentData): Promise<void> {
+    this.batch.update(ref, data);
+    this.writes += 1;
+    if (this.writes >= this.limit) {
+      await this.flush();
+    }
+  }
+
+  async flush(): Promise<void> {
+    if (this.writes === 0) return;
+    await this.batch.commit();
+    this.batch = this.db.batch();
+    this.writes = 0;
+  }
+}
 
 export interface CleanupAnonUidArtifactsInput {
   oldUid: string;
@@ -260,232 +304,261 @@ async function assertCleanupIntent(
   return intentRef;
 }
 
+// #275: the per-group cascade is chunked into three phases to escape the
+// 500-write-per-transaction cliff (#216 financial + #217 activity writes both
+// rode it). MIGRATION SEMANTICS ARE UNCHANGED from the prior single transaction
+// — only the execution mechanism changes:
+//   Phase A — non-transactional reads + membership guard.
+//   Phase B — idempotent child scrubs (events + expenses + settlements +
+//             activity) staged into a BatchWriter that auto-flushes at <=450.
+//   Phase C — a bounded transaction retires the member identity (member doc
+//             copy/delete + memberIds/createdBy update).
+// CONVERGENCE CONTRACT (#46): the BatchWriter is non-atomic across flushes, so
+// this relies on every op being idempotent + convergent-on-retry (which
+// cleanupAnonUidArtifacts already is — splitDistribution's sum-merge is gated on
+// the oldUid key still being present, so a torn-batch retry never double-sums).
+// Phase C's memberIds removal — the write that drops the group from the handler's
+// `memberIds array-contains oldUid` retry query — MUST land only AFTER Phase B is
+// durable (writer.flush), so a torn Phase B keeps the group query-visible and the
+// retry converges. This mirrors deleteAccount's Phase B -> Phase C ordering.
 async function processGroup(
   groupRef: DocumentReference,
   oldUid: string,
   newUid: string,
 ): Promise<string[]> {
   const db = getFirestore();
-  return db.runTransaction(async (tx) => {
-    // #294: a creator's member doc is keyed by a random uuid (userId:oldUid), so
-    // the old .doc(oldUid) point read missed it. Read the whole members
-    // collection (still in the read phase, before any write) and match by the
-    // `userId` FIELD. newMemberRef stays the copy TARGET, normalizing a recovered
-    // creator's doc to .doc(newUid).
-    const newMemberRef = groupRef.collection('members').doc(newUid);
-    const [groupSnap, membersSnap, eventsSnap] = await Promise.all([
-      tx.get(groupRef),
-      tx.get(groupRef.collection('members')),
-      tx.get(groupRef.collection('events')),
-    ]);
+  const newMemberRef = groupRef.collection('members').doc(newUid);
 
-    if (!groupSnap.exists) {
-      return [];
+  // ---- Phase A: reads + membership guard (non-transactional) ----
+  const [groupSnap, eventsSnap] = await Promise.all([
+    groupRef.get(),
+    groupRef.collection('events').get(),
+  ]);
+  if (!groupSnap.exists) {
+    return [];
+  }
+  const groupData = groupSnap.data() ?? {};
+  const memberIds = getStringArray(groupData, 'memberIds', `groups/${groupRef.id}`);
+  if (!memberIds.includes(oldUid)) {
+    return [];
+  }
+  const activeEventSnaps = eventsSnap.docs.filter(
+    (eventSnap) => eventSnap.data().isDeleted !== true,
+  );
+
+  // #275: pre-fetch every child collection in parallel (reads need not share the
+  // writer's flush cadence — only writes do; keeps the dense-account read
+  // latency the 540s budget assumes). Active-events-only for
+  // expenses/settlements/activity, mirroring the pre-rewrite policy; participant
+  // migration below still covers ALL events.
+  const [expenseSnaps, eventSettlementSnaps, eventActivitySnaps] = await Promise.all([
+    Promise.all(activeEventSnaps.map((e) => e.ref.collection('expenses').get())),
+    Promise.all(activeEventSnaps.map((e) => e.ref.collection('settlements').get())),
+    Promise.all(activeEventSnaps.map((e) => e.ref.collection('activity_logs').get())),
+  ]);
+  const groupSettlementsSnap = await groupRef.collection('settlements').get();
+  const groupActivitySnap = await groupRef.collection('activity').get();
+
+  // ---- Phase B: idempotent child scrubs (batched, may span auto-flushes) ----
+  // #275: for...of / index loops, NEVER Array.forEach — writer.update is async
+  // (it awaits the auto-flush at the limit); a forEach callback swallows that
+  // promise so the <=450 gate would silently no-op and writes would race.
+  const writer = new BatchWriter(db);
+  const actions: string[] = [];
+
+  for (const eventSnap of eventsSnap.docs) {
+    const eventPath = `groups/${groupRef.id}/events/${eventSnap.id}`;
+    const eventData = eventSnap.data() ?? {};
+    const participantIds = getStringArray(eventData, 'participantIds', eventPath);
+    const participantNames = getStringMap(eventData, 'participantNames', eventPath);
+    const eventUpdate: Record<string, unknown> = {};
+
+    if (participantIds.includes(oldUid)) {
+      eventUpdate.participantIds = replaceUid(participantIds, oldUid, newUid);
     }
-
-    const groupData = groupSnap.data() ?? {};
-    const memberIds = getStringArray(groupData, 'memberIds', `groups/${groupRef.id}`);
-    if (!memberIds.includes(oldUid)) {
-      return [];
+    if (Object.prototype.hasOwnProperty.call(participantNames, oldUid)) {
+      eventUpdate.participantNames = {
+        ...participantNames,
+        [newUid]: participantNames[oldUid],
+      };
+      delete (eventUpdate.participantNames as Record<string, string>)[oldUid];
     }
-
-    const activeEventSnaps = eventsSnap.docs.filter(
-      (eventSnap) => eventSnap.data().isDeleted !== true,
-    );
-    const expenseSnaps = await Promise.all(
-      activeEventSnaps.map((eventSnap) => tx.get(eventSnap.ref.collection('expenses'))),
-    );
-    // #216: settlement reads MUST stay in the read phase — every tx.get below
-    // precedes the first write (tx.update(groupRef)), per Firestore's
-    // all-reads-before-writes transaction rule.
-    const eventSettlementSnaps = await Promise.all(
-      activeEventSnaps.map((eventSnap) => tx.get(eventSnap.ref.collection('settlements'))),
-    );
-    const groupSettlementsSnap = await tx.get(groupRef.collection('settlements'));
-    // #217: activity reads MUST also stay in the read phase (all-reads-before-
-    // writes). Event activity_logs is migrated active-events-only, mirroring the
-    // expense/settlement active-only policy above.
-    const eventActivitySnaps = await Promise.all(
-      activeEventSnaps.map((eventSnap) => tx.get(eventSnap.ref.collection('activity_logs'))),
-    );
-    const groupActivitySnap = await tx.get(groupRef.collection('activity'));
-    const actions: string[] = [];
-    const nextMemberIds = replaceUid(memberIds, oldUid, newUid);
-    const groupUpdate: Record<string, unknown> = {
-      memberIds: nextMemberIds,
-      updatedAt: FieldValue.serverTimestamp(),
-    };
-    if (groupData.createdBy === oldUid) {
-      groupUpdate.createdBy = newUid;
-      actions.push('group.createdBy');
+    if (eventData.isDeleted !== true && eventData.createdBy === oldUid) {
+      eventUpdate.createdBy = newUid;
     }
-    tx.update(groupRef, groupUpdate);
-    actions.push(
-      memberIds.includes(newUid)
-        ? 'group.memberIds.removeOldUid'
-        : 'group.memberIds.replaceOldUid',
-    );
+    if (Object.keys(eventUpdate).length > 0) {
+      eventUpdate.updatedAt = FieldValue.serverTimestamp();
+      await writer.update(eventSnap.ref, eventUpdate);
+      actions.push(`events.${eventSnap.id}`);
+    }
+  }
 
-    // #294: match by the `userId` FIELD; delete ALL matched docs (mirrors
-    // deleteAccount Phase C + leaveGroup), copy from the deterministic first.
+  // #216: migrate the FINANCIAL attribution of each active expense in each active
+  // event — createdBy (ownership), payerParticipantId (feeds totalPaid +
+  // eventFinancialUids), customSplitParticipants (custom-scope head set, dedup on
+  // collision via replaceUid), and splitDistribution keys (owed allocation,
+  // sum-merge on collision). Soft-deleted expenses are skipped: they never feed
+  // balances, so their oldUid refs are an inert residual.
+  for (let index = 0; index < activeEventSnaps.length; index += 1) {
+    const eventSnap = activeEventSnaps[index];
+    for (const expenseSnap of expenseSnaps[index].docs) {
+      const expenseData = expenseSnap.data() ?? {};
+      if (expenseData.isDeleted === true) {
+        continue;
+      }
+      const expenseUpdate: Record<string, unknown> = {};
+      if (expenseData.createdBy === oldUid) {
+        expenseUpdate.createdBy = newUid;
+      }
+      if (expenseData.payerParticipantId === oldUid) {
+        expenseUpdate.payerParticipantId = newUid;
+      }
+      if (
+        Array.isArray(expenseData.customSplitParticipants)
+        && (expenseData.customSplitParticipants as unknown[]).includes(oldUid)
+      ) {
+        expenseUpdate.customSplitParticipants = replaceUid(
+          expenseData.customSplitParticipants as string[],
+          oldUid,
+          newUid,
+        );
+      }
+      const mergedDistribution = mergeUidMapKey(
+        expenseData.splitDistribution,
+        oldUid,
+        newUid,
+      );
+      if (mergedDistribution?.changed) {
+        expenseUpdate.splitDistribution = mergedDistribution.value;
+      }
+      if (Object.keys(expenseUpdate).length > 0) {
+        await writer.update(expenseSnap.ref, expenseUpdate);
+        actions.push(`expenses.${eventSnap.id}.${expenseSnap.id}`);
+      }
+    }
+  }
+
+  // #216: migrate event-level settlements (per active event) and group-level
+  // settlements. Settlements are append-only live financial records read by the
+  // balance engine; an un-migrated payer/recipient id strands the recovered
+  // user's money under the about-to-be-deleted oldUid. These writes go THROUGH
+  // the `allow update: if false` append-only rule via the Admin SDK
+  // (rules-bypassing) — clients still cannot mutate settlements.
+  for (let index = 0; index < activeEventSnaps.length; index += 1) {
+    const eventSnap = activeEventSnaps[index];
+    for (const settlementSnap of eventSettlementSnaps[index].docs) {
+      const update = settlementMigrationUpdate(settlementSnap.data() ?? {}, oldUid, newUid);
+      if (update) {
+        await writer.update(settlementSnap.ref, update);
+        actions.push(`settlements.${eventSnap.id}.${settlementSnap.id}`);
+      }
+    }
+  }
+  for (const settlementSnap of groupSettlementsSnap.docs) {
+    const update = settlementMigrationUpdate(settlementSnap.data() ?? {}, oldUid, newUid);
+    if (update) {
+      await writer.update(settlementSnap.ref, update);
+      actions.push(`settlements.group.${settlementSnap.id}`);
+    }
+  }
+
+  // #217: migrate the ACTIVITY surface — event activity_logs (per active event)
+  // and group activity. MIGRATE semantics: repoint actorId/targetParticipantId +
+  // UID-bearing metadata VALUES; leave actorName/logText/description (same
+  // person). Activity is non-financial, so an un-migrated ref is an inert orphan;
+  // we migrate it for completeness. These writes go THROUGH the activity
+  // `allow update: if false` rule via the Admin SDK.
+  for (let index = 0; index < activeEventSnaps.length; index += 1) {
+    const eventSnap = activeEventSnaps[index];
+    for (const activitySnap of eventActivitySnaps[index].docs) {
+      const update = activityMigrationUpdate(activitySnap.data() ?? {}, oldUid, newUid, true);
+      if (update) {
+        await writer.update(activitySnap.ref, update);
+        actions.push(`activity_logs.${eventSnap.id}.${activitySnap.id}`);
+      }
+    }
+  }
+  for (const activitySnap of groupActivitySnap.docs) {
+    const update = activityMigrationUpdate(activitySnap.data() ?? {}, oldUid, newUid, false);
+    if (update) {
+      await writer.update(activitySnap.ref, update);
+      actions.push(`activity.${activitySnap.id}`);
+    }
+  }
+
+  await writer.flush();
+
+  // ---- Phase C: transactional identity retirement (after B is durable) ----
+  // Bounded writes (1 group update + <=1 member copy + N member deletes), so it
+  // cannot itself hit the cliff. Re-reads memberIds: a clean skip if oldUid raced
+  // out between Phase A and here (double-invocation), else atomic retirement.
+  // #294: match the member doc by the `userId` FIELD (a creator's doc is keyed by
+  // a random uuid), copy from the deterministic first, delete ALL matches.
+  const retired = await db.runTransaction(async (tx) => {
+    const gSnap = await tx.get(groupRef);
+    if (!gSnap.exists) {
+      return { applied: false, createdByMigrated: false, copied: false, deleted: 0, removed: false };
+    }
+    const gData = gSnap.data() ?? {};
+    const currentMemberIds = getStringArray(gData, 'memberIds', `groups/${groupRef.id}`);
+    if (!currentMemberIds.includes(oldUid)) {
+      return { applied: false, createdByMigrated: false, copied: false, deleted: 0, removed: false };
+    }
+    const membersSnap = await tx.get(groupRef.collection('members'));
     const oldMemberDocs = membersSnap.docs.filter((d) => d.data().userId === oldUid);
     const newMemberExists = membersSnap.docs.some((d) => d.data().userId === newUid);
+
+    const groupUpdate: Record<string, unknown> = {
+      memberIds: replaceUid(currentMemberIds, oldUid, newUid),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    const createdByMigrated = gData.createdBy === oldUid;
+    if (createdByMigrated) {
+      groupUpdate.createdBy = newUid;
+    }
+
+    let copied = false;
     if (!newMemberExists && oldMemberDocs.length > 0) {
       tx.set(newMemberRef, {
         ...(oldMemberDocs[0].data() ?? {}),
         id: newUid,
         userId: newUid,
       });
-      actions.push('members.copyOldToNew');
+      copied = true;
     }
     for (const d of oldMemberDocs) {
       tx.delete(d.ref);
+    }
+    tx.update(groupRef, groupUpdate);
+    return {
+      applied: true,
+      createdByMigrated,
+      copied,
+      deleted: oldMemberDocs.length,
+      removed: currentMemberIds.includes(newUid),
+    };
+  });
+
+  // Observability-equivalent action strings (set preserved; order is now
+  // child-first then identity, since Phase C runs last — no consumer reads order).
+  if (retired.applied) {
+    if (retired.createdByMigrated) {
+      actions.push('group.createdBy');
+    }
+    actions.push(
+      retired.removed
+        ? 'group.memberIds.removeOldUid'
+        : 'group.memberIds.replaceOldUid',
+    );
+    if (retired.copied) {
+      actions.push('members.copyOldToNew');
+    }
+    for (let i = 0; i < retired.deleted; i += 1) {
       actions.push('members.deleteOld');
     }
+  }
 
-    for (const eventSnap of eventsSnap.docs) {
-      const eventPath = `groups/${groupRef.id}/events/${eventSnap.id}`;
-      const eventData = eventSnap.data() ?? {};
-      const participantIds = getStringArray(eventData, 'participantIds', eventPath);
-      const participantNames = getStringMap(eventData, 'participantNames', eventPath);
-      const eventUpdate: Record<string, unknown> = {};
-
-      if (participantIds.includes(oldUid)) {
-        eventUpdate.participantIds = replaceUid(participantIds, oldUid, newUid);
-      }
-      if (Object.prototype.hasOwnProperty.call(participantNames, oldUid)) {
-        eventUpdate.participantNames = {
-          ...participantNames,
-          [newUid]: participantNames[oldUid],
-        };
-        delete (eventUpdate.participantNames as Record<string, string>)[oldUid];
-      }
-      if (eventData.isDeleted !== true && eventData.createdBy === oldUid) {
-        eventUpdate.createdBy = newUid;
-      }
-      if (Object.keys(eventUpdate).length > 0) {
-        eventUpdate.updatedAt = FieldValue.serverTimestamp();
-        tx.update(eventSnap.ref, eventUpdate);
-        actions.push(`events.${eventSnap.id}`);
-      }
-    }
-
-    // #216: migrate the FINANCIAL attribution of each active expense in each
-    // active event — createdBy (ownership), payerParticipantId (feeds totalPaid
-    // + eventFinancialUids), customSplitParticipants (custom-scope head set,
-    // dedup on collision via replaceUid), and splitDistribution keys (owed
-    // allocation, sum-merge on collision). Soft-deleted expenses are skipped:
-    // they never feed balances (the read path filters isDeleted=false), so their
-    // oldUid refs are an inert residual — same active-only policy as createdBy.
-    activeEventSnaps.forEach((eventSnap, index) => {
-      for (const expenseSnap of expenseSnaps[index].docs) {
-        const expenseData = expenseSnap.data() ?? {};
-        if (expenseData.isDeleted === true) {
-          continue;
-        }
-        const expenseUpdate: Record<string, unknown> = {};
-        if (expenseData.createdBy === oldUid) {
-          expenseUpdate.createdBy = newUid;
-        }
-        if (expenseData.payerParticipantId === oldUid) {
-          expenseUpdate.payerParticipantId = newUid;
-        }
-        if (
-          Array.isArray(expenseData.customSplitParticipants)
-          && (expenseData.customSplitParticipants as unknown[]).includes(oldUid)
-        ) {
-          expenseUpdate.customSplitParticipants = replaceUid(
-            expenseData.customSplitParticipants as string[],
-            oldUid,
-            newUid,
-          );
-        }
-        const mergedDistribution = mergeUidMapKey(
-          expenseData.splitDistribution,
-          oldUid,
-          newUid,
-        );
-        if (mergedDistribution?.changed) {
-          expenseUpdate.splitDistribution = mergedDistribution.value;
-        }
-        if (Object.keys(expenseUpdate).length > 0) {
-          tx.update(expenseSnap.ref, expenseUpdate);
-          actions.push(`expenses.${eventSnap.id}.${expenseSnap.id}`);
-        }
-      }
-    });
-
-    // #216: migrate event-level settlements (per active event) and group-level
-    // settlements. Settlements are append-only live financial records read by
-    // the balance engine; an un-migrated payer/recipient id strands the
-    // recovered user's money under the about-to-be-deleted oldUid. The whole
-    // collection is read (settlement docs' own isDeleted is not gated — they are
-    // append-only, so none are effectively deleted, matching deleteAccount).
-    // This tx.update writes THROUGH the `allow update: if false` append-only
-    // rule via the Admin SDK (rules-bypassing) — clients still cannot mutate
-    // settlements; only this server identity-migration can.
-    activeEventSnaps.forEach((eventSnap, index) => {
-      for (const settlementSnap of eventSettlementSnaps[index].docs) {
-        const update = settlementMigrationUpdate(
-          settlementSnap.data() ?? {},
-          oldUid,
-          newUid,
-        );
-        if (update) {
-          tx.update(settlementSnap.ref, update);
-          actions.push(`settlements.${eventSnap.id}.${settlementSnap.id}`);
-        }
-      }
-    });
-    for (const settlementSnap of groupSettlementsSnap.docs) {
-      const update = settlementMigrationUpdate(
-        settlementSnap.data() ?? {},
-        oldUid,
-        newUid,
-      );
-      if (update) {
-        tx.update(settlementSnap.ref, update);
-        actions.push(`settlements.group.${settlementSnap.id}`);
-      }
-    }
-
-    // #217: migrate the ACTIVITY surface — event activity_logs (per active event)
-    // and group activity. MIGRATE semantics: repoint actorId/targetParticipantId
-    // + UID-bearing metadata VALUES; leave actorName/logText/description (same
-    // person). Activity is non-financial (the balance engine never reads it), so
-    // an un-migrated ref is an inert orphan, not a money bug — but we migrate it
-    // for completeness (same defect class as #216). Like the settlement loops,
-    // these tx.update calls write THROUGH the activity `allow update: if false`
-    // rule via the Admin SDK; clients still cannot mutate activity.
-    activeEventSnaps.forEach((eventSnap, index) => {
-      for (const activitySnap of eventActivitySnaps[index].docs) {
-        const update = activityMigrationUpdate(
-          activitySnap.data() ?? {},
-          oldUid,
-          newUid,
-          true,
-        );
-        if (update) {
-          tx.update(activitySnap.ref, update);
-          actions.push(`activity_logs.${eventSnap.id}.${activitySnap.id}`);
-        }
-      }
-    });
-    for (const activitySnap of groupActivitySnap.docs) {
-      const update = activityMigrationUpdate(
-        activitySnap.data() ?? {},
-        oldUid,
-        newUid,
-        false,
-      );
-      if (update) {
-        tx.update(activitySnap.ref, update);
-        actions.push(`activity.${activitySnap.id}`);
-      }
-    }
-
-    return actions;
-  });
+  return actions;
 }
 
 export const cleanupAnonUidArtifacts = onCall<
