@@ -15,6 +15,7 @@ Append newest at the **bottom**.
 | Date | Deployed SHA | What shipped | Verify |
 |------|--------------|--------------|--------|
 | 2026-06-06 | `e08b929` | #290 server-authoritative leaveGroup callable + `validSelfLeave` rules drop; also-shipped undeployed #170 recovery TTL + #76 deletionReaper | prod-state PASS; first server-authoritative leave live |
+| 2026-06-07 | `f105862` | #318 server-authoritative `removeMember` callable (+ creator-remove rules drop), #294 member-doc lookup by `userId` field in `deleteAccount`/`cleanupAnonUidArtifacts`, #275 `cleanupAnonUidArtifacts` chunked BatchWriter (off the 500-write transaction cliff) | prod-state PASS; `removeMember` created, all 12 functions deployed |
 
 <!--
 Seed row reconstructed from memory on 2026-06-07. e08b929 = PR #319 merge (the
