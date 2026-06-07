@@ -85,3 +85,20 @@ npx --yes "firebase-tools@${FIREBASE_TOOLS_VERSION}" deploy \
   --only firestore:rules,firestore:indexes,functions,hosting
 
 bash tool/check_firebase_prod_state.sh "$PROJECT_ID"
+
+# Deploy + prod-state verify both passed (set -e would have aborted otherwise).
+# Advance the source-of-truth marker so tool/pending_deploy.sh reflects reality.
+# This is an intentionally MOVING tag, not an immutable release tag — force is expected.
+deployed_sha="$(git rev-parse HEAD)"
+git tag -f backend-deployed "$deployed_sha" >/dev/null
+if git push --force origin "refs/tags/backend-deployed" 2>/dev/null; then
+  echo "Marked ${deployed_sha} as deployed (tag 'backend-deployed' moved + pushed)."
+else
+  echo "WARNING: deploy succeeded but pushing the 'backend-deployed' tag failed."
+  echo "Push it manually so tool/pending_deploy.sh stays accurate:"
+  echo "  git push --force origin refs/tags/backend-deployed"
+fi
+echo
+echo "Next (the deploy-ceremony skill automates this):"
+echo "  - append a row to docs/DEPLOY-LEDGER.md (human history)"
+echo "  - clear any stale '⚠️ NOT deployed' notes in memory / docs/PRODUCTION-READINESS.md"
