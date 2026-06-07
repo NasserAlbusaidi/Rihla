@@ -154,25 +154,21 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Pending backend deploy (2026-06-07) — merged to `main`, NOT yet in prod.**
-    The "Latest gate result (2026-06-01…)" above is stale (`deleteGroup` shipped
-    2026-06-02 and `leaveGroup` #290 shipped 2026-06-06). Since the 2026-06-06
-    deploy, these backend changes have merged and MUST ride the next deploy
-    ceremony **before the next client release**:
-    - **#318** (`6af0594`) — new `removeMember` Cloud callable + `firestore.rules`
-      drops `validCreatorRemoveMember` / `removesExactlyOneExistingMember` from
-      the group `allow update`. ⚠️ Deploy-first, like #290: until the rules drop
-      is live in prod **and** a client carrying the `removeMember` callable ships,
-      old v1.4.0 clients get `PERMISSION_DENIED` on direct creator-remove (the
-      direct path is now rules-locked). `removeMember` is in
-      `tool/list_expected_functions.sh`, so the deploy-drift check enforces it.
+  - **Backend deploy (2026-06-07, `f105862`) — DEPLOYED to prod, prod-state PASS.**
+    The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-07
+    deploy ceremony the `backend-deployed` tag is `f105862` and
+    `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Shipped in
+    this deploy (see `docs/DEPLOY-LEDGER.md`):
+    - **#318** (`6af0594`) — `removeMember` Cloud callable (created in prod) +
+      `firestore.rules` drop of `validCreatorRemoveMember` /
+      `removesExactlyOneExistingMember`.
     - **#294** (`ef64797`) — `deleteAccount.ts` + `cleanupAnonUidArtifacts.ts`
-      locate member docs by the `userId` field (fixes orphaned-PII-on-delete +
-      broken creator recovery for uuid-keyed creator docs). Functions code only;
-      no new function, no rules change.
-    - Re-run `bash tool/check_firebase_prod_state.sh rihla-safar` at ceremony
-      time to capture a fresh prod-vs-`main` delta — do not trust this list as a
-      substitute for the live gate.
+      locate member docs by the `userId` field.
+    - **#275** (`f105862`) — `cleanupAnonUidArtifacts` per-group cascade migrated
+      off the 500-write transaction cliff to a chunked `BatchWriter`.
+    - This clears the prior pending-deploy debt; the pinned checkbox above stays
+      OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
+      release SHA), which is a higher bar than this backend deploy.
 - [ ] Real-device QA is not complete (Android-only for v1.2).
   - Runbook: `docs/REAL-DEVICE-QA.md`
   - Gate command (v1.2 Android-only):
