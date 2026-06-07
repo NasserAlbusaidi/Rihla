@@ -152,6 +152,9 @@ class ExpenseService extends FirestoreRepository {
       'deletedAt': null,
       'createdAt': now.toIso8601String(),
       'createdBy': createdBy,
+      // #248: the creator is the editor at create time. Rules pin
+      // lastEditedBy == auth.uid; createdBy is already pinned to it.
+      'lastEditedBy': createdBy,
     };
     try {
       await eventSubcollection(groupId, eventId, 'expenses').doc(id).set(data);
@@ -264,6 +267,7 @@ class ExpenseService extends FirestoreRepository {
     String? note,
     String? categoryId,
     String? payerParticipantId,
+    String? lastEditedBy,
   }) async {
     final updates = <String, dynamic>{};
     if (amount != null) {
@@ -294,6 +298,13 @@ class ExpenseService extends FirestoreRepository {
       updates['payerParticipantId'] = payerParticipantId;
     }
     if (updates.isNotEmpty) {
+      // #248: stamp the editor's UID only on a real change, so a no-op save
+      // stays a no-op (no spurious audit entry from PR2's trigger). Skipped
+      // when null/empty so a uid-less caller still writes (rules pin is
+      // presence-gated for backward compat).
+      if (lastEditedBy != null && lastEditedBy.isNotEmpty) {
+        updates['lastEditedBy'] = lastEditedBy;
+      }
       try {
         await eventSubcollection(
           groupId,
@@ -317,6 +328,7 @@ class ExpenseService extends FirestoreRepository {
     required String groupId,
     required String eventId,
     required String expenseId,
+    String? lastEditedBy,
   }) async {
     try {
       await eventSubcollection(
@@ -326,6 +338,9 @@ class ExpenseService extends FirestoreRepository {
       ).doc(expenseId).update({
         'isDeleted': true,
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
+        // #248: attribute the deleter so PR2's trigger logs who removed it.
+        if (lastEditedBy != null && lastEditedBy.isNotEmpty)
+          'lastEditedBy': lastEditedBy,
       });
     } on FirebaseException catch (e) {
       if (kDebugMode) {

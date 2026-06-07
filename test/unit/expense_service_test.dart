@@ -140,6 +140,26 @@ void main() {
             .get();
         expect(snap.docs, isEmpty);
       });
+
+      test('stamps lastEditedBy = createdBy on create (#248)', () async {
+        final expense = await service.addExpense(
+          createdBy: 'uidA',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('5.000'),
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
+        expect(snap.data()!['lastEditedBy'], equals('uidA'));
+      });
     });
 
     group('watchExpenses', () {
@@ -271,6 +291,66 @@ void main() {
         expect(data['payerParticipantId'], 'p2');
       });
 
+      test('stamps lastEditedBy when a field changes (#248)', () async {
+        final expense = await service.addExpense(
+          createdBy: 'uidA',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('5.000'),
+        );
+
+        await service.updateExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          expenseId: expense.id,
+          amount: Decimal.parse('9.000'),
+          lastEditedBy: 'editorX',
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
+        expect(snap.data()!['lastEditedBy'], equals('editorX'));
+      });
+
+      test(
+        'no-op update (no field changes) writes nothing — no lastEditedBy-only write (#248)',
+        () async {
+          final expense = await service.addExpense(
+            createdBy: 'uidA',
+            groupId: 'g1',
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            amount: Decimal.parse('5.000'),
+          );
+          final ref = fakeDb
+              .collection('groups')
+              .doc('g1')
+              .collection('events')
+              .doc('e1')
+              .collection('expenses')
+              .doc(expense.id);
+          final before = (await ref.get()).data();
+
+          await service.updateExpense(
+            groupId: 'g1',
+            eventId: 'e1',
+            expenseId: expense.id,
+            lastEditedBy: 'editorX', // all content args null
+          );
+
+          final after = (await ref.get()).data();
+          expect(after, equals(before)); // unchanged — lastEditedBy stays 'uidA'
+          expect(after!['lastEditedBy'], equals('uidA'));
+        },
+      );
+
       test('throws when updating a missing expense', () async {
         await expectLater(
           service.updateExpense(
@@ -318,6 +398,34 @@ void main() {
           expect(snap.data()!['deletedAt'], isNotNull);
         },
       );
+
+      test('stamps lastEditedBy on the soft-delete write (#248)', () async {
+        final expense = await service.addExpense(
+          createdBy: 'uidA',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('5.000'),
+        );
+
+        await service.deleteExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          expenseId: expense.id,
+          lastEditedBy: 'editorX',
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
+        expect(snap.data()!['isDeleted'], isTrue);
+        expect(snap.data()!['lastEditedBy'], equals('editorX'));
+      });
 
       test('throws when deleting a missing expense', () async {
         await expectLater(
