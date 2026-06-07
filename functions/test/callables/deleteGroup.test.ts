@@ -517,6 +517,106 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect(res).toMatchObject({ mode: 'softDelete' });
   });
 
+  test('9b. mixed-currency group (fake cross-currency zero) is REFUSED (#261)', async () => {
+    await seedGroup('g', { currency: 'OMR' });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    // Two global-equal expenses that net to a FAKE zero ACROSS currencies:
+    // OWNER pays 10.000 OMR (each owes 5.000); MEMBER pays 10.00 USD (each owes
+    // 5.00). Per-uid bare-Decimal net: OWNER = 10 − 5(OMR) − 5(USD) = 0;
+    // MEMBER = 10 − 5 − 5 = 0. The flat scalar gate sees zero and would delete a
+    // group with real unsettled per-currency debt (the money-loss path). The
+    // mixed-EXPENSE-currency guard must refuse instead. Settlements are NOT
+    // counted toward the currency set (OMR-scale by convention — see test 9).
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 10000,
+      currency: 'OMR',
+      payerParticipantId: OWNER,
+      scope: 'global',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+    await seedExpense('groups/g/events/e1/expenses/x2', {
+      amountFils: 1000,
+      currency: 'USD',
+      payerParticipantId: MEMBER,
+      scope: 'global',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(false);
+  });
+
+  test('9c. cross-event mixed currency (OMR in e1, USD in e2) is REFUSED (#261)', async () => {
+    // Locks the function-scope currencies Set: a per-event set would miss this.
+    await seedGroup('g', { currency: 'OMR' });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedEvent('g', 'e2');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 10000,
+      currency: 'OMR',
+      payerParticipantId: OWNER,
+      scope: 'global',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+    await seedExpense('groups/g/events/e2/expenses/x2', {
+      amountFils: 1000,
+      currency: 'USD',
+      payerParticipantId: MEMBER,
+      scope: 'global',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(false);
+  });
+
+  test('9d. legacy mixed-CASE single currency (omr + OMR) settled group still deletes (#261)', async () => {
+    // currencyOf returns the raw code; the net math uppercases internally, so an
+    // OMR group whose legacy/Admin docs mix 'omr' and 'OMR' is GENUINELY settled
+    // (net 0) and must NOT be falsely flagged multi-currency. Each personal-scope
+    // expense is paid AND owed by the same payer → net 0. Without case
+    // normalization the set is {'omr','OMR'} (size 2) and bricks this delete.
+    await seedGroup('g', { currency: 'OMR' });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 5000,
+      currency: 'omr', // lowercase legacy doc
+      payerParticipantId: OWNER,
+      scope: 'personal',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+    await seedExpense('groups/g/events/e1/expenses/x2', {
+      amountFils: 5000,
+      currency: 'OMR',
+      payerParticipantId: MEMBER,
+      createdBy: MEMBER,
+      scope: 'personal',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+    expect(res).toMatchObject({ mode: 'softDelete' });
+  });
+
   test('10. percent split happy path (70/30) settles to zero (HARD REQ #3)', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);

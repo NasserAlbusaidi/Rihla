@@ -351,6 +351,39 @@ describe('removeMember callable — server-authoritative creator-remove + balanc
     expect(await activityDocs('g')).toHaveLength(0);
   });
 
+  test('10b. mixed-currency group blocks removal even when the target nets to a fake zero (#261)', async () => {
+    // OWNER pays 10.000 OMR (equal → each owes 5.000); MEMBER pays 10.00 USD
+    // (equal → each owes 5.00). MEMBER net = 10(USD) − 5(OMR) − 5(USD) = a FAKE
+    // zero, so isZero() would WRONGLY allow removal. currencies {OMR,USD} → refuse.
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 10000,
+      currency: 'OMR',
+      payerParticipantId: OWNER,
+      createdBy: OWNER,
+    });
+    await seedExpense('groups/g/events/e1/expenses/x2', {
+      amountFils: 1000,
+      currency: 'USD',
+      payerParticipantId: MEMBER,
+      createdBy: MEMBER,
+    });
+
+    await expect(
+      wrapped({
+        data: { groupId: 'g', targetUserId: MEMBER },
+        auth: { uid: OWNER },
+      } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    expect((await groupData('g')).memberIds).toEqual([OWNER, MEMBER]);
+    expect(await docExists('groups/g/members/member')).toBe(true);
+    expect(await activityDocs('g')).toHaveLength(0);
+  });
+
   test('11. target creditor (positive net) is also blocked', async () => {
     // MEMBER pays 12.000 equally → MEMBER paid 12, owed 6 → net +6.000.
     await seedGroup('g');

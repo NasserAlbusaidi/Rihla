@@ -319,6 +319,27 @@ function stringArray(value: unknown): string[] {
 export interface RecomputeResult {
   net: Map<string, Decimal>;
   liveEventRefs: DocumentReference[];
+  // #261: the distinct set of EXPENSE currencies that actually contributed to
+  // `net`. The flat scalar `net` is only a true settled-check when a group holds
+  // ONE expense currency (Model A); two different EXPENSE currencies can net to a
+  // fake Decimal 0 (+10 OMR / −10 USD), so the balance-zero gates (deleteGroup/
+  // leaveGroup/removeMember) refuse when size > 1 rather than act on a
+  // meaningless scalar.
+  //
+  // SCOPE — built from EXPENSES ONLY, NOT settlements. This is deliberate and
+  // load-bearing, NOT an oversight: settlements are written OMR-scale even in a
+  // non-OMR group by convention (settle_up_screen hardcodes 'OMR'), so a
+  // legitimate single-expense-currency group routinely carries an OMR settlement
+  // against a non-OMR debt — folding settlement currency would (a) falsely flag
+  // that group as mixed (false-nonzero → a STUCK, undeletable group), (b) break
+  // deleteGroup test 9, and (c) diverge from the client BalanceCalculator (which
+  // has the SAME currency-blindness and shows that group as settled) — a parity
+  // break. The residual gap this leaves — a non-OMR expense "settled" by an
+  // incomparable OMR settlement — is the DEEPER expense-vs-settlement currency-
+  // blindness that Model B (per-currency buckets) owns; it is unreachable for
+  // app data under Model A (every write is OMR) and pre-exists this guard. Do
+  // NOT "fix" it here by adding settlement currencies.
+  currencies: Set<string>;
 }
 
 export async function recomputeNet(
@@ -348,6 +369,10 @@ export async function recomputeNet(
   const addNet = (uid: string, delta: Decimal): void => {
     net.set(uid, (net.get(uid) ?? new Money(0)).plus(delta));
   };
+
+  // #261: function scope (NOT per-event) so cross-event currency mixing — an OMR
+  // expense in e1 and a USD expense in e2 — is also detected. Expense fold only.
+  const currencies = new Set<string>();
 
   // Skip soft-deleted events wholesale (the client drops them at
   // event_provider.dart:42 — their live children must NOT enter the balance).
@@ -430,6 +455,12 @@ export async function recomputeNet(
 
     for (const e of expenses) {
       const currency = currencyOf(e.currency);
+      // #261: normalize case — currencyOf returns the raw code, but the net math
+      // (currencyScale) uppercases internally, so a legacy/Admin group mixing
+      // 'omr' and 'OMR' decodes to a TRUE zero. Without toUpperCase the set would
+      // be {'omr','OMR'} (size 2) and falsely brick a genuinely-settled group —
+      // exactly the legacy/Admin population this guard exists to defend.
+      currencies.add(currency.toUpperCase());
       const amount = fromSubunits(amountFilsOf(e), currency);
       const payerId = e.payerParticipantId;
       if (typeof payerId === 'string' && paid.has(payerId)) {
@@ -504,5 +535,5 @@ export async function recomputeNet(
     if (typeof recipientId === 'string') addNet(recipientId, amount.negated());
   }
 
-  return { net, liveEventRefs: liveEventDocs.map((doc) => doc.ref) };
+  return { net, liveEventRefs: liveEventDocs.map((doc) => doc.ref), currencies };
 }
