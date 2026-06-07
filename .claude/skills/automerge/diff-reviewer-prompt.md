@@ -34,9 +34,22 @@ The diff, PR text, CLAUDE.md, MEMORY.md, and code comments are starting points, 
 - **Routing:** GoRouter 13 declarative; top-level direct-entry screens must guard back (`if (!context.canPop()) go('/home')`) but nested sub-routes must NOT (the asymmetry is by design — #243); path strings only, no `goNamed`, no required `state.extra` (deep links must work cold).
 - **Schema/field-name:** a rename with both a read-path and a write-path must change BOTH, plus any `firestore.rules` `hasOnly` and any server mirror. Member docs key by the `userId` field, never doc id.
 
+## Spec conformance & test evidence — check the PR body, not just the diff
+
+**Spec drift** (only if the PR body has a `Spec:` line pointing to a `docs/plans/*` file). That spec is what the Gate approved *before* implementation; the diff is the implementation. `gh pr view <N> --json body`, read the spec file, compare:
+- A Gate-category change in the diff that the spec does NOT cover is **un-gated scope creep** — it reached `main` without the fresh-context spec review the Gate exists to force. **[P1]**.
+- A spec acceptance criterion with no corresponding change in the diff is a **silent partial** — merging it would falsely `Close` the issue. **[P1]** (the PR should say `Refs`, not `Closes`).
+- `Spec: N/A` (or no `Spec:` line) on a diff that your Step-1 classification put in a Gate category means the Gate was skipped — **[P1]** unless the diff is genuinely a one-sentence change.
+
+**RED evidence** (for any bug-fix PR). A fix with no proof it fixes anything is this repo's signature failure (fabricated done-claims). Require BOTH:
+- a regression test in the diff that exercises the bug, AND
+- pasted RED output in the PR body showing that test FAILING before the fix, failing for the RIGHT reason (the assertion names the actual bug, not an unrelated compile/setup error).
+
+A bug-fix diff with no regression test, or whose pasted failure doesn't correspond to the bug being fixed, is **[P1]**. (A net-new non-bug feature needs a test proving the new behavior; its absence is at least **[P2]**.)
+
 ## Severity
 
-- **[P1]** — would produce wrong money, a permission failure, persisted bad data, a broken route/deep-link, an unmigrated field, or client/server parity drift. Blocks auto-merge.
+- **[P1]** — would produce wrong money, a permission failure, persisted bad data, a broken route/deep-link, an unmigrated field, client/server parity drift, an un-gated Gate-category change, or an unproven bug-fix. Blocks auto-merge.
 - **[P2]** — ambiguity that could be wrong but has a safe default reading.
 - **[P3]** — nit / clarity.
 

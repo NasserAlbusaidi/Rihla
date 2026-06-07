@@ -71,6 +71,7 @@ SKILL.md
 # .claude/ and SKILL.md blanket-ignores above:
 #   .claude/skills/run-the-gate/{SKILL.md,reviewer-prompt.md}
 #   .claude/skills/automerge/{SKILL.md,diff-reviewer-prompt.md}
+#   .claude/skills/deploy-ceremony/SKILL.md
 #   .claude/workflows/verified-sweep.js
 #   .claude/workflows/triage-sweep.js
 # settings.local.json, scheduled_tasks.lock, worktrees/ stay ignored.
