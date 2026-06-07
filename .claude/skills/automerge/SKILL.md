@@ -63,7 +63,7 @@ Report: classified EXEMPT (which check let it through), auto-merge enabled, will
 
 ## Step 3b — GATE → review → refute → enable
 
-**Review.** Spawn a fresh reviewer — `Agent`, `subagent_type: general-purpose`, `model: opus`, zero history. Prompt = the full contents of `diff-reviewer-prompt.md` (this skill's dir) + the PR number. The agent runs `gh pr diff <N>` itself and verifies against live code. Do NOT paste this session's reasoning in.
+**Review.** Spawn a fresh reviewer — `Agent`, `subagent_type: general-purpose`, `model: opus`, zero history. Prompt = the full contents of `diff-reviewer-prompt.md` (this skill's dir) + the PR number. The agent runs `gh pr diff <N>` itself and verifies against live code. Do NOT paste this session's reasoning in. Beyond the code rubric, the reviewer also checks **spec conformance** (if the PR body has a `Spec:` link, the diff must not drift from the Gate-approved spec — un-gated scope creep or an unbuilt acceptance box is a [P1]) and **RED evidence** (a bug-fix must ship a regression test + pasted failing-before-fix output).
 
 - Verdict has P1s → post them as a PR comment (`gh pr comment <N> --body ...`), STOP. Auto-merge stays OFF. You fix + push; **re-running `/automerge <N>` is a NEW round with a NEW fresh agent** (never `SendMessage` to continue the old one — continuation re-imports the context the freshness exists to escape).
 - Verdict clean (0 P1s) → go to Refute. A clean review alone does NOT enable auto-merge.
