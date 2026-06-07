@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/services/notification_prompt.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
@@ -104,6 +107,12 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       }
 
       HapticService.success(); // D-02: double-tap "done" feel
+
+      // First natural moment to ask for push permission (#288) — the joiner now
+      // has a stake in a group. Fire-and-forget; the coordinator holds the
+      // container ref, so it survives this screen's navigation.
+      unawaited(ref.read(notificationPromptProvider).maybePrompt());
+
       if (mounted) {
         context.pushReplacement('/group/${group.id}');
       }
