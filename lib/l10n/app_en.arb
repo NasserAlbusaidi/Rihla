@@ -509,6 +509,7 @@
 
   "ledgerBackTooltip": "Back",
   "ledgerSearchExpensesTooltip": "Search expenses",
+  "ledgerActivityTooltip": "Activity log",
   "ledgerEventSettingsTooltip": "Event settings",
   "ledgerPeopleCount": "{count, plural, =1{1 PERSON} other{{count} PEOPLE}}",
   "@ledgerPeopleCount": {
