@@ -1440,6 +1440,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activitySomeone => 'شخص ما';
 
   @override
+  String get activityAuditPayerLabel => 'الدافع';
+
+  @override
   String get activityEventMoneyCreated => 'أضاف قيدًا ماليًا';
 
   @override

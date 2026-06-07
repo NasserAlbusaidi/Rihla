@@ -1400,6 +1400,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activitySomeone => 'Someone';
 
   @override
+  String get activityAuditPayerLabel => 'Payer';
+
+  @override
   String get activityEventMoneyCreated => 'added a money entry';
 
   @override

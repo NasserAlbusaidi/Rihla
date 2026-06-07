@@ -434,6 +434,7 @@
   "activityRelativeHours": "{count} ساعة",
   "activityRelativeDays": "{count} يوم",
   "activitySomeone": "شخص ما",
+  "activityAuditPayerLabel": "الدافع",
   "activityEventMoneyCreated": "أضاف قيدًا ماليًا",
   "activityEventMoneyUpdated": "حدّث قيدًا ماليًا",
   "activityEventMoneyDeleted": "حذف قيدًا ماليًا",
