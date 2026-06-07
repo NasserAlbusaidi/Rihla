@@ -152,7 +152,8 @@ final activeJourneysProvider =
     // per-event listeners. The active-window filter above still watches the
     // LIVE groupEventsProvider, so event add/remove refreshes the strip.
     final balancesAsync = ref.watch(groupBalancesOnceProvider(group.id));
-    final breakdown = balancesAsync.valueOrNull?.perEventBreakdown ?? const {};
+    final breakdown =
+        balancesAsync.valueOrNull?.balances.perEventBreakdown ?? const {};
     final userEventBalances = breakdown[uid] ?? const <String, Decimal>{};
 
     for (final event in activeEvents) {

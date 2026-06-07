@@ -34,8 +34,8 @@ void main() {
           ),
           crossGroupBalanceOnceProvider.overrideWith(
             (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
-                  data: (d) => d,
-                  orElse: () => Completer<CrossGroupBalance>().future,
+                  data: (d) => (balance: d, partial: false),
+                  orElse: () => Completer<CrossGroupBalanceOnce>().future,
                 ),
           ),
         ],

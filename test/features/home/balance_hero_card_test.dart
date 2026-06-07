@@ -24,10 +24,13 @@ void main() {
         ...overrides,
         // #104: BalanceHeroCard now reads the one-shot variant. Bridge it to the
         // per-test crossGroupBalanceProvider override; loading stays loading.
+        // #244: the once-provider now yields CrossGroupBalanceOnce — wrap the
+        // bridged value as a non-partial result (these tests exercise the
+        // number, not the partial affordance).
         crossGroupBalanceOnceProvider.overrideWith(
           (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
-                data: (d) => d,
-                orElse: () => Completer<CrossGroupBalance>().future,
+                data: (d) => (balance: d, partial: false),
+                orElse: () => Completer<CrossGroupBalanceOnce>().future,
               ),
         ),
       ],

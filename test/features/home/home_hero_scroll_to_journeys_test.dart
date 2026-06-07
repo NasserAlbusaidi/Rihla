@@ -61,11 +61,14 @@ void main() {
           userGroupsProvider.overrideWith((ref) => Stream.value([group])),
           crossGroupBalanceOnceProvider.overrideWith(
             (ref) => Future.value((
-              net: Decimal.parse('12.500'),
-              owedToUser: Decimal.parse('12.500'),
-              userOwes: Decimal.zero,
-              groupCount: 1,
-              isLoading: false,
+              balance: (
+                net: Decimal.parse('12.500'),
+                owedToUser: Decimal.parse('12.500'),
+                userOwes: Decimal.zero,
+                groupCount: 1,
+                isLoading: false,
+              ),
+              partial: false,
             )),
           ),
           crossGroupActivityProvider.overrideWith(
