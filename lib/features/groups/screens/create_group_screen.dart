@@ -340,10 +340,6 @@ class _GlyphRow extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: palette[index].background,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: index == 0 ? colors.textPrimary : Colors.transparent,
-                    width: 2,
-                  ),
                 ),
                 child: Text(
                   _glyphs[index],

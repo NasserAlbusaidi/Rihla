@@ -267,12 +267,15 @@ async function processGroup(
 ): Promise<string[]> {
   const db = getFirestore();
   return db.runTransaction(async (tx) => {
-    const oldMemberRef = groupRef.collection('members').doc(oldUid);
+    // #294: a creator's member doc is keyed by a random uuid (userId:oldUid), so
+    // the old .doc(oldUid) point read missed it. Read the whole members
+    // collection (still in the read phase, before any write) and match by the
+    // `userId` FIELD. newMemberRef stays the copy TARGET, normalizing a recovered
+    // creator's doc to .doc(newUid).
     const newMemberRef = groupRef.collection('members').doc(newUid);
-    const [groupSnap, oldMemberSnap, newMemberSnap, eventsSnap] = await Promise.all([
+    const [groupSnap, membersSnap, eventsSnap] = await Promise.all([
       tx.get(groupRef),
-      tx.get(oldMemberRef),
-      tx.get(newMemberRef),
+      tx.get(groupRef.collection('members')),
       tx.get(groupRef.collection('events')),
     ]);
 
@@ -323,16 +326,20 @@ async function processGroup(
         : 'group.memberIds.replaceOldUid',
     );
 
-    if (!newMemberSnap.exists && oldMemberSnap.exists) {
+    // #294: match by the `userId` FIELD; delete ALL matched docs (mirrors
+    // deleteAccount Phase C + leaveGroup), copy from the deterministic first.
+    const oldMemberDocs = membersSnap.docs.filter((d) => d.data().userId === oldUid);
+    const newMemberExists = membersSnap.docs.some((d) => d.data().userId === newUid);
+    if (!newMemberExists && oldMemberDocs.length > 0) {
       tx.set(newMemberRef, {
-        ...(oldMemberSnap.data() ?? {}),
+        ...(oldMemberDocs[0].data() ?? {}),
         id: newUid,
         userId: newUid,
       });
       actions.push('members.copyOldToNew');
     }
-    if (oldMemberSnap.exists) {
-      tx.delete(oldMemberRef);
+    for (const d of oldMemberDocs) {
+      tx.delete(d.ref);
       actions.push('members.deleteOld');
     }
 

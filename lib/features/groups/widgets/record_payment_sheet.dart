@@ -7,6 +7,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../core/utils/localized_name_validators.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../keys/group_keys.dart';
 
@@ -72,14 +73,19 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
       ),
     );
     _noteController = TextEditingController();
+    _noteController.addListener(_onNoteChanged);
   }
 
   @override
   void dispose() {
+    _noteController.removeListener(_onNoteChanged);
     _amountController.dispose();
     _noteController.dispose();
     super.dispose();
   }
+
+  // Recompute the inline note error as the user types (#220).
+  void _onNoteChanged() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
@@ -200,6 +206,10 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                   ),
                   decoration: InputDecoration(
                     hintText: context.l10n.settleUpNoteHint,
+                    errorText: validateFreeTextLocalized(
+                      context,
+                      _noteController.text,
+                    ),
                     isDense: true,
                     filled: true,
                     fillColor: colors.inputFillWarm,

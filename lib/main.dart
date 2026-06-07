@@ -154,6 +154,8 @@ class _AuthGateState extends State<_AuthGate> {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: const SplashScreen(),
           );
         }
@@ -165,6 +167,8 @@ class _AuthGateState extends State<_AuthGate> {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: SplashScreen(hasError: true, onRetry: _retry),
           );
         }
@@ -272,6 +276,8 @@ class _CacheIsolationAppState extends ConsumerState<_CacheIsolationApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: showManualRestart
           ? SplashScreen(
               key: const Key('cache-isolation-restart'),

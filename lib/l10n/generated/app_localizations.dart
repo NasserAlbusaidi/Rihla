@@ -4219,6 +4219,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Page not found: {location}'**
   String errorPageNotFound(Object location);
+
+  /// Brand tagline shown under the Rihla wordmark on the boot splash screen.
+  ///
+  /// In en, this message translates to:
+  /// **'your shared journey'**
+  String get splashTagline;
+
+  /// Title on the splash error state shown when the app fails to start.
+  ///
+  /// In en, this message translates to:
+  /// **'Something\'s off'**
+  String get splashErrorTitle;
+
+  /// Body copy on the splash error state shown when the app fails to start.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t start the app.'**
+  String get splashErrorBody;
+
+  /// Retry button on the splash error state.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get splashRetry;
 }
 
 class _AppLocalizationsDelegate

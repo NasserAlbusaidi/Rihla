@@ -2472,4 +2472,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String errorPageNotFound(Object location) {
     return 'الصفحة غير موجودة: $location';
   }
+
+  @override
+  String get splashTagline => 'رحلتك المشتركة';
+
+  @override
+  String get splashErrorTitle => 'حدث خطأ ما';
+
+  @override
+  String get splashErrorBody => 'تعذّر تشغيل التطبيق.';
+
+  @override
+  String get splashRetry => 'حاول مرة أخرى';
 }

@@ -12,6 +12,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/expense_scope_display_name.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
@@ -851,21 +852,47 @@ class _AmountHero extends StatelessWidget {
   }
 }
 
-class _DescriptionField extends StatelessWidget {
+class _DescriptionField extends StatefulWidget {
   const _DescriptionField({required this.controller});
 
   final TextEditingController controller;
 
   @override
+  State<_DescriptionField> createState() => _DescriptionFieldState();
+}
+
+class _DescriptionFieldState extends State<_DescriptionField> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  // Recompute the inline error as the user types so an over-length / control-
+  // char note shows a message instead of an opaque permission-denied (#220).
+  void _onChanged() => setState(() {});
+
+  @override
   Widget build(BuildContext context) {
+    final errorText = validateFreeTextLocalized(
+      context,
+      widget.controller.text,
+    );
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: TextField(
-        controller: controller,
+        controller: widget.controller,
         textInputAction: TextInputAction.done,
         decoration: InputDecoration(
           labelText: context.l10n.editorDescriptionLabel,
           hintText: context.l10n.editorDescriptionHint,
+          errorText: errorText,
           filled: true,
           fillColor: context.colors.scaffoldBackground,
           enabledBorder: UnderlineInputBorder(
@@ -873,6 +900,12 @@ class _DescriptionField extends StatelessWidget {
           ),
           focusedBorder: UnderlineInputBorder(
             borderSide: BorderSide(color: context.colors.primary, width: 1.5),
+          ),
+          errorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: context.colors.error),
+          ),
+          focusedErrorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: context.colors.error, width: 1.5),
           ),
         ),
       ),
