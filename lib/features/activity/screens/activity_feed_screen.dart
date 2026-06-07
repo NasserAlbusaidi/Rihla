@@ -15,6 +15,8 @@ import '../keys/activity_keys.dart';
 import '../models/activity_log_model.dart';
 import '../services/activity_service.dart';
 import '../utils/activity_display.dart';
+import '../utils/expense_audit_diff.dart';
+import '../widgets/expense_audit_detail.dart';
 
 /// Event activity feed — saffron travel-journal direction.
 ///
@@ -125,7 +127,7 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
                 ),
                 data: (event) {
                   if (event == null) return const _NotFoundView();
-                  return _buildActivityBody(context);
+                  return _buildActivityBody(context, event.participantNames);
                 },
               ),
             ),
@@ -135,7 +137,10 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
     );
   }
 
-  Widget _buildActivityBody(BuildContext context) {
+  Widget _buildActivityBody(
+    BuildContext context,
+    Map<String, String> participantNames,
+  ) {
     if (_initialError && _activities.isEmpty) {
       return _ErrorView(
         onRetry: () {
@@ -177,7 +182,11 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
         return Padding(
           key: ValueKey('activity-day-${days[i].label}'),
           padding: EdgeInsets.only(top: i == 0 ? context.spacing.space4 : 22),
-          child: _DaySection(label: days[i].label, entries: days[i].entries),
+          child: _DaySection(
+            label: days[i].label,
+            entries: days[i].entries,
+            participantNames: participantNames,
+          ),
         );
       },
     );
@@ -260,9 +269,14 @@ class _TopBar extends StatelessWidget {
 // ──────────────────────────── Day section + row
 
 class _DaySection extends StatelessWidget {
-  const _DaySection({required this.label, required this.entries});
+  const _DaySection({
+    required this.label,
+    required this.entries,
+    required this.participantNames,
+  });
   final String label;
   final List<ActivityLog> entries;
+  final Map<String, String> participantNames;
 
   @override
   Widget build(BuildContext context) {
@@ -296,7 +310,11 @@ class _DaySection extends StatelessWidget {
           child: Column(
             children: [
               for (var i = 0; i < entries.length; i++)
-                _ActivityRow(log: entries[i], divider: i < entries.length - 1),
+                _ActivityRow(
+                  log: entries[i],
+                  divider: i < entries.length - 1,
+                  participantNames: participantNames,
+                ),
             ],
           ),
         ),
@@ -306,15 +324,23 @@ class _DaySection extends StatelessWidget {
 }
 
 class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.log, required this.divider});
+  const _ActivityRow({
+    required this.log,
+    required this.divider,
+    required this.participantNames,
+  });
   final ActivityLog log;
   final bool divider;
+  final Map<String, String> participantNames;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final actor = log.actorName ?? context.l10n.activitySomeone;
     final text = localizedEventActivityText(context.l10n, log);
+    final diff = log.category == 'MONEY'
+        ? ExpenseAuditDiff.fromMetadata(log.metadata)
+        : const ExpenseAuditDiff();
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
       child: Column(
@@ -327,29 +353,40 @@ class _ActivityRow extends StatelessWidget {
               _CategoryIcon(category: log.category, eventType: log.eventType),
               SizedBox(width: context.spacing.space12),
               Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text.rich(
                       TextSpan(
-                        text: actor,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
+                        children: [
+                          TextSpan(
+                            text: actor,
+                            style: AppTypography.sans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const TextSpan(text: ' '),
+                          TextSpan(
+                            text: text,
+                            style: AppTypography.sans(
+                              fontSize: 14,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const TextSpan(text: ' '),
-                      TextSpan(
-                        text: text,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          color: colors.textSecondary,
-                        ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (diff.hasDetail)
+                      ExpenseAuditDetail(
+                        diff: diff,
+                        eventType: log.eventType,
+                        participantNames: participantNames,
                       ),
-                    ],
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
+                  ],
                 ),
               ),
               SizedBox(width: context.spacing.space8),

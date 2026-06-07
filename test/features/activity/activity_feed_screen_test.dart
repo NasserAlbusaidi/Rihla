@@ -12,6 +12,7 @@ import 'package:safar/features/activity/services/activity_service.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/r_amount.dart';
 
 /// Throws on the first fetch (initial-load error), then delegates to the real
 /// fake-backed query so the retry path can be exercised.
@@ -251,5 +252,81 @@ void main() {
     // flutter_animate fadeIn/scale ticker so no Timer is pending at teardown.
     await tester.pumpAndSettle();
     expect(find.byKey(ActivityKeys.errorView), findsNothing);
+  });
+
+  // ── #248 PR 3: expense audit before/after rendering ──────────────────────
+
+  Future<void> seedAudit(
+    FakeFirebaseFirestore db,
+    String eventType,
+    Map<String, dynamic> metadata,
+  ) async {
+    await db
+        .collection('groups')
+        .doc(groupId)
+        .collection('events')
+        .doc(eventId)
+        .collection('activity_logs')
+        .doc('audit-1')
+        .set({
+          'id': 'audit-1',
+          'eventId': eventId,
+          'category': 'MONEY',
+          'eventType': eventType,
+          'logText': 'changed an expense',
+          'actorId': 'uid-creator',
+          'actorName': 'Alice',
+          'metadata': metadata,
+          'createdAt': DateTime.utc(2026, 2, 1).toIso8601String(),
+        });
+  }
+
+  testWidgets('MONEY/UPDATE row renders the before → after amount detail', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    await seedAudit(db, 'UPDATE', {
+      'expenseId': 'exp1',
+      'before': {
+        'amountFils': 10500,
+        'currency': 'OMR',
+        'payerParticipantId': 'uid-creator',
+        'description': 'Dinner',
+        'isDeleted': false,
+      },
+      'after': {
+        'amountFils': 12500,
+        'currency': 'OMR',
+        'payerParticipantId': 'uid-creator',
+        'description': 'Dinner',
+        'isDeleted': false,
+      },
+    });
+    await tester.pumpWidget(
+      buildRoute([
+        activityServiceProvider.overrideWithValue(
+          ActivityService.withFirestore(db),
+        ),
+      ]),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.textContaining('10.500', findRichText: true), findsOneWidget);
+    expect(find.textContaining('12.500', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('legacy MONEY row (empty metadata) renders no audit detail', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    await seedAudit(db, 'CREATE', <String, dynamic>{}); // legacy: no before/after
+    await tester.pumpWidget(
+      buildRoute([
+        activityServiceProvider.overrideWithValue(
+          ActivityService.withFirestore(db),
+        ),
+      ]),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(RAmount), findsNothing); // verb line only, no detail
   });
 }
