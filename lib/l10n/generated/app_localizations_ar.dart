@@ -426,6 +426,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ledgerSearchExpensesTooltip => 'البحث في المصاريف';
 
   @override
+  String get ledgerActivityTooltip => 'سجل النشاط';
+
+  @override
   String get ledgerEventSettingsTooltip => 'إعدادات الفعالية';
 
   @override

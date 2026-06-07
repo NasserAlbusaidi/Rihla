@@ -230,6 +230,9 @@ class _Body extends ConsumerWidget {
                   onSettings: () => GoRouter.of(
                     context,
                   ).push('/group/$groupId/event/$eventId/settings'),
+                  onActivity: () => GoRouter.of(
+                    context,
+                  ).push('/group/$groupId/event/$eventId/activity'),
                   onSearch: () => showLedgerSearchSheet(
                     context,
                     expenses: expenses,
@@ -379,12 +382,14 @@ class _CoverHeader extends StatelessWidget {
     required this.participantCount,
     required this.onSettings,
     required this.onSearch,
+    required this.onActivity,
   });
 
   final Event event;
   final int participantCount;
   final VoidCallback onSettings;
   final VoidCallback onSearch;
+  final VoidCallback onActivity;
 
   @override
   Widget build(BuildContext context) {
@@ -450,6 +455,16 @@ class _CoverHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     _PaperIconButton(
+                      key: LedgerKeys.activityButton,
+                      icon: Iconsax.activity,
+                      tooltip: context.l10n.ledgerActivityTooltip,
+                      onTap: () {
+                        HapticService.lightClick();
+                        onActivity();
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    _PaperIconButton(
                       icon: Iconsax.setting_2,
                       tooltip: context.l10n.ledgerEventSettingsTooltip,
                       onTap: () {
@@ -502,6 +517,7 @@ class _CoverHeader extends StatelessWidget {
 
 class _PaperIconButton extends StatelessWidget {
   const _PaperIconButton({
+    super.key,
     required this.icon,
     required this.onTap,
     this.tooltip,

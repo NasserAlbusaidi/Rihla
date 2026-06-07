@@ -11,6 +11,9 @@ abstract final class LedgerKeys {
   static const spendingLabel = Key('ledger_spending_label');
   static const payerSectionLabel = Key('ledger_payer_section_label');
 
+  // App-bar actions
+  static const activityButton = Key('ledger_activity_button');
+
   // Search sheet (T3.L)
   static const searchField = Key('ledger_search_field');
 

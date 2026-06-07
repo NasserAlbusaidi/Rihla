@@ -167,6 +167,7 @@
 
   "ledgerBackTooltip": "رجوع",
   "ledgerSearchExpensesTooltip": "البحث في المصاريف",
+  "ledgerActivityTooltip": "سجل النشاط",
   "ledgerEventSettingsTooltip": "إعدادات الفعالية",
   "ledgerPeopleCount": "{count, plural, =0{لا أشخاص} =1{شخص واحد} =2{شخصان} few{{count} أشخاص} many{{count} شخصًا} other{{count} شخص}}",
   "ledgerAllFilter": "الكل",

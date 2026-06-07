@@ -427,6 +427,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerSearchExpensesTooltip => 'Search expenses';
 
   @override
+  String get ledgerActivityTooltip => 'Activity log';
+
+  @override
   String get ledgerEventSettingsTooltip => 'Event settings';
 
   @override

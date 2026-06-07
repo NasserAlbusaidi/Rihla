@@ -914,6 +914,12 @@ abstract class AppLocalizations {
   /// **'Search expenses'**
   String get ledgerSearchExpensesTooltip;
 
+  /// No description provided for @ledgerActivityTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity log'**
+  String get ledgerActivityTooltip;
+
   /// No description provided for @ledgerEventSettingsTooltip.
   ///
   /// In en, this message translates to:
