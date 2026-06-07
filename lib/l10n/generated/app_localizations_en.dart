@@ -779,6 +779,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSelectedPaidFullAmount => 'Selected · paid the full amount';
 
   @override
+  String editorProvenanceAdded(Object name) {
+    return 'Added by $name';
+  }
+
+  @override
+  String editorProvenanceAddedEdited(Object creator, Object editor) {
+    return 'Added by $creator · edited by $editor';
+  }
+
+  @override
   String get editorEventDefault => 'EVENT DEFAULT';
 
   @override

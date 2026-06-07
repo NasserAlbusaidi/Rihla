@@ -258,6 +258,8 @@
   "editorPaidRole": "دفع",
   "editorSelectedPayer": "الدافع المحدد",
   "editorSelectedPaidFullAmount": "محدد · دفع المبلغ كاملًا",
+  "editorProvenanceAdded": "أضافه {name}",
+  "editorProvenanceAddedEdited": "أضافه {creator} · عدّله {editor}",
   "editorEventDefault": "افتراضي الفعالية",
   "editorTapCustomiseSplit": "اضغط تخصيص لاختيار من يشارك في التقسيم.",
   "editorSplitSummary": "{scope} · {count, plural, =1{طريقة واحدة} =2{طريقتان} few{{count} طرق} many{{count} طريقة} other{{count} طريقة}}",

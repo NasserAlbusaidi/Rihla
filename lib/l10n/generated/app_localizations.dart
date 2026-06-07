@@ -1454,6 +1454,18 @@ abstract class AppLocalizations {
   /// **'Selected · paid the full amount'**
   String get editorSelectedPaidFullAmount;
 
+  /// No description provided for @editorProvenanceAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by {name}'**
+  String editorProvenanceAdded(Object name);
+
+  /// No description provided for @editorProvenanceAddedEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by {creator} · edited by {editor}'**
+  String editorProvenanceAddedEdited(Object creator, Object editor);
+
   /// No description provided for @editorEventDefault.
   ///
   /// In en, this message translates to:

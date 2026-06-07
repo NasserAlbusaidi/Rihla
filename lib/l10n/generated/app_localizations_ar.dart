@@ -801,6 +801,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorSelectedPaidFullAmount => 'محدد · دفع المبلغ كاملًا';
 
   @override
+  String editorProvenanceAdded(Object name) {
+    return 'أضافه $name';
+  }
+
+  @override
+  String editorProvenanceAddedEdited(Object creator, Object editor) {
+    return 'أضافه $creator · عدّله $editor';
+  }
+
+  @override
   String get editorEventDefault => 'افتراضي الفعالية';
 
   @override

@@ -464,4 +464,106 @@ void main() {
     await tester.pump();
     expect(find.text('Keep it to 280 characters or fewer.'), findsNothing);
   });
+
+  // #248 PR5 — the editor surfaces provenance (who ADDED / last EDITED) as a
+  // compact byline under the description, distinct from the "Paid by" card.
+  // Names embed inside "Added by …" so they never collide with the exact
+  // first-name/full-name matchers elsewhere on the form.
+  Expense provenanceExpense({
+    required String createdBy,
+    String lastEditedBy = '',
+  }) => Expense(
+    id: 'expense-1',
+    tripId: 'event-1',
+    payerParticipantId: 'uid-yasmin',
+    amount: Decimal.parse('12.000'),
+    description: 'Dinner',
+    scope: ExpenseScope.global,
+    createdAt: DateTime(2026, 5, 30),
+    createdBy: createdBy,
+    lastEditedBy: lastEditedBy,
+    splitMode: SplitMode.equally,
+  );
+
+  testWidgets('#248 PR5: byline shows the creator when there is no later editor',
+      (tester) async {
+    await pumpEditor(tester, initial: provenanceExpense(createdBy: 'uid-yasmin'));
+
+    expect(find.text('Added by Yasmin Khan'), findsOneWidget);
+  });
+
+  testWidgets('#248 PR5: byline names creator AND editor on a third-party edit',
+      (tester) async {
+    await pumpEditor(
+      tester,
+      initial: provenanceExpense(
+        createdBy: 'uid-yasmin',
+        lastEditedBy: 'uid-layla',
+      ),
+    );
+
+    expect(
+      find.text('Added by Yasmin Khan · edited by Layla Hassan'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('#248 PR5: a self-edit shows only the creator (no "edited by")',
+      (tester) async {
+    await pumpEditor(
+      tester,
+      initial: provenanceExpense(
+        createdBy: 'uid-yasmin',
+        lastEditedBy: 'uid-yasmin',
+      ),
+    );
+
+    expect(find.text('Added by Yasmin Khan'), findsOneWidget);
+    expect(find.textContaining('edited by'), findsNothing);
+  });
+
+  testWidgets('#248 PR5: a legacy expense with no creator shows no byline',
+      (tester) async {
+    await pumpEditor(tester, initial: provenanceExpense(createdBy: ''));
+
+    expect(find.textContaining('Added by'), findsNothing);
+  });
+
+  testWidgets('#248 PR5: add mode never shows a provenance byline',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          currentUserIdProvider.overrideWithValue('uid-yasmin'),
+          eventDetailProvider((
+            groupId: 'group-1',
+            eventId: 'event-1',
+          )).overrideWith((ref) => Stream.value(_event)),
+          tripCategoriesProvider(
+            'event-1',
+          ).overrideWith((ref) => Stream.value(const <ExpenseCategory>[])),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ExpenseEditorBody(
+              groupId: 'group-1',
+              eventId: 'event-1',
+              mode: ExpenseEditorMode.add,
+              onSubmit: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Added by'), findsNothing);
+  });
 }

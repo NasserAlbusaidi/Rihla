@@ -21,6 +21,7 @@ import '../../trip/providers/trip_provider.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
+import '../utils/expense_provenance.dart';
 import '../utils/localized_category_name.dart';
 import 'custom_split_sheet.dart';
 import 'split_scope_selector.dart';
@@ -530,6 +531,15 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       onTap: _queueSelectDefaultZero,
                     ),
                     _DescriptionField(controller: _noteController),
+                    // #248 PR5: provenance byline — who ADDED / last EDITED this
+                    // expense, distinct from who PAID (the "Paid by" card). Edit
+                    // mode only, and only once the event has resolved (names
+                    // come from its participantNames map).
+                    if (_isEdit && event != null && widget.initial != null)
+                      _ExpenseProvenanceByline(
+                        event: event,
+                        expense: widget.initial!,
+                      ),
                     _Section(
                       title: context.l10n.editorCategory,
                       child: _CategoryStrip(
@@ -907,6 +917,58 @@ class _DescriptionFieldState extends State<_DescriptionField> {
           focusedErrorBorder: UnderlineInputBorder(
             borderSide: BorderSide(color: context.colors.error, width: 1.5),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// #248 PR5: compact "Added by … · edited by …" byline under the description.
+/// Reads the expense's createdBy / lastEditedBy uids and resolves them through
+/// the same disambiguated participantNames chain the payer uses, so creator and
+/// payer are surfaced side by side without conflating them. Renders nothing for
+/// legacy expenses with no creator.
+class _ExpenseProvenanceByline extends StatelessWidget {
+  const _ExpenseProvenanceByline({required this.event, required this.expense});
+
+  final Event event;
+  final Expense expense;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    String resolve(String uid) =>
+        displayNames[uid] ??
+        event.participantNames[uid] ??
+        context.l10n.activitySomeone;
+
+    final provenance = resolveExpenseProvenance(
+      createdBy: expense.createdBy,
+      lastEditedBy: expense.lastEditedBy,
+      resolveName: resolve,
+    );
+    if (provenance == null) return const SizedBox.shrink();
+
+    final text = provenance.editorName == null
+        ? context.l10n.editorProvenanceAdded(provenance.creatorName)
+        : context.l10n.editorProvenanceAddedEdited(
+            provenance.creatorName,
+            provenance.editorName!,
+          );
+
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        context.spacing.space24,
+        context.spacing.space8,
+        context.spacing.space24,
+        0,
+      ),
+      child: Text(
+        text,
+        style: AppTypography.sans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: context.colors.textSecondary,
         ),
       ),
     );
