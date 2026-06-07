@@ -291,8 +291,17 @@ interface CleanupAnonUidArtifactsOutput {
    supplied secret, and is no older than 15 minutes. Without this, any
    recovered user who can see another anon UID could try to migrate that
    user's artifacts.
-5. **Per-group cleanup transaction.** For every group where
-   `memberIds` contains `oldUid`:
+5. **Per-group cleanup cascade.** For every group where
+   `memberIds` contains `oldUid`. **#275: this is no longer a single
+   `runTransaction` — it is a chunked `BatchWriter` (≤450-op auto-flush) for the
+   child scrubs (events/expenses/settlements/activity) followed by a small
+   bounded transaction for the member/`memberIds`/`createdBy` identity write, so
+   a dense account's cascade can no longer hit Firestore's 500-write-per-
+   transaction cliff. The identity write lands LAST (after the batch flush) so a
+   torn cascade keeps the group query-visible and converges on retry; the cascade
+   is idempotent (e.g. `splitDistribution`'s collision-sum is gated on the
+   `oldUid` key still being present, so a retry never double-sums).** The
+   migration set is:
    - Rewrite `memberIds`: `[..., oldUid, ...]` → `[..., newUid, ...]`
      (dedupes if `newUid` already present).
    - If `createdBy == oldUid`, set `createdBy = newUid`.
@@ -339,7 +348,8 @@ interface CleanupAnonUidArtifactsOutput {
 | `failed-precondition` | groups/{gid}.memberIds is malformed. | Schema violation in a group doc. |
 | `failed-precondition` | groups/{gid}/events/{eid}.{field} is malformed. | Schema violation in an event doc. |
 
-Per-group transaction failures are logged and added to
+Per-group cascade failures (a batch-flush throw or the identity transaction)
+are logged and added to
 `cascadeFailed` — they do **not** abort the rest of the cleanup. The
 callable returns a partial success. A non-empty `cascadeFailed` (whether
 a group id or a `'fcm_tokens'` / `'joinAttempts'` sentinel) blocks the
@@ -568,7 +578,7 @@ matches the current commit, and the App Check repo variables agree.
 | `functions/src/index.ts` | 8 | Region + exports |
 | `functions/src/admin.ts` | 5 | `initializeApp()` side-effect |
 | `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
-| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 611 | Anon→recovered UID migration (ledger #216 + activity #217) |
+| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 691 | Anon→recovered UID migration (ledger #216 + activity #217; chunked BatchWriter #275) |
 | `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |
 | `functions/src/triggers/settlementNotifier.ts` | — | #53 settlement-recorded push triggers |
 | `functions/src/notifications/fcmSender.ts` | — | #53 multicast sender + token pruning |
