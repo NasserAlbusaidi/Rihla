@@ -154,11 +154,11 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-07, `786c2f1`) — DEPLOYED to prod, prod-state PASS.**
-    The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-07
-    deploy ceremony the `backend-deployed` tag is `786c2f1` and
+  - **Backend deploy (2026-06-08, `5eaacf7`) — DEPLOYED to prod, prod-state PASS.**
+    The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-08
+    deploy ceremony the `backend-deployed` tag is `5eaacf7` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Shipped
-    across the 2026-06-07 deploys (see `docs/DEPLOY-LEDGER.md`):
+    across the 2026-06-07/08 deploys (see `docs/DEPLOY-LEDGER.md`):
     - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
       `allocateShares`/`allocateExact`/`allocatePercent`) gain the
       negative-value→equal-split guard, mirroring the client byte-for-byte.
@@ -181,6 +181,13 @@ starts a new run.
       and makes the `lastEditedBy == auth.uid` pin **mandatory** on every update
       (was diff-gated) so the audit trigger can never mis-attribute an edit to the
       creator. Rules-only; 13 functions unchanged.
+    - **#261 PR-0b** (`5eaacf7`, #371) — mixed-currency balance-gate guard:
+      `groupNetBalance.ts recomputeNet` returns a `currencies` set (expense-fold
+      only, function-scope, `toUpperCase()`-normalized) and `deleteGroup` /
+      `leaveGroup` / `removeMember` refuse `failed-precondition` when it holds
+      more than one currency, **before** the `isZero()` gate — closing the
+      `+10 OMR / −10 USD` fake-zero delete/leave/remove money-loss path.
+      Functions-only; 13 functions unchanged.
     - This clears the prior pending-deploy debt; the pinned checkbox above stays
       OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
       release SHA), which is a higher bar than this backend deploy.
