@@ -2468,6 +2468,12 @@ abstract class AppLocalizations {
   /// **'Someone'**
   String get activitySomeone;
 
+  /// No description provided for @activityAuditPayerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Payer'**
+  String get activityAuditPayerLabel;
+
   /// No description provided for @activityEventMoneyCreated.
   ///
   /// In en, this message translates to:

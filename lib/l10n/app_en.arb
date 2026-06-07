@@ -1033,6 +1033,7 @@
     }
   },
   "activitySomeone": "Someone",
+  "activityAuditPayerLabel": "Payer",
   "activityEventMoneyCreated": "added a money entry",
   "activityEventMoneyUpdated": "updated a money entry",
   "activityEventMoneyDeleted": "deleted a money entry",
