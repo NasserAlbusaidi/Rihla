@@ -27,6 +27,12 @@ Closes #
 → If any are checked: `/run-the-gate` was run pre-implementation and the verdict has no [P1]s. Round count: ___
 → If none apply: N/A (one-sentence-diff path).
 
+## Spec (link if Gate-category)
+<!-- If this PR implements a spec that went through /run-the-gate, link it so the
+     merge-time reviewer can confirm the diff didn't drift from what the Gate
+     approved — un-gated scope creep, or a spec'd acceptance box left unbuilt. -->
+Spec: <!-- docs/plans/<YYYY-MM-DD>-<topic>.md — or N/A -->
+
 ## Verification
 - [ ] `flutter analyze` clean
 - [ ] Relevant tests run + green (bug fix? the failing regression test was written first)
