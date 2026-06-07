@@ -1152,6 +1152,89 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  // === #248 PR1: lastEditedBy field — permit + pin (== auth.uid, gated) + soft-delete carry ===
+
+  test('#248 expense create with lastEditedBy == auth.uid is allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expLE').set(
+      validExpense({ id: 'expLE', createdBy: 'member', lastEditedBy: 'member' }),
+    ));
+  });
+
+  test('#248 expense create with forged lastEditedBy is rejected', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expForge').set(
+      validExpense({ id: 'expForge', createdBy: 'member', lastEditedBy: 'owner' }),
+    ));
+  });
+
+  test('#248 legacy expense create WITHOUT lastEditedBy still allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expLegacy').set(
+      validExpense({ id: 'expLegacy', createdBy: 'member' }),
+    ));
+  });
+
+  test('#248 creator update setting lastEditedBy == auth.uid is allowed', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'owner',
+    }));
+  });
+
+  test('#248 creator update forging lastEditedBy != auth.uid is rejected', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'member',
+    }));
+  });
+
+  test('#248 old-client update WITHOUT touching lastEditedBy still allowed', async () => {
+    await seedExpense(); // createdBy: 'owner', no lastEditedBy
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500, // diff doesn't touch lastEditedBy -> pin skipped
+    }));
+  });
+
+  test('#248 creator soft-delete carrying lastEditedBy is allowed (validSoftDelete loosened)', async () => {
+    await seedExpense();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      lastEditedBy: 'owner',
+    }));
+  });
+
+  test('#248 non-creator still cannot update even with a valid own lastEditedBy (edit stays creator-only in PR1)', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'member',
+    }));
+  });
+
+  // B3 append-only guard. NOTE: stays green regardless of the validSoftDelete
+  // loosening, because settlement updates are dead-denied at `allow update: if
+  // false` (firestore.rules:735) — it does NOT detect drift in validSoftDelete
+  // (validEventSettlementUpdate at :677 is dead code). Kept to pin B3 against
+  // any future re-wiring of validEventSettlementUpdate.
+  test('#248 settlement soft-delete carrying lastEditedBy is still denied', async () => {
+    await seedEventSettlement(); // createdBy: 'owner'
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/events/e1/settlements/set1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      lastEditedBy: 'owner',
+    }));
+  });
+
   test('event settlements and group settlements validate participants and amount', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertSucceeds(member.doc('groups/g1/events/e1/settlements/set1').set(validSettlement()));
@@ -1589,5 +1672,62 @@ describe('Publish readiness Firestore rules', () => {
       isDeleted: true,
       deletedAt: new Date().toISOString(),
     }));
+  });
+
+  // #248 PR 2 — event activity_logs are now SERVER-ONLY. validActivityCreate was
+  // removed from the create OR-list; the expenseAuditLogger trigger (Admin SDK,
+  // bypasses rules) is the sole writer, so a client cannot forge an audit entry.
+  function validActivityLog(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id: 'aLE',
+      eventId: 'e1',
+      category: 'MONEY',
+      eventType: 'CREATE',
+      logText: 'Member added an expense for 10.500 OMR',
+      actorId: 'member',
+      actorName: 'Member',
+      metadata: {},
+      createdAt: new Date().toISOString(),
+      ...overrides,
+    };
+  }
+
+  test('#248 participant can NO LONGER create an event activity_logs entry (server-only)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/activity_logs/aLE').set(validActivityLog()));
+  });
+
+  test('#248 a forged MONEY/UPDATE audit entry from a client is rejected', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/activity_logs/aFake').set(
+      validActivityLog({ id: 'aFake', eventType: 'UPDATE', metadata: { amountFils: 999999 } }),
+    ));
+  });
+
+  test('#248 even an actorId == auth.uid client create is rejected (no client write at all)', async () => {
+    // pre-lock this passed (validActivityCreate only pinned actorId == auth.uid);
+    // post-lock there is no client create path for activity_logs.
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/events/e1/activity_logs/aOwn').set(
+      validActivityLog({ id: 'aOwn', actorId: 'owner', actorName: 'Owner' }),
+    ));
+  });
+
+  test('#248 server (Admin SDK / rules-disabled) CAN write an event activity_logs entry', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await assertSucceeds(ctx.firestore().doc('groups/g1/events/e1/activity_logs/aSrv').set(
+        validActivityLog({ id: 'aSrv', eventType: 'UPDATE' }),
+      ));
+    });
+  });
+
+  test('#248 a group member can still READ event activity_logs (read unchanged)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('groups/g1/events/e1/activity_logs/aRead').set(
+        validActivityLog({ id: 'aRead' }),
+      );
+    });
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/activity_logs/aRead').get());
   });
 });

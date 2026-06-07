@@ -546,7 +546,8 @@ service cloud.firestore {
               'note',
               'isDeleted',
               'deletedAt',
-              'createdAt'
+              'createdAt',
+              'lastEditedBy'
             ])
             && data.id == docId
             && data.eventId == eventId
@@ -577,13 +578,26 @@ service cloud.firestore {
               && splitValuesNonNegative(request.resource.data)
               && validExpenseFreeText(request.resource.data)
               && request.resource.data.createdBy == request.auth.uid
+              // #248: when present, lastEditedBy must be the caller (unforgeable
+              // attribution for PR2's audit trigger). Presence-gated so a
+              // pre-feature client that omits it still creates.
+              && (!('lastEditedBy' in request.resource.data)
+                || request.resource.data.lastEditedBy == request.auth.uid)
               && request.resource.data.isDeleted == false
               && request.resource.data.deletedAt == null;
           }
 
           function validSoftDelete() {
+            // #248: a new client stamps lastEditedBy on soft-delete so PR2's
+            // trigger can attribute the deleter — permit it alongside the
+            // isDeleted/deletedAt pair. The lastEditedBy value is pinned to the
+            // caller by validExpenseUpdate's diff-gated check. Only the LIVE
+            // expense path reaches this fn (validSoftDelete's other reference,
+            // inside validEventSettlementUpdate, is dead code — settlement
+            // updates are denied at `allow update: if false`, firestore.rules
+            // settlements block), so this loosening cannot widen settlements.
             return request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['isDeleted', 'deletedAt'])
+                .hasOnly(['isDeleted', 'deletedAt', 'lastEditedBy'])
               && resource.data.isDeleted == false
               && request.resource.data.isDeleted == true
               && request.resource.data.deletedAt is string;
@@ -624,11 +638,18 @@ service cloud.firestore {
                   'categoryId',
                   'note',
                   'isDeleted',
-                  'deletedAt'
+                  'deletedAt',
+                  'lastEditedBy'
                 ])
               && validExpenseBase(request.resource.data, affectsExpenseAllocation())
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitDistribution'])
                 || splitValuesNonNegative(request.resource.data))
+              // #248: diff-gated (not 'in'-gated) — on an update request.resource.data
+              // is the MERGED doc, so a stale lastEditedBy from a prior edit is
+              // preserved; gating on the diff means "touch it -> must be you, don't
+              // touch it -> unconstrained", avoiding a merge-preservation footgun.
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastEditedBy'])
+                || request.resource.data.lastEditedBy == request.auth.uid)
               && expenseFreeTextDiffOk()
               && (
                 (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
@@ -691,37 +712,15 @@ service cloud.firestore {
               );
           }
 
-          function validActivityCreate() {
-            return module == 'activity_logs'
-              && isEventParticipant(groupId, eventId)
-              && eventAllowsClientWrites(groupId, eventId)
-              && request.resource.data.keys().hasOnly([
-                'id',
-                'eventId',
-                'category',
-                'eventType',
-                'logText',
-                'actorId',
-                'actorName',
-                'metadata',
-                'createdAt'
-              ])
-              && request.resource.data.id == docId
-              && request.resource.data.eventId == eventId
-              && request.resource.data.actorId == request.auth.uid
-              && request.resource.data.category is string
-              && request.resource.data.eventType is string
-              && request.resource.data.logText is string
-              && isValidNullableDisplayName(request.resource.data.actorName)
-              && request.resource.data.metadata is map
-              && request.resource.data.createdAt is string;
-          }
-
           allow read: if isGroupMember(groupId)
             && module in ['expenses', 'settlements', 'activity_logs'];
+          // #248: event activity_logs are written ONLY by the expenseAuditLogger
+          // trigger via the Admin SDK (which bypasses rules). Clients may READ but
+          // never create/update/delete — a client cannot forge an audit entry.
+          // (update is validExpenseUpdate(), module-gated to 'expenses'; delete is
+          // false; create no longer has an activity branch.)
           allow create: if validExpenseCreate()
-            || validEventSettlementCreate()
-            || validActivityCreate();
+            || validEventSettlementCreate();
           allow update: if validExpenseUpdate();
           allow delete: if false;
 

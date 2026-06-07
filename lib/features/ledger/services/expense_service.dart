@@ -104,8 +104,6 @@ class ExpenseService extends FirestoreRepository {
     required String payerParticipantId,
     required Decimal amount,
     required String createdBy,
-    String? actorId,
-    String? actorName,
     String currency = 'OMR',
     String? description,
     ExpenseScope scope = ExpenseScope.global,
@@ -152,6 +150,9 @@ class ExpenseService extends FirestoreRepository {
       'deletedAt': null,
       'createdAt': now.toIso8601String(),
       'createdBy': createdBy,
+      // #248: the creator is the editor at create time. Rules pin
+      // lastEditedBy == auth.uid; createdBy is already pinned to it.
+      'lastEditedBy': createdBy,
     };
     try {
       await eventSubcollection(groupId, eventId, 'expenses').doc(id).set(data);
@@ -162,85 +163,10 @@ class ExpenseService extends FirestoreRepository {
       rethrow;
     }
 
-    try {
-      await _addExpenseCreatedActivity(
-        groupId: groupId,
-        eventId: eventId,
-        expenseId: id,
-        payerParticipantId: payerParticipantId,
-        amount: amount,
-        currency: currency,
-        actorId: actorId ?? payerParticipantId,
-        actorName: actorName,
-        description: description,
-        scope: scope,
-        subGroupId: subGroupId,
-        customSplitParticipants: customSplitParticipants,
-        categoryId: categoryId,
-      );
-    } on FirebaseException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          'ExpenseService.addExpense activity log failed: ${e.code} ${e.message}',
-        );
-      }
-    }
-
+    // #248 PR 2: the expenseAuditLogger Cloud Functions trigger writes the
+    // activity_logs entry server-side (tamper-proof, attributed via lastEditedBy);
+    // the client no longer writes it.
     return Expense.fromFirestore(data);
-  }
-
-  Future<void> _addExpenseCreatedActivity({
-    required String groupId,
-    required String eventId,
-    required String expenseId,
-    required String payerParticipantId,
-    required Decimal amount,
-    required String currency,
-    required String actorId,
-    required ExpenseScope scope,
-    String? actorName,
-    String? description,
-    String? subGroupId,
-    List<String>? customSplitParticipants,
-    String? categoryId,
-  }) async {
-    final id = const Uuid().v4();
-    final now = DateTime.now().toUtc();
-    final trimmedActorName = actorName?.trim();
-    final normalizedActorName =
-        trimmedActorName == null || trimmedActorName.isEmpty
-        ? null
-        : trimmedActorName;
-    final trimmedDescription = description?.trim();
-    final expenseLabel =
-        trimmedDescription == null || trimmedDescription.isEmpty
-        ? 'an expense'
-        : trimmedDescription;
-    final amountText = '${amount.toString()} $currency';
-
-    await eventSubcollection(groupId, eventId, 'activity_logs').doc(id).set({
-      'id': id,
-      'eventId': eventId,
-      'category': 'MONEY',
-      'eventType': 'CREATE',
-      'logText':
-          '${normalizedActorName ?? 'Someone'} added $expenseLabel for $amountText',
-      'actorId': actorId,
-      'actorName': normalizedActorName,
-      'metadata': {
-        'expenseId': expenseId,
-        'amount': amount.toString(),
-        'amountFils': MoneySerializer.toSubunits(amount, currency),
-        'currency': currency,
-        'description': trimmedDescription,
-        'payerParticipantId': payerParticipantId,
-        'scope': scope.value,
-        'subGroupId': subGroupId,
-        'customSplitParticipants': customSplitParticipants ?? const <String>[],
-        'categoryId': categoryId,
-      },
-      'createdAt': now.toIso8601String(),
-    });
   }
 
   /// Updates specific fields of an existing expense document.
@@ -264,6 +190,7 @@ class ExpenseService extends FirestoreRepository {
     String? note,
     String? categoryId,
     String? payerParticipantId,
+    String? lastEditedBy,
   }) async {
     final updates = <String, dynamic>{};
     if (amount != null) {
@@ -294,6 +221,13 @@ class ExpenseService extends FirestoreRepository {
       updates['payerParticipantId'] = payerParticipantId;
     }
     if (updates.isNotEmpty) {
+      // #248: stamp the editor's UID only on a real change, so a no-op save
+      // stays a no-op (no spurious audit entry from PR2's trigger). Skipped
+      // when null/empty so a uid-less caller still writes (rules pin is
+      // presence-gated for backward compat).
+      if (lastEditedBy != null && lastEditedBy.isNotEmpty) {
+        updates['lastEditedBy'] = lastEditedBy;
+      }
       try {
         await eventSubcollection(
           groupId,
@@ -317,6 +251,7 @@ class ExpenseService extends FirestoreRepository {
     required String groupId,
     required String eventId,
     required String expenseId,
+    String? lastEditedBy,
   }) async {
     try {
       await eventSubcollection(
@@ -326,6 +261,9 @@ class ExpenseService extends FirestoreRepository {
       ).doc(expenseId).update({
         'isDeleted': true,
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
+        // #248: attribute the deleter so PR2's trigger logs who removed it.
+        if (lastEditedBy != null && lastEditedBy.isNotEmpty)
+          'lastEditedBy': lastEditedBy,
       });
     } on FirebaseException catch (e) {
       if (kDebugMode) {

@@ -77,21 +77,22 @@ void main() {
         expect(expense.amount, equals(Decimal.parse('10.500')));
       });
 
-      test('writes a MONEY activity log when an expense is created', () async {
+      test('addExpense no longer writes an activity_logs entry — the '
+          'expenseAuditLogger trigger owns it (#248 PR 2)', () async {
         const groupId = 'g1';
         const eventId = 'e1';
 
-        final expense = await service.addExpense(
+        await service.addExpense(
           createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
           payerParticipantId: 'p1',
-          actorId: 'user1',
-          actorName: 'Alice',
           amount: Decimal.parse('12.345'),
           description: 'Dinner',
         );
 
+        // The client write was dropped; fake_cloud_firestore runs no triggers,
+        // so the event activity_logs collection stays empty.
         final snap = await fakeDb
             .collection('groups')
             .doc(groupId)
@@ -100,23 +101,7 @@ void main() {
             .collection('activity_logs')
             .get();
 
-        expect(snap.docs, hasLength(1));
-
-        final data = snap.docs.first.data();
-        final metadata = data['metadata'] as Map<String, dynamic>;
-
-        expect(data['category'], equals('MONEY'));
-        expect(data['eventType'], equals('CREATE'));
-        expect(data['actorId'], equals('user1'));
-        expect(data['actorName'], equals('Alice'));
-        expect(data['eventId'], equals(eventId));
-        expect(data['logText'], contains('Alice'));
-        expect(data['logText'], contains('Dinner'));
-        expect(data['logText'], contains('12.345 OMR'));
-        expect(metadata, containsPair('expenseId', expense.id));
-        expect(metadata, containsPair('amount', '12.345'));
-        expect(metadata, containsPair('currency', 'OMR'));
-        expect(metadata, containsPair('payerParticipantId', 'p1'));
+        expect(snap.docs, isEmpty);
       });
 
       test('rejects an empty createdBy uid before writing', () async {
@@ -139,6 +124,26 @@ void main() {
             .collection('expenses')
             .get();
         expect(snap.docs, isEmpty);
+      });
+
+      test('stamps lastEditedBy = createdBy on create (#248)', () async {
+        final expense = await service.addExpense(
+          createdBy: 'uidA',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('5.000'),
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
+        expect(snap.data()!['lastEditedBy'], equals('uidA'));
       });
     });
 
@@ -271,6 +276,66 @@ void main() {
         expect(data['payerParticipantId'], 'p2');
       });
 
+      test('stamps lastEditedBy when a field changes (#248)', () async {
+        final expense = await service.addExpense(
+          createdBy: 'uidA',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('5.000'),
+        );
+
+        await service.updateExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          expenseId: expense.id,
+          amount: Decimal.parse('9.000'),
+          lastEditedBy: 'editorX',
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
+        expect(snap.data()!['lastEditedBy'], equals('editorX'));
+      });
+
+      test(
+        'no-op update (no field changes) writes nothing — no lastEditedBy-only write (#248)',
+        () async {
+          final expense = await service.addExpense(
+            createdBy: 'uidA',
+            groupId: 'g1',
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            amount: Decimal.parse('5.000'),
+          );
+          final ref = fakeDb
+              .collection('groups')
+              .doc('g1')
+              .collection('events')
+              .doc('e1')
+              .collection('expenses')
+              .doc(expense.id);
+          final before = (await ref.get()).data();
+
+          await service.updateExpense(
+            groupId: 'g1',
+            eventId: 'e1',
+            expenseId: expense.id,
+            lastEditedBy: 'editorX', // all content args null
+          );
+
+          final after = (await ref.get()).data();
+          expect(after, equals(before)); // unchanged — lastEditedBy stays 'uidA'
+          expect(after!['lastEditedBy'], equals('uidA'));
+        },
+      );
+
       test('throws when updating a missing expense', () async {
         await expectLater(
           service.updateExpense(
@@ -318,6 +383,34 @@ void main() {
           expect(snap.data()!['deletedAt'], isNotNull);
         },
       );
+
+      test('stamps lastEditedBy on the soft-delete write (#248)', () async {
+        final expense = await service.addExpense(
+          createdBy: 'uidA',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('5.000'),
+        );
+
+        await service.deleteExpense(
+          groupId: 'g1',
+          eventId: 'e1',
+          expenseId: expense.id,
+          lastEditedBy: 'editorX',
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('expenses')
+            .doc(expense.id)
+            .get();
+        expect(snap.data()!['isDeleted'], isTrue);
+        expect(snap.data()!['lastEditedBy'], equals('editorX'));
+      });
 
       test('throws when deleting a missing expense', () async {
         await expectLater(
@@ -478,6 +571,40 @@ void main() {
           expect(restored.isDeleted, isFalse);
         },
       );
+
+      test('lastEditedBy round-trips through Firestore serialization', () {
+        final original = Expense(
+          id: 'x1',
+          tripId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('10.500'),
+          scope: ExpenseScope.global,
+          createdAt: DateTime.parse('2026-06-07T00:00:00.000Z'),
+          createdBy: 'uidA',
+          lastEditedBy: 'uidB',
+        );
+        final map = original.toFirestore();
+        expect(map['lastEditedBy'], equals('uidB'));
+        final restored = Expense.fromFirestore({...map});
+        expect(restored.lastEditedBy, equals('uidB'));
+      });
+
+      test('lastEditedBy defaults to empty string for legacy docs', () {
+        final restored = Expense.fromFirestore({
+          'id': 'x1',
+          'eventId': 'e1',
+          'payerParticipantId': 'p1',
+          'amountFils': 10500,
+          'currency': 'OMR',
+          'scope': 'global',
+          'customSplitParticipants': <String>[],
+          'isDeleted': false,
+          'createdAt': '2026-06-07T00:00:00.000Z',
+          'createdBy': 'uidA',
+          // no lastEditedBy — legacy doc
+        });
+        expect(restored.lastEditedBy, equals(''));
+      });
     });
 
     // -------------------------------------------------------------------------
