@@ -108,6 +108,9 @@ class EditExpenseScreen extends ConsumerWidget {
           eventId: eventId,
           expenseId: original.id,
           amount: payload.amount != original.amount ? payload.amount : null,
+          // #261: preserve the expense's own currency on every edit — never let
+          // updateExpense default it to OMR (which would re-scale amountFils).
+          currency: original.currency,
           description: payload.description != original.description
               ? payload.description ?? ''
               : null,
