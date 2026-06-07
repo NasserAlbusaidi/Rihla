@@ -478,6 +478,40 @@ void main() {
           expect(restored.isDeleted, isFalse);
         },
       );
+
+      test('lastEditedBy round-trips through Firestore serialization', () {
+        final original = Expense(
+          id: 'x1',
+          tripId: 'e1',
+          payerParticipantId: 'p1',
+          amount: Decimal.parse('10.500'),
+          scope: ExpenseScope.global,
+          createdAt: DateTime.parse('2026-06-07T00:00:00.000Z'),
+          createdBy: 'uidA',
+          lastEditedBy: 'uidB',
+        );
+        final map = original.toFirestore();
+        expect(map['lastEditedBy'], equals('uidB'));
+        final restored = Expense.fromFirestore({...map});
+        expect(restored.lastEditedBy, equals('uidB'));
+      });
+
+      test('lastEditedBy defaults to empty string for legacy docs', () {
+        final restored = Expense.fromFirestore({
+          'id': 'x1',
+          'eventId': 'e1',
+          'payerParticipantId': 'p1',
+          'amountFils': 10500,
+          'currency': 'OMR',
+          'scope': 'global',
+          'customSplitParticipants': <String>[],
+          'isDeleted': false,
+          'createdAt': '2026-06-07T00:00:00.000Z',
+          'createdBy': 'uidA',
+          // no lastEditedBy — legacy doc
+        });
+        expect(restored.lastEditedBy, equals(''));
+      });
     });
 
     // -------------------------------------------------------------------------
