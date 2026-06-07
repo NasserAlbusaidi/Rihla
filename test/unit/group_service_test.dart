@@ -110,7 +110,7 @@ void main() {
     });
 
     group('updateGroup', () {
-      test('updateGroup function signature accepts name and currency', () {
+      test('updateGroup function signature accepts name', () {
         // Verify the method signature exists and compiles correctly
         // by checking that the method is defined on GroupService.
         SharedPreferences.setMockInitialValues({});
@@ -339,74 +339,10 @@ void main() {
         },
       );
 
-      test('updateGroup with currency updates currency field', () async {
-        SharedPreferences.setMockInitialValues({
-          'settings_device_name': 'Test',
-        });
-        final prefs = await SharedPreferences.getInstance();
-        final fakeDb = FakeFirebaseFirestore();
-
-        // Pre-create the group document
-        await fakeDb.collection('groups').doc('grp-currency').set({
-          'id': 'grp-currency',
-          'name': 'Test Group',
-          'currency': 'OMR',
-        });
-
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            groupServiceProvider.overrideWith(
-              (ref) => GroupService.withFirestore(ref, fakeDb),
-            ),
-          ],
-        );
-        addTearDown(container.dispose);
-
-        final service = container.read(groupServiceProvider);
-        await service.updateGroup(groupId: 'grp-currency', currency: 'USD');
-
-        final doc = await fakeDb.collection('groups').doc('grp-currency').get();
-        expect(doc.data()?['currency'], equals('USD'));
-      });
-
-      test(
-        'updateGroup with both name and currency updates both fields',
-        () async {
-          SharedPreferences.setMockInitialValues({
-            'settings_device_name': 'Test',
-          });
-          final prefs = await SharedPreferences.getInstance();
-          final fakeDb = FakeFirebaseFirestore();
-
-          await fakeDb.collection('groups').doc('grp-both').set({
-            'id': 'grp-both',
-            'name': 'Old Name',
-            'currency': 'OMR',
-          });
-
-          final container = ProviderContainer(
-            overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
-              groupServiceProvider.overrideWith(
-                (ref) => GroupService.withFirestore(ref, fakeDb),
-              ),
-            ],
-          );
-          addTearDown(container.dispose);
-
-          final service = container.read(groupServiceProvider);
-          await service.updateGroup(
-            groupId: 'grp-both',
-            name: 'New Name',
-            currency: 'USD',
-          );
-
-          final doc = await fakeDb.collection('groups').doc('grp-both').get();
-          expect(doc.data()?['name'], equals('New Name'));
-          expect(doc.data()?['currency'], equals('USD'));
-        },
-      );
+      // #261 (Model A): currency is immutable after create — `updateGroup` no
+      // longer accepts a `currency:` param (settable only in `createGroup`), so
+      // the former 'updates currency field' / 'both name and currency' tests are
+      // removed. Rule enforcement is covered in the functions rules suite.
     });
 
     group('updateMemberDisplayName integration', () {

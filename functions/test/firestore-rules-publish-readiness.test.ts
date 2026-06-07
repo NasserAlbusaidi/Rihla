@@ -742,6 +742,17 @@ describe('Publish readiness Firestore rules', () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
     await assertSucceeds(owner.doc('groups/g1').update({
       name: 'Updated Crew',
+      updatedAt: new Date(),
+    }));
+  });
+
+  test('#261 creator cannot change the group currency after creation (immutable)', async () => {
+    // #261 (Model A): currency is settable ONLY at create. Dropping it from the
+    // validCreatorMetadataUpdate allow-list makes any update that touches
+    // currency fall outside hasOnly(['name','updatedAt']) → denied. (Was allowed
+    // pre-#261 via the currency branch.) g1 is OMR; USD is a divergent change.
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1').update({
       currency: 'USD',
       updatedAt: new Date(),
     }));
@@ -1661,11 +1672,60 @@ describe('Publish readiness Firestore rules', () => {
   });
 
   // ===========================================================================
+  // #261 (Model A) — expense currency must equal the owning group's currency,
+  // enforced in the create/update WRAPPERS (unconditional create, diff-gated
+  // update — NOT in validExpenseBase, so a legacy divergent doc stays
+  // soft-deletable). A tautology today (every group + every write is OMR);
+  // becomes live enforcement when Phase 2 moves the 'OMR' write hardcodes.
+  // ===========================================================================
+  test('#261 expense create with a currency divergent from the group is denied', async () => {
+    // g1 is OMR; USD is allow-listed (validCurrency passes) but mismatches the
+    // group — currencyMatchesGroup is the sole denial axis.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expUsd').set(
+      validExpense({ id: 'expUsd', currency: 'USD' }),
+    ));
+  });
+
+  test('#261 expense create with the group currency is allowed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expOmr').set(
+      validExpense({ id: 'expOmr', currency: 'OMR' }),
+    ));
+  });
+
+  test('#261 expense update that changes currency to a divergent code is denied', async () => {
+    await seedExpense({ id: 'expCurU', createdBy: 'member' }); // OMR
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expCurU').update({
+      currency: 'USD',
+      lastEditedBy: 'member', // #248 PR4: stamp so the denial isolates the currency guard (not the lastEditedBy pin)
+    }));
+  });
+
+  test('#261 soft-delete of a legacy divergent-currency expense is still allowed (diff-gate, no regression)', async () => {
+    // The discriminating carve-out: a USD doc in an OMR group. The soft-delete
+    // diff is {isDeleted,deletedAt,lastEditedBy} — currency is absent, so the
+    // diff-gated check short-circuits true and the delete passes. This would
+    // FAIL if currencyMatchesGroup were (mistakenly) placed unconditionally in
+    // validExpenseBase ('USD' != 'OMR' → deny). Mirrors the #192 carve-out above.
+    await seedExpense({ id: 'expCurDel', createdBy: 'member', currency: 'USD' });
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expCurDel').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      lastEditedBy: 'member', // #248 PR4: self-attribution mandatory
+    }));
+  });
+
+  // ===========================================================================
   // #193 — settlement currency: allow-list (matches MoneySerializer scale keys)
   // + group-settlement cross-currency equality with the owning group.
-  // Event-settlement cross-currency equality is DEFERRED to #61 (event
-  // settle-up hardcodes 'OMR'; the equality would be a tautology-today /
-  // landmine-tomorrow). Today validCurrency only checks `size() == 3`.
+  // #261 (Model A): event-settlement cross-currency equality is now ENFORCED
+  // too (was DEFERRED to #61) — every settlement currency must equal the owning
+  // group's currency. A tautology today (event settle-up still hardcodes 'OMR'
+  // and every group is OMR); Phase 2 MUST move settle-up off the 'OMR' hardcode
+  // to group.currency or non-OMR groups' settle-up writes get PERMISSION_DENIED.
   // ===========================================================================
   test('#193 event settlement with a supported currency is allowed', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
@@ -1703,11 +1763,13 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
-  test('#193 event settlement with a divergent supported currency is allowed (cross-currency equality deferred to #61)', async () => {
-    // Documents the deliberate deferral: event settle-up hardcodes OMR, so the
-    // event-side equality would be a tautology until #61 lands multi-currency.
+  test('#261 event settlement with a divergent supported currency is denied (cross-currency equality enforced)', async () => {
+    // #261 (Model A): event settlement currency must equal the owning group's
+    // currency (g1 is OMR; USD is allow-listed but mismatches). Resolves the
+    // prior #61 deferral — Phase 2 must move event settle-up off the 'OMR'
+    // hardcode to group.currency before any non-OMR group can settle up.
     const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setUsd').set(
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setUsd').set(
       validSettlement({ id: 'setUsd', currency: 'USD' }),
     ));
   });

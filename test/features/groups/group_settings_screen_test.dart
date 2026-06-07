@@ -301,7 +301,6 @@ Widget _wrapGroupInfoSection({
   required Future<void> Function({
     required String groupId,
     String? name,
-    String? currency,
   })
   onUpdateGroup,
   Group? group,
@@ -396,7 +395,6 @@ class _UpdatingGroupService extends GroupService {
   final Future<void> Function({
     required String groupId,
     String? name,
-    String? currency,
   })
   onUpdateGroup;
 
@@ -404,9 +402,8 @@ class _UpdatingGroupService extends GroupService {
   Future<void> updateGroup({
     required String groupId,
     String? name,
-    String? currency,
   }) {
-    return onUpdateGroup(groupId: groupId, name: name, currency: currency);
+    return onUpdateGroup(groupId: groupId, name: name);
   }
 }
 
@@ -565,11 +562,11 @@ void main() {
     });
 
     testWidgets('creator edits and saves the group name', (tester) async {
-      final calls = <({String groupId, String? name, String? currency})>[];
+      final calls = <({String groupId, String? name})>[];
       await tester.pumpWidget(
         _wrapGroupInfoSection(
-          onUpdateGroup: ({required groupId, name, currency}) async {
-            calls.add((groupId: groupId, name: name, currency: currency));
+          onUpdateGroup: ({required groupId, name}) async {
+            calls.add((groupId: groupId, name: name));
           },
         ),
       );
@@ -581,7 +578,7 @@ void main() {
       await tester.tap(find.byIcon(Iconsax.tick_circle));
       await tester.pumpAndSettle();
 
-      expect(calls, [(groupId: 'group-1', name: 'New Crew', currency: null)]);
+      expect(calls, [(groupId: 'group-1', name: 'New Crew')]);
       expect(find.byType(TextField), findsNothing);
     });
 
@@ -589,7 +586,7 @@ void main() {
       var called = false;
       await tester.pumpWidget(
         _wrapGroupInfoSection(
-          onUpdateGroup: ({required groupId, name, currency}) async {
+          onUpdateGroup: ({required groupId, name}) async {
             called = true;
           },
         ),
@@ -611,7 +608,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         _wrapGroupInfoSection(
-          onUpdateGroup: ({required groupId, name, currency}) async {
+          onUpdateGroup: ({required groupId, name}) async {
             throw StateError('write failed');
           },
         ),
@@ -647,7 +644,7 @@ void main() {
 
       await tester.pumpWidget(
         _wrapGroupInfoSection(
-          onUpdateGroup: ({required groupId, name, currency}) async {},
+          onUpdateGroup: ({required groupId, name}) async {},
         ),
       );
       await tester.pumpAndSettle();
@@ -666,7 +663,7 @@ void main() {
       await tester.pumpWidget(
         _wrapGroupInfoSection(
           isCreator: false,
-          onUpdateGroup: ({required groupId, name, currency}) async {},
+          onUpdateGroup: ({required groupId, name}) async {},
         ),
       );
       await tester.pumpAndSettle();
