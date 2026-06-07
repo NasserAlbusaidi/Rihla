@@ -119,6 +119,7 @@ class EditExpenseScreen extends ConsumerWidget {
               payload.payerParticipantId != original.payerParticipantId
               ? payload.payerParticipantId
               : null,
+          lastEditedBy: ref.read(currentUserIdProvider), // #248
         );
 
     ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
@@ -151,6 +152,7 @@ class EditExpenseScreen extends ConsumerWidget {
           groupId: groupId,
           eventId: eventId,
           expenseId: expense.id,
+          lastEditedBy: ref.read(currentUserIdProvider), // #248
         );
     ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
     ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance

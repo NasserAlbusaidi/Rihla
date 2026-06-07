@@ -100,6 +100,7 @@ void main() {
         clearSplit: false,
         categoryId: null,
         payerParticipantId: null,
+        lastEditedBy: 'uid-yasmin',
       ),
     ).thenAnswer((_) async {});
 
@@ -134,6 +135,7 @@ void main() {
         clearSplit: false,
         categoryId: null,
         payerParticipantId: null,
+        lastEditedBy: 'uid-yasmin',
       ),
     ).called(1);
     expect(find.text('Open edit'), findsOneWidget);
@@ -146,6 +148,7 @@ void main() {
         groupId: 'group-1',
         eventId: 'event-1',
         expenseId: 'expense-1',
+        lastEditedBy: 'uid-yasmin',
       ),
     ).thenAnswer((_) async {});
 
@@ -171,6 +174,7 @@ void main() {
         groupId: 'group-1',
         eventId: 'event-1',
         expenseId: 'expense-1',
+        lastEditedBy: 'uid-yasmin',
       ),
     ).called(1);
     expect(find.text('Open edit'), findsOneWidget);
@@ -192,6 +196,7 @@ void main() {
         clearSplit: false,
         categoryId: null,
         payerParticipantId: null,
+        lastEditedBy: 'uid-yasmin',
       ),
     ).thenThrow(StateError('locked'));
 
@@ -241,6 +246,7 @@ void main() {
         groupId: any(named: 'groupId'),
         eventId: any(named: 'eventId'),
         expenseId: any(named: 'expenseId'),
+        lastEditedBy: any(named: 'lastEditedBy'),
       ),
     );
   });
@@ -252,6 +258,7 @@ void main() {
         groupId: 'group-1',
         eventId: 'event-1',
         expenseId: 'expense-1',
+        lastEditedBy: 'uid-yasmin',
       ),
     ).thenThrow(StateError('permission denied'));
 
