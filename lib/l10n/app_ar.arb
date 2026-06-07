@@ -284,7 +284,7 @@
   "editorExpenseNotFoundTitle": "لم يتم العثور على المصروف",
   "editorExpenseNotFoundMessage": "ربما تم حذف هذا المصروف.",
   "editorViewOnlyTitle": "عرض فقط",
-  "editorViewOnlyMessage": "يمكن فقط للشخص الذي أضاف هذا المصروف تعديله أو حذفه.",
+  "editorViewOnlyMessage": "يمكن فقط للمشاركين في هذه الفعالية تعديل المصاريف.",
   "editorExpenseDeleted": "تم حذف المصروف",
   "editorScopeGlobal": "بالتساوي",
   "editorScopeSubGroup": "تقسيم المجموعة",

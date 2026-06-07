@@ -1613,7 +1613,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorViewOnlyMessage.
   ///
   /// In en, this message translates to:
-  /// **'Only the person who added this expense can edit or delete it.'**
+  /// **'Only people in this event can edit expenses.'**
   String get editorViewOnlyMessage;
 
   /// No description provided for @editorExpenseDeleted.

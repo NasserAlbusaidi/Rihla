@@ -989,6 +989,7 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(ref.update({
       splitMode: 'percent',
       splitDistribution: { owner: 50, member: 50 },
+      lastEditedBy: 'member', // #248 PR4: self-attribution mandatory
     }));
 
     await assertFails(member.doc('groups/g1/events/e1/expenses/expInvalid').set(
@@ -1024,6 +1025,7 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(ref.update({
       splitMode: 'percent',
       splitDistribution: { owner: 50000, ghost: 50000 },
+      lastEditedBy: 'member', // #248 PR4: stamp so the denial isolates the ghost-participant guard
     }));
   });
 
@@ -1044,13 +1046,16 @@ describe('Publish readiness Firestore rules', () => {
 
     await assertFails(ref.update({
       amountFils: 24000,
+      lastEditedBy: 'owner',
     }));
     await assertSucceeds(ref.update({
       note: 'archival note',
+      lastEditedBy: 'owner', // #248 PR4: self-attribution mandatory
     }));
     await assertSucceeds(ref.update({
       isDeleted: true,
       deletedAt: new Date().toISOString(),
+      lastEditedBy: 'owner', // #248 PR4: self-attribution mandatory
     }));
   });
 
@@ -1075,6 +1080,7 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(ref.update({
       isDeleted: true,
       deletedAt: new Date().toISOString(),
+      lastEditedBy: 'owner', // #248 PR4: stamp so the denial isolates the stale-payer guard
     }));
   });
 
@@ -1085,6 +1091,7 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(ref.update({
       isDeleted: true,
       deletedAt: new Date().toISOString(),
+      lastEditedBy: 'member', // #248 PR4: self-attribution mandatory
     }));
     await assertFails(ref.delete());
   });
@@ -1095,25 +1102,29 @@ describe('Publish readiness Firestore rules', () => {
 
     await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
       amountFils: 12500,
+      lastEditedBy: 'owner', // #248 PR4: self-attribution mandatory
     }));
   });
 
-  test('expense non-creator cannot update peer record', async () => {
-    await seedExpense();
+  // #248 PR4: edit is now OPEN to any event participant (was creator-only).
+  test('#248 PR4 participant non-creator CAN update peer record', async () => {
+    await seedExpense(); // createdBy: 'owner'
     const member = testEnv.authenticatedContext('member').firestore();
 
-    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/exp1').update({
       amountFils: 12500,
+      lastEditedBy: 'member',
     }));
   });
 
-  test('expense non-creator cannot soft-delete peer record', async () => {
-    await seedExpense();
+  test('#248 PR4 participant non-creator CAN soft-delete peer record', async () => {
+    await seedExpense(); // createdBy: 'owner'
     const member = testEnv.authenticatedContext('member').firestore();
 
-    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/exp1').update({
       isDeleted: true,
       deletedAt: new Date().toISOString(),
+      lastEditedBy: 'member',
     }));
   });
 
@@ -1139,6 +1150,7 @@ describe('Publish readiness Firestore rules', () => {
 
     await assertFails(owner.doc('groups/g1/events/e1/expenses/exp1').update({
       createdBy: 'member',
+      lastEditedBy: 'owner', // #248 PR4: stamp so the denial isolates createdBy-immutability, not the pin
     }));
   });
 
@@ -1149,6 +1161,7 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
       isDeleted: true,
       deletedAt: new Date().toISOString(),
+      lastEditedBy: 'owner', // #248 PR4: self-attribution mandatory
     }));
   });
 
@@ -1193,11 +1206,37 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('#248 old-client update WITHOUT touching lastEditedBy still allowed', async () => {
+  // #248 PR4: the lastEditedBy pin is now present-AND-equal (was diff-gated). An
+  // update must self-attribute the editor — omitting lastEditedBy is denied — so
+  // the audit trigger can never fall back to createdBy and blame the wrong person.
+  // Reverses the PR1 "old-client update WITHOUT lastEditedBy still allowed" case:
+  // the live client always re-stamps on every update path, so the merge-preservation
+  // footgun that motivated diff-gating no longer applies (no real users → safe).
+  test('#248 PR4 update WITHOUT lastEditedBy is denied (editor must self-attribute)', async () => {
     await seedExpense(); // createdBy: 'owner', no lastEditedBy
     const owner = testEnv.authenticatedContext('owner').firestore();
-    await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
-      amountFils: 12500, // diff doesn't touch lastEditedBy -> pin skipped
+    await assertFails(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500, // omits lastEditedBy -> would let the trigger blame createdBy
+    }));
+  });
+
+  // The misattribution hole the refuter caught: a non-creator participant could
+  // edit a peer's money and, by omitting lastEditedBy, have the tamper-proof audit
+  // log name the CREATOR. The present-and-equal pin closes it.
+  test('#248 PR4 non-creator update OMITTING lastEditedBy is denied (anti-misattribution)', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 99999, // no lastEditedBy -> trigger would blame 'owner'
+    }));
+  });
+
+  test('#248 PR4 non-creator soft-delete OMITTING lastEditedBy is denied', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      isDeleted: true,
+      deletedAt: new Date().toISOString(), // no lastEditedBy
     }));
   });
 
@@ -1211,10 +1250,73 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('#248 non-creator still cannot update even with a valid own lastEditedBy (edit stays creator-only in PR1)', async () => {
+  // === #248 PR4: OPEN edit — any event participant edits/deletes; identity guards hold ===
+
+  test('#248 PR4 participant non-creator CAN update with own lastEditedBy', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'member',
+    }));
+  });
+
+  test('#248 PR4 participant non-creator FORGING lastEditedBy is rejected', async () => {
     await seedExpense(); // createdBy: 'owner'
     const member = testEnv.authenticatedContext('member').firestore();
     await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'owner', // framing the creator — pinned to auth.uid, rejected
+    }));
+  });
+
+  test('#248 PR4 participant non-creator cannot mutate createdBy', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      createdBy: 'member',
+      lastEditedBy: 'member',
+    }));
+  });
+
+  test('#248 PR4 participant non-creator update re-sending a negative splitDistribution is denied', async () => {
+    await seedExpense({
+      splitMode: 'shares',
+      splitDistribution: { owner: 1, member: 1 },
+    }); // createdBy: 'owner'
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp1').update({
+      splitDistribution: { owner: -1, member: 2 }, // #192/#194 holds across the wider WHO
+      lastEditedBy: 'member',
+    }));
+  });
+
+  test('#248 PR4 non-member outsider cannot update expense', async () => {
+    await seedExpense(); // createdBy: 'owner'
+    const eve = testEnv.authenticatedContext('eve').firestore(); // not in g1.memberIds
+    await assertFails(eve.doc('groups/g1/events/e1/expenses/exp1').update({
+      amountFils: 12500,
+      lastEditedBy: 'eve',
+    }));
+  });
+
+  // The boundary that matters: the gate is isEventParticipant (participantIds),
+  // NOT isGroupMember (memberIds). A group member who is not on THIS event's
+  // participant list cannot edit its expenses.
+  test('#248 PR4 group-member who is NOT an event participant cannot update expense', async () => {
+    await seedEvent('e2', { participantIds: ['owner'] }); // member NOT a participant of e2
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('groups/g1/events/e2/expenses/expE2').set(
+        validExpense({
+          id: 'expE2',
+          eventId: 'e2',
+          createdBy: 'owner',
+          payerParticipantId: 'owner',
+        }),
+      );
+    });
+    const member = testEnv.authenticatedContext('member').firestore(); // in g1.memberIds, NOT in e2.participantIds
+    await assertFails(member.doc('groups/g1/events/e2/expenses/expE2').update({
       amountFils: 12500,
       lastEditedBy: 'member',
     }));
@@ -1544,6 +1646,7 @@ describe('Publish readiness Firestore rules', () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertFails(member.doc('groups/g1/events/e1/expenses/expU').update({
       splitDistribution: { owner: 5, member: -2 },
+      lastEditedBy: 'member', // #248 PR4: stamp so the denial isolates #192 (negative split)
     }));
   });
 
@@ -1553,6 +1656,7 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expDel').update({
       isDeleted: true,
       deletedAt: new Date().toISOString(),
+      lastEditedBy: 'member', // #248 PR4: self-attribution mandatory
     }));
   });
 
@@ -1662,6 +1766,7 @@ describe('Publish readiness Firestore rules', () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertFails(member.doc('groups/g1/events/e1/expenses/expEdit').update({
       description: 'bad\nvalue',
+      lastEditedBy: 'member', // #248 PR4: stamp so the denial isolates #194 (control-char free-text)
     }));
   });
 
@@ -1671,6 +1776,7 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expLongDel').update({
       isDeleted: true,
       deletedAt: new Date().toISOString(),
+      lastEditedBy: 'member', // #248 PR4: self-attribution mandatory
     }));
   });
 
