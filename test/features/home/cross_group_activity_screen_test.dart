@@ -13,6 +13,7 @@ import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/r_amount.dart';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -37,8 +38,9 @@ GroupActivityLog _makeActivity(
 CrossGroupActivityEntry _makeEntry(
   GroupActivityLog log,
   String groupName,
-  String groupId,
-) => (log: log, groupName: groupName, groupId: groupId, currency: 'OMR');
+  String groupId, {
+  String currency = 'OMR',
+}) => (log: log, groupName: groupName, groupId: groupId, currency: currency);
 
 Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
   final router = GoRouter(
@@ -189,6 +191,75 @@ void main() {
               .first,
         );
         expect(row.crossAxisAlignment, CrossAxisAlignment.start);
+      },
+    );
+
+    testWidgets(
+      'settlement amount stored as a stringified Decimal renders (#380) — '
+      'the cross-group feed must not drop the string-encoded `amount` that '
+      'GroupSettleUpScreen.logGroupEvent writes',
+      (tester) async {
+        // GroupSettleUpScreen writes metadata: {'amount': amount.toString()},
+        // i.e. a stringified Decimal — NOT a num. The old `is num` coercion
+        // dropped it, so the row rendered no amount at all.
+        final log = _makeActivity(
+          's1',
+          'Alice',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amount': '12.5'},
+        );
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const CrossGroupActivityScreen(),
+            overrides: _baseOverrides(
+              activityOverride: AsyncValue.data([
+                _makeEntry(log, 'Trip A', 'g1'),
+              ]),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final amounts = tester
+            .widgetList<RAmount>(find.byType(RAmount))
+            .toList();
+        expect(amounts, hasLength(1));
+        // Parsed straight from the string, no double round-trip / forced 3dp.
+        expect(amounts.single.value, Decimal.parse('12.5'));
+      },
+    );
+
+    testWidgets(
+      'string-encoded amount on a USD group renders at 2dp precision (#380)',
+      (tester) async {
+        final log = _makeActivity(
+          's2',
+          'Bob',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amount': '20.25'},
+        );
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const CrossGroupActivityScreen(),
+            overrides: _baseOverrides(
+              activityOverride: AsyncValue.data([
+                _makeEntry(log, 'USD Trip', 'g9', currency: 'USD'),
+              ]),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final amounts = tester
+            .widgetList<RAmount>(find.byType(RAmount))
+            .toList();
+        expect(amounts, hasLength(1));
+        expect(amounts.single.value, Decimal.parse('20.25'));
+        expect(amounts.single.currency, 'USD');
       },
     );
 
