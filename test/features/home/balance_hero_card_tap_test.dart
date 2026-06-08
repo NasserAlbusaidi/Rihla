@@ -25,9 +25,14 @@ void main() {
           userGroupsProvider.overrideWith((ref) => Stream.value([])),
           crossGroupBalanceProvider.overrideWith(
             (ref) => AsyncValue.data((
-              net: Decimal.parse('12.500'),
-              owedToUser: Decimal.parse('12.500'),
-              userOwes: Decimal.zero,
+              byCurrency: [
+                (
+                  currency: 'OMR',
+                  net: Decimal.parse('12.500'),
+                  owedToUser: Decimal.parse('12.500'),
+                  userOwes: Decimal.zero,
+                ),
+              ],
               groupCount: 2,
               isLoading: false,
             )),

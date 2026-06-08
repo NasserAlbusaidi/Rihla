@@ -52,20 +52,116 @@ class _LoadedCard extends StatelessWidget {
   final CrossGroupBalance balance;
 
   /// #244: a per-event money read failed for at least one group, so [balance]
-  /// is a partial sum. Renders the "may be incomplete" notice; the number still
-  /// shows (the "you're owed X (incomplete)" goal).
+  /// is a partial sum. Renders the "may be incomplete" notice; the numbers
+  /// still show (the "you're owed X (incomplete)" goal).
   final bool partial;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    // owed/owes split is folded into crossGroupBalanceOnceProvider's existing
-    // fan-out (#110) — no second walk over groupBalancesProvider here.
-    final owedToUser = balance.owedToUser;
-    final userOwes = balance.userOwes;
+    final buckets = balance.byCurrency;
+    // #261: one block per currency (there is no FX, so amounts in different
+    // currencies are never summed). The trailing currency code sits inline in
+    // the header ONLY when there is exactly one currency — today's all-OMR
+    // reality renders identically to before. Multi-currency: each block carries
+    // its own code; all-settled (empty): no code.
+    final single = buckets.length == 1;
 
-    final net = balance.net;
+    final children = <Widget>[
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Expanded(
+            child: Text(
+              context.l10n.homeAcrossAllJourneys,
+              style: AppTypography.display(
+                fontSize: 16,
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+          if (single)
+            Text(
+              buckets.first.currency,
+              style: AppTypography.mono(
+                fontSize: 9,
+                color: colors.textSecondary,
+                letterSpacing: 1.5,
+              ),
+            ),
+        ],
+      ),
+    ];
+
+    if (buckets.isEmpty) {
+      children.add(const SizedBox(height: 14));
+      children.add(const _CurrencyBlock(bucket: null, showCode: false));
+    } else {
+      for (var i = 0; i < buckets.length; i++) {
+        if (i == 0) {
+          children.add(const SizedBox(height: 14));
+        } else {
+          children.add(SizedBox(height: context.spacing.space20));
+          children.add(
+            Divider(height: 1, color: colors.border.withValues(alpha: 0.5)),
+          );
+          children.add(const SizedBox(height: 14));
+        }
+        children.add(_CurrencyBlock(bucket: buckets[i], showCode: !single));
+      }
+    }
+
+    if (partial) {
+      children.add(const SizedBox(height: 12));
+      children.add(const _IncompleteNotice());
+    }
+
+    final card = Container(
+      key: HomeKeys.balanceHeroCard,
+      margin: EdgeInsets.symmetric(horizontal: context.spacing.space20),
+      padding: const EdgeInsetsDirectional.fromSTEB(22, 20, 22, 22),
+      decoration: BoxDecoration(
+        color: colors.cardSurface,
+        borderRadius: BorderRadius.circular(context.spacing.radiusSheet),
+        boxShadow: context.shadows.raised,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+    if (onTap == null) return card;
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: card,
+      ),
+    );
+  }
+}
+
+/// One currency's net + caption + split bar + legend. [bucket] null ⇒ the
+/// all-settled state (net 0, no currency code). [showCode] adds a small code
+/// label above the amount when the card shows MORE than one currency (the
+/// single-currency card carries the code in the header row instead).
+class _CurrencyBlock extends StatelessWidget {
+  const _CurrencyBlock({required this.bucket, required this.showCode});
+  final CurrencyBalance? bucket;
+  final bool showCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final b = bucket;
+    final net = b?.net ?? Decimal.zero;
+    final owedToUser = b?.owedToUser ?? Decimal.zero;
+    final userOwes = b?.userOwes ?? Decimal.zero;
+    final currency = b?.currency ?? 'OMR';
+
     final isPositive = net > Decimal.zero;
     final isNegative = net < Decimal.zero;
     final caption = isPositive
@@ -84,72 +180,40 @@ class _LoadedCard extends StatelessWidget {
         ? AmountTone.rust
         : AmountTone.ink;
 
-    final card = Container(
-      key: HomeKeys.balanceHeroCard,
-      margin: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      padding: const EdgeInsetsDirectional.fromSTEB(22, 20, 22, 22),
-      decoration: BoxDecoration(
-        color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(context.spacing.radiusSheet),
-        boxShadow: context.shadows.raised,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Text(
-                  context.l10n.homeAcrossAllJourneys,
-                  style: AppTypography.display(
-                    fontSize: 16,
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ),
-              Text(
-                'OMR',
-                style: AppTypography.mono(
-                  fontSize: 9,
-                  color: colors.textSecondary,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          RAmount(
-            value: net,
-            currency: 'OMR',
-            showCurrency: false,
-            size: 44,
-            sign: !net.isZero,
-            tone: tone,
-            weight: FontWeight.w500,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showCode) ...[
+          Text(
+            currency,
+            style: AppTypography.mono(
+              fontSize: 9,
+              color: colors.textSecondary,
+              letterSpacing: 1.5,
+            ),
           ),
           const SizedBox(height: 6),
-          _CaptionLine(text: caption, accent: captionAccent, tone: tone),
-          const SizedBox(height: 18),
-          _SplitBar(owedToUser: owedToUser, userOwes: userOwes),
-          const SizedBox(height: 10),
-          _SplitLegend(owedToUser: owedToUser, userOwes: userOwes),
-          if (partial) ...[
-            const SizedBox(height: 12),
-            const _IncompleteNotice(),
-          ],
         ],
-      ),
-    );
-    if (onTap == null) return card;
-    return Semantics(
-      button: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: card,
-      ),
+        RAmount(
+          value: net,
+          currency: currency,
+          showCurrency: false,
+          size: 44,
+          sign: !net.isZero,
+          tone: tone,
+          weight: FontWeight.w500,
+        ),
+        const SizedBox(height: 6),
+        _CaptionLine(text: caption, accent: captionAccent, tone: tone),
+        const SizedBox(height: 18),
+        _SplitBar(owedToUser: owedToUser, userOwes: userOwes),
+        const SizedBox(height: 10),
+        _SplitLegend(
+          owedToUser: owedToUser,
+          userOwes: userOwes,
+          currency: currency,
+        ),
+      ],
     );
   }
 }
@@ -259,9 +323,14 @@ class _SplitBar extends StatelessWidget {
 }
 
 class _SplitLegend extends StatelessWidget {
-  const _SplitLegend({required this.owedToUser, required this.userOwes});
+  const _SplitLegend({
+    required this.owedToUser,
+    required this.userOwes,
+    required this.currency,
+  });
   final Decimal owedToUser;
   final Decimal userOwes;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -276,12 +345,14 @@ class _SplitLegend extends StatelessWidget {
           dotColor: colors.success,
           label: context.l10n.homeOwedToYou,
           amount: owedToUser,
+          currency: currency,
         ),
         const SizedBox(height: 6),
         _LegendLine(
           dotColor: colors.error,
           label: context.l10n.homeYouOwe,
           amount: userOwes,
+          currency: currency,
         ),
       ],
     );
@@ -293,11 +364,13 @@ class _LegendLine extends StatelessWidget {
     required this.dotColor,
     required this.label,
     required this.amount,
+    required this.currency,
   });
 
   final Color dotColor;
   final String label;
   final Decimal amount;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -315,7 +388,7 @@ class _LegendLine extends StatelessWidget {
             ),
           ),
         ),
-        RAmount(value: amount, size: 12, tone: AmountTone.ink),
+        RAmount(value: amount, currency: currency, size: 12, tone: AmountTone.ink),
       ],
     );
   }

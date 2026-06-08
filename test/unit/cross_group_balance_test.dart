@@ -13,6 +13,20 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 // Test helpers
 // ---------------------------------------------------------------------------
 
+/// #261: these tests assert the SINGLE-currency cross-group math (all groups
+/// here are default-OMR). The contract is now per-currency [CrossGroupBalance.
+/// byCurrency]; this adapter reads "the sole currency bucket" so the existing
+/// assertions keep proving the single-currency aggregation. `.single` THROWS if
+/// a test ever holds >1 currency — so it can never silently re-sum across
+/// currencies (the bug #261 fixes). Multi-currency bucketing is proven in
+/// cross_group_currency_buckets_test.dart.
+extension _SingleCurrencyAccess on CrossGroupBalance {
+  CurrencyBalance? get _only => byCurrency.isEmpty ? null : byCurrency.single;
+  Decimal get net => _only?.net ?? Decimal.zero;
+  Decimal get owedToUser => _only?.owedToUser ?? Decimal.zero;
+  Decimal get userOwes => _only?.userOwes ?? Decimal.zero;
+}
+
 /// Build a minimal [Group] for testing.
 Group _makeGroup({required String id, required String name}) {
   return Group(

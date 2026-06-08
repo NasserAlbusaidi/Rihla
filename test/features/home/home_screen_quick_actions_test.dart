@@ -31,9 +31,7 @@ List<Override> _baseOverrides(List<Group> groups) => [
   userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
   crossGroupBalanceProvider.overrideWith(
     (ref) => AsyncValue.data((
-      net: Decimal.zero,
-      owedToUser: Decimal.zero,
-      userOwes: Decimal.zero,
+      byCurrency: const <CurrencyBalance>[],
       groupCount: groups.length,
       isLoading: false,
     )),

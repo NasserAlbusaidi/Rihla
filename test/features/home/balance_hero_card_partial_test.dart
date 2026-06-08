@@ -15,9 +15,14 @@ import 'package:safar/shared/widgets/r_amount.dart';
 void main() {
   CrossGroupBalanceOnce result({required bool partial}) => (
         balance: (
-          net: Decimal.parse('12.500'),
-          owedToUser: Decimal.parse('12.500'),
-          userOwes: Decimal.zero,
+          byCurrency: [
+            (
+              currency: 'OMR',
+              net: Decimal.parse('12.500'),
+              owedToUser: Decimal.parse('12.500'),
+              userOwes: Decimal.zero,
+            ),
+          ],
           groupCount: 1,
           isLoading: false,
         ),

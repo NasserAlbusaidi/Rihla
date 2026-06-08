@@ -28,6 +28,31 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 // Test helpers
 // ---------------------------------------------------------------------------
 
+/// #261: single-OMR-currency [CrossGroupBalance] from a net string (owed/owes
+/// derived; zero net → empty byCurrency = all-settled).
+CrossGroupBalance _omr(String net, {int groupCount = 1}) {
+  final n = Decimal.parse(net);
+  if (n == Decimal.zero) {
+    return (
+      byCurrency: const <CurrencyBalance>[],
+      groupCount: groupCount,
+      isLoading: false,
+    );
+  }
+  return (
+    byCurrency: [
+      (
+        currency: 'OMR',
+        net: n,
+        owedToUser: n > Decimal.zero ? n : Decimal.zero,
+        userOwes: n < Decimal.zero ? n.abs() : Decimal.zero,
+      ),
+    ],
+    groupCount: groupCount,
+    isLoading: false,
+  );
+}
+
 Event _makeEvent(
   String id,
   String name,
@@ -185,13 +210,7 @@ GroupBalances _testGroupBalances({Decimal? net}) => (
 List<Override> _loadedOverrides() => [
   userGroupsProvider.overrideWith((ref) => Stream.value(_testGroups)),
   crossGroupBalanceProvider.overrideWith(
-    (ref) => AsyncValue.data((
-      net: Decimal.parse('-5.500'),
-      owedToUser: Decimal.zero,
-      userOwes: Decimal.zero,
-      groupCount: 2,
-      isLoading: false,
-    )),
+    (ref) => AsyncValue.data(_omr('-5.500', groupCount: 2)),
   ),
   crossGroupActivityProvider.overrideWith(
     (ref) => AsyncValue.data([
@@ -287,13 +306,7 @@ void main() {
     List<Override> emptyOverrides() => [
       userGroupsProvider.overrideWith((ref) => Stream.value([])),
       crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data((
-          net: Decimal.zero,
-          owedToUser: Decimal.zero,
-          userOwes: Decimal.zero,
-          groupCount: 0,
-          isLoading: false,
-        )),
+        (ref) => AsyncValue.data(_omr('0', groupCount: 0)),
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
@@ -344,13 +357,7 @@ void main() {
         (ref) => Stream.error(Exception('Network error')),
       ),
       crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data((
-          net: Decimal.zero,
-          owedToUser: Decimal.zero,
-          userOwes: Decimal.zero,
-          groupCount: 0,
-          isLoading: false,
-        )),
+        (ref) => AsyncValue.data(_omr('0', groupCount: 0)),
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
@@ -395,13 +402,7 @@ void main() {
     List<Override> navOverrides() => [
       userGroupsProvider.overrideWith((ref) => Stream.value([_group1])),
       crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data((
-          net: Decimal.zero,
-          owedToUser: Decimal.zero,
-          userOwes: Decimal.zero,
-          groupCount: 1,
-          isLoading: false,
-        )),
+        (ref) => AsyncValue.data(_omr('0', groupCount: 1)),
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
@@ -475,13 +476,7 @@ void main() {
             overrides: [
               userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
               crossGroupBalanceProvider.overrideWith(
-                (ref) => AsyncValue.data((
-                  net: Decimal.parse('-5.500'),
-                  owedToUser: Decimal.zero,
-                  userOwes: Decimal.zero,
-                  groupCount: 1,
-                  isLoading: false,
-                )),
+                (ref) => AsyncValue.data(_omr('-5.500', groupCount: 1)),
               ),
               crossGroupActivityProvider.overrideWith(
                 (ref) => const AsyncValue.data([]),
@@ -516,13 +511,7 @@ void main() {
           overrides: [
             userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
             crossGroupBalanceProvider.overrideWith(
-              (ref) => AsyncValue.data((
-                net: Decimal.zero,
-                owedToUser: Decimal.zero,
-                userOwes: Decimal.zero,
-                groupCount: 1,
-                isLoading: false,
-              )),
+              (ref) => AsyncValue.data(_omr('0', groupCount: 1)),
             ),
             crossGroupActivityProvider.overrideWith(
               (ref) => const AsyncValue.data([]),
@@ -578,13 +567,7 @@ void main() {
         (ref) => Stream.value([_makeGroup('g1', 'Desert Crew')]),
       ),
       crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data((
-          net: Decimal.zero,
-          owedToUser: Decimal.zero,
-          userOwes: Decimal.zero,
-          groupCount: 1,
-          isLoading: false,
-        )),
+        (ref) => AsyncValue.data(_omr('0', groupCount: 1)),
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),

@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/supported_currencies.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
@@ -492,19 +493,62 @@ final currentUserIdProvider = Provider<String?>((ref) {
 /// hero card.
 ///
 /// Fields:
-/// - [net]: The current user's net balance across ALL groups (positive = owed
-///   money, negative = owes money).
-/// - [groupCount]: Total number of groups the user belongs to.
-/// - [isLoading]: True if some group balance data is still loading (UI can
-///   show partial data with a loading indicator).
-typedef CrossGroupBalance =
+/// One currency's slice of the cross-group balance (#261).
+/// [net] == [owedToUser] - [userOwes] for this currency.
+typedef CurrencyBalance =
     ({
+      String currency,
       Decimal net,
       Decimal owedToUser,
       Decimal userOwes,
+    });
+
+/// Cross-group balance, BUCKETED per currency (#261 — there is no FX, so
+/// amounts in different currencies are NEVER summed together).
+///
+/// - [byCurrency]: one entry per currency the user has ACTIVE balance in
+///   ([CurrencyBalance.owedToUser] != 0 || [CurrencyBalance.userOwes] != 0),
+///   sorted GCC-first ([kSupportedCurrencies]; an off-list legacy code sorts
+///   last but is NEVER dropped). Empty ⇒ all settled / no groups.
+/// - [groupCount]: total number of groups the user belongs to.
+/// - [isLoading]: true if some group balance data is still loading.
+typedef CrossGroupBalance =
+    ({
+      List<CurrencyBalance> byCurrency,
       int groupCount,
       bool isLoading,
     });
+
+/// Bucket a per-currency accumulator into the sorted [CurrencyBalance] list:
+/// keep only currencies with activity (owed or owes nonzero — so an offsetting
+/// net-zero currency is still shown), GCC-first; an unknown code sorts last but
+/// is NEVER dropped (dropping money is forbidden — the parity contract).
+List<CurrencyBalance> _sortedCurrencyBuckets(
+  Map<String, ({Decimal net, Decimal owedToUser, Decimal userOwes})> byCurrency,
+) {
+  final list = <CurrencyBalance>[];
+  for (final e in byCurrency.entries) {
+    if (e.value.owedToUser != Decimal.zero ||
+        e.value.userOwes != Decimal.zero) {
+      list.add((
+        currency: e.key,
+        net: e.value.net,
+        owedToUser: e.value.owedToUser,
+        userOwes: e.value.userOwes,
+      ));
+    }
+  }
+  int rank(String c) {
+    final i = kSupportedCurrencies.indexOf(c);
+    return i < 0 ? kSupportedCurrencies.length : i;
+  }
+
+  list.sort((a, b) {
+    final r = rank(a.currency).compareTo(rank(b.currency));
+    return r != 0 ? r : a.currency.compareTo(b.currency);
+  });
+  return list;
+}
 
 // ---------------------------------------------------------------------------
 // crossGroupBalanceProvider
@@ -530,10 +574,8 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
 ) {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) {
-    return AsyncValue.data((
-      net: Decimal.zero,
-      owedToUser: Decimal.zero,
-      userOwes: Decimal.zero,
+    return const AsyncValue.data((
+      byCurrency: <CurrencyBalance>[],
       groupCount: 0,
       isLoading: false,
     ));
@@ -548,18 +590,15 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
   }
   final groups = groupsAsync.valueOrNull ?? [];
   if (groups.isEmpty) {
-    return AsyncValue.data((
-      net: Decimal.zero,
-      owedToUser: Decimal.zero,
-      userOwes: Decimal.zero,
+    return const AsyncValue.data((
+      byCurrency: <CurrencyBalance>[],
       groupCount: 0,
       isLoading: false,
     ));
   }
 
-  var net = Decimal.zero;
-  var owedToUser = Decimal.zero;
-  var userOwes = Decimal.zero;
+  final byCurrencyMap =
+      <String, ({Decimal net, Decimal owedToUser, Decimal userOwes})>{};
   var anyLoading = false;
 
   for (final group in groups) {
@@ -574,31 +613,37 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
         .where((b) => b.participantId == uid)
         .firstOrNull;
     final groupNet = userBalance?.netBalance ?? Decimal.zero;
-    net = net + groupNet;
-    if (groupNet > Decimal.zero) {
-      owedToUser += groupNet;
-    } else if (groupNet < Decimal.zero) {
-      userOwes += groupNet.abs();
-    }
+    _accumulateBucket(byCurrencyMap, group.currency, groupNet);
   }
 
-  if (anyLoading && net == Decimal.zero) {
-    return AsyncValue.data((
-      net: Decimal.zero,
-      owedToUser: owedToUser,
-      userOwes: userOwes,
-      groupCount: groups.length,
-      isLoading: true,
-    ));
-  }
   return AsyncValue.data((
-    net: net,
-    owedToUser: owedToUser,
-    userOwes: userOwes,
+    byCurrency: _sortedCurrencyBuckets(byCurrencyMap),
     groupCount: groups.length,
     isLoading: anyLoading,
   ));
 });
+
+/// Fold one group's per-user [groupNet] (settlement-folded scalar) into the
+/// per-currency accumulator keyed by the group's [currency]. Sign-splits the
+/// net into the owed/owes components the hero renders.
+void _accumulateBucket(
+  Map<String, ({Decimal net, Decimal owedToUser, Decimal userOwes})> map,
+  String currency,
+  Decimal groupNet,
+) {
+  final prev =
+      map[currency] ??
+      (net: Decimal.zero, owedToUser: Decimal.zero, userOwes: Decimal.zero);
+  map[currency] = (
+    net: prev.net + groupNet,
+    owedToUser: groupNet > Decimal.zero
+        ? prev.owedToUser + groupNet
+        : prev.owedToUser,
+    userOwes: groupNet < Decimal.zero
+        ? prev.userOwes + groupNet.abs()
+        : prev.userOwes,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // One-shot home aggregation (#104) — kills the O(G×E) permanent listener leak
@@ -711,9 +756,7 @@ final crossGroupBalanceOnceProvider =
   if (uid == null) {
     return (
       balance: (
-        net: Decimal.zero,
-        owedToUser: Decimal.zero,
-        userOwes: Decimal.zero,
+        byCurrency: const <CurrencyBalance>[],
         groupCount: 0,
         isLoading: false,
       ),
@@ -722,31 +765,24 @@ final crossGroupBalanceOnceProvider =
   }
 
   final groups = await ref.watch(userGroupsProvider.future);
-  var net = Decimal.zero;
-  var owedToUser = Decimal.zero;
-  var userOwes = Decimal.zero;
+  final byCurrencyMap =
+      <String, ({Decimal net, Decimal owedToUser, Decimal userOwes})>{};
   var partial = false;
   for (final group in groups) {
     final result = await ref.watch(groupBalancesOnceProvider(group.id).future);
     partial = partial || result.failedEventIds.isNotEmpty;
-    final groupNet = result.balances.balances
+    final groupNet =
+        result.balances.balances
             .where((b) => b.participantId == uid)
             .firstOrNull
             ?.netBalance ??
         Decimal.zero;
-    net = net + groupNet;
-    if (groupNet > Decimal.zero) {
-      owedToUser += groupNet;
-    } else if (groupNet < Decimal.zero) {
-      userOwes += groupNet.abs();
-    }
+    _accumulateBucket(byCurrencyMap, group.currency, groupNet);
   }
 
   return (
     balance: (
-      net: net,
-      owedToUser: owedToUser,
-      userOwes: userOwes,
+      byCurrency: _sortedCurrencyBuckets(byCurrencyMap),
       groupCount: groups.length,
       isLoading: false,
     ),
