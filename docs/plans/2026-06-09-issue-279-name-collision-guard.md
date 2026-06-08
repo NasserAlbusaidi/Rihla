@@ -36,9 +36,9 @@ TS equivalent: `name.trim().toLowerCase()`. (JS/Dart default Unicode lowercasing
   const membersSnap = await tx.get(groupRef.collection('members'));
   ```
   (The txn already reads the full `events` subcollection with a size>400 guard; the members collection is bounded the same way in practice. No extra index.)
-- Collision check ONLY when creating a brand-new member doc — i.e. `!memberSnap.exists`. A heal/re-join (member doc already present) must NOT self-collide:
+- Collision check ONLY for a **genuinely new member** — gate on `didJoin` (`== !memberSnap.exists && !memberIds.includes(uid)`), NOT bare `!memberSnap.exists`. (Auto-merge review P2: bare `!memberSnap.exists` would wrongly reject the #53 **heal path** — uid already in `memberIds` but member-doc missing — when its name matches another member; `didJoin` skips both idempotent re-join and heal-path restore.)
   ```ts
-  if (!memberSnap.exists) {
+  if (didJoin) {
     const candidate = displayName.trim().toLowerCase();
     const taken = membersSnap.docs.some((d) => {
       if (d.get('userId') === uid) return false;            // exclude self (defensive; self has no doc here)
@@ -99,7 +99,7 @@ Rules cannot efficiently enforce subcollection uniqueness, and the callable is t
 
 - **"Anonymous" default** (no name sent → `normalizeDisplayName` returns `'Anonymous'`): treated like any other name — a second nameless joiner collides and is rejected. Deliberate (an all-"Anonymous" roster is exactly the ambiguity we're killing). Noted as a known sharp edge.
 - **Whitespace/case:** `" owner "` / `"OWNER"` collide with `"Owner"` (trim+lowercase). Internal-whitespace collapse ("Al  Busaidi") is NOT done — matches the disambiguator's key.
-- **Idempotent re-join** (same uid, member doc exists): collision check skipped (`!memberSnap.exists` guard) → re-join still succeeds.
+- **Idempotent re-join** (same uid, member doc exists) AND **#53 heal path** (uid in `memberIds`, member-doc missing): collision check skipped (gated on `didJoin`) → both restore the existing name without self-rejection, even if it collides with another member.
 
 ---
 

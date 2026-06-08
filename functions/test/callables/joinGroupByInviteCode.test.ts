@@ -541,6 +541,23 @@ describe('joinGroupByInviteCode — display-name collision guard (#279)', () => 
     } as any)).resolves.toEqual({ groupId: 'g1' });
   });
 
+  test('heal-path re-join (uid in memberIds, member-doc missing) is NOT blocked even if its name collides', async () => {
+    // #53 heal path: uid is already in memberIds but its member doc is gone.
+    // Restoring it must NOT be uniqueness-checked (the member already "owns"
+    // that name) — the guard is gated on `didJoin`, which is false here.
+    const db = getFirestore();
+    await db.doc('groups/g1').update({ memberIds: ['owner', 'heal'] });
+    // No members/heal doc — the doc to be healed. 'heal' wants displayName
+    // 'Owner', which collides with the existing owner member doc.
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Owner' },
+      auth: { uid: 'heal' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    expect((await db.doc('groups/g1/members/heal').get()).exists).toBe(true);
+  });
+
   test('collision is detected against a creator doc keyed by a random uuid (userId-field match)', async () => {
     // createGroup keys the CREATOR's member doc by a random uuid with userId as a
     // FIELD (not by uid). Re-shape the owner doc that way to prove the guard
