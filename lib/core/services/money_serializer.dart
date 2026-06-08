@@ -37,6 +37,10 @@ class MoneySerializer {
   static bool isSupported(String currency) =>
       _currencyScale.containsKey(currency.toUpperCase());
 
+  /// The set of supported currency codes. Exposed so the canonical display
+  /// order ([kSupportedCurrencies]) can be drift-guarded against this scale map.
+  static Set<String> get supportedCurrencies => _currencyScale.keys.toSet();
+
   /// Fractional digits for [currency] (OMR→3, USD→2, JPY→0).
   ///
   /// Throws [ArgumentError] on an unsupported currency, consistent with
