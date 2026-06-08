@@ -83,6 +83,12 @@ class ExpenseEditorBody extends ConsumerStatefulWidget {
   final String eventId;
   final ExpenseEditorMode mode;
 
+  /// The currency the expense is denominated in. Under Model A (#261) this is
+  /// the owning group's currency in add mode, and the expense's own stored
+  /// currency in edit mode. Threaded by the parent — the body never defaults it
+  /// (a silent 'OMR' would mis-scale a non-OMR group 10× and be rules-rejected).
+  final String currency;
+
   /// Pre-fill values (edit mode only).
   final Expense? initial;
 
@@ -98,6 +104,7 @@ class ExpenseEditorBody extends ConsumerStatefulWidget {
     required this.groupId,
     required this.eventId,
     required this.mode,
+    required this.currency,
     required this.onSubmit,
     this.initial,
     this.onDelete,
@@ -137,8 +144,6 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   bool _isSubmitting = false;
 
   bool get _isEdit => widget.mode == ExpenseEditorMode.edit;
-
-  String get _tripCurrency => 'OMR';
 
   @override
   void initState() {
@@ -443,7 +448,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                 : context.l10n.editorTitleNewExpense)
           : _noteController.text.trim(),
       total: amount,
-      currency: _tripCurrency,
+      currency: widget.currency,
       participants: participants,
       initialMode: _splitMode,
       initialDistribution: _splitDistribution,
@@ -525,7 +530,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       controller: _amountController,
                       focusNode: _amountFocusNode,
                       amount: _amount,
-                      currency: _tripCurrency,
+                      currency: widget.currency,
                       onChanged: (value) =>
                           setState(() => _amount = _sanitizeAmount(value)),
                       onTap: _queueSelectDefaultZero,
@@ -571,7 +576,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         child: _SplitPreviewCard(
                           event: event,
                           amount: Decimal.tryParse(_amount) ?? Decimal.zero,
-                          currency: _tripCurrency,
+                          currency: widget.currency,
                           scope: _scope,
                           payerId: _selectedPayerId ?? currentParticipant?.id,
                           customSplitParticipants: _customSplitParticipants,
@@ -617,7 +622,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
   String _sanitizeAmount(String value) {
     final maxDecimals =
-        AppFormatters.currencyConfig[_tripCurrency]?.decimals ?? 3;
+        AppFormatters.currencyConfig[widget.currency]?.decimals ?? 3;
     final normalized = normalizeLocalizedDecimalInput(
       value,
       decimalDigits: maxDecimals,
