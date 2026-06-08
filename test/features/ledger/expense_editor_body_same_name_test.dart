@@ -62,6 +62,7 @@ void main() {
               groupId: 'group-1',
               eventId: 'event-1',
               mode: ExpenseEditorMode.edit,
+              currency: 'OMR',
               initial: Expense(
                 id: 'expense-1',
                 tripId: 'event-1',

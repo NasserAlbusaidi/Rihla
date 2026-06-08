@@ -79,6 +79,10 @@ class EditExpenseScreen extends ConsumerWidget {
             groupId: groupId,
             eventId: eventId,
             mode: ExpenseEditorMode.edit,
+            // #261: display the expense's own stored currency (label + input
+            // decimals). The write preserves it via _save → updateExpense
+            // (currency: original.currency), unchanged.
+            currency: expense.currency,
             initial: expense,
             onSubmit: (payload) => _save(ref, expense, payload),
             onDelete: () => _delete(context, ref, expense),

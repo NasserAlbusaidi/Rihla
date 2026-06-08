@@ -8,7 +8,9 @@ import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
@@ -294,6 +296,23 @@ Future<void> _pumpAddExpenseScreen(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         currentUserIdProvider.overrideWithValue('uid-yasmin'),
+        // #261: AddExpenseScreen now gates on the group resolving to read its
+        // currency. groupDetailProvider routes through the real Firestore-bound
+        // groupServiceProvider, so it must be overridden here or the screen
+        // hangs on the loading skeleton.
+        groupDetailProvider('group-1').overrideWith(
+          (ref) => Stream.value(
+            Group(
+              id: 'group-1',
+              name: 'Trip',
+              inviteCode: 'ABC123',
+              createdBy: 'uid-yasmin',
+              memberIds: const ['uid-yasmin'],
+              currency: 'OMR',
+              createdAt: DateTime(2026),
+            ),
+          ),
+        ),
         if (expenseService != null)
           expenseServiceProvider.overrideWithValue(expenseService),
         eventDetailProvider((
