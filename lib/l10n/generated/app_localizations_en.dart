@@ -67,6 +67,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currencySheetTitle => 'Currency';
 
   @override
+  String get createGroupCurrencyHint =>
+      'This group\'s currency. It can\'t be changed later.';
+
+  @override
   String get currencySheetSubtitle =>
       'Default for new trips. Existing trips keep their currency.';
 

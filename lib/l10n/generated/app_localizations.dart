@@ -212,6 +212,12 @@ abstract class AppLocalizations {
   /// **'Currency'**
   String get currencySheetTitle;
 
+  /// No description provided for @createGroupCurrencyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This group\'s currency. It can\'t be changed later.'**
+  String get createGroupCurrencyHint;
+
   /// Subtitle text under CurrencyPickerSheet title explaining the scope of the preference.
   ///
   /// In en, this message translates to:

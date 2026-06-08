@@ -24,6 +24,7 @@
   "languageArabic": "العربية",
 
   "currencySheetTitle": "العملة",
+  "createGroupCurrencyHint": "عملة هذه المجموعة. لا يمكن تغييرها لاحقًا.",
   "currencySheetSubtitle": "الافتراضية للرحلات الجديدة. تحتفظ الرحلات الحالية بعملتها.",
 
   "themeSheetTitle": "المظهر",

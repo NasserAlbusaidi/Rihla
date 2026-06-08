@@ -78,6 +78,7 @@
   },
 
   "currencySheetTitle": "Currency",
+  "createGroupCurrencyHint": "This group's currency. It can't be changed later.",
   "@currencySheetTitle": {
     "description": "Title of the CurrencyPickerSheet bottom sheet."
   },

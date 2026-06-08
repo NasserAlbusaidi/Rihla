@@ -67,6 +67,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get currencySheetTitle => 'العملة';
 
   @override
+  String get createGroupCurrencyHint =>
+      'عملة هذه المجموعة. لا يمكن تغييرها لاحقًا.';
+
+  @override
   String get currencySheetSubtitle =>
       'الافتراضية للرحلات الجديدة. تحتفظ الرحلات الحالية بعملتها.';
 
