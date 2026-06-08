@@ -182,7 +182,7 @@ CrossGroupActivityEntry _toEntry(
   GroupActivityLog log,
   String groupName,
   String groupId,
-) => (log: log, groupName: groupName, groupId: groupId);
+) => (log: log, groupName: groupName, groupId: groupId, currency: 'OMR');
 
 /// Minimal GroupBalances with a known user balance so tests can verify
 /// personal balance display.

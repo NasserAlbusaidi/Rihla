@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -388,7 +389,13 @@ class _ActivityRow extends StatelessWidget {
                   children: [
                     if (amount != null)
                       RAmount(
-                        value: Decimal.parse(amount.toStringAsFixed(3)),
+                        value: Decimal.parse(
+                          amount.toStringAsFixed(
+                            AppFormatters.currencyConfig[entry.currency]?.decimals ??
+                                2,
+                          ),
+                        ),
+                        currency: entry.currency,
                         size: 14,
                       )
                     else

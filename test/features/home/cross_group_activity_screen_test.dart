@@ -38,7 +38,7 @@ CrossGroupActivityEntry _makeEntry(
   GroupActivityLog log,
   String groupName,
   String groupId,
-) => (log: log, groupName: groupName, groupId: groupId);
+) => (log: log, groupName: groupName, groupId: groupId, currency: 'OMR');
 
 Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
   final router = GoRouter(

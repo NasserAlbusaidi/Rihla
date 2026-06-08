@@ -16,6 +16,7 @@ typedef CrossGroupActivityEntry = ({
   GroupActivityLog log,
   String groupName,
   String groupId,
+  String currency,
 });
 
 /// Aggregates the 5 most recent activity entries across ALL groups,
@@ -54,7 +55,12 @@ final crossGroupActivityProvider =
         }
         final logs = activityAsync.valueOrNull ?? [];
         for (final log in logs) {
-          allEntries.add((log: log, groupName: group.name, groupId: group.id));
+          allEntries.add((
+            log: log,
+            groupName: group.name,
+            groupId: group.id,
+            currency: group.currency,
+          ));
         }
       }
 
