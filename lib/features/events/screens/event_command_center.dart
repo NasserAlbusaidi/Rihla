@@ -80,6 +80,7 @@ class EventCommandCenter extends ConsumerWidget {
             groupId: groupId,
             eventId: eventId,
             groupName: group?.name,
+            currency: group?.currency ?? 'OMR',
           );
         },
       ),
@@ -95,12 +96,14 @@ class _Content extends ConsumerWidget {
     required this.groupId,
     required this.eventId,
     required this.groupName,
+    required this.currency,
   });
 
   final Event event;
   final String groupId;
   final String eventId;
   final String? groupName;
+  final String currency;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -167,6 +170,7 @@ class _Content extends ConsumerWidget {
               state: state,
               amount: userBalance?.netBalance.abs(),
               breakdown: breakdown,
+              currency: currency,
               onAddExpense: () {
                 HapticService.lightClick();
                 GoRouter.of(
@@ -190,6 +194,7 @@ class _Content extends ConsumerWidget {
               child: _LedgerSummaryStrip(
                 total: total,
                 count: expenses.length,
+                currency: currency,
                 onTap: () {
                   HapticService.lightClick();
                   GoRouter.of(
@@ -316,6 +321,7 @@ class _BalanceHero extends StatelessWidget {
     required this.state,
     required this.amount,
     required this.breakdown,
+    required this.currency,
     required this.onAddExpense,
     required this.onSettleWith,
   });
@@ -323,6 +329,7 @@ class _BalanceHero extends StatelessWidget {
   final _HubState state;
   final Decimal? amount;
   final List<_BreakdownEntry> breakdown;
+  final String currency;
   final VoidCallback onAddExpense;
   final void Function(String otherUid) onSettleWith;
 
@@ -346,6 +353,7 @@ class _BalanceHero extends StatelessWidget {
               isOwed: state == _HubState.youOwed,
               amount: amount!,
               breakdown: breakdown,
+              currency: currency,
               onSettleWith: onSettleWith,
             )
           else
@@ -383,12 +391,14 @@ class _BalanceWithBreakdown extends StatelessWidget {
     required this.isOwed,
     required this.amount,
     required this.breakdown,
+    required this.currency,
     required this.onSettleWith,
   });
 
   final bool isOwed;
   final Decimal amount;
   final List<_BreakdownEntry> breakdown;
+  final String currency;
   final void Function(String otherUid) onSettleWith;
 
   @override
@@ -416,6 +426,7 @@ class _BalanceWithBreakdown extends StatelessWidget {
           children: [
             RAmount(
               value: amount,
+              currency: currency,
               size: 40,
               weight: FontWeight.w800,
               sign: true,
@@ -438,6 +449,7 @@ class _BalanceWithBreakdown extends StatelessWidget {
                   _BreakdownRow(
                     entry: entry,
                     isOwed: isOwed,
+                    currency: currency,
                     onTap: () => onSettleWith(entry.otherUid),
                   ),
               ],
@@ -498,11 +510,13 @@ class _BreakdownRow extends StatelessWidget {
   const _BreakdownRow({
     required this.entry,
     required this.isOwed,
+    required this.currency,
     required this.onTap,
   });
 
   final _BreakdownEntry entry;
   final bool isOwed;
+  final String currency;
   final VoidCallback onTap;
 
   @override
@@ -547,6 +561,7 @@ class _BreakdownRow extends StatelessWidget {
               ),
               RAmount(
                 value: entry.amount,
+                currency: currency,
                 size: 14,
                 weight: FontWeight.w700,
                 tone: isOwed ? AmountTone.sage : AmountTone.rust,
@@ -574,11 +589,13 @@ class _LedgerSummaryStrip extends StatelessWidget {
   const _LedgerSummaryStrip({
     required this.total,
     required this.count,
+    required this.currency,
     required this.onTap,
   });
 
   final Decimal total;
   final int count;
+  final String currency;
   final VoidCallback onTap;
 
   @override
@@ -610,6 +627,7 @@ class _LedgerSummaryStrip extends StatelessWidget {
                       children: [
                         RAmount(
                           value: total,
+                          currency: currency,
                           size: 20,
                           weight: FontWeight.w800,
                         ),
