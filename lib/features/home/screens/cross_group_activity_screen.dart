@@ -7,7 +7,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -324,8 +323,7 @@ class _ActivityRow extends StatelessWidget {
     final colors = context.colors;
     final log = entry.log;
     final description = localizedGroupActivityText(context.l10n, log);
-    final amountStr = log.metadata['amount'];
-    final amount = amountStr is num ? amountStr.toDouble() : null;
+    final amount = _coerceAmount(log.metadata['amount']);
 
     return InkWell(
       onTap: () => GoRouter.of(context).push('/group/${entry.groupId}'),
@@ -389,12 +387,7 @@ class _ActivityRow extends StatelessWidget {
                   children: [
                     if (amount != null)
                       RAmount(
-                        value: Decimal.parse(
-                          amount.toStringAsFixed(
-                            AppFormatters.currencyConfig[entry.currency]?.decimals ??
-                                2,
-                          ),
-                        ),
+                        value: amount,
                         currency: entry.currency,
                         size: 14,
                       )
@@ -421,6 +414,18 @@ class _ActivityRow extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Settlement amounts arrive as a stringified Decimal
+  /// (`GroupSettleUpScreen.logGroupEvent` writes `amount.toString()`) or, for
+  /// some logs, as a num. Coerce both to a `Decimal` WITHOUT forcing OMR's 3dp
+  /// (#380) — [RAmount] applies the entry's own currency precision. Mirrors
+  /// `GroupActivityScreen._coerceAmount`.
+  Decimal? _coerceAmount(Object? raw) {
+    if (raw == null) return null;
+    if (raw is num) return Decimal.parse(raw.toString());
+    if (raw is String) return Decimal.tryParse(raw);
+    return null;
   }
 }
 
