@@ -722,6 +722,12 @@ abstract class AppLocalizations {
   /// **'lifetime'**
   String get profileStatsLifetime;
 
+  /// Overflow indicator on the Profile Spent stat when lifetime spend spans more than two currencies; shows how many additional currency lines are hidden. Digit-only; no FX, currencies never summed.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count}'**
+  String profileStatsSpentMore(int count);
+
   /// Body of the Share.share() invocation when the user shares the app. The 'Rihla' brand subject stays English per Q5.
   ///
   /// In en, this message translates to:

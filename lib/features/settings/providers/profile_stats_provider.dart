@@ -1,19 +1,51 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/supported_currencies.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
+
+/// One currency's slice of lifetime spend (#378). [amount] is the gross sum of
+/// every group's `totalSpent` in [currency] — currencies are NEVER summed
+/// together (there is no FX; #382).
+typedef CurrencySpend = ({String currency, Decimal amount});
 
 /// Aggregated profile statistics derived from existing providers.
 ///
 /// All values are derived from [userGroupsProvider], [groupEventsProvider],
 /// and [groupBalancesProvider] — no new Firestore queries.
+///
+/// [spentByCurrency] is bucketed per currency (#378) — one entry per currency
+/// the user has nonzero lifetime spend in, sorted GCC-first (same rank rule as
+/// [crossGroupBalanceProvider]'s `byCurrency`). Replaces the old currency-blind
+/// `totalSpent` scalar, which summed e.g. 10 USD + 10 OMR into a nonsense "20".
 typedef ProfileStats = ({
   int groupCount,
   int eventCount,
-  Decimal totalSpent,
+  List<CurrencySpend> spentByCurrency,
 });
+
+/// GCC-first sort of the spend buckets, identical rank rule to
+/// `_sortedCurrencyBuckets` in `group_balance_provider.dart`: known codes in
+/// [kSupportedCurrencies] order, an off-list legacy code sorts last (never
+/// dropped), alpha tiebreak. Drops zero-amount buckets.
+List<CurrencySpend> _sortedSpendBuckets(Map<String, Decimal> spentMap) {
+  final list = <CurrencySpend>[
+    for (final e in spentMap.entries)
+      if (e.value != Decimal.zero) (currency: e.key, amount: e.value),
+  ];
+  int rank(String c) {
+    final i = kSupportedCurrencies.indexOf(c);
+    return i < 0 ? kSupportedCurrencies.length : i;
+  }
+
+  list.sort((a, b) {
+    final r = rank(a.currency).compareTo(rank(b.currency));
+    return r != 0 ? r : a.currency.compareTo(b.currency);
+  });
+  return list;
+}
 
 /// Aggregates cross-group stats for the current user's profile.
 ///
@@ -38,16 +70,18 @@ final profileStatsProvider = Provider<AsyncValue<ProfileStats>>((ref) {
   final groups = groupsAsync.valueOrNull ?? [];
 
   if (groups.isEmpty) {
-    return AsyncValue.data((
+    return const AsyncValue.data((
       groupCount: 0,
       eventCount: 0,
-      totalSpent: Decimal.zero,
+      spentByCurrency: <CurrencySpend>[],
     ));
   }
 
-  // Step 2: Accumulate event count and total spending across all groups
+  // Step 2: Accumulate event count and per-currency spend across all groups.
+  // Spend is bucketed by the group's (single, immutable) currency — never
+  // summed across currencies (#378).
   var eventCount = 0;
-  var totalSpent = Decimal.zero;
+  final spentMap = <String, Decimal>{};
   var anyLoading = false;
 
   for (final group in groups) {
@@ -66,19 +100,20 @@ final profileStatsProvider = Provider<AsyncValue<ProfileStats>>((ref) {
     } else {
       final balances = balancesAsync.valueOrNull;
       if (balances != null) {
-        totalSpent = totalSpent + balances.totalSpent;
+        spentMap[group.currency] =
+            (spentMap[group.currency] ?? Decimal.zero) + balances.totalSpent;
       }
     }
   }
 
   // If anything is still loading and we have no real data yet, stay loading
-  if (anyLoading && eventCount == 0 && totalSpent == Decimal.zero) {
+  if (anyLoading && eventCount == 0 && spentMap.isEmpty) {
     return const AsyncValue.loading();
   }
 
   return AsyncValue.data((
     groupCount: groups.length,
     eventCount: eventCount,
-    totalSpent: totalSpent,
+    spentByCurrency: _sortedSpendBuckets(spentMap),
   ));
 });

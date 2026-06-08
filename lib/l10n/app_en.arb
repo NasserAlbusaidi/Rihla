@@ -442,6 +442,15 @@
   "@profileStatsLifetime": {
     "description": "Subtitle on the Spent stat card."
   },
+  "profileStatsSpentMore": "+{count}",
+  "@profileStatsSpentMore": {
+    "description": "Overflow indicator on the Profile Spent stat when lifetime spend spans more than two currencies; shows how many additional currency lines are hidden. Digit-only; no FX, currencies never summed.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
 
   "profileShareMessage": "I'm splitting trip expenses with Rihla. Give it a try.",
   "@profileShareMessage": {

@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,10 +42,10 @@ Future<Widget> _wrap({
         (ref) => Stream<firebase_auth.User?>.value(user),
       ),
       profile_stats.profileStatsProvider.overrideWith(
-        (ref) => AsyncValue<profile_stats.ProfileStats>.data((
+        (ref) => const AsyncValue<profile_stats.ProfileStats>.data((
           groupCount: 0,
           eventCount: 0,
-          totalSpent: Decimal.zero,
+          spentByCurrency: <profile_stats.CurrencySpend>[],
         )),
       ),
     ],

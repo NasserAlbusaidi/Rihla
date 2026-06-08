@@ -127,6 +127,7 @@
   "profileStatsAllTime": "كل الوقت",
   "profileStatsActive": "نشطة",
   "profileStatsLifetime": "الإجمالي",
+  "profileStatsSpentMore": "+{count}",
 
   "profileShareMessage": "أقسم مصاريف الرحلات مع رحلة. جرّبها.",
 
