@@ -331,6 +331,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileStatsLifetime => 'الإجمالي';
 
   @override
+  String profileStatsSpentMore(int count) {
+    return '+$count';
+  }
+
+  @override
   String get profileShareMessage => 'أقسم مصاريف الرحلات مع رحلة. جرّبها.';
 
   @override

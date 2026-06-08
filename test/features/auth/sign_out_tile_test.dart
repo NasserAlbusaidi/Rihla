@@ -8,7 +8,6 @@ import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
-import 'package:decimal/decimal.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart'
     as profile_stats;
@@ -46,8 +45,12 @@ Future<Widget> _wrap({
         (ref) => Stream<firebase_auth.User?>.value(user),
       ),
       profile_stats.profileStatsProvider.overrideWith(
-        (ref) => AsyncValue<profile_stats.ProfileStats>.data(
-          (groupCount: 0, eventCount: 0, totalSpent: Decimal.zero),
+        (ref) => const AsyncValue<profile_stats.ProfileStats>.data(
+          (
+            groupCount: 0,
+            eventCount: 0,
+            spentByCurrency: <profile_stats.CurrencySpend>[],
+          ),
         ),
       ),
     ],

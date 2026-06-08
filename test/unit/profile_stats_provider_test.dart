@@ -49,7 +49,7 @@ void main() {
       final value = stats.requireValue;
       expect(value.groupCount, equals(0));
       expect(value.eventCount, equals(0));
-      expect(value.totalSpent, equals(Decimal.zero));
+      expect(value.spentByCurrency, isEmpty);
     });
 
     test(
@@ -144,7 +144,79 @@ void main() {
         final value = stats.requireValue;
         expect(value.groupCount, equals(2));
         expect(value.eventCount, equals(6));
-        expect(value.totalSpent, equals(Decimal.parse('20.000')));
+        // Same currency DOES sum (this proves we bucket, not cross-sum):
+        // two OMR groups (10 + 10) collapse into a single OMR bucket of 20.
+        expect(
+          value.spentByCurrency,
+          equals([(currency: 'OMR', amount: Decimal.parse('20.000'))]),
+        );
+      },
+    );
+
+    test(
+      'RED #378: does NOT sum spend across currencies (10 OMR + 10 USD != 20)',
+      () async {
+        final omrGroup = Group(
+          id: 'g1',
+          name: 'OMR Group',
+          inviteCode: 'ABC123',
+          createdBy: 'uid0',
+          memberIds: ['uid0'],
+          currency: 'OMR',
+          createdAt: DateTime(2026, 1, 1),
+        );
+        final usdGroup = Group(
+          id: 'g2',
+          name: 'USD Group',
+          inviteCode: 'DEF456',
+          createdBy: 'uid0',
+          memberIds: ['uid0'],
+          currency: 'USD',
+          createdAt: DateTime(2026, 1, 2),
+        );
+
+        AsyncValue<GroupBalances> balances(Decimal spent) =>
+            AsyncValue<GroupBalances>.data((
+              balances: [],
+              totalSpent: spent,
+              eventCount: 0,
+              perEventBreakdown: {},
+              memberNames: {'uid0': 'Alice'},
+              memberRawNames: <String, String>{},
+            ));
+
+        final container = ProviderContainer(
+          overrides: [
+            userGroupsProvider.overrideWith(
+              (ref) => Stream.value([omrGroup, usdGroup]),
+            ),
+            groupEventsProvider('g1').overrideWith((ref) => Stream.value([])),
+            groupEventsProvider('g2').overrideWith((ref) => Stream.value([])),
+            groupBalancesProvider(
+              'g1',
+            ).overrideWith((ref) => balances(Decimal.parse('10.000'))),
+            groupBalancesProvider(
+              'g2',
+            ).overrideWith((ref) => balances(Decimal.parse('10.00'))),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container.read(profileStatsProvider);
+        await container.read(userGroupsProvider.future);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        final value = container.read(profileStatsProvider).requireValue;
+
+        // The currency-blind sum (the bug) would be Decimal '20'. The fix must
+        // bucket per currency: OMR 10 and USD 10, never one combined 20.
+        expect(
+          value.spentByCurrency,
+          equals([
+            (currency: 'OMR', amount: Decimal.parse('10.000')),
+            (currency: 'USD', amount: Decimal.parse('10.00')),
+          ]),
+        );
       },
     );
   });

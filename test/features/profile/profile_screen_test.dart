@@ -21,6 +21,7 @@ import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 import 'package:safar/features/settings/screens/profile_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/r_amount.dart';
 
 // ---------------------------------------------------------------------------
 // Phase 26 mock classes
@@ -58,11 +59,11 @@ Widget _buildTestApp(
 AsyncValue<ProfileStats> _statsData({
   int groupCount = 0,
   int eventCount = 0,
-  Decimal? totalSpent,
+  List<CurrencySpend> spentByCurrency = const [],
 }) => AsyncValue.data((
   groupCount: groupCount,
   eventCount: eventCount,
-  totalSpent: totalSpent ?? Decimal.zero,
+  spentByCurrency: spentByCurrency,
 ));
 
 /// Pump the widget tree and advance time enough for all flutter_animate
@@ -368,7 +369,7 @@ void main() {
               (ref) => _statsData(
                 groupCount: 3,
                 eventCount: 5,
-                totalSpent: Decimal.parse('42.500'),
+                spentByCurrency: [(currency: 'OMR', amount: Decimal.parse('42.500'))],
               ),
             ),
           ],
@@ -398,7 +399,7 @@ void main() {
               (ref) => _statsData(
                 groupCount: 3,
                 eventCount: 5,
-                totalSpent: Decimal.parse('42.500'),
+                spentByCurrency: [(currency: 'OMR', amount: Decimal.parse('42.500'))],
               ),
             ),
           ],
@@ -428,7 +429,7 @@ void main() {
               (ref) => _statsData(
                 groupCount: 3,
                 eventCount: 5,
-                totalSpent: Decimal.parse('42.500'),
+                spentByCurrency: [(currency: 'OMR', amount: Decimal.parse('42.500'))],
               ),
             ),
           ],
@@ -444,6 +445,134 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'STATS-03 #378: single non-OMR currency renders at its own precision',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              profileStatsProvider.overrideWith(
+                (ref) => _statsData(
+                  groupCount: 1,
+                  eventCount: 2,
+                  spentByCurrency: [
+                    (currency: 'USD', amount: Decimal.parse('50.00')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        final spentStat = find.byKey(ProfileKeys.statSpent);
+        // One amount, USD 2dp (NOT OMR's 3dp), code hidden for a single
+        // unambiguous currency.
+        final amounts = find.descendant(
+          of: spentStat,
+          matching: find.byType(RAmount),
+        );
+        expect(amounts, findsOneWidget);
+        expect(tester.widget<RAmount>(amounts).currency, 'USD');
+        expect(
+          find.descendant(of: spentStat, matching: _textContaining('50.00')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'STATS-03 #378: two currencies render as two lines with codes shown',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              profileStatsProvider.overrideWith(
+                (ref) => _statsData(
+                  groupCount: 2,
+                  eventCount: 4,
+                  spentByCurrency: [
+                    (currency: 'OMR', amount: Decimal.parse('10.000')),
+                    (currency: 'USD', amount: Decimal.parse('20.00')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        final spentStat = find.byKey(ProfileKeys.statSpent);
+        // Two RAmounts, both with showCurrency true → both codes visible.
+        expect(
+          find.descendant(of: spentStat, matching: find.byType(RAmount)),
+          findsNWidgets(2),
+        );
+        expect(
+          find.descendant(of: spentStat, matching: _textContaining('OMR')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: spentStat, matching: _textContaining('USD')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'STATS-03 #378: 3+ currencies cap at two lines with a +N overflow',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              profileStatsProvider.overrideWith(
+                (ref) => _statsData(
+                  groupCount: 3,
+                  eventCount: 6,
+                  spentByCurrency: [
+                    (currency: 'OMR', amount: Decimal.parse('10.000')),
+                    (currency: 'USD', amount: Decimal.parse('20.00')),
+                    (currency: 'EUR', amount: Decimal.parse('30.00')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        final spentStat = find.byKey(ProfileKeys.statSpent);
+        // Capped at two lines, EUR folded behind a "+1" overflow.
+        expect(
+          find.descendant(of: spentStat, matching: find.byType(RAmount)),
+          findsNWidgets(2),
+        );
+        expect(
+          find.descendant(of: spentStat, matching: _textContaining('+1')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: spentStat, matching: _textContaining('EUR')),
+          findsNothing,
+        );
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
