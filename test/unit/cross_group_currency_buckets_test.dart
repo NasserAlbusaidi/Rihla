@@ -130,4 +130,48 @@ void main() {
     expect(b.byCurrency, isEmpty);
     expect(b.groupCount, 0);
   });
+
+  // #70: the all-settled hero currency — the single distinct group currency, or
+  // null when zero/multiple distinct currencies (→ agnostic zero, no OMR assumed).
+  // (No group() wrapper: the local group(id, currency) helper shadows the
+  // flutter_test group().)
+  Future<String?> settledCurrency(List<String> currencies) async {
+    final container = ProviderContainer(
+      overrides: [
+        currentUserIdProvider.overrideWith((_) => uid),
+        userGroupsProvider.overrideWith(
+          (_) => Stream.value([
+            for (var i = 0; i < currencies.length; i++)
+              group('g$i', currencies[i]),
+          ]),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.listen(
+      settledDisplayCurrencyProvider,
+      (_, _) {},
+      fireImmediately: true,
+    );
+    for (var i = 0; i < 10; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    return container.read(settledDisplayCurrencyProvider);
+  }
+
+  test('settledDisplayCurrencyProvider: single USD group => USD', () async {
+    expect(await settledCurrency(['USD']), 'USD');
+  });
+
+  test('settledDisplayCurrencyProvider: two OMR groups => OMR', () async {
+    expect(await settledCurrency(['OMR', 'OMR']), 'OMR');
+  });
+
+  test('settledDisplayCurrencyProvider: OMR + USD => null', () async {
+    expect(await settledCurrency(['OMR', 'USD']), isNull);
+  });
+
+  test('settledDisplayCurrencyProvider: no groups => null', () async {
+    expect(await settledCurrency([]), isNull);
+  });
 }

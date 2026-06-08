@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
@@ -58,15 +59,31 @@ CrossGroupBalance _omrSplit(
   isLoading: false,
 );
 
+/// #70: a minimal [Group] in the given [currency] — only `currency` matters for
+/// the settled-state currency derivation ([settledDisplayCurrencyProvider]).
+Group _group(String currency) => Group(
+  id: 'g-$currency',
+  name: 'Group $currency',
+  inviteCode: 'INV$currency',
+  createdBy: 'test-user-id',
+  memberIds: const ['test-user-id'],
+  currency: currency,
+  createdAt: DateTime(2026, 1, 1),
+);
+
 void main() {
+  // [groups] feeds ONLY [userGroupsProvider] (→ settledDisplayCurrencyProvider for
+  // the all-settled currency, #70). The balance still comes from the per-test
+  // crossGroupBalanceProvider override (bridged into the once-provider below).
   Widget buildTestWidget({
     required Widget child,
     required List<Override> overrides,
+    List<Group> groups = const [],
   }) {
     return ProviderScope(
       overrides: [
         currentUserIdProvider.overrideWithValue('test-user-id'),
-        userGroupsProvider.overrideWith((ref) => Stream.value([])),
+        userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
         ...overrides,
         // #104: BalanceHeroCard now reads the one-shot variant. Bridge it to the
         // per-test crossGroupBalanceProvider override; loading stays loading.
@@ -139,6 +156,7 @@ void main() {
         await tester.pumpWidget(
           buildTestWidget(
             child: const BalanceHeroCard(),
+            groups: [_group('OMR')],
             overrides: [
               crossGroupBalanceProvider.overrideWith(
                 (ref) => AsyncValue.data(_omr('0', groupCount: 3)),
@@ -149,7 +167,59 @@ void main() {
         await tester.pump();
 
         expect(find.text('All settled across journeys'), findsOneWidget);
+        // #70 regression lock: an OMR user's settled look is byte-identical —
+        // 3dp zero + 'OMR' legend code unchanged.
         expect(find.textContaining('0.000'), findsAtLeastNWidgets(1));
+        expect(find.textContaining('OMR'), findsAtLeastNWidgets(1));
+      },
+    );
+
+    testWidgets(
+      'Test 7 (#70): settled USD user shows USD 2dp, never OMR',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(
+            child: const BalanceHeroCard(),
+            groups: [_group('USD')],
+            overrides: [
+              crossGroupBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data(_omr('0', groupCount: 1)),
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('All settled across journeys'), findsOneWidget);
+        // The bug: a settled USD user saw 'OMR 0.000'. Fixed: 'USD 0.00'.
+        expect(find.textContaining('OMR', findRichText: true), findsNothing);
+        expect(find.textContaining('0.000', findRichText: true), findsNothing);
+        expect(find.textContaining('USD', findRichText: true), findsAtLeastNWidgets(1));
+      },
+    );
+
+    testWidgets(
+      'Test 8 (#70): settled mixed-currency user shows code-less 2dp zero',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(
+            child: const BalanceHeroCard(),
+            groups: [_group('OMR'), _group('USD')],
+            overrides: [
+              crossGroupBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data(_omr('0', groupCount: 2)),
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('All settled across journeys'), findsOneWidget);
+        // ≥2 distinct currencies, all settled ⇒ no single honest currency ⇒
+        // currency-agnostic zero: no code at all, 2dp.
+        expect(find.textContaining('OMR', findRichText: true), findsNothing);
+        expect(find.textContaining('USD', findRichText: true), findsNothing);
+        expect(find.textContaining('0.000', findRichText: true), findsNothing);
       },
     );
 
