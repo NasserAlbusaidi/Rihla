@@ -39,6 +39,7 @@ void main() {
           body: LedgerDayCard(
             dayLabel: 'Today',
             sub: null,
+            currency: 'OMR',
             items: [LedgerExpenseItem(expense)],
             currentParticipantId: viewerId,
             participantCount: participantCount,
@@ -233,6 +234,7 @@ void main() {
           body: LedgerDayCard(
             dayLabel: 'Today',
             sub: null,
+            currency: 'OMR',
             items: [
               LedgerSettlementItem(
                 Settlement(
@@ -271,6 +273,7 @@ void main() {
           body: LedgerDayCard(
             dayLabel: 'Today',
             sub: null,
+            currency: 'OMR',
             items: [
               LedgerSettlementItem(
                 Settlement(

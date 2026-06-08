@@ -78,6 +78,7 @@
   },
 
   "currencySheetTitle": "Currency",
+  "createGroupCurrencyHint": "This group's currency. It can't be changed later.",
   "@currencySheetTitle": {
     "description": "Title of the CurrencyPickerSheet bottom sheet."
   },
@@ -525,7 +526,12 @@
   "ledgerNothingInCategoryMessage": "Try a different category, or switch back to All.",
   "ledgerEndOfLedger": "END OF LEDGER",
   "ledgerEmptyStateTitle": "An empty page, ready to be written.",
-  "ledgerEmptyStateFirstExpenseBody": "The first OMR you log will set the trip total. We'll split it equally between everyone on the trip.",
+  "ledgerEmptyStateFirstExpenseBody": "The first {currency} you log will set the trip total. We'll split it equally between everyone on the trip.",
+  "@ledgerEmptyStateFirstExpenseBody": {
+    "placeholders": {
+      "currency": {}
+    }
+  },
   "ledgerCouldNotLoadEventTitle": "Could not load event",
   "ledgerCouldNotLoadLedgerTitle": "Couldn't load ledger",
   "ledgerEventNotFoundTitle": "Event not found",

@@ -122,7 +122,12 @@ class JourneyTicketCard extends StatelessWidget {
                                 max: 3,
                               ),
                       ),
-                      RAmount(value: entry.userBalance, size: 14, sign: true),
+                      RAmount(
+                        value: entry.userBalance,
+                        currency: entry.currency,
+                        size: 14,
+                        sign: true,
+                      ),
                     ],
                   ),
                 ],

@@ -23,7 +23,12 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: LedgerHeroStatement(kind: kind, amount: amount, peopleCount: 2),
+          body: LedgerHeroStatement(
+            kind: kind,
+            amount: amount,
+            currency: 'OMR',
+            peopleCount: 2,
+          ),
         ),
       ),
     );

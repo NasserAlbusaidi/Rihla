@@ -150,6 +150,7 @@ class _Content extends ConsumerWidget {
               balances: balances,
               currentUid: currentUid,
               groupId: group.id,
+              currency: group.currency,
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
@@ -182,6 +183,7 @@ class _Content extends ConsumerWidget {
     required GroupBalances? balances,
     required String? currentUid,
     required String groupId,
+    required String currency,
   }) {
     return eventsAsync.when(
       data: (events) {
@@ -210,6 +212,7 @@ class _Content extends ConsumerWidget {
             return _EventRow(
               event: events[index],
               userShare: perEvent[events[index].id],
+              currency: currency,
               divider: !isLast,
               onTap: () => GoRouter.of(
                 context,
@@ -544,6 +547,7 @@ class _BalanceCard extends StatelessWidget {
             children: [
               RAmount(
                 value: userNet,
+                currency: group.currency,
                 size: 32,
                 sign: !userNet.isZero,
                 tone: tone,
@@ -678,12 +682,14 @@ class _EventRow extends StatelessWidget {
   const _EventRow({
     required this.event,
     required this.userShare,
+    required this.currency,
     required this.divider,
     required this.onTap,
   });
 
   final Event event;
   final Decimal? userShare;
+  final String currency;
   final bool divider;
   final VoidCallback onTap;
 
@@ -757,6 +763,7 @@ class _EventRow extends StatelessWidget {
                     if (hasShare)
                       RAmount(
                         value: share,
+                        currency: currency,
                         size: 15,
                         sign: true,
                         showCurrency: false,
@@ -871,6 +878,7 @@ class _MembersCard extends StatelessWidget {
                 currentUid: currentUid,
               ),
               net: balances[i].netBalance,
+              currency: group.currency,
               divider: i < balances.length - 1,
               onTap: () => GoRouter.of(context).push(
                 '/group/${group.id}/settle-up?memberId=${balances[i].participantId}',
@@ -900,6 +908,7 @@ class _MemberRow extends StatelessWidget {
     required this.name,
     required this.role,
     required this.net,
+    required this.currency,
     required this.divider,
     required this.onTap,
   });
@@ -907,6 +916,7 @@ class _MemberRow extends StatelessWidget {
   final String name;
   final String? role;
   final Decimal net;
+  final String currency;
   final bool divider;
   final VoidCallback onTap;
 
@@ -965,6 +975,7 @@ class _MemberRow extends StatelessWidget {
                 else
                   RAmount(
                     value: net,
+                    currency: currency,
                     size: 14,
                     sign: true,
                     showCurrency: false,

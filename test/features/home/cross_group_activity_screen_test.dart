@@ -38,7 +38,7 @@ CrossGroupActivityEntry _makeEntry(
   GroupActivityLog log,
   String groupName,
   String groupId,
-) => (log: log, groupName: groupName, groupId: groupId);
+) => (log: log, groupName: groupName, groupId: groupId, currency: 'OMR');
 
 Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
   final router = GoRouter(
@@ -71,10 +71,8 @@ List<Override> _baseOverrides({
   crossGroupActivityProvider.overrideWith((ref) => activityOverride),
   userGroupsProvider.overrideWith((ref) => Stream.value([])),
   crossGroupBalanceProvider.overrideWith(
-    (ref) => AsyncValue.data((
-      net: Decimal.zero,
-      owedToUser: Decimal.zero,
-      userOwes: Decimal.zero,
+    (ref) => const AsyncValue.data((
+      byCurrency: <CurrencyBalance>[],
       groupCount: 0,
       isLoading: false,
     )),

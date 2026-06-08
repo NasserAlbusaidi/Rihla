@@ -17,6 +17,15 @@ import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/services/expense_service.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 
+/// #261: single-currency adapter — see cross_group_balance_test.dart. `.single`
+/// throws if a test ever holds >1 currency, so it can never silently re-sum.
+extension _SingleCurrencyAccess on CrossGroupBalance {
+  CurrencyBalance? get _only => byCurrency.isEmpty ? null : byCurrency.single;
+  Decimal get net => _only?.net ?? Decimal.zero;
+  Decimal get owedToUser => _only?.owedToUser ?? Decimal.zero;
+  Decimal get userOwes => _only?.userOwes ?? Decimal.zero;
+}
+
 // ---------------------------------------------------------------------------
 // #104 — one-shot home balance aggregation
 //

@@ -67,6 +67,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get currencySheetTitle => 'العملة';
 
   @override
+  String get createGroupCurrencyHint =>
+      'عملة هذه المجموعة. لا يمكن تغييرها لاحقًا.';
+
+  @override
   String get currencySheetSubtitle =>
       'الافتراضية للرحلات الجديدة. تحتفظ الرحلات الحالية بعملتها.';
 
@@ -465,8 +469,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ledgerEmptyStateTitle => 'صفحة فارغة جاهزة للكتابة.';
 
   @override
-  String get ledgerEmptyStateFirstExpenseBody =>
-      'أول OMR تسجّله سيحدد إجمالي الرحلة. سنقسمه بالتساوي بين كل من في الرحلة.';
+  String ledgerEmptyStateFirstExpenseBody(Object currency) {
+    return 'أول $currency تسجّله سيحدد إجمالي الرحلة. سنقسمه بالتساوي بين كل من في الرحلة.';
+  }
 
   @override
   String get ledgerCouldNotLoadEventTitle => 'تعذّر تحميل الفعالية';

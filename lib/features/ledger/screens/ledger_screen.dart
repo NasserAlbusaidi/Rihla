@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -15,6 +16,7 @@ import '../../../shared/widgets/offline_banner.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../groups/providers/group_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
@@ -62,6 +64,11 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
+    // #261: the ledger renders this event's money — it needs the owning group's
+    // currency before drawing any amount (never default 'OMR': a non-OMR group
+    // would mis-scale precision). Gate on the group resolving, like
+    // add_expense_screen / settle_up_screen.
+    final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
     return Scaffold(
       key: LedgerKeys.screen,
@@ -73,6 +80,11 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         ),
         data: (event) {
           if (event == null) return const _NotFoundState();
+          if (groupAsync.isLoading && !groupAsync.hasValue) {
+            return const _LoadingState();
+          }
+          final group = groupAsync.valueOrNull;
+          if (group == null) return const _NotFoundState();
           if (expensesAsync.hasError || settlementsAsync.hasError) {
             return _DataErrorState(
               onRetry: () {
@@ -88,6 +100,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             groupId: widget.groupId,
             eventId: widget.eventId,
             event: event,
+            currency: group.currency,
             expenses: expenses,
             settlements: settlements,
             currentUserId: currentUserId,
@@ -105,6 +118,7 @@ class _Body extends ConsumerWidget {
     required this.groupId,
     required this.eventId,
     required this.event,
+    required this.currency,
     required this.expenses,
     required this.settlements,
     required this.currentUserId,
@@ -115,6 +129,7 @@ class _Body extends ConsumerWidget {
   final String groupId;
   final String eventId;
   final Event event;
+  final String currency;
   final List<Expense> expenses;
   final List<Settlement> settlements;
   final String? currentUserId;
@@ -241,6 +256,7 @@ class _Body extends ConsumerWidget {
                     settlementDisplayNames: settlementDisplayNames,
                     groupId: groupId,
                     eventId: eventId,
+                    currency: currency,
                   ),
                 ),
               ),
@@ -249,6 +265,7 @@ class _Body extends ConsumerWidget {
                 child: LedgerHeroStatement(
                   kind: heroKind,
                   amount: myBalance.netBalance,
+                  currency: currency,
                   peopleCount: peopleCount,
                 ),
               ),
@@ -256,6 +273,7 @@ class _Body extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: LedgerTripCaption(
                     total: eventTotal,
+                    currency: currency,
                     expenseCount: expenses.length,
                     settledCount: settlements.length,
                   ),
@@ -264,6 +282,7 @@ class _Body extends ConsumerWidget {
                 child: LedgerRosterStrip(
                   state: rosterState,
                   others: roster,
+                  currency: currency,
                   currentUserDisplayName:
                       myBalance.displayName ?? context.l10n.ledgerYou,
                   onPersonTap: (p) => GoRouter.of(context).push(
@@ -298,7 +317,7 @@ class _Body extends ConsumerWidget {
                             message:
                                 context.l10n.ledgerNothingInCategoryMessage,
                           )
-                        : const _EmptyStateBody(),
+                        : _EmptyStateBody(currency: currency),
                   ),
                 )
               else
@@ -311,6 +330,7 @@ class _Body extends ConsumerWidget {
                         dayLabel: day.label,
                         sub: null,
                         items: day.items,
+                        currency: currency,
                         currentParticipantId: currentPid,
                         participantCount: participants.length,
                         expensePayerDisplayNames: expensePayerDisplayNames,
@@ -329,7 +349,8 @@ class _Body extends ConsumerWidget {
                   child: Center(
                     child: Text(
                       isSettled
-                          ? '· ${context.l10n.ledgerEndOfLedger} · 0.000 ·'
+                          ? '· ${context.l10n.ledgerEndOfLedger} · '
+                                '${Decimal.zero.toStringAsFixed(AppFormatters.currencyConfig[currency]?.decimals ?? 3)} ·'
                           : '· ${context.l10n.ledgerEndOfLedger} ·',
                       style: AppTypography.mono(
                         fontSize: 9,
@@ -551,7 +572,9 @@ class _PaperIconButton extends StatelessWidget {
 // ──────────────────────────── Empty-state body
 
 class _EmptyStateBody extends StatelessWidget {
-  const _EmptyStateBody();
+  const _EmptyStateBody({required this.currency});
+
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -576,7 +599,7 @@ class _EmptyStateBody extends StatelessWidget {
           ),
           SizedBox(height: context.spacing.space8),
           Text(
-            context.l10n.ledgerEmptyStateFirstExpenseBody,
+            context.l10n.ledgerEmptyStateFirstExpenseBody(currency),
             textAlign: TextAlign.center,
             style: AppTypography.sans(
               fontSize: 13,

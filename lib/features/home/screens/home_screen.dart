@@ -676,7 +676,12 @@ class _GroupRow extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    RAmount(value: userNet, size: 16, sign: !userNet.isZero),
+                    RAmount(
+                      value: userNet,
+                      currency: group.currency,
+                      size: 16,
+                      sign: !userNet.isZero,
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       balanceCaption,

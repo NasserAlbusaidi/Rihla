@@ -9,6 +9,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -108,6 +109,28 @@ void main() {
       expect(find.text('Default currency'), findsOneWidget);
       expect(find.text('OMR'), findsOneWidget);
       expect(find.text("You're the creator."), findsOneWidget);
+    });
+
+    testWidgets('#261: currency picker → selecting USD updates the field', (
+      tester,
+    ) async {
+      await tester.pumpWidget(await buildCreateScreen());
+      await tester.pumpAndSettle();
+      // Defaults to OMR.
+      expect(find.text('OMR'), findsOneWidget);
+
+      // Open the picker (tappable field).
+      await tester.tap(find.byKey(GroupKeys.currencyField));
+      await tester.pumpAndSettle();
+      expect(find.text('Currency'), findsOneWidget); // sheet title
+
+      // Pick USD (tile title = localized name).
+      await tester.tap(find.text('US dollar'));
+      await tester.pumpAndSettle();
+
+      // The field now shows USD; OMR is gone.
+      expect(find.text('USD'), findsOneWidget);
+      expect(find.text('OMR'), findsNothing);
     });
 
     testWidgets('renders Group Name label and hint', (tester) async {

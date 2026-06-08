@@ -20,6 +20,7 @@ class ActiveJourneyEntry {
     required this.endDate,
     required this.createdAt,
     required this.userBalance,
+    required this.currency,
   });
 
   /// Event ID — used for routing taps to the event hub.
@@ -27,6 +28,9 @@ class ActiveJourneyEntry {
 
   /// Group ID the event belongs to.
   final String groupId;
+
+  /// Owning group's currency (#261) — every event's money is in group.currency.
+  final String currency;
 
   /// Event name — `Event.name`.
   final String title;
@@ -170,6 +174,7 @@ final activeJourneysProvider =
         endDate: event.endDate,
         createdAt: event.createdAt,
         userBalance: userEventBalances[event.id] ?? Decimal.zero,
+        currency: group.currency,
       ));
     }
   }
