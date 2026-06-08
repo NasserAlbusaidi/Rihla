@@ -7,6 +7,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
+import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -107,6 +108,19 @@ void main() {
 
     return ProviderScope(
       overrides: [
+        groupDetailProvider(groupId).overrideWith(
+          (ref) => Stream.value(
+            Group(
+              id: groupId,
+              name: 'Trip',
+              inviteCode: 'ABC123',
+              createdBy: 'creator',
+              memberIds: const [],
+              currency: 'OMR',
+              createdAt: DateTime(2026),
+            ),
+          ),
+        ),
         currentUserIdProvider.overrideWithValue(currentUserId),
         eventDetailProvider(
           eventRef,

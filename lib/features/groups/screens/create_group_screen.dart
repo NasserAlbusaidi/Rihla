@@ -17,6 +17,7 @@ import '../../../core/utils/localized_name_validators.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
+import '../widgets/currency_picker_sheet.dart';
 import '../widgets/invite_code_display.dart';
 
 /// Screen for creating a new group.
@@ -40,11 +41,25 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   final _displayNameController = TextEditingController();
   bool _didInitName = false;
 
+  /// #261: the group's currency, chosen at create time and immutable after
+  /// (Model A). Local state only — NOT persisted to AppSettings.
+  String _selectedCurrency = 'OMR';
+
   @override
   void dispose() {
     _nameController.dispose();
     _displayNameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickCurrency() async {
+    final picked = await CurrencyPickerSheet.show(
+      context,
+      selected: _selectedCurrency,
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedCurrency = picked);
+    }
   }
 
   Future<void> _createGroup() async {
@@ -60,7 +75,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     try {
       final group = await ref
           .read(groupServiceProvider)
-          .createGroup(name: _nameController.text.trim(), currency: 'OMR')
+          .createGroup(
+            name: _nameController.text.trim(),
+            currency: _selectedCurrency,
+          )
           .timeout(const Duration(seconds: 15));
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
@@ -179,7 +197,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                             validateDisplayNameLocalized(context, value),
                       ),
                       const SizedBox(height: 18),
-                      const _ReadOnlyCurrencyField(),
+                      _CurrencyField(
+                        value: _selectedCurrency,
+                        onTap: _pickCurrency,
+                      ),
                       const SizedBox(height: 26),
                       const _CreatorPreviewCard(),
                     ],
@@ -436,8 +457,11 @@ class _WireframeTextField extends StatelessWidget {
   }
 }
 
-class _ReadOnlyCurrencyField extends StatelessWidget {
-  const _ReadOnlyCurrencyField();
+class _CurrencyField extends StatelessWidget {
+  const _CurrencyField({required this.value, required this.onTap});
+
+  final String value;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -446,17 +470,28 @@ class _ReadOnlyCurrencyField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _FieldLabel(context.l10n.groupDefaultCurrency),
-        Container(
-          padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: colors.ink2)),
-          ),
-          child: Text(
-            'OMR',
-            style: AppTypography.sans(
-              fontSize: 17,
-              color: colors.textPrimary,
-              height: 1.2,
+        InkWell(
+          key: GroupKeys.currencyField,
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: colors.ink2)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value,
+                    style: AppTypography.sans(
+                      fontSize: 17,
+                      color: colors.textPrimary,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+                Icon(Icons.expand_more, size: 20, color: colors.textSecondary),
+              ],
             ),
           ),
         ),

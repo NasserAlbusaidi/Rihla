@@ -67,6 +67,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currencySheetTitle => 'Currency';
 
   @override
+  String get createGroupCurrencyHint =>
+      'This group\'s currency. It can\'t be changed later.';
+
+  @override
   String get currencySheetSubtitle =>
       'Default for new trips. Existing trips keep their currency.';
 
@@ -463,8 +467,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerEmptyStateTitle => 'An empty page, ready to be written.';
 
   @override
-  String get ledgerEmptyStateFirstExpenseBody =>
-      'The first OMR you log will set the trip total. We\'ll split it equally between everyone on the trip.';
+  String ledgerEmptyStateFirstExpenseBody(Object currency) {
+    return 'The first $currency you log will set the trip total. We\'ll split it equally between everyone on the trip.';
+  }
 
   @override
   String get ledgerCouldNotLoadEventTitle => 'Could not load event';

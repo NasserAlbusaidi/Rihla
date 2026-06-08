@@ -114,6 +114,9 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
     final groupName =
         groupAsync.valueOrNull?.name ?? context.l10n.activityTitle;
+    // #261: settlement amounts in this group's activity feed are in the group's
+    // currency (no per-log currency field exists).
+    final currency = groupAsync.valueOrNull?.currency ?? 'OMR';
 
     return Scaffold(
       key: GroupKeys.activityScreen,
@@ -127,14 +130,14 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
               onChange: (f) => setState(() => _filter = f),
             ),
             SizedBox(height: context.spacing.space8),
-            Expanded(child: _buildBody(context)),
+            Expanded(child: _buildBody(context, currency)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildBody(BuildContext context, String currency) {
     if (_isLoadingMore && _activities.isEmpty) {
       return Center(
         child: CircularProgressIndicator(color: context.colors.primary),
@@ -184,6 +187,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
             label: days[i].label,
             dateSuffix: days[i].dateSuffix,
             entries: days[i].entries,
+            currency: currency,
           ),
         );
       },
@@ -356,10 +360,12 @@ class _DaySection extends StatelessWidget {
     required this.label,
     required this.dateSuffix,
     required this.entries,
+    required this.currency,
   });
   final String label;
   final String? dateSuffix;
   final List<GroupActivityLog> entries;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -393,7 +399,11 @@ class _DaySection extends StatelessWidget {
           child: Column(
             children: [
               for (var i = 0; i < entries.length; i++)
-                _ActivityRow(log: entries[i], divider: i < entries.length - 1),
+                _ActivityRow(
+                  log: entries[i],
+                  divider: i < entries.length - 1,
+                  currency: currency,
+                ),
             ],
           ),
         ),
@@ -403,9 +413,14 @@ class _DaySection extends StatelessWidget {
 }
 
 class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.log, required this.divider});
+  const _ActivityRow({
+    required this.log,
+    required this.divider,
+    required this.currency,
+  });
   final GroupActivityLog log;
   final bool divider;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -458,12 +473,18 @@ class _ActivityRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (amount != null) ...[
-                    RAmount(value: amount, size: 14, showCurrency: false),
+                    RAmount(
+                      value: amount,
+                      currency: currency,
+                      size: 14,
+                      showCurrency: false,
+                    ),
                     const SizedBox(height: 2),
                   ],
                   if (isSettlement && amount != null)
                     RAmount(
                       value: amount,
+                      currency: currency,
                       size: 11,
                       sign: true,
                       tone: AmountTone.sage,
@@ -493,11 +514,12 @@ class _ActivityRow extends StatelessWidget {
 
   /// Settlement amounts may arrive as a stringified Decimal (see
   /// `GroupSettleUpScreen.logGroupEvent` metadata) or as a num. Coerce to a
-  /// 3-decimal `Decimal` so [RAmount] can render OMR baisa precisely.
+  /// `Decimal` WITHOUT forcing OMR's 3dp (#261) — [RAmount] applies the group's
+  /// own currency precision.
   Decimal? _coerceAmount(Object? raw) {
     if (raw == null) return null;
     if (raw is num) {
-      return Decimal.parse(raw.toDouble().toStringAsFixed(3));
+      return Decimal.parse(raw.toString());
     }
     if (raw is String) {
       return Decimal.tryParse(raw);

@@ -8,6 +8,7 @@ abstract final class GroupKeys {
   static const settleUpScreen = Key('group_settle_up_screen');
   static const settingsScreen = Key('group_settings_screen');
   static const activityScreen = Key('group_activity_screen');
+  static const currencyField = Key('group_create_currency_field');
 
   // Section keys
   static const membersAndBalancesSection =

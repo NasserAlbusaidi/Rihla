@@ -98,6 +98,36 @@ void main() {
     expect(find.textContaining('owes you', findRichText: true), findsOneWidget);
   });
 
+  testWidgets('#261: non-OMR group renders its currency code, not OMR', (
+    tester,
+  ) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+    );
+    final expense = _expense(
+      id: 'x1',
+      eventId: event.id,
+      payer: 'uid-1',
+      amount: Decimal.parse('20.00'),
+      currency: 'USD',
+    );
+
+    await tester.pumpWidget(
+      _wrap(
+        event: event,
+        expenses: [expense],
+        balances: _userOwedBalances,
+        currency: 'USD',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The event hero + trip-total strip render the group's currency code.
+    expect(find.textContaining('USD'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('OMR'), findsNothing);
+  });
+
   testWidgets('you-owe state — rust hero with per-row breakdown', (
     tester,
   ) async {
@@ -201,6 +231,7 @@ Widget _wrap({
   required Event event,
   List<Expense> expenses = const [],
   List<UserBalance>? balances,
+  String currency = 'OMR',
 }) {
   final eventRef = (groupId: event.groupId, eventId: event.id);
   return ProviderScope(
@@ -211,7 +242,7 @@ Widget _wrap({
       ).overrideWith((_) => Stream<Event?>.value(event)),
       groupDetailProvider(
         event.groupId,
-      ).overrideWith((_) => Stream<Group?>.value(_group)),
+      ).overrideWith((_) => Stream<Group?>.value(_group.copyWith(currency: currency))),
       eventExpensesProvider(
         eventRef,
       ).overrideWith((_) => Stream.value(expenses)),
@@ -339,6 +370,7 @@ Expense _expense({
   required String eventId,
   required String payer,
   required Decimal amount,
+  String currency = 'OMR',
 }) {
   return Expense(
     id: id,
@@ -348,7 +380,7 @@ Expense _expense({
     scope: ExpenseScope.global,
     createdAt: DateTime(2026, 1, 2),
     createdBy: payer,
-    currency: 'OMR',
+    currency: currency,
   );
 }
 

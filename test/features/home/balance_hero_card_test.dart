@@ -12,6 +12,52 @@ import 'package:safar/features/home/widgets/balance_hero_card.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
+/// #261: build a single-OMR-currency [CrossGroupBalance] from a net string,
+/// deriving the owed/owes split (so the bucket is consistent and shown). A zero
+/// net with no split → empty byCurrency (the all-settled state).
+CrossGroupBalance _omr(String net, {int groupCount = 1}) {
+  final n = Decimal.parse(net);
+  if (n == Decimal.zero) {
+    return (
+      byCurrency: const <CurrencyBalance>[],
+      groupCount: groupCount,
+      isLoading: false,
+    );
+  }
+  return (
+    byCurrency: [
+      (
+        currency: 'OMR',
+        net: n,
+        owedToUser: n > Decimal.zero ? n : Decimal.zero,
+        userOwes: n < Decimal.zero ? n.abs() : Decimal.zero,
+      ),
+    ],
+    groupCount: groupCount,
+    isLoading: false,
+  );
+}
+
+/// #261: single-OMR bucket with an explicit owed/owes split (net need not equal
+/// owed-owes for these display tests).
+CrossGroupBalance _omrSplit(
+  String net,
+  String owed,
+  String owes, {
+  int groupCount = 1,
+}) => (
+  byCurrency: [
+    (
+      currency: 'OMR',
+      net: Decimal.parse(net),
+      owedToUser: Decimal.parse(owed),
+      userOwes: Decimal.parse(owes),
+    ),
+  ],
+  groupCount: groupCount,
+  isLoading: false,
+);
+
 void main() {
   Widget buildTestWidget({
     required Widget child,
@@ -55,13 +101,7 @@ void main() {
           child: const BalanceHeroCard(),
           overrides: [
             crossGroupBalanceProvider.overrideWith(
-              (ref) => AsyncValue.data((
-                net: Decimal.parse('-5.500'),
-                owedToUser: Decimal.zero,
-                userOwes: Decimal.zero,
-                groupCount: 2,
-                isLoading: false,
-              )),
+              (ref) => AsyncValue.data(_omr('-5.500', groupCount: 2)),
             ),
           ],
         ),
@@ -69,7 +109,9 @@ void main() {
       await tester.pump();
 
       expect(find.textContaining('you owe'), findsAtLeastNWidgets(1));
-      expect(find.textContaining('5.500'), findsOneWidget);
+      // #261: the bucket is now consistent (net −5.500 ⇒ userOwes 5.500), so the
+      // amount shows in BOTH the hero net and the legend "you owe" line.
+      expect(find.textContaining('5.500'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('Test 2: shows owed copy when net is positive', (tester) async {
@@ -78,13 +120,7 @@ void main() {
           child: const BalanceHeroCard(),
           overrides: [
             crossGroupBalanceProvider.overrideWith(
-              (ref) => AsyncValue.data((
-                net: Decimal.parse('3.250'),
-                owedToUser: Decimal.zero,
-                userOwes: Decimal.zero,
-                groupCount: 1,
-                isLoading: false,
-              )),
+              (ref) => AsyncValue.data(_omr('3.250', groupCount: 1)),
             ),
           ],
         ),
@@ -92,7 +128,9 @@ void main() {
       await tester.pump();
 
       expect(find.textContaining('owed'), findsAtLeastNWidgets(1));
-      expect(find.textContaining('3.250'), findsOneWidget);
+      // #261: consistent bucket (net +3.250 ⇒ owedToUser 3.250) ⇒ amount in the
+      // hero net AND the legend "owed to you" line.
+      expect(find.textContaining('3.250'), findsAtLeastNWidgets(1));
     });
 
     testWidgets(
@@ -103,13 +141,7 @@ void main() {
             child: const BalanceHeroCard(),
             overrides: [
               crossGroupBalanceProvider.overrideWith(
-                (ref) => AsyncValue.data((
-                  net: Decimal.zero,
-                  owedToUser: Decimal.zero,
-                  userOwes: Decimal.zero,
-                  groupCount: 3,
-                  isLoading: false,
-                )),
+                (ref) => AsyncValue.data(_omr('0', groupCount: 3)),
               ),
             ],
           ),
@@ -143,13 +175,7 @@ void main() {
           child: const BalanceHeroCard(),
           overrides: [
             crossGroupBalanceProvider.overrideWith(
-              (ref) => AsyncValue.data((
-                net: Decimal.zero,
-                owedToUser: Decimal.zero,
-                userOwes: Decimal.zero,
-                groupCount: 0,
-                isLoading: false,
-              )),
+              (ref) => AsyncValue.data(_omr('0', groupCount: 0)),
             ),
           ],
         ),
@@ -167,13 +193,9 @@ void main() {
             child: const BalanceHeroCard(),
             overrides: [
               crossGroupBalanceProvider.overrideWith(
-                (ref) => AsyncValue.data((
-                  net: Decimal.parse('5.000'),
-                  owedToUser: Decimal.parse('12.000'),
-                  userOwes: Decimal.parse('7.000'),
-                  groupCount: 2,
-                  isLoading: false,
-                )),
+                (ref) => AsyncValue.data(
+                  _omrSplit('5.000', '12.000', '7.000', groupCount: 2),
+                ),
               ),
             ],
           ),

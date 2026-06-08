@@ -93,6 +93,7 @@ class LedgerDayCard extends StatelessWidget {
     required this.dayLabel,
     required this.sub,
     required this.items,
+    required this.currency,
     required this.currentParticipantId,
     required this.participantCount,
     required this.expensePayerDisplayNames,
@@ -103,6 +104,7 @@ class LedgerDayCard extends StatelessWidget {
   final String dayLabel;
   final String? sub;
   final List<LedgerTimelineItem> items;
+  final String currency;
   final String? currentParticipantId;
   final int participantCount;
   final Map<String, String> expensePayerDisplayNames;
@@ -167,6 +169,7 @@ class LedgerDayCard extends StatelessWidget {
             settlement.recipientName ??
             context.l10n.ledgerSomeoneLower,
         amount: settlement.amount,
+        currency: currency,
         note: settlement.note,
       ),
     };
@@ -251,6 +254,7 @@ class _ExpenseRow extends StatelessWidget {
                   children: [
                     RAmount(
                       value: expense.amount,
+                      currency: expense.currency,
                       size: 14,
                       showCurrency: false,
                     ),
@@ -258,6 +262,7 @@ class _ExpenseRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       RAmount(
                         value: share,
+                        currency: expense.currency,
                         size: 11,
                         sign: true,
                         weight: FontWeight.w500,
@@ -361,12 +366,14 @@ class LedgerSettleRow extends StatelessWidget {
     required this.payerName,
     required this.recipientName,
     required this.amount,
+    required this.currency,
     this.note,
   });
 
   final String payerName;
   final String recipientName;
   final Decimal amount;
+  final String currency;
   final String? note;
 
   @override
@@ -421,6 +428,7 @@ class LedgerSettleRow extends StatelessWidget {
             SizedBox(width: context.spacing.space8),
             RAmount(
               value: amount,
+              currency: currency,
               size: 14,
               weight: FontWeight.w600,
               tone: AmountTone.sage,
