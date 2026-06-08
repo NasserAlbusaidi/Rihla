@@ -47,8 +47,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   Widget build(BuildContext context) {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
+    // #261: settlements are denominated in the owning group's currency. Gate
+    // the screen on the group resolving — never default to 'OMR' (a non-OMR
+    // group would mis-scale 10× and be rules-rejected). Three branches mirror
+    // group_settle_up_screen.dart: loading / null group / data.
+    final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
-    if (eventAsync.isLoading) {
+    if (eventAsync.isLoading || groupAsync.isLoading) {
       return Scaffold(
         backgroundColor: context.colors.scaffoldBackground,
         body: SafeArea(
@@ -86,6 +91,33 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         ),
       );
     }
+
+    // #261: a deleted/missing group emits null — show an error rather than
+    // folding it into the loader (which would spin forever).
+    final group = groupAsync.valueOrNull;
+    if (group == null) {
+      return Scaffold(
+        backgroundColor: context.colors.scaffoldBackground,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
+              Expanded(
+                child: EmptyStateView(
+                  icon: Iconsax.warning_2,
+                  title: context.l10n.settleUpEventMissingTitle,
+                  message: context.l10n.settleUpEventMissingMessage,
+                  actionLabel: context.l10n.commonGoHome,
+                  onAction: () => context.go('/home'),
+                  iconColor: context.colors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final groupCurrency = group.currency;
 
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
@@ -166,7 +198,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
 
                   return SettleUpPageBody(
                     subjectName: event.name,
-                    currency: 'OMR',
+                    currency: groupCurrency,
                     optimalSettlements: optimalSettlements,
                     balances: balances,
                     rawNames: userRawNames,
@@ -189,6 +221,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                           fromUserId: fromUserId,
                           toUserId: toUserId,
                           suggestedAmount: suggestedAmount,
+                          currency: groupCurrency,
                         ),
                   );
                 },
@@ -239,8 +272,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
+    required String currency,
   }) async {
-    const currency = 'OMR';
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
     final toDisplayName = settlement['toUserName'] as String? ?? toRawName;

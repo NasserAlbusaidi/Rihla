@@ -11,6 +11,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
+import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -72,6 +73,23 @@ void main() {
         (ref) => settlementsStream ?? Stream.value(const <Settlement>[]),
       ),
       groupMembersProvider(groupId).overrideWith((ref) => Stream.value([])),
+      // #261: SettleUpScreen now gates on the group resolving to read its
+      // currency. Override groupDetailProvider (it otherwise binds real
+      // Firestore) or the screen hangs on the loader. createdBy is a literal,
+      // NOT the nullable currentUid param (Group.createdBy is non-null).
+      groupDetailProvider(groupId).overrideWith(
+        (ref) => Stream.value(
+          Group(
+            id: groupId,
+            name: 'Trip',
+            inviteCode: 'ABC123',
+            createdBy: 'bob',
+            memberIds: const [],
+            currency: 'OMR',
+            createdAt: DateTime(2026),
+          ),
+        ),
+      ),
       settlementServiceProvider.overrideWithValue(
         settlementService ?? SettlementService.withFirestore(fakeDb),
       ),
