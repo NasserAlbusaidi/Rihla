@@ -223,6 +223,68 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Test 9 (#261/#383): active 2-currency balance renders two blocks with '
+      'per-currency code + 3dp/2dp precision',
+      (tester) async {
+        // The multi-block branch (balance_hero_card.dart:117-129) only runs
+        // when byCurrency.length > 1 — every other hero test builds a single
+        // bucket or empty, so this render path was previously never pumped
+        // (#383 Box 1). Groups are irrelevant here: settledDisplayCurrency is
+        // consulted ONLY for the empty/settled state, not an active balance.
+        await tester.pumpWidget(
+          buildTestWidget(
+            child: const BalanceHeroCard(),
+            overrides: [
+              crossGroupBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data((
+                  byCurrency: [
+                    (
+                      currency: 'OMR',
+                      net: Decimal.parse('12.345'),
+                      owedToUser: Decimal.parse('12.345'),
+                      userOwes: Decimal.zero,
+                    ),
+                    (
+                      currency: 'USD',
+                      net: Decimal.parse('8.25'),
+                      owedToUser: Decimal.parse('8.25'),
+                      userOwes: Decimal.zero,
+                    ),
+                  ],
+                  groupCount: 2,
+                  isLoading: false,
+                )),
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+
+        // Each block shows its own code label (plain Text); the single-currency
+        // header code is suppressed when there is more than one currency.
+        expect(find.text('OMR'), findsOneWidget);
+        expect(find.text('USD'), findsOneWidget);
+        // Exactly one Divider separates the two currency blocks.
+        expect(find.byType(Divider), findsOneWidget);
+        // Per-currency precision discriminators: a 2dp render of 12.345 could
+        // never contain '12.345', and a 3dp render of 8.25 would surface
+        // '8.250' (which must be absent for a correct 2dp USD render).
+        expect(
+          find.textContaining('12.345', findRichText: true),
+          findsAtLeastNWidgets(1),
+        );
+        expect(
+          find.textContaining('8.25', findRichText: true),
+          findsAtLeastNWidgets(1),
+        );
+        expect(
+          find.textContaining('8.250', findRichText: true),
+          findsNothing,
+        );
+      },
+    );
+
     testWidgets('Test 4: shows SkeletonLoader when loading', (tester) async {
       await tester.pumpWidget(
         buildTestWidget(

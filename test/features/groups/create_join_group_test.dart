@@ -9,6 +9,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -24,6 +25,14 @@ import 'package:safar/shared/widgets/skeleton_loader.dart';
 // ---------------------------------------------------------------------------
 // CreateGroupScreen tests
 // ---------------------------------------------------------------------------
+
+/// #288: the create flow fires the natural-moment permission prompt after the
+/// share sheet is dismissed. These tests never dismiss it, but a no-op keeps the
+/// flow off any platform channel regardless.
+class _NoopPrompt implements NotificationPrompt {
+  @override
+  Future<void> maybePrompt() async {}
+}
 
 void main() {
   group('CreateGroupScreen', () {
@@ -132,6 +141,67 @@ void main() {
       expect(find.text('USD'), findsOneWidget);
       expect(find.text('OMR'), findsNothing);
     });
+
+    testWidgets(
+      '#261/#383: picker→create persists the SELECTED currency (USD) to '
+      'Firestore, not hardcoded OMR',
+      (tester) async {
+        // #383 Box 2: no test asserted that createGroup(currency:) writes a
+        // non-OMR currency. A real GroupService over FakeFirebaseFirestore lets
+        // us read back the persisted doc and prove the picker selection threads
+        // all the way through createGroup's write-map.
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Test User',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              notificationPromptProvider.overrideWithValue(_NoopPrompt()),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-creator',
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const CreateGroupScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Pick USD in the currency sheet.
+        await tester.tap(find.byKey(GroupKeys.currencyField));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('US dollar'));
+        await tester.pumpAndSettle();
+        expect(find.text('USD'), findsOneWidget);
+
+        // Fill the required fields and create.
+        await tester.enterText(find.byKey(GroupKeys.groupNameInput), 'Trip');
+        await tester.enterText(
+          find.byKey(GroupKeys.deviceNameInput),
+          'Test User',
+        );
+        await tester.pump();
+        await tester.tap(find.byKey(GroupKeys.createGroupButton));
+        await tester.pumpAndSettle(); // create resolves → share sheet appears
+
+        // The persisted group doc carries the picked currency, not 'OMR'.
+        final groups = await fakeDb.collection('groups').get();
+        expect(groups.docs.length, 1, reason: 'exactly one group created');
+        expect(groups.docs.first.data()['currency'], 'USD');
+      },
+    );
 
     testWidgets('renders Group Name label and hint', (tester) async {
       await tester.pumpWidget(await buildCreateScreen());
