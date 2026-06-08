@@ -176,7 +176,7 @@
   "ledgerNothingInCategoryMessage": "جرّب فئة أخرى أو عد إلى الكل.",
   "ledgerEndOfLedger": "نهاية الدفتر",
   "ledgerEmptyStateTitle": "صفحة فارغة جاهزة للكتابة.",
-  "ledgerEmptyStateFirstExpenseBody": "أول OMR تسجّله سيحدد إجمالي الرحلة. سنقسمه بالتساوي بين كل من في الرحلة.",
+  "ledgerEmptyStateFirstExpenseBody": "أول {currency} تسجّله سيحدد إجمالي الرحلة. سنقسمه بالتساوي بين كل من في الرحلة.",
   "ledgerCouldNotLoadEventTitle": "تعذّر تحميل الفعالية",
   "ledgerCouldNotLoadLedgerTitle": "تعذّر تحميل الدفتر",
   "ledgerEventNotFoundTitle": "الفعالية غير موجودة",

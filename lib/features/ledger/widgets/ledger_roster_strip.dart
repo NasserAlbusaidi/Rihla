@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../groups/services/member_name_resolver.dart';
 
@@ -36,12 +37,14 @@ class LedgerRosterStrip extends StatelessWidget {
     super.key,
     required this.state,
     required this.others,
+    required this.currency,
     required this.currentUserDisplayName,
     this.onPersonTap,
   });
 
   final LedgerRosterState state;
   final List<LedgerRosterPerson> others;
+  final String currency;
   final String currentUserDisplayName;
   final ValueChanged<LedgerRosterPerson>? onPersonTap;
 
@@ -59,6 +62,7 @@ class LedgerRosterStrip extends StatelessWidget {
             _RosterTile(
               person: p,
               state: state,
+              currency: currency,
               onTap: onPersonTap == null ? null : () => onPersonTap!(p),
             ),
           ],
@@ -139,10 +143,16 @@ class _YouAnchor extends StatelessWidget {
 }
 
 class _RosterTile extends StatelessWidget {
-  const _RosterTile({required this.person, required this.state, this.onTap});
+  const _RosterTile({
+    required this.person,
+    required this.state,
+    required this.currency,
+    this.onTap,
+  });
 
   final LedgerRosterPerson person;
   final LedgerRosterState state;
+  final String currency;
   final VoidCallback? onTap;
 
   @override
@@ -178,6 +188,7 @@ class _RosterTile extends StatelessWidget {
               _Chip(
                 person: person,
                 state: state,
+                currency: currency,
                 isEmpty: isEmpty,
                 isSettled: isSettled,
               ),
@@ -199,12 +210,14 @@ class _Chip extends StatelessWidget {
   const _Chip({
     required this.person,
     required this.state,
+    required this.currency,
     required this.isEmpty,
     required this.isSettled,
   });
 
   final LedgerRosterPerson person;
   final LedgerRosterState state;
+  final String currency;
   final bool isEmpty;
   final bool isSettled;
 
@@ -253,7 +266,9 @@ class _Chip extends StatelessWidget {
         : colors.error.withValues(alpha: 0.16);
     final fg = positive ? colors.successText : colors.errorText;
     final prefix = positive ? '+' : '−';
-    final abs = person.signedAmount.abs().toStringAsFixed(3);
+    final abs = person.signedAmount.abs().toStringAsFixed(
+      AppFormatters.currencyConfig[currency]?.decimals ?? 3,
+    );
     return Container(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: 2),
       decoration: BoxDecoration(

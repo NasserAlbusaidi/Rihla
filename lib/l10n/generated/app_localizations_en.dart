@@ -463,8 +463,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerEmptyStateTitle => 'An empty page, ready to be written.';
 
   @override
-  String get ledgerEmptyStateFirstExpenseBody =>
-      'The first OMR you log will set the trip total. We\'ll split it equally between everyone on the trip.';
+  String ledgerEmptyStateFirstExpenseBody(Object currency) {
+    return 'The first $currency you log will set the trip total. We\'ll split it equally between everyone on the trip.';
+  }
 
   @override
   String get ledgerCouldNotLoadEventTitle => 'Could not load event';

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/formatters.dart';
 
 /// V5R hero kind — drives copy, sign treatment, and tonal color.
 enum LedgerHeroKind { positive, negative, settled, empty }
@@ -20,11 +21,13 @@ class LedgerHeroStatement extends StatelessWidget {
     super.key,
     required this.kind,
     required this.amount,
+    required this.currency,
     this.peopleCount = 0,
   });
 
   final LedgerHeroKind kind;
   final Decimal amount;
+  final String currency;
   final int peopleCount;
 
   @override
@@ -69,6 +72,7 @@ class LedgerHeroStatement extends StatelessWidget {
             _inlineMoney(
               amount,
               sign: '+',
+              currency: currency,
               numStyle: numStyle,
               prefixStyle: monoPrefixStyle,
               fractionStyle: fractionStyle,
@@ -87,6 +91,7 @@ class LedgerHeroStatement extends StatelessWidget {
             _inlineMoney(
               amount.abs(),
               sign: '−',
+              currency: currency,
               numStyle: numStyle,
               prefixStyle: monoPrefixStyle,
               fractionStyle: fractionStyle,
@@ -113,11 +118,14 @@ class LedgerHeroStatement extends StatelessWidget {
   static InlineSpan _inlineMoney(
     Decimal value, {
     required String sign,
+    required String currency,
     required TextStyle numStyle,
     required TextStyle prefixStyle,
     required TextStyle fractionStyle,
   }) {
-    final formatted = value.abs().toStringAsFixed(3);
+    final formatted = value.abs().toStringAsFixed(
+      AppFormatters.currencyConfig[currency]?.decimals ?? 3,
+    );
     final dot = formatted.indexOf('.');
     final whole = dot == -1 ? formatted : formatted.substring(0, dot);
     final frac = dot == -1 ? '' : formatted.substring(dot);
@@ -137,7 +145,7 @@ class LedgerHeroStatement extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 3),
-              child: Text('${sign}OMR', style: prefixStyle),
+              child: Text('$sign$currency', style: prefixStyle),
             ),
             Text(whole, style: numStyle),
             if (frac.isNotEmpty) Text(frac, style: fractionStyle),
@@ -209,12 +217,14 @@ class LedgerTripCaption extends StatelessWidget {
   const LedgerTripCaption({
     super.key,
     required this.total,
+    required this.currency,
     required this.expenseCount,
     required this.settledCount,
     this.label,
   });
 
   final Decimal total;
+  final String currency;
   final int expenseCount;
   final int settledCount;
   final String? label;
@@ -265,7 +275,7 @@ class LedgerTripCaption extends StatelessWidget {
         children: [
           Text(effectiveLabel, style: labelStyle),
           Text('·', style: dotStyle),
-          Text('OMR ${total.toStringAsFixed(3)}', style: amountStyle),
+          Text(AppFormatters.formatCurrency(total, currency), style: amountStyle),
           Text('·', style: dotStyle),
           Text(tail, style: tailStyle),
         ],

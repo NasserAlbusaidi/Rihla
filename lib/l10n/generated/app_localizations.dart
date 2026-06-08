@@ -971,8 +971,8 @@ abstract class AppLocalizations {
   /// No description provided for @ledgerEmptyStateFirstExpenseBody.
   ///
   /// In en, this message translates to:
-  /// **'The first OMR you log will set the trip total. We\'ll split it equally between everyone on the trip.'**
-  String get ledgerEmptyStateFirstExpenseBody;
+  /// **'The first {currency} you log will set the trip total. We\'ll split it equally between everyone on the trip.'**
+  String ledgerEmptyStateFirstExpenseBody(Object currency);
 
   /// No description provided for @ledgerCouldNotLoadEventTitle.
   ///
