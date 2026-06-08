@@ -275,9 +275,11 @@ export const joinGroupByInviteCode = onCall<
         }
 
         const memberRef = groupRef.collection('members').doc(uid);
+        const membersQuery = groupRef.collection('members');
         const eventsQuery = groupRef.collection('events');
-        const [memberSnap, eventsSnap] = await Promise.all([
+        const [memberSnap, membersSnap, eventsSnap] = await Promise.all([
           tx.get(memberRef),
+          tx.get(membersQuery),
           tx.get(eventsQuery),
         ]);
         if (eventsSnap.size > 400) {
@@ -297,6 +299,36 @@ export const joinGroupByInviteCode = onCall<
         didJoin = !memberSnap.exists && !memberIds.includes(uid);
         existingMemberIds = memberIds;
         groupName = typeof groupData.name === 'string' ? groupData.name : '';
+
+        // #279: reject a brand-new join whose display name collides
+        // (case-insensitive, trimmed) with an existing member — duplicate names
+        // make roster + settle-up attribution ambiguous. Gated on `didJoin`
+        // (== `!memberSnap.exists && !memberIds.includes(uid)`) so ONLY a
+        // genuinely new member is uniqueness-checked: an idempotent re-join AND
+        // the #53 heal path (uid already in memberIds, member-doc missing) both
+        // restore their existing name without being self-rejected. Normalization
+        // matches MemberNameResolver.disambiguate's collision key
+        // (`trim().toLowerCase()`) so prevention and the display disambiguator
+        // (#196/#289) agree. Compared across ALL member docs by the
+        // `userId`/`displayName` FIELDS (not doc id) so the creator's uuid-keyed
+        // doc is included. Throws `already-exists`, which is NOT in
+        // `isLookupFailure`, so a collision never burns the 5/hr join throttle —
+        // it is a legitimate user error, not enumeration.
+        if (didJoin) {
+          const candidate = displayName.trim().toLowerCase();
+          const collides = membersSnap.docs.some((doc) => {
+            if (doc.get('userId') === uid) return false;
+            const existing = doc.get('displayName');
+            return typeof existing === 'string'
+              && existing.trim().toLowerCase() === candidate;
+          });
+          if (collides) {
+            throw new HttpsError(
+              'already-exists',
+              'That name is already taken in this group. Please choose a different name.',
+            );
+          }
+        }
 
         const eventFanoutUpdates: EventFanoutUpdate[] = [];
         for (const eventSnap of eventsSnap.docs) {

@@ -622,6 +622,67 @@ void main() {
         findsNothing,
       );
     });
+
+    testWidgets('#279: name-collision join shows the localized name-taken message', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'Joiner',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final fakeDb = FakeFirebaseFirestore();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupLoadingProvider.overrideWith((ref) => false),
+            groupErrorProvider.overrideWith((ref) => null),
+            groupServiceProvider.overrideWith(
+              (ref) => GroupService.withFirestore(
+                ref,
+                fakeDb,
+                currentUserId: 'uid-joiner',
+                joinGroupCallableOverride:
+                    ({required inviteCode, required displayName}) async {
+                      // The #279 server guard throws this code on a collision.
+                      throw FirebaseFunctionsException(
+                        code: 'already-exists',
+                        message:
+                            'That name is already taken in this group. '
+                            'Please choose a different name.',
+                      );
+                    },
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const JoinGroupScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextFormField).last, 'ABC123');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          "That name's already used in this group. Please pick a different name.",
+        ),
+        findsOneWidget,
+      );
+      // NOT the generic failure copy.
+      expect(
+        find.text(
+          "Couldn't join the group. Check your connection and try again.",
+        ),
+        findsNothing,
+      );
+    });
   });
 
   // ---------------------------------------------------------------------------

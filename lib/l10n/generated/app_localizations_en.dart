@@ -1899,6 +1899,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupJoinAlreadyMember => 'You\'re already in this group.';
 
   @override
+  String get groupJoinNameTaken =>
+      'That name\'s already used in this group. Please pick a different name.';
+
+  @override
   String get groupJoinTooManyAttempts => 'Too many attempts. Try again later.';
 
   @override

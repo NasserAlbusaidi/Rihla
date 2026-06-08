@@ -138,6 +138,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (error.contains('Already a member')) {
       return context.l10n.groupJoinAlreadyMember;
     }
+    if (error.contains('already taken in this group')) {
+      return context.l10n.groupJoinNameTaken;
+    }
     if (error.contains('Too many attempts')) {
       return context.l10n.groupJoinTooManyAttempts;
     }
