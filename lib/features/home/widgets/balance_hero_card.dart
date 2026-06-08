@@ -30,6 +30,10 @@ class BalanceHeroCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final balanceAsync = ref.watch(crossGroupBalanceOnceProvider);
+    // #70: the currency for the all-settled state (when byCurrency is empty there
+    // is no active bucket to read a currency from). Null ⇒ no/mixed currency ⇒
+    // currency-agnostic zero.
+    final settledCurrency = ref.watch(settledDisplayCurrencyProvider);
 
     return balanceAsync.when(
       loading: SkeletonLoader.dashboardHero,
@@ -37,6 +41,7 @@ class BalanceHeroCard extends ConsumerWidget {
       data: (result) => _LoadedCard(
         balance: result.balance,
         partial: result.partial,
+        settledCurrency: settledCurrency,
         onTap: onTap,
       ),
     );
@@ -47,6 +52,7 @@ class _LoadedCard extends StatelessWidget {
   const _LoadedCard({
     required this.balance,
     this.partial = false,
+    this.settledCurrency,
     this.onTap,
   });
   final CrossGroupBalance balance;
@@ -55,6 +61,10 @@ class _LoadedCard extends StatelessWidget {
   /// is a partial sum. Renders the "may be incomplete" notice; the numbers
   /// still show (the "you're owed X (incomplete)" goal).
   final bool partial;
+
+  /// #70: currency for the all-settled (empty [CrossGroupBalance.byCurrency])
+  /// state. Null ⇒ render a currency-agnostic zero (no code, 2dp).
+  final String? settledCurrency;
   final VoidCallback? onTap;
 
   @override
@@ -97,7 +107,13 @@ class _LoadedCard extends StatelessWidget {
 
     if (buckets.isEmpty) {
       children.add(const SizedBox(height: 14));
-      children.add(const _CurrencyBlock(bucket: null, showCode: false));
+      children.add(
+        _CurrencyBlock(
+          bucket: null,
+          showCode: false,
+          settledCurrency: settledCurrency,
+        ),
+      );
     } else {
       for (var i = 0; i < buckets.length; i++) {
         if (i == 0) {
@@ -149,9 +165,17 @@ class _LoadedCard extends StatelessWidget {
 /// label above the amount when the card shows MORE than one currency (the
 /// single-currency card carries the code in the header row instead).
 class _CurrencyBlock extends StatelessWidget {
-  const _CurrencyBlock({required this.bucket, required this.showCode});
+  const _CurrencyBlock({
+    required this.bucket,
+    required this.showCode,
+    this.settledCurrency,
+  });
   final CurrencyBalance? bucket;
   final bool showCode;
+
+  /// #70: only consulted when [bucket] is null (all-settled). The user's single
+  /// group currency, or null ⇒ currency-agnostic zero.
+  final String? settledCurrency;
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +184,12 @@ class _CurrencyBlock extends StatelessWidget {
     final net = b?.net ?? Decimal.zero;
     final owedToUser = b?.owedToUser ?? Decimal.zero;
     final userOwes = b?.userOwes ?? Decimal.zero;
-    final currency = b?.currency ?? 'OMR';
+    // #70: an active bucket carries its own currency; the settled (null) state
+    // falls back to the user's settled currency, or null ⇒ agnostic. An empty
+    // code ('') drives RAmount's 2dp default with no code shown.
+    final resolved = b?.currency ?? settledCurrency;
+    final currency = resolved ?? '';
+    final showLegendCode = resolved != null;
 
     final isPositive = net > Decimal.zero;
     final isNegative = net < Decimal.zero;
@@ -212,6 +241,7 @@ class _CurrencyBlock extends StatelessWidget {
           owedToUser: owedToUser,
           userOwes: userOwes,
           currency: currency,
+          showCode: showLegendCode,
         ),
       ],
     );
@@ -327,10 +357,15 @@ class _SplitLegend extends StatelessWidget {
     required this.owedToUser,
     required this.userOwes,
     required this.currency,
+    required this.showCode,
   });
   final Decimal owedToUser;
   final Decimal userOwes;
   final String currency;
+
+  /// #70: false ⇒ render the legend amounts without a currency code (the
+  /// agnostic settled state). Always true for an active bucket.
+  final bool showCode;
 
   @override
   Widget build(BuildContext context) {
@@ -346,6 +381,7 @@ class _SplitLegend extends StatelessWidget {
           label: context.l10n.homeOwedToYou,
           amount: owedToUser,
           currency: currency,
+          showCode: showCode,
         ),
         const SizedBox(height: 6),
         _LegendLine(
@@ -353,6 +389,7 @@ class _SplitLegend extends StatelessWidget {
           label: context.l10n.homeYouOwe,
           amount: userOwes,
           currency: currency,
+          showCode: showCode,
         ),
       ],
     );
@@ -365,12 +402,14 @@ class _LegendLine extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.currency,
+    required this.showCode,
   });
 
   final Color dotColor;
   final String label;
   final Decimal amount;
   final String currency;
+  final bool showCode;
 
   @override
   Widget build(BuildContext context) {
@@ -388,7 +427,13 @@ class _LegendLine extends StatelessWidget {
             ),
           ),
         ),
-        RAmount(value: amount, currency: currency, size: 12, tone: AmountTone.ink),
+        RAmount(
+          value: amount,
+          currency: currency,
+          showCurrency: showCode,
+          size: 12,
+          tone: AmountTone.ink,
+        ),
       ],
     );
   }

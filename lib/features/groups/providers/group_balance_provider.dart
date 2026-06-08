@@ -519,6 +519,22 @@ typedef CrossGroupBalance =
       bool isLoading,
     });
 
+/// #70: the currency for the cross-group ALL-SETTLED hero state — the user's
+/// single distinct group currency, or null when they have zero groups or groups
+/// spanning MORE THAN ONE currency (no single currency is honest, so the hero
+/// renders a currency-agnostic zero). Used ONLY for the settled/empty render;
+/// an ACTIVE balance carries its own per-currency bucket in [byCurrency].
+///
+/// Reads [userGroupsProvider] — the same groups source the once-provider awaits,
+/// so the two cannot meaningfully disagree. Null while groups load (the hero is
+/// showing the skeleton then anyway).
+final settledDisplayCurrencyProvider = Provider<String?>((ref) {
+  final groups = ref.watch(userGroupsProvider).valueOrNull;
+  if (groups == null || groups.isEmpty) return null;
+  final distinct = groups.map((g) => g.currency).toSet();
+  return distinct.length == 1 ? distinct.single : null;
+});
+
 /// Bucket a per-currency accumulator into the sorted [CurrencyBalance] list:
 /// keep only currencies with activity (owed or owes nonzero — so an offsetting
 /// net-zero currency is still shown), GCC-first; an unknown code sorts last but
