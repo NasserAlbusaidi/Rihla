@@ -487,6 +487,78 @@ describe('joinGroupByInviteCode', () => {
   });
 });
 
+describe('joinGroupByInviteCode — display-name collision guard (#279)', () => {
+  // seedInviteGroup() (beforeEach) already seeds member "Owner" in g1.
+
+  test('rejects a new join whose name collides (case-insensitive) with a member', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'owner' },
+      auth: { uid: 'eve' },
+    } as any)).rejects.toMatchObject({ code: 'already-exists' });
+
+    const db = getFirestore();
+    // No membership written on rejection.
+    expect((await db.doc('groups/g1').get()).data()?.memberIds).toEqual(['owner']);
+    expect((await db.doc('groups/g1/members/eve').get()).exists).toBe(false);
+  });
+
+  test('rejects on trim + case variants of an existing name', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: '  OWNER  ' },
+      auth: { uid: 'eve' },
+    } as any)).rejects.toMatchObject({ code: 'already-exists' });
+  });
+
+  test('a unique name still joins', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Layla' },
+      auth: { uid: 'layla' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+    expect((await getFirestore().doc('groups/g1/members/layla').get())
+      .data()?.displayName).toBe('Layla');
+  });
+
+  test('collision does NOT burn the join throttle (already-exists is not a lookup failure)', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Owner' },
+      auth: { uid: 'eve' },
+    } as any)).rejects.toMatchObject({ code: 'already-exists' });
+    // joinAttempts/{uid} must be untouched — a collision is a legit user error.
+    expect((await getFirestore().doc('joinAttempts/eve').get()).exists).toBe(false);
+  });
+
+  test('idempotent re-join with the SAME name is not self-rejected', async () => {
+    const db = getFirestore();
+    await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
+    await db.doc('groups/g1/members/alice').set({
+      id: 'alice', userId: 'alice', displayName: 'Alice',
+      role: 'MEMBER', joinedAt: new Date(), isShadow: false,
+    });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+  });
+
+  test('collision is detected against a creator doc keyed by a random uuid (userId-field match)', async () => {
+    // createGroup keys the CREATOR's member doc by a random uuid with userId as a
+    // FIELD (not by uid). Re-shape the owner doc that way to prove the guard
+    // compares displayName across ALL member docs, not by doc id.
+    const db = getFirestore();
+    await db.doc('groups/g1/members/owner').delete();
+    await db.doc('groups/g1/members/2f1c0000-uuid').set({
+      id: '2f1c0000-uuid', userId: 'owner', displayName: 'Owner',
+      role: 'CREATOR', joinedAt: new Date(), isShadow: false,
+    });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'owner' },
+      auth: { uid: 'eve' },
+    } as any)).rejects.toMatchObject({ code: 'already-exists' });
+  });
+});
+
 describe('joinGroupByInviteCode — member-join notification (#53)', () => {
   function mockSendEach(): jest.Mock {
     const sendEach = jest.fn().mockResolvedValue({

@@ -234,6 +234,10 @@ class GroupService extends FirestoreRepository {
       'unauthenticated' => 'Please sign in and try again.',
       'invalid-argument' => 'Invalid invite code.',
       'not-found' => 'Invalid invite code.',
+      // #279: server rejects a join whose display name collides with an existing
+      // member. The screen re-localizes this via the 'already taken in this
+      // group' substring (groupJoinNameTaken).
+      'already-exists' => 'That name is already taken in this group.',
       'resource-exhausted' => 'Too many attempts. Try again later.',
       _ => 'Could not join group. Try again.',
     };

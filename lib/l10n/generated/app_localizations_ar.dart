@@ -1950,6 +1950,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupJoinAlreadyMember => 'أنت موجود بالفعل في هذه المجموعة.';
 
   @override
+  String get groupJoinNameTaken =>
+      'هذا الاسم مستخدم بالفعل في هذه المجموعة. الرجاء اختيار اسم مختلف.';
+
+  @override
   String get groupJoinTooManyAttempts => 'محاولات كثيرة جدًا. حاول لاحقًا.';
 
   @override

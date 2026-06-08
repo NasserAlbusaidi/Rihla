@@ -1294,6 +1294,7 @@
   "groupJoinMoodBody": "Enter the 6-character code a friend gave you. We will drop you straight into the group.",
   "groupJoinInvalidCode": "That code doesn't match any group. Check the code and try again.",
   "groupJoinAlreadyMember": "You're already in this group.",
+  "groupJoinNameTaken": "That name's already used in this group. Please pick a different name.",
   "groupJoinTooManyAttempts": "Too many attempts. Try again later.",
   "groupJoinPleaseSignIn": "Please sign in and try again.",
   "groupJoinFailed": "Couldn't join the group. Check your connection and try again.",

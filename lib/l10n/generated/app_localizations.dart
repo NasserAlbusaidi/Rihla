@@ -3302,6 +3302,12 @@ abstract class AppLocalizations {
   /// **'You\'re already in this group.'**
   String get groupJoinAlreadyMember;
 
+  /// No description provided for @groupJoinNameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'That name\'s already used in this group. Please pick a different name.'**
+  String get groupJoinNameTaken;
+
   /// No description provided for @groupJoinTooManyAttempts.
   ///
   /// In en, this message translates to:
