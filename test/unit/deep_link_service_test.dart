@@ -137,6 +137,26 @@ void main() {
       verify(() => router.go('/join/ABC123')).called(1);
     });
 
+    test(
+      'dedupes a cold-start link emitted via both getInitialLink and the '
+      'stream (#370)',
+      () async {
+        final coldStart =
+            Uri.parse('https://rihla-safar.web.app/join/abc123');
+        when(() => appLinks.getInitialLink())
+            .thenAnswer((_) async => coldStart);
+
+        await service.init(router);
+
+        // app_links can surface the same cold-start URI a second time through
+        // uriLinkStream. The duplicate emission must not re-navigate.
+        uriLinks.add(coldStart);
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => router.go('/join/ABC123')).called(1);
+      },
+    );
+
     test('opens runtime join links from the app link stream', () async {
       await service.init(router);
 
