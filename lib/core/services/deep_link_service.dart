@@ -21,6 +21,11 @@ class DeepLinkService {
   // ignore: cancel_subscriptions, process-lifetime singleton listener
   StreamSubscription<Uri>? _subscription;
 
+  // app_links can emit the same cold-start URI through both getInitialLink()
+  // and uriLinkStream on a single cold start. Mirrors the seenKeys guard in
+  // authEmailLinkBootstrapProvider so a duplicated emission navigates once.
+  final Set<String> _seenKeys = <String>{};
+
   Future<void> init(GoRouter router) async {
     if (_subscription != null) return;
 
@@ -65,7 +70,10 @@ class DeepLinkService {
     final joinUri = parseJoinLink(uri);
     if (joinUri == null) return;
 
-    router.go(joinUri.toString());
+    final target = joinUri.toString();
+    if (!_seenKeys.add(target)) return;
+
+    router.go(target);
   }
 
   String? _customSchemeInviteCode(Uri uri) {
