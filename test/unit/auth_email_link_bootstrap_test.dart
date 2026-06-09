@@ -204,36 +204,38 @@ void main() {
     },
   );
 
-  group('link → recover auto-fallback', () {
+  group('link conflict — no auto-recovery (#414)', () {
     for (final code in const [
       'email-already-in-use',
       'credential-already-in-use',
       'provider-already-linked',
     ]) {
-      test('opLink failing with $code falls back to completeRecovery', () async {
-        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-        when(
-          () => service.readInFlightOp(),
-        ).thenReturn(AuthRecoveryService.opLink);
-        when(
-          () => service.completeEmailLink(any()),
-        ).thenThrow(FirebaseAuthException(code: code));
-        when(
-          () => service.completeRecovery(any()),
-        ).thenAnswer((_) async => _MockUserCredential());
-        await attach();
+      test(
+        'opLink failing with $code surfaces the conflict and never calls '
+        'completeRecovery',
+        () async {
+          // #414: auto-falling-back to completeRecovery signs the anon
+          // account out and orphans its data. Recovery into the other
+          // account is an explicit, consented action via RecoverScreen only.
+          when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+          when(
+            () => service.readInFlightOp(),
+          ).thenReturn(AuthRecoveryService.opLink);
+          when(
+            () => service.completeEmailLink(any()),
+          ).thenThrow(FirebaseAuthException(code: code));
+          await attach();
 
-        uriStream.add(_validAuthLink());
-        await pumpEventQueue();
+          uriStream.add(_validAuthLink());
+          await pumpEventQueue();
 
-        verify(() => service.completeEmailLink(any())).called(1);
-        verify(
-          () => service.completeRecovery(_validAuthLink().toString()),
-        ).called(1);
-      });
+          verify(() => service.completeEmailLink(any())).called(1);
+          verifyNever(() => service.completeRecovery(any()));
+        },
+      );
     }
 
-    test('successful fallback clears pendingEmailLinkProvider', () async {
+    test('conflict does not clear a stashed pending link', () async {
       when(() => service.readPendingEmail()).thenReturn('foo@example.com');
       when(
         () => service.readInFlightOp(),
@@ -241,9 +243,6 @@ void main() {
       when(
         () => service.completeEmailLink(any()),
       ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
-      when(
-        () => service.completeRecovery(any()),
-      ).thenAnswer((_) async => _MockUserCredential());
       await attach();
 
       container.read(pendingEmailLinkProvider.notifier).state =
@@ -251,7 +250,34 @@ void main() {
       uriStream.add(_validAuthLink());
       await pumpEventQueue();
 
-      expect(container.read(pendingEmailLinkProvider), isNull);
+      // Error paths leave the §4.7 stash alone — only successful completion
+      // clears it.
+      expect(container.read(pendingEmailLinkProvider), 'https://stale-link');
+    });
+
+    test('conflict error does not crash the stream', () async {
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(
+        () => service.readInFlightOp(),
+      ).thenReturn(AuthRecoveryService.opLink);
+      when(
+        () => service.completeEmailLink(any()),
+      ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
+      await attach();
+
+      uriStream.add(_validAuthLink());
+      await pumpEventQueue();
+
+      // Listener still alive — a second, distinct event should still be
+      // dispatched. (Repeating the same oobCode is dedupe-suppressed.)
+      when(
+        () => service.completeEmailLink(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+      uriStream.add(_validAuthLink(oobCode: 'NEXT002'));
+      await pumpEventQueue();
+
+      verify(() => service.completeEmailLink(any())).called(2);
+      verifyNever(() => service.completeRecovery(any()));
     });
 
     test(
@@ -277,8 +303,8 @@ void main() {
     test(
       'opRecover failing with email-already-in-use does NOT re-fallback',
       () async {
-        // Recover failures must not trigger another recover attempt — only
-        // link → recover is auto-fallback territory.
+        // Recover failures surface as errors — they must never dispatch
+        // another completion attempt.
         when(() => service.readPendingEmail()).thenReturn('foo@example.com');
         when(
           () => service.readInFlightOp(),
@@ -295,7 +321,9 @@ void main() {
         verifyNever(() => service.completeEmailLink(any()));
       },
     );
+  });
 
+  group('cold-start dedupe', () {
     test('same link emitted by initial + stream is handled only once', () async {
       // app_links emits the cold-start URL through BOTH getInitialLink() and
       // uriLinkStream on the same launch. Without dedupe, the second pass
@@ -344,33 +372,6 @@ void main() {
       await pumpEventQueue();
 
       verify(() => service.completeRecovery(any())).called(2);
-    });
-
-    test('fallback recover failure does not crash the stream', () async {
-      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-      when(
-        () => service.readInFlightOp(),
-      ).thenReturn(AuthRecoveryService.opLink);
-      when(
-        () => service.completeEmailLink(any()),
-      ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
-      when(
-        () => service.completeRecovery(any()),
-      ).thenThrow(FirebaseAuthException(code: 'invalid-action-code'));
-      await attach();
-
-      uriStream.add(_validAuthLink());
-      await pumpEventQueue();
-
-      // Listener still alive — a second, distinct event should still be
-      // dispatched. (Repeating the same oobCode is dedupe-suppressed.)
-      when(
-        () => service.completeEmailLink(any()),
-      ).thenAnswer((_) async => _MockUserCredential());
-      uriStream.add(_validAuthLink(oobCode: 'NEXT002'));
-      await pumpEventQueue();
-
-      verify(() => service.completeEmailLink(any())).called(2);
     });
   });
 }

@@ -268,12 +268,11 @@ void main() {
     );
 
     test(
-      'drains pending writes and signs out anon UID before recovery',
+      'drains pending writes before sign-in and never explicitly signs out',
       () async {
         final credential = _MockUserCredential();
         final firestore = _MockFirestore();
         when(firestore.waitForPendingWrites).thenAnswer((_) async {});
-        when(() => auth.signOut()).thenAnswer((_) async {});
         when(
           () => auth.signInWithEmailLink(
             email: any(named: 'email'),
@@ -287,12 +286,14 @@ void main() {
 
         verifyInOrder([
           firestore.waitForPendingWrites,
-          () => auth.signOut(),
           () => auth.signInWithEmailLink(
             email: 'foo@example.com',
             emailLink: link,
           ),
         ]);
+        // #414: the sign-in itself replaces the session; an explicit signOut
+        // beforehand is how a failed swap orphans a no-email anon account.
+        verifyNever(() => auth.signOut());
       },
     );
 
@@ -304,6 +305,8 @@ void main() {
         when(defaultFirestore.waitForPendingWrites).thenAnswer((_) async {
           calls.add('waitForPendingWrites');
         });
+        // signOut stub records so the expected-calls list below proves it
+        // is never invoked (#414).
         when(() => auth.signOut()).thenAnswer((_) async {
           calls.add('signOut');
         });
@@ -336,7 +339,6 @@ void main() {
           'engage',
           'intent:anon-uid-123',
           'waitForPendingWrites',
-          'signOut',
           'signInWithEmailLink',
           'cleanup:anon-uid-123:client-secret',
           'restart',
@@ -344,20 +346,17 @@ void main() {
       },
     );
 
-    test('engages isolation first and marks the cache dirty before signOut', () async {
+    test('engages isolation first and marks the cache dirty before sign-in', () async {
       final credential = _MockUserCredential();
       final events = <String>[];
-      bool? dirtyAtSignOut;
-      when(() => auth.signOut()).thenAnswer((_) async {
-        dirtyAtSignOut = prefs.getBool(kFirestorePersistenceDirtyKey);
-        events.add('signOut');
-      });
+      bool? dirtyAtSignIn;
       when(
         () => auth.signInWithEmailLink(
           email: any(named: 'email'),
           emailLink: any(named: 'emailLink'),
         ),
       ).thenAnswer((_) async {
+        dirtyAtSignIn = prefs.getBool(kFirestorePersistenceDirtyKey);
         events.add('signIn');
         return credential;
       });
@@ -370,7 +369,7 @@ void main() {
 
       expect(events.first, 'engage');
       expect(events.last, 'restart');
-      expect(dirtyAtSignOut, isTrue);
+      expect(dirtyAtSignIn, isTrue);
     });
 
     test(
@@ -398,7 +397,10 @@ void main() {
           throwsA(isA<FirebaseAuthException>()),
         );
 
-        expect(events, ['engage', 'signOut', 'restart']);
+        expect(events, ['engage', 'restart']);
+        // #414: a failed swap must leave the current session signed in — the
+        // restart returns to it instead of minting a fresh empty anon.
+        verifyNever(() => auth.signOut());
         // Cleared in the finally so the cold boot doesn't re-run the dead link.
         expect(service.readPendingEmail(), isNull);
         expect(service.readInFlightOp(), isNull);
@@ -504,7 +506,6 @@ void main() {
       when(
         firestore.waitForPendingWrites,
       ).thenAnswer((_) => Completer<void>().future);
-      when(() => auth.signOut()).thenAnswer((_) async {});
       when(
         () => auth.signInWithEmailLink(
           email: any(named: 'email'),
@@ -520,7 +521,7 @@ void main() {
       );
 
       expect(result, same(credential));
-      verify(() => auth.signOut()).called(1);
+      verifyNever(() => auth.signOut());
       verify(
         () =>
             auth.signInWithEmailLink(email: 'foo@example.com', emailLink: link),
