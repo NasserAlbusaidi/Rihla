@@ -24,6 +24,10 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
   required String fromName,
   required String toName,
   required Decimal suggestedAmount,
+  // #282: true when the current user is the creditor logging a payment they
+  // *received* (rather than the debtor confirming one they made). The write is
+  // identical (fromName=payer → toName=recipient); only the copy reframes.
+  bool isReceiving = false,
 }) {
   return showModalBottomSheet<RecordPaymentResult>(
     context: context,
@@ -37,6 +41,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
       fromName: fromName,
       toName: toName,
       suggestedAmount: suggestedAmount,
+      isReceiving: isReceiving,
     ),
   );
 }
@@ -47,12 +52,14 @@ class _MarkPaidSheet extends StatefulWidget {
     required this.fromName,
     required this.toName,
     required this.suggestedAmount,
+    this.isReceiving = false,
   });
 
   final String currency;
   final String fromName;
   final String toName;
   final Decimal suggestedAmount;
+  final bool isReceiving;
 
   @override
   State<_MarkPaidSheet> createState() => _MarkPaidSheetState();
@@ -136,7 +143,9 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      context.l10n.settleUpMarkThisPaidTitle,
+                      widget.isReceiving
+                          ? context.l10n.settleUpMarkThisReceivedTitle
+                          : context.l10n.settleUpMarkThisPaidTitle,
                       textAlign: TextAlign.center,
                       key: GroupKeys.settleUpRecordSheetTitle,
                       style: AppTypography.display(
@@ -257,9 +266,13 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          context.l10n.settleUpRecordsImmediately(
-                            widget.toName,
-                          ),
+                          widget.isReceiving
+                              ? context.l10n.settleUpRecordsReceivedImmediately(
+                                  widget.fromName,
+                                )
+                              : context.l10n.settleUpRecordsImmediately(
+                                  widget.toName,
+                                ),
                           style: AppTypography.sans(
                             fontSize: 12,
                             color: colors.primaryDark,
@@ -322,7 +335,9 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                           },
                           icon: const Icon(Icons.check_rounded, size: 16),
                           label: Text(
-                            context.l10n.settleUpMarkPaid,
+                            widget.isReceiving
+                                ? context.l10n.settleUpMarkReceived
+                                : context.l10n.settleUpMarkPaid,
                             style: AppTypography.sans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,

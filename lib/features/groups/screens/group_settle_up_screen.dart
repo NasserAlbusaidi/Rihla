@@ -311,12 +311,15 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
     final toDisplayName = settlement['toUserName'] as String? ?? toRawName;
+    // #282: the recipient (creditor) is recording a payment received.
+    final isReceiving = ref.read(currentUserIdProvider) == toUserId;
     final result = await showRecordPaymentSheet(
       context,
       currency: group.currency,
       fromName: fromDisplayName,
       toName: toDisplayName,
       suggestedAmount: suggestedAmount,
+      isReceiving: isReceiving,
     );
 
     if (!context.mounted || result == null) return;
@@ -409,6 +412,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             createdBy: currentUid,
           );
 
+      // #282: name the OTHER party relative to the actor. When the creditor
+      // (recipient) records the payment, the counterparty is the payer — not
+      // `toName`, which would otherwise read "Alice settled … with Alice".
+      final counterpartyName = currentUid == toUserId ? fromName : toName;
       ref
           .read(groupActivityServiceProvider)
           .logGroupEvent(
@@ -417,7 +424,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             actorId: currentUid,
             actorName: actorName,
             description:
-                'settled ${AppFormatters.formatCurrency(amount, group.currency)} with $toName',
+                'settled ${AppFormatters.formatCurrency(amount, group.currency)} with $counterpartyName',
             metadata: {'amount': amount.toString(), 'recipientId': toUserId},
           );
 
