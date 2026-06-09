@@ -14,6 +14,7 @@ import '../../../core/services/notification_prompt.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
+import '../../../core/utils/name_validators.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
@@ -70,7 +71,19 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
     // Save display name to settings so GroupService picks it up
     final trimmedName = _displayNameController.text.trim();
-    await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
+    try {
+      await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
+    } on DisplayNameTakenException catch (e) {
+      // #390: the chosen name collides with another live member in one of the
+      // user's EXISTING groups; reject before creating.
+      ref.read(groupLoadingProvider.notifier).state = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.displayNameTakenInGroup(e.groupName))),
+        );
+      }
+      return;
+    }
 
     try {
       final group = await ref
