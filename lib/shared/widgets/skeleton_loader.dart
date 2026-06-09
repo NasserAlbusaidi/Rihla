@@ -278,6 +278,20 @@ class SkeletonLoader extends StatelessWidget {
     );
   }
 
+  /// The shimmer effect, or a static neutral fill when the OS reduce-motion
+  /// flag ([MediaQuery.disableAnimations]) is set (#349). Entrance fades
+  /// already honor this (e.g. `EmptyStateView`); the shimmer must too.
+  static PaintingEffect _effectFor(BuildContext context) {
+    if (MediaQuery.of(context).disableAnimations) {
+      return SolidColorEffect(color: context.colors.inputFill);
+    }
+    return ShimmerEffect(
+      baseColor: context.colors.inputFill, // warm-neutral base (theme-aware)
+      highlightColor:
+          context.colors.cardSurface, // warm-neutral highlight (theme-aware)
+    );
+  }
+
   /// Skeleton for a single card loading state (widget-level loading).
   ///
   /// Returns a [Builder] so the shimmer colors resolve against the active
@@ -285,10 +299,7 @@ class SkeletonLoader extends StatelessWidget {
   static Widget card() {
     return Builder(
       builder: (context) => Skeletonizer(
-        effect: ShimmerEffect(
-          baseColor: context.colors.inputFill,
-          highlightColor: context.colors.cardSurface,
-        ),
+        effect: _effectFor(context),
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: context.spacing.space24,
@@ -307,11 +318,7 @@ class SkeletonLoader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Skeletonizer(
-      effect: ShimmerEffect(
-        baseColor: context.colors.inputFill, // warm-neutral base (theme-aware)
-        highlightColor:
-            context.colors.cardSurface, // warm-neutral highlight (theme-aware)
-      ),
+      effect: _effectFor(context),
       child: SingleChildScrollView(
         // NeverScrollableScrollPhysics prevents user scroll while keeping
         // Column items clipped to bounded parent height (e.g. inside Expanded).
