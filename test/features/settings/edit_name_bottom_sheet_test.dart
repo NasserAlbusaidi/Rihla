@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/core/utils/name_validators.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/widgets/edit_name_bottom_sheet.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
@@ -119,4 +120,27 @@ void main() {
     await tester.pump(const Duration(milliseconds: 900));
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'shows the taken-name error and recovers when onSave rejects (#390)',
+    (tester) async {
+      await openEditName(
+        tester,
+        currentName: 'Ahmed',
+        onSave: (_) async =>
+            throw const DisplayNameTakenException('Trip to Muscat'),
+      );
+
+      await tester.enterText(find.byKey(ProfileKeys.nameTextField), 'Sara');
+      await tester.pump();
+      await tester.tap(find.byKey(ProfileKeys.saveNameButton));
+      await tester.pumpAndSettle();
+
+      // Localized error names the conflicting group; the spinner cleared so the
+      // Save button is interactive again and the sheet did NOT pop.
+      expect(find.textContaining('Trip to Muscat'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNotNull);
+      expect(find.byKey(ProfileKeys.saveNameButton), findsOneWidget);
+    },
+  );
 }

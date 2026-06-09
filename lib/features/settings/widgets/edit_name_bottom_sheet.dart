@@ -61,7 +61,16 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
     HapticService.medium();
 
     final stopwatch = Stopwatch()..start();
-    await widget.onSave(displayName);
+    try {
+      await widget.onSave(displayName);
+    } on DisplayNameTakenException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _errorText = context.l10n.displayNameTakenInGroup(e.groupName);
+      });
+      return;
+    }
     final elapsed = stopwatch.elapsedMilliseconds;
 
     if (elapsed < 600) {
