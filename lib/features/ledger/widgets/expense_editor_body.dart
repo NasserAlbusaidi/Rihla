@@ -14,6 +14,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/split_mode_display_name.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
@@ -1187,7 +1188,7 @@ class _PaidByCard extends StatelessWidget {
             leading: _Avatar(name: payerName, size: 32),
             title: payerName,
             subtitle: context.l10n.editorSelectedPaidFullAmount,
-            trailing: Icon(
+            trailing: DirectionalIcon(
               Iconsax.arrow_right_3,
               size: 18,
               color: context.colors.textSecondary,

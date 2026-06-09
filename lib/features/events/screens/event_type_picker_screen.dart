@@ -9,6 +9,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/animations/tap_bounce.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../models/event_model.dart';
 import '../keys/event_keys.dart';
 import '../models/event_type_config.dart';
@@ -345,7 +346,6 @@ class _ContinueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
     return SizedBox(
       width: double.infinity,
       height: context.spacing.buttonHeight,
@@ -374,10 +374,7 @@ class _ContinueButton extends StatelessWidget {
               height: 1.22,
             ),
           ),
-          icon: Transform.scale(
-            scaleX: isRtl ? -1 : 1,
-            child: const Icon(Iconsax.arrow_right_3, size: 16),
-          ),
+          icon: const DirectionalIcon(Iconsax.arrow_right_3, size: 16),
         ),
       ),
     );
