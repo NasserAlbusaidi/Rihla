@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -255,7 +257,7 @@ class EventDangerSection extends ConsumerWidget {
       }
     } catch (e, st) {
       if (context.mounted) {
-        Sentry.captureException(e, stackTrace: st);
+        unawaited(Sentry.captureException(e, stackTrace: st));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

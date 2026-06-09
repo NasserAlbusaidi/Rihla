@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,7 +76,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
     } catch (e, st) {
       if (mounted) {
         setState(() => _isSaving = false);
-        Sentry.captureException(e, stackTrace: st);
+        unawaited(Sentry.captureException(e, stackTrace: st));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

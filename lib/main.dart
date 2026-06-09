@@ -75,7 +75,7 @@ void main() async {
       if (_useFirebaseEmulator) {
         // Android emulator maps host's localhost to 10.0.2.2; other platforms use localhost.
         final host = !kIsWeb && Platform.isAndroid ? '10.0.2.2' : 'localhost';
-        FirebaseAuth.instance.useAuthEmulator(host, 9099);
+        unawaited(FirebaseAuth.instance.useAuthEmulator(host, 9099));
         FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
         FirebaseFunctions.instanceFor(
           region: 'us-central1',

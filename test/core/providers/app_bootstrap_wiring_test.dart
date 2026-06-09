@@ -37,7 +37,7 @@ void main() {
         addTearDown(container.dispose);
 
         // Set push enabled BEFORE activating bootstrap
-        container
+        await container
             .read(settingsProvider.notifier)
             .setPushNotificationsEnabled(true);
 
