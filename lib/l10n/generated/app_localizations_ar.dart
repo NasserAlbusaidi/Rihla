@@ -1068,6 +1068,14 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تسجيل التسوية. تحقق من اتصالك وحاول مرة أخرى.';
 
   @override
+  String get settleUpRecordFailedDenied =>
+      'لم تُقبل هذه التسوية. يرجى مراجعة التفاصيل والمحاولة مرة أخرى.';
+
+  @override
+  String get settleUpRecordFailedGeneric =>
+      'تعذّر تسجيل التسوية. يرجى المحاولة مرة أخرى.';
+
+  @override
   String get settleUpEveryoneEvenHeadline => 'الجميع متوازن.';
 
   @override

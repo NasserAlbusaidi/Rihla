@@ -1880,6 +1880,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t record settlement. Check your connection and try again.'**
   String get settleUpRecordFailed;
 
+  /// No description provided for @settleUpRecordFailedDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'This settlement wasn\'t allowed. Please check the details and try again.'**
+  String get settleUpRecordFailedDenied;
+
+  /// No description provided for @settleUpRecordFailedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t record settlement. Please try again.'**
+  String get settleUpRecordFailedGeneric;
+
   /// No description provided for @settleUpEveryoneEvenHeadline.
   ///
   /// In en, this message translates to:
