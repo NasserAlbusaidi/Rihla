@@ -24,6 +24,7 @@ import '../../groups/providers/group_provider.dart';
 import '../keys/home_keys.dart';
 import '../providers/active_journeys_provider.dart';
 import '../providers/dashboard_providers.dart';
+import '../widgets/account_backup_nudge.dart';
 import '../widgets/activity_row.dart';
 import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
@@ -129,6 +130,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 .slideY(begin: 0.15, curve: Curves.easeOutQuart),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
+          // #285: one-time, non-blocking prompt to back up an anonymous account
+          // by linking an email. Self-hides unless the user is anonymous; lives
+          // here so it only appears once the user has a group (data to lose).
+          const SliverToBoxAdapter(child: AccountBackupNudge()),
           SliverToBoxAdapter(
             child: KeyedSubtree(
               key: _journeysSectionKey,
